@@ -222,6 +222,10 @@ def outfits_update(self, context):
         for col in OutCollListAvail:
             bpy.data.collections[model_name+' '+col].hide_viewport = True
             bpy.data.collections[model_name+' '+col].hide_render = True
+            for modifier in bpy.data.objects[model_name+' Body'].modifiers:
+                if modifier.type == "MASK":
+                    modifier.show_viewport = False
+                    modifier.show_render = False
     else:
         for col in OutCollListAvail:
             bpy.data.collections[model_name+' '+col].hide_viewport = True
@@ -231,7 +235,7 @@ def outfits_update(self, context):
         
         for modifier in bpy.data.objects[model_name+' Body'].modifiers:
             for obj in bpy.data.collections[model_name+' '+self.outfits].all_objects:
-                if modifier.type == "MASK" and obj.name in modifier.name and obj.name.hide_viewport==False:
+                if modifier.type == "MASK" and obj.name in modifier.name and obj.hide_viewport==False:
                     modifier.show_viewport = True
                     modifier.show_render = True
                     break
