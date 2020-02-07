@@ -13,26 +13,39 @@ import webbrowser
 # ------------------------------------------------------------------------
 
 # The name of the model. All the relevant quantities should be renamed with this name
-model_name = 'Mila'
+model_name = 'Honoka'
 
 # Model version
-model_version = 'Beta - 05/02/2020'
-
-# UI version
-UI_version = '0.1.1 - 06/02/2020'
+model_version = '2 - 06/02/2020'
 
 # List of the body materials
-BodyPartsList = ['Torso','Neck','Head']
+BodyPartsList = ['Torso','Neck','Face']
 
 # List of outfits to be imported by the UI
-OutCollList = ['Default','Deluxe','Seaside','Training','Ninja']
+OutCollList = ['Ninja','Deluxe','Bikini','Shinovi Master Swimsuit','School','SciFi','Hip Hop']
 
 # List of hair to be imported by the UI
-HairObjList = ['Hair', 'Hair 2']
+# If there is only one hair_style in the list, the hair selection interface will be hidden by default
+HairObjList = ['Hair']
+
+# Choose which options to show on the UI
+enable_smoothcorr = True
+enable_sss = True
+enable_transl = True
+enable_tan = True
+enable_tanlines = True
+
+# List of the links which will be shown in the Link tab
+url_patreon = "https://www.patreon.com/mustardsfm"
+url_twitter = "https://twitter.com/MustardSFM"
+url_smutbase = "https://smutba.se/user/10157/"
 
 # ------------------------------------------------------------------------
 #    Internal Definitions (do not change them)
 # ------------------------------------------------------------------------
+
+# UI version
+UI_version = '0.1.2 - 07/02/2020'
 
 OutCollListAvail = []
 OutCollListOptions = [("Nude","Nude","Nude")]
@@ -215,10 +228,22 @@ def outfits_update(self, context):
             bpy.data.collections[model_name+' '+col].hide_render = True
         bpy.data.collections[model_name+' '+self.outfits].hide_viewport = False
         bpy.data.collections[model_name+' '+self.outfits].hide_render = False
+        
+        for modifier in bpy.data.objects[model_name+' Body'].modifiers:
+            for obj in bpy.data.collections[model_name+' '+self.outfits].all_objects:
+                if modifier.type == "MASK" and obj.name in modifier.name and obj.name.hide_viewport==False:
+                    modifier.show_viewport = True
+                    modifier.show_render = True
+                    break
+                elif modifier.type == "MASK" and obj.name not in modifier.name:
+                    modifier.show_viewport = False
+                    modifier.show_render = False
+        
     for i in range(len(MatWithTextSel)):
         if MatWithTextSel[i]==self.outfits:
             bpy.types.WindowManager.out_sel_ID = i
             break
+    
     bpy.types.WindowManager.outfit_text = bpy.props.IntProperty(default = 1,
                                                             min = 1,
                                                             max = MatWithTextSelCount[bpy.types.WindowManager.out_sel_ID],
@@ -237,9 +262,17 @@ def outfit_show(self, context):
     if self.outfit:
         self.hide_viewport = False
         self.hide_render = False
+        for modifier in bpy.data.objects[model_name+' Body'].modifiers:
+            if modifier.type == "MASK" and modifier.name == "Mask "+self.name:
+                modifier.show_viewport = True
+                modifier.show_render = True
     else:
         self.hide_viewport = True
         self.hide_render = True
+        for modifier in bpy.data.objects[model_name+' Body'].modifiers:
+            if modifier.type == "MASK" and modifier.name == "Mask "+self.name:
+                modifier.show_viewport = False
+                modifier.show_render = False
     return
 
 bpy.types.Object.outfit = bpy.props.BoolProperty(default = True,
@@ -309,17 +342,21 @@ class MUSTARDUI_PT_Model(MainPanel, bpy.types.Panel):
         layout = self.layout
         wm = context.window_manager
         
-        layout.prop(wm,"sss")
-        layout.prop(wm,"transluc")
+        if enable_sss:
+            layout.prop(wm,"sss")
+        if enable_transl:
+            layout.prop(wm,"transluc")
         
         for modifier in bpy.data.objects[model_name+' Body'].modifiers:
-            if modifier.type == "CORRECTIVE_SMOOTH":
+            if modifier.type == "CORRECTIVE_SMOOTH" and enable_smoothcorr:
                 layout.prop(wm,"smooth_corr")
                 break
         
         layout.separator()
-        layout.prop(wm,"tan")
-        layout.prop(wm,"tanlines")
+        if enable_tan:
+            layout.prop(wm,"tan")
+        if enable_tanlines:
+            layout.prop(wm,"tanlines")
 
 
 class MUSTARDUI_PT_Outfits(MainPanel, bpy.types.Panel):
@@ -354,16 +391,15 @@ class MUSTARDUI_PT_Links(MainPanel, bpy.types.Panel):
     bl_idname = "MUSTARDUI_PT_Links"
     bl_label = "Links"
     
-    url_patreon = "https://www.patreon.com/mustardsfm"
-    url_twitter = "https://twitter.com/MustardSFM"
-    url_smutbase = "https://smutba.se/user/10157/"
-    
     def draw(self, context):
         layout = self.layout
         
-        layout.operator('ops.open_link', text="Patreon").url = self.url_patreon
-        layout.operator('ops.open_link', text="Twitter").url = self.url_twitter
-        layout.operator('ops.open_link', text="SmutBase").url = self.url_smutbase
+        if url_patreon!='':
+            layout.operator('ops.open_link', text="Patreon").url = url_patreon
+        if url_twitter!='':
+            layout.operator('ops.open_link', text="Twitter").url = url_twitter
+        if url_smutbase!='':
+            layout.operator('ops.open_link', text="SmutBase").url = url_smutbase
 
       
 class MUSTARDUI_PT_Info(MainPanel, bpy.types.Panel):
@@ -373,7 +409,8 @@ class MUSTARDUI_PT_Info(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.label(text="Model version: "+model_version)
+        if model_version!='':
+            layout.label(text="Model version: "+model_version)
         layout.label(text="UI version: "+UI_version)
         if rig_tools_status is 1:
             layout.label(icon='ERROR',text="Debug: rig_tools not enabled!")
