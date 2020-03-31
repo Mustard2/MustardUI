@@ -1,5 +1,6 @@
 # MustardUI script
 # Refer to the documentation to implement this to other models
+# https://github.com/Mustard2/MustardUI/wiki
 
 import bpy
 import addon_utils
@@ -88,7 +89,7 @@ url_smutbase = "https://smutba.se/user/10157/"
 optimization_tools = False
 
 # Debug mode
-enable_debug_mode = True
+enable_debug_mode = False
 
 # ------------------------------------------------------------------------
 #    Internal Definitions (do not change them)
@@ -414,7 +415,7 @@ bpy.types.Scene.skinwet = bpy.props.FloatProperty(default = 0.0,
 def tan_update(self, context):
     
     for mat in BodyPartsList:
-        bpy.data.materials[model_name+' '+mat].node_tree.nodes[model_name+' Tan'].outputs[0].default_value = self.tan
+        bpy.data.materials[model_name+' '+mat].node_tree.nodes['Tan'].outputs[0].default_value = self.tan
     return
 
 bpy.types.Scene.tan = bpy.props.FloatProperty(default = 0.0,
@@ -427,7 +428,7 @@ bpy.types.Scene.tan = bpy.props.FloatProperty(default = 0.0,
 def tanlines_update(self, context):
     
     for mat in BodyPartsList:
-        bpy.data.materials[model_name+' '+mat].node_tree.nodes[model_name+' Tan Lines'].outputs[0].default_value = self.tanlines
+        bpy.data.materials[model_name+' '+mat].node_tree.nodes['Tan Lines'].outputs[0].default_value = self.tanlines
     return
 
 bpy.types.Scene.tanlines = bpy.props.FloatProperty(default = 0.0,
