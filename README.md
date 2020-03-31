@@ -14,8 +14,12 @@ MustardUI is (yet) very simple user interface for human models. The main feature
 
 ![](https://i.imgur.com/O9JmEc6.png)
 
+
+## Installation and Configuration
+
 Be sure to follow the [configuration guide](https://github.com/Mustard2/MustardUI/wiki/Installation-and-Configuration)!
 
-Custom UI for Blender human models.
 
-Please refer to the wiki for features and configuration: https://github.com/Mustard2/MustardUI/wiki
+## Tutorial
+
+You can provide the users of the UI this [tutorial](https://github.com/Mustard2/MustardUI/wiki/Tutorial).
