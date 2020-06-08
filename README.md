@@ -17,6 +17,7 @@ MustardUI is an user interface for human models. The main features are:
 **Note:** All the features here mentioned needs you to follow the configuration guide.
 
 ![](https://i.ibb.co/4WhZDcH/1.png)
+![](https://i.ibb.co/BtYPDpR/5.png)
 
 ## Installation and Configuration
 
