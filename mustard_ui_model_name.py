@@ -19,14 +19,14 @@ import webbrowser
 # MAIN MODEL DEFINITIONS
 
 # Model version
-model_version = 'X - XX/XX/XXXX'
+model_version = ''
 
 # List of outfits to be imported by the UI
-OutCollList = ['Suit','Swimsuit']
+OutCollList = ['Outfit 1','Outfit 2']
 
 # List of hair to be imported by the UI
 # If there is only one hair_style in the list, the hair selection interface will be hidden by default
-HairObjList = ['Hair 1', 'Hair 2']
+HairObjList = ['Hair']
 
 
 # BODY SETTINGS
@@ -39,14 +39,14 @@ enable_subdiv = True
 enable_norm_autosmooth = True
 
 # Enable subsurface scattering slider
-enable_sss = True
+enable_sss = False
 # Default subsurface scattering value
-default_sss = 0.044
+default_sss = 0.
 
 # Enable translucency slider
 enable_transl = False
 # Default translucency value
-default_transl = 0.0
+default_transl = 0.
 
 # Enable wet effect slider
 enable_skinwet = False
@@ -116,8 +116,8 @@ enable_lattice_panel = False
 
 # Enable Pre-render Checks Tool
 enable_prerender_checks = True
-# Enable Lips Shrinkwrap Tool (only for auto-rig armatures)
-enable_lips_shrinkwrap = False
+# Enable Lips Shrinkwrap Tool
+enable_lips_shrinkwrap = True
 # Enable ChildOf Tool
 enable_childof = True
 
@@ -126,18 +126,18 @@ enable_childof = True
 
 # List of the links which will be shown in the Link tab
 # Leave them to "" if you don't want to show them
-url_website = ""
-url_patreon = ""
-url_twitter = ""
-url_smutbase = ""
-url_reportbug = ""
+url_website = "https://sites.google.com/view/mustardsfm/home-page"
+url_patreon = "https://www.patreon.com/mustardsfm"
+url_twitter = "https://twitter.com/MustardSFM"
+url_smutbase = "https://smutba.se/user/10157/"
+url_reportbug = "https://discord.com/channels/538864175561179147/653909183657148416"
 
 # ------------------------------------------------------------------------
 #    Internal Definitions (do not change them)
 # ------------------------------------------------------------------------
 
 # UI version
-UI_version = '0.10.1 - 08/06/2020'
+UI_version = '0.10.2 - 14/06/2020'
 
 # Initialization variables
 OutCollListOptionsIni = [("Nude","Nude","Nude")]
@@ -1100,7 +1100,7 @@ def masks_out_update(self, context):
                 for modifier in bpy.data.objects[mask_obj].modifiers:
                     for col in OutCollListOptions:
                         for obj in bpy.data.collections[model_name()+' '+col].objects:
-                            if modifier.type == "MASK" and col in modifier.name and obj.name in modifier.name and obj.outfit_lock == True:
+                            if modifier.type == "MASK" and col in modifier.name and obj.name in modifier.name and obj.outfit_lock == True and obj.outfit:
                                 modifier.show_viewport = True
                                 modifier.show_render = True
         
@@ -1113,7 +1113,7 @@ def masks_out_update(self, context):
                             modifier.show_viewport = True
                             modifier.show_render = True
                             break
-                        elif modifier.type == "MASK" and obj.name in modifier.name and obj.outfit_lock == True and enable_masks == True:
+                        elif modifier.type == "MASK" and obj.name in modifier.name and obj.outfit_lock == True and enable_masks == True and obj.outfit:
                             modifier.show_viewport = True
                             modifier.show_render = True
                             break
@@ -1148,7 +1148,7 @@ def outfits_update(self, context):
         for col in OutCollListOptions:
             if check_collection_item(arm.lock_coll_list,col):
                 for obj in bpy.data.collections[model_name()+' '+col].objects:
-                    if obj.outfit_lock:
+                    if obj.outfit_lock and obj.outfit:
                         obj.hide_viewport = False
                         obj.hide_render = False
                     else:
@@ -1167,7 +1167,7 @@ def outfits_update(self, context):
             
                 for col in OutCollListOptions:
                     for obj in bpy.data.collections[model_name()+' '+col].objects:
-                        if modifier.type == "MASK" and col in modifier.name and obj.name in modifier.name and obj.outfit_lock == True and enable_masks == True:
+                        if modifier.type == "MASK" and col in modifier.name and obj.name in modifier.name and obj.outfit_lock == True and enable_masks == True and obj.outfit:
                             modifier.show_viewport = True
                             modifier.show_render = True
                 
@@ -1175,7 +1175,7 @@ def outfits_update(self, context):
         for col in OutCollListOptions:
             if check_collection_item(arm.lock_coll_list,col) and col!=self.outfits:
                 for obj in bpy.data.collections[model_name()+' '+col].objects:
-                    if obj.outfit_lock:
+                    if obj.outfit_lock and obj.outfit:
                         obj.hide_viewport = False
                         obj.hide_render = False
                     else:
@@ -1202,7 +1202,7 @@ def outfits_update(self, context):
                         modifier.show_viewport = True
                         modifier.show_render = True
                         break
-                    elif modifier.type == "MASK" and obj.name in modifier.name and obj.outfit_lock == True and enable_masks == True:
+                    elif modifier.type == "MASK" and obj.name in modifier.name and obj.outfit_lock == True and enable_masks == True and obj.outfit:
                         modifier.show_viewport = True
                         modifier.show_render = True
                         break
@@ -1285,7 +1285,13 @@ def outfit_lock(self, context):
         self.hide_render = False
         self.outfit=True
     elif check_collection_item(arm.lock_coll_list,coll):
-        remove_collection_item(arm.lock_coll_list,coll)
+        n_lock_obj=0
+        for obj in self.users_collection[0].objects:
+            print(obj.name)
+            if obj.outfit_lock:
+                n_lock_obj += 1
+        if n_lock_obj == 0:
+            remove_collection_item(arm.lock_coll_list,coll)
         if coll != arm.outfits:
             self.hide_viewport = True
             self.hide_render = True
