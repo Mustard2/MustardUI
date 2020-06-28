@@ -22,11 +22,11 @@ import webbrowser
 model_version = ''
 
 # List of outfits to be imported by the UI
-OutCollList = ['Outfit 1','Outfit 2']
+OutCollList = ['']
 
 # List of hair to be imported by the UI
 # If there is only one hair_style in the list, the hair selection interface will be hidden by default
-HairObjList = ['Hair']
+HairObjList = ['']
 
 
 # BODY SETTINGS
@@ -39,14 +39,14 @@ enable_subdiv = True
 enable_norm_autosmooth = True
 
 # Enable subsurface scattering slider
-enable_sss = False
+enable_sss = True
 # Default subsurface scattering value
-default_sss = 0.
+default_sss = 0.022
 
 # Enable translucency slider
 enable_transl = False
 # Default translucency value
-default_transl = 0.
+default_transl = 0.0
 
 # Enable wet effect slider
 enable_skinwet = False
@@ -99,7 +99,7 @@ enable_physics_panel = False
 # Global default options (these will be used if single default options are not specified and for the object without any single default option)
 physics_default_global = (2.9,1.0,1.0,1.0,0.2,0.2)
 # Single default options (leave it [] if you don't want to set them)
-physics_default = [("Breasts",2.9,1.0,1.0,1.0,0.2,0.2),("Bottom",1.9,1.0,1.0,1.0,0.2,0.2)]
+physics_default = [("Breasts",2.9,1.0,1.0,1.0,0.2,0.2)]
 # Default simulations step value
 physics_default_steps = 7
 # Default speed multiplier
@@ -126,18 +126,18 @@ enable_childof = True
 
 # List of the links which will be shown in the Link tab
 # Leave them to "" if you don't want to show them
-url_website = "https://sites.google.com/view/mustardsfm/home-page"
-url_patreon = "https://www.patreon.com/mustardsfm"
-url_twitter = "https://twitter.com/MustardSFM"
-url_smutbase = "https://smutba.se/user/10157/"
-url_reportbug = "https://discord.com/channels/538864175561179147/653909183657148416"
+url_website = ""
+url_patreon = ""
+url_twitter = ""
+url_smutbase = ""
+url_reportbug = ""
 
 # ------------------------------------------------------------------------
 #    Internal Definitions (do not change them)
 # ------------------------------------------------------------------------
 
 # UI version
-UI_version = '0.10.2 - 14/06/2020'
+UI_version = '0.10.4 - 28/06/2020'
 
 # Initialization variables
 OutCollListOptionsIni = [("Nude","Nude","Nude")]
@@ -380,6 +380,7 @@ class OptionItem(bpy.types.PropertyGroup):
 bpy.utils.register_class(OptionItem)
 
 bpy.types.Object.additional_options_show = bpy.props.BoolProperty(name="",default=False, description="Show additional options")
+bpy.types.Object.additional_options_show_lock = bpy.props.BoolProperty(name="",default=False, description="Show additional options")
 bpy.types.Object.additional_options = bpy.props.CollectionProperty(type=OptionItem)
 
 # Function to remove a specific element from the collection
@@ -1287,7 +1288,6 @@ def outfit_lock(self, context):
     elif check_collection_item(arm.lock_coll_list,coll):
         n_lock_obj=0
         for obj in self.users_collection[0].objects:
-            print(obj.name)
             if obj.outfit_lock:
                 n_lock_obj += 1
         if n_lock_obj == 0:
@@ -1370,6 +1370,18 @@ bpy.types.Armature.norm_autosmooth_out = bpy.props.BoolProperty(default = True,
                                                             description="Enable/disable the auto-smooth for body normals. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
                                                             update = norm_autosmooth_out_update)
 
+@classmethod
+def outfits_panel_poll(cls, context):
+    
+    OutCollListOptions = enum_entries(bpy.data.armatures[model_name()+'_rig'], "outfits")
+    OutCollListOptions.remove('Nude')
+    HairObjListAvail = enum_entries(bpy.data.armatures[model_name()+'_rig'], "hair")
+    
+    if len(OutCollListOptions) > 0 or len(HairObjListAvail) > 1 or model_name()+' Extras' in bpy.data.collections:
+        return True
+    else:
+        return False
+
 # ------------------------------------------------------------------------
 #    Hair Properties
 # ------------------------------------------------------------------------
@@ -1381,12 +1393,14 @@ def hair_update(self, context):
     for ob in HairObjListAvail:
         bpy.data.objects[model_name()+' '+ob].hide_viewport = True
         bpy.data.objects[model_name()+' '+ob].hide_render = True
-        bpy.data.objects[model_name()+' '+ob+' Armature'].hide_viewport = True
-        bpy.data.objects[model_name()+' '+ob+' Armature'].hide_render = True
+        if bpy.data.objects.get(model_name()+' '+ob+' Armature') != None:
+            bpy.data.objects[model_name()+' '+ob+' Armature'].hide_viewport = True
+            bpy.data.objects[model_name()+' '+ob+' Armature'].hide_render = True
     bpy.data.objects[model_name()+' '+self.hair].hide_viewport = False
     bpy.data.objects[model_name()+' '+self.hair].hide_render = False
-    bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_viewport = False
-    bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_render = False
+    if self.rig_hair and bpy.data.objects.get(model_name()+' '+self.hair+' Armature') != None:
+        bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_viewport = False
+        bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_render = False
     return
 
 bpy.types.Armature.hair = bpy.props.EnumProperty(name="",
@@ -1429,10 +1443,11 @@ def rig_visibility_update(self, context):
         armature.layers[31] = False
     
     for hair in HairObjListAvail:
-        if self.rig_hair:
-            bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_viewport = False
-        else:
-            bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_viewport = True
+        if bpy.data.objects.get(model_name()+' '+self.hair+' Armature') != None:
+            if self.rig_hair:
+                bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_viewport = False
+            else:
+                bpy.data.objects[model_name()+' '+self.hair+' Armature'].hide_viewport = True
     
     return
 
@@ -2492,6 +2507,8 @@ class MUSTARDUI_PT_Model(MainPanel, bpy.types.Panel):
 class MUSTARDUI_PT_Outfits(MainPanel, bpy.types.Panel):
     bl_idname = "MUSTARDUI_PT_Outfits"
     bl_label = "Outfits & Hair Settings"
+    
+    poll = outfits_panel_poll
 
     def draw(self, context):
         layout = self.layout
@@ -2545,8 +2562,22 @@ class MUSTARDUI_PT_Outfits(MainPanel, bpy.types.Panel):
                     if obj.outfit_lock:
                         OutfitListTemp.append(obj.name)
                 for obj_name in sorted(OutfitListTemp):
-                    row = box.row(align=True)
+                    col = box.column(align=True)
+                    row = col.row(align=True)
                     row.prop(bpy.data.objects[obj_name],"outfit",toggle=True, text=obj_name[len(model_name()):], icon='OUTLINER_OB_'+bpy.data.objects[obj_name].type)
+                    if len_collection(bpy.data.objects[obj_name].additional_options)>0 and arm.settings_additional_options:
+                        row.prop(bpy.data.objects[obj_name],"additional_options_show_lock", toggle=True, icon="PREFERENCES")
+                        if bpy.data.objects[obj_name].additional_options_show_lock:
+                            for el in bpy.data.objects[obj_name].additional_options:
+                                if el.option_type == 0:
+                                    col.prop(el,"option_value",text="Material - "+el.option_name)
+                                elif el.option_type == 1:
+                                    col.prop(el,"option_value_bool",text="Material - "+el.option_name)
+                            for el in bpy.data.objects[obj_name].additional_options:
+                                if el.option_type == 2:
+                                    col.prop(el,"option_value",text="Shape - "+el.option_name)
+                                elif el.option_type == 3:
+                                    col.prop(el,"option_value_bool",text="Shape - "+el.option_name)
                     row.scale_x=1
                     row.prop(bpy.data.objects[obj_name],"outfit_lock",toggle=True, icon='LOCKED')
             
