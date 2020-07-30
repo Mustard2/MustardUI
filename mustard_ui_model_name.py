@@ -41,7 +41,7 @@ enable_norm_autosmooth = True
 # Enable subsurface scattering slider
 enable_sss = True
 # Default subsurface scattering value
-default_sss = 0.022
+default_sss = 0.044
 
 # Enable translucency slider
 enable_transl = False
@@ -99,7 +99,7 @@ enable_physics_panel = False
 # Global default options (these will be used if single default options are not specified and for the object without any single default option)
 physics_default_global = (2.9,1.0,1.0,1.0,0.2,0.2)
 # Single default options (leave it [] if you don't want to set them)
-physics_default = [("Breasts",2.9,1.0,1.0,1.0,0.2,0.2)]
+physics_default = [("Breasts",2.9,1.0,1.0,1.0,0.2,0.2),("Bottom",1.9,1.0,1.0,1.0,0.2,0.2)]
 # Default simulations step value
 physics_default_steps = 7
 # Default speed multiplier
@@ -137,7 +137,13 @@ url_reportbug = ""
 # ------------------------------------------------------------------------
 
 # UI version
-UI_version = '0.10.4 - 28/06/2020'
+UI_version = '0.11.0 - 28/07/2020'
+
+# completely new custom properties UI
+# new color custom properties
+# initial support for hair particles (only hide/show)
+# new message when the parent tool is successfully run
+# possibility to enable/disable all outfit global properties with one click
 
 # Initialization variables
 OutCollListOptionsIni = [("Nude","Nude","Nude")]
@@ -171,6 +177,9 @@ def model_name():
     
     s = re.search('mustard_ui_(.*).py', os.path.basename(__file__)).group(1)
     s = s[0].upper() + s[1:]
+    for i,char in enumerate(s):
+        if char == "_":
+            s = s[:i] + " " + s[i+1].upper() + s[i+2:]
     
     return s
 
@@ -345,7 +354,7 @@ def additional_options_update(self, context):
     
     if obj != None:
         
-        if self.option_type == 0 or self.option_type == 1:
+        if self.option_type in [0,1,2]:
         
             for mat in obj.data.materials:
                 for j in range(len(mat.node_tree.nodes)):
@@ -353,6 +362,8 @@ def additional_options_update(self, context):
                         mat.node_tree.nodes["MustardUI Float - "+self.option_name].outputs[0].default_value = self.option_value
                     elif mat.node_tree.nodes[j].name == "MustardUI Bool - "+self.option_name and mat.node_tree.nodes[j].type=="VALUE":
                         mat.node_tree.nodes["MustardUI Bool - "+self.option_name].outputs[0].default_value = self.option_value_bool
+                    elif mat.node_tree.nodes[j].name == "MustardUI - "+self.option_name and mat.node_tree.nodes[j].type=="RGB":
+                        mat.node_tree.nodes["MustardUI - "+self.option_name].outputs[0].default_value = self.option_value_color
         
         else:
             
@@ -371,9 +382,17 @@ class OptionItem(bpy.types.PropertyGroup):
                                             min=0.,max=1.,
                                             update=additional_options_update,
                                             description="Value of the property")
-    option_value_bool : bpy.props.IntProperty(name="Option value",min=0,max=1,
+    option_value_bool : bpy.props.BoolProperty(name="Option value",
                                             update=additional_options_update,
                                             description="Value of the property")
+    option_value_color : bpy.props.FloatVectorProperty(name = "Option value",
+                                                            subtype='COLOR_GAMMA',
+                                                            default=[1.,1.,1.,1.],
+                                                            size=4,
+                                                            min=0.0,
+                                                            max=1.0,
+                                                            update=additional_options_update,
+                                                            description="Value of the property")
     option_object : bpy.props.PointerProperty(name="Option Object", type=bpy.types.Object)
     # Types: 0 - Material Float, 1 - Material Bool, 2 - Shape Key Float, 3 - Shape Key Bool
     option_type : bpy.props.IntProperty(default=0)
@@ -404,8 +423,9 @@ def add_option_item(collection, item):
         add_item.option_name = item[0]
         add_item.option_value = item[1]
         add_item.option_value_bool = item[2]
-        add_item.option_object = item[3]
-        add_item.option_type = item[4]
+        add_item.option_value_color = item[3]
+        add_item.option_object = item[4]
+        add_item.option_type = item[5]
 
 # Function to clean the additional options properties
 def clean_options():
@@ -623,15 +643,17 @@ def po_check_additional_options():
                     for mat in obj.data.materials:
                         for j in range(len(mat.node_tree.nodes)):
                             if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
-                                add_option_item(obj.additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Float - "):],mat.node_tree.nodes[j].outputs[0].default_value, False, obj, 0])
+                                add_option_item(obj.additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Float - "):],mat.node_tree.nodes[j].outputs[0].default_value, False, [1.,1.,1.,1.], obj, 0])
                             elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
-                                add_option_item(obj.additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Bool - "):],0., int(mat.node_tree.nodes[j].outputs[0].default_value), obj, 1])
+                                add_option_item(obj.additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Bool - "):],0., int(mat.node_tree.nodes[j].outputs[0].default_value), [1.,1.,1.,1.], obj, 1])
+                            elif "MustardUI" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="RGB":
+                                add_option_item(obj.additional_options, [mat.node_tree.nodes[j].name[len("MustardUI - "):],0., False, mat.node_tree.nodes[j].outputs[0].default_value, obj, 2])
                     if obj.data.shape_keys != None:
                         for shape_key in obj.data.shape_keys.key_blocks:
                             if "MustardUI Float" in shape_key.name:
-                                add_option_item(obj.additional_options, [shape_key.name[len("MustardUI Float - "):], shape_key.value, False, obj, 2])
+                                add_option_item(obj.additional_options, [shape_key.name[len("MustardUI Float - "):], shape_key.value, False, [1.,1.,1.,1.], obj, 3])
                             elif "MustardUI Bool" in shape_key.name:
-                                add_option_item(obj.additional_options, [shape_key.name[len("MustardUI Bool - "):], 0., int(shape_key.value), obj, 3])
+                                add_option_item(obj.additional_options, [shape_key.name[len("MustardUI Bool - "):], 0., int(shape_key.value), [1.,1.,1.,1.], obj, 4])
                             
     if enable_debug_mode:
         print("\n")
@@ -1114,7 +1136,7 @@ def masks_out_update(self, context):
                             modifier.show_viewport = True
                             modifier.show_render = True
                             break
-                        elif modifier.type == "MASK" and obj.name in modifier.name and obj.outfit_lock == True and enable_masks == True and obj.outfit:
+                        elif modifier.type == "MASK" and obj.name in modifier.name and obj.outfit_lock == True and obj.outfit:
                             modifier.show_viewport = True
                             modifier.show_render = True
                             break
@@ -1383,6 +1405,31 @@ def outfits_panel_poll(cls, context):
         return False
 
 # ------------------------------------------------------------------------
+#    Outfit Optimization Button
+# ------------------------------------------------------------------------
+
+class OptimizeOutfits_Button(bpy.types.Operator):
+    """Enable/disable all modifiers/functions that might impact on viewport performance"""
+    bl_idname = "ops.optimizeoutfit"
+    bl_label = ""
+    
+    enable: IntProperty(name='CLEAN',
+        description="Clean action",
+        default=False
+    )
+    
+    def execute(self, context):
+        
+        arm = bpy.data.armatures[model_name()+'_rig']
+        
+        arm.smooth_corr_out = self.enable
+        arm.shrink_out = self.enable
+        arm.masks_out = self.enable
+        arm.norm_autosmooth_out = self.enable
+        
+        return {'FINISHED'}
+
+# ------------------------------------------------------------------------
 #    Hair Properties
 # ------------------------------------------------------------------------
 
@@ -1407,6 +1454,27 @@ bpy.types.Armature.hair = bpy.props.EnumProperty(name="",
                                                         description="Hair selected",
                                                         items=HairObjListOptionsIni,
                                                         update = hair_update)
+
+def particle_hair_update(self, context):
+    
+    body = bpy.data.objects[model_name()+" Body"]
+    
+    for psys in body.particle_systems:
+        if psys.settings.name == self.name:
+            body.modifiers[psys.name].show_render = self.particle_hair_enable
+            body.modifiers[psys.name].show_viewport = self.particle_hair_enable_viewport
+            break
+    
+    return
+
+bpy.types.ParticleSettings.particle_hair_enable = bpy.props.BoolProperty(name="",
+                                                        description="Enable particle hair effect during rendering",
+                                                        default=False,
+                                                        update=particle_hair_update)
+bpy.types.ParticleSettings.particle_hair_enable_viewport = bpy.props.BoolProperty(name="",
+                                                        description="Enable particle hair effect in viewport.\nThis will greatly affect performance and memory usage. Use it only for previews",
+                                                        default=False,
+                                                        update=particle_hair_update)
 
 # ------------------------------------------------------------------------
 #    Rig Properties
@@ -2060,6 +2128,8 @@ class ChildOf(bpy.types.Operator):
                         ob.data.layers[i] = org_layers[i]
         
                     constr.influence = bpy.data.armatures[model_name()+'_rig'].childof_influence
+                    
+                    self.report({'INFO'}, 'The two selected Bones has been parented.')
         
                 else:
                     self.report({'ERROR'}, 'You should select two Bones. No modifier has been added.')
@@ -2161,12 +2231,14 @@ class RenderChecks_Cycles_Transparency(bpy.types.Operator):
 
 class RegisterUI_Button(bpy.types.Operator):
     """Register the UI.\nPlease read the documentation before using this tool"""
-    bl_idname = "ops.registerui_" + model_name().lower()
+    bl_idname = "ops.registerui"
     bl_label = "Register the UI.\nPlease read the documentation before using this tool"
     
     def execute(self, context):
         
-        bpy.data.armatures[model_name()+'_rig'].script_file = bpy.data.texts['mustard_ui_'+model_name().lower()+'.py']
+        filename = re.search('mustard_ui_(.*).py', os.path.basename(__file__)).group(1)
+        
+        bpy.data.armatures[model_name()+'_rig'].script_file = bpy.data.texts['mustard_ui_'+filename+'.py']
         print("MustardUI: UI correctly registered in " + bpy.data.armatures[model_name()+'_rig'].name)
         self.report({'INFO'}, "MustardUI: UI correctly registered in " + bpy.data.armatures[model_name()+'_rig'].name)
         
@@ -2538,16 +2610,31 @@ class MUSTARDUI_PT_Outfits(MainPanel, bpy.types.Panel):
                     if len_collection(bpy.data.objects[obj_name].additional_options)>0 and arm.settings_additional_options:
                         row.prop(bpy.data.objects[obj_name],"additional_options_show", toggle=True, icon="PREFERENCES")
                         if bpy.data.objects[obj_name].additional_options_show:
+                            box2 = box.box()
                             for el in bpy.data.objects[obj_name].additional_options:
                                 if el.option_type == 0:
-                                    col.prop(el,"option_value",text="Material - "+el.option_name)
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="MATERIAL")
+                                    row2.scale_x=0.4
+                                    row2.prop(el,"option_value",text="")
                                 elif el.option_type == 1:
-                                    col.prop(el,"option_value_bool",text="Material - "+el.option_name)
-                            for el in bpy.data.objects[obj_name].additional_options:
-                                if el.option_type == 2:
-                                    col.prop(el,"option_value",text="Shape - "+el.option_name)
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="MATERIAL")
+                                    row2.prop(el,"option_value_bool",text="")
+                                elif el.option_type == 2:
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="MATERIAL")
+                                    row2.scale_x=0.4
+                                    row2.prop(el,"option_value_color",text="")
                                 elif el.option_type == 3:
-                                    col.prop(el,"option_value_bool",text="Shape - "+el.option_name)
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="SHAPEKEY_DATA")
+                                    row2.scale_x=0.4
+                                    row2.prop(el,"option_value",text="")
+                                elif el.option_type == 4:
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="SHAPEKEY_DATA")
+                                    row2.prop(el,"option_value_bool",text="")
                     row.scale_x=1
                     if bpy.data.objects[obj_name].outfit_lock:
                         row.prop(bpy.data.objects[obj_name],"outfit_lock",toggle=True, icon='LOCKED')
@@ -2568,22 +2655,40 @@ class MUSTARDUI_PT_Outfits(MainPanel, bpy.types.Panel):
                     if len_collection(bpy.data.objects[obj_name].additional_options)>0 and arm.settings_additional_options:
                         row.prop(bpy.data.objects[obj_name],"additional_options_show_lock", toggle=True, icon="PREFERENCES")
                         if bpy.data.objects[obj_name].additional_options_show_lock:
+                            box2 = box.box()
                             for el in bpy.data.objects[obj_name].additional_options:
                                 if el.option_type == 0:
-                                    col.prop(el,"option_value",text="Material - "+el.option_name)
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="MATERIAL")
+                                    row2.scale_x=0.4
+                                    row2.prop(el,"option_value",text="")
                                 elif el.option_type == 1:
-                                    col.prop(el,"option_value_bool",text="Material - "+el.option_name)
-                            for el in bpy.data.objects[obj_name].additional_options:
-                                if el.option_type == 2:
-                                    col.prop(el,"option_value",text="Shape - "+el.option_name)
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="MATERIAL")
+                                    row2.prop(el,"option_value_bool",text="")
+                                elif el.option_type == 2:
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="MATERIAL")
+                                    row2.scale_x=0.4
+                                    row2.prop(el,"option_value_color",text="")
                                 elif el.option_type == 3:
-                                    col.prop(el,"option_value_bool",text="Shape - "+el.option_name)
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="SHAPEKEY_DATA")
+                                    row2.scale_x=0.4
+                                    row2.prop(el,"option_value",text="")
+                                elif el.option_type == 4:
+                                    row2 = box2.row(align=True)
+                                    row2.label(text=el.option_name, icon="SHAPEKEY_DATA")
+                                    row2.prop(el,"option_value_bool",text="")
                     row.scale_x=1
                     row.prop(bpy.data.objects[obj_name],"outfit_lock",toggle=True, icon='LOCKED')
             
             if arm.enable_smooth_corr_out or arm.enable_shrink_out or arm.enable_masks_out or arm.enable_norm_autosmooth_out:
                 box = layout.box()
-                box.label(text="Outfits global properties", icon="MODIFIER")
+                row = box.row(align=True)
+                row.label(text="Outfits global properties", icon="MODIFIER")
+                row.operator('ops.optimizeoutfit', text="", icon="RESTRICT_VIEW_OFF").enable = True
+                row.operator('ops.optimizeoutfit', text="", icon="RESTRICT_VIEW_ON").enable = False
                 if arm.enable_smooth_corr_out:
                     box.prop(arm,"smooth_corr_out")
                 if arm.enable_shrink_out:
@@ -2592,11 +2697,6 @@ class MUSTARDUI_PT_Outfits(MainPanel, bpy.types.Panel):
                     box.prop(arm,"masks_out")
                 if arm.enable_norm_autosmooth_out:
                     box.prop(arm,"norm_autosmooth_out")
-        
-        if len(HairObjListAvail) > 1:
-            box = layout.box()
-            box.label(text="Hair list and properties", icon="HAIR")
-            box.prop(arm,"hair")
         
         if model_name()+' Extras' in bpy.data.collections:
             box = layout.box()
@@ -2608,16 +2708,52 @@ class MUSTARDUI_PT_Outfits(MainPanel, bpy.types.Panel):
                 if len_collection(obj.additional_options)>0 and arm.settings_additional_options:
                     row.prop(obj,"additional_options_show", toggle=True, icon="PREFERENCES")
                     if obj.additional_options_show:
+                        box2 = box.box()
                         for el in obj.additional_options:
                             if el.option_type == 0:
-                                col.prop(el,"option_value",text="Material - "+el.option_name)
+                                row2 = box2.row(align=True)
+                                row2.label(text=el.option_name, icon="MATERIAL")
+                                row2.scale_x=0.4
+                                row2.prop(el,"option_value",text="")
                             elif el.option_type == 1:
-                                col.prop(el,"option_value_bool",text="Material - "+el.option_name, toggle=True)
-                        for el in obj.additional_options:
-                            if el.option_type == 2:
-                                col.prop(el,"option_value",text="Shape - "+el.option_name)
+                                row2 = box2.row(align=True)
+                                row2.label(text=el.option_name, icon="MATERIAL")
+                                row2.prop(el,"option_value_bool",text="")
+                            elif el.option_type == 2:
+                                row2 = box2.row(align=True)
+                                row2.label(text=el.option_name, icon="MATERIAL")
+                                row2.scale_x=0.4
+                                row2.prop(el,"option_value_color",text="")
                             elif el.option_type == 3:
-                                col.prop(el,"option_value_bool",text="Shape - "+el.option_name)
+                                row2 = box2.row(align=True)
+                                row2.label(text=el.option_name, icon="SHAPEKEY_DATA")
+                                row2.scale_x=0.4
+                                row2.prop(el,"option_value",text="")
+                            elif el.option_type == 4:
+                                row2 = box2.row(align=True)
+                                row2.label(text=el.option_name, icon="SHAPEKEY_DATA")
+                                row2.prop(el,"option_value_bool",text="")
+        
+        if len(HairObjListAvail) > 1:
+            box = layout.box()
+            box.label(text="Hair list and properties", icon="HAIR")
+            box.prop(arm,"hair")
+        if len(bpy.data.objects[model_name()+" Body"].particle_systems)>0:
+            box = layout.box()
+            box.label(text="Hair particles", icon="PARTICLES")
+            box2=box.box()
+            for psys in bpy.data.objects[model_name()+" Body"].particle_systems:
+                row=box2.row()
+                row.label(text=psys.name)
+                row2=row.row(align=True)
+                if psys.settings.particle_hair_enable:
+                    row2.prop(psys.settings, "particle_hair_enable", text="", toggle=True, icon="RESTRICT_RENDER_OFF")
+                else:
+                    row2.prop(psys.settings, "particle_hair_enable", text="", toggle=True, icon="RESTRICT_RENDER_ON")
+                if psys.settings.particle_hair_enable_viewport:
+                    row2.prop(psys.settings, "particle_hair_enable_viewport", text="", toggle=True, icon="RESTRICT_VIEW_OFF")
+                else:
+                    row2.prop(psys.settings, "particle_hair_enable_viewport", text="", toggle=True, icon="RESTRICT_VIEW_ON")
 
 
 class MUSTARDUI_PT_Rig(MainPanel, bpy.types.Panel):
@@ -2629,9 +2765,12 @@ class MUSTARDUI_PT_Rig(MainPanel, bpy.types.Panel):
         layout = self.layout
         arm = bpy.data.armatures[model_name()+'_rig']
         
-        box = layout.box()
-        box.label(text='Hair Armature', icon="HAIR")
-        box.prop(arm, "rig_hair",toggle=True)
+        HairObjListAvail = enum_entries(bpy.data.armatures[model_name()+'_rig'], "hair")
+        
+        if len(HairObjListAvail)>0:
+            box = layout.box()
+            box.label(text='Hair Armature', icon="HAIR")
+            box.prop(arm, "rig_hair",toggle=True)
         box = layout.box()
         box.label(text='Body Armature Layers', icon="ARMATURE_DATA")
         box.prop(arm, "rig_main_std",toggle=True)
@@ -3051,7 +3190,7 @@ class MUSTARDUI_PT_Settings(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="Maintenance Tools", icon="SETTINGS")
             box.label(text="UI tools", icon="MODIFIER")
-            box.operator("ops.registerui_" + model_name().lower(), text="Register UI")
+            box.operator("ops.registerui", text="Register UI")
             box.operator("ops.cleanui", text="Reset UI")
             box.label(text="Scene tools", icon="SCENE_DATA")
             box.operator('ops.optimize', text="Viewport Optimization").type = 1
@@ -3064,8 +3203,8 @@ class MUSTARDUI_PT_Settings(MainPanel, bpy.types.Panel):
         box.label(text="Versions", icon="INFO")
         
         if model_version!='':
-            box.label(text="       - Model: " + arm.model_version)
-        box.label(text="       - MustardUI: " + arm.settings_UI_version)
+            box.label(text="- Model: " + arm.model_version)
+        box.label(text="- MustardUI: " + arm.settings_UI_version)
         
         if arm.status_rig_tools == 1 or arm.status_rig_tools == 0:
             box = layout.box()
@@ -3122,6 +3261,7 @@ classes = (
     RenderChecks_Eevee_Refraction,
     RenderChecks_Cycles_Transparency,
     Optimize_Button,
+    OptimizeOutfits_Button,
     RegisterUI_Button,
     CleanUI_Button,
     MUSTARDUI_PT_Model,
