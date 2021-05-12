@@ -1,5 +1,7 @@
 # MustardUI
 
+A new version is in developement. More infos in the [Discussions section](https://github.com/Mustard2/MustardUI/discussions/5).
+
 ## Features
 
 MustardUI is an user interface for human models. The main features are:
