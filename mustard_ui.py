@@ -1,4 +1,4 @@
-# MustardUI 2 addon
+# MustardUI addon
 # GitHub page: https://github.com/Mustard2/MustardUI
 
 # Add-on informations
@@ -267,7 +267,7 @@ class MustardUI_OptionItem(bpy.types.PropertyGroup):
                         size = 4,
                         min = 0.0, max = 1.0,
                         name = "Option value",
-                        subtype = 'COLOR_GAMMA',
+                        subtype = 'COLOR',
                         update = mustardui_body_additional_options_update,
                         description="Value of the property")
     
