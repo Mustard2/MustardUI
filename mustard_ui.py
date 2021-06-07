@@ -6,8 +6,8 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 0),
-    "blender": (2, 92, 0),
+    "version": (0, 20, 1),
+    "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
@@ -21,12 +21,12 @@ import re
 import time
 import math
 import platform
+import itertools
 from bpy.types import Header, Menu, Panel
 from bpy.props import *
 from bpy.app.handlers import persistent
 from mathutils import Vector, Color
 import webbrowser
-
 
 # ------------------------------------------------------------------------
 #    Active object function
@@ -103,7 +103,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Advanced settings
     advanced: bpy.props.BoolProperty(default = False,
                         name = "Advanced Options",
-                        description = "Unlock Advanced Options")
+                        description = "Unlock Advanced Options.\nMore advanced options will be shown in the UI")
     # Debug mode
     debug: bpy.props.BoolProperty(default = False,
                         name = "Debug Mode",
@@ -112,14 +112,12 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Maintenance tools
     maintenance: bpy.props.BoolProperty(default = False,
                         name="Maintenance Tools",
-                        description="Enable Maintenance Tools.\nUse them at your risk! Enable and use them only if you know what you are doing")
+                        description="Enable Maintenance Tools.\nVarious maintenance tools will be added to the UI and in the Settings panel")
     
     # RIG TOOLS STATUS
     
     # This function checks that the rig_tools addon is installed and enabled.
-    def addon_check():
-        addon_name = "auto_rig_pro-master"
-        addon_name2 = "rig_tools"
+    def addon_check(addon_name, addon_name2):
         
         result = 0
         
@@ -141,7 +139,10 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
 
     
     # Rig-tools addon status definition
-    status_rig_tools: bpy.props.IntProperty(default = addon_check(),
+    status_rig_tools: bpy.props.IntProperty(default = addon_check("auto_rig_pro-master", "rig_tools"),
+                        name = "rig_tools addon status")
+    # Rig-tools addon status definition
+    status_diffeomorphic: bpy.props.IntProperty(default = addon_check("import_daz", "import_daz"),
                         name = "rig_tools addon status")
     
     # Property for additional properties errors
@@ -165,7 +166,7 @@ bpy.types.Armature.MustardUI_created = bpy.props.BoolProperty(default = False,
 # Class to store outfit informations
 class MustardUI_Outfit(bpy.types.PropertyGroup):
     # Collection storing the outfit pieces
-    collection : bpy.props.PointerProperty(name = "Outfit Collection",
+    collection: bpy.props.PointerProperty(name = "Outfit Collection",
                         type = bpy.types.Collection)
 
 bpy.utils.register_class(MustardUI_Outfit)
@@ -178,7 +179,15 @@ bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(default = False,
                     name = "",
                     description = "Lock/unlock the outfit")
 
+# Daz Morphs informations
+# Class to store morphs informations
+class MustardUI_DazMorph(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name = "Name")
+    path: bpy.props.StringProperty(name = "Path")
+    # 0: Emotion Units, 1: Emotions, 2: FACS Emotion Units, 3: FACS Emotions, 4: Body Morphs
+    type: bpy.props.IntProperty(name = "Type")
 
+bpy.utils.register_class(MustardUI_DazMorph)
 
 # ------------------------------------------------------------------------
 #    Body additional options definition
@@ -274,7 +283,7 @@ class MustardUI_OptionItem(bpy.types.PropertyGroup):
 bpy.utils.register_class(MustardUI_OptionItem)
 bpy.types.Object.mustardui_additional_options = bpy.props.CollectionProperty(type = MustardUI_OptionItem)
 
-# Class to store model settings
+# Main class to store model settings
 class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     # ------------------------------------------------------------------------
@@ -295,6 +304,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Select the mesh that will be considered the body",
                         type = bpy.types.Object,
                         poll = poll_mesh)
+    
+    # Armature object
+    # Poll function for the selection of armatures for the armature object
+    def poll_armature(self, object):
+        
+        if object.type == 'ARMATURE':
+            return object.data == self.id_data
+        else:
+            return False
+    
+    model_armature_object: bpy.props.PointerProperty(name = "Model Armature Object",
+                        description = "Mesh that will be considered the body.\nSet or change this Object if you know what you are doing",
+                        type = bpy.types.Object,
+                        poll = poll_armature)
     
     # ------------------------------------------------------------------------
     #    Body properties
@@ -497,16 +520,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         modifier.show_viewport = ( (collection.collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
                         modifier.show_render = ( (collection.collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
 
-        outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
+        if len(armature_settings.layers)>0:
+            outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
         
-        # Update armature layers visibility, checking if some are 'Outfit' layers
-        for i in outfit_armature_layers:
-            if armature_settings.layers[i].outfit_switcher_object == None:
-                armature_settings.layers[i].show = not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
-            else:
-                for object in [x for x in armature_settings.layers[i].outfit_switcher_collection.objects]:
-                    if object == armature_settings.layers[i].outfit_switcher_object:
-                        armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+            # Update armature layers visibility, checking if some are 'Outfit' layers
+            for i in outfit_armature_layers:
+                if armature_settings.layers[i].outfit_switcher_object == None:
+                    armature_settings.layers[i].show = not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+                else:
+                    for object in [x for x in armature_settings.layers[i].outfit_switcher_collection.objects]:
+                        if object == armature_settings.layers[i].outfit_switcher_object:
+                            armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
 
     # Function to update the global outfit properties
     def outfits_global_options_update(self, context):
@@ -618,6 +642,58 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Show Particle Systems in the UI.\nIf enabled, particle systems on the body mesh will automatically be added to the UI")
     
     # ------------------------------------------------------------------------
+    #    Diffeomorphic support
+    # ------------------------------------------------------------------------
+    
+    # Diffeomorphic support
+    diffeomorphic_support: bpy.props.BoolProperty(default = False,
+                        name = "Diffeomorphic Support (Experimental)",
+                        description = "Enable Diffeomorphic support.\nIf enabled, standard morphs from Diffomorphic will be added to the UI")
+    
+    diffeomorphic_morphs_list: bpy.props.CollectionProperty(name = "Daz Morphs List",
+                        type=MustardUI_DazMorph)
+    
+    # Additional properties
+    # Store number of additional properties
+    diffeomorphic_morphs_number: bpy.props.IntProperty(default = 0,
+                        name = "")
+    
+    diffeomorphic_emotions: bpy.props.BoolProperty(default = False,
+                        name = "Diffeomorphic Emotions",
+                        description = "Search for Diffeomorphic emotions")
+    diffeomorphic_emotions_collapse: bpy.props.BoolProperty(default = True)
+    diffeomorphic_emotions_custom: bpy.props.StringProperty(default = "",
+                        name = "Custom morphs",
+                        description = "Add strings to add custom morphs (they should map the initial part of the name of the morph), separated by commas.\nNote: spaces and order are considered")
+    
+    diffeomorphic_facs_emotions: bpy.props.BoolProperty(default = False,
+                        name = "Diffeomorphic FACS Emotions",
+                        description = "Search for Diffeomorphic FACS emotions")
+    diffeomorphic_facs_emotions_collapse: bpy.props.BoolProperty(default = True)
+    
+    diffeomorphic_emotions_units: bpy.props.BoolProperty(default = False,
+                        name = "Diffeomorphic Emotions Units",
+                        description = "Search for Diffeomorphic emotions units")
+    diffeomorphic_emotions_units_collapse: bpy.props.BoolProperty(default = True)
+    
+    diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default = False,
+                        name = "Diffeomorphic FACS Emotions Units",
+                        description = "Search for Diffeomorphic FACS emotions units")
+    diffeomorphic_facs_emotions_units_collapse: bpy.props.BoolProperty(default = True)
+    
+    diffeomorphic_body_morphs: bpy.props.BoolProperty(default = False,
+                        name = "Diffeomorphic Body Morphs",
+                        description = "Search for Diffeomorphic Body morphs")
+    diffeomorphic_body_morphs_collapse: bpy.props.BoolProperty(default = True)
+    diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default = "",
+                        name = "Custom morphs",
+                        description = "Add strings to add custom morphs (they should map the initial part of the name of the morph), separated by commas.\nNote: spaces and order are considered")
+    
+    diffeomorphic_search: bpy.props.StringProperty(name = "",
+                        description = "Search for a specific morph",
+                        default = "")
+    
+    # ------------------------------------------------------------------------
     #    Various properties
     # ------------------------------------------------------------------------
     
@@ -638,6 +714,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     model_rig_type: bpy.props.EnumProperty(default = "other",
                         items = [("arp", "Auto-Rig Pro", "Auto-Rig Pro"), ("rigify", "Rigify", "Rigify"), ("other", "Other", "Other")],
                         name = "Rig type")
+    
     
     # Links
     # Property for collapsing links properties section
@@ -666,6 +743,11 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     url_reportbug: bpy.props.StringProperty(default = "",
                         name = "Report bug")
+    
+    # Debug
+    # Property for collapsing debug properties section
+    debug_config_collapse: bpy.props.BoolProperty(default = True,
+                        name = "")
     
     ####### END OF MustardUI_RigSettings class ########
 
@@ -707,7 +789,7 @@ bpy.types.ParticleSettings.mustardui_particle_hair_enable_viewport = bpy.props.B
                     update = mustardui_particle_hair_update)
 
 # ------------------------------------------------------------------------
-#    Armature layer Properties
+#    Armature layer Properties and operators
 # ------------------------------------------------------------------------
 
 # This operator initialize the armature panel
@@ -790,9 +872,10 @@ def mustardui_armature_visibility_update(self, context):
     rig_settings = arm.MustardUI_RigSettings
     armature_settings = arm.MustardUI_ArmatureSettings
     
-    for object in [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]:
-        if rig_settings.hair_list in object.name:
-            object.hide_viewport = not armature_settings.hair
+    if rig_settings.hair_collection != None:
+        for object in [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]:
+            if rig_settings.hair_list in object.name:
+                object.hide_viewport = not armature_settings.hair
     
     for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
         arm.layers[i] = armature_settings.layers[i].show
@@ -814,6 +897,7 @@ class MustardUI_ArmatureLayer(bpy.types.PropertyGroup):
     layer_config_collapse: bpy.props.BoolProperty(default = False, name = "")
     
     id: bpy.props.IntProperty(default = -1)
+    
     name: bpy.props.StringProperty(default = "",
                         name = "Name",
                         description = "The name of the layer that will be shown in the UI")
@@ -827,18 +911,17 @@ class MustardUI_ArmatureLayer(bpy.types.PropertyGroup):
                         description = "Show/Hide the selected layer",
                         update = mustardui_armature_visibility_update)
     
-    # TODO: implement mirror
     mirror: bpy.props.BoolProperty(default = False,
                         name = "Mirror",
                         description = "Enable Mirror.\nThis will add a line of two buttons in the Armature panel, one for the left and one for the right layer")
     
-    mirror_layer: bpy.props.IntProperty(default = 0,
-                        name = "Mirror Layer",
-                        description = "Specify the Mirror layer.\nThe mirrored layer will be named as this layer")
-    
-    left: bpy.props.BoolProperty(default = True,
+    mirror_left: bpy.props.BoolProperty(default = True,
                         name = "Left",
-                        description = "Specify this is a Left layer.\nThe mirrored layer will be called Right, the inverse if this is unchecked")
+                        description = "The Left layer.\nThe mirrored layer will be called Right, the inverse if this is unchecked")
+    
+    mirror_layer: bpy.props.IntProperty(default = -1,
+                        name = "Mirror Layer",
+                        description = "The armature layer which mirror this")
     
     # Poll function for the selection of mesh belonging to an outfit in pointer properties
     def outfit_switcher_poll_collection(self, object):
@@ -854,7 +937,6 @@ class MustardUI_ArmatureLayer(bpy.types.PropertyGroup):
     def outfit_switcher_poll_mesh(self, object):
         
         if self.outfit_switcher_collection != None:
-            print(self.outfit_switcher_collection.objects)
             if object in [x for x in self.outfit_switcher_collection.objects]:
                 return object.type == 'MESH'
         
@@ -875,7 +957,6 @@ class MustardUI_ArmatureLayer(bpy.types.PropertyGroup):
                         description = "Outfits Switcher outfit piece.\nWhen Outfit Switcher is enabled, when switching to this outfit piece this layer will be shown/hidden",
                         type = bpy.types.Object,
                         poll = outfit_switcher_poll_mesh)
-    
     
 bpy.utils.register_class(MustardUI_ArmatureLayer)
 
@@ -1139,7 +1220,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     # Config enable
     lips_shrinkwrap_enable: bpy.props.BoolProperty(default = False,
                                              name="Lips Shrinkwrap",
-                                             description="Enable Lips shrinkwrap tool")
+                                             description="Enable Lips shrinkwrap tool.\nThis can be added only on ARP rigs at the moment")
     
     # Poll function for the selection of mesh only in pointer properties
     def poll_armature(self, object):
@@ -1201,22 +1282,23 @@ bpy.types.Armature.MustardUI_ToolsSettings = bpy.props.PointerProperty(type = Mu
 
 # Function to add a option to the object, if not already there
 def mustardui_add_option_item_body(collection, item):
-    i=True
+    
     for el in collection:
         if el.name == item[0] and el.type == item[2]:
-            i=False
-            break
-    if i:
-        add_item = collection.add()
-        add_item.name = item[0]
-        add_item.type = item[2]
-        
-        if item[2] in [0,2]:
-            add_item.body_bool_value = item[1]
-        elif item[2] in [1,3]:
-            add_item.body_float_value = item[1]
-        else:
-            add_item.body_color_value = item[1]
+            return
+    
+    add_item = collection.add()
+    add_item.name = item[0]
+    add_item.type = item[2]
+    
+    if item[2] in [0,2]:
+        add_item.body_bool_value = item[1]
+    elif item[2] in [1,3]:
+        add_item.body_float_value = item[1]
+    else:
+        add_item.body_color_value = item[1]
+    
+    return
 
 # This operator will check for additional options for the body
 class MustardUI_Body_CheckAdditionalOptions(bpy.types.Operator):
@@ -1318,7 +1400,7 @@ class MustardUI_Outfits_CheckAdditionalOptions(bpy.types.Operator):
         for obj in bpy.data.objects:
             obj.mustardui_additional_options.clear()
         
-        collections = [x.collection for x in rig_settings.outfits_collections];
+        collections = [x.collection for x in rig_settings.outfits_collections if hasattr(x.collection, 'name')]
         if rig_settings.extras_collection != None:
             collections.append(rig_settings.extras_collection)
         
@@ -1429,6 +1511,137 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
         return {'FINISHED'}
 
 # ------------------------------------------------------------------------
+#    Diffeomorphic Support
+# ------------------------------------------------------------------------
+
+# Function to add a option to the object, if not already there
+def mustardui_add_dazmorph(collection, item):
+    
+    for el in collection:
+        if el.name == item[0] and el.path == item[1] and el.type == item[2]:
+            return
+    
+    add_item = collection.add()
+    add_item.name = item[0]
+    add_item.path = item[1]
+    add_item.type = item[2]
+    
+    return
+
+# This operator will check for additional options for the outfits
+class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
+    """Search for morphs to display in the UI External Morphs panel"""
+    bl_idname = "mustardui.dazmorphs_checkmorphs"
+    bl_label = "Check Morphs"
+
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        return res
+
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 1)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        # Clean the morphs
+        rig_settings.diffeomorphic_morphs_list.clear()
+        
+        # TYPE: 0: Emotion Units, 1: Emotions, 2: FACS Emotion Units, 3: FACS Emotions, 4: Body Morphs
+        
+        # Emotions Units
+        if rig_settings.diffeomorphic_emotions_units:
+            emotions_units = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and ('eCTRL' in x or 'ECTRL' in x) and not "HD" in x and not "eCTRLSmile" in x and not 'eCTRLv' in x and sum(1 for c in x if c.isupper()) >= 6]
+                
+            for emotion in emotions_units:
+                name = emotion[len('eCTRL')] + ''.join([c if not c.isupper() else ' ' + c for c in emotion[len('eCTRL')+1:]])
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 0])
+        
+        # Emotions
+        if rig_settings.diffeomorphic_emotions:
+            
+            emotions = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'eCTRL' in x and not "HD" in x and not 'eCTRLv' in x and (sum(1 for c in x if c.isupper()) < 6 or "eCTRLSmile" in x)]
+            
+            # Custom Diffeomorphic emotions
+            emotions_custom = []
+            for string in [x for x in rig_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
+                for x in rig_settings.model_armature_object.keys():
+                    if rig_settings.diffeomorphic_search.lower() in x.lower() and string in x:# and sum(1 for c in x if c.isupper()) < 6:
+                        emotions_custom.append(x)
+            
+            for emotion in emotions:
+                name = emotion[len('eCTRL')] + ''.join([c if not c.isupper() else ' ' + c for c in emotion[len('eCTRL')+1:]])
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 1])
+            for emotion in emotions_custom:
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [emotion, emotion, 1])
+        
+         # FACS Emotions Units
+        if rig_settings.diffeomorphic_facs_emotions_units:
+            
+            facs_emotions_units = []
+            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_ctrl_' in x and not 'facs_ctrl_Smile' in x and sum(1 for c in x if c.isupper()) >= 2])
+            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_bs_' in x and sum(1 for c in x if c.isupper()) >= 2])
+            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_jnt_' in x and sum(1 for c in x if c.isupper()) >= 2])
+            facs_emotions_units = itertools.chain.from_iterable(facs_emotions_units)
+            
+            for emotion in facs_emotions_units:
+                name = emotion[emotion.rfind('_', 0, 12) + 1] + ''.join([c if not c.isupper() else ' ' + c for c in emotion[emotion.rfind('_', 0, 12)+2:]])
+                name = name.rstrip('_div2')
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 2])
+        
+        # FACS Emotions
+        if rig_settings.diffeomorphic_facs_emotions:
+            
+            facs_emotions = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_ctrl_' in x and (sum(1 for c in x if c.isupper()) < 2 or 'facs_ctrl_Smile' in x)]
+            for emotion in facs_emotions:
+                name = emotion[len('facs_ctrl_')] + ''.join([c if not c.isupper() else ' ' + c for c in emotion[len('facs_ctrl_')+1:]])
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 3])
+        
+        # Body Morphs
+        if rig_settings.diffeomorphic_body_morphs:
+            
+            body_morphs_FBM = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'FBM' in x and sum(1 for c in x if c.isdigit()) < 1 and sum(1 for c in x if c.isupper()) < 6]
+            body_morphs_CTRLB = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'CTRLBreasts' in x and not 'pCTRLBreasts' in x and sum(1 for c in x if c.isupper()) < 10]
+            body_morphs_PBM = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'PBMBreasts' in x and sum(1 for c in x if c.isupper()) < 10]
+            
+            # Custom Diffeomorphic emotions
+            body_morphs_custom = []
+            for string in [x for x in rig_settings.diffeomorphic_body_morphs_custom.split(',') if x != '']:
+                for x in rig_settings.model_armature_object.keys():
+                    if rig_settings.diffeomorphic_search.lower() in x.lower() and string in x:# and sum(1 for c in x if c.isupper()) < 6:
+                        body_morphs_custom.append(x)
+            
+            for morph in body_morphs_FBM:
+                name = morph[len('FBM')] + ''.join([c if not c.isupper() else ' ' + c for c in morph[len('FBM')+1:]])
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, morph, 4])
+            for morph in body_morphs_CTRLB:
+                name = morph[len('CTRL')] + ''.join([c if not c.isupper() else ' ' + c for c in morph[len('CTRL')+1:]])
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, morph, 4])
+            for morph in body_morphs_PBM:
+                name = morph[len('PBM')] + ''.join([c if not c.isupper() else ' ' + c for c in morph[len('PBM')+1:]])
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, morph, 4])
+            for morph in body_morphs_custom:
+                mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [morph, morph, 4])
+        
+        properties_number = 0                       
+        if settings.debug:
+            print("\nMustardUI - Diffeomorphic Daz Morphs found\n")
+            # Print the options
+        for el in rig_settings.diffeomorphic_morphs_list:
+            if settings.debug:
+                print(el.name+" with path "+el.path+', type: '+str(el.type))
+            properties_number = properties_number + 1
+        
+        rig_settings.diffeomorphic_morphs_number = properties_number
+        
+        
+        self.report({'INFO'}, 'MustardUI - Diffeomorphic Daz Morphs check completed.')
+
+        return {'FINISHED'}
+
+# ------------------------------------------------------------------------
 #    Viewport Model Selection Operator
 # ------------------------------------------------------------------------
 
@@ -1515,7 +1728,7 @@ class MustardUI_Configuration(bpy.types.Operator):
         if not obj.MustardUI_enable:
             
             if settings.debug:
-                print("\n\nMustardUI - Configuration Warnings")
+                print("\n\nMustardUI - Configuration Logs")
         
             # Various checks
             if rig_settings.model_body == None:
@@ -1525,6 +1738,21 @@ class MustardUI_Configuration(bpy.types.Operator):
             if rig_settings.model_name == "":
                 self.report({'ERROR'}, 'MustardUI - A name should be selected.')
                 return {'FINISHED'}
+            
+            # Check Body mesh scale
+            if rig_settings.model_body.scale[0] != 1. or rig_settings.model_body.scale[1] != 1. or rig_settings.model_body.scale[2] != 1.:
+                warnings = warnings + 1
+                if settings.debug:
+                    print('MustardUI - Configuration Warning - The selected body mesh seems not to have the scale applied.\n This might generate issues with the tools.')
+            
+            # Check and eventually clean deleted outfit collections
+            collections = [x for x in rig_settings.outfits_collections]
+            
+            for x in range(len(rig_settings.outfits_collections)):
+                if not hasattr(rig_settings.outfits_collections[x].collection, 'name'):
+                    rig_settings.outfits_collections.remove(x)
+                    if settings.debug:
+                        print('MustardUI - A ghost outfit collection has been removed.')
             
             # Check lattice object definition
             if lattice_settings.lattice_object == None and lattice_settings.lattice_panel_enable:
@@ -1541,20 +1769,53 @@ class MustardUI_Configuration(bpy.types.Operator):
                     warnings = warnings + 1
                     if settings.debug:
                         print('MustardUI - Configuration Warning - Layer ' + str(i) + ' has Outfit Switcher enabled, but no collection has been defined')
-                    
+            
+            # Check the mirror option of the layer
+            for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
+                
+                armature_settings.layers[i].mirror = False
+                armature_settings.layers[i].mirror_layer = -1
+                
+                mirror_string = ""
+                if ".R" in armature_settings.layers[i].name:
+                    mirror_string = ".R"
+                elif ".L" in armature_settings.layers[i].name:
+                    mirror_string = ".L"
+                
+                if mirror_string == "":
+                    continue
+                
+                armature_settings.layers[i].mirror = mirror_string == ".R" or mirror_string == ".L"
+                armature_settings.layers[i].mirror_left = mirror_string == ".L"
+                
+                if armature_settings.layers[i].name.find(mirror_string) > 1:
+                    rng = list(range(0,32))
+                    rng.remove(i)
+                    mirror_layer = [x for x in rng if armature_settings.config_layer[x] and armature_settings.layers[i].name[:armature_settings.layers[i].name.find(mirror_string)] in armature_settings.layers[x].name and armature_settings.layers[i].name[armature_settings.layers[i].name.find(mirror_string) + len(mirror_string):] in armature_settings.layers[x].name]
+                    if len(mirror_layer) > 0:
+                        armature_settings.layers[i].mirror_layer = mirror_layer[0]
+                    else:
+                        armature_settings.layers[i].mirror_layer = -1
+                        warnings = warnings + 1
+                        if settings.debug:
+                            print('MustardUI - Configuration Warning - Can not find a mirror layer. Mirror has been disabled.')
+                        armature_settings.layers[i].mirror = False
+                else:
+                    warnings = warnings + 1
+                    if settings.debug:
+                        print('MustardUI - Configuration Warning - Layer ' + str(i) + ' seems not to have the correct mirror naming convention. Mirror has been disabled.')
+                    armature_settings.layers[i].mirror = False
             
             # Check the type of the rig
             if hasattr(obj,'[\"arp_updated\"]'):
                 rig_settings.model_rig_type = "arp"
+            elif hasattr(obj,'[\"rig_id\"]'):
+                rig_settings.model_rig_type = "rigify"
             else:
                 rig_settings.model_rig_type = "other"
             
-            # Check the type of the shrinkwrap tool rig
-            if tools_settings.lips_shrinkwrap_armature_object == None and tools_settings.lips_shrinkwrap_enable:
-                warnings = warnings + 1
-                if settings.debug:
-                    self.report({'ERROR'}, 'MustardUI - A Lips Shrinkwrap Armature Object should be selected if Lips Shrinkwrap tool is enabled.')
-                    return {'FINISHED'}
+            if settings.debug:
+                print('MustardUI - The rig has been recognized as ' + rig_settings.model_rig_type)
             
             if tools_settings.lips_shrinkwrap_armature_object != None and tools_settings.lips_shrinkwrap_enable:
                 if not hasattr(tools_settings.lips_shrinkwrap_armature_object.data,'[\"arp_updated\"]'):
@@ -1574,10 +1835,20 @@ class MustardUI_Configuration(bpy.types.Operator):
                 self.report({'INFO'}, 'MustardUI - Configuration complete.')
         
         obj.MustardUI_enable = not obj.MustardUI_enable
-        obj.MustardUI_created = True
+        
+        if not obj.MustardUI_created:
+            if context.active_object != None and context.active_object.type == "ARMATURE":
+                rig_settings.model_armature_object = context.active_object
+                if tools_settings.lips_shrinkwrap_armature_object == None and tools_settings.lips_shrinkwrap_enable:
+                    tools_settings.lips_shrinkwrap_armature_object = rig_settings.model_armature_object
+            else:
+                self.report({'ERROR'}, 'MustardUI - Be sure to select the armature Object in the viewport before continuing.')
+                return {'FINISHED'}
 
-        if (settings.viewport_model_selection_after_configuration and not settings.viewport_model_selection) or (not settings.viewport_model_selection_after_configuration and settings.viewport_model_selection):
+        if ((settings.viewport_model_selection_after_configuration and not settings.viewport_model_selection) or (not settings.viewport_model_selection_after_configuration and settings.viewport_model_selection)) and not obj.MustardUI_created:
             bpy.ops.mustardui.viewportmodelselection()
+        
+        obj.MustardUI_created = True
         
         return {'FINISHED'}
 
@@ -1693,18 +1964,65 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             if len(armature_settings.layers)<1:
                 bpy.ops.mustardui.armature_initialize(clean = False)
             
-            preset_Mustard_models = [(0, "Main", False), (1, "Advanced", False), (7, "Extra", False), (10, "Child Of - Ready", False), (31, "Rigging - Ready", True)]
+            preset_Mustard_models = [(0, "Main", False),
+                                    (1, "Advanced", False),
+                                    (7, "Extra", False),
+                                    (10, "Child Of - Ready", False),
+                                    (31, "Rigging - Ready", True)]
             
             for layer in preset_Mustard_models:
                 if not armature_settings.config_layer[ layer[0] ]:
                     armature_settings.config_layer[ layer[0] ] = True   
                     armature_settings.layers[ layer[0] ].name = layer[1]
                     armature_settings.layers[ layer[0] ].advanced = layer[2]
+                    armature_settings.layers[ layer[0] ].layer_config_collapse = True
                     if settings.debug:
                         print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' set.')
                 else:
                     if settings.debug:
                         print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')      
+        
+        elif hasattr(obj,'[\"rig_id\"]'):
+            if settings.debug:
+                print('\nMustardUI - Smart Check - Found a Rigify rig.')
+            print('\nMustardUI - Smart Check - Setting layers for Rigify.')
+            
+            preset_Mustard_models = [(1, "Face", False),
+                                    (2, "Face (details)", False),
+                                    (3, "Torso", False),
+                                    (4, "Torso (Tweak)", False),
+                                    (5, "Fingers", False),
+                                    (6, "Fingers (Tweak)", False),
+                                    (7, "Arm.L (IK)", False),
+                                    (10, "Arm.R (IK)", False),
+                                    (8, "Arm.L (FK)", False),
+                                    (11, "Arm.R (FK)", False),
+                                    (9, "Arm.L (Tweak)", False),
+                                    (12, "Arm.R (Tweak)", False),
+                                    (13, "Leg.L (IK)", False),
+                                    (16, "Leg.R (IK)", False),
+                                    (14, "Leg.L (FK)", False),
+                                    (17, "Leg.R (FK)", False),
+                                    (15, "Leg.L (Tweak)", False),
+                                    (18, "Leg.R (Tweak)", False),
+                                    (28, "Root", False)]
+            
+            if len(armature_settings.layers)<1:
+                bpy.ops.mustardui.armature_initialize(clean = False)
+            
+            for layer in preset_Mustard_models:
+                if not armature_settings.config_layer[ layer[0] ]:
+                    armature_settings.config_layer[ layer[0] ] = True   
+                    armature_settings.layers[ layer[0] ].name = layer[1]
+                    armature_settings.layers[ layer[0] ].advanced = layer[2]
+                    armature_settings.layers[ layer[0] ].layer_config_collapse = True
+                    if settings.debug:
+                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' set.')
+                else:
+                    if settings.debug:
+                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')
+            
+            
         
         # Lips Shrinkwrap
         if tools_settings.lips_shrinkwrap_armature_object == None:
@@ -1753,6 +2071,35 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         
         return {'FINISHED'}
 
+class MustardUI_RegisterUIFile(bpy.types.Operator):
+    """Register the UI.\nThe script file will be linked to the armature and will be transfered if the model is appended in another .blend file"""
+    bl_idname = "mustardui.registeruifile"
+    bl_label = "Register the UI"
+    
+    register: bpy.props.BoolProperty(default = True)
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        return res
+    
+    def execute(self, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        #filename = re.search('mustard_ui.py', os.path.basename(__file__)).group(1)
+        
+        if self.register:
+            obj.MustardUI_script_file = bpy.data.texts['mustard_ui.py']
+            self.report({'INFO'}, "MustardUI: UI correctly registered in " + obj.name)
+        else:
+            obj.MustardUI_script_file = None
+            self.report({'INFO'}, "MustardUI: UI correctly un-registered in " + obj.name)
+        
+        return {'FINISHED'}
+
 # ------------------------------------------------------------------------
 #    Outfit visibility operator
 # ------------------------------------------------------------------------
@@ -1784,12 +2131,13 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         else:
             self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
         
-        outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
+        if len(armature_settings.layers) > 0:
+            outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
 
-        for i in outfit_armature_layers:
-            for object in [x for x in armature_settings.layers[i].outfit_switcher_collection.objects]:
-                if object == armature_settings.layers[i].outfit_switcher_object:
-                    armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+            for i in outfit_armature_layers:
+                for object in [x for x in armature_settings.layers[i].outfit_switcher_collection.objects]:
+                    if object == armature_settings.layers[i].outfit_switcher_object:
+                        armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
         
         return {'FINISHED'}
 
@@ -1802,10 +2150,7 @@ class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
     bl_idname = "mustardui.switchglobal_outfits"
     bl_label = ""
     
-    enable: IntProperty(name='CLEAN',
-        description="Clean action",
-        default=False
-    )
+    enable: IntProperty(default=False)
     
     def execute(self, context):
         
@@ -2151,8 +2496,8 @@ class MustardUI_LatticeSettings(bpy.types.PropertyGroup):
         return
 
 
-    lattice_object: bpy.props.PointerProperty(name = "Model Body",
-                        description = "Select the mesh that will be considered the body",
+    lattice_object: bpy.props.PointerProperty(name = "Lattice Object",
+                        description = "The Lattice that will be used for body modifications",
                         type = bpy.types.Object,
                         poll = poll_lattice)
     
@@ -2181,6 +2526,598 @@ class MustardUI_LatticeSettings(bpy.types.PropertyGroup):
 
 bpy.utils.register_class(MustardUI_LatticeSettings)
 bpy.types.Armature.MustardUI_LatticeSettings = bpy.props.PointerProperty(type = MustardUI_LatticeSettings)
+
+# ------------------------------------------------------------------------
+#    Tools - Physics
+# ------------------------------------------------------------------------
+
+class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
+    """Create a physics panel using the selected cage object in the UI"""
+    bl_idname = "mustardui.tools_physics_createitem"
+    bl_label = "Add the Item to the Physics Items list.\nThis will also create the necessary modifiers and clothes settings"
+    bl_options = {'REGISTER'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        # Check if the lattice object is defined
+        if arm != None:
+            physics_settings = arm.MustardUI_PhysicsSettings
+            cage_objects = []
+            for el in physics_settings.physics_items:
+                cage_objects.append(el.cage_object)
+        
+            return physics_settings.config_cage_object != None and physics_settings.config_cage_object_pin_vertex_group != "" and not physics_settings.config_cage_object in cage_objects
+        
+        else:
+            return False
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        arm_obj = context.active_object
+        
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+        
+        # Show an error if the model body has not been set
+        if rig_settings.model_body == None:
+            self.report({'ERROR'}, "MustardUI: Can not add the Physics item without a defined Body object")
+            return {'FINISHED'}
+        
+        # Set the modifier name
+        mod_name = physics_settings.physics_modifiers_name + physics_settings.config_cage_object.name + " Cage"
+        
+        # Adding the item to the physics items list
+        add_item = physics_settings.physics_items.add()
+        add_item.cage_object = physics_settings.config_cage_object
+        add_item.cage_object_pin_vertex_group = physics_settings.config_cage_object_pin_vertex_group
+        add_item.cage_object_bending_stiff_vertex_group = physics_settings.config_cage_object_bending_stiff_vertex_group
+        add_item.MustardUI_preset = physics_settings.config_MustardUI_preset
+        
+        # Adding modifier to the body
+        # Body add
+        new_mod = True
+        obj = rig_settings.model_body
+        for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
+            if modifier.object == bpy.data.objects[physics_settings.config_cage_object.name]:
+                new_mod = False
+        if new_mod and obj.type=="MESH":        
+            mod = obj.modifiers.new(name = mod_name, type='MESH_DEFORM')
+            mod.object = physics_settings.config_cage_object
+            mod.use_dynamic_bind = True
+            
+            # Move modifier
+            arm_mod_id = 0
+            for i in range(len(obj.modifiers)):
+                if obj.modifiers[i].type == "ARMATURE":
+                    arm_mod_id = i
+            while obj.modifiers.find(mod_name) > arm_mod_id + 1:
+                bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
+            
+            bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=mod.name)
+        
+        # Outfits add
+        for collection in rig_settings.outfits_collections:
+            for obj in collection.collection.objects:
+                new_mod = True
+                for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
+                    if modifier.object == bpy.data.objects[physics_settings.config_cage_object.name]:
+                        new_mod=False
+                if new_mod and obj.type=="MESH":        
+                    mod = obj.modifiers.new(name=mod_name, type='MESH_DEFORM')
+                    mod.object = physics_settings.config_cage_object
+                    mod.use_dynamic_bind = True
+                    
+                    # Move modifier
+                    arm_mod_id = 0
+                    for i in range(len(obj.modifiers)):
+                        if obj.modifiers[i].type == "ARMATURE":
+                            arm_mod_id = i
+                    while obj.modifiers.find(mod_name) > arm_mod_id + 1:
+                        bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
+                    
+                    bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=mod.name)
+        
+        # Add cloth modifier to cage and set the settings
+        mod_name = physics_settings.physics_modifiers_name + "Cage"
+        
+        obj = physics_settings.config_cage_object
+        for modifier in obj.modifiers:
+            if modifier.type == "CLOTH":
+                obj.modifiers.remove(obj.modifiers.get(modifier.name))
+        
+        mod = obj.modifiers.new(name = mod_name, type='CLOTH')
+        
+        # Quality Steps
+        mod.settings.quality = 7
+        mod.settings.time_scale = .95
+        # Bending model
+        mod.settings.bending_model = "ANGULAR"
+        # Pin group
+        mod.settings.vertex_group_mass = physics_settings.config_cage_object_pin_vertex_group
+        
+        # Physics settings
+        mod.settings.tension_stiffness = 1.
+        mod.settings.compression_stiffness = 0.1
+        mod.settings.shear_stiffness = 0.02
+        mod.settings.bending_stiffness = 0.02
+        
+        mod.settings.tension_damping = 1.
+        mod.settings.compression_damping = 0.1
+        mod.settings.shear_damping = 0.02
+        mod.settings.bending_damping = 0.02
+        
+        # Vertex groups
+        mod.settings.vertex_group_structural_stiffness = physics_settings.config_cage_object_pin_vertex_group
+        mod.settings.vertex_group_shear_stiffness = physics_settings.config_cage_object_pin_vertex_group
+        if physics_settings.config_cage_object_bending_stiff_vertex_group != "":
+            mod.settings.vertex_group_bending = physics_settings.config_cage_object_bending_stiff_vertex_group
+        mod.settings.bending_stiffness_max = 1.
+        
+        # Internal springs
+        mod.settings.use_internal_springs = True
+        mod.settings.internal_spring_max_diversion = 45 / 180 * 3.14 # conversion to radians
+        mod.settings.internal_spring_normal_check = True
+        mod.settings.internal_tension_stiffness = .1
+        mod.settings.internal_compression_stiffness = .1
+        mod.settings.internal_tension_stiffness_max = .3
+        mod.settings.internal_compression_stiffness_max = .3
+        
+        # Pressure
+        mod.settings.use_pressure = True
+        mod.settings.uniform_pressure_force = .06
+        mod.settings.pressure_factor = 1.
+        
+        # Gravity factor
+        mod.settings.effector_weights.gravity = 0.
+        
+        # Collisions
+        mod.collision_settings.collision_quality = 5
+        mod.collision_settings.use_collision = False
+        
+        while obj.modifiers.find(mod.name) > 0:
+            bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
+        
+        physics_settings.config_cage_object = None
+        physics_settings.config_cage_object_pin_vertex_group = ""
+        physics_settings.config_cage_object_bending_stiff_vertex_group = ""
+        
+        self.report({'INFO'}, "MustardUI: Physics Item added")
+        
+        return {'FINISHED'}
+
+class MustardUI_Tools_Physics_DeleteItem(bpy.types.Operator):
+    """Delete a physics panel using the selected cage object in the UI"""
+    bl_idname = "mustardui.tools_physics_deleteitem"
+    bl_label = "Delete a physics panel"
+    bl_options = {'REGISTER'}
+    
+    cage_object_name: StringProperty()
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        arm_obj = context.active_object
+        
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+        
+        if self.cage_object_name == "":
+            
+            item_ID = 0
+            for item in physics_settings.physics_items:
+                if item.cage_object == None:
+                    physics_settings.physics_items.remove(item_ID)
+                item_ID = item_ID + 1
+            
+            self.report({'WARNING'}, "MustardUI: Physics Item list cleaned from un-referenced cages. The modifiers could not be cleaned.")
+            
+            return {'FINISHED'}
+                
+        
+        # Remove modifiers from the body
+        obj = rig_settings.model_body
+        for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
+            if modifier.object == bpy.data.objects[self.cage_object_name]:
+                obj.modifiers.remove(obj.modifiers.get(modifier.name))
+        
+        # Remove objects modifiers
+        for collection in rig_settings.outfits_collections:
+            for obj in collection.collection.objects:
+                for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
+                    if modifier.object == bpy.data.objects[self.cage_object_name]:
+                        obj.modifiers.remove(obj.modifiers.get(modifier.name))
+        
+        # Remove cloth modifier from the cage
+        obj = bpy.data.objects[self.cage_object_name]
+        if obj != None:
+            for modifier in obj.modifiers:
+                if modifier.type == "CLOTH":
+                    obj.modifiers.remove(obj.modifiers.get(modifier.name))
+        
+        remove_ID = 0
+        for el in physics_settings.physics_items:
+            if el.cage_object.name == self.cage_object_name:
+                break
+            remove_ID = remove_ID + 1
+        
+        physics_settings.physics_items.remove(remove_ID)
+        
+        self.report({'INFO'}, "MustardUI: Physics Item deleted")
+        
+        return {'FINISHED'}
+
+class MustardUI_Tools_Physics_Clean(bpy.types.Operator):
+    """Remove all the physics items"""
+    bl_idname = "mustardui.tools_physics_clean"
+    bl_label = "Clear the physics items from the list"
+    bl_options = {'REGISTER'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        # Check if the lattice object is defined
+        if arm != None:
+            physics_settings = arm.MustardUI_PhysicsSettings
+        
+            return len(physics_settings.physics_items) > 0
+        
+        else:
+            return False
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        arm_obj = context.active_object
+        
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+        
+        for cage in [x.cage_object for x in physics_settings.physics_items]:
+            
+            # Remove modifiers from the body
+            obj = rig_settings.model_body
+            for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
+                if modifier.object == cage:
+                    obj.modifiers.remove(obj.modifiers.get(modifier.name))
+            
+            # Remove objects modifiers
+            for collection in rig_settings.outfits_collections:
+                for obj in collection.collection.objects:
+                    for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
+                        if modifier.object == cage:
+                            obj.modifiers.remove(obj.modifiers.get(modifier.name))
+            
+            # Remove cloth modifier from the cage
+            obj = cage
+            if obj != None:
+                for modifier in obj.modifiers:
+                    if modifier.type == "CLOTH":
+                        obj.modifiers.remove(obj.modifiers.get(modifier.name))
+        
+        physics_settings.physics_items.clear()
+        
+        self.report({'INFO'}, "MustardUI: Physics Items removed")
+        
+        return {'FINISHED'}
+
+class MustardUI_Tools_Physics_ReBind(bpy.types.Operator):
+    """Re-bind mesh deform cages to the Body mesh.\nUse this tool if the mesh is deformed after the cage has been modified"""
+    bl_idname = "mustardui.tools_physics_rebind"
+    bl_label = "Re-bind Cages"
+    bl_options = {'REGISTER'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        return arm != None
+    
+    def execute(self, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+            
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+        
+        for cage in [x for x in physics_settings.physics_items]:
+            
+            for collection in rig_settings.outfits_collections:
+                for obj in collection.collection.objects:
+                    for modifier in obj.modifiers:
+                        if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
+                           bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                           if not modifier.is_bound:
+                               bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+            
+            obj = rig_settings.model_body
+            for modifier in rig_settings.model_body.modifiers:
+                if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
+                    bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                    if not modifier.is_bound:
+                        bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+        
+        return {'FINISHED'}
+
+class MustardUI_Tools_Physics_SimulateObject(bpy.types.Operator):
+    """Bake the physics for the selected object only"""
+    bl_idname = "mustardui.tools_physics_simulateobject"
+    bl_label = "Bake the physics for the selected object only"
+    bl_options = {'REGISTER'}
+    
+    cage_object_name: StringProperty()
+    
+    def execute(self, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        if arm == None:
+            self.report({'ERROR'}, "MustardUI: Uncorrect selected object")
+            return {'FINISHED'}
+        
+        physics_settings = arm.MustardUI_PhysicsSettings
+        
+        try:
+            cage = bpy.data.objects[self.cage_object_name]
+            for modifier in cage.modifiers:
+                if modifier.type == "CLOTH":
+                    cage_cache = modifier.point_cache
+                    
+            override = {'active_object': cage, 'point_cache': cage_cache}
+            if not cage_cache.is_baked:
+                bpy.ops.ptcache.bake(override, bake=True)
+            else:
+                bpy.ops.ptcache.free_bake(override)
+            
+            self.report({'INFO'}, "MustardUI: Bake procedure complete")
+        except:
+            self.report({'ERROR'}, "MustardUI: An error occurred while baking physics")
+        
+        return {'FINISHED'}
+
+# Function for global and single physics item visbility
+def mustardui_physics_enable_update(self, context):
+        
+    res, arm = mustardui_active_object(context, config = 1)
+    
+    if arm == None:
+        return
+        
+    rig_settings = arm.MustardUI_RigSettings
+    physics_settings = arm.MustardUI_PhysicsSettings
+    
+    for cage in [x for x in physics_settings.physics_items]:
+        for modifier in cage.cage_object.modifiers:
+            if modifier.type == 'CLOTH' and "MustardUI" in modifier.name:
+                modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
+                modifier.show_render = physics_settings.physics_enable and cage.physics_enable
+    
+        for collection in rig_settings.outfits_collections:
+            for obj in collection.collection.objects:
+                for modifier in obj.modifiers:
+                    if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
+                       modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
+                       modifier.show_render = physics_settings.physics_enable and cage.physics_enable
+
+        for modifier in rig_settings.model_body.modifiers:
+            if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
+                modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
+                modifier.show_render = physics_settings.physics_enable and cage.physics_enable
+       
+    return
+
+# Physics item informations
+# Class to store physics item informations
+class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
+    
+    # Property for collapsing rig properties section
+    config_collapse: bpy.props.BoolProperty(default = True,
+                        name = "")
+    
+    # Body object
+    # Poll function for the selection of mesh only in pointer properties
+    def poll_mesh(self, object):
+        
+        res, obj = mustardui_active_object(context, config = 1)
+        physics_settings = obj.MustardUI_PhysicsSettings
+        
+        cage_objects = []
+        for el in physics_settings:
+            cage_objects.append(el.cage_object)
+        
+        return object.type == 'MESH' and not object in cage_objects
+    
+    cage_object: bpy.props.PointerProperty(type = bpy.types.Object,
+                        poll = poll_mesh,
+                        name = "Cage",
+                        description = "Select the object to use as a cage")
+
+    cage_object_pin_vertex_group: bpy.props.StringProperty(name = "Pin Vertex Group")
+    cage_object_bending_stiff_vertex_group: bpy.props.StringProperty(name = "Bending Stiffness Vertex Group")
+    
+    MustardUI_preset: bpy.props.BoolProperty(default = True,
+                        name = "MustardUI Definitions",
+                        description = "Enable MustardUI definitions of physical settings.\nEnable this to substitute tension, compression, shear and bending with more 'human readable' settings")
+    
+    physics_enable: bpy.props.BoolProperty(default = True,
+                        name = "Enable Physics",
+                        description = "Enable Physics simulation for this item",
+                        update = mustardui_physics_enable_update)
+   
+    # Physics settings
+    
+    def physics_settings_update(self, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        if arm == None:
+            return
+        
+        physics_settings = arm.MustardUI_PhysicsSettings
+        
+        mod = None
+        for modifier in self.cage_object.modifiers:
+            if modifier.type == "CLOTH":
+                mod = modifier
+        if mod == None:
+            print("MustardUI - Error in finding the \'CLOTH\' modifier.")
+            return
+        
+        # Inertia effect
+        mod.settings.mass = 0.3 * self.inertia**.5
+        
+        # Stiffness effect
+        mod.settings.uniform_pressure_force = .06 * self.stiffness**1.6
+        mod.settings.compression_damping = 0.1  * self.stiffness**.2
+        mod.settings.compression_stiffness = .1  * self.stiffness**.2
+        mod.settings.bending_stiffness_max = 1. * self.stiffness**1.
+        
+        # Bounciness effect
+        mod.settings.internal_compression_stiffness = 0.1 /self.bounciness
+        mod.settings.internal_compression_stiffness_max = mod.settings.internal_compression_stiffness * 3.
+        
+        return
+    
+    bounciness: bpy.props.FloatProperty(default = 1.,
+                        min = 0.01,
+                        name = "Bounciness",
+                        update = physics_settings_update)
+    stiffness: bpy.props.FloatProperty(default = 1.,
+                        min = 0.01,
+                        name = "Stiffness",
+                        update = physics_settings_update)
+    inertia: bpy.props.FloatProperty(default = 1.,
+                        min = 0.01,
+                        name = "Inertia",
+                        update = physics_settings_update)
+
+bpy.utils.register_class(MustardUI_PhysicsItem)
+
+class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
+    
+    # Property for collapsing rig properties section
+    config_collapse: bpy.props.BoolProperty(default = True,
+                        name = "")
+    
+    # Modifiers name convention
+    physics_modifiers_name: bpy.props.StringProperty(default = "MustardUI ")
+    
+    physics_enable: bpy.props.BoolProperty(default = False,
+                        name="Enable Physics",
+                        description="Enable/disable physics simulation.\nThis can greatly affect the performance in viewport, therefore enable it only for renderings or checks.\nNote that the baked physics will be deleted if you disable physics",
+                        update = mustardui_physics_enable_update)
+    
+    # Body object
+    # Poll function for the selection of mesh only in pointer properties
+    def poll_mesh(self, object):
+        
+        cage_objects = []
+        for el in self.physics_items:
+            cage_objects.append(el.cage_object)
+        
+        return object.type == 'MESH' and not object in cage_objects
+    
+    config_cage_object: bpy.props.PointerProperty(type = bpy.types.Object,
+                        poll = poll_mesh,
+                        name = "Cage",
+                        description = "Select the object to use as a cage")
+    
+    config_cage_object_pin_vertex_group: bpy.props.StringProperty(name = "Pin Vertex Group")
+    config_cage_object_bending_stiff_vertex_group: bpy.props.StringProperty(name = "Bending Stiffness Vertex Group")
+    
+    config_MustardUI_preset: bpy.props.BoolProperty(default = True,
+                        name = "MustardUI Definitions",
+                        description = "Enable MustardUI definitions of physical settings.\nEnable this to substitute tension, compression, shear and bending with more 'human readable' settings")
+    
+    # Function to create an array of tuples for Outfit enum collections
+    def physics_items_list_make(self, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        if arm == None:
+            return
+        
+        rig_settings = arm.MustardUI_RigSettings
+        naming_conv = rig_settings.model_MustardUI_naming_convention
+        
+        items = []
+        
+        for cage in self.physics_items:
+            if cage.cage_object != None:
+                if naming_conv:
+                    nname = cage.cage_object.name[len(rig_settings.model_name + ' Physics - '):]
+                else:
+                    nname = cage.cage_object.name
+                items.append( (cage.cage_object.name, nname, cage.cage_object.name) )
+        
+        items = sorted(items)
+        
+        return items
+    
+    def simulation_update(self, context):
+        
+        mod_name = self.physics_modifiers_name + "Cage"
+        
+        for cage in [x.cage_object for x in self.physics_items if x.cage_object != None]:
+            mod = None
+            for modifier in cage.modifiers:
+                if modifier.type == "CLOTH":
+                    mod = modifier
+                
+                if mod == None:
+                    print("MustardUI - Error in finding the \'CLOTH\' modifier: " + mod_name)
+                    return
+                
+                mod.settings.quality = self.simulation_quality
+                mod.collision_settings.collision_quality = self.simulation_quality_collision
+                
+                mod.point_cache.frame_start = self.simulation_start
+                mod.point_cache.frame_end = self.simulation_end
+        
+        return
+    
+    physics_items: bpy.props.CollectionProperty(type = MustardUI_PhysicsItem)
+    
+    physics_items_list: bpy.props.EnumProperty(name = "Physics Items",
+                        items = physics_items_list_make)
+    
+    # Simulation properties
+    simulation_start: bpy.props.IntProperty(default = 1,
+                        name = "Simulation Start",
+                        description = "Frame on which the simulation starts",
+                        update = simulation_update)
+    
+    simulation_end: bpy.props.IntProperty(default = 250,
+                        name = "Simulation End",
+                        description = "Frame on which the simulation stops",
+                        update = simulation_update)
+        
+    simulation_quality: bpy.props.IntProperty(default = 5,
+                        name = "Quality",
+                        description = "Quality of the simulation in steps per frame (higher is better quality but slower)",
+                        update = simulation_update)
+    
+    simulation_quality_collision: bpy.props.IntProperty(default = 2,
+                        name = "Collision Quality",
+                        update = simulation_update)
+    
+bpy.utils.register_class(MustardUI_PhysicsSettings)
+bpy.types.Armature.MustardUI_PhysicsSettings = bpy.props.PointerProperty(type = MustardUI_PhysicsSettings)
 
 # ------------------------------------------------------------------------
 #    Link (thanks to Mets3D)
@@ -2253,6 +3190,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         armature_settings = obj.MustardUI_ArmatureSettings
         tools_settings = obj.MustardUI_ToolsSettings
         lattice_settings = obj.MustardUI_LatticeSettings
+        physics_settings = obj.MustardUI_PhysicsSettings
         
         row_scale = 1.2
         
@@ -2302,9 +3240,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box.label(text="Outfits List", icon="OUTLINER_COLLECTION")
                 box = box.box()
                 for collection in rig_settings.outfits_collections:
-                    row = box.row()
-                    row.label(text=collection.collection.name)
-                    del_col = row.operator("mustardui.delete_outfit",text="",icon="X").col = collection.collection.name
+                    if hasattr(collection.collection, 'name'):
+                        row = box.row()
+                        row.label(text=collection.collection.name)
+                        del_col = row.operator("mustardui.delete_outfit",text="",icon="X").col = collection.collection.name
                 
                 if rig_settings.outfit_additional_options:
                     # Operator to check for additional options
@@ -2407,12 +3346,71 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                             box2.prop(armature_settings.layers[i],'outfit_switcher_collection')
                             if armature_settings.layers[i].outfit_switcher_collection != None:
                                 box2.prop(armature_settings.layers[i],'outfit_switcher_object')
-                        # TODO: Mirror armature option
-                        #box2.prop(armature_settings.layers[i],'mirror')
-                        #if armature_settings.layers[i].mirror:
-                        #   row = box2.row()
-                        #   row.prop(armature_settings.layers[i],'left')
-                        #   row.prop(armature_settings.layers[i],'mirror_layer')
+                        
+                        # Mirror options for debug
+                        if settings.debug:
+                            col = box2.column()
+                            col.enabled = False
+                            col.prop(armature_settings.layers[i],'mirror')
+                            if armature_settings.layers[i].mirror:
+                               row = col.row()
+                               row.prop(armature_settings.layers[i],'mirror_left')
+                               row.prop(armature_settings.layers[i],'mirror_layer')
+        
+        # Physics
+        row = layout.row(align=False)
+        row.prop(physics_settings, "config_collapse", icon="TRIA_DOWN" if not physics_settings.config_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+        row.label(text="Physics",icon="PHYSICS")
+        
+        if not physics_settings.config_collapse:
+            
+            box = layout.box()
+            box.label(text="General Settings",icon="MODIFIER")
+            box.operator('mustardui.tools_physics_clean', text = "Clean Physics Panel")
+            
+            box = layout.box()
+            box.label(text="Add Item",icon="ADD")
+            
+            box.prop(physics_settings,'config_MustardUI_preset')
+            box.prop(physics_settings,'config_cage_object')
+            if physics_settings.config_cage_object != None:
+                box.prop_search(physics_settings,'config_cage_object_pin_vertex_group', physics_settings.config_cage_object,"vertex_groups")
+                box.prop_search(physics_settings,'config_cage_object_bending_stiff_vertex_group', physics_settings.config_cage_object,"vertex_groups")
+            box.operator('mustardui.tools_physics_createitem', text = "Add item", icon = "ADD")
+            
+            if len(physics_settings.physics_items) > 0:
+                box = layout.box()
+                box.label(text="Items List",icon="PRESET")
+            
+            for item in physics_settings.physics_items:
+                
+                box2 = box.box()
+                
+                try:
+                    cage_object_name = item.cage_object.name
+                    row = box2.row(align=False)
+                    row.prop(item, "config_collapse", icon="TRIA_DOWN" if not item.config_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+                    row.label(text = item.cage_object.name[len(rig_settings.model_name + ' Physics - '):] if rig_settings.model_MustardUI_naming_convention else item.cage_object.name)
+                    row.operator('mustardui.tools_physics_deleteitem', text = "", icon = "X").cage_object_name = item.cage_object.name
+                except:
+                    row = box2.row(align=False)
+                    row.label(text = "Item not found.", icon = "ERROR")
+                    row.operator('mustardui.tools_physics_deleteitem', text = "", icon = "X").cage_object_name = ""
+                    continue
+                
+                if not item.config_collapse:
+                
+                    box2.prop(item,'MustardUI_preset')
+                    row = box2.row()
+                    row.enabled = False
+                    row.prop(item,'cage_object')
+                    if item.cage_object != None:
+                        row = box2.row()
+                        row.enabled = False
+                        row.prop_search(item,'cage_object_pin_vertex_group', item.cage_object, "vertex_groups")
+                        row = box2.row()
+                        row.enabled = False
+                        row.prop_search(item,'cage_object_bending_stiff_vertex_group', item.cage_object, "vertex_groups")
         
         # Tools
         row = layout.row(align=False)
@@ -2423,14 +3421,11 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="Enable tools", icon="MODIFIER")
             box.prop(tools_settings,'childof_enable')
-            if rig_settings.model_rig_type == "arp" or hasattr(obj,'[\"arp_updated\"]'):
-                box.prop(tools_settings,'lips_shrinkwrap_enable')
+            row = box.row()
+            if not rig_settings.model_rig_type == "arp" or not hasattr(obj,'[\"arp_updated\"]'):
+                row.enabled = False
+            row.prop(tools_settings,'lips_shrinkwrap_enable')
             box.prop(lattice_settings,'lattice_panel_enable')
-            
-            if tools_settings.lips_shrinkwrap_enable:
-                box = layout.box()
-                box.label(text="Lips Shrinkwrap tool settings", icon="MOD_SHRINKWRAP")
-                box.prop(tools_settings,'lips_shrinkwrap_armature_object')
             
             if lattice_settings.lattice_panel_enable:
                 box = layout.box()
@@ -2478,19 +3473,65 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         row.label(text="Others",icon="SETTINGS")
         if not rig_settings.various_config_collapse:
             box = layout.box()
+            box.label(text="External Add-ons", icon="DOCUMENTS")
+            row = box.row()
+            if settings.status_diffeomorphic != 2:
+                row.enabled = False
+            row.prop(rig_settings,"diffeomorphic_support")
+            if rig_settings.diffeomorphic_support:
+                box2 = box.box()
+                box2.prop(rig_settings, "diffeomorphic_emotions_units")
+                box2.prop(rig_settings, "diffeomorphic_emotions")
+                if rig_settings.diffeomorphic_emotions:
+                    row = box2.row(align=True)
+                    row.label(text="Custom morphs")
+                    row.scale_x = row_scale
+                    row.prop(rig_settings, "diffeomorphic_emotions_custom", text = "")
+                box2.prop(rig_settings, "diffeomorphic_facs_emotions_units")
+                box2.prop(rig_settings, "diffeomorphic_facs_emotions")
+                box2.prop(rig_settings, "diffeomorphic_body_morphs")
+                if rig_settings.diffeomorphic_body_morphs:
+                    row = box2.row(align=True)
+                    row.label(text="Custom morphs")
+                    row.scale_x = row_scale
+                    row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text = "")
+                
+                if settings.status_diffeomorphic == 1:
+                    box.label(icon='ERROR',text="Debug: Diffeomorphic not enabled!")
+                elif settings.status_diffeomorphic  == 0:
+                    box.label(icon='ERROR', text="Debug: Diffeomorphic not installed!")
+                
+                box3 = box.box()
+                box3.label(text="Morphs options", icon="PRESET_NEW")
+                box3.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
+                box3.operator('mustardui.dazmorphs_checkmorphs')
+            
+            box = layout.box()
             box.label(text="Naming", icon="OUTLINER_DATA_FONT")
             box.prop(rig_settings,"model_MustardUI_naming_convention")
             box = layout.box()
+            
             box.label(text="User informations", icon="INFO")
             row = box.row(align=True)
             row.label(text="Model version")
             row.scale_x = row_scale
             row.prop(rig_settings,"model_version",text="")
         
+        if settings.debug:
+            row = layout.row(align=False)
+            row.prop(rig_settings, "debug_config_collapse", icon="TRIA_DOWN" if not rig_settings.debug_config_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+            row.label(text="Debug Informations",icon="INFO")
+            
+            if not rig_settings.debug_config_collapse:
+                box = layout.box()
+                box.enabled = False
+                box.prop(rig_settings,"model_armature_object", text = "Armature Object")
+        
         # Configuration button
         layout.separator()
         layout.prop(settings,"debug")
-        layout.prop(settings,"viewport_model_selection_after_configuration")
+        if not obj.MustardUI_created:
+            layout.prop(settings,"viewport_model_selection_after_configuration")
         layout.operator('mustardui.configuration', text="End the configuration")
         
 
@@ -2498,6 +3539,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Body"
     bl_label = "Body Settings"
+    bl_options = {"DEFAULT_CLOSED"}
     
     @classmethod
     def poll(cls, context):
@@ -2516,6 +3558,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             return res
 
     def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
         
         poll, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
@@ -2575,10 +3619,105 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                         row.prop(aprop, 'body_float_value', text = "")
                     else:
                         row.prop(aprop, 'body_color_value', text = "")
+
+class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
+    bl_idname = "PANEL_PT_MustardUI_ExternalMorphs"
+    bl_label = "External Morphs"
+    bl_options = {"DEFAULT_CLOSED"}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        if arm != None:
+            rig_settings = arm.MustardUI_RigSettings
+            
+            # Check if at least one panel is available
+            panels = rig_settings.diffeomorphic_emotions or rig_settings.diffeomorphic_emotions_units or rig_settings.diffeomorphic_facs_emotions_units or rig_settings.diffeomorphic_facs_emotions or rig_settings.diffeomorphic_body_morphs
+        
+            return res and rig_settings.diffeomorphic_support and settings.status_diffeomorphic and panels
+        
+        else:
+            return res
+
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        poll, obj = mustardui_active_object(context, config = 0)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        layout = self.layout
+            
+        layout.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
+        
+        # Emotions Units
+        if rig_settings.diffeomorphic_emotions_units:
+            box = layout.box()
+            row = box.row(align=False)
+            row.prop(rig_settings, "diffeomorphic_emotions_units_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_emotions_units_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+            row.label(text="Emotion Units")
+            
+            if not rig_settings.diffeomorphic_emotions_units_collapse:
+                
+                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 0]:
+                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+        
+        # Emotions
+        if rig_settings.diffeomorphic_emotions:
+            box = layout.box()
+            row = box.row(align=False)
+            row.prop(rig_settings, "diffeomorphic_emotions_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_emotions_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+            row.label(text="Emotions")
+            
+            if not rig_settings.diffeomorphic_emotions_collapse:
+                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 1]:
+                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+        
+         # FACS Emotions Units
+        if rig_settings.diffeomorphic_facs_emotions_units:
+            box = layout.box()
+            row = box.row(align=False)
+            row.prop(rig_settings, "diffeomorphic_facs_emotions_units_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_facs_emotions_units_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+            row.label(text="FACS Emotion Units")
+            
+            if not rig_settings.diffeomorphic_facs_emotions_units_collapse:
+                
+                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 2]:
+                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+        
+        # FACS Emotions
+        if rig_settings.diffeomorphic_facs_emotions:
+            box = layout.box()
+            row = box.row(align=False)
+            row.prop(rig_settings, "diffeomorphic_facs_emotions_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_facs_emotions_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+            row.label(text="FACS Emotions")
+            
+            if not rig_settings.diffeomorphic_facs_emotions_collapse:
+                
+                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 3]:
+                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+        
+        # Body Morphs
+        if rig_settings.diffeomorphic_body_morphs:
+            box = layout.box()
+            row = box.row(align=False)
+            row.prop(rig_settings, "diffeomorphic_body_morphs_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_body_morphs_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+            row.label(text="Body Morphs")
+            
+            if not rig_settings.diffeomorphic_body_morphs_collapse:
+                
+                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 4]:
+                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+
                 
 class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Outfits"
     bl_label = "Outfits & Hair Settings"
+    bl_options = {"DEFAULT_CLOSED"}
     
     @classmethod
     def poll(cls, context):
@@ -2795,6 +3934,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Armature"
     bl_label = "Armature Settings"
+    bl_options = {"DEFAULT_CLOSED"}
     
     @classmethod
     def poll(cls, context):
@@ -2823,7 +3963,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         layout = self.layout
         
         if rig_settings.hair_collection != None and armature_settings.enable_automatic_hair:
-            if len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1:
+            if len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>0:
                 box = layout.box()
                 box.label(text='Hair Armature', icon="HAIR")
                 box.prop(armature_settings, "hair",toggle=True)
@@ -2834,7 +3974,228 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             box.label(text='Body Armature Layers', icon="ARMATURE_DATA")
             for i in sorted([x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable], key = lambda x:armature_settings.layers[x].id):
                 if (armature_settings.layers[i].advanced and settings.advanced) or not armature_settings.layers[i].advanced:
-                    box.prop(armature_settings.layers[i], "show", text = armature_settings.layers[i].name, toggle=True)
+                    if armature_settings.layers[i].mirror and armature_settings.layers[i].mirror_left:
+                        row = box.row()
+                        row.prop(armature_settings.layers[i], "show", text = armature_settings.layers[i].name, toggle=True)
+                        row.prop(armature_settings.layers[armature_settings.layers[i].mirror_layer], "show", text = armature_settings.layers[armature_settings.layers[i].mirror_layer].name, toggle=True)
+                    elif not armature_settings.layers[i].mirror:
+                        box.prop(armature_settings.layers[i], "show", text = armature_settings.layers[i].name, toggle=True)
+
+class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
+    bl_idname = "PANEL_PT_MustardUI_Tools_Physics"
+    bl_label = "Physics"
+    bl_options = {"DEFAULT_CLOSED"}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        if obj != None:
+            
+            physics_settings = obj.MustardUI_PhysicsSettings
+        
+            return res and len(physics_settings.physics_items) > 0
+        
+        else:
+            return res
+    
+    def draw_header(self,context):
+        
+        poll, obj = mustardui_active_object(context, config = 0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+        
+        self.layout.prop(physics_settings, "physics_enable", text = "", toggle = False)
+    
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        poll, obj = mustardui_active_object(context, config = 0)
+        rig_settings = obj.MustardUI_RigSettings
+        physics_settings = obj.MustardUI_PhysicsSettings
+        naming_convention = rig_settings.model_MustardUI_naming_convention
+        
+        layout = self.layout
+        
+        box = layout.box()
+        box.label(text="Item settings", icon="OBJECT_DATA")
+        box.prop(physics_settings, "physics_items_list", text = "")
+        
+        if not physics_settings.physics_enable:
+            layout.enabled = False
+        
+        if physics_settings.physics_items_list == "":
+            box.label(text="Item not selected.", icon="ERROR")
+            return
+        
+        # Cage specific settings
+        cage = bpy.data.objects[physics_settings.physics_items_list]
+        
+        try:
+            cage_settings = [x for x in physics_settings.physics_items if x.cage_object.name == cage.name][0]
+        except:
+            box.label(text = "Item not found.", icon = "ERROR")
+            box.operator('mustardui.tools_physics_deleteitem', text = "Fix Issues", icon = "HELP").cage_object_name = ""
+            return
+        
+        try:
+            mod = [x for x in cage.modifiers if x.type == "CLOTH"][0]
+        except:
+            box.label(text="Cloth modifier not found.", icon="ERROR")
+            return
+        
+        cage_cloth = mod.settings
+        cage_collisions = mod.collision_settings
+        cage_cache = mod.point_cache
+        
+        box.prop(cage_settings, "physics_enable")
+        
+        box2 = box.box()
+        box2.enabled = not cage_cache.is_baked and cage_settings.physics_enable
+        
+        box2.label(text = "Physical Properties" , icon = "PHYSICS")
+        box2.prop(cage_cloth, "time_scale")
+        box2.prop(cage_cloth.effector_weights, "gravity")
+        
+        box2 = box.box()
+        box2.enabled = not cage_cache.is_baked and cage_settings.physics_enable
+        
+        box2.label(text = "Structural Properties" , icon = "MOD_EXPLODE")
+        if cage_settings.MustardUI_preset:
+            
+            box2.prop(cage_settings, "inertia")
+            box2.prop(cage_settings, "stiffness")
+            box2.prop(cage_settings, "bounciness")
+        
+        else:
+            
+            col = box2.column(align = False)
+            
+            row = col.row(align=True)
+            row.label(text="")
+            row.scale_x=1.
+            row.label(text='Stiffness')
+            row.scale_x=1.
+            row.label(text='Damping')
+            
+            row = col.row(align=True)
+            row.label(text="Structural")
+            row.scale_x=1.
+            row.prop(cage_cloth,"tension_stiffness", text = "")
+            row.scale_x=1.
+            row.prop(cage_cloth,"tension_damping", text = "")
+            
+            row = col.row(align=True)
+            row.label(text="Compression")
+            row.scale_x=1.
+            row.prop(cage_cloth,"compression_stiffness", text = "")
+            row.scale_x=1.
+            row.prop(cage_cloth,"compression_damping", text = "")
+            
+            row = col.row(align=True)
+            row.label(text="Shear")
+            row.scale_x=1.
+            row.prop(cage_cloth,"shear_stiffness", text = "")
+            row.scale_x=1.
+            row.prop(cage_cloth,"shear_damping", text = "")
+            
+            row = col.row(align=True)
+            row.label(text="Bending")
+            row.scale_x=1.
+            row.prop(cage_cloth,"bending_stiffness", text = "")
+            row.scale_x=1.
+            row.prop(cage_cloth,"bending_damping", text = "")
+            
+            if cage_cloth.vertex_group_bending != "":
+                box2.prop(cage_cloth,"bending_stiffness_max", text = "Max Bending")
+            
+            #box2.separator()
+            
+            #box2.label(text = "Internal Springs Properties" , icon = "FORCE_MAGNETIC")
+            box2.prop(cage_cloth,"use_internal_springs", text = "Enable Internal Springs")
+            
+            col = box2.column(align = False)
+            col.enabled = cage_cloth.use_internal_springs
+            
+            row = col.row(align=True)
+            row.label(text="")
+            row.scale_x=1.
+            row.label(text='Value')
+            row.scale_x=1.
+            row.label(text='Max')
+            
+            row = col.row(align=True)
+            row.label(text="Tension")
+            row.scale_x=1.
+            row.prop(cage_cloth,"internal_tension_stiffness", text = "")
+            row.scale_x=1.
+            row.prop(cage_cloth,"internal_tension_stiffness_max", text = "")
+            
+            row = col.row(align=True)
+            row.label(text="Compression")
+            row.scale_x=1.
+            row.prop(cage_cloth,"internal_compression_stiffness", text = "")
+            row.scale_x=1.
+            row.prop(cage_cloth,"internal_compression_stiffness_max", text = "")
+            
+            #box2.separator()
+            
+            #box2.label(text = "Pressure Properties" , icon = "MOD_SOFT")
+            box2.prop(cage_cloth,"use_pressure", text = "Enable Pressure")
+            
+            col = box2.column(align = False)
+            col.enabled = cage_cloth.use_pressure
+            
+            col.prop(cage_cloth, 'uniform_pressure_force', text = "Force")
+        
+        box2 = box.box()
+        box2.enabled = not cage_cache.is_baked and cage_settings.physics_enable
+        
+        box2.label(text = "Collision Properties" , icon = "MOD_PHYSICS")
+        box2.prop(cage_collisions, "use_collision")
+        row = box2.row(align = True)
+        row.enabled = cage_collisions.use_collision
+        row.prop(cage_collisions, 'collision_quality')
+        row = box2.row(align=True)
+        row.enabled = cage_collisions.use_collision
+        row.prop(cage_collisions, "distance_min")
+        row = box2.row(align=True)
+        row.enabled = cage_collisions.use_collision
+        row.prop(cage_collisions, "impulse_clamp")
+        
+        box2 = box.box()
+        box2.enabled = cage_settings.physics_enable
+        
+        box2.label(text = "Item Simulation" , icon = "FILE_CACHE")
+        row = box2.row(align = True)
+        row.enabled = not cage_cache.is_baked
+        row.prop(cage_cloth, 'quality')
+        box2.separator()
+        row = box2.row(align = True)
+        row.prop(cage_cache, "frame_start", text = "Start")
+        row.prop(cage_cache, "frame_end", text = "End")
+        cache_info = cage_cache.info
+        if cache_info and settings.debug:
+            col = box2.column(align=True)
+            col.alignment = 'CENTER'
+            col.label(text='Info: ' + cache_info)
+        bake_op = box2.operator('mustardui.tools_physics_simulateobject', text = "Bake Single Item Physics" if not cage_cache.is_baked else "Delete Single Item Bake", icon = "PHYSICS" if not cage_cache.is_baked else "X", depress = cage_cache.is_baked).cage_object_name = physics_settings.physics_items_list
+        
+        # Global simulation
+        box = layout.box()
+        box.label(text = "Global Simulation" , icon = "FILE_CACHE")
+        box.prop(physics_settings, 'simulation_quality')
+        box.separator()
+        row = box.row(align = True)
+        row.prop(physics_settings, "simulation_start", text = "Start")
+        row.prop(physics_settings, "simulation_end", text = "End")
+        box.operator('ptcache.bake_all', icon="PHYSICS").bake = True
+        box.operator('ptcache.free_bake_all', icon="X")
+        
+        if settings.maintenance:
+            box = layout.box()
+            box.label(text = "Maintenance" , icon = "SETTINGS")
+            box.operator('mustardui.tools_physics_rebind', text = "Re-bind Cages", icon="MOD_MESHDEFORM")
 
 class PANEL_PT_MustardUI_Tools_Lattice(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Tools_Lattice"
@@ -2913,6 +4274,7 @@ class PANEL_PT_MustardUI_Tools_Lattice(MainPanel, bpy.types.Panel):
 class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Tools"
     bl_label = "Tools"
+    bl_options = {"DEFAULT_CLOSED"}
     
     @classmethod
     def poll(cls, context):
@@ -3019,6 +4381,7 @@ class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
 class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_SettingsPanel"
     bl_label = "Settings"
+    bl_options = {"DEFAULT_CLOSED"}
     
     @classmethod
     def poll(cls, context):
@@ -3035,7 +4398,6 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         layout = self.layout
         
         # Main Settings
-        layout.label(text="Main Settings",icon="SETTINGS")
         box = layout.box()
         
         box.prop(settings,"advanced")
@@ -3050,23 +4412,35 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="Maintenance Tools", icon="SETTINGS")
             box.operator('mustardui.configuration', text="UI Configuration", icon = "PREFERENCES")
+            
+            if obj.MustardUI_script_file == None:
+                box.operator('mustardui.registeruifile', text="Register UI Script", icon = "TEXT").register = True
+            else:
+                box.operator('mustardui.registeruifile', text="Un-register UI Script", icon = "TEXT").register = False
+            
             box.operator('mustardui.remove', text="UI Removal", icon = "X")
             if platform.system() == 'Windows':
                 box.separator()
                 box.operator('wm.console_toggle', text="Toggle System Console", icon = "TOPBAR")
         
+        box = layout.box()
+        box.label(text="Version", icon="INFO")
         if rig_settings.model_version!='':
-            box = layout.box()
-            box.label(text="Version", icon="INFO")
             box.label(text="Model:           " + rig_settings.model_version)
-        #box.label(text="MustardUI:    " + settings.version)
+        box.label(text="MustardUI:    " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]))
         
-        if settings.status_rig_tools == 1 or settings.status_rig_tools == 0:
+        if settings.status_rig_tools == 0 or settings.status_rig_tools == 1 or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support):
             box = layout.box()
-            if settings.status_rig_tools is 1:
-                box.label(icon='ERROR',text="Debug: rig_tools not enabled!")
-            elif settings.status_rig_tools is 0:
-                box.label(icon='ERROR', text="Debug: rig_tools not installed!")
+            
+            if settings.status_rig_tools == 1:
+                box.label(icon='ERROR',text="rig_tools not enabled!")
+            elif settings.status_rig_tools == 0:
+                box.label(icon='ERROR', text="rig_tools not installed!")
+            
+            if settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support:
+                box.label(icon='ERROR',text="Diffeomorphic not enabled!")
+            elif settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support:
+                box.label(icon='ERROR', text="Diffeomorphic not installed!")
 
 class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Links"
@@ -3119,12 +4493,14 @@ classes = (
     MustardUI_Configuration,
     MustardUI_Configuration_SmartCheck,
     MustardUI_RemoveUI,
+    MustardUI_RegisterUIFile,
     MustardUI_ViewportModelSelection,
     MustardUI_SwitchModel,
     MustardUI_Armature_Initialize,
     MustardUI_Armature_Sort,
     MustardUI_Body_CheckAdditionalOptions,
     MustardUI_Outfits_CheckAdditionalOptions,
+    MustardUI_DazMorphs_CheckMorphs,
     MustardUI_OutfitVisibility,
     MustardUI_GlobalOutfitPropSwitch,
     MustardUI_LinkButton,
@@ -3135,12 +4511,19 @@ classes = (
     MustardUI_Tools_LatticeSetup,
     MustardUI_Tools_LatticeModify,
     MustardUI_Tools_ChildOf,
+    MustardUI_Tools_Physics_CreateItem,
+    MustardUI_Tools_Physics_DeleteItem,
+    MustardUI_Tools_Physics_Clean,
+    MustardUI_Tools_Physics_ReBind,
+    MustardUI_Tools_Physics_SimulateObject,
     # Panel classes
     PANEL_PT_MustardUI_InitPanel,
     PANEL_PT_MustardUI_SelectModel,
     PANEL_PT_MustardUI_Body,
+    PANEL_PT_MustardUI_ExternalMorphs,
     PANEL_PT_MustardUI_Outfits,
     PANEL_PT_MustardUI_Armature,
+    PANEL_PT_MustardUI_Tools_Physics,
     PANEL_PT_MustardUI_Tools_Lattice,
     PANEL_PT_MustardUI_Tools,
     PANEL_PT_MustardUI_Tools_ChildOf,
@@ -3150,6 +4533,8 @@ classes = (
 )
 
 def register():
+    
+    bpy.types.Armature.MustardUI_script_file = PointerProperty(type=bpy.types.Text)
     
     from bpy.utils import register_class
     for cls in classes:
