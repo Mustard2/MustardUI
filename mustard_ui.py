@@ -148,6 +148,10 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Property for additional properties errors
     additional_properties_error: bpy.props.BoolProperty(name = "",
                         description = "Can not find the property.\nRe-run the Check Additional Option operator in the Configuration menu to solve this")
+    
+    # Property for morphs errors
+    daz_morphs_error: bpy.props.BoolProperty(name = "",
+                        description = "Can not find the Daz Morph.\nRe-run the Check Morphs operator in the Configuration menu to solve this")
 
 # Register and create the setting class in the Scene object
 bpy.utils.register_class(MustardUI_Settings)
@@ -1553,7 +1557,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         
         # Emotions Units
         if rig_settings.diffeomorphic_emotions_units:
-            emotions_units = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and ('eCTRL' in x or 'ECTRL' in x) and not "HD" in x and not "eCTRLSmile" in x and not 'eCTRLv' in x and sum(1 for c in x if c.isupper()) >= 6]
+            emotions_units = [x for x in rig_settings.model_armature_object.keys() if ('eCTRL' in x or 'ECTRL' in x) and not "HD" in x and not "eCTRLSmile" in x and not 'eCTRLv' in x and sum(1 for c in x if c.isupper()) >= 6]
                 
             for emotion in emotions_units:
                 name = emotion[len('eCTRL')] + ''.join([c if not c.isupper() else ' ' + c for c in emotion[len('eCTRL')+1:]])
@@ -1562,13 +1566,13 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         # Emotions
         if rig_settings.diffeomorphic_emotions:
             
-            emotions = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'eCTRL' in x and not "HD" in x and not 'eCTRLv' in x and (sum(1 for c in x if c.isupper()) < 6 or "eCTRLSmile" in x)]
+            emotions = [x for x in rig_settings.model_armature_object.keys() if 'eCTRL' in x and not "HD" in x and not 'eCTRLv' in x and (sum(1 for c in x if c.isupper()) < 6 or "eCTRLSmile" in x)]
             
             # Custom Diffeomorphic emotions
             emotions_custom = []
             for string in [x for x in rig_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
                 for x in rig_settings.model_armature_object.keys():
-                    if rig_settings.diffeomorphic_search.lower() in x.lower() and string in x:# and sum(1 for c in x if c.isupper()) < 6:
+                    if string in x:
                         emotions_custom.append(x)
             
             for emotion in emotions:
@@ -1581,9 +1585,9 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         if rig_settings.diffeomorphic_facs_emotions_units:
             
             facs_emotions_units = []
-            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_ctrl_' in x and not 'facs_ctrl_Smile' in x and sum(1 for c in x if c.isupper()) >= 2])
-            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_bs_' in x and sum(1 for c in x if c.isupper()) >= 2])
-            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_jnt_' in x and sum(1 for c in x if c.isupper()) >= 2])
+            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if 'facs_ctrl_' in x and not 'facs_ctrl_Smile' in x and sum(1 for c in x if c.isupper()) >= 2])
+            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if 'facs_bs_' in x and sum(1 for c in x if c.isupper()) >= 2])
+            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if 'facs_jnt_' in x and sum(1 for c in x if c.isupper()) >= 2])
             facs_emotions_units = itertools.chain.from_iterable(facs_emotions_units)
             
             for emotion in facs_emotions_units:
@@ -1594,7 +1598,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         # FACS Emotions
         if rig_settings.diffeomorphic_facs_emotions:
             
-            facs_emotions = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'facs_ctrl_' in x and (sum(1 for c in x if c.isupper()) < 2 or 'facs_ctrl_Smile' in x)]
+            facs_emotions = [x for x in rig_settings.model_armature_object.keys() if 'facs_ctrl_' in x and (sum(1 for c in x if c.isupper()) < 2 or 'facs_ctrl_Smile' in x)]
             for emotion in facs_emotions:
                 name = emotion[len('facs_ctrl_')] + ''.join([c if not c.isupper() else ' ' + c for c in emotion[len('facs_ctrl_')+1:]])
                 mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 3])
@@ -1602,15 +1606,15 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         # Body Morphs
         if rig_settings.diffeomorphic_body_morphs:
             
-            body_morphs_FBM = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'FBM' in x and sum(1 for c in x if c.isdigit()) < 1 and sum(1 for c in x if c.isupper()) < 6]
-            body_morphs_CTRLB = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'CTRLBreasts' in x and not 'pCTRLBreasts' in x and sum(1 for c in x if c.isupper()) < 10]
-            body_morphs_PBM = [x for x in rig_settings.model_armature_object.keys() if rig_settings.diffeomorphic_search.lower() in x.lower() and 'PBMBreasts' in x and sum(1 for c in x if c.isupper()) < 10]
+            body_morphs_FBM = [x for x in rig_settings.model_armature_object.keys() if 'FBM' in x and sum(1 for c in x if c.isdigit()) < 1 and sum(1 for c in x if c.isupper()) < 6]
+            body_morphs_CTRLB = [x for x in rig_settings.model_armature_object.keys() if 'CTRLBreasts' in x and not 'pCTRLBreasts' in x and sum(1 for c in x if c.isupper()) < 10]
+            body_morphs_PBM = [x for x in rig_settings.model_armature_object.keys() if 'PBMBreasts' in x and sum(1 for c in x if c.isupper()) < 10]
             
             # Custom Diffeomorphic emotions
             body_morphs_custom = []
             for string in [x for x in rig_settings.diffeomorphic_body_morphs_custom.split(',') if x != '']:
                 for x in rig_settings.model_armature_object.keys():
-                    if rig_settings.diffeomorphic_search.lower() in x.lower() and string in x:# and sum(1 for c in x if c.isupper()) < 6:
+                    if string in x:# and sum(1 for c in x if c.isupper()) < 6:
                         body_morphs_custom.append(x)
             
             for morph in body_morphs_FBM:
@@ -3638,7 +3642,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             # Check if at least one panel is available
             panels = rig_settings.diffeomorphic_emotions or rig_settings.diffeomorphic_emotions_units or rig_settings.diffeomorphic_facs_emotions_units or rig_settings.diffeomorphic_facs_emotions or rig_settings.diffeomorphic_body_morphs
         
-            return res and rig_settings.diffeomorphic_support and settings.status_diffeomorphic and panels
+            return res and rig_settings.diffeomorphic_support and settings.status_diffeomorphic and panels and rig_settings.diffeomorphic_morphs_number > 0
         
         else:
             return res
@@ -3663,8 +3667,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             
             if not rig_settings.diffeomorphic_emotions_units_collapse:
                 
-                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 0]:
-                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 0 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                    if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
+                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
+                    else:
+                        row = box.row(align=False)
+                        row.label(text = morph.name)
+                        row.prop(settings, 'daz_morphs_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
         
         # Emotions
         if rig_settings.diffeomorphic_emotions:
@@ -3674,8 +3683,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             row.label(text="Emotions")
             
             if not rig_settings.diffeomorphic_emotions_collapse:
-                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 1]:
-                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 1 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                    if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
+                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
+                    else:
+                        row = box.row(align=False)
+                        row.label(text = morph.name)
+                        row.prop(settings, 'daz_morphs_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
         
          # FACS Emotions Units
         if rig_settings.diffeomorphic_facs_emotions_units:
@@ -3686,8 +3700,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             
             if not rig_settings.diffeomorphic_facs_emotions_units_collapse:
                 
-                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 2]:
-                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 2 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                    if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
+                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
+                    else:
+                        row = box.row(align=False)
+                        row.label(text = morph.name)
+                        row.prop(settings, 'daz_morphs_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
         
         # FACS Emotions
         if rig_settings.diffeomorphic_facs_emotions:
@@ -3698,8 +3717,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             
             if not rig_settings.diffeomorphic_facs_emotions_collapse:
                 
-                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 3]:
-                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 3 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                    if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
+                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
+                    else:
+                        row = box.row(align=False)
+                        row.label(text = morph.name)
+                        row.prop(settings, 'daz_morphs_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
         
         # Body Morphs
         if rig_settings.diffeomorphic_body_morphs:
@@ -3710,8 +3734,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             
             if not rig_settings.diffeomorphic_body_morphs_collapse:
                 
-                for emotion in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 4]:
-                    box.prop(rig_settings.model_armature_object, '[\"' + emotion.path + '\"]', text = emotion.name)
+                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 4 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                    if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
+                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
+                    else:
+                        row = box.row(align=False)
+                        row.label(text = morph.name)
+                        row.prop(settings, 'daz_morphs_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
 
                 
 class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
