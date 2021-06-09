@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 1),
+    "version": (0, 20, 2),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -1645,6 +1645,30 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
 
         return {'FINISHED'}
 
+# This operator will check for additional options for the outfits
+class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
+    """Set the value of all morphs to the default value"""
+    bl_idname = "mustardui.dazmorphs_defaultvalues"
+    bl_label = "Restore default values"
+
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        return res
+
+    def execute(self, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        for morph in rig_settings.diffeomorphic_morphs_list:
+            exec('rig_settings.model_armature_object' + '[\"' + morph.path + '\"] = 0.')
+        
+        self.report({'INFO'}, 'MustardUI - Morphs values restored to default.')
+        
+        return {'FINISHED'}
+
 # ------------------------------------------------------------------------
 #    Viewport Model Selection Operator
 # ------------------------------------------------------------------------
@@ -2097,9 +2121,11 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
         
         if self.register:
             obj.MustardUI_script_file = bpy.data.texts['mustard_ui.py']
+            bpy.data.texts['mustard_ui.py'].use_module = True
             self.report({'INFO'}, "MustardUI: UI correctly registered in " + obj.name)
         else:
             obj.MustardUI_script_file = None
+            bpy.data.texts['mustard_ui.py'].use_module = Fal
             self.report({'INFO'}, "MustardUI: UI correctly un-registered in " + obj.name)
         
         return {'FINISHED'}
@@ -3642,7 +3668,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             # Check if at least one panel is available
             panels = rig_settings.diffeomorphic_emotions or rig_settings.diffeomorphic_emotions_units or rig_settings.diffeomorphic_facs_emotions_units or rig_settings.diffeomorphic_facs_emotions or rig_settings.diffeomorphic_body_morphs
         
-            return res and rig_settings.diffeomorphic_support and settings.status_diffeomorphic and panels and rig_settings.diffeomorphic_morphs_number > 0
+            return res and rig_settings.diffeomorphic_support and panels and rig_settings.diffeomorphic_morphs_number > 0
         
         else:
             return res
@@ -3655,8 +3681,17 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         rig_settings = obj.MustardUI_RigSettings
         
         layout = self.layout
-            
-        layout.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
+        
+        if settings.status_diffeomorphic == 1:
+            layout.label(icon='ERROR',text="Diffeomorphic not enabled!")
+            return
+        elif settings.status_diffeomorphic == 0:
+            layout.label(icon='ERROR', text="Diffeomorphic not installed!")
+            return
+        
+        row = layout.row()    
+        row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
+        row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
         
         # Emotions Units
         if rig_settings.diffeomorphic_emotions_units:
@@ -4458,12 +4493,12 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             box.label(text="Model:           " + rig_settings.model_version)
         box.label(text="MustardUI:    " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]))
         
-        if settings.status_rig_tools == 0 or settings.status_rig_tools == 1 or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support):
+        if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support):
             box = layout.box()
             
-            if settings.status_rig_tools == 1:
+            if rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1:
                 box.label(icon='ERROR',text="rig_tools not enabled!")
-            elif settings.status_rig_tools == 0:
+            elif rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0:
                 box.label(icon='ERROR', text="rig_tools not installed!")
             
             if settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support:
@@ -4530,6 +4565,7 @@ classes = (
     MustardUI_Body_CheckAdditionalOptions,
     MustardUI_Outfits_CheckAdditionalOptions,
     MustardUI_DazMorphs_CheckMorphs,
+    MustardUI_DazMorphs_DefaultValues,
     MustardUI_OutfitVisibility,
     MustardUI_GlobalOutfitPropSwitch,
     MustardUI_LinkButton,
