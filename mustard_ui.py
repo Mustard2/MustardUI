@@ -855,6 +855,7 @@ class MustardUI_Armature_Sort(bpy.types.Operator):
         for i in range(0,32):
             
             if armature_settings.layers[i].id == self.sort_id:
+                print(i)
                 layer_id = i
             elif armature_settings.layers[i].id == self.sort_id - 1:
                 layer_id_up = i
@@ -984,7 +985,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                             self.layers[j].id = self.layers[j].id - 1
                         
                     self.last_id = self.last_id - 1
-                    self.layers[i].id = 0
+                    self.layers[i].id = -1
                         
         
         self.config_layer_store = self.config_layer
