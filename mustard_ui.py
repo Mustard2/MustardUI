@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 2),
+    "version": (0, 20, 3),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -716,7 +716,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Use the MustardUI naming convention for collections and objects.\nIf this is true, the collections and the objects listed as outfits will be stripped of unnecessary parts in the name")
 
     model_rig_type: bpy.props.EnumProperty(default = "other",
-                        items = [("arp", "Auto-Rig Pro", "Auto-Rig Pro"), ("rigify", "Rigify", "Rigify"), ("other", "Other", "Other")],
+                        items = [("arp", "Auto-Rig Pro", "Auto-Rig Pro"), ("rigify", "Rigify", "Rigify"), ("mhx", "MHX", "MHX"), ("other", "Other", "Other")],
                         name = "Rig type")
     
     
@@ -984,7 +984,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                             self.layers[j].id = self.layers[j].id - 1
                         
                     self.last_id = self.last_id - 1
-                    self.layers[i].id = -1
+                    self.layers[i].id = 0
                         
         
         self.config_layer_store = self.config_layer
@@ -1555,6 +1555,9 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         
         # TYPE: 0: Emotion Units, 1: Emotions, 2: FACS Emotion Units, 3: FACS Emotions, 4: Body Morphs
         
+        # Default lists
+        facs_emotions_default_list = ['facs_ctrl_Afraid', 'facs_ctrl_Angry', 'facs_ctrl_Flirting', 'facs_ctrl_Frown', 'facs_ctrl_Shock', 'facs_ctrl_SmileFullFace', 'facs_ctrl_SmileOpenFullFace', 'facs_ctrl_Surprised']
+        
         # Emotions Units
         if rig_settings.diffeomorphic_emotions_units:
             emotions_units = [x for x in rig_settings.model_armature_object.keys() if ('eCTRL' in x or 'ECTRL' in x) and not "HD" in x and not "eCTRLSmile" in x and not 'eCTRLv' in x and sum(1 for c in x if c.isupper()) >= 6]
@@ -1585,7 +1588,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         if rig_settings.diffeomorphic_facs_emotions_units:
             
             facs_emotions_units = []
-            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if 'facs_ctrl_' in x and not 'facs_ctrl_Smile' in x and sum(1 for c in x if c.isupper()) >= 2])
+            facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if 'facs_ctrl_' in x and not x in facs_emotions_default_list])
             facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if 'facs_bs_' in x and sum(1 for c in x if c.isupper()) >= 2])
             facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if 'facs_jnt_' in x and sum(1 for c in x if c.isupper()) >= 2])
             facs_emotions_units = itertools.chain.from_iterable(facs_emotions_units)
@@ -1598,7 +1601,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         # FACS Emotions
         if rig_settings.diffeomorphic_facs_emotions:
             
-            facs_emotions = [x for x in rig_settings.model_armature_object.keys() if 'facs_ctrl_' in x and (sum(1 for c in x if c.isupper()) < 2 or 'facs_ctrl_Smile' in x)]
+            facs_emotions = [x for x in rig_settings.model_armature_object.keys() if x in facs_emotions_default_list]
             for emotion in facs_emotions:
                 name = emotion[len('facs_ctrl_')] + ''.join([c if not c.isupper() else ' ' + c for c in emotion[len('facs_ctrl_')+1:]])
                 mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 3])
@@ -1819,7 +1822,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                 if armature_settings.layers[i].name.find(mirror_string) > 1:
                     rng = list(range(0,32))
                     rng.remove(i)
-                    mirror_layer = [x for x in rng if armature_settings.config_layer[x] and armature_settings.layers[i].name[:armature_settings.layers[i].name.find(mirror_string)] in armature_settings.layers[x].name and armature_settings.layers[i].name[armature_settings.layers[i].name.find(mirror_string) + len(mirror_string):] in armature_settings.layers[x].name]
+                    mirror_layer = [x for x in rng if armature_settings.config_layer[x] and (".R" in armature_settings.layers[x].name or ".L" in armature_settings.layers[x].name) and armature_settings.layers[i].name[:armature_settings.layers[i].name.find(mirror_string)] in armature_settings.layers[x].name and armature_settings.layers[i].name[armature_settings.layers[i].name.find(mirror_string) + len(mirror_string):] in armature_settings.layers[x].name]
                     if len(mirror_layer) > 0:
                         armature_settings.layers[i].mirror_layer = mirror_layer[0]
                     else:
@@ -1839,6 +1842,8 @@ class MustardUI_Configuration(bpy.types.Operator):
                 rig_settings.model_rig_type = "arp"
             elif hasattr(obj,'[\"rig_id\"]'):
                 rig_settings.model_rig_type = "rigify"
+            elif hasattr(obj,'[\"MhxRig\"]'):
+                rig_settings.model_rig_type = "mhx"
             else:
                 rig_settings.model_rig_type = "other"
             
@@ -1908,6 +1913,11 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         lattice_settings = obj.MustardUI_LatticeSettings
         armature_settings = obj.MustardUI_ArmatureSettings
         tools_settings = obj.MustardUI_ToolsSettings
+        
+        # Try to assign the rig object
+        if not obj.MustardUI_created:
+            if context.active_object != None and context.active_object.type == "ARMATURE":
+                rig_settings.model_armature_object = context.active_object
         
         # Initialize Smart Check header
         if settings.debug:
@@ -1989,14 +1999,14 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 print('\nMustardUI - Smart Check - Found an ARP rig, version: \'' + obj["arp_updated"] + '\' .')
             print('\nMustardUI - Smart Check - Setting layers as for Mustard models.')
             
-            if len(armature_settings.layers)<1:
-                bpy.ops.mustardui.armature_initialize(clean = False)
-            
             preset_Mustard_models = [(0, "Main", False),
                                     (1, "Advanced", False),
                                     (7, "Extra", False),
                                     (10, "Child Of - Ready", False),
                                     (31, "Rigging - Ready", True)]
+            
+            if len(armature_settings.layers)<1:
+                bpy.ops.mustardui.armature_initialize(clean = False)
             
             for layer in preset_Mustard_models:
                 if not armature_settings.config_layer[ layer[0] ]:
@@ -2034,7 +2044,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                                     (15, "Leg.L (Tweak)", False),
                                     (18, "Leg.R (Tweak)", False),
                                     (28, "Root", False)]
-            
+        
             if len(armature_settings.layers)<1:
                 bpy.ops.mustardui.armature_initialize(clean = False)
             
@@ -2049,6 +2059,49 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 else:
                     if settings.debug:
                         print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')
+        
+        elif rig_settings.model_armature_object != None:
+            if hasattr(rig_settings.model_armature_object,'[\"MhxRig\"]'):
+                if settings.debug:
+                    print('\nMustardUI - Smart Check - Found a MHX rig.')
+                print('\nMustardUI - Smart Check - Setting layers for MHX.')
+                
+                preset_Mustard_models = [(10, "Face", False),
+                                        (8, "Face (details)", False),
+                                        (1, "Spine", False),
+                                        (2, "Arm.L (IK)", False),
+                                        (18, "Arm.R (IK)", False),
+                                        (3, "Arm.L (FK)", False),
+                                        (19, "Arm.R (FK)", False),
+                                        (4, "Leg.L (IK)", False),
+                                        (20, "Leg.R (IK)", False),
+                                        (5, "Leg.L (FK)", False),
+                                        (21, "Leg.R (FK)", False),
+                                        (12, "Extra.L", False),
+                                        (28, "Extra.R", False),
+                                        (6, "Hand.L", False),
+                                        (22, "Hand.R", False),
+                                        (7, "Fingers.L", False),
+                                        (23, "Fingers.R", False),
+                                        (13, "Toes.L", False),
+                                        (29, "Toes.R", False),
+                                        (9, "Tweak", False),
+                                        (0, "Root", False)]
+                
+                if len(armature_settings.layers)<1:
+                    bpy.ops.mustardui.armature_initialize(clean = False)
+                
+                for layer in preset_Mustard_models:
+                    if not armature_settings.config_layer[ layer[0] ]:
+                        armature_settings.config_layer[ layer[0] ] = True   
+                        armature_settings.layers[ layer[0] ].name = layer[1]
+                        armature_settings.layers[ layer[0] ].advanced = layer[2]
+                        armature_settings.layers[ layer[0] ].layer_config_collapse = True
+                        if settings.debug:
+                            print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' set.')
+                    else:
+                        if settings.debug:
+                            print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')
             
             
         
