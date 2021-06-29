@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 3),
+    "version": (0, 20, 5),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -1013,6 +1013,19 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                         name = "Hair",
                         description = "Show/hide the hair armature",
                         update = mustardui_armature_visibility_update)
+    
+    # IK/FK Support
+    ik_fk_collapse: bpy.props.BoolProperty(default = True,
+                        name = "")
+    
+    enable_ik_fk: bpy.props.BoolProperty(default = False,
+                        name = "IK/FK support",
+                        description = "Enable the IK/FK switch tools if available for the current rig")
+    enable_ik_fk_snap: bpy.props.BoolProperty(default = False,
+                        name = "IK/FK snap tools",
+                        description = "Enable the IK/FK snap tools if available for the current rig")
+    
+    
 
 bpy.utils.register_class(MustardUI_ArmatureSettings)
 bpy.types.Armature.MustardUI_ArmatureSettings = bpy.props.PointerProperty(type = MustardUI_ArmatureSettings)
@@ -1770,6 +1783,16 @@ class MustardUI_Configuration(bpy.types.Operator):
                 self.report({'ERROR'}, 'MustardUI - A name should be selected.')
                 return {'FINISHED'}
             
+            # Allocate the armature object
+            if not obj.MustardUI_created:
+                if context.active_object != None and context.active_object.type == "ARMATURE":
+                    rig_settings.model_armature_object = context.active_object
+                    if tools_settings.lips_shrinkwrap_enable:
+                        tools_settings.lips_shrinkwrap_armature_object = rig_settings.model_armature_object
+                else:
+                    self.report({'ERROR'}, 'MustardUI - Be sure to select the armature Object in the viewport before continuing.')
+                    return {'FINISHED'}
+            
             # Check Body mesh scale
             if rig_settings.model_body.scale[0] != 1. or rig_settings.model_body.scale[1] != 1. or rig_settings.model_body.scale[2] != 1.:
                 warnings = warnings + 1
@@ -1838,17 +1861,31 @@ class MustardUI_Configuration(bpy.types.Operator):
                     armature_settings.layers[i].mirror = False
             
             # Check the type of the rig
+            rig_recognized = 0
             if hasattr(obj,'[\"arp_updated\"]'):
                 rig_settings.model_rig_type = "arp"
+                rig_recognized += 1
             elif hasattr(obj,'[\"rig_id\"]'):
                 rig_settings.model_rig_type = "rigify"
-            elif hasattr(obj,'[\"MhxRig\"]'):
+                rig_recognized += 1
+            elif hasattr(rig_settings.model_armature_object,'[\"MhxRig\"]'):
                 rig_settings.model_rig_type = "mhx"
+                rig_recognized += 1
             else:
                 rig_settings.model_rig_type = "other"
             
-            if settings.debug:
+            if rig_recognized < 2:
                 print('MustardUI - The rig has been recognized as ' + rig_settings.model_rig_type)
+            else:
+                warnings = warnings + 1
+                if settings.debug:
+                    print('MustardUI - Configuration Warning - The rig has multiple rig types. This might create problems in the UI')
+            
+            # Check MHX requirements for IK/FK support
+            if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and settings.status_diffeomorphic < 2:
+                warnings = warnings + 1
+                if settings.debug:
+                    print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but Diffeomorphic is not installed')
             
             if tools_settings.lips_shrinkwrap_armature_object != None and tools_settings.lips_shrinkwrap_enable:
                 if not hasattr(tools_settings.lips_shrinkwrap_armature_object.data,'[\"arp_updated\"]'):
@@ -1868,15 +1905,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                 self.report({'INFO'}, 'MustardUI - Configuration complete.')
         
         obj.MustardUI_enable = not obj.MustardUI_enable
-        
-        if not obj.MustardUI_created:
-            if context.active_object != None and context.active_object.type == "ARMATURE":
-                rig_settings.model_armature_object = context.active_object
-                if tools_settings.lips_shrinkwrap_armature_object == None and tools_settings.lips_shrinkwrap_enable:
-                    tools_settings.lips_shrinkwrap_armature_object = rig_settings.model_armature_object
-            else:
-                self.report({'ERROR'}, 'MustardUI - Be sure to select the armature Object in the viewport before continuing.')
-                return {'FINISHED'}
 
         if ((settings.viewport_model_selection_after_configuration and not settings.viewport_model_selection) or (not settings.viewport_model_selection_after_configuration and settings.viewport_model_selection)) and not obj.MustardUI_created:
             bpy.ops.mustardui.viewportmodelselection()
@@ -2684,6 +2712,9 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
                 bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
             
             bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=mod.name)
+            
+            mod.show_viewport = physics_settings.physics_enable
+            mod.show_render = physics_settings.physics_enable
         
         # Outfits add
         for collection in rig_settings.outfits_collections:
@@ -2706,6 +2737,9 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
                         bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
                     
                     bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=mod.name)
+                    
+                    mod.show_viewport = physics_settings.physics_enable
+                    mod.show_render = physics_settings.physics_enable
         
         # Add cloth modifier to cage and set the settings
         mod_name = physics_settings.physics_modifiers_name + "Cage"
@@ -2766,6 +2800,9 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
         
         while obj.modifiers.find(mod.name) > 0:
             bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
+        
+        mod.show_viewport = physics_settings.physics_enable
+        mod.show_render = physics_settings.physics_enable
         
         physics_settings.config_cage_object = None
         physics_settings.config_cage_object_pin_vertex_group = ""
@@ -3172,6 +3209,19 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
                 mod.point_cache.frame_start = self.simulation_start
                 mod.point_cache.frame_end = self.simulation_end
         
+        for object in bpy.data.objects:
+            
+            for modifier in object.modifiers:
+                
+                if modifier.type == "CLOTH":
+                    mod = modifier
+                    
+                    mod.settings.quality = self.simulation_quality
+                    mod.collision_settings.collision_quality = self.simulation_quality_collision
+                    
+                    mod.point_cache.frame_start = self.simulation_start
+                    mod.point_cache.frame_end = self.simulation_end
+                
         return
     
     physics_items: bpy.props.CollectionProperty(type = MustardUI_PhysicsItem)
@@ -3381,6 +3431,12 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 
                 box.label(text="General Settings",icon="MODIFIER")
                 box.prop(armature_settings, 'enable_automatic_hair')
+                col = box.column()
+                row = col.row()
+                row.prop(armature_settings, 'enable_ik_fk')
+                row = col.row()
+                row.enabled = armature_settings.enable_ik_fk
+                row.prop(armature_settings, 'enable_ik_fk_snap')
                 box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
                 
                 box = layout.box()
@@ -3922,7 +3978,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         else:
                             row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='UNLOCKED')
                 else:
-                    box2.label(text="This Collection seems empty", icon="ERROR")
+                    box.label(text="This Collection seems empty", icon="ERROR")
             
             # Locked objects list
             locked_objects = [x for x in bpy.data.objects if x.MustardUI_outfit_lock]
@@ -4097,6 +4153,80 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                         row.prop(armature_settings.layers[armature_settings.layers[i].mirror_layer], "show", text = armature_settings.layers[armature_settings.layers[i].mirror_layer].name, toggle=True)
                     elif not armature_settings.layers[i].mirror:
                         box.prop(armature_settings.layers[i], "show", text = armature_settings.layers[i].name, toggle=True)
+        
+        if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None:
+            
+            box = layout.box()
+            
+            if settings.status_diffeomorphic > 1:
+            
+                row = box.row(align=False)
+                row.prop(armature_settings, "ik_fk_collapse", icon="TRIA_DOWN" if not armature_settings.ik_fk_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+                row.label(text="IK/FK Settings")
+                
+                if not armature_settings.ik_fk_collapse:
+                
+                    box.label(text = "FK/IK switch")
+                    row = box.row()
+                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
+                    row.label(text = "Arm")
+                    self.toggle(row, rig_settings.model_armature_object, "MhaArmIk_L", " 3", " 2")
+                    self.toggle(row, rig_settings.model_armature_object, "MhaArmIk_R", " 19", " 18")
+                    row = box.row()
+                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
+                    row.label(text = "Leg")
+                    self.toggle(row, rig_settings.model_armature_object, "MhaLegIk_L", " 5", " 4")
+                    self.toggle(row, rig_settings.model_armature_object, "MhaLegIk_R", " 21", " 20")
+                    
+                    box.label(text = "IK Influence")
+                    row = box.row()
+                    row.label(text = "Arm")
+                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
+                    row.prop(rig_settings.model_armature_object, '["MhaArmIk_L"]', text="")
+                    row.prop(rig_settings.model_armature_object, '["MhaArmIk_R"]', text="")
+                    row = box.row()
+                    row.label(text = "Leg")
+                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
+                    row.prop(rig_settings.model_armature_object, '["MhaLegIk_L"]', text="")
+                    row.prop(rig_settings.model_armature_object, '["MhaLegIk_R"]', text="")
+                    
+                    if armature_settings.enable_ik_fk_snap:
+                        
+                        box.separator()
+                        box.label(text = "Snap Arm Bones")
+                        row = box.row()
+                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
+                        row.label(text = "FK Arm")
+                        row.operator("daz.snap_fk_ik", text="Snap L FK Arm").data = "MhaArmIk_L 2 3 12"
+                        row.operator("daz.snap_fk_ik", text="Snap R FK Arm").data = "MhaArmIk_R 18 19 28"
+                        row = box.row()
+                        row.label(text = "IK Arm")
+                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
+                        row.operator("daz.snap_ik_fk", text="Snap L IK Arm").data = "MhaArmIk_L 2 3 12"
+                        row.operator("daz.snap_ik_fk", text="Snap R IK Arm").data = "MhaArmIk_R 18 19 28"
+
+                        box.label(text = "Snap Leg Bones")
+                        row = box.row()
+                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
+                        row.label(text = "FK Leg")
+                        row.operator("daz.snap_fk_ik", text="Snap L FK Leg").data = "MhaLegIk_L 4 5 12"
+                        row.operator("daz.snap_fk_ik", text="Snap R FK Leg").data = "MhaLegIk_R 20 21 28"
+                        row = box.row()
+                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
+                        row.label(text = "IK Leg")
+                        row.operator("daz.snap_ik_fk", text="Snap L IK Leg").data = "MhaLegIk_L 4 5 12"
+                        row.operator("daz.snap_ik_fk", text="Snap R IK Leg").data = "MhaLegIk_R 20 21 28"
+            
+            else:
+                box.label(text="IK/FK Settings")
+                box.label(text="Diffeomorphic not installed", icon = "ERROR")
+                
+    
+    def toggle(self, row, rig, prop, fk, ik):
+        if getattr(rig, prop) > 0.5:
+            row.operator("daz.toggle_fk_ik", text="IK").toggle = prop + " 0" + fk + ik
+        else:
+            row.operator("daz.toggle_fk_ik", text="FK").toggle = prop + " 1" + ik + fk
 
 class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Tools_Physics"
