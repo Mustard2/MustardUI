@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 5),
+    "version": (0, 20, 8),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -635,6 +635,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for object in self.hair_collection.objects:
             object.hide_viewport = not self.hair_list in object.name
             object.hide_render = not self.hair_list in object.name
+        
+        return
     
     # Hair list
     hair_list: bpy.props.EnumProperty(name = "Hair List",
@@ -649,10 +651,25 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Diffeomorphic support
     # ------------------------------------------------------------------------
     
+    # Function to update global collection properties
+    def diffeomorphic_enable_update(self, context):
+        
+        if self.diffeomorphic_enable:
+            bpy.ops.mustardui.dazmorphs_enabledrivers()
+        else:
+            bpy.ops.mustardui.dazmorphs_disabledrivers()
+        
+        return
+    
     # Diffeomorphic support
     diffeomorphic_support: bpy.props.BoolProperty(default = False,
                         name = "Diffeomorphic Support (Experimental)",
                         description = "Enable Diffeomorphic support.\nIf enabled, standard morphs from Diffomorphic will be added to the UI")
+    
+    diffeomorphic_enable: bpy.props.BoolProperty(default = True,
+                        name = "Enable Diffeomorphic morphs",
+                        description = "Enable Diffeomorphic morphs.\nNote that this might affect performance",
+                        update = diffeomorphic_enable_update)
     
     diffeomorphic_morphs_list: bpy.props.CollectionProperty(name = "Daz Morphs List",
                         type=MustardUI_DazMorph)
@@ -932,10 +949,7 @@ class MustardUI_ArmatureLayer(bpy.types.PropertyGroup):
         
         rig_settings = self.id_data.MustardUI_RigSettings
         
-        if object in [x.collection for x in rig_settings.outfits_collections]:
-            return True
-        else:
-            return False
+        return object in [x.collection for x in rig_settings.outfits_collections] or object == rig_settings.extras_collection
     
     # Poll function for the selection of mesh belonging to an outfit in pointer properties
     def outfit_switcher_poll_mesh(self, object):
@@ -1685,6 +1699,123 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
         
         return {'FINISHED'}
 
+class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
+    """Disable drivers to improve performance (the correctives will not be disabled). This can be used only if the armature is selected"""
+    bl_idname = "mustardui.dazmorphs_disabledrivers"
+    bl_label = "Button"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        return True
+        
+        if arm != None:
+            rig_settings = arm.MustardUI_RigSettings
+            
+            if rig_settings.model_armature_object == None:
+                return False
+        
+            return bpy.context.active_object == rig_settings.model_armature_object
+        
+        else:
+            return True
+ 
+    def execute(self, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        objects = [rig_settings.model_body]
+        
+        aobj = context.active_object
+        
+        context.view_layer.objects.active = rig_settings.model_armature_object
+        
+        bpy.ops.daz.disable_drivers({object:rig_settings.model_armature_object})
+        
+        for collection in rig_settings.outfits_collections:
+            for obj in collection.collection.objects:
+                if obj.type == "MESH":
+                    objects.append(obj)
+        
+        for obj in objects:
+            if obj.data.shape_keys != None:
+                for driver in obj.data.shape_keys.animation_data.drivers:
+                    if not "pJCM" in driver.data_path:
+                        driver.mute = True
+        
+        for driver in rig_settings.model_armature_object.animation_data.drivers:
+            
+            if "evalMorphs" in driver.driver.expression:
+                    driver.mute = True
+        
+        rig_settings.diffeomorphic_emotions_units_collapse = True
+        rig_settings.diffeomorphic_emotions_collapse = True
+        rig_settings.diffeomorphic_facs_emotions_units_collapse = True
+        rig_settings.diffeomorphic_facs_emotions_collapse = True
+        rig_settings.diffeomorphic_body_morphs_collapse = True
+        
+        context.view_layer.objects.active = aobj
+        
+        return{'FINISHED'}
+
+class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
+    """Enable all drivers. This can be used only if the armature is selected"""
+    bl_idname = "mustardui.dazmorphs_enabledrivers"
+    bl_label = "Button"
+    bl_options = {'REGISTER', 'UNDO'}
+ 
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        return True
+        
+        if arm != None:
+            rig_settings = arm.MustardUI_RigSettings
+        
+            return bpy.context.active_object == rig_settings.model_armature_object
+        
+        else:
+            return True
+ 
+    def execute(self, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        objects = [rig_settings.model_body]
+        
+        aobj = context.active_object
+        
+        context.view_layer.objects.active = rig_settings.model_armature_object
+        
+        bpy.ops.daz.enable_drivers()
+        
+        for collection in rig_settings.outfits_collections:
+            for obj in collection.collection.objects:
+                if obj.type == "MESH":
+                    objects.append(obj)
+        
+        for obj in objects:
+            if obj.data.shape_keys != None:
+                for driver in obj.data.shape_keys.animation_data.drivers:
+                    if not "pJCM" in driver.data_path:
+                        driver.mute = False
+        
+        for driver in rig_settings.model_armature_object.animation_data.drivers:
+            
+            if "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
+                    driver.mute = False
+        
+        context.view_layer.objects.active = aobj
+        
+        return{'FINISHED'}
+
 # ------------------------------------------------------------------------
 #    Viewport Model Selection Operator
 # ------------------------------------------------------------------------
@@ -2206,7 +2337,7 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
             self.report({'INFO'}, "MustardUI: UI correctly registered in " + obj.name)
         else:
             obj.MustardUI_script_file = None
-            bpy.data.texts['mustard_ui.py'].use_module = Fal
+            bpy.data.texts['mustard_ui.py'].use_module = False
             self.report({'INFO'}, "MustardUI: UI correctly un-registered in " + obj.name)
         
         return {'FINISHED'}
@@ -2326,10 +2457,10 @@ class MustardUI_Tools_ChildOf(bpy.types.Operator):
                         ob.data.layers[i] = True
             
                     ob.data.bones.active = child_bone.id_data.pose.bones[child_bone.name].bone
-                    try:
-                        bpy.ops.constraint.childof_set_inverse(context_py, constraint=constr.name, owner='BONE')
-                    except:
-                        self.report({'ERROR'}, 'MustardUI - Can not set Inverse.')
+#                    try:
+#                        bpy.ops.constraint.childof_set_inverse(context_py, constraint=constr.name, owner='BONE')
+#                    except:
+#                        self.report({'ERROR'}, 'MustardUI - Can not set Inverse.')
             
                     for i in range(len(org_layers)):
                         ob.data.layers[i] = org_layers[i]
@@ -3781,6 +3912,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         
         else:
             return res
+    
+    def draw_header(self,context):
+        
+        poll, obj = mustardui_active_object(context, config = 0)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        self.layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
 
     def draw(self, context):
         
@@ -3790,6 +3928,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         rig_settings = obj.MustardUI_RigSettings
         
         layout = self.layout
+        layout.enabled = rig_settings.diffeomorphic_enable
         
         if settings.status_diffeomorphic == 1:
             layout.label(icon='ERROR',text="Diffeomorphic not enabled!")
@@ -3800,6 +3939,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         
         row = layout.row()    
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
+        row = row.row(align=True)
         row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
         
         # Emotions Units
@@ -4749,6 +4889,8 @@ classes = (
     MustardUI_Outfits_CheckAdditionalOptions,
     MustardUI_DazMorphs_CheckMorphs,
     MustardUI_DazMorphs_DefaultValues,
+    MustardUI_DazMorphs_DisableDrivers,
+    MustardUI_DazMorphs_EnableDrivers,
     MustardUI_OutfitVisibility,
     MustardUI_GlobalOutfitPropSwitch,
     MustardUI_LinkButton,
