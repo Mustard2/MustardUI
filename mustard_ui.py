@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 8),
+    "version": (0, 20, 11),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -152,6 +152,18 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Property for morphs errors
     daz_morphs_error: bpy.props.BoolProperty(name = "",
                         description = "Can not find the Daz Morph.\nRe-run the Check Morphs operator in the Configuration menu to solve this")
+    
+    # Material normals mute
+    def update_material_normal(self, context):
+        
+        bpy.ops.mustardui.material_normalmap_nodes(custom = not self.material_normal_nodes)
+        
+        return
+    
+    material_normal_nodes: bpy.props.BoolProperty(default = True,
+                        name = "Material Normals",
+                        description = "",
+                        update = update_material_normal)
 
 # Register and create the setting class in the Scene object
 bpy.utils.register_class(MustardUI_Settings)
@@ -648,8 +660,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Show Particle Systems in the UI.\nIf enabled, particle systems on the body mesh will automatically be added to the UI")
     
     # ------------------------------------------------------------------------
-    #    Diffeomorphic support
+    #    External addons
     # ------------------------------------------------------------------------
+    
+    # Property for collapsing external addons section
+    external_addons_collapse: bpy.props.BoolProperty(default = True,
+                        name = "")
     
     # Function to update global collection properties
     def diffeomorphic_enable_update(self, context):
@@ -663,7 +679,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     # Diffeomorphic support
     diffeomorphic_support: bpy.props.BoolProperty(default = False,
-                        name = "Diffeomorphic Support (Experimental)",
+                        name = "Diffeomorphic",
                         description = "Enable Diffeomorphic support.\nIf enabled, standard morphs from Diffomorphic will be added to the UI")
     
     diffeomorphic_enable: bpy.props.BoolProperty(default = True,
@@ -680,30 +696,30 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "")
     
     diffeomorphic_emotions: bpy.props.BoolProperty(default = False,
-                        name = "Diffeomorphic Emotions",
+                        name = "Emotions Morphs",
                         description = "Search for Diffeomorphic emotions")
     diffeomorphic_emotions_collapse: bpy.props.BoolProperty(default = True)
     diffeomorphic_emotions_custom: bpy.props.StringProperty(default = "",
-                        name = "Custom morphs",
+                        name = "morphs",
                         description = "Add strings to add custom morphs (they should map the initial part of the name of the morph), separated by commas.\nNote: spaces and order are considered")
     
     diffeomorphic_facs_emotions: bpy.props.BoolProperty(default = False,
-                        name = "Diffeomorphic FACS Emotions",
+                        name = "FACS Emotions Morphs",
                         description = "Search for Diffeomorphic FACS emotions")
     diffeomorphic_facs_emotions_collapse: bpy.props.BoolProperty(default = True)
     
     diffeomorphic_emotions_units: bpy.props.BoolProperty(default = False,
-                        name = "Diffeomorphic Emotions Units",
+                        name = "Emotions Units Morphs",
                         description = "Search for Diffeomorphic emotions units")
     diffeomorphic_emotions_units_collapse: bpy.props.BoolProperty(default = True)
     
     diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default = False,
-                        name = "Diffeomorphic FACS Emotions Units",
+                        name = "FACS Emotions Units Morphs",
                         description = "Search for Diffeomorphic FACS emotions units")
     diffeomorphic_facs_emotions_units_collapse: bpy.props.BoolProperty(default = True)
     
     diffeomorphic_body_morphs: bpy.props.BoolProperty(default = False,
-                        name = "Diffeomorphic Body Morphs",
+                        name = "Body Morphs Morphs",
                         description = "Search for Diffeomorphic Body morphs")
     diffeomorphic_body_morphs_collapse: bpy.props.BoolProperty(default = True)
     diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default = "",
@@ -1080,15 +1096,35 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     #    Tools - Lips Shrinkwrap
     # ------------------------------------------------------------------------
 
+    def lips_shrinkwrap_bones_corner_list(context, rig_type):
+        
+        if rig_type == "arp":
+            return ['c_lips_smile.r','c_lips_smile.l']
+        elif rig_type == "mhx":
+            return ['LipCorner.l','LipCorner.r']
+        else:
+            return []
+    
+    def lips_shrinkwrap_bones_list(context, rig_type):
+        
+        if rig_type == "arp":
+            return ['c_lips_smile.r','c_lips_top.r','c_lips_top_01.r','c_lips_top.x','c_lips_top.l','c_lips_top_01.l','c_lips_smile.l','c_lips_bot.r','c_lips_bot_01.r','c_lips_bot.x','c_lips_bot.l','c_lips_bot_01.l']
+        elif rig_type == "mhx":
+            return ['LipCorner.l', 'LipLowerOuter.l', 'LipLowerInner.l', 'LipLowerMiddle', 'LipLowerInner.r', 'LipLowerOuter.r', 'LipCorner.r', 'LipUpperMiddle', 'LipUpperOuter.l', 'LipUpperInner.l', 'LipUpperInner.r', 'LipUpperOuter.r']
+        else:
+            return []
+    
     def lips_shrinkwrap_update(self, context):
         
         poll, arm = mustardui_active_object(context, config = 0)
+        rig_type = arm.MustardUI_RigSettings.model_rig_type
+        
         if self.lips_shrinkwrap_armature_object != None:
             armature = self.lips_shrinkwrap_armature_object
         else:
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
         
-        bones_lips = ['c_lips_smile.r','c_lips_top.r','c_lips_top_01.r','c_lips_top.x','c_lips_top.l','c_lips_top_01.l','c_lips_smile.l','c_lips_bot.r','c_lips_bot_01.r','c_lips_bot.x','c_lips_bot.l','c_lips_bot_01.l']
+        bones_lips = self.lips_shrinkwrap_bones_list(rig_type)
         
         ob = bpy.context.active_object
         
@@ -1119,7 +1155,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                 constr.wrap_mode = "OUTSIDE"
                 constr.distance = self.lips_shrinkwrap_dist
                 
-                if bone == 'c_lips_smile.r' or bone == 'c_lips_smile.l':
+                if bone in self.lips_shrinkwrap_bones_corner_list(rig_type):
                     constr.distance = constr.distance * self.lips_shrinkwrap_dist_corr
             
             if self.lips_shrinkwrap_friction and ob == armature:
@@ -1198,12 +1234,14 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     def lips_shrinkwrap_distance_update(self, context):
         
         poll, arm = mustardui_active_object(context, config = 0)
+        rig_type = arm.MustardUI_RigSettings.model_rig_type
+        
         if self.lips_shrinkwrap_armature_object != None and arm != None:
             armature = self.lips_shrinkwrap_armature_object
         else:
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
             
-        bones_lips = ['c_lips_smile.r','c_lips_top.r','c_lips_top_01.r','c_lips_top.x','c_lips_top.l','c_lips_top_01.l','c_lips_smile.l','c_lips_bot.r','c_lips_bot_01.r','c_lips_bot.x','c_lips_bot.l','c_lips_bot_01.l']
+        bones_lips = self.lips_shrinkwrap_bones_list(rig_type)
         
         if self.lips_shrinkwrap:
         
@@ -1212,7 +1250,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                 constr = armature.pose.bones[bone].constraints[self.lips_shrink_constr_name]
                 constr.distance = self.lips_shrinkwrap_dist
                 
-                if bone == 'c_lips_smile.r' or bone == 'c_lips_smile.l':
+                if bone in self.lips_shrinkwrap_bones_corner_list(rig_type):
                     constr.distance = constr.distance * self.lips_shrinkwrap_dist_corr
         
         return
@@ -1220,12 +1258,14 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     def lips_shrinkwrap_friction_infl_update(self, context):
         
         poll, arm = mustardui_active_object(context, config = 0)
+        rig_type = arm.MustardUI_RigSettings.model_rig_type
+        
         if self.lips_shrinkwrap_armature_object != None and arm != None:
             armature = self.lips_shrinkwrap_armature_object
         else:
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
         
-        bones_lips = ['c_lips_smile.r','c_lips_top.r','c_lips_top_01.r','c_lips_top.x','c_lips_top.l','c_lips_top_01.l','c_lips_smile.l','c_lips_bot.r','c_lips_bot_01.r','c_lips_bot.x','c_lips_bot.l','c_lips_bot_01.l']
+        bones_lips = self.lips_shrinkwrap_bones_list(rig_type)
         
         if self.lips_shrinkwrap_friction and self.lips_shrinkwrap:
         
@@ -1251,7 +1291,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     # Config enable
     lips_shrinkwrap_enable: bpy.props.BoolProperty(default = False,
                                              name="Lips Shrinkwrap",
-                                             description="Enable Lips shrinkwrap tool.\nThis can be added only on ARP rigs at the moment")
+                                             description="Enable Lips shrinkwrap tool.\nThis can be added only on ARP and MHX rigs")
     
     # Poll function for the selection of mesh only in pointer properties
     def poll_armature(self, object):
@@ -1744,7 +1784,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         for obj in objects:
             if obj.data.shape_keys != None:
                 for driver in obj.data.shape_keys.animation_data.drivers:
-                    if not "pJCM" in driver.data_path:
+                    if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
                         driver.mute = True
         
         for driver in rig_settings.model_armature_object.animation_data.drivers:
@@ -1804,7 +1844,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         for obj in objects:
             if obj.data.shape_keys != None:
                 for driver in obj.data.shape_keys.animation_data.drivers:
-                    if not "pJCM" in driver.data_path:
+                    if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
                         driver.mute = False
         
         for driver in rig_settings.model_armature_object.animation_data.drivers:
@@ -1931,13 +1971,14 @@ class MustardUI_Configuration(bpy.types.Operator):
                     print('MustardUI - Configuration Warning - The selected body mesh seems not to have the scale applied.\n This might generate issues with the tools.')
             
             # Check and eventually clean deleted outfit collections
-            collections = [x for x in rig_settings.outfits_collections]
-            
+            index_to_delete = []
             for x in range(len(rig_settings.outfits_collections)):
                 if not hasattr(rig_settings.outfits_collections[x].collection, 'name'):
-                    rig_settings.outfits_collections.remove(x)
+                    index_to_delete.append(x)
                     if settings.debug:
                         print('MustardUI - A ghost outfit collection has been removed.')
+            for x in index_to_delete:
+                rig_settings.outfits_collections.remove(x)
             
             # Check lattice object definition
             if lattice_settings.lattice_object == None and lattice_settings.lattice_panel_enable:
@@ -2017,14 +2058,21 @@ class MustardUI_Configuration(bpy.types.Operator):
                 warnings = warnings + 1
                 if settings.debug:
                     print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but Diffeomorphic is not installed')
+            # Check the MHX requirement for IK/FK
+            if armature_settings.enable_ik_fk and rig_settings.model_rig_type != "mhx":
+                armature_settings.enable_ik_fk = False
+                armature_settings.enable_ik_fk_snap = False
+                warnings = warnings + 1
+                if settings.debug:
+                    print('MustardUI - Configuration Warning - IK/FK support requested for non-MHX rig. The IK/FK option will be switched off')
             
-            if tools_settings.lips_shrinkwrap_armature_object != None and tools_settings.lips_shrinkwrap_enable:
-                if not hasattr(tools_settings.lips_shrinkwrap_armature_object.data,'[\"arp_updated\"]'):
-                    tools_settings.lips_shrinkwrap_armature_object = None
-                    tools_settings.lips_shrinkwrap_enable = False
-                    warnings = warnings + 1
-                    if settings.debug:
-                        print('MustardUI - Configuration Warning - Lips shrinkwrap Armature Object is not ARP. Select the correct armature. In the meanwhile, the tool has been disabled')                  
+            # Check shrinkwrap modifier requirements
+            if tools_settings.lips_shrinkwrap_enable and not rig_settings.model_rig_type in ['arp', 'mhx']:
+                tools_settings.lips_shrinkwrap_armature_object = None
+                tools_settings.lips_shrinkwrap_enable = False
+                warnings = warnings + 1
+                if settings.debug:
+                    print('MustardUI - Configuration Warning - Lips shrinkwrap requested for a rig which is not ARP or MHX. The tool has been disabled')                  
             
             if warnings > 0:
                 if settings.debug:
@@ -3091,17 +3139,19 @@ class MustardUI_Tools_Physics_ReBind(bpy.types.Operator):
             for collection in rig_settings.outfits_collections:
                 for obj in collection.collection.objects:
                     for modifier in obj.modifiers:
-                        if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
-                           bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
-                           if not modifier.is_bound:
+                        if modifier.type == 'MESH_DEFORM':
+                            if cage.cage_object == modifier.object:
                                bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                               if not modifier.is_bound:
+                                   bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
             
             obj = rig_settings.model_body
             for modifier in rig_settings.model_body.modifiers:
-                if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
-                    bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
-                    if not modifier.is_bound:
+                if modifier.type == 'MESH_DEFORM':
+                    if cage.cage_object == modifier.object:
                         bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                        if not modifier.is_bound:
+                            bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
         
         return {'FINISHED'}
 
@@ -3153,22 +3203,25 @@ def mustardui_physics_enable_update(self, context):
     physics_settings = arm.MustardUI_PhysicsSettings
     
     for cage in [x for x in physics_settings.physics_items]:
+        
         for modifier in cage.cage_object.modifiers:
-            if modifier.type == 'CLOTH' and "MustardUI" in modifier.name:
+            if modifier.type == 'CLOTH':
                 modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
                 modifier.show_render = physics_settings.physics_enable and cage.physics_enable
     
         for collection in rig_settings.outfits_collections:
             for obj in collection.collection.objects:
                 for modifier in obj.modifiers:
-                    if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
-                       modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
-                       modifier.show_render = physics_settings.physics_enable and cage.physics_enable
+                    if modifier.type == 'MESH_DEFORM':
+                        if cage.cage_object == modifier.object:
+                            modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
+                            modifier.show_render = physics_settings.physics_enable and cage.physics_enable
 
         for modifier in rig_settings.model_body.modifiers:
-            if modifier.type == 'MESH_DEFORM' and physics_settings.physics_modifiers_name in modifier.name and "Cage" in modifier.name and cage.name in modifier.name:
-                modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
-                modifier.show_render = physics_settings.physics_enable and cage.physics_enable
+            if modifier.type == 'MESH_DEFORM':
+                if cage.cage_object == modifier.object:
+                    modifier.show_viewport = physics_settings.physics_enable and cage.physics_enable
+                    modifier.show_render = physics_settings.physics_enable and cage.physics_enable
        
     return
 
@@ -3202,8 +3255,8 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     cage_object_bending_stiff_vertex_group: bpy.props.StringProperty(name = "Bending Stiffness Vertex Group")
     
     MustardUI_preset: bpy.props.BoolProperty(default = True,
-                        name = "MustardUI Definitions",
-                        description = "Enable MustardUI definitions of physical settings.\nEnable this to substitute tension, compression, shear and bending with more 'human readable' settings")
+                        name = "Compact Definitions",
+                        description = "Enable compact definitions of physical settings.\nEnable this to substitute tension, compression, shear and bending with more 'human readable' settings")
     
     physics_enable: bpy.props.BoolProperty(default = True,
                         name = "Enable Physics",
@@ -3292,8 +3345,8 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
     config_cage_object_bending_stiff_vertex_group: bpy.props.StringProperty(name = "Bending Stiffness Vertex Group")
     
     config_MustardUI_preset: bpy.props.BoolProperty(default = True,
-                        name = "MustardUI Definitions",
-                        description = "Enable MustardUI definitions of physical settings.\nEnable this to substitute tension, compression, shear and bending with more 'human readable' settings")
+                        name = "Compact Definitions",
+                        description = "Enable compact definitions of physical settings.\nEnable this to substitute tension, compression, shear and bending with more 'human readable' settings")
     
     # Function to create an array of tuples for Outfit enum collections
     def physics_items_list_make(self, context):
@@ -3384,6 +3437,379 @@ bpy.utils.register_class(MustardUI_PhysicsSettings)
 bpy.types.Armature.MustardUI_PhysicsSettings = bpy.props.PointerProperty(type = MustardUI_PhysicsSettings)
 
 # ------------------------------------------------------------------------
+#    Normal Maps Optimizer (thanks to theoldben)
+# ------------------------------------------------------------------------
+# Original implementation: https://github.com/theoldben/BlenderNormalGroups
+
+class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
+    bl_description = "Switch normal map nodes to a faster custom node"
+    bl_idname = 'mustardui.material_normalmap_nodes'
+    bl_label = "Normal Map nodes to Custom"
+    bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(self, context):
+        return (bpy.data.materials or bpy.data.node_groups)
+
+    def execute(self, context):
+        def mirror(new, old):
+            """Copy attributes of the old node to the new node"""
+            new.parent = old.parent
+            new.label = old.label
+            new.mute = old.mute
+            new.hide = old.hide
+            new.select = old.select
+            new.location = old.location
+
+            # inputs
+            for (name, point) in old.inputs.items():
+                input = new.inputs.get(name)
+                if input:
+                    input.default_value = point.default_value
+                    for link in point.links:
+                        new.id_data.links.new(link.from_socket, input)
+
+            # outputs
+            for (name, point) in old.outputs.items():
+                output = new.outputs.get(name)
+                if output:
+                    output.default_value = point.default_value
+                    for link in point.links:
+                        new.id_data.links.new(output, link.to_socket)
+
+        def get_custom():
+            name = 'Normal Map Optimized'
+            group = bpy.data.node_groups.get(name)
+
+            if not group and self.custom:
+                group = default_custom_nodes()
+
+            return group
+
+        def set_custom(nodes):
+            group = get_custom()
+            if not group:
+                return
+
+            for node in nodes:
+                new = None
+                if self.custom:
+                    if isinstance(node, bpy.types.ShaderNodeNormalMap):
+                        new = nodes.new(type='ShaderNodeGroup')
+                        new.node_tree = group
+                else:
+                    if isinstance(node, bpy.types.ShaderNodeGroup):
+                        if node.node_tree == group:
+                            new = nodes.new(type='ShaderNodeNormalMap')
+
+                if new:
+                    name = node.name
+                    mirror(new, node)
+                    nodes.remove(node)
+                    new.name = name
+
+        for mat in bpy.data.materials:
+            set_custom(getattr(mat.node_tree, 'nodes', []))
+        for group in bpy.data.node_groups:
+            set_custom(group.nodes)
+
+        if (not self.custom) and get_custom():
+            bpy.data.node_groups.remove(get_custom())
+
+        return {'FINISHED'}
+
+    custom: bpy.props.BoolProperty(
+        name="To Custom",
+        description="Set all normals to custom group, or revert back to normal",
+        default=True,
+    )
+
+def default_custom_nodes():
+    use_new_nodes = (bpy.app.version >= (2, 81))
+
+    group = bpy.data.node_groups.new('Normal Map Optimized', 'ShaderNodeTree')
+
+    nodes = group.nodes
+    links = group.links
+
+    # Input
+    input = group.inputs.new('NodeSocketFloat', 'Strength')
+    input.default_value = 1.0
+    input.min_value = 0.0
+    input.max_value = 1.0
+    input = group.inputs.new('NodeSocketColor', 'Color')
+    input.default_value = ((0.5, 0.5, 1.0, 1.0))
+
+    # Output
+    group.outputs.new('NodeSocketVector', 'Normal')
+
+    # Add Nodes
+    frame = nodes.new('NodeFrame')
+    frame.name = 'Matrix * Normal Map'
+    frame.label = 'Matrix * Normal Map'
+    frame.location = Vector((540.0, -80.0))
+    frame.hide = False
+    frame.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node = nodes.new('ShaderNodeVectorMath')
+    node.name = 'Vector Math'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-60.0, 20.0))
+    node.operation = 'DOT_PRODUCT'
+    node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
+    node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
+    if use_new_nodes:
+        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
+    node = nodes.new('ShaderNodeVectorMath')
+    node.name = 'Vector Math.001'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-60.0, -20.0))
+    node.operation = 'DOT_PRODUCT'
+    node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
+    node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
+    if use_new_nodes:
+        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
+    node = nodes.new('ShaderNodeVectorMath')
+    node.name = 'Vector Math.002'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-60.0, -60.0))
+    node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
+    node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
+    if use_new_nodes:
+        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
+    node.operation = 'DOT_PRODUCT'
+    node = nodes.new('ShaderNodeCombineXYZ')
+    node.name = 'Combine XYZ'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((100.0, -20.0))
+    node.inputs[0].default_value = 0.0  # X
+    node.inputs[1].default_value = 0.0  # Y
+    node.inputs[2].default_value = 0.0  # Z
+
+    frame = nodes.new('NodeFrame')
+    frame.name = 'Generate TBN from Bump Node'
+    frame.label = 'Generate TBN from Bump Node'
+    frame.location = Vector((-192.01412963867188, -77.50459289550781))
+    frame.hide = False
+    frame.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node = nodes.new('ShaderNodeUVMap')
+    node.name = 'UV Map'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-247.98587036132812, -2.4954071044921875))
+    node = nodes.new('ShaderNodeSeparateXYZ')
+    node.name = 'UV Gradients'
+    node.label = 'UV Gradients'
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-87.98587036132812, -2.4954071044921875))
+    node.inputs[0].default_value = (0.0, 0.0, 0.0)  # Vector
+    # node.outputs.remove((node.outputs['Z']))
+    node = nodes.new('ShaderNodeNewGeometry')
+    node.name = 'Normal'
+    node.label = 'Normal'
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((72.01412963867188, -62.49540710449219))
+    # for out in node.outputs:
+    #     if out.name not in ['Normal']:
+    #         node.outputs.remove(out)
+    node = nodes.new('ShaderNodeBump')
+    node.name = 'Bi-Tangent'
+    node.label = 'Bi-Tangent'
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((72.01412963867188, -22.495407104492188))
+    node.invert = True
+    node.inputs[0].default_value = 1.0  # Strength
+    node.inputs[1].default_value = 1000.0  # Distance
+    node.inputs[2].default_value = 1.0  # Height
+    if use_new_nodes:
+        node.inputs[3].default_value = 1.0  # Height_dx
+        node.inputs[4].default_value = 1.0  # Height_dy
+        node.inputs[5].default_value = (0.0, 0.0, 0.0)  # Normal
+    else:
+        node.inputs[3].default_value = (0.0, 0.0, 0.0)  # Normal
+    # for inp in node.inputs:
+    #     if inp.name not in ['Height']:
+    #         node.inputs.remove(inp)
+    node = nodes.new('ShaderNodeBump')
+    node.name = 'Tangent'
+    node.label = 'Tangent'
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((72.01412963867188, 17.504592895507812))
+    node.invert = True
+    # for inp in node.inputs:
+    #     if inp.name not in ['Height']:
+    #         node.inputs.remove(inp)
+
+    frame = nodes.new('NodeFrame')
+    frame.name = 'Node'
+    frame.label = 'Normal Map Processing'
+    frame.location = Vector((180.0, -260.0))
+    frame.hide = False
+    frame.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node = nodes.new('NodeGroupInput')
+    node.name = 'Group Input'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-400.0, 20.0))
+    node = nodes.new('ShaderNodeMixRGB')
+    node.name = 'Influence'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.location = Vector((-240.0, 20.0))
+    node.inputs[1].default_value = (0.5, 0.5, 1.0, 1.0)  # Color1
+    node = nodes.new('ShaderNodeVectorMath')
+    node.name = 'Vector Math.003'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-80.0, 20.0))
+    node.operation = 'SUBTRACT'
+    node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
+    node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
+    if use_new_nodes:
+        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
+    # node.inputs.remove(node.inputs[1])
+    node = nodes.new('ShaderNodeVectorMath')
+    node.name = 'Vector Math.004'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((80.0, 20.0))
+    node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
+    node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
+    if use_new_nodes:
+        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
+
+    frame = nodes.new('NodeFrame')
+    frame.name = 'Transpose Matrix'
+    frame.label = 'Transpose Matrix'
+    frame.location = Vector((180.0, -80.0))
+    frame.hide = False
+    frame.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node = nodes.new('ShaderNodeCombineXYZ')
+    node.name = 'Combine XYZ.001'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((80.0, 20.0))
+    node.inputs[0].default_value = 0.0  # X
+    node.inputs[1].default_value = 0.0  # Y
+    node.inputs[2].default_value = 0.0  # Z
+    node = nodes.new('ShaderNodeCombineXYZ')
+    node.name = 'Combine XYZ.002'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((80.0, -20.0))
+    node.inputs[0].default_value = 0.0  # X
+    node.inputs[1].default_value = 0.0  # Y
+    node.inputs[2].default_value = 0.0  # Z
+    node = nodes.new('ShaderNodeCombineXYZ')
+    node.name = 'Combine XYZ.003'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((80.0, -60.0))
+    node.inputs[0].default_value = 0.0  # X
+    node.inputs[1].default_value = 0.0  # Y
+    node.inputs[2].default_value = 0.0  # Z
+    node = nodes.new('ShaderNodeSeparateXYZ')
+    node.name = 'Separate XYZ.001'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-80.0, 20.0))
+    node.inputs[0].default_value = (0.0, 0.0, 0.0)  # Vector
+    node = nodes.new('ShaderNodeSeparateXYZ')
+    node.name = 'Separate XYZ.002'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-80.0, -20.0))
+    node.inputs[0].default_value = (0.0, 0.0, 0.0)  # Vector
+    node = nodes.new('ShaderNodeSeparateXYZ')
+    node.name = 'Separate XYZ.003'
+    node.label = ''
+    node.parent = frame
+    node.hide = True
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.location = Vector((-80.0, -60.0))
+    node.inputs[0].default_value = (0.0, 0.0, 0.0)  # Vector
+
+    node = nodes.new('NodeGroupOutput')
+    node.name = 'Group Output'
+    node.label = ''
+    node.location = Vector((840.0, -80.0))
+    node.hide = False
+    node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
+    node.inputs[0].default_value = (0.0, 0.0, 0.0)  # Normal
+
+    # Connect the nodes
+    links.new(nodes['Group Input'].outputs['Strength'], nodes['Influence'].inputs[0])
+    links.new(nodes['Group Input'].outputs['Color'], nodes['Influence'].inputs[2])
+    links.new(nodes['Influence'].outputs['Color'], nodes['Vector Math.003'].inputs[0])
+    links.new(nodes['UV Gradients'].outputs['X'], nodes['Tangent'].inputs['Height'])
+    links.new(nodes['UV Gradients'].outputs['Y'], nodes['Bi-Tangent'].inputs['Height'])
+    links.new(nodes['UV Map'].outputs['UV'], nodes['UV Gradients'].inputs['Vector'])
+    links.new(nodes['Tangent'].outputs['Normal'], nodes['Separate XYZ.001'].inputs[0])
+    links.new(nodes['Bi-Tangent'].outputs['Normal'], nodes['Separate XYZ.002'].inputs[0])
+    links.new(nodes['Normal'].outputs['Normal'], nodes['Separate XYZ.003'].inputs[0])
+    links.new(nodes['Vector Math.004'].outputs['Vector'], nodes['Vector Math'].inputs[1])
+    links.new(nodes['Combine XYZ.001'].outputs['Vector'], nodes['Vector Math'].inputs[0])
+    links.new(nodes['Vector Math.004'].outputs['Vector'], nodes['Vector Math.001'].inputs[1])
+    links.new(nodes['Combine XYZ.002'].outputs['Vector'], nodes['Vector Math.001'].inputs[0])
+    links.new(nodes['Vector Math.004'].outputs['Vector'], nodes['Vector Math.002'].inputs[1])
+    links.new(nodes['Combine XYZ.003'].outputs['Vector'], nodes['Vector Math.002'].inputs[0])
+    links.new(nodes['Vector Math.003'].outputs['Vector'], nodes['Vector Math.004'].inputs[0])
+    links.new(nodes['Vector Math.003'].outputs['Vector'], nodes['Vector Math.004'].inputs[1])
+    links.new(nodes['Vector Math'].outputs['Value'], nodes['Combine XYZ'].inputs['X'])
+    links.new(nodes['Vector Math.001'].outputs['Value'], nodes['Combine XYZ'].inputs['Y'])
+    links.new(nodes['Vector Math.002'].outputs['Value'], nodes['Combine XYZ'].inputs['Z'])
+    links.new(nodes['Separate XYZ.001'].outputs['X'], nodes['Combine XYZ.001'].inputs['X'])
+    links.new(nodes['Separate XYZ.002'].outputs['X'], nodes['Combine XYZ.001'].inputs['Y'])
+    links.new(nodes['Separate XYZ.003'].outputs['X'], nodes['Combine XYZ.001'].inputs['Z'])
+    links.new(nodes['Separate XYZ.001'].outputs['Y'], nodes['Combine XYZ.002'].inputs['X'])
+    links.new(nodes['Separate XYZ.002'].outputs['Y'], nodes['Combine XYZ.002'].inputs['Y'])
+    links.new(nodes['Separate XYZ.003'].outputs['Y'], nodes['Combine XYZ.002'].inputs['Z'])
+    links.new(nodes['Separate XYZ.001'].outputs['Z'], nodes['Combine XYZ.003'].inputs['X'])
+    links.new(nodes['Separate XYZ.002'].outputs['Z'], nodes['Combine XYZ.003'].inputs['Y'])
+    links.new(nodes['Separate XYZ.003'].outputs['Z'], nodes['Combine XYZ.003'].inputs['Z'])
+    links.new(nodes['Combine XYZ'].outputs['Vector'], nodes['Group Output'].inputs['Normal'])
+
+    return group
+
+# ------------------------------------------------------------------------
 #    Link (thanks to Mets3D)
 # ------------------------------------------------------------------------
 
@@ -3467,7 +3893,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         box.prop(rig_settings,"model_body", text = "Body")
         
         layout.separator()
-        layout.label(text="Properties",icon="MENU_PANEL")
+        layout.label(text="Settings",icon="MENU_PANEL")
         
         # Body mesh settings
         row = layout.row(align=False)
@@ -3568,7 +3994,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 row = col.row()
                 row.enabled = armature_settings.enable_ik_fk
                 row.prop(armature_settings, 'enable_ik_fk_snap')
-                box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
                 
                 box = layout.box()
                 box.label(text="Layers List",icon="PRESET")
@@ -3626,6 +4051,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                                row = col.row()
                                row.prop(armature_settings.layers[i],'mirror_left')
                                row.prop(armature_settings.layers[i],'mirror_layer')
+                
+                box = layout.box()
+                box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
         
         # Physics
         row = layout.row(align=False)
@@ -3689,20 +4117,56 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         
         if not tools_settings.tools_config_collapse:
             box = layout.box()
-            box.label(text="Enable tools", icon="MODIFIER")
+            box.label(text="Enable Tools", icon="MODIFIER")
             box.prop(tools_settings,'childof_enable')
-            row = box.row()
-            if not rig_settings.model_rig_type == "arp" or not hasattr(obj,'[\"arp_updated\"]'):
-                row.enabled = False
-            row.prop(tools_settings,'lips_shrinkwrap_enable')
+            box.prop(tools_settings,'lips_shrinkwrap_enable')
             box.prop(lattice_settings,'lattice_panel_enable')
             
             if lattice_settings.lattice_panel_enable:
                 box = layout.box()
-                box.label(text="Lattice tool settings", icon="MOD_LATTICE")
+                box.label(text="Lattice Tool Settings", icon="MOD_LATTICE")
                 box.prop(lattice_settings,'lattice_object')
                 box.operator('mustardui.tools_latticesetup', text="Lattice Setup").mod = 0
                 box.operator('mustardui.tools_latticesetup', text="Lattice Clean").mod = 1
+        
+        # External addons
+        row = layout.row(align=False)
+        row.prop(rig_settings, "external_addons_collapse", icon="TRIA_DOWN" if not rig_settings.external_addons_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
+        row.label(text="External Add-ons",icon="DOCUMENTS")
+        if not rig_settings.external_addons_collapse:
+            box = layout.box()
+            box.label(text="Enable Support", icon="MODIFIER")
+            row = box.row()
+            if settings.status_diffeomorphic != 2:
+                row.enabled = False
+            row.prop(rig_settings,"diffeomorphic_support")
+            if rig_settings.diffeomorphic_support:
+                box = layout.box()
+                box.label(text="Diffeomorphic Settings", icon="OUTLINER_DATA_SURFACE")
+                box.prop(rig_settings, "diffeomorphic_emotions_units")
+                box.prop(rig_settings, "diffeomorphic_emotions")
+                if rig_settings.diffeomorphic_emotions:
+                    row = box.row(align=True)
+                    row.label(text="Custom morphs")
+                    row.scale_x = row_scale
+                    row.prop(rig_settings, "diffeomorphic_emotions_custom", text = "")
+                box.prop(rig_settings, "diffeomorphic_facs_emotions_units")
+                box.prop(rig_settings, "diffeomorphic_facs_emotions")
+                box.prop(rig_settings, "diffeomorphic_body_morphs")
+                if rig_settings.diffeomorphic_body_morphs:
+                    row = box.row(align=True)
+                    row.label(text="Custom morphs")
+                    row.scale_x = row_scale
+                    row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text = "")
+                
+                if settings.status_diffeomorphic == 1:
+                    box.label(icon='ERROR',text="Debug: Diffeomorphic not enabled!")
+                elif settings.status_diffeomorphic  == 0:
+                    box.label(icon='ERROR', text="Debug: Diffeomorphic not installed!")
+                
+                box = box.box()
+                box.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
+                box.operator('mustardui.dazmorphs_checkmorphs')
         
         # Links
         row = layout.row(align=False)
@@ -3742,39 +4206,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         row.prop(rig_settings, "various_config_collapse", icon="TRIA_DOWN" if not rig_settings.various_config_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
         row.label(text="Others",icon="SETTINGS")
         if not rig_settings.various_config_collapse:
-            box = layout.box()
-            box.label(text="External Add-ons", icon="DOCUMENTS")
-            row = box.row()
-            if settings.status_diffeomorphic != 2:
-                row.enabled = False
-            row.prop(rig_settings,"diffeomorphic_support")
-            if rig_settings.diffeomorphic_support:
-                box2 = box.box()
-                box2.prop(rig_settings, "diffeomorphic_emotions_units")
-                box2.prop(rig_settings, "diffeomorphic_emotions")
-                if rig_settings.diffeomorphic_emotions:
-                    row = box2.row(align=True)
-                    row.label(text="Custom morphs")
-                    row.scale_x = row_scale
-                    row.prop(rig_settings, "diffeomorphic_emotions_custom", text = "")
-                box2.prop(rig_settings, "diffeomorphic_facs_emotions_units")
-                box2.prop(rig_settings, "diffeomorphic_facs_emotions")
-                box2.prop(rig_settings, "diffeomorphic_body_morphs")
-                if rig_settings.diffeomorphic_body_morphs:
-                    row = box2.row(align=True)
-                    row.label(text="Custom morphs")
-                    row.scale_x = row_scale
-                    row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text = "")
-                
-                if settings.status_diffeomorphic == 1:
-                    box.label(icon='ERROR',text="Debug: Diffeomorphic not enabled!")
-                elif settings.status_diffeomorphic  == 0:
-                    box.label(icon='ERROR', text="Debug: Diffeomorphic not installed!")
-                
-                box3 = box.box()
-                box3.label(text="Morphs options", icon="PRESET_NEW")
-                box3.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
-                box3.operator('mustardui.dazmorphs_checkmorphs')
             
             box = layout.box()
             box.label(text="Naming", icon="OUTLINER_DATA_FONT")
@@ -3796,6 +4227,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box = layout.box()
                 box.enabled = False
                 box.prop(rig_settings,"model_armature_object", text = "Armature Object")
+                box.prop(rig_settings,"model_rig_type", text = "Rig Type")
         
         # Configuration button
         layout.separator()
@@ -3860,6 +4292,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             
             if rig_settings.body_enable_sss:
                 box.prop(rig_settings,"body_sss")
+            
+            box.prop(settings,"material_normal_nodes")
                 
         if len(rig_settings.body_additional_properties) > 0:
             
@@ -4669,7 +5103,7 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config = 0)
         if arm != None:
             rig_settings = arm.MustardUI_RigSettings
-            return res and (arm.MustardUI_ToolsSettings.childof_enable or (arm.MustardUI_ToolsSettings.lips_shrinkwrap_enable and rig_settings.model_rig_type == "arp"))
+            return res and (arm.MustardUI_ToolsSettings.childof_enable or (arm.MustardUI_ToolsSettings.lips_shrinkwrap_enable and rig_settings.model_rig_type in ["arp", "mhx"]))
         else:
             return res
     
@@ -4722,7 +5156,7 @@ class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config = 0)
         if arm != None:
             rig_settings = arm.MustardUI_RigSettings
-            return res and arm.MustardUI_ToolsSettings.lips_shrinkwrap_enable and rig_settings.model_rig_type == "arp"
+            return res and arm.MustardUI_ToolsSettings.lips_shrinkwrap_enable and rig_settings.model_rig_type in ["arp", "mhx"]
         else:
             return res
     
@@ -4791,9 +5225,9 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         box.prop(settings,"maintenance")
         box.prop(settings,"debug")
         if settings.viewport_model_selection:
-            box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", depress = True)
+            box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon = "VIEW3D", depress = True)
         else:
-            box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", depress = False)
+            box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon = "VIEW3D", depress = False)
         
         if settings.maintenance:
             box = layout.box()
@@ -4893,6 +5327,7 @@ classes = (
     MustardUI_DazMorphs_EnableDrivers,
     MustardUI_OutfitVisibility,
     MustardUI_GlobalOutfitPropSwitch,
+    MustardUI_Material_NormalMap_Nodes,
     MustardUI_LinkButton,
     # Outfit add/remove operators
     MustardUI_AddOutfit,
