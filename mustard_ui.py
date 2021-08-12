@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 11),
+    "version": (0, 20, 12),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -235,9 +235,9 @@ def mustardui_body_additional_options_update(self, context):
             # Shape keys update
             for shape_key in obj.data.shape_keys.key_blocks:
                 if shape_key.name == "MustardUI Float - "+self.name:
-                    shape_key.value = self.body_value_float
+                    shape_key.value = self.body_float_value
                 elif shape_key.name == "MustardUI Bool - "+self.name:
-                    shape_key.value = self.body_value_bool
+                    shape_key.value = self.body_bool_value
     
     return
 
