@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 12),
+    "version": (0, 20, 13),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -141,9 +141,25 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Rig-tools addon status definition
     status_rig_tools: bpy.props.IntProperty(default = addon_check("auto_rig_pro-master", "rig_tools"),
                         name = "rig_tools addon status")
+    
     # Rig-tools addon status definition
     status_diffeomorphic: bpy.props.IntProperty(default = addon_check("import_daz", "import_daz"),
-                        name = "rig_tools addon status")
+                        name = "diffeomorphic addon status")
+    
+    # Rig-tools addon status definition
+    status_mhx: bpy.props.IntProperty(default = addon_check("mhx_rts", "mhx_rts"),
+                        name = "mhx_rts addon status")
+    
+    def addon_version_check(addon_name):
+        try:
+            mod = sys.modules[addon_name]
+            version = mod.bl_info.get('version', (-1, -1, -1))
+            print("MustardUI - " + addon_name + " version is " + str(version[0]) + "." + str(version[1]) + "." + str(version[2]) + ".")
+            return version
+        except:
+            return (-1, -1, -1)
+    
+    status_diffeomorphic_version: bpy.props.IntVectorProperty(default = addon_version_check("import_daz"))
     
     # Property for additional properties errors
     additional_properties_error: bpy.props.BoolProperty(name = "",
@@ -2054,11 +2070,18 @@ class MustardUI_Configuration(bpy.types.Operator):
                     print('MustardUI - Configuration Warning - The rig has multiple rig types. This might create problems in the UI')
             
             # Check MHX requirements for IK/FK support
+            if armature_settings.enable_ik_fk and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0):
+                armature_settings.enable_ik_fk = False
+                armature_settings.enable_ik_fk_snap = False
+                warnings = warnings + 1
+                if settings.debug:
+                    print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but from Diffeomorphic 1.6.0 it has been moved to MHX independent panel')
+            
             if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and settings.status_diffeomorphic < 2:
                 warnings = warnings + 1
                 if settings.debug:
                     print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but Diffeomorphic is not installed')
-            # Check the MHX requirement for IK/FK
+            
             if armature_settings.enable_ik_fk and rig_settings.model_rig_type != "mhx":
                 armature_settings.enable_ik_fk = False
                 armature_settings.enable_ik_fk_snap = False
@@ -4683,6 +4706,13 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_label = "Armature Settings"
     bl_options = {"DEFAULT_CLOSED"}
     
+    def toggleFKIK(self, row, value, op):
+        if value > 0.5:
+            row.operator(op, text="IK")
+        else:
+            row.operator(op, text="FK")
+        return
+    
     @classmethod
     def poll(cls, context):
         
@@ -4730,9 +4760,12 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         
         if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None:
             
-            box = layout.box()
-            
             if settings.status_diffeomorphic > 1:
+                
+                if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0) or not hasattr(rig_settings.model_armature_object, '["MhaArmIk_L"]'):
+                    return
+                
+                box = layout.box()
             
                 row = box.row(align=False)
                 row.prop(armature_settings, "ik_fk_collapse", icon="TRIA_DOWN" if not armature_settings.ik_fk_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
@@ -4792,6 +4825,8 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                         row.operator("daz.snap_ik_fk", text="Snap R IK Leg").data = "MhaLegIk_R 20 21 28"
             
             else:
+                box = layout.box()
+                
                 box.label(text="IK/FK Settings")
                 box.label(text="Diffeomorphic not installed", icon = "ERROR")
                 
