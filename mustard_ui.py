@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 13),
+    "version": (0, 20, 15),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -1790,7 +1790,14 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         
         context.view_layer.objects.active = rig_settings.model_armature_object
         
-        bpy.ops.daz.disable_drivers({object:rig_settings.model_armature_object})
+        warnings = 0
+        
+        try:
+            bpy.ops.daz.disable_drivers({object:rig_settings.model_armature_object})
+        except:
+            warnings = warnings + 1
+            if settings.debug:
+                print('MustardUI - Error occurred while using the daz operator \'disable_drivers\'')
         
         for collection in rig_settings.outfits_collections:
             for obj in collection.collection.objects:
@@ -1815,6 +1822,11 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         rig_settings.diffeomorphic_body_morphs_collapse = True
         
         context.view_layer.objects.active = aobj
+        
+        if warnings < 1:
+            self.report({'INFO'}, 'MustardUI - Morphs drivers disabled. Enable them to use them again.')
+        else:
+            self.report({'WARNING'}, 'MustardUI - An error occurred while disabling morphs')
         
         return{'FINISHED'}
 
@@ -1850,7 +1862,14 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         
         context.view_layer.objects.active = rig_settings.model_armature_object
         
-        bpy.ops.daz.enable_drivers()
+        warnings = 0
+        
+        try:
+            bpy.ops.daz.enable_drivers({object:rig_settings.model_armature_object})
+        except:
+            warnings = warnings + 1
+            if settings.debug:
+                print('MustardUI - Error occurred while using the daz operator \'enable_drivers\'')
         
         for collection in rig_settings.outfits_collections:
             for obj in collection.collection.objects:
@@ -1869,6 +1888,52 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                     driver.mute = False
         
         context.view_layer.objects.active = aobj
+        
+        if warnings < 1:
+            self.report({'INFO'}, 'MustardUI - Morphs drivers enabled.')
+        else:
+            self.report({'WARNING'}, 'MustardUI - An error occurred while enabling morphs')  
+    
+        return{'FINISHED'}
+
+class MustardUI_DazMorphs_ClearModel(bpy.types.Operator):
+    """Clear morphs and poses.\nNote: this will also reset the model pose"""
+    bl_idname = "mustardui.dazmorphs_clearmodel"
+    bl_label = "Button"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        return res
+ 
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 1)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        warnings = 0
+        
+        try:
+            bpy.ops.daz.clear_pose({object:rig_settings.model_armature_object})
+        except:
+            warnings = warnings + 1
+            if settings.debug:
+                print('MustardUI - Error occurred while using the daz operator \'clear_pose\'')
+        
+        try:
+            bpy.ops.daz.clear_morphs({object:rig_settings.model_armature_object}, morphset="All", category="")
+        except:
+            warnings = warnings + 1
+            if settings.debug:
+                print('MustardUI - Error occurred while using the daz operator \'clear_morphs\'')
+        
+        if warnings < 1:
+            self.report({'INFO'}, 'MustardUI - Pose and morphs cleaned successfully')
+        else:
+            self.report({'ERROR'}, 'MustardUI - An error occurred while cleaning the pose or the morphs')
         
         return{'FINISHED'}
 
@@ -2435,6 +2500,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         poll, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
         armature_settings = obj.MustardUI_ArmatureSettings
+        
+        if rig_settings.extras_collection != None:
+            rig_settings.extras_collection.hide_viewport = len([x for x in rig_settings.extras_collection.objects if not x.hide_render]) == 0
+            rig_settings.extras_collection.hide_render = rig_settings.extras_collection.hide_viewport
         
         if rig_settings.model_body:
             for modifier in rig_settings.model_body.modifiers:
@@ -4482,7 +4551,9 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
                         row = box.row(align=False)
                         row.label(text = morph.name)
                         row.prop(settings, 'daz_morphs_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
-
+        
+        if settings.maintenance:
+            layout.operator('mustardui.dazmorphs_clearmodel', text = "Clear settings", icon = "LOOP_BACK")
                 
 class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Outfits"
@@ -5360,6 +5431,7 @@ classes = (
     MustardUI_DazMorphs_DefaultValues,
     MustardUI_DazMorphs_DisableDrivers,
     MustardUI_DazMorphs_EnableDrivers,
+    MustardUI_DazMorphs_ClearModel,
     MustardUI_OutfitVisibility,
     MustardUI_GlobalOutfitPropSwitch,
     MustardUI_Material_NormalMap_Nodes,
