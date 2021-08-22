@@ -12,7 +12,7 @@ The main features are:
 * Automatic mask/armature layers switcher for the body and the hair on outfit selection
 * Settings like Subsurface Scattering and Normals Auto Smooth can be toggled on/off for all model parts in one click
 * Automatic recognition of additional body and outfits properties (shape keys and material settings)
-* Physics tool (only cloth at the moment), with 1-click bake and collision configurator (soon on version 0.20.0)
+* Physics tool (only cloth at the moment), with 1-click bake tool
 * Lattice deformation tool compatibility, with a tool to simplify the addition of the modifier for all outfit parts
 * Additional tools for animators
 
