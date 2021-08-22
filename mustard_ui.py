@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 15),
+    "version": (0, 20, 16),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -265,6 +265,26 @@ def mustardui_additional_option_bool_update(self,context):
     except:
         print("MustardUI - Can not find the property. Re-run the Check Additional Option operator in the Configuration menu to solve this")
 
+# Section for body properties
+class MustardUI_SectionItem(bpy.types.PropertyGroup):
+    
+    # Name of the section
+    name: bpy.props.StringProperty(name = "Section name")
+    
+    # Section ID
+    id: bpy.props.IntProperty(name = "Section ID")
+    
+    # Section icon
+    icon : bpy.props.StringProperty(name="Section Icon",
+                        default="")
+    
+    # Advanced settings
+    advanced: bpy.props.BoolProperty(default = False,
+                        name = "Advanced",
+                        description = "The section will be shown only when Advances Settings is enabled")
+
+bpy.utils.register_class(MustardUI_SectionItem)
+
 # Custom Option property for additional outfit options
 #
 # - Outfits: All the outfits additional properties are saved with path and id,
@@ -311,6 +331,10 @@ class MustardUI_OptionItem(bpy.types.PropertyGroup):
                         subtype = 'COLOR',
                         update = mustardui_body_additional_options_update,
                         description="Value of the property")
+    
+    section: bpy.props.StringProperty(default = "")
+    add_section: bpy.props.BoolProperty(default = False,
+                        description = "Add the property to the selected section")
     
 bpy.utils.register_class(MustardUI_OptionItem)
 bpy.types.Object.mustardui_additional_options = bpy.props.CollectionProperty(type = MustardUI_OptionItem)
@@ -467,8 +491,11 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     body_additional_properties_number: bpy.props.IntProperty(default = 0,
                         name = "")
     
-    # List of the collections from which to extract the outfits
+    # List of the body additional properties
     body_additional_properties: bpy.props.CollectionProperty(type = MustardUI_OptionItem)
+    
+    # List of the sections for body additional properties
+    body_additional_properties_sections: bpy.props.CollectionProperty(type = MustardUI_SectionItem)
     
     # ------------------------------------------------------------------------
     #    Outfit properties
@@ -903,6 +930,8 @@ class MustardUI_Armature_Sort(bpy.types.Operator):
         
         for i in range(0,32):
             
+            print(str(i) + ": " + str(armature_settings.layers[i].id))
+            
             if armature_settings.layers[i].id == self.sort_id:
                 layer_id = i
             elif armature_settings.layers[i].id == self.sort_id - 1:
@@ -1030,7 +1059,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                             self.layers[j].id = self.layers[j].id - 1
                         
                     self.last_id = self.last_id - 1
-                    self.layers[i].id = 0
+                    self.layers[i].id = -1
                         
         
         self.config_layer_store = self.config_layer
@@ -1379,7 +1408,7 @@ def mustardui_add_option_item_body(collection, item):
     add_item.type = item[2]
     
     if item[2] in [0,2]:
-        add_item.body_bool_value = item[1]
+        add_item.body_bool_value = int(item[1])
     elif item[2] in [1,3]:
         add_item.body_float_value = item[1]
     else:
@@ -1405,6 +1434,12 @@ class MustardUI_Body_CheckAdditionalOptions(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config = 1)
         rig_settings = obj.MustardUI_RigSettings
         
+        section_status = []
+        
+        for prop in rig_settings.body_additional_properties:
+            if prop.section != "":
+                section_status.append( (prop.name, prop.type, prop.section) )
+        
         # Clean the additional options properties
         rig_settings.body_additional_properties.clear()
         
@@ -1423,6 +1458,11 @@ class MustardUI_Body_CheckAdditionalOptions(bpy.types.Operator):
                 elif "MustardUI Bool" in shape_key.name:
                     mustardui_add_option_item_body(rig_settings.body_additional_properties, [shape_key.name[len("MustardUI Bool - "):], shape_key.value, 0])
         
+        for prop in rig_settings.body_additional_properties:
+            for saved_prop in section_status:
+                if prop.name == saved_prop[0] and prop.type == saved_prop[1]:
+                    prop.section = saved_prop[2]
+        
         properties_number = 0                       
         if settings.debug:
             print("\nMustardUI - Additional Body options found\n")
@@ -1430,6 +1470,8 @@ class MustardUI_Body_CheckAdditionalOptions(bpy.types.Operator):
         for el in rig_settings.body_additional_properties:
             if settings.debug:
                 print(el.name + ": type " + str(el.type))
+                if el.section != "":
+                    print(el.name + ": section recovered \'" + el.section + "\'")
             properties_number = properties_number + 1
         
         rig_settings.body_additional_properties_number = properties_number
@@ -1438,6 +1480,352 @@ class MustardUI_Body_CheckAdditionalOptions(bpy.types.Operator):
         self.report({'INFO'}, 'MustardUI - Additional Body options check completed.')
 
         return {'FINISHED'}
+
+# Section icons
+mustardui_section_icon_list = [
+                ("NONE","No Icon","No Icon"),
+                ("USER", "Face", "Face","USER",1),
+                ("HAIR", "Hair", "Hair","HAIR",2),
+                ("MOD_CLOTH", "Cloth", "Cloth","MOD_CLOTH",3),
+                ("MATERIAL", "Material", "Material","MATERIAL",4),
+                ("ARMATURE_DATA", "Armature", "Armature","ARMATURE_DATA",5),
+                ("MOD_ARMATURE", "Armature", "Armature","MOD_ARMATURE",6),
+                ("EXPERIMENTAL", "Experimental", "Experimental","EXPERIMENTAL",7),
+                ("PHYSICS", "Physics", "Physics","PHYSICS",8),
+                ("WORLD", "World", "World","WORLD",9),
+                ("PARTICLEMODE", "Comb", "Comb","PARTICLEMODE",10),
+                ("OUTLINER_OB_POINTCLOUD", "Points", "Points","OUTLINER_OB_POINTCLOUD",11),
+                ("MOD_DYNAMICPAINT", "Foot", "Foot","MOD_DYNAMICPAINT",12),
+                ("OUTLINER_DATA_VOLUME", "Cloud", "Cloud","OUTLINER_DATA_VOLUME",13)
+            ]
+
+# Operator to add a new section
+class MustardUI_Body_AddSection(bpy.types.Operator):
+    """Add a new Section"""
+    bl_idname = "mustardui.body_addsection"
+    bl_label = "Add Section"
+    bl_icon = "PREFERENCES"
+    bl_options = {'UNDO'}
+    
+    name : bpy.props.StringProperty(name='Name',
+                        description="Choose the name of the Section",
+                        default = "Section")
+    icon : bpy.props.EnumProperty(name='Icon',
+                        description="Choose the icon.\nNote that the icon name MUST respect Blender convention. All the icons can be found in the Icon Viewer default Blender addon",
+                        items = mustardui_section_icon_list)
+    advanced: bpy.props.BoolProperty(default = False,
+                        name = "Advanced",
+                        description = "The section will be shown only when Advances Settings is enabled")
+
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        return res
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        sec_obj = rig_settings.body_additional_properties_sections
+        sec_len = len(rig_settings.body_additional_properties_sections)
+        
+        if self.name == "":
+            
+            self.report({'ERROR'}, 'MustardUI - Cannot create sections with this name.')
+            return {'FINISHED'}
+           
+        j = -1
+        for el in sec_obj:
+            j = j+1
+            if el.name == self.name:
+                self.report({'WARNING'}, 'MustardUI - Cannot create sections with same name.')
+                return {'FINISHED'}
+        
+        add_item = sec_obj.add()
+        add_item.name = self.name
+        add_item.icon = self.icon
+        add_item.advanced = self.advanced
+        add_item.id = sec_len
+        
+        self.report({'INFO'}, 'MustardUI - Section \'' + self.name +'\' created.')
+        
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        return context.window_manager.invoke_props_dialog(self)
+            
+    def draw(self, context):
+        
+        layout = self.layout
+        
+        scale = 3.0
+        
+        row=layout.row()
+        row.label(text="Name:")
+        row.scale_x=scale
+        row.prop(self, "name", text="")
+        
+        row=layout.row()
+        row.label(text="Icon:")
+        row.scale_x=scale
+        row.prop(self, "icon", text="")
+        
+        row=layout.row()
+        row.prop(self, "advanced", text="")
+        row.label(text="Advanced")
+
+# Delete Section
+class MustardUI_Body_DeleteSection(bpy.types.Operator):
+    """Delete the selected Section"""
+    bl_idname = "mustardui.body_deletesection"
+    bl_label = "Delete Section"
+    bl_options = {'UNDO'}
+    
+    name : bpy.props.StringProperty(name='Name',
+        description="Choose the name of the section")
+    
+    def find_index_section_fromID(self, collection, item):
+        i=-1
+        for el in collection:
+            i=i+1
+            if el.id == item:
+                break
+        return i
+
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        return res
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        sec_obj = rig_settings.body_additional_properties_sections
+        
+        i=-1
+        for el in sec_obj:
+            i=i+1
+            if el.name == self.name:
+                break
+        
+        if i>=0:
+            
+            j = sec_obj[i].id
+            
+            for prop in rig_settings.body_additional_properties:
+                if prop.section == sec_obj[i].name:
+                    prop.section = ""
+            
+            for k in range(j+1,len(sec_obj)):
+                sec_obj[self.find_index_section_fromID(sec_obj, k)].id = k-1
+            
+            sec_obj.remove(i)
+        
+        self.report({'INFO'}, 'MustardUI - Section \'' + self.name +'\' deleted.')
+        
+        return {'FINISHED'}
+
+# Section Property settings
+class MustardUI_Body_SettingsSection(bpy.types.Operator):
+    """Modify the section settings."""
+    bl_idname = "mustardui.body_settingssection"
+    bl_label = "Section settings"
+    bl_icon = "PREFERENCES"
+    bl_options = {'UNDO'}
+    
+    name : bpy.props.StringProperty(name='Name',
+                        description="Choose the name of the section")
+    icon : bpy.props.EnumProperty(name='Icon',
+                        description="Choose the icon.\nNote that the icon name MUST respect Blender convention. All the icons can be found in the Icon Viewer default Blender addon.",
+                        items = mustardui_section_icon_list)
+    advanced: bpy.props.BoolProperty(default = False,
+                        name = "Advanced",
+                        description = "The section will be shown only when Advances Settings is enabled")
+            
+    name_edit : bpy.props.StringProperty(name='Name',
+                        description="Choose the name of the section")
+    ID : bpy.props.IntProperty()
+
+    def find_index_section(self, collection, item):
+        i=-1
+        for el in collection:
+            i=i+1
+            if el.name == item:
+                break
+        return i
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        return res
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        sec_obj = rig_settings.body_additional_properties_sections
+        
+        if self.name_edit == "":
+            self.report({'WARNING'}, 'MustardUI - Can not rename a Section with an empty name.')
+            return {'FINISHED'}
+        
+        i = self.find_index_section(sec_obj,self.name)
+        
+        for prop in rig_settings.body_additional_properties:
+            if prop.section == sec_obj[i].name:
+                prop.section = self.name_edit
+            
+        if i>=0:
+           
+            sec_obj[i].name = self.name_edit
+            sec_obj[i].icon = self.icon
+            sec_obj[i].advanced = self.advanced
+        
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        sec_obj = rig_settings.body_additional_properties_sections
+        
+        self.name_edit = self.name
+        self.ID = self.find_index_section(sec_obj,self.name)
+        self.icon = sec_obj[self.ID].icon
+        self.advanced = sec_obj[self.ID].advanced
+        
+        return context.window_manager.invoke_props_dialog(self)
+            
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        sec_obj = rig_settings.body_additional_properties_sections
+        
+        scale = 3.0
+        
+        layout = self.layout
+        
+        row=layout.row()
+        row.label(text="Name:")
+        row.scale_x=scale
+        row.prop(self, "name_edit", text="")
+        
+        row=layout.row()
+        row.label(text="Icon:")
+        row.scale_x=scale
+        row.prop(self, "icon", text="")
+        
+        row=layout.row()
+        row.prop(self, "advanced", text="")
+        row.label(text="Advanced")
+
+# Operator to change Section position
+class MustardUI_Body_SwapSection(bpy.types.Operator):
+    """Change the position of the section"""
+    bl_idname = "mustardui.body_swapsection"
+    bl_label = "Change the section position"
+    
+    mod : bpy.props.BoolProperty(default = False) # False = down, True = Up
+    name : bpy.props.StringProperty()
+    
+    def find_index_section_fromID(self, collection, item):
+        i=-1
+        for el in collection:
+            i=i+1
+            if el.id == item:
+                break
+        return i
+    
+    def find_index_section(self, collection, item):
+        i=-1
+        for el in collection:
+            i=i+1
+            if el.name == item:
+                break
+        return i
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        sec_obj = rig_settings.body_additional_properties_sections
+        sec_len = len(sec_obj)
+        
+        sec_index = self.find_index_section(sec_obj,self.name)
+        i = sec_obj[sec_index].id
+            
+        if self.mod and i > 0:
+            j = self.find_index_section_fromID(sec_obj, i-1)
+            sec_obj[sec_index].id = i-1
+            sec_obj[j].id = i
+        elif not self.mod and i < sec_len-1:
+            j = self.find_index_section_fromID(sec_obj, i+1)
+            sec_obj[sec_index].id = i+1
+            sec_obj[j].id = i
+        
+        return {'FINISHED'}
+
+# Operator to change Section position
+class MustardUI_Body_PropertyAddToSection(bpy.types.Operator):
+    """Assign properties to the selected section"""
+    bl_idname = "mustardui.body_propertyaddtosection"
+    bl_label = "Assign properties"
+    
+    section_name : bpy.props.StringProperty()
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        for prop in rig_settings.body_additional_properties:
+            if prop.add_section:
+                prop.section = self.section_name
+            else:
+                prop.section = "" if prop.section == self.section_name else prop.section
+        
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        for prop in rig_settings.body_additional_properties:
+            prop.add_section = prop.section == self.section_name
+        
+        return context.window_manager.invoke_props_dialog(self)
+            
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        layout = self.layout
+        
+        layout.label(text = "Add properties to the Section \'" + self.section_name + "\'")
+        
+        box = layout.box()
+        for prop in rig_settings.body_additional_properties:
+            row = box.row(align = False)
+            row.prop(prop,'add_section', text = "")
+            row.label(text = prop.name, icon = "SHAPEKEY_DATA" if prop.type in [0,1] else "MATERIAL")
 
 # ------------------------------------------------------------------------
 #    Outfits additional options components
@@ -2288,7 +2676,10 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         if rig_settings.outfits_additional_properties_number < 1:
             print('\nMustardUI - Smart Check - No additional property found.')
         
-        # Standard armature setup for Mustard models (Auto-Rig Pro based rigs)
+        # Standard armature setup
+        
+        preset_Mustard_models = []
+        
         if hasattr(obj,'[\"arp_updated\"]'):
             if settings.debug:
                 print('\nMustardUI - Smart Check - Found an ARP rig, version: \'' + obj["arp_updated"] + '\' .')
@@ -2298,22 +2689,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                                     (1, "Advanced", False),
                                     (7, "Extra", False),
                                     (10, "Child Of - Ready", False),
-                                    (31, "Rigging - Ready", True)]
-            
-            if len(armature_settings.layers)<1:
-                bpy.ops.mustardui.armature_initialize(clean = False)
-            
-            for layer in preset_Mustard_models:
-                if not armature_settings.config_layer[ layer[0] ]:
-                    armature_settings.config_layer[ layer[0] ] = True   
-                    armature_settings.layers[ layer[0] ].name = layer[1]
-                    armature_settings.layers[ layer[0] ].advanced = layer[2]
-                    armature_settings.layers[ layer[0] ].layer_config_collapse = True
-                    if settings.debug:
-                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' set.')
-                else:
-                    if settings.debug:
-                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')      
+                                    (31, "Rigging - Ready", True)]     
         
         elif hasattr(obj,'[\"rig_id\"]'):
             if settings.debug:
@@ -2339,21 +2715,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                                     (15, "Leg.L (Tweak)", False),
                                     (18, "Leg.R (Tweak)", False),
                                     (28, "Root", False)]
-        
-            if len(armature_settings.layers)<1:
-                bpy.ops.mustardui.armature_initialize(clean = False)
-            
-            for layer in preset_Mustard_models:
-                if not armature_settings.config_layer[ layer[0] ]:
-                    armature_settings.config_layer[ layer[0] ] = True   
-                    armature_settings.layers[ layer[0] ].name = layer[1]
-                    armature_settings.layers[ layer[0] ].advanced = layer[2]
-                    armature_settings.layers[ layer[0] ].layer_config_collapse = True
-                    if settings.debug:
-                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' set.')
-                else:
-                    if settings.debug:
-                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')
         
         elif rig_settings.model_armature_object != None:
             if hasattr(rig_settings.model_armature_object,'[\"MhxRig\"]'):
@@ -2382,23 +2743,23 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                                         (29, "Toes.R", False),
                                         (9, "Tweak", False),
                                         (0, "Root", False)]
-                
-                if len(armature_settings.layers)<1:
+            
+        if len(preset_Mustard_models) >0:
+            
+            if len(armature_settings.layers)<1:
                     bpy.ops.mustardui.armature_initialize(clean = False)
                 
-                for layer in preset_Mustard_models:
-                    if not armature_settings.config_layer[ layer[0] ]:
-                        armature_settings.config_layer[ layer[0] ] = True   
-                        armature_settings.layers[ layer[0] ].name = layer[1]
-                        armature_settings.layers[ layer[0] ].advanced = layer[2]
-                        armature_settings.layers[ layer[0] ].layer_config_collapse = True
-                        if settings.debug:
-                            print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' set.')
-                    else:
-                        if settings.debug:
-                            print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')
-            
-            
+            for layer in preset_Mustard_models:
+                if not armature_settings.config_layer[ layer[0] ]:
+                    armature_settings.config_layer[ layer[0] ] = True   
+                    armature_settings.layers[ layer[0] ].name = layer[1]
+                    armature_settings.layers[ layer[0] ].advanced = layer[2]
+                    armature_settings.layers[ layer[0] ].layer_config_collapse = True
+                    if settings.debug:
+                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' set.')
+                else:
+                    if settings.debug:
+                        print('\nMustardUI - Smart Check - Armature layer ' + str(layer[0]) + ' already defined.')     
         
         # Lips Shrinkwrap
         if tools_settings.lips_shrinkwrap_armature_object == None:
@@ -4005,6 +4366,35 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.label(text="Additional outfit options", icon="PRESET_NEW")
             box.label(text="  Current properties number: " + str(rig_settings.body_additional_properties_number))
             box.operator('mustardui.body_checkadditionaloptions')
+            
+            if rig_settings.body_additional_properties_number > 0:
+                box = layout.box()
+                row = box.row(align = False)
+                row.label(text = "Sections", icon = "LINENUMBERS_OFF")
+                if len(rig_settings.body_additional_properties_sections) == 0:
+                    box.operator('mustardui.body_addsection')
+                else:
+                    box = box.box()
+                    row.operator('mustardui.body_addsection', text="", icon ="ADD")
+                    section_len = len(rig_settings.body_additional_properties_sections)
+                    for i_sec in sorted([x for x in range(0,section_len)], key = lambda x:rig_settings.body_additional_properties_sections[x].id):
+                        section = rig_settings.body_additional_properties_sections[i_sec]
+                        row = box.row(align = False)
+                        row.label(text = section.name, icon = section.icon if (section.icon != "" and section.icon != "NONE") else "DOT")
+                        row.operator('mustardui.body_propertyaddtosection', text = "", icon = "PRESET").section_name = section.name
+                        row.operator('mustardui.body_settingssection', text = "", icon = "PREFERENCES").name = section.name
+                        row2 = row.row(align = True)
+                        col = row2.column(align = True)
+                        col.enabled = section.id > 0
+                        swap_up = col.operator('mustardui.body_swapsection', text = "", icon = "TRIA_UP")
+                        swap_up.name = section.name
+                        swap_up.mod = True
+                        col = row2.column(align = True)
+                        col.enabled = section.id < section_len - 1
+                        swap_down = col.operator('mustardui.body_swapsection', text = "", icon = "TRIA_DOWN")
+                        swap_down.name = section.name
+                        swap_down.mod = False
+                        row.operator('mustardui.body_deletesection', text = "", icon = "X").name = section.name
         
         # Outfits properties
         row = layout.row(align=False)
@@ -4389,8 +4779,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 
         if len(rig_settings.body_additional_properties) > 0:
             
-            additional_properties_sk = sorted([x for x in rig_settings.body_additional_properties if x.type in [0,1]], key = lambda x:x.name)
-            additional_properties_mat = sorted([x for x in rig_settings.body_additional_properties if x.type in [2,3,4]], key = lambda x:x.name)
+            additional_properties_sk = sorted([x for x in rig_settings.body_additional_properties if x.type in [0,1] and x.section == ""], key = lambda x:x.name)
+            additional_properties_mat = sorted([x for x in rig_settings.body_additional_properties if x.type in [2,3,4] and x.section == ""], key = lambda x:x.name)
             
             if len(additional_properties_sk) > 0:
                 box = layout.box()
@@ -4415,6 +4805,26 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                         row.prop(aprop, 'body_float_value', text = "")
                     else:
                         row.prop(aprop, 'body_color_value', text = "")
+            
+            for i_sec in sorted([x for x in range(0,len(rig_settings.body_additional_properties_sections))], key = lambda x:rig_settings.body_additional_properties_sections[x].id):
+                section = rig_settings.body_additional_properties_sections[i_sec]
+                additional_properties_section = sorted([x for x in rig_settings.body_additional_properties if x.section == section.name], key = lambda x:x.name)
+                if len(additional_properties_section) > 0 and (not section.advanced or (section.advanced and settings.advanced)):
+                    box = layout.box()
+                    box.label(text = section.name, icon = section.icon if (section.icon != "" and section.icon != "NONE") else "DOT")
+                    for aprop in additional_properties_section:
+                        row = box.row()
+                        row.label(text=aprop.name)
+                        if aprop.type == 0:
+                            row.prop(aprop, 'body_bool_value', text = "")
+                        elif aprop.type == 1:
+                            row.prop(aprop, 'body_float_value', text = "")
+                        elif aprop.type == 2:
+                            row.prop(aprop, 'body_bool_value', text = "")
+                        elif aprop.type == 3:
+                            row.prop(aprop, 'body_float_value', text = "")
+                        else:
+                            row.prop(aprop, 'body_color_value', text = "")
 
 class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_ExternalMorphs"
@@ -5416,25 +5826,38 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
 # Register
 
 classes = (
-    # Operators
+    # Configuration Operators
     MustardUI_Configuration,
     MustardUI_Configuration_SmartCheck,
     MustardUI_RemoveUI,
     MustardUI_RegisterUIFile,
+    # Model switch support operators
     MustardUI_ViewportModelSelection,
     MustardUI_SwitchModel,
+    # Armature operators
     MustardUI_Armature_Initialize,
     MustardUI_Armature_Sort,
+    # Body additional properties operators
     MustardUI_Body_CheckAdditionalOptions,
+    MustardUI_Body_AddSection,
+    MustardUI_Body_DeleteSection,
+    MustardUI_Body_SettingsSection,
+    MustardUI_Body_SwapSection,
+    MustardUI_Body_PropertyAddToSection,
+    # Outfit additional properties operators
     MustardUI_Outfits_CheckAdditionalOptions,
+    # Diffeomorphic support operators
     MustardUI_DazMorphs_CheckMorphs,
     MustardUI_DazMorphs_DefaultValues,
     MustardUI_DazMorphs_DisableDrivers,
     MustardUI_DazMorphs_EnableDrivers,
     MustardUI_DazMorphs_ClearModel,
+    # Outfit operators
     MustardUI_OutfitVisibility,
     MustardUI_GlobalOutfitPropSwitch,
+    # Normal map optimization operator
     MustardUI_Material_NormalMap_Nodes,
+    # Others
     MustardUI_LinkButton,
     # Outfit add/remove operators
     MustardUI_AddOutfit,
