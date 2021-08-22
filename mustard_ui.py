@@ -930,8 +930,6 @@ class MustardUI_Armature_Sort(bpy.types.Operator):
         
         for i in range(0,32):
             
-            print(str(i) + ": " + str(armature_settings.layers[i].id))
-            
             if armature_settings.layers[i].id == self.sort_id:
                 layer_id = i
             elif armature_settings.layers[i].id == self.sort_id - 1:
