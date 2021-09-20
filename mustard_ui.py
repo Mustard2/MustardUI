@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 16),
+    "version": (0, 20, 19),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -1139,21 +1139,27 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     #    Tools - Lips Shrinkwrap
     # ------------------------------------------------------------------------
 
-    def lips_shrinkwrap_bones_corner_list(context, rig_type):
+    def lips_shrinkwrap_bones_corner_list(context, rig_type, armature):
         
         if rig_type == "arp":
             return ['c_lips_smile.r','c_lips_smile.l']
         elif rig_type == "mhx":
-            return ['LipCorner.l','LipCorner.r']
+            if "LipCorner.l" in [x.name for x in armature.bones]:
+                return ['LipCorner.l','LipCorner.r']
+            else:
+                return ['LipCorner.L','LipCorner.R']
         else:
             return []
     
-    def lips_shrinkwrap_bones_list(context, rig_type):
+    def lips_shrinkwrap_bones_list(context, rig_type, armature):
         
         if rig_type == "arp":
             return ['c_lips_smile.r','c_lips_top.r','c_lips_top_01.r','c_lips_top.x','c_lips_top.l','c_lips_top_01.l','c_lips_smile.l','c_lips_bot.r','c_lips_bot_01.r','c_lips_bot.x','c_lips_bot.l','c_lips_bot_01.l']
         elif rig_type == "mhx":
-            return ['LipCorner.l', 'LipLowerOuter.l', 'LipLowerInner.l', 'LipLowerMiddle', 'LipLowerInner.r', 'LipLowerOuter.r', 'LipCorner.r', 'LipUpperMiddle', 'LipUpperOuter.l', 'LipUpperInner.l', 'LipUpperInner.r', 'LipUpperOuter.r']
+            if "LipCorner.l" in [x.name for x in armature.bones]:
+                return ['LipCorner.l', 'LipLowerOuter.l', 'LipLowerInner.l', 'LipLowerMiddle', 'LipLowerInner.r', 'LipLowerOuter.r', 'LipCorner.r', 'LipUpperMiddle', 'LipUpperOuter.l', 'LipUpperInner.l', 'LipUpperInner.r', 'LipUpperOuter.r']
+            else:
+                return ['LipCorner.L', 'LipLowerOuter.L', 'LipLowerInner.L', 'LipLowerMiddle', 'LipLowerInner.R', 'LipLowerOuter.R', 'LipCorner.R', 'LipUpperMiddle', 'LipUpperOuter.L', 'LipUpperInner.L', 'LipUpperInner.R', 'LipUpperOuter.R']
         else:
             return []
     
@@ -1167,7 +1173,13 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         else:
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
         
-        bones_lips = self.lips_shrinkwrap_bones_list(rig_type)
+        # Check last letter of bones (upper or lower convention)
+        case_lower = False
+        if rig_type == "MHX":
+            if "LipCorner.l" in [x.name for x in arm.bones]:
+                    case_lower = True
+        
+        bones_lips = self.lips_shrinkwrap_bones_list(rig_type, arm)
         
         ob = bpy.context.active_object
         
@@ -1198,7 +1210,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                 constr.wrap_mode = "OUTSIDE"
                 constr.distance = self.lips_shrinkwrap_dist
                 
-                if bone in self.lips_shrinkwrap_bones_corner_list(rig_type):
+                if bone in self.lips_shrinkwrap_bones_corner_list(rig_type, arm):
                     constr.distance = constr.distance * self.lips_shrinkwrap_dist_corr
             
             if self.lips_shrinkwrap_friction and ob == armature:
@@ -1284,7 +1296,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         else:
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
             
-        bones_lips = self.lips_shrinkwrap_bones_list(rig_type)
+        bones_lips = self.lips_shrinkwrap_bones_list(rig_type, arm)
         
         if self.lips_shrinkwrap:
         
@@ -1293,7 +1305,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                 constr = armature.pose.bones[bone].constraints[self.lips_shrink_constr_name]
                 constr.distance = self.lips_shrinkwrap_dist
                 
-                if bone in self.lips_shrinkwrap_bones_corner_list(rig_type):
+                if bone in self.lips_shrinkwrap_bones_corner_list(rig_type, arm):
                     constr.distance = constr.distance * self.lips_shrinkwrap_dist_corr
         
         return
@@ -1308,7 +1320,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         else:
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
         
-        bones_lips = self.lips_shrinkwrap_bones_list(rig_type)
+        bones_lips = self.lips_shrinkwrap_bones_list(rig_type, arm)
         
         if self.lips_shrinkwrap_friction and self.lips_shrinkwrap:
         
@@ -1483,18 +1495,19 @@ class MustardUI_Body_CheckAdditionalOptions(bpy.types.Operator):
 mustardui_section_icon_list = [
                 ("NONE","No Icon","No Icon"),
                 ("USER", "Face", "Face","USER",1),
-                ("HAIR", "Hair", "Hair","HAIR",2),
-                ("MOD_CLOTH", "Cloth", "Cloth","MOD_CLOTH",3),
-                ("MATERIAL", "Material", "Material","MATERIAL",4),
-                ("ARMATURE_DATA", "Armature", "Armature","ARMATURE_DATA",5),
-                ("MOD_ARMATURE", "Armature", "Armature","MOD_ARMATURE",6),
-                ("EXPERIMENTAL", "Experimental", "Experimental","EXPERIMENTAL",7),
-                ("PHYSICS", "Physics", "Physics","PHYSICS",8),
-                ("WORLD", "World", "World","WORLD",9),
-                ("PARTICLEMODE", "Comb", "Comb","PARTICLEMODE",10),
-                ("OUTLINER_OB_POINTCLOUD", "Points", "Points","OUTLINER_OB_POINTCLOUD",11),
-                ("MOD_DYNAMICPAINT", "Foot", "Foot","MOD_DYNAMICPAINT",12),
-                ("OUTLINER_DATA_VOLUME", "Cloud", "Cloud","OUTLINER_DATA_VOLUME",13)
+                ("HIDE_OFF", "Eye", "Eye","HIDE_OFF",2),
+                ("HAIR", "Hair", "Hair","HAIR",3),
+                ("MOD_CLOTH", "Cloth", "Cloth","MOD_CLOTH",4),
+                ("MATERIAL", "Material", "Material","MATERIAL",5),
+                ("ARMATURE_DATA", "Armature", "Armature","ARMATURE_DATA",6),
+                ("MOD_ARMATURE", "Armature", "Armature","MOD_ARMATURE",7),
+                ("EXPERIMENTAL", "Experimental", "Experimental","EXPERIMENTAL",8),
+                ("PHYSICS", "Physics", "Physics","PHYSICS",9),
+                ("WORLD", "World", "World","WORLD",10),
+                ("PARTICLEMODE", "Comb", "Comb","PARTICLEMODE",11),
+                ("OUTLINER_OB_POINTCLOUD", "Points", "Points","OUTLINER_OB_POINTCLOUD",12),
+                ("MOD_DYNAMICPAINT", "Foot", "Foot","MOD_DYNAMICPAINT",13),
+                ("OUTLINER_DATA_VOLUME", "Cloud", "Cloud","OUTLINER_DATA_VOLUME",14)
             ]
 
 # Operator to add a new section
@@ -4849,10 +4862,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     
     def draw_header(self,context):
         
+        settings = bpy.context.scene.MustardUI_Settings
+        
         poll, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
         
-        self.layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
+        if settings.status_diffeomorphic > 1:
+            self.layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
 
     def draw(self, context):
         
@@ -5057,7 +5073,11 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     box.label(text="This Collection seems empty", icon="ERROR")
             
             # Locked objects list
-            locked_objects = [x for x in bpy.data.objects if x.MustardUI_outfit_lock]
+            locked_objects = []
+            for coll in rig_settings.outfits_collections:
+                for obj in coll.collection.objects:
+                    if obj.MustardUI_outfit_lock:
+                        locked_objects.append(obj)
             if len(locked_objects)>0:
                 box.separator()
                 box.label(text="Locked objects:", icon="LOCKED")
