@@ -1908,8 +1908,6 @@ class MustardUI_Outfits_CheckAdditionalOptions(bpy.types.Operator):
                         for j in range(len(mat.node_tree.nodes)):
                             if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                                 mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Float - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 3])
-                            elif "MustardUI BigFloat" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
-                                mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI BigFloat - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 4])
                             elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                                 mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Bool - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 2])
                             if "MustardUI" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="RGB":
@@ -4804,7 +4802,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         if len(rig_settings.body_additional_properties) > 0:
             
             additional_properties_sk = sorted([x for x in rig_settings.body_additional_properties if x.type in [0,1] and x.section == ""], key = lambda x:x.name)
-            additional_properties_mat = sorted([x for x in rig_settings.body_additional_properties if x.type in [2,3,4] and x.section == ""], key = lambda x:x.name)
+            additional_properties_mat = sorted([x for x in rig_settings.body_additional_properties if x.type in [2,3,4,5] and x.section == ""], key = lambda x:x.name)
             
             if len(additional_properties_sk) > 0:
                 box = layout.box()
