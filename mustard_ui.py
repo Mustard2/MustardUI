@@ -1428,6 +1428,8 @@ def mustardui_add_option_item_body(collection, item):
         add_item.body_bool_value = int(item[1])
     elif item[2] in [1,3]:
         add_item.body_float_value = item[1]
+    elif item[2] in [4]:
+        add_item.body_big_float_value = item[1]
     else:
         add_item.body_color_value = item[1]
     
@@ -1906,7 +1908,7 @@ class MustardUI_Outfits_CheckAdditionalOptions(bpy.types.Operator):
                         for j in range(len(mat.node_tree.nodes)):
                             if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                                 mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Float - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 3])
-                            if "MustardUI BigFloat" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
+                            elif "MustardUI BigFloat" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                                 mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI BigFloat - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 4])
                             elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                                 mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Bool - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 2])
@@ -2175,7 +2177,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     def poll(cls, context):
         
         res, arm = mustardui_active_object(context, config = 0)
-        
+
         return True
         
         if arm != None:
@@ -4825,6 +4827,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                         row.prop(aprop, 'body_bool_value', text = "")
                     elif aprop.type == 3:
                         row.prop(aprop, 'body_float_value', text = "")
+                    elif aprop.type == 4:
+                        row.prop(aprop, 'body_big_float_value', text = "")
                     else:
                         row.prop(aprop, 'body_color_value', text = "")
             
@@ -4845,6 +4849,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                             row.prop(aprop, 'body_bool_value', text = "")
                         elif aprop.type == 3:
                             row.prop(aprop, 'body_float_value', text = "")
+                        elif aprop.type == 4:
+                            row.prop(aprop, 'body_big_float_value', text="")
                         else:
                             row.prop(aprop, 'body_color_value', text = "")
 
