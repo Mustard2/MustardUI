@@ -234,13 +234,15 @@ def mustardui_body_additional_options_update(self, context):
     
     if obj != None:
         
-        if self.type in [2,3,4]:
+        if self.type in [2,3,4,5]:
         
             # Material properties update
             for mat in obj.data.materials:
                 for j in range(len(mat.node_tree.nodes)):
                     if mat.node_tree.nodes[j].name == "MustardUI Float - "+self.name and mat.node_tree.nodes[j].type == "VALUE":
                         mat.node_tree.nodes["MustardUI Float - "+self.name].outputs[0].default_value = self.body_float_value
+                    elif mat.node_tree.nodes[j].name == "MustardUI BigFloat - "+self.name and mat.node_tree.nodes[j].type == "VALUE":
+                        mat.node_tree.nodes["MustardUI BigFloat - "+self.name].outputs[0].default_value = self.body_big_float_value
                     elif mat.node_tree.nodes[j].name == "MustardUI Bool - "+self.name and mat.node_tree.nodes[j].type == "VALUE":
                         mat.node_tree.nodes["MustardUI Bool - "+self.name].outputs[0].default_value = self.body_bool_value
                     elif mat.node_tree.nodes[j].name == "MustardUI - "+self.name and mat.node_tree.nodes[j].type == "RGB":
@@ -306,7 +308,7 @@ class MustardUI_OptionItem(bpy.types.PropertyGroup):
     object: bpy.props.PointerProperty(name = "Option Object",
                         type = bpy.types.Object)
     
-    # Bool Shape Key: 0 - Float Shape Key: 1 - Bool: 2 - Float: 3 - Color: 4
+    # Bool Shape Key: 0 - Float Shape Key: 1 - Bool: 2 - Float: 3 - BigFloat: 4 - Color: 5
     type: bpy.props.IntProperty(default = 3)
     
     # Outfit: Bool property defined to allow checks instead of sliders if Bool is written in the property name
@@ -319,6 +321,11 @@ class MustardUI_OptionItem(bpy.types.PropertyGroup):
                         name = "Option value",
                         update = mustardui_body_additional_options_update,
                         description = "Value of the property")
+
+    body_big_float_value: bpy.props.FloatProperty(min=0., max=10.,
+                                              name="Option value",
+                                              update=mustardui_body_additional_options_update,
+                                              description="Value of the property, up to 10.0")
     
     body_bool_value : bpy.props.BoolProperty(name = "Option value",
                         update = mustardui_body_additional_options_update,
@@ -1421,6 +1428,8 @@ def mustardui_add_option_item_body(collection, item):
         add_item.body_bool_value = int(item[1])
     elif item[2] in [1,3]:
         add_item.body_float_value = item[1]
+    elif item[2] in [4]:
+        add_item.body_big_float_value = item[1]
     else:
         add_item.body_color_value = item[1]
     
@@ -1457,10 +1466,12 @@ class MustardUI_Body_CheckAdditionalOptions(bpy.types.Operator):
             for j in range(len(mat.node_tree.nodes)):
                 if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     mustardui_add_option_item_body(rig_settings.body_additional_properties, [mat.node_tree.nodes[j].name[len("MustardUI Float - "):], mat.node_tree.nodes[j].outputs[0].default_value, 3])
+                elif "MustardUI BigFloat" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
+                    mustardui_add_option_item_body(rig_settings.body_additional_properties, [mat.node_tree.nodes[j].name[len("MustardUI BigFloat - "):], mat.node_tree.nodes[j].outputs[0].default_value, 4])
                 elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     mustardui_add_option_item_body(rig_settings.body_additional_properties, [mat.node_tree.nodes[j].name[len("MustardUI Bool - "):], mat.node_tree.nodes[j].outputs[0].default_value, 2])
                 if "MustardUI" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="RGB":
-                    mustardui_add_option_item_body(rig_settings.body_additional_properties, [mat.node_tree.nodes[j].name[len("MustardUI - "):], mat.node_tree.nodes[j].outputs[0].default_value, 4])
+                    mustardui_add_option_item_body(rig_settings.body_additional_properties, [mat.node_tree.nodes[j].name[len("MustardUI - "):], mat.node_tree.nodes[j].outputs[0].default_value, 5])
         if rig_settings.model_body.data.shape_keys != None:
             for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
@@ -1900,7 +1911,7 @@ class MustardUI_Outfits_CheckAdditionalOptions(bpy.types.Operator):
                             elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                                 mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI Bool - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 2])
                             if "MustardUI" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="RGB":
-                                mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 4])
+                                mustardui_add_option_item(obj.mustardui_additional_options, [mat.node_tree.nodes[j].name[len("MustardUI - "):], 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', obj, 5])
                     if obj.data.shape_keys != None:
                         for shape_key in obj.data.shape_keys.key_blocks:
                             if "MustardUI Float" in shape_key.name:
@@ -2164,7 +2175,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     def poll(cls, context):
         
         res, arm = mustardui_active_object(context, config = 0)
-        
+
         return True
         
         if arm != None:
@@ -4791,7 +4802,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         if len(rig_settings.body_additional_properties) > 0:
             
             additional_properties_sk = sorted([x for x in rig_settings.body_additional_properties if x.type in [0,1] and x.section == ""], key = lambda x:x.name)
-            additional_properties_mat = sorted([x for x in rig_settings.body_additional_properties if x.type in [2,3,4] and x.section == ""], key = lambda x:x.name)
+            additional_properties_mat = sorted([x for x in rig_settings.body_additional_properties if x.type in [2,3,4,5] and x.section == ""], key = lambda x:x.name)
             
             if len(additional_properties_sk) > 0:
                 box = layout.box()
@@ -4814,6 +4825,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                         row.prop(aprop, 'body_bool_value', text = "")
                     elif aprop.type == 3:
                         row.prop(aprop, 'body_float_value', text = "")
+                    elif aprop.type == 4:
+                        row.prop(aprop, 'body_big_float_value', text = "")
                     else:
                         row.prop(aprop, 'body_color_value', text = "")
             
@@ -4834,6 +4847,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                             row.prop(aprop, 'body_bool_value', text = "")
                         elif aprop.type == 3:
                             row.prop(aprop, 'body_float_value', text = "")
+                        elif aprop.type == 4:
+                            row.prop(aprop, 'body_big_float_value', text="")
                         else:
                             row.prop(aprop, 'body_color_value', text = "")
 
