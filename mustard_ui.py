@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 20, 19),
+    "version": (0, 20, 20),
     "blender": (2, 93, 0),
     "warning": "",
     "wiki_url": "https://github.com/Mustard2/MustardUI",
@@ -291,6 +291,7 @@ bpy.utils.register_class(MustardUI_SectionItem)
 #
 # - Outfits: All the outfits additional properties are saved with path and id,
 #            but the bool properties are evaluated separately in order to obtain a check button in the UI instead of a slider
+#            Also used for Hairs
 # - Body   : The properties are saved with additional property definitions.
 #            This choice is made to allow evaluation of more material/shape-keys properties with the same name, using one property
 class MustardUI_OptionItem(bpy.types.PropertyGroup):
@@ -321,11 +322,11 @@ class MustardUI_OptionItem(bpy.types.PropertyGroup):
                         name = "Option value",
                         update = mustardui_body_additional_options_update,
                         description = "Value of the property")
-
+    
     body_big_float_value: bpy.props.FloatProperty(min=0., max=10.,
-                                              name="Option value",
-                                              update=mustardui_body_additional_options_update,
-                                              description="Value of the property, up to 10.0")
+                        name="Option value",
+                        update=mustardui_body_additional_options_update,
+                        description="Value of the property, up to 10.0")
     
     body_bool_value : bpy.props.BoolProperty(name = "Option value",
                         update = mustardui_body_additional_options_update,
@@ -708,6 +709,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     particle_systems_enable: bpy.props.BoolProperty(default = True,
                         name = "Particle Systems",
                         description = "Show Particle Systems in the UI.\nIf enabled, particle systems on the body mesh will automatically be added to the UI")
+    
+    # Store number of additional properties
+    hair_additional_properties_number: bpy.props.IntProperty(default = 0,
+                        name = "")
     
     # ------------------------------------------------------------------------
     #    External addons
@@ -1179,12 +1184,6 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
             armature = self.lips_shrinkwrap_armature_object
         else:
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
-        
-        # Check last letter of bones (upper or lower convention)
-        case_lower = False
-        if rig_type == "MHX":
-            if "LipCorner.l" in [x.name for x in arm.bones]:
-                    case_lower = True
         
         bones_lips = self.lips_shrinkwrap_bones_list(rig_type, arm)
         
@@ -1844,7 +1843,7 @@ class MustardUI_Body_PropertyAddToSection(bpy.types.Operator):
         layout.label(text = "Add properties to the Section \'" + self.section_name + "\'")
         
         box = layout.box()
-        for prop in rig_settings.body_additional_properties:
+        for prop in sorted(rig_settings.body_additional_properties, key = lambda x:x.name):
             row = box.row(align = False)
             row.prop(prop,'add_section', text = "")
             row.label(text = prop.name, icon = "SHAPEKEY_DATA" if prop.type in [0,1] else "MATERIAL")
@@ -1893,13 +1892,15 @@ class MustardUI_Outfits_CheckAdditionalOptions(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config = 1)
         rig_settings = arm.MustardUI_RigSettings
         
-        # Clean the additional options properties
+        # Clean the additional outfit options properties
         for obj in bpy.data.objects:
             obj.mustardui_additional_options.clear()
         
         collections = [x.collection for x in rig_settings.outfits_collections if hasattr(x.collection, 'name')]
         if rig_settings.extras_collection != None:
             collections.append(rig_settings.extras_collection)
+        if rig_settings.hair_collection != None:
+            collections.append(rig_settings.hair_collection)
         
         for collection in collections:
             for obj in collection.objects:
@@ -1919,18 +1920,23 @@ class MustardUI_Outfits_CheckAdditionalOptions(bpy.types.Operator):
                             elif "MustardUI Bool" in shape_key.name:
                                 mustardui_add_option_item(obj.mustardui_additional_options, [shape_key.name[len("MustardUI Bool - "):], 'bpy.data.objects[\''+obj.name+'\'].data.shape_keys.key_blocks[\''+shape_key.name+'\']', 'value', obj, 0])
         
-        properties_number = 0                       
+        properties_number = 0
+        hair_properties_number = 0
         if settings.debug:
             print("\nMustardUI - Additional Outfit options found\n")
             # Print the options
-        for obj in bpy.data.objects:
-            for el in obj.mustardui_additional_options:
-                if settings.debug:
-                    print(el.object.name + ": "+el.name+" with path "+el.path+'.'+el.id)
-                properties_number = properties_number + 1
+        for collection in collections:
+            for obj in collection.objects:
+                for el in obj.mustardui_additional_options:
+                    if settings.debug:
+                        print(el.object.name + ": "+el.name+" with path "+el.path+'.'+el.id)
+                    if collection==rig_settings.hair_collection:
+                        hair_properties_number = hair_properties_number + 1
+                    else:
+                        properties_number = properties_number + 1
         
         rig_settings.outfits_additional_properties_number = properties_number
-        
+        rig_settings.hair_additional_properties_number = hair_properties_number
         
         self.report({'INFO'}, 'MustardUI - Additional Outfit options check completed.')
 
@@ -2175,19 +2181,8 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     def poll(cls, context):
         
         res, arm = mustardui_active_object(context, config = 0)
-
+        
         return True
-        
-        if arm != None:
-            rig_settings = arm.MustardUI_RigSettings
-            
-            if rig_settings.model_armature_object == None:
-                return False
-        
-            return bpy.context.active_object == rig_settings.model_armature_object
-        
-        else:
-            return True
  
     def execute(self, context):
         
@@ -2877,7 +2872,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
     def execute(self, context):
         
         bpy.data.objects[self.obj].hide_viewport = not bpy.data.objects[self.obj].hide_viewport
-        bpy.data.objects[self.obj].hide_render = not bpy.data.objects[self.obj].hide_render
+        bpy.data.objects[self.obj].hide_render = bpy.data.objects[self.obj].hide_viewport
         bpy.data.objects[self.obj].MustardUI_outfit_visibility = bpy.data.objects[self.obj].hide_viewport
         
         poll, obj = mustardui_active_object(context, config = 0)
@@ -4285,6 +4280,140 @@ def default_custom_nodes():
     return group
 
 # ------------------------------------------------------------------------
+#    Debug 
+# ------------------------------------------------------------------------
+
+class MustardUI_Debug_Log(bpy.types.Operator):
+    """Create a file with informations to debug errors.\nThis tool will only write on a .txt file and will NOT change any model or Blender setting"""
+    bl_idname = "mustardui.debug_log"
+    bl_label = "Create a file with informations to debug errors"
+    bl_options = {'REGISTER'}
+    
+    def new_line(self):
+        return "\n"
+    
+    def tab(self):
+        return "\t"
+    
+    def bar(self):
+        return "---------------------------------------------" + self.new_line()
+    
+    def header(self, name):
+        return self.bar() + name + self.new_line() + self.new_line()
+    
+    def addon_status(self, status, addon_name):
+        if status == 2:
+            return addon_name + " status:"  + self.tab() + "Correctly installed and enabled" + self.new_line()
+        elif status == 1:
+            return addon_name + " status:"  + self.tab() + "Installed but not enabled" + self.new_line()
+        else:
+            return addon_name + " status:"  + self.tab() + "Not correctly installed or wrong add-on folder name" + self.new_line()
+            
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        return arm != None
+
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 1)
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+        
+        log = ""
+        
+        # Create logs
+        
+        # System
+        log += self.header("System")
+        
+        log += "Blender version:" + self.tab() + bpy.app.version_string
+        log += self.new_line()
+        
+        if bpy.context.preferences.addons['cycles']:
+            
+            device_type = bpy.context.preferences.addons['cycles'].preferences.compute_device_type
+            
+            log += "Device type:" + self.tab() + self.tab() + device_type
+            log += self.new_line()
+            
+            log += "Devices"
+            log += self.new_line()
+            for device in [x for x in bpy.context.preferences.addons['cycles'].preferences.devices if (x.type == device_type or x.type == "CPU")]:
+                log += self.tab() + '- '
+                if device.use:
+                    log += "[active] "
+                log += device.name
+                log += self.new_line()
+        
+        log += self.new_line()
+        
+        # Model
+        log += self.header("Model")
+        
+        log += "Model name:" + self.tab() + self.tab() + rig_settings.model_name
+        log += self.new_line()
+        if rig_settings.model_version!='':
+            log += "Model version:" + self.tab() + self.tab() + rig_settings.model_version
+            log += self.new_line()
+        log += "MustardUI version:" + self.tab() + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2])
+        log += self.new_line()
+        log += "Model rig type:" + self.tab() + self.tab() + rig_settings.model_rig_type
+        
+        log += self.new_line()
+        log += self.new_line()
+        
+        # Diffeomorphic
+        if rig_settings.diffeomorphic_support:
+            log += self.header("Diffeomorphic")
+            
+            log += self.addon_status(settings.status_diffeomorphic, "Diffeomorphic")
+            
+            if settings.status_diffeomorphic > 1:
+                log += "Diffeomorphic version:"  + self.tab() + str(settings.status_diffeomorphic_version[0]) + '.' + str(settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2])
+                log += self.new_line()
+            
+            log += self.addon_status(settings.status_mhx, "MHX Addon")
+            
+            log += self.new_line()
+            log += self.new_line()
+        
+        # Viewport performance
+        log += self.header("Viewport performance")
+        
+        log += "Custom normals:" + self.tab() + self.tab() + ("Disabled" if settings.material_normal_nodes else "Enabled")
+        log += self.new_line()
+        
+        if rig_settings.diffeomorphic_support and settings.status_diffeomorphic > 1:
+            log += "External Morphs:" + self.tab() + ("Enabled" if rig_settings.diffeomorphic_enable else "Disabled")
+            log += self.new_line()
+        if len(physics_settings.physics_items)>0:
+            log += "Physics:" + self.tab() + self.tab() + ("Enabled" if physics_settings.physics_enable else "Disabled")
+            log += self.new_line()
+        
+        if rig_settings.hair_collection != None:
+            log += "Hair status:" + self.tab() + self.tab() + ("Hidden" if rig_settings.hair_collection.hide_viewport else "Shown")
+            log += self.new_line()
+        if rig_settings.extras_collection != None:
+            log += "Extras status:" + self.tab() + self.tab() + ("Hidden" if rig_settings.extras_collection.hide_viewport else "Shown")
+            log += self.new_line()
+        
+        log += self.new_line()
+        
+        # Write to file
+        log_file = open('mustardui_log.txt','w')
+        log_file.write(log)
+        log_file.close()
+        
+        self.report({'INFO'}, "MustardUI: An log file 'mustardui_log.txt' has been created in the model folder")
+        
+        return {'FINISHED'}
+
+# ------------------------------------------------------------------------
 #    Link (thanks to Mets3D)
 # ------------------------------------------------------------------------
 
@@ -4383,7 +4512,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.prop(rig_settings,"body_enable_smoothcorr")
             box.prop(rig_settings,"body_enable_norm_autosmooth")
             
-            # Operator to check for additional options
             box = layout.box()
             box.label(text="Additional outfit options", icon="PRESET_NEW")
             box.label(text="  Current properties number: " + str(rig_settings.body_additional_properties_number))
@@ -4440,7 +4568,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                         del_col = row.operator("mustardui.delete_outfit",text="",icon="X").col = collection.collection.name
                 
                 if rig_settings.outfit_additional_options:
-                    # Operator to check for additional options
                     box = layout.box()
                     box.label(text="Additional outfit options", icon="PRESET_NEW")
                     box.label(text="  Current properties number: " + str(rig_settings.outfits_additional_properties_number))
@@ -4475,6 +4602,12 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="Particle Systems", icon="PARTICLES")
             box.prop(rig_settings,"particle_systems_enable", text="Enable")
+            
+            if rig_settings.outfit_additional_options:
+                box = layout.box()
+                box.label(text="Additional hair options", icon="PRESET_NEW")
+                box.label(text="  Current properties number: " + str(rig_settings.hair_additional_properties_number))
+                box.operator('mustardui.outfits_checkadditionaloptions')
         
         # Armature
         row = layout.row(align=False)
@@ -5194,8 +5327,37 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             if len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1:
                 
                 box = layout.box()
-                box.label(text="Hair list", icon="HAIR")
-                box.prop(rig_settings,"hair_list", text="")
+                row = box.row()
+                row.label(text="Hair list", icon="HAIR")
+                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                
+                obj = bpy.data.objects[rig_settings.hair_list]
+                
+                row = box.row(align=True)
+                row.prop(rig_settings,"hair_list", text="")
+                if len(obj.mustardui_additional_options)>0:
+                    row.prop(obj,"mustardui_additional_options_show", toggle=True, icon="PREFERENCES")
+            
+            if obj.mustardui_additional_options_show and len(obj.mustardui_additional_options)>0:
+                box2 = box.box()
+                for aprop in sorted(obj.mustardui_additional_options, key = lambda x:x.type):
+                    row2 = box2.row(align=True)
+                    
+                    # Icon choice
+                    if aprop.type in [0,1]:
+                        row2.label(text=aprop.name, icon="SHAPEKEY_DATA")
+                    else:
+                        row2.label(text=aprop.name, icon="MATERIAL")
+                    
+                    row2.scale_x=0.95
+                    
+                    if aprop.type in [0,2]:
+                        row2.prop(aprop, 'bool_value', text = "")
+                    else:
+                        try:
+                            row2.prop(eval(aprop.path), aprop.id, text = "")
+                        except:
+                            row2.prop(settings, 'additional_properties_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
         
         # Particle systems
         if len(rig_settings.model_body.particle_systems)>0 and rig_settings.particle_systems_enable:
@@ -5788,6 +5950,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             else:
                 box.operator('mustardui.registeruifile', text="Un-register UI Script", icon = "TEXT").register = False
             
+            box.operator('mustardui.debug_log', text="Create Log file", icon = "FILE_TEXT")
             box.operator('mustardui.remove', text="UI Removal", icon = "X")
             if platform.system() == 'Windows':
                 box.separator()
@@ -5890,6 +6053,8 @@ classes = (
     MustardUI_GlobalOutfitPropSwitch,
     # Normal map optimization operator
     MustardUI_Material_NormalMap_Nodes,
+    # Debug
+    MustardUI_Debug_Log,
     # Others
     MustardUI_LinkButton,
     # Outfit add/remove operators
