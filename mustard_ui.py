@@ -2133,12 +2133,18 @@ class MustardUI_Property_Remove(bpy.types.Operator):
         
         # Remove linked properties drivers
         for lp in uilist[index].linked_properties:
-            driver_object = eval(lp.rna)
-            driver_object.driver_remove(lp.path)
-        
+            try:
+                driver_object = eval(lp.rna)
+                driver_object.driver_remove(lp.path)
+            except:
+                print("MustardUI - Could not delete driver with path: " + lp.rna)
+            
         # Remove driver
-        driver_object = eval(uilist[index].rna)
-        driver_object.driver_remove(uilist[index].path)
+        try:
+            driver_object = eval(uilist[index].rna)
+            driver_object.driver_remove(uilist[index].path)
+        except:
+            print("MustardUI - Could not delete driver with path: " + uilist[index].rna)
     
     @classmethod
     def poll(cls, context):
