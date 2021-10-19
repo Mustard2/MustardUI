@@ -3326,7 +3326,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
             # Custom Diffeomorphic emotions
             emotions_custom = []
             for string in [x for x in rig_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
-                for x in rig_settings.model_armature_object.keys():
+                for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                     if string in x:
                         emotions_custom.append(x)
             
@@ -3368,7 +3368,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
             # Custom Diffeomorphic emotions
             body_morphs_custom = []
             for string in [x for x in rig_settings.diffeomorphic_body_morphs_custom.split(',') if x != '']:
-                for x in rig_settings.model_armature_object.keys():
+                for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                     if string in x:# and sum(1 for c in x if c.isupper()) < 6:
                         body_morphs_custom.append(x)
             
