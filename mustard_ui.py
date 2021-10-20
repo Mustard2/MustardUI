@@ -1606,7 +1606,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1, 'description': prop.description, 'default': prop.default}
             elif hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default') and hasattr(prop, 'description') and hasattr(prop, 'subtype'):
                 if prop.subtype != "FACTOR":
-                    obj["_RNA_UI"][prop_name] = {'min':prop.hard_min, 'max':prop.hard_max, 'description': prop.description, 'default': prop.default if prop.array_length == 0 else eval(rna + '.' + path), 'subtype': prop.subtype}
+                    obj["_RNA_UI"][prop_name] = {'min':prop.hard_min if prop.subtype != "COLOR" else 0, 'max':prop.hard_max if prop.subtype != "COLOR" else 1, 'description': prop.description, 'default': prop.default if prop.array_length == 0 else eval(rna + '.' + path), 'subtype': prop.subtype}
                 else:
                     obj["_RNA_UI"][prop_name] = {'min':prop.hard_min, 'max':prop.hard_max, 'description': prop.description, 'default': prop.default if prop.array_length == 0 else eval(rna + '.' + path), 'subtype': "NONE"}
             elif hasattr(prop, 'description'):
@@ -2347,7 +2347,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1}
                 obj[prop_name] = min(1,max(0,int(obj[prop_name])))
             elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
-                obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
+                if custom_prop.subtype != "FACTOR":
+                    obj["_RNA_UI"][prop_name] = {'min': self.min_float if custom_prop.subtype != "COLOR" else 0, 'max': self.max_float if custom_prop.subtype != "COLOR" else 1, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
+                else:
+                    obj["_RNA_UI"][prop_name] = {'min': self.min_float if custom_prop.subtype != "COLOR" else 0, 'max': self.max_float if custom_prop.subtype != "COLOR" else 1, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array)}
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
                 custom_prop.max_float = self.max_float
@@ -2358,7 +2361,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     custom_prop.default_array = self.default_array
                 custom_prop.is_bool = False
             elif not custom_prop.is_bool and (prop_type == "INT" or self.force_type == "Int"):
-                obj["_RNA_UI"][prop_name] = {'min': self.min_int, 'max': self.max_int, 'description': self.description, 'default': self.default_int if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
+                if custom_prop.subtype != "FACTOR":
+                    obj["_RNA_UI"][prop_name] = {'min': self.min_int, 'max': self.max_int, 'description': self.description, 'default': self.default_int if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
+                else:
+                    obj["_RNA_UI"][prop_name] = {'min': self.min_int, 'max': self.max_int, 'description': self.description, 'default': self.default_int if custom_prop.array_length == 0 else eval(self.default_array)}
                 custom_prop.description = self.description
                 custom_prop.min_int = self.min_int
                 custom_prop.max_int = self.max_int
@@ -2649,7 +2655,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         
         res, arm = mustardui_active_object(context, config = 0)
         return res
-
+    
     def execute(self, context):
         
         settings = bpy.context.scene.MustardUI_Settings
@@ -2671,30 +2677,36 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             
             prop_name = custom_prop.prop_name
             
-            # Rebuilding custom property on armature if missing
-            if prop_name not in obj.keys():
-                obj[prop_name] = eval(custom_prop.rna + '.' + custom_prop.path)
+            if prop_name in obj.keys():
+                del obj[prop_name]
             
             # Rebuilding RNA_UI
             if custom_prop.prop_name not in obj["_RNA_UI"].keys():
-            
-                prop = obj[prop_name]
-                prop_type, is_array = rna_idprop_value_item_type(prop)
                 
                 if custom_prop.is_bool:
                     obj["_RNA_UI"][prop_name] = {'min':0, 'max':1}
-                elif not custom_prop.is_bool and prop_type == float and custom_prop.force_type == "None":
-                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float, 'max': custom_prop.max_float, 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array), 'subtype': custom_prop.subtype}
-                elif not custom_prop.is_bool and (prop_type == int or custom_prop.force_type == "Int"):
-                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_int, 'max': custom_prop.max_int, 'description': custom_prop.description, 'default': custom_prop.default_int if custom_prop.array_length == 0 else eval(custom_prop.default_array)}
+                elif not custom_prop.is_bool and custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
+                    if custom_prop.subtype != "FACTOR":
+                        obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float if custom_prop.subtype != "COLOR" else 0., 'max': custom_prop.max_float if custom_prop.subtype != "COLOR" else 1., 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array), 'subtype': custom_prop.subtype}
+                    else:
+                        obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float if custom_prop.subtype != "COLOR" else 0., 'max': custom_prop.max_float if custom_prop.subtype != "COLOR" else 1., 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array)}
+                elif not custom_prop.is_bool and (custom_prop.type == "INT" or custom_prop.force_type == "Int"):
+                    if custom_prop.subtype != "FACTOR":
+                        obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_int, 'max': custom_prop.max_int, 'description': custom_prop.description, 'default': custom_prop.default_int if custom_prop.array_length == 0 else eval(custom_prop.default_array), 'subtype': custom_prop.subtype}
+                    else:
+                        obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_int, 'max': custom_prop.max_int, 'description': custom_prop.description, 'default': custom_prop.default_int if custom_prop.array_length == 0 else eval(custom_prop.default_array)}
                 elif hasattr(prop, 'description'):
                     obj["_RNA_UI"][prop_name] = {'description': custom_prop.description}
+            
+            obj[prop_name] = eval(custom_prop.rna + '.' + custom_prop.path)
             
             # Rebuilding custom properties and their linked properties drivers
             self.add_driver(obj, custom_prop.rna, custom_prop.path, custom_prop.prop_name)
             
             for linked_custom_prop in custom_prop.linked_properties:
                 self.add_driver(obj, linked_custom_prop.rna, linked_custom_prop.path, custom_prop.prop_name)
+        
+        obj.update_tag()
         
         self.report({'INFO'}, 'MustardUI - All the drivers and custom properties rebuilt.')
         
@@ -2785,13 +2797,14 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         while prop_name in obj.keys():
             add_string_num += 1
             prop_name = name + ' ' + str(add_string_num)
-        obj[prop_name] = eval(rna + '.' + path)
+        
+        obj[prop_name] = eval(rna + "." + path)
         
         # Change custom properties settings
         if type == "BOOLEAN":
             obj["_RNA_UI"][prop_name] = {}
         elif type == "COLOR":
-            obj["_RNA_UI"][prop_name] = {'min':0., 'max':1., 'description': "", 'default': eval(rna + "." + path), 'subtype': "COLOR"}
+            obj["_RNA_UI"][prop_name] = {'min':0, 'max':1, 'description': "", 'default': eval(rna + "." + path), 'subtype': "COLOR"}
         elif type == "FLOAT":
             obj["_RNA_UI"][prop_name] = {'min':0., 'max':1., 'description': "", 'default': eval(rna + "." + path)}
         else:
@@ -2827,9 +2840,6 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                     cp.section = cptr[2]
                     break
             
-            print(obj["_RNA_UI"][prop_name].keys())
-            print(hasattr(obj["_RNA_UI"][prop_name], 'description'))
-            
             if 'description' in obj["_RNA_UI"][prop_name].keys():
                 cp.description = obj["_RNA_UI"][prop_name]['description']
             if 'default' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
@@ -2839,12 +2849,12 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                     cp.default_int = obj["_RNA_UI"][prop_name]['default']
                 else:
                     cp.default_array = str(obj["_RNA_UI"][prop_name]['default'].to_list())
-            if 'hard_min' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
+            if 'min' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
                 if type == "FLOAT":
                     cp.min_float = obj["_RNA_UI"][prop_name]['min']
                 elif type == "INT":
                     cp.min_int = obj["_RNA_UI"][prop_name]['min']
-            if 'hard_max' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
+            if 'max' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
                 if type == "FLOAT":
                     cp.max_float = obj["_RNA_UI"][prop_name]['max']
                 elif type == "INT":
@@ -2895,6 +2905,8 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
         
+        j = 0
+        
         index_to_remove = []
         sections_to_recover = []
         for i in range(0, len(custom_props)):
@@ -2911,22 +2923,30 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             for j in range(len(mat.node_tree.nodes)):
                 if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI Float - "):], "FLOAT", custom_props, sections_to_recover)
+                    j = j + 1
                 elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI Bool - "):], "BOOLEAN", custom_props, sections_to_recover)
+                    j = j + 1
                 elif "MustardUI Int" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI Int - "):], "INT", custom_props, sections_to_recover)
+                    j = j + 1
                 elif "MustardUI" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="RGB":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI - "):], "COLOR", custom_props, sections_to_recover)
+                    j = j + 1
         
         if rig_settings.model_body.data.shape_keys != None:
             for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
                     self.add_custom_property(obj, 'bpy.data.objects[\''+rig_settings.model_body.name+'\'].data.shape_keys.key_blocks[\''+shape_key.name+'\']', 'value', shape_key.name[len("MustardUI Float - "):], "FLOAT", custom_props, sections_to_recover)
+                    j = j + 1
                 elif "MustardUI Bool" in shape_key.name:
                     self.add_custom_property(obj, 'bpy.data.objects[\''+rig_settings.model_body.name+'\'].data.shape_keys.key_blocks[\''+shape_key.name+'\']', 'value', shape_key.name[len("MustardUI Bool - "):], "BOOL", custom_props, sections_to_recover)
+                    j = j + 1
         
         # Update the drivers
-        obj.update_tag()    
+        obj.update_tag()
+        
+        self.report({'INFO'}, 'MustardUI - Smart Check found ' + str(j) + ' properties.')
     
         return {'FINISHED'}
 
