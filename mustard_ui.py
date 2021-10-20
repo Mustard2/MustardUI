@@ -1353,6 +1353,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     prop_name : bpy.props.StringProperty(name = "Property Name")
     is_animatable: bpy.props.BoolProperty(name = "Animatable")
     type : bpy.props.StringProperty(name = "Type")
+    array_length : bpy.props.IntProperty(name = "Array Length")
     subtype : bpy.props.StringProperty(name = "Subtype")
     force_type: bpy.props.EnumProperty(name = "Force Property Type",
                         default="None",
@@ -1387,6 +1388,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     default_float: bpy.props.FloatProperty()
     min_float: bpy.props.FloatProperty()
     max_float: bpy.props.FloatProperty()
+    default_array: bpy.props.StringProperty()
     
     # Linked properties
     linked_properties: bpy.props.CollectionProperty(type = MustardUI_LinkedProperty)
@@ -1534,11 +1536,11 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         else:
             custom_props = obj.MustardUI_CustomProperties
         
-        prop = context.button_prop
-        
         if not hasattr(context, 'button_prop'):
             self.report({'ERROR'}, 'MustardUI - Can not create custom property from this property.')
             return {'FINISHED'}
+        
+        prop = context.button_prop
         
         # dump(prop, 'button_prop')
         
@@ -1595,9 +1597,9 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1, 'description': prop.description, 'default': prop.default}
             elif hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default') and hasattr(prop, 'description') and hasattr(prop, 'subtype'):
                 if prop.subtype != "FACTOR":
-                    obj["_RNA_UI"][prop_name] = {'min':prop.hard_min, 'max':prop.hard_max, 'description': prop.description, 'default': prop.default, 'subtype': prop.subtype}
+                    obj["_RNA_UI"][prop_name] = {'min':prop.hard_min, 'max':prop.hard_max, 'description': prop.description, 'default': prop.default if prop.array_length == 0 else eval(rna + '.' + path), 'subtype': prop.subtype}
                 else:
-                    obj["_RNA_UI"][prop_name] = {'min':prop.hard_min, 'max':prop.hard_max, 'description': prop.description, 'default': prop.default, 'subtype': "NONE"}
+                    obj["_RNA_UI"][prop_name] = {'min':prop.hard_min, 'max':prop.hard_max, 'description': prop.description, 'default': prop.default if prop.array_length == 0 else eval(rna + '.' + path), 'subtype': "NONE"}
             elif hasattr(prop, 'description'):
                 obj["_RNA_UI"][prop_name] = {'description': prop.description}
         
@@ -1617,6 +1619,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             cp.name = prop_name_ui
             cp.prop_name = prop_name
             cp.type = prop.type
+            cp.array_length = prop.array_length
             cp.subtype = prop.subtype
             
             cp.is_bool = prop.type == "BOOLEAN"
@@ -1646,10 +1649,14 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 if hasattr(prop, 'description'):
                     cp.description = obj["_RNA_UI"][prop_name]['description']
                 if hasattr(prop, 'default'):
-                    if prop.type == "FLOAT":
-                        cp.default_float = obj["_RNA_UI"][prop_name]['default']
-                    elif prop.type == "INT" or prop.type == "BOOLEAN":
-                        cp.default_int = obj["_RNA_UI"][prop_name]['default']
+                    if prop.array_length == 0:
+                        if prop.type == "FLOAT":
+                            cp.default_float = obj["_RNA_UI"][prop_name]['default']
+                        elif prop.type == "INT" or prop.type == "BOOLEAN":
+                            cp.default_int = obj["_RNA_UI"][prop_name]['default']
+                    else:
+                        cp.default_array = str(obj["_RNA_UI"][prop_name]['default'].to_list())
+                        
                 if hasattr(prop, 'hard_min') and prop.type != "BOOLEAN":
                     if prop.type == "FLOAT":
                         cp.min_float = obj["_RNA_UI"][prop_name]['min']
@@ -2240,6 +2247,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
     default_int : bpy.props.IntProperty()
     default_bool : bpy.props.BoolProperty()
     default_float : bpy.props.FloatProperty()
+    default_color: bpy.props.FloatVectorProperty(name="Default color", 
+                        subtype='COLOR',
+                        size = 4,
+                        default=[0.,0.,0.,0.])
+    default_array: bpy.props.StringProperty()
     
     @classmethod
     def poll(cls, context):
@@ -2256,11 +2268,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         if not custom_prop.is_bool and prop_type == float and custom_prop.force_type == "None":
             self.max_int = custom_prop.max_int
             self.min_int = custom_prop.min_int
-            self.default_int = custom_prop.default_int
+            self.default_int = custom_prop.default_int if custom_prop.array_length == 0 else eval(custom_prop.default_array)
         elif not custom_prop.is_bool and (prop_type == int or custom_prop.force_type == "Int"):
             self.max_float = custom_prop.max_float
             self.min_float = custom_prop.min_float
-            self.default_float = custom_prop.default_float
+            self.default_float = custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array)
         
         return
     
@@ -2281,12 +2293,17 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             self.report({'ERROR'}, 'MustardUI - Can not change type of the custom property.')
             return {'FINISHED'}
         
+        if custom_prop.array_length > 0 and len(eval(self.default_array)) != custom_prop.array_length:
+            self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
+            return {'FINISHED'}
+        
         custom_prop.name = self.name
         custom_prop.icon = self.icon
         
         if custom_prop.is_animatable:
             
             prop_name = custom_prop.prop_name
+            prop_array = custom_prop.array_length > 0
             
             custom_prop.force_type = self.force_type
             
@@ -2299,20 +2316,26 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1}
                 obj[prop_name] = min(1,max(0,int(obj[prop_name])))
             elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
-                obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float}
+                obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array)}
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
                 custom_prop.max_float = self.max_float
-                custom_prop.default_float = self.default_float
-                obj[prop_name] = float(obj[prop_name])
+                if custom_prop.array_length == 0:
+                    custom_prop.default_float = self.default_float
+                    obj[prop_name] = float(obj[prop_name])
+                else:
+                    custom_prop.default_array = self.default_array
                 custom_prop.is_bool = False
             elif not custom_prop.is_bool and (prop_type == "INT" or self.force_type == "Int"):
-                obj["_RNA_UI"][prop_name] = {'min': self.min_int, 'max': self.max_int, 'description': self.description, 'default': self.default_int}
+                obj["_RNA_UI"][prop_name] = {'min': self.min_int, 'max': self.max_int, 'description': self.description, 'default': self.default_int if custom_prop.array_length == 0 else eval(self.default_array)}
                 custom_prop.description = self.description
                 custom_prop.min_int = self.min_int
                 custom_prop.max_int = self.max_int
-                custom_prop.default_int = self.default_int
-                obj[prop_name] = int(obj[prop_name])
+                if custom_prop.array_length == 0:
+                    custom_prop.default_int = self.default_int
+                    obj[prop_name] = int(obj[prop_name])
+                else:
+                    custom_prop.default_array = self.default_array
                 custom_prop.is_bool = False
             elif hasattr(prop, 'description'):
                 obj["_RNA_UI"][prop_name] = {'description': prop.description}
@@ -2330,6 +2353,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             return {'FINISHED'}
         
         custom_prop = custom_props[index]
+        prop_name = custom_prop.prop_name
+        prop_array = custom_prop.array_length > 0
         
         self.name = custom_prop.name
         self.icon = custom_prop.icon
@@ -2345,13 +2370,22 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     if not custom_prop.is_bool and (prop_type == "INT" or self.force_type == "Int"):
                         self.max_int = obj["_RNA_UI"][custom_prop.prop_name]['max']
                         self.min_int = obj["_RNA_UI"][custom_prop.prop_name]['min']
-                        self.default_int = obj["_RNA_UI"][custom_prop.prop_name]['default']
+                        if custom_prop.array_length == 0:
+                            self.default_int = obj["_RNA_UI"][custom_prop.prop_name]['default']
+                        else:
+                            self.default_array = str(obj["_RNA_UI"][custom_prop.prop_name]['default'].to_list())
                     elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
                         self.max_float = obj["_RNA_UI"][custom_prop.prop_name]['max']
                         self.min_float = obj["_RNA_UI"][custom_prop.prop_name]['min']
                         if self.min_float == self.max_float:
                             self.max_float += 1
-                        self.default_float = obj["_RNA_UI"][custom_prop.prop_name]['default']
+                        if custom_prop.array_length > 0:
+                            if custom_prop.subtype == "COLOR":
+                                self.default_color = obj["_RNA_UI"][custom_prop.prop_name]['default']
+                            else:
+                                self.default_array = str(obj["_RNA_UI"][custom_prop.prop_name]['default'].to_list())
+                        else:
+                            self.default_float = obj["_RNA_UI"][custom_prop.prop_name]['default']
                 else:
                     self.restore_RNA_UI(custom_prop, prop_type)
             else:
@@ -2366,6 +2400,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
         custom_prop = custom_props[index]
         prop_cp_type = custom_prop.cp_type
+        prop_name = custom_prop.prop_name
+        prop_array = custom_prop.array_length > 0
         
         scale = 3.0
         
@@ -2411,7 +2447,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 box.label(text="Restoring RNA_UI", icon="ERROR")
             
             prop_type = custom_prop.type
-                
+            
             if not custom_prop.is_bool:
             
                 row=box.row()
@@ -2421,24 +2457,42 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 
                 if prop_type == "FLOAT":
                     
-                    row=box.row()
-                    row.label(text="Force type:")
-                    row.scale_x=scale
-                    row.prop(self, "force_type", text="")
+                    if custom_prop.array_length == 0:
+                        row=box.row()
+                        row.label(text="Force type:")
+                        row.scale_x=scale
+                        row.prop(self, "force_type", text="")
                     
                     if self.force_type == "None":
+                        
+                        if custom_prop.array_length == 0:
                     
-                        row=box.row()
-                        row.label(text="Default:")
-                        row.scale_x=scale
-                        row.prop(self, "default_float", text="")
-                
-                        row=box.row()
-                        row.label(text="Min / Max")
-                        row.scale_x=scale
-                        row2=row.row(align=True)
-                        row2.prop(self, "min_float", text="")
-                        row2.prop(self, "max_float", text="")
+                            row=box.row()
+                            row.label(text="Default:")
+                            row.scale_x=scale
+                            row.prop(self, "default_float", text="")
+                    
+                        else:
+                            
+                            if custom_prop.subtype == "COLOR":
+                                row=box.row()
+                                row.label(text="Default:")
+                                row.scale_x=scale
+                                row.prop(self, "default_color", text="")
+                            else:
+                                row=box.row()
+                                row.label(text="Default:")
+                                row.scale_x=scale
+                                row.prop(self, "default_array", text="")
+                        
+                        if custom_prop.subtype != "COLOR":
+                            
+                            row=box.row()
+                            row.label(text="Min / Max")
+                            row.scale_x=scale
+                            row2=row.row(align=True)
+                            row2.prop(self, "min_float", text="")
+                            row2.prop(self, "max_float", text="")
                 
                 if prop_type == "INT" or self.force_type == "Int":
                     
@@ -2598,9 +2652,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 if custom_prop.is_bool:
                     obj["_RNA_UI"][prop_name] = {'min':0, 'max':1}
                 elif not custom_prop.is_bool and prop_type == float and custom_prop.force_type == "None":
-                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float, 'max': custom_prop.max_float, 'description': custom_prop.description, 'default': custom_prop.default_float, 'subtype': custom_prop.subtype}
+                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float, 'max': custom_prop.max_float, 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array), 'subtype': custom_prop.subtype}
                 elif not custom_prop.is_bool and (prop_type == int or custom_prop.force_type == "Int"):
-                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_int, 'max': custom_prop.max_int, 'description': custom_prop.description, 'default': custom_prop.default_int}
+                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_int, 'max': custom_prop.max_int, 'description': custom_prop.description, 'default': custom_prop.default_int if custom_prop.array_length == 0 else eval(custom_prop.default_array)}
                 elif hasattr(prop, 'description'):
                     obj["_RNA_UI"][prop_name] = {'description': custom_prop.description}
             
@@ -2726,8 +2780,9 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             cp.rna = rna
             cp.path = path
             cp.prop_name = prop_name
-            cp.type = type
+            cp.type = "FLOAT" if type == "COLOR" else type
             cp.subtype = "COLOR" if type == "COLOR" else "NONE"
+            cp.array_length = 4 if type == "COLOR" else 0
             cp.name = name
             
             cp.is_bool = type == "BOOLEAN"
@@ -2740,22 +2795,27 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                     cp.section = cptr[2]
                     break
             
-            if hasattr(obj["_RNA_UI"][prop_name], 'description'):
+            print(obj["_RNA_UI"][prop_name].keys())
+            print(hasattr(obj["_RNA_UI"][prop_name], 'description'))
+            
+            if 'description' in obj["_RNA_UI"][prop_name].keys():
                 cp.description = obj["_RNA_UI"][prop_name]['description']
-            if hasattr(obj["_RNA_UI"][prop_name], 'default'):
-                if cp.type == "FLOAT":
+            if 'default' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
+                if type == "FLOAT":
                     cp.default_float = obj["_RNA_UI"][prop_name]['default']
-                elif cp.type == "INT" or prop.type == "BOOLEAN":
+                elif type == "INT":
                     cp.default_int = obj["_RNA_UI"][prop_name]['default']
-            if hasattr(obj["_RNA_UI"][prop_name], 'hard_min') and type != "BOOLEAN":
-                if cp.type == "FLOAT":
+                else:
+                    cp.default_array = str(obj["_RNA_UI"][prop_name]['default']).to_list()
+            if 'hard_min' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
+                if type == "FLOAT":
                     cp.min_float = obj["_RNA_UI"][prop_name]['min']
-                elif cp.type == "INT":
+                elif type == "INT":
                     cp.min_int = obj["_RNA_UI"][prop_name]['min']
-            if hasattr(obj["_RNA_UI"][prop_name], 'hard_max') and type != "BOOLEAN":
-                if cp.type == "FLOAT":
+            if 'hard_max' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
+                if type == "FLOAT":
                     cp.max_float = obj["_RNA_UI"][prop_name]['max']
-                elif cp.type == "INT":
+                elif type == "INT":
                     cp.max_int = obj["_RNA_UI"][prop_name]['max']
         
         return
