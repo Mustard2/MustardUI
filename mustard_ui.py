@@ -1476,6 +1476,15 @@ def mustardui_choose_cp(obj, type, scene):
     else:
         return obj.MustardUI_CustomPropertiesHair, scene.mustardui_property_uilist_hair_index
 
+def mustardui_update_index_cp(type, scene, index):
+    
+    if type == "BODY":
+        scene.mustardui_property_uilist_index = index
+    elif type == "OUTFIT":
+        scene.mustardui_property_uilist_outfits_index = index
+    else:
+        scene.mustardui_property_uilist_hair_index = index
+
 # Function to add driver
 def mustardui_add_driver(obj, rna, path, prop, prop_name):
         
@@ -2047,6 +2056,7 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
         
         settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
         
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -2054,6 +2064,17 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
             layout.scale_x = 1.0
             
             row = layout.row(align = True)
+            
+            if item.outfit != None and item.outfit_piece == None:
+                if rig_settings.model_MustardUI_naming_convention:
+                    row.label(text=item.outfit.name[len(rig_settings.model_name) + 1:])
+                else:
+                    row.label(text=item.outfit.name)
+            elif item.outfit != None and item.outfit_piece != None:
+                if rig_settings.model_MustardUI_naming_convention:
+                    row.label(text=item.outfit_piece.name[len(rig_settings.model_name) + 1:])
+                else:
+                    row.label(text=item.outfit_piece.name)
             
             if settings.debug:
                 if item.is_animatable:
@@ -2085,6 +2106,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
         
         settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
         
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -2092,6 +2114,12 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
             layout.scale_x = 1.0
             
             row = layout.row(align = True)
+            
+            if item.hair != None:
+                if rig_settings.model_MustardUI_naming_convention:
+                    row.label(text=item.hair.name[len(rig_settings.model_name) + 1:])
+                else:
+                    row.label(text=item.outfit.name)
             
             if settings.debug:
                 if item.is_animatable:
@@ -2173,6 +2201,7 @@ class MustardUI_Property_Remove(bpy.types.Operator):
         
         uilist.remove(index)
         index = min(max(0, index - 1), len(uilist) - 1)
+        mustardui_update_index_cp(self.type, context.scene, index)
         
         obj.update_tag()
         
@@ -2195,14 +2224,13 @@ class MustardUI_Property_Switch(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config = 1)
         return obj != None
 
-    def move_index(self, uilist):
+    def move_index(self, uilist, index):
         """ Move index of an item render queue while clamping it. """
 
-        index = bpy.context.scene.mustardui_property_uilist_index
         list_length = len(uilist) - 1  # (index starts at 0)
         new_index = index + (-1 if self.direction == 'UP' else 1)
 
-        bpy.context.scene.mustardui_property_uilist_index = max(0, min(new_index, list_length))
+        return max(0, min(new_index, list_length))
 
     def execute(self, context):
         
@@ -2215,7 +2243,8 @@ class MustardUI_Property_Switch(bpy.types.Operator):
 
         neighbour = index + (-1 if self.direction == 'UP' else 1)
         uilist.move(neighbour, index)
-        self.move_index(uilist)
+        index = self.move_index(uilist, index)
+        mustardui_update_index_cp(self.type, context.scene, index)
 
         return{'FINISHED'}
 
@@ -2293,6 +2322,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             self.report({'ERROR'}, 'MustardUI - Can not change type of the custom property.')
             return {'FINISHED'}
         
+        if custom_prop.array_length > 0 and custom_prop.subtype == "COLOR":
+            self.default_array = str(list(self.default_color))
         if custom_prop.array_length > 0 and len(eval(self.default_array)) != custom_prop.array_length:
             self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
             return {'FINISHED'}
@@ -2316,7 +2347,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1}
                 obj[prop_name] = min(1,max(0,int(obj[prop_name])))
             elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
-                obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array)}
+                obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
                 custom_prop.max_float = self.max_float
@@ -2327,7 +2358,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     custom_prop.default_array = self.default_array
                 custom_prop.is_bool = False
             elif not custom_prop.is_bool and (prop_type == "INT" or self.force_type == "Int"):
-                obj["_RNA_UI"][prop_name] = {'min': self.min_int, 'max': self.max_int, 'description': self.description, 'default': self.default_int if custom_prop.array_length == 0 else eval(self.default_array)}
+                obj["_RNA_UI"][prop_name] = {'min': self.min_int, 'max': self.max_int, 'description': self.description, 'default': self.default_int if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
                 custom_prop.description = self.description
                 custom_prop.min_int = self.min_int
                 custom_prop.max_int = self.max_int
@@ -2359,6 +2390,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         self.name = custom_prop.name
         self.icon = custom_prop.icon
         self.description = custom_prop.description
+        self.default_array = "[]"
         
         if custom_prop.is_animatable:
             
@@ -2806,7 +2838,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 elif type == "INT":
                     cp.default_int = obj["_RNA_UI"][prop_name]['default']
                 else:
-                    cp.default_array = str(obj["_RNA_UI"][prop_name]['default']).to_list()
+                    cp.default_array = str(obj["_RNA_UI"][prop_name]['default'].to_list())
             if 'hard_min' in obj["_RNA_UI"][prop_name].keys() and type != "BOOLEAN":
                 if type == "FLOAT":
                     cp.min_float = obj["_RNA_UI"][prop_name]['min']
