@@ -2905,7 +2905,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
         
-        j = 0
+        k = 0
         
         index_to_remove = []
         sections_to_recover = []
@@ -2923,30 +2923,30 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             for j in range(len(mat.node_tree.nodes)):
                 if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI Float - "):], "FLOAT", custom_props, sections_to_recover)
-                    j = j + 1
+                    k = k + 1
                 elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI Bool - "):], "BOOLEAN", custom_props, sections_to_recover)
-                    j = j + 1
+                    k = k + 1
                 elif "MustardUI Int" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI Int - "):], "INT", custom_props, sections_to_recover)
-                    j = j + 1
+                    k = k + 1
                 elif "MustardUI" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="RGB":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI - "):], "COLOR", custom_props, sections_to_recover)
-                    j = j + 1
+                    k = k + 1
         
         if rig_settings.model_body.data.shape_keys != None:
             for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
                     self.add_custom_property(obj, 'bpy.data.objects[\''+rig_settings.model_body.name+'\'].data.shape_keys.key_blocks[\''+shape_key.name+'\']', 'value', shape_key.name[len("MustardUI Float - "):], "FLOAT", custom_props, sections_to_recover)
-                    j = j + 1
+                    k = k + 1
                 elif "MustardUI Bool" in shape_key.name:
                     self.add_custom_property(obj, 'bpy.data.objects[\''+rig_settings.model_body.name+'\'].data.shape_keys.key_blocks[\''+shape_key.name+'\']', 'value', shape_key.name[len("MustardUI Bool - "):], "BOOL", custom_props, sections_to_recover)
-                    j = j + 1
+                    k = k + 1
         
         # Update the drivers
         obj.update_tag()
         
-        self.report({'INFO'}, 'MustardUI - Smart Check found ' + str(j) + ' properties.')
+        self.report({'INFO'}, 'MustardUI - Smart Check found ' + str(k) + ' properties.')
     
         return {'FINISHED'}
 
