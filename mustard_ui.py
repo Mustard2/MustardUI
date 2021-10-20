@@ -2714,7 +2714,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
 # Operator to add the right click button on properties
 class MustardUI_Property_SmartCheck(bpy.types.Operator):
-    """Smart Check"""
+    """Check if some properties respect the MustardUI Int/Float/Bool convention, and automatically add them as additional properties"""
     bl_idname = "mustardui.property_smartcheck"
     bl_label = "Smart Check"
     bl_options = {'UNDO'}
@@ -2804,7 +2804,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         if type == "BOOLEAN":
             obj["_RNA_UI"][prop_name] = {}
         elif type == "COLOR":
-            obj["_RNA_UI"][prop_name] = {'min':0, 'max':1, 'description': "", 'default': eval(rna + "." + path), 'subtype': "COLOR"}
+            obj["_RNA_UI"][prop_name] = {'min':0., 'max':1., 'use_soft_limits':True, 'soft_min':0, 'soft_max':1, 'description': "", 'default': eval(rna + "." + path), 'subtype': "COLOR"}
         elif type == "FLOAT":
             obj["_RNA_UI"][prop_name] = {'min':0., 'max':1., 'description': "", 'default': eval(rna + "." + path)}
         else:
