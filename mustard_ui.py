@@ -48,7 +48,12 @@ mustardui_icon_list = [
                 ("PARTICLEMODE", "Comb", "Comb","PARTICLEMODE",11),
                 ("OUTLINER_OB_POINTCLOUD", "Points", "Points","OUTLINER_OB_POINTCLOUD",12),
                 ("MOD_DYNAMICPAINT", "Foot", "Foot","MOD_DYNAMICPAINT",13),
-                ("OUTLINER_DATA_VOLUME", "Cloud", "Cloud","OUTLINER_DATA_VOLUME",14)
+                ("OUTLINER_DATA_VOLUME", "Cloud", "Cloud","OUTLINER_DATA_VOLUME",14),
+                ("SHAPEKEY_DATA", "Shape Key", "Shape Key","SHAPEKEY_DATA",15),
+                ("FUND", "Hearth", "Hearth","FUND",16),
+                ("MATSHADERBALL", "Ball", "Ball","MATSHADERBALL",17),
+                ("COMMUNITY", "Community", "Community","COMMUNITY",18),
+                ("LIGHT", "Light", "Light","LIGHT",19)
             ]
 
 # ------------------------------------------------------------------------
@@ -1656,6 +1661,12 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             cp.type = prop.type
             cp.array_length = prop.array_length
             cp.subtype = prop.subtype
+            
+            # Try to find icon
+            if "materials" in rna:
+                cp.icon = "MATERIAL"
+            elif "key_blocks" in rna:
+                cp.icon = "SHAPEKEY_DATA"
             
             cp.is_bool = prop.type == "BOOLEAN"
             if prop.type == "BOOLEAN":
