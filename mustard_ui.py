@@ -434,7 +434,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Enable properties icons in the menu.\nNote: this can clash with the section icons, making the menu difficult to read")
     outfit_custom_properties_icons: bpy.props.BoolProperty(default = False,
                         name = "Show Icons",
-                        description = "Enable properties icons in the menu")
+                        description = "Enable properties icons in the outfit menu")
+    outfit_global_custom_properties_collapse: bpy.props.BoolProperty(default = False)
     hair_custom_properties_icons: bpy.props.BoolProperty(default = False,
                         name = "Show Icons",
                         description = "Enable properties icons in the menu")
@@ -6677,7 +6678,8 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             
             box = layout.box()
             box.label(text="Outfits list", icon="MOD_CLOTH")
-            box.prop(rig_settings,"outfits_list", text="")
+            row = box.row(align=True)
+            row.prop(rig_settings,"outfits_list", text="")
             
             if rig_settings.outfits_list != "Nude":
                 if len(bpy.data.collections[rig_settings.outfits_list].objects)>0:
@@ -6685,7 +6687,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     # Global outfit custom properties
                     custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None]
                     if len(custom_properties)>0 and rig_settings.outfit_additional_options:
-                        self.custom_properties_print(arm, rig_settings, custom_properties, box)
+                        row.prop(rig_settings,"outfit_global_custom_properties_collapse", text="", toggle=True, icon="PREFERENCES")
+                        if rig_settings.outfit_global_custom_properties_collapse:
+                            self.custom_properties_print(arm, rig_settings, custom_properties, box)
                     
                     for obj in bpy.data.collections[rig_settings.outfits_list].objects:
                         row = box.row(align=True)
