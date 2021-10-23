@@ -2380,12 +2380,12 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1}
                 obj[prop_name] = min(1,max(0,int(obj[prop_name])))
             elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
-                if custom_prop.subtype != "FACTOR":
-                    obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
-                elif custom_prop.subtype != "COLOR":
+                if custom_prop.subtype == "FACTOR":
                     obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array)}
-                else:
+                elif custom_prop.subtype == "COLOR":
                     obj["_RNA_UI"][prop_name] = {'min': 0., 'max': 1.}
+                else:
+                    obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
                 custom_prop.max_float = self.max_float
