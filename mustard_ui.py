@@ -2315,10 +2315,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
     default_int : bpy.props.IntProperty()
     default_bool : bpy.props.BoolProperty()
     default_float : bpy.props.FloatProperty()
-    default_color: bpy.props.FloatVectorProperty(name="Default color", 
-                        subtype='COLOR',
-                        size = 4,
-                        default=[0.,0.,0.,0.])
     default_array: bpy.props.StringProperty()
     
     @classmethod
@@ -2361,9 +2357,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             self.report({'ERROR'}, 'MustardUI - Can not change type of the custom property.')
             return {'FINISHED'}
         
-        if custom_prop.array_length > 0 and custom_prop.subtype == "COLOR":
-            self.default_array = str(list(self.default_color))
-        if custom_prop.array_length > 0 and len(eval(self.default_array)) != custom_prop.array_length:
+        if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR" and len(eval(self.default_array)) != custom_prop.array_length:
             self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
             return {'FINISHED'}
         
@@ -2387,9 +2381,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 obj[prop_name] = min(1,max(0,int(obj[prop_name])))
             elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
                 if custom_prop.subtype != "FACTOR":
-                    obj["_RNA_UI"][prop_name] = {'min': self.min_float if custom_prop.subtype != "COLOR" else 0, 'max': self.max_float if custom_prop.subtype != "COLOR" else 1, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
+                    obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array), 'subtype': custom_prop.subtype}
+                elif custom_prop.subtype != "COLOR":
+                    obj["_RNA_UI"][prop_name] = {'min': self.min_float, 'max': self.max_float, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array)}
                 else:
-                    obj["_RNA_UI"][prop_name] = {'min': self.min_float if custom_prop.subtype != "COLOR" else 0, 'max': self.max_float if custom_prop.subtype != "COLOR" else 1, 'description': self.description, 'default': self.default_float if custom_prop.array_length == 0 else eval(self.default_array)}
+                    obj["_RNA_UI"][prop_name] = {'min': 0., 'max': 1.}
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
                 custom_prop.max_float = self.max_float
@@ -2457,9 +2453,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                         if self.min_float == self.max_float:
                             self.max_float += 1
                         if custom_prop.array_length > 0:
-                            if custom_prop.subtype == "COLOR":
-                                self.default_color = obj["_RNA_UI"][custom_prop.prop_name]['default']
-                            else:
+                            if custom_prop.subtype != "COLOR":
                                 self.default_array = str(obj["_RNA_UI"][custom_prop.prop_name]['default'].to_list())
                         else:
                             self.default_float = obj["_RNA_UI"][custom_prop.prop_name]['default']
@@ -2515,8 +2509,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         
         if custom_prop.is_animatable:
             
-            box = layout.box()
-            
             # Debug mode
             if "_RNA_UI" not in obj.keys():
                 box.label(text="Restoring RNA_UI", icon="ERROR")
@@ -2525,7 +2517,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             
             prop_type = custom_prop.type
             
-            if not custom_prop.is_bool:
+            if not custom_prop.is_bool and custom_prop.subtype != "COLOR":
+                
+                box = layout.box()
             
                 row=box.row()
                 row.label(text="Description:")
@@ -2540,28 +2534,28 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                         row.scale_x=scale
                         row.prop(self, "force_type", text="")
                     
-                    if self.force_type == "None":
-                        
-                        if custom_prop.array_length == 0:
+                        if self.force_type == "None":
                     
                             row=box.row()
                             row.label(text="Default:")
                             row.scale_x=scale
                             row.prop(self, "default_float", text="")
                     
-                        elif custom_prop.subtype != "COLOR":
-                            
-                            row=box.row()
-                            row.label(text="Default:")
-                            row.scale_x=scale
-                            row.prop(self, "default_array", text="")
-                            
-                            row=box.row()
-                            row.label(text="Min / Max")
-                            row.scale_x=scale
-                            row2=row.row(align=True)
-                            row2.prop(self, "min_float", text="")
-                            row2.prop(self, "max_float", text="")
+                    elif custom_prop.subtype != "COLOR":
+                        
+                        row=box.row()
+                        row.label(text="Default:")
+                        row.scale_x=scale
+                        row.prop(self, "default_array", text="")
+                    
+                    if self.force_type == "None":
+                        
+                        row=box.row()
+                        row.label(text="Min / Max")
+                        row.scale_x=scale
+                        row2=row.row(align=True)
+                        row2.prop(self, "min_float", text="")
+                        row2.prop(self, "max_float", text="")
                 
                 if prop_type == "INT" or self.force_type == "Int":
                     
@@ -3724,12 +3718,12 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
             if obj.data.shape_keys != None:
                 for driver in obj.data.shape_keys.animation_data.drivers:
                     if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
-                        driver.mute = not self.check_driver(arm, driver.data_path)
+                        driver.mute = False
         
         for driver in rig_settings.model_armature_object.animation_data.drivers:
             
             if "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
-                    driver.mute = not self.check_driver(arm, driver.data_path)
+                    driver.mute = False
         
         context.view_layer.objects.active = aobj
         
