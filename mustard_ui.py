@@ -6811,6 +6811,12 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                     if obj.MustardUI_additional_options_show:
                         self.custom_properties_print(arm, rig_settings, custom_properties_obj, box)
+            
+            else:
+                box = layout.box()
+                row = box.row()
+                row.label(text="Hair visibility", icon="HAIR")
+                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
         
         # Particle systems
         if len(rig_settings.model_body.particle_systems)>0 and rig_settings.particle_systems_enable:
