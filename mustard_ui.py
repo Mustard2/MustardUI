@@ -6788,6 +6788,8 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         # Hair
         if rig_settings.hair_collection != None:
             
+            obj = bpy.data.objects[rig_settings.hair_list]
+            
             if len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1:
                 
                 box = layout.box()
@@ -6797,20 +6799,18 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 
                 row = box.row(align=True)
                 row.prop(rig_settings,"hair_list", text="")
-                
-                obj = bpy.data.objects[rig_settings.hair_list]
-                
-                custom_properties_obj= [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj]
-                if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
-                    row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
-                    if obj.MustardUI_additional_options_show:
-                        self.custom_properties_print(arm, rig_settings, custom_properties_obj, box)
             
             else:
                 box = layout.box()
                 row = box.row()
-                row.label(text="Hair visibility", icon="HAIR")
+                row.label(text="Hair", icon="HAIR")
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                
+            custom_properties_obj= [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj]
+            if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
+                row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
+                if obj.MustardUI_additional_options_show:
+                    self.custom_properties_print(arm, rig_settings, custom_properties_obj, box)
         
         # Particle systems
         if len(rig_settings.model_body.particle_systems)>0 and rig_settings.particle_systems_enable:
