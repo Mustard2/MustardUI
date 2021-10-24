@@ -786,34 +786,6 @@ bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(default = False,
                     update = MustardUI_RigSettings.outfits_visibility_update)
 
 # ------------------------------------------------------------------------
-#    Particle systems definitions
-# ------------------------------------------------------------------------
-
-# Particle systems functions
-def mustardui_particle_hair_update(self, context):
-    
-    poll, obj = mustardui_active_object(context, config = 0)
-    rig_settings = obj.MustardUI_RigSettings
-    
-    for psys in rig_settings.model_body.particle_systems:
-        if psys.settings.name == self.name:
-            rig_settings.model_body.modifiers[psys.name].show_render = self.mustardui_particle_hair_enable
-            rig_settings.model_body.modifiers[psys.name].show_viewport = self.mustardui_particle_hair_enable_viewport
-            break
-    
-    return
-
-# Properties needed to create show/hide buttons in the UI
-bpy.types.ParticleSettings.mustardui_particle_hair_enable = bpy.props.BoolProperty(default = False,
-                    name = "",
-                    description = "Enable particle hair effect during rendering",
-                    update = mustardui_particle_hair_update)
-bpy.types.ParticleSettings.mustardui_particle_hair_enable_viewport = bpy.props.BoolProperty(default = False,
-                    name = "",
-                    description = "Enable particle hair effect in viewport.\nThis will greatly affect performance and memory usage. Use it only for previews",
-                    update = mustardui_particle_hair_update)
-
-# ------------------------------------------------------------------------
 #    Armature layer Properties and operators
 # ------------------------------------------------------------------------
 
@@ -1578,11 +1550,6 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             return {'FINISHED'}
         
         prop = context.button_prop
-        
-        if hasattr(prop, 'type') and hasattr(prop, 'array_length'):
-            if prop.type == "BOOLEAN" and prop.array_length > 0:
-                self.report({'ERROR'}, 'MustardUI - Can not create custom property from this property.')
-                return {'FINISHED'}
         
         # dump(prop, 'button_prop')
         
@@ -3575,8 +3542,6 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
         
         for morph in rig_settings.diffeomorphic_morphs_list:
             exec('rig_settings.model_armature_object' + '[\"' + morph.path + '\"] = 0.')
-        
-        arm.update_tag()
         
         self.report({'INFO'}, 'MustardUI - Morphs values restored to default.')
         
@@ -6656,24 +6621,16 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             # Check if one of these should be shown in the UI
             outfits_avail = len(rig_settings.outfits_collections)>0
             
-            if rig_settings.hair_collection != None:
-                hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1
-            else:
-                hair_avail = False
+            hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1 if rig_settings.hair_collection != None else False
             
-            if rig_settings.extras_collection != None:
-                extras_avail = len(rig_settings.extras_collection.objects)>0
-            else:
-                extras_avail = False
+            extras_avail = len(rig_settings.extras_collection.objects)>0 if rig_settings.extras_collection != None else False
             
-            if rig_settings.model_body != None:
-                particle_avail = len(rig_settings.model_body.particle_systems)>0 and rig_settings.particle_systems_enable
-            else:
-                particle_avail = False
+            particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"])>0 and rig_settings.particle_systems_enable if rig_settings.model_body != None else False
         
-            return res and (hair_avail or outfits_avail or extras_avail or particle_avail)
+            return res and (hair_avail or outfits_avail or extras_avail or particle_avail) if arm != None else red
         
         else:
+            
             return res
 
     def draw(self, context):
@@ -6809,7 +6766,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             
             else:
                 box = layout.box()
-                row = box.row()
+                row = box.row(align=True)
                 row.label(text="Hair", icon="HAIR")
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
                 
@@ -6820,22 +6777,17 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     self.custom_properties_print(arm, rig_settings, custom_properties_obj, box)
         
         # Particle systems
-        if len(rig_settings.model_body.particle_systems)>0 and rig_settings.particle_systems_enable:
+        mod_particle_system = [x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]
+        if rig_settings.particle_systems_enable  and len(mod_particle_system )> 0:
             box = layout.box()
             box.label(text="Hair particles", icon="PARTICLES")
             box2=box.box()
-            for psys in rig_settings.model_body.particle_systems:
+            for mod in mod_particle_system:
                 row=box2.row()
-                row.label(text=psys.name)
+                row.label(text=mod.particle_system.name)
                 row2=row.row(align=True)
-                if psys.settings.mustardui_particle_hair_enable:
-                    row2.prop(psys.settings, "mustardui_particle_hair_enable", text="", toggle=True, icon="RESTRICT_RENDER_OFF")
-                else:
-                    row2.prop(psys.settings, "mustardui_particle_hair_enable", text="", toggle=True, icon="RESTRICT_RENDER_ON")
-                if psys.settings.mustardui_particle_hair_enable_viewport:
-                    row2.prop(psys.settings, "mustardui_particle_hair_enable_viewport", text="", toggle=True, icon="RESTRICT_VIEW_OFF")
-                else:
-                    row2.prop(psys.settings, "mustardui_particle_hair_enable_viewport", text="", toggle=True, icon="RESTRICT_VIEW_ON")
+                row2.prop(mod, "show_viewport", text="")
+                row2.prop(mod, "show_render", text="")
 
 class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Armature"
