@@ -1579,6 +1579,11 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         
         prop = context.button_prop
         
+        if hasattr(prop, 'type') and hasattr(prop, 'array_length'):
+            if prop.type == "BOOLEAN" and prop.array_length > 0:
+                self.report({'ERROR'}, 'MustardUI - Can not create custom property from this property.')
+                return {'FINISHED'}
+        
         # dump(prop, 'button_prop')
         
         # Copy the path of the selected property
@@ -3570,6 +3575,8 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
         
         for morph in rig_settings.diffeomorphic_morphs_list:
             exec('rig_settings.model_armature_object' + '[\"' + morph.path + '\"] = 0.')
+        
+        arm.update_tag()
         
         self.report({'INFO'}, 'MustardUI - Morphs values restored to default.')
         
