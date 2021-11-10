@@ -12,6 +12,7 @@ bl_info = {
     "wiki_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -1396,6 +1397,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     # Section settings
     section: bpy.props.StringProperty(default = "")
     add_section: bpy.props.BoolProperty(default = False,
+                        name = "Add to section",
                         description = "Add the property to the selected section")
     
     # Type
@@ -1513,6 +1515,38 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
                 var.targets[0].id_type   = "ARMATURE"
                 var.targets[0].id        = obj
                 var.targets[0].data_path = '["' + prop_name + '"]' + '['+ str(i) + ']'
+        
+        return
+
+def mustardui_clean_prop(obj, uilist, index, settings):
+        
+        # Delete custom property and drivers
+        try:
+            del obj["_RNA_UI"][uilist[index].prop_name]
+        except:
+            if settings.debug:
+                print('MustardUI - RNA_UI not found for this property. Skipping custom properties deletion')
+        
+        try:
+            del obj[uilist[index].prop_name]
+        except:
+            if settings.debug:
+                print('MustardUI - Properties not found. Skipping custom properties deletion')
+        
+        # Remove linked properties drivers
+        for lp in uilist[index].linked_properties:
+            try:
+                driver_object = eval(lp.rna)
+                driver_object.driver_remove(lp.path)
+            except:
+                print("MustardUI - Could not delete driver with path: " + lp.rna)
+        
+        # Remove driver
+        try:
+            driver_object = eval(uilist[index].rna)
+            driver_object.driver_remove(uilist[index].path)
+        except:
+            print("MustardUI - Could not delete driver with path: " + uilist[index].rna)
         
         return
 
@@ -2161,36 +2195,6 @@ class MustardUI_Property_Remove(bpy.types.Operator):
     
     type: bpy.props.EnumProperty(default = "BODY",
                         items = (("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")))
-
-    def clean_prop(self, obj, uilist, index, settings):
-        
-        # Delete custom property and drivers
-        try:
-            del obj["_RNA_UI"][uilist[index].prop_name]
-        except:
-            if settings.debug:
-                print('MustardUI - RNA_UI not found for this property. Skipping custom properties deletion')
-        
-        try:
-            del obj[uilist[index].prop_name]
-        except:
-            if settings.debug:
-                print('MustardUI - Properties not found. Skipping custom properties deletion')
-        
-        # Remove linked properties drivers
-        for lp in uilist[index].linked_properties:
-            try:
-                driver_object = eval(lp.rna)
-                driver_object.driver_remove(lp.path)
-            except:
-                print("MustardUI - Could not delete driver with path: " + lp.rna)
-            
-        # Remove driver
-        try:
-            driver_object = eval(uilist[index].rna)
-            driver_object.driver_remove(uilist[index].path)
-        except:
-            print("MustardUI - Could not delete driver with path: " + uilist[index].rna)
     
     @classmethod
     def poll(cls, context):
@@ -2208,7 +2212,7 @@ class MustardUI_Property_Remove(bpy.types.Operator):
             return{'FINISHED'}
         
         # Remove custom property and driver
-        self.clean_prop(obj, uilist, index, settings)
+        mustardui_clean_prop(obj, uilist, index, settings)
         
         uilist.remove(index)
         index = min(max(0, index - 1), len(uilist) - 1)
@@ -2659,18 +2663,19 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config = 0)
         
         # Rebuild all custom properties
-        custom_props = [x for x in obj.MustardUI_CustomProperties]
+        custom_props = [(x,0) for x in obj.MustardUI_CustomProperties]
         for x in obj.MustardUI_CustomPropertiesOutfit:
-            custom_props.append(x)
+            custom_props.append((x,1))
         for x in obj.MustardUI_CustomPropertiesHair:
-            custom_props.append(x)
+            custom_props.append((x,2))
         
+        errors = 0
         
         # Rebuilding custom properties max/min/default/description
         if "_RNA_UI" not in obj.keys():
             obj["_RNA_UI"] = {}
             
-        for custom_prop in [x for x in custom_props if x.is_animatable]:
+        for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
             
             prop_name = custom_prop.prop_name
             
@@ -2701,21 +2706,47 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                     obj[prop_name] = int(custom_prop.default_int)
                 else:
                     obj[prop_name] = eval(custom_prop.default_array)
-            elif hasattr(prop, 'description'):
+            else:
                 obj["_RNA_UI"][prop_name] = {'description': custom_prop.description}
                 obj[prop_name] = eval(custom_prop.rna + '.' + custom_prop.path)
             
             obj.property_overridable_library_set('["'+ prop_name +'"]', True)
             
             # Rebuilding custom properties and their linked properties drivers
-            self.add_driver(obj, custom_prop.rna, custom_prop.path, custom_prop.prop_name)
-            
-            for linked_custom_prop in custom_prop.linked_properties:
-                self.add_driver(obj, linked_custom_prop.rna, linked_custom_prop.path, custom_prop.prop_name)
+            try:
+                self.add_driver(obj, custom_prop.rna, custom_prop.path, custom_prop.prop_name)
+                for linked_custom_prop in custom_prop.linked_properties:
+                    self.add_driver(obj, linked_custom_prop.rna, linked_custom_prop.path, custom_prop.prop_name)
+            except:
+                errors += 1
+                
+                print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'.')
+                
+                if prop_type == 0:
+                    uilist = obj.MustardUI_CustomProperties
+                elif prop_type == 1:
+                    uilist = obj.MustardUI_CustomPropertiesOutfit
+                else:
+                    uilist = obj.MustardUI_CustomPropertiesHair
+                
+                for i in range(0, len(uilist)):
+                    if uilist[i].rna == custom_prop.rna and uilist[i].path == custom_prop.path:
+                        break
+                
+                mustardui_clean_prop(obj, uilist, i, settings)
+                uilist.remove(i)
+                
         
         obj.update_tag()
         
-        self.report({'INFO'}, 'MustardUI - All the drivers and custom properties rebuilt.')
+        if errors > 0:
+            print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'.')
+            if errors > 1:
+                self.report({'WARNING'}, 'MustardUI - ' + str(errors) + ' custom properties were corrupted and deleted. Check the console for more infos.')
+            else:
+                self.report({'WARNING'}, 'MustardUI - A custom property was corrupted and deleted. Check the console for more infos.')
+        else:
+            self.report({'INFO'}, 'MustardUI - All the drivers and custom properties rebuilt.')
         
         return {'FINISHED'}
 
@@ -2840,7 +2871,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             cp.is_bool = type == "BOOLEAN"
             if cp.is_bool:
                 cp.bool_value = int(eval(rna + '.' + path))
-            if prop.subtype == "COLOR":
+            if cp.subtype == "COLOR":
                 cp.color_value = eval(rna + '.' + path)
             
             cp.is_animatable = True
@@ -2873,36 +2904,6 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         
         return
     
-    def clean_prop(self, obj, uilist, index, settings):
-        
-        # Delete custom property and drivers
-        try:
-            del obj["_RNA_UI"][uilist[index].prop_name]
-        except:
-            if settings.debug:
-                print('MustardUI - RNA_UI not found for this property. Skipping custom properties deletion')
-        
-        try:
-            del obj[uilist[index].prop_name]
-        except:
-            if settings.debug:
-                print('MustardUI - Properties not found. Skipping custom properties deletion')
-        
-        # Remove linked properties drivers
-        for lp in uilist[index].linked_properties:
-            try:
-                driver_object = eval(lp.rna)
-                driver_object.driver_remove(lp.path)
-            except:
-                print("MustardUI - Could not delete driver with path: " + lp.rna)
-        
-        # Remove driver
-        try:
-            driver_object = eval(uilist[index].rna)
-            driver_object.driver_remove(uilist[index].path)
-        except:
-            print("MustardUI - Could not delete driver with path: " + uilist[index].rna)
-    
     @classmethod
     def poll(cls, context):
         
@@ -2927,7 +2928,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 index_to_remove.append(i)
         
         for i in reversed(index_to_remove):
-            self.clean_prop(obj, custom_props, i, settings)
+            mustardui_clean_prop(obj, custom_props, i, settings)
             custom_props.remove(i)
 
         for mat in rig_settings.model_body.data.materials:
@@ -5793,11 +5794,14 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         log += self.new_line()
         
         # Write to file
-        log_file = open('mustardui_log.txt','w')
-        log_file.write(log)
-        log_file.close()
-        
-        self.report({'INFO'}, "MustardUI: An log file 'mustardui_log.txt' has been created in the model folder")
+        try:
+            log_file = open('mustardui_log.txt','w')
+            log_file.write(log)
+            log_file.close()
+            
+            self.report({'INFO'}, "MustardUI - An log file 'mustardui_log.txt' has been created in the model folder.")
+        except:
+            self.report({'WARNING'}, "MustardUI - Cannot create a log file. Try to run Blender with admin privilegies.")
         
         return {'FINISHED'}
 
@@ -6698,7 +6702,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     else:
                         row.operator("mustardui.object_visibility",text=obj.name, icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
                     
-                    custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj]
+                    custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj]
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                         row.prop(bpy.data.objects[obj.name],"MustardUI_additional_options_show_lock", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show_lock:
@@ -7374,7 +7378,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         box.label(text="Version", icon="INFO")
         if rig_settings.model_version!='':
             box.label(text="Model:           " + rig_settings.model_version)
-        box.label(text="MustardUI:    " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]))
+        box.label(text="MustardUI:    " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum))
         
         if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support):
             box = layout.box()
