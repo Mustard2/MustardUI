@@ -12,7 +12,7 @@ bl_info = {
     "wiki_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "003"
+mustardui_buildnum = "006"
 
 import bpy
 import addon_utils
@@ -1641,7 +1641,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             if prop.type == "BOOLEAN":
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1, 'description': prop.description, 'default': prop.default}
             elif hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default') and hasattr(prop, 'description') and hasattr(prop, 'subtype'):
-                description = prop.description if "materials" in rna else ""
+                description = prop.description if not "materials" in rna else ""
                 if prop.subtype != "FACTOR":
                     obj["_RNA_UI"][prop_name] = {'min':prop.hard_min if prop.subtype != "COLOR" else 0, 'max':prop.hard_max if prop.subtype != "COLOR" else 1, 'description': description, 'default': prop.default if prop.array_length == 0 else eval(rna + '.' + path), 'subtype': prop.subtype}
                 else:
@@ -2438,7 +2438,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             else:
                 self.restore_RNA_UI(custom_prop, prop_type)
         
-        return context.window_manager.invoke_props_dialog(self)
+        return context.window_manager.invoke_props_dialog(self, width = 550 if settings.debug else 350)
             
     def draw(self, context):
         
@@ -2565,6 +2565,17 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row.label(text="Force type:")
                 row.scale_x=scale
                 row.prop(self, "force_type", text="")
+        
+        if settings.debug:
+            
+            box = layout.box()
+            
+            row=box.row()
+            row.label(text="Property name: "+ custom_prop.prop_name, icon="PROPERTIES")
+            
+            row=box.row()
+            row.label(text=custom_prop.rna, icon="RNA")
+            
 
 class MustardUI_Property_RemoveLinked(bpy.types.Operator):
     """Remove the linked property from the list.\nType"""
@@ -2687,16 +2698,21 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 obj["_RNA_UI"][prop_name] = {'min':0, 'max':1}
                 obj[prop_name] = int(eval(custom_prop.rna + '.' + custom_prop.path))
             elif not custom_prop.is_bool and custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
-                if custom_prop.subtype != "FACTOR":
-                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float if custom_prop.subtype != "COLOR" else 0., 'max': custom_prop.max_float if custom_prop.subtype != "COLOR" else 1., 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array), 'subtype': custom_prop.subtype}
-                else:
-                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float if custom_prop.subtype != "COLOR" else 0., 'max': custom_prop.max_float if custom_prop.subtype != "COLOR" else 1., 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array)}
                 if custom_prop.array_length == 0:
                     obj[prop_name] = custom_prop.default_float
                 else:
                     obj[prop_name] = eval(custom_prop.default_array)
                     if custom_prop.subtype == "COLOR":
-                        custom_prop.color_value = eval(custom_prop.default_array)
+                        try:
+                            custom_prop.color_value = eval(custom_prop.default_array)
+                        except:
+                            custom_prop.color_value = [0.,0.,0.,1.]
+                            custom_prop.default_array = "[0.,0.,0.,1.]"
+                if custom_prop.subtype != "FACTOR":
+                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float if custom_prop.subtype != "COLOR" else 0., 'max': custom_prop.max_float if custom_prop.subtype != "COLOR" else 1., 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array), 'subtype': custom_prop.subtype}
+                else:
+                    obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_float if custom_prop.subtype != "COLOR" else 0., 'max': custom_prop.max_float if custom_prop.subtype != "COLOR" else 1., 'description': custom_prop.description, 'default': custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array)}
+                            
             elif not custom_prop.is_bool and (custom_prop.type == "INT" or custom_prop.force_type == "Int"):
                 if custom_prop.subtype != "FACTOR":
                     obj["_RNA_UI"][prop_name] = {'min': custom_prop.min_int, 'max': custom_prop.max_int, 'description': custom_prop.description, 'default': custom_prop.default_int if custom_prop.array_length == 0 else eval(custom_prop.default_array), 'subtype': custom_prop.subtype}
