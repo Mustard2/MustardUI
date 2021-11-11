@@ -12,7 +12,7 @@ bl_info = {
     "wiki_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "006"
+mustardui_buildnum = "008"
 
 import bpy
 import addon_utils
@@ -718,6 +718,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_search: bpy.props.StringProperty(name = "",
                         description = "Search for a specific morph",
                         default = "")
+    diffeomorphic_filter_null: bpy.props.BoolProperty(default = False,
+                        name = "Filter morphs",
+                        description = "Filter used morphs.\nOnly non null morphs will be shown")
     
     # ------------------------------------------------------------------------
     #    Various properties
@@ -6467,6 +6470,16 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     bl_label = "External Morphs"
     bl_options = {"DEFAULT_CLOSED"}
     
+    def morph_filter(self, morph, rig_settings):
+        
+        # Check null filter
+        check1 = (rig_settings.diffeomorphic_filter_null and eval('rig_settings.model_armature_object[\"' + morph.path + '\"]') > 0.) or not rig_settings.diffeomorphic_filter_null
+        
+        # Check search filter
+        check2 = rig_settings.diffeomorphic_search.lower() in morph.name.lower()
+        
+        return check1 and check2
+    
     @classmethod
     def poll(cls, context):
         
@@ -6514,7 +6527,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         
         row = layout.row()    
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
-        row = row.row(align=True)
+        row = row.row(align=False)
+        row.prop(rig_settings, 'diffeomorphic_filter_null', icon = "FILTER", text = "")
         row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
         
         # Emotions Units
@@ -6522,11 +6536,13 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_emotions_units_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_emotions_units_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-            row.label(text="Emotion Units")
+            
+            emotion_units_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 0 and self.morph_filter(x, rig_settings)]
+            row.label(text="Emotion Units (" + str(len(emotion_units_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_emotions_units_collapse:
                 
-                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 0 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                for morph in emotion_units_morphs:
                     if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
                         box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
                     else:
@@ -6539,10 +6555,11 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_emotions_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_emotions_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-            row.label(text="Emotions")
+            emotion_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 1 and self.morph_filter(x, rig_settings)]
+            row.label(text="Emotions (" + str(len(emotion_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_emotions_collapse:
-                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 1 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                for morph in emotion_morphs:
                     if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
                         box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
                     else:
@@ -6555,11 +6572,12 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_facs_emotions_units_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_facs_emotions_units_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-            row.label(text="FACS Emotion Units")
+            facs_emotion_units_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 2 and self.morph_filter(x, rig_settings)]
+            row.label(text="FACS Emotion Units (" + str(len(facs_emotion_units_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_facs_emotions_units_collapse:
                 
-                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 2 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                for morph in facs_emotion_units_morphs:
                     if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
                         box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
                     else:
@@ -6572,11 +6590,12 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_facs_emotions_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_facs_emotions_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-            row.label(text="FACS Emotions")
+            facs_emotion_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 3 and self.morph_filter(x, rig_settings)]
+            row.label(text="FACS Emotions (" + str(len(facs_emotion_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_facs_emotions_collapse:
                 
-                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 3 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                for morph in facs_emotion_morphs:
                     if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
                         box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
                     else:
@@ -6589,11 +6608,12 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_body_morphs_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_body_morphs_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-            row.label(text="Body Morphs")
+            body_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 4 and self.morph_filter(x, rig_settings)]
+            row.label(text="FACS Emotions (" + str(len(body_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_body_morphs_collapse:
                 
-                for morph in [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 4 and rig_settings.diffeomorphic_search.lower() in x.name.lower()]:
+                for morph in body_morphs:
                     if hasattr(rig_settings.model_armature_object,'[\"' + morph.path + '\"]'):
                         box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text = morph.name)
                     else:
