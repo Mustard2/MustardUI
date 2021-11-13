@@ -12,7 +12,7 @@ bl_info = {
     "wiki_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "008"
+mustardui_buildnum = "009"
 
 import bpy
 import addon_utils
@@ -1913,7 +1913,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
 # Operators to create the list of outfits when right clicking on a property
 class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertyHairMenu'
-    bl_label = 'Add to MustardUI Outfit'
+    bl_label = 'Add to MustardUI Hair'
 
     def draw(self, context):
         
@@ -6609,7 +6609,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_body_morphs_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_body_morphs_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
             body_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 4 and self.morph_filter(x, rig_settings)]
-            row.label(text="FACS Emotions (" + str(len(body_morphs)) + ")")
+            row.label(text="Body (" + str(len(body_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_body_morphs_collapse:
                 
