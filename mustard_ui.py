@@ -6767,7 +6767,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         row.operator("mustardui.object_visibility",text=obj.name, icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
                     
                     if rig_settings.outfit_custom_properties_name_order:
-                        custom_properties = sorted(custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj], key = lambda x:x.name)
+                        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj], key = lambda x:x.name)
                     else:
                         custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj]
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
