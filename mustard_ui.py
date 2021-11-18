@@ -12,7 +12,7 @@ bl_info = {
     "wiki_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "011"
+mustardui_buildnum = "012"
 
 import bpy
 import addon_utils
@@ -1825,6 +1825,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
         
         switched_warning = False
         for check_prop in custom_props:
+            print(len(check_prop.linked_properties))
             for i in range(0,len(check_prop.linked_properties)):
                 if check_prop.linked_properties[i].rna == rna and check_prop.linked_properties[i].path == path:
                     switched_warning = True
@@ -1835,7 +1836,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
             mustardui_add_driver(obj, rna, path, prop, parent_prop.prop_name)
         
         # Add linked property to list
-        if not rna in [x.rna for x in parent_prop.linked_properties] or not path in [x.path for x in parent_prop.linked_properties]:
+        if not (rna, path) in [(x.rna, x.path) for x in parent_prop.linked_properties]:
             lp = parent_prop.linked_properties.add()
             lp.rna = rna
             lp.path = path
@@ -2363,7 +2364,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             
             custom_prop.force_type = self.force_type
             
-            custom_prop.is_bool = self.force_type == "Bool" or self.type == "BOOLEAN"
+            custom_prop.is_bool = self.force_type == "Bool" or custom_prop.type == "BOOLEAN"
             
             if "_RNA_UI" not in obj.keys():
                 obj["_RNA_UI"] = {}
@@ -2401,8 +2402,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 else:
                     custom_prop.default_array = self.default_array
                 custom_prop.is_bool = False
-            elif hasattr(prop, 'description'):
-                obj["_RNA_UI"][prop_name] = {'description': prop.description}
+            else:
+                obj["_RNA_UI"][prop_name] = {'description': custom_prop.description}
                 custom_prop.description = self.description
         
         return {'FINISHED'}
@@ -2562,25 +2563,25 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     row2=row.row(align=True)
                     row2.prop(self, "min_int", text="")
                     row2.prop(self, "max_int", text="")
-                
-                if len(custom_prop.linked_properties)>0:
-                    
-                    layout.label(text="Linked Properties", icon="LINK_BLEND")
-                    box = layout.box()
-                    
-                    for lp in custom_prop.linked_properties:
-                        
-                        row = box.row()
-                        row.label(text=lp.rna + '.' + lp.path, icon = "RNA")
-                        op = row.operator('mustardui.property_removelinked', text="", icon ="X")
-                        op.rna = lp.rna
-                        op.path = lp.path
         
             elif custom_prop.is_bool and prop_type == "FLOAT":
                 row=box.row()
                 row.label(text="Force type:")
                 row.scale_x=scale
                 row.prop(self, "force_type", text="")
+            
+            if len(custom_prop.linked_properties)>0:
+                
+                layout.label(text="Linked Properties", icon="LINK_BLEND")
+                box = layout.box()
+                
+                for lp in custom_prop.linked_properties:
+                    
+                    row = box.row()
+                    row.label(text=lp.rna + '.' + lp.path, icon = "RNA")
+                    op = row.operator('mustardui.property_removelinked', text="", icon ="X")
+                    op.rna = lp.rna
+                    op.path = lp.path
         
         if settings.debug:
             
