@@ -12,7 +12,7 @@ bl_info = {
     "wiki_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "012"
+mustardui_buildnum = "013"
 
 import bpy
 import addon_utils
@@ -190,9 +190,9 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     
     status_diffeomorphic_version: bpy.props.IntVectorProperty(default = addon_version_check("import_daz"))
     
-    # Property for additional properties errors
-    additional_properties_error: bpy.props.BoolProperty(name = "",
-                        description = "Can not find the property.\nRe-run the Check Additional Option operator in the Configuration menu to solve this")
+    # Property for custom properties errors
+    custom_properties_error: bpy.props.BoolProperty(name = "",
+                        description = "Can not find the property.\nCheck the property or use the Re-build Custom Properties operator in Settings")
     
     # Property for morphs errors
     daz_morphs_error: bpy.props.BoolProperty(name = "",
@@ -6485,7 +6485,10 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                             elif not prop.is_animatable:
                                 row.prop(eval(prop.rna), prop.path, text="")
                             else:
-                                row.prop(obj, '["' + prop.prop_name + '"]', text="")
+                                if prop.prop_name in obj.keys():
+                                    row.prop(obj, '["' + prop.prop_name + '"]', text="")
+                                else:
+                                    row.prop(settings, 'custom_properties_error', icon = "ERROR", text="", icon_only = True, emboss = False)
 
 class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_ExternalMorphs"
@@ -6651,7 +6654,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
     bl_label = "Outfits & Hair Settings"
     bl_options = {"DEFAULT_CLOSED"}
     
-    def custom_properties_print(self, arm, rig_settings, custom_properties, box, icons_show):
+    def custom_properties_print(self, arm, settings, rig_settings, custom_properties, box, icons_show):
         
         box2 = box.box()
         for prop in custom_properties:
@@ -6667,7 +6670,10 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             elif not prop.is_animatable:
                 row2.prop(eval(prop.rna), prop.path, text="")
             else:
-                row2.prop(arm, '["' + prop.prop_name + '"]', text="")
+                if prop.prop_name in arm.keys():
+                    row2.prop(arm, '["' + prop.prop_name + '"]', text="")
+                else:
+                    row2.prop(settings, 'custom_properties_error', icon = "ERROR", text="", icon_only = True, emboss = False)
         
         return
     
@@ -6723,7 +6729,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     if len(custom_properties)>0 and rig_settings.outfit_additional_options:
                         row.prop(rig_settings,"outfit_global_custom_properties_collapse", text="", toggle=True, icon="PREFERENCES")
                         if rig_settings.outfit_global_custom_properties_collapse:
-                            self.custom_properties_print(arm, rig_settings, custom_properties, box, rig_settings.outfit_custom_properties_icons)
+                            self.custom_properties_print(arm, settings, rig_settings, custom_properties, box, rig_settings.outfit_custom_properties_icons)
                     
                     for obj in bpy.data.collections[rig_settings.outfits_list].objects:
                         row = box.row(align=True)
@@ -6740,7 +6746,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                             row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                             if obj.MustardUI_additional_options_show:
-                                self.custom_properties_print(arm, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
+                                self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
                         
                         if obj.MustardUI_outfit_lock:
                             row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='LOCKED')
@@ -6773,7 +6779,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                         row.prop(bpy.data.objects[obj.name],"MustardUI_additional_options_show_lock", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show_lock:
-                            self.custom_properties_print(arm, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
+                            self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
                     
                     if obj.MustardUI_outfit_lock:
                         row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='LOCKED')
@@ -6820,7 +6826,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                         row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show:
-                            self.custom_properties_print(arm, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
+                            self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
     
         # Hair
         if rig_settings.hair_collection != None:
@@ -6850,7 +6856,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                 row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                 if obj.MustardUI_additional_options_show:
-                    self.custom_properties_print(arm, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
+                    self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
         
         # Particle systems
         mod_particle_system = [x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]
