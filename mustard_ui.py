@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "002"
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -26,7 +26,7 @@ import itertools
 from bpy.types import Header, Menu, Panel
 from bpy.props import *
 from bpy.app.handlers import persistent
-from rna_prop_ui import rna_idprop_ui_create, rna_idprop_ui_prop_update
+from rna_prop_ui import rna_idprop_ui_create
 from mathutils import Vector, Color
 import webbrowser
 
