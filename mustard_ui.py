@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "003"
+mustardui_buildnum = "004"
 
 import bpy
 import addon_utils
@@ -5819,7 +5819,8 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         
         # Write to file
         try:
-            log_file = open('mustardui_log.txt','w')
+            abs_path = bpy.context.blend_data.filepath[:bpy.context.blend_data.filepath.rfind('\\')] + '\\'
+            log_file = open(abs_path+'mustardui_log.txt','w')
             log_file.write(log)
             log_file.close()
             
