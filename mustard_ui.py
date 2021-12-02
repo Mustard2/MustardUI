@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "009"
+mustardui_buildnum = "011"
 
 import bpy
 import addon_utils
@@ -1752,23 +1752,6 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
     parent_path: bpy.props.StringProperty()
     type: bpy.props.EnumProperty(default = "BODY",
                         items = (("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")))
-                        
-    # Function to check over all custom properties
-    def mustardui_check_cp(obj, rna, path):
-        
-        for cp in obj.MustardUI_CustomProperties:
-            if cp.rna == rna and cp.path == path:
-                return False
-        
-        for cp in obj.MustardUI_CustomPropertiesOutfit:
-            if cp.rna == rna and cp.path == path:
-                return False
-        
-        for cp in obj.MustardUI_CustomPropertiesHair:
-            if cp.rna == rna and cp.path == path:
-                return False
-
-        return True
     
     @classmethod
     def poll(cls, context):
@@ -2067,7 +2050,10 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             layout.separator()
             layout.label(text = "Outfits", icon = "MOD_CLOTH")
         for prop in sorted(sorted(outfit_props, key = lambda x:x.name), key=lambda x:x.outfit.name):
-            outfit_name = prop.outfit.name[len(rig_settings.model_name):] if rig_settings.model_MustardUI_naming_convention else prop.outfit.name
+            outfit_name = prop.outfit.name[len(rig_settings.model_name + " "):] if rig_settings.model_MustardUI_naming_convention else prop.outfit.name
+            if prop.outfit_piece != None:
+                outfit_piece_name = prop.outfit_piece.name[len(prop.outfit.name + " - "):] if rig_settings.model_MustardUI_naming_convention else prop.outfit.name
+                outfit_name = outfit_name + " - " + outfit_piece_name
             op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=outfit_name + " - " + prop.name, icon=prop.icon)
             op.parent_rna = prop.rna
             op.parent_path = prop.path
@@ -2091,7 +2077,7 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             layout.separator()
             layout.label(text = "Hair", icon = "HAIR")
         for prop in sorted(hair_props, key = lambda x:x.name):
-            hair_name = prop.hair.name[len(rig_settings.hair_collection.name):] if rig_settings.model_MustardUI_naming_convention else prop.hair.name
+            hair_name = prop.hair.name[len(rig_settings.hair_collection.name + " "):] if rig_settings.model_MustardUI_naming_convention else prop.hair.name
             op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=hair_name + " - " + prop.name, icon=prop.icon)
             op.parent_rna = prop.rna
             op.parent_path = prop.path
