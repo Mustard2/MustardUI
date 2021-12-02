@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "011"
+mustardui_buildnum = "012"
 
 import bpy
 import addon_utils
@@ -193,6 +193,8 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Property for custom properties errors
     custom_properties_error: bpy.props.BoolProperty(name = "",
                         description = "Can not find the property.\nCheck the property or use the Re-build Custom Properties operator in Settings")
+    custom_properties_error_nonanimatable: bpy.props.BoolProperty(name = "",
+                        description = "Can not find the property.\nRemove the property in the Configuration panel and add it again")
     
     # Property for morphs errors
     daz_morphs_error: bpy.props.BoolProperty(name = "",
@@ -2110,7 +2112,13 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
                     row.label(text="", icon="BLANK1")
                 
                 try:
-                    obj.id_properties_ui(item.prop_name)
+                    if item.is_animatable:
+                        obj.id_properties_ui(item.prop_name)
+                    else:
+                        if "[" in item.path and "]" in item.path:
+                            eval(item.rna+item.path)
+                        else:
+                            eval(item.rna+'.'+item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -2164,7 +2172,13 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                     row.label(text="", icon="BLANK1")
                 
                 try:
-                    obj.id_properties_ui(item.prop_name)
+                    if item.is_animatable:
+                        obj.id_properties_ui(item.prop_name)
+                    else:
+                        if "[" in item.path and "]" in item.path:
+                            eval(item.rna+item.path)
+                        else:
+                            eval(item.rna+'.'+item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -2208,7 +2222,13 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                     row.label(text="", icon="BLANK1")
                 
                 try:
-                    obj.id_properties_ui(item.prop_name)
+                    if item.is_animatable:
+                        obj.id_properties_ui(item.prop_name)
+                    else:
+                        if "[" in item.path and "]" in item.path:
+                            eval(item.rna+item.path)
+                        else:
+                            eval(item.rna+'.'+item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -6474,7 +6494,10 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     if prop.is_bool and prop.is_animatable:
                         row.prop(prop, 'bool_value', text="")
                     elif not prop.is_animatable:
-                        row.prop(eval(prop.rna), prop.path, text="")
+                        try:
+                            row.prop(eval(prop.rna), prop.path, text="")
+                        except:
+                            row.prop(settings, 'custom_properties_error_nonanimatable', icon = "ERROR", text="", icon_only = True, emboss = False)
                     else:
                         if prop.prop_name in obj.keys():
                             row.prop(obj, '["' + prop.prop_name + '"]', text="")
@@ -6506,7 +6529,10 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                             if prop.is_bool and prop.is_animatable:
                                 row.prop(prop, 'bool_value', text="")
                             elif not prop.is_animatable:
-                                row.prop(eval(prop.rna), prop.path, text="")
+                                try:
+                                    row.prop(eval(prop.rna), prop.path, text="")
+                                except:
+                                    row.prop(settings, 'custom_properties_error_nonanimatable', icon = "ERROR", text="", icon_only = True, emboss = False)
                             else:
                                 if prop.prop_name in obj.keys():
                                     row.prop(obj, '["' + prop.prop_name + '"]', text="")
@@ -6689,7 +6715,10 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             if prop.is_bool and prop.is_animatable:
                 row2.prop(prop, 'bool_value', text="")
             elif not prop.is_animatable:
-                row2.prop(eval(prop.rna), prop.path, text="")
+                try:
+                    row2.prop(eval(prop.rna), prop.path, text="")
+                except:
+                    row2.prop(settings, 'custom_properties_error_nonanimatable', icon = "ERROR", text="", icon_only = True, emboss = False)
             else:
                 if prop.prop_name in arm.keys():
                     row2.prop(arm, '["' + prop.prop_name + '"]', text="")
