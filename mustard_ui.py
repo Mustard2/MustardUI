@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "004"
+mustardui_buildnum = "009"
 
 import bpy
 import addon_utils
@@ -1342,6 +1342,17 @@ class MustardUI_LinkedProperty(bpy.types.PropertyGroup):
 
 class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     
+    # Type
+    cp_type: bpy.props.EnumProperty(name = "Type",
+                        default = "BODY",
+                        items = (("BODY", "Body", "Body"), ("OUTFIT", "Outfit", "Outfit"), ("HAIR", "Hair", "Hair")))
+    
+    # User defined properties
+    name : bpy.props.StringProperty(name = "Custom property name")
+    icon : bpy.props.EnumProperty(name='Icon',
+                        description="Choose the icon",
+                        items = mustardui_icon_list)
+    
     # Internal stored properties
     rna : bpy.props.StringProperty(name = "RNA")
     path : bpy.props.StringProperty(name = "Path")
@@ -1371,12 +1382,6 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
                         update = update_bool_value,
                         description = "")
     
-    # User defined properties
-    name : bpy.props.StringProperty(name = "Custom property name")
-    icon : bpy.props.EnumProperty(name='Icon',
-                        description="Choose the icon",
-                        items = mustardui_icon_list)
-    
     # Properties stored to rebuild custom properties in case of troubles
     description: bpy.props.StringProperty()
     default_int: bpy.props.IntProperty()
@@ -1396,15 +1401,13 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
                         name = "Add to section",
                         description = "Add the property to the selected section")
     
-    # Type
-    cp_type: bpy.props.EnumProperty(name = "Type",
-                        default = "BODY",
-                        items = (("BODY", "Body", "Body"), ("OUTFIT", "Outfit", "Outfit"), ("HAIR", "Hair", "Hair")))
-    
     # Outfits
     # Poll function for the selection of mesh only in pointer properties
     def poll_mesh(self, object):
-        return object.type == 'MESH'
+        
+        rig_settings = self.id_data.MustardUI_RigSettings
+        
+        return object.type == 'MESH' and object in [x for x in rig_settings.hair_collection.objects]
     
     # Poll function for the selection of mesh belonging to an outfit in pointer properties
     def outfit_switcher_poll_collection(self, object):
@@ -1440,7 +1443,7 @@ bpy.types.Armature.MustardUI_CustomProperties = bpy.props.CollectionProperty(typ
 bpy.types.Armature.MustardUI_CustomPropertiesOutfit = bpy.props.CollectionProperty(type = MustardUI_CustomProperty)
 bpy.types.Armature.MustardUI_CustomPropertiesHair = bpy.props.CollectionProperty(type = MustardUI_CustomProperty)
 
-# Right click functions and operators
+# Function to check keys of custom properties (only for debug)
 def dump(obj, text):
     print('-'*40, text, '-'*40)
     for attr in dir(obj):
@@ -1628,11 +1631,15 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 add_string_num += 1
                 prop_name = prop_name_ui + ' ' + str(add_string_num)
             
+            if prop.type == "ENUM":
+                pass
+            
             # Change custom properties settings
-            if prop.type == "BOOLEAN":
+            elif prop.type == "BOOLEAN" and prop.array_length < 1:
                 rna_idprop_ui_create(obj, prop_name, default=eval(rna + '.' + path),
                                     description=prop.description,
                                     overridable=True)
+                    
             elif hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default') and hasattr(prop, 'description') and hasattr(prop, 'subtype'):
                 description = prop.description if not "materials" in rna else ""
                 rna_idprop_ui_create(obj, prop_name, default=prop.default if prop.array_length == 0 else eval(rna + '.' + path),
@@ -1648,15 +1655,15 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         # Add driver
         force_non_animatable = False
         try:
-            if prop.is_animatable:
+            if prop.is_animatable and (not prop.type in ["BOOLEAN", "ENUM"] or (prop.type == "BOOLEAN" and prop.array_length < 1)):
                 mustardui_add_driver(obj, rna, path, prop, prop_name)
+            else:
+                force_non_animatable = True
         except:
             force_non_animatable = True
         
         # Add property to the collection of properties
         if not (rna,path) in [(x.rna,x.path) for x in custom_props]:
-            
-            ui_data_dict = obj.id_properties_ui(prop_name).as_dict()
             
             cp = custom_props.add()
             cp.rna = rna
@@ -1664,7 +1671,8 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             cp.name = prop_name_ui
             cp.prop_name = prop_name
             cp.type = prop.type
-            cp.array_length = prop.array_length
+            if hasattr(prop, 'array_length'):
+                cp.array_length = prop.array_length
             cp.subtype = prop.subtype
             
             # Try to find icon
@@ -1674,7 +1682,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 cp.icon = "SHAPEKEY_DATA"
             
             cp.is_bool = prop.type == "BOOLEAN"
-            if prop.type == "BOOLEAN":
+            if prop.type == "BOOLEAN" and prop.array_length<1:
                 cp.bool_value = eval(rna + '.' + path)
             cp.is_animatable = prop.is_animatable if not force_non_animatable else False
             
@@ -1696,7 +1704,10 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             elif self.hair != "":
                 cp.hair = bpy.data.objects[self.hair]
             
-            if prop.is_animatable:
+            if cp.is_animatable:
+                
+                ui_data_dict = obj.id_properties_ui(prop_name).as_dict()
+                
                 if hasattr(prop, 'description'):
                     cp.description = prop.description
                 if hasattr(prop, 'default'):
@@ -1741,6 +1752,23 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
     parent_path: bpy.props.StringProperty()
     type: bpy.props.EnumProperty(default = "BODY",
                         items = (("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")))
+                        
+    # Function to check over all custom properties
+    def mustardui_check_cp(obj, rna, path):
+        
+        for cp in obj.MustardUI_CustomProperties:
+            if cp.rna == rna and cp.path == path:
+                return False
+        
+        for cp in obj.MustardUI_CustomPropertiesOutfit:
+            if cp.rna == rna and cp.path == path:
+                return False
+        
+        for cp in obj.MustardUI_CustomPropertiesHair:
+            if cp.rna == rna and cp.path == path:
+                return False
+
+        return True
     
     @classmethod
     def poll(cls, context):
@@ -1763,20 +1791,24 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
         if not prop.is_animatable:
             self.report({'ERROR'}, 'MustardUI - Can not link a \'non animatable\' property.')
             return {'FINISHED'}
-                
+        
+        found = False
         for parent_prop in custom_props:
             if parent_prop.rna == self.parent_rna and parent_prop.path == self.parent_path:
+                found = True
                 break
+        if not found:
+            self.report({'ERROR'}, 'MustardUI - An error occurred while searching for parent property.')
+            return {'FINISHED'}
         
-        if prop.array_length > 0:
-            try:
-                parent_prop_length = len(eval(parent_prop.rna + '.' + parent_prop.path))
-            except:
-                parent_prop_length = 0
-            
-            if prop.array_length != parent_prop_length:
-                self.report({'ERROR'}, 'MustardUI - Can not link properties with different array length.')
-                return {'FINISHED'}
+        try:
+            parent_prop_length = len(eval(parent_prop.rna + '.' + parent_prop.path))
+        except:
+            parent_prop_length = 0
+        
+        if prop.array_length != parent_prop_length:
+            self.report({'ERROR'}, 'MustardUI - Can not link properties with different array length.')
+            return {'FINISHED'}
         
         if parent_prop.type != prop.type:
             self.report({'ERROR'}, 'MustardUI - Can not link properties with different type.')
@@ -1824,6 +1856,9 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
             lp = parent_prop.linked_properties.add()
             lp.rna = rna
             lp.path = path
+        else:
+            self.report({'ERROR'}, 'MustardUI - An error occurred while linking the property.')
+            return {'FINISHED'}
         
         obj.update_tag()
         
@@ -2011,6 +2046,7 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
         
         settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
         
         layout = self.layout
         
@@ -2026,23 +2062,37 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             op.type = "BODY"
             no_prop = False
         
-        outfit_props = [x for x in obj.MustardUI_CustomPropertiesOutfit if x.is_animatable]
+        outfit_props = [x for x in obj.MustardUI_CustomPropertiesOutfit if x.is_animatable and x.outfit != rig_settings.extras_collection and x.outfit != None]
         if len(outfit_props) > 0 and len(body_props) > 0:
             layout.separator()
             layout.label(text = "Outfits", icon = "MOD_CLOTH")
-        for prop in sorted(outfit_props, key = lambda x:x.name):
-            op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=prop.name, icon=prop.icon)
+        for prop in sorted(sorted(outfit_props, key = lambda x:x.name), key=lambda x:x.outfit.name):
+            outfit_name = prop.outfit.name[len(rig_settings.model_name):] if rig_settings.model_MustardUI_naming_convention else prop.outfit.name
+            op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=outfit_name + " - " + prop.name, icon=prop.icon)
             op.parent_rna = prop.rna
             op.parent_path = prop.path
             op.type = "OUTFIT"
             no_prop = False
         
-        hair_props = [x for x in obj.MustardUI_CustomPropertiesHair if x.is_animatable]
+        extras_props = [x for x in obj.MustardUI_CustomPropertiesOutfit if x.is_animatable and x.outfit == rig_settings.extras_collection]
+        if len(extras_props) > 0 and len(body_props) > 0:
+            layout.separator()
+            layout.label(text = "Extras", icon = "PLUS")
+        for prop in sorted(extras_props, key = lambda x:x.name):
+            outfit_name = prop.outfit_piece.name[len(rig_settings.extras_collection.name + " - "):] if rig_settings.model_MustardUI_naming_convention else prop.outfit_piece.name
+            op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=outfit_name + " - " + prop.name, icon=prop.icon)
+            op.parent_rna = prop.rna
+            op.parent_path = prop.path
+            op.type = "OUTFIT"
+            no_prop = False
+        
+        hair_props = [x for x in obj.MustardUI_CustomPropertiesHair if x.is_animatable and x.hair != None]
         if len(hair_props) > 0 and (len(outfit_props) > 0 or len(body_props) > 0):
             layout.separator()
             layout.label(text = "Hair", icon = "HAIR")
         for prop in sorted(hair_props, key = lambda x:x.name):
-            op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=prop.name, icon=prop.icon)
+            hair_name = prop.hair.name[len(rig_settings.hair_collection.name):] if rig_settings.model_MustardUI_naming_convention else prop.hair.name
+            op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=hair_name + " - " + prop.name, icon=prop.icon)
             op.parent_rna = prop.rna
             op.parent_path = prop.path
             op.type = "HAIR"
@@ -2311,12 +2361,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
         custom_prop = custom_props[index]
         
-        prop_type = custom_prop.type
-        
         if self.name == "":
             self.report({'ERROR'}, 'MustardUI - Can not rename a property with an empty name.')
             return {'FINISHED'}
         
+        prop_type = custom_prop.type
         if prop_type == "FLOAT" and (isinstance(self.max_float, int) or isinstance(self.min_float, int) or isinstance(self.default_float, int)):
             self.report({'ERROR'}, 'MustardUI - Can not change type of the custom property.')
             return {'FINISHED'}
@@ -2324,11 +2373,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR" and len(eval(self.default_array)) != custom_prop.array_length:
             self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
             return {'FINISHED'}
-        
-        prop_name = custom_prop.prop_name
-        
-        ui_data = obj.id_properties_ui(prop_name)
-        ui_data_dict = ui_data.as_dict()
         
         custom_prop.name = self.name
         custom_prop.icon = self.icon
@@ -2340,6 +2384,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             prop_subtype = custom_prop.subtype
             
             ui_data = obj.id_properties_ui(prop_name)
+            ui_data_dict = ui_data.as_dict()
             
             custom_prop.is_bool = self.force_type == "Bool" or custom_prop.type == "BOOLEAN"
             
