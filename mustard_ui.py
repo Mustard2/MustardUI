@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "012"
+mustardui_buildnum = "013"
 
 import bpy
 import addon_utils
@@ -372,27 +372,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 obj.data.use_auto_smooth = False
         
         return
-    
-    # Update function for Subsurface Scattering in materials
-    def update_sss(self, context):
-        
-        for mat in self.model_body.data.materials:
-            for node in mat.node_tree.nodes:
-                if node.name=='Subsurface':
-                    node.outputs[0].default_value = self.body_sss
-        return
-    
-    # Subsurface scattering
-    body_enable_sss: bpy.props.BoolProperty(default = True,
-                        name = "Subsurface Scattering",
-                        description = "")
-    
-    body_sss: bpy.props.FloatProperty(default = 0.02,
-                        min = 0.0,
-                        max = 1.0,
-                        name = "Subsurface Scattering",
-                        description = "Set the subsurface scattering intensity.\nThis effect will allow some light rays to go through the body skin. Be sure to set a correct value. If you are not sure, restore to the default value",
-                        update = update_sss)
     
     # Subdivision surface
     body_subdiv_rend: bpy.props.BoolProperty(default = True,
@@ -5976,7 +5955,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         if not rig_settings.body_config_collapse:
             box = layout.box()
             box.label(text="Global properties", icon="MODIFIER")
-            box.prop(rig_settings,"body_enable_sss")
             box.prop(rig_settings,"body_enable_subdiv")
             box.prop(rig_settings,"body_enable_smoothcorr")
             box.prop(rig_settings,"body_enable_norm_autosmooth")
@@ -6435,7 +6413,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             rig_settings = arm.MustardUI_RigSettings
             
             # Check if there is any property to show
-            prop_to_show = rig_settings.body_enable_sss or rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth
+            prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth
         
             return res and prop_to_show
         
@@ -6452,7 +6430,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         
         layout = self.layout
         
-        if rig_settings.body_enable_sss or rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth:
+        if rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth:
             
             box = layout.box()
             box.label(text="Body properties", icon="OUTLINER_OB_ARMATURE")
@@ -6473,9 +6451,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             
             if rig_settings.body_enable_norm_autosmooth:
                 box.prop(rig_settings,"body_norm_autosmooth")
-            
-            if rig_settings.body_enable_sss:
-                box.prop(rig_settings,"body_sss")
             
             box.prop(settings,"material_normal_nodes")
         
