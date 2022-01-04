@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "010"
+mustardui_buildnum = "011"
 
 import bpy
 import addon_utils
@@ -7792,10 +7792,12 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         
         # Main Settings
         box = layout.box()
+        col = box.column(align=True)
         
-        box.prop(settings,"advanced")
-        box.prop(settings,"maintenance")
-        box.prop(settings,"debug")
+        col.prop(settings,"advanced")
+        col.prop(settings,"maintenance")
+        col.prop(settings,"debug")
+        
         if settings.viewport_model_selection:
             box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon = "VIEW3D", depress = True)
         else:
