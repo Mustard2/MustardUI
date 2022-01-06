@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "012"
+mustardui_buildnum = "013"
 
 import bpy
 import addon_utils
@@ -5808,7 +5808,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         # Remove null drivers
         if self.remove_nulldrivers:
             
-            for obj in bpy.data.objects:
+            for obj in [x for x in bpy.data.objects if x.type == "MESH"]:
                 if obj.animation_data != None:
                     drivers = obj.animation_data.drivers
                     for driver in drivers:
@@ -5816,11 +5816,12 @@ class MustardUI_CleanModel(bpy.types.Operator):
                             drivers.remove(driver)
                             null_drivers_removed = null_drivers_removed + 1
                 if obj.data.shape_keys != None:
-                    drivers = obj.data.shape_keys.animation_data.drivers
-                    for driver in drivers:
-                        if driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
-                            drivers.remove(driver)
-                            morphs_drivers_removed = morphs_drivers_removed + 1
+                    if obj.data.shape_keys.animation_data != None:
+                        drivers = obj.data.shape_keys.animation_data.drivers
+                        for driver in drivers:
+                            if driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
+                                drivers.remove(driver)
+                                morphs_drivers_removed = morphs_drivers_removed + 1
             
             if settings.debug:
                 print("  Null drivers removed: " + str(null_drivers_removed))
