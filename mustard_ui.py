@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 22, 0),
+    "version": (0, 22, 1),
     "blender": (3, 0, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
@@ -209,7 +209,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     
     material_normal_nodes: bpy.props.BoolProperty(default = True,
                         name = "Material Normals",
-                        description = "",
+                        description = "Enable the Material Normals tool.\nThis tool substitute normal nodes with more efficient ones, which can be useful to get better performance in shadow preview viewport mode",
                         update = update_material_normal)
 
 # Register and create the setting class in the Scene object
@@ -351,25 +351,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         for modifier in self.model_body.modifiers:
             if modifier.type == "CORRECTIVE_SMOOTH":
-                if self.body_smooth_corr == True:
-                    modifier.show_viewport = True
-                    modifier.show_render = True
-                else:
-                    modifier.show_viewport = False
-                    modifier.show_render = False
+                modifier.show_viewport = self.body_smooth_corr
+                modifier.show_render = self.body_smooth_corr
+        
         return
     
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
         
-        obj = self.model_body
-        
-        if obj.type == "MESH":
-        
-            if self.body_norm_autosmooth == True:
-                obj.data.use_auto_smooth = True
-            else:
-                obj.data.use_auto_smooth = False
+        obj.data.use_auto_smooth = self.body_norm_autosmooth
         
         return
     
@@ -415,6 +405,38 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Normals Auto Smooth property",
                         description = "")
     
+    def update_volume_preserve(self, context):
+        
+        for modifier in self.model_body.modifiers:
+            if modifier.type == "ARMATURE":
+                modifier.use_deform_preserve_volume = self.body_preserve_volume
+        
+        collections = [x.collection for x in self.outfits_collections]
+        if self.extras_collection != None:
+            collections.append(self.extras_collection)
+        
+        for collection in collections:
+            for obj in collection.objects:
+                for modifier in obj.modifiers:
+                    if modifier.type == "ARMATURE":
+                        modifier.use_deform_preserve_volume = self.body_preserve_volume
+            
+        return
+    
+    # Armature volume preserve
+    body_preserve_volume: bpy.props.BoolProperty(default = True,
+                        name = "Volume Preserve",
+                        description = "Enable/disable the Preserve volume.\nThis will switch on/off Preserve Volume for all Armature modifiers of the model (body and outfits)",
+                        update = update_volume_preserve)
+    
+    body_enable_preserve_volume: bpy.props.BoolProperty(default = False,
+                        name = "Volume Preserve property",
+                        description = "")
+    
+    # Material normals tool
+    body_enable_material_normal_nodes: bpy.props.BoolProperty(default = True,
+                        description = "Enable the Material Normals tool.\nThis tool substitute normal nodes with more efficient ones, which can be useful to get better performance in shadow preview viewport mode",
+                        name = "Material Normals tool")
     
     # Custom properties
     body_custom_properties_icons: bpy.props.BoolProperty(default = False,
@@ -456,13 +478,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Function to create an array of tuples for Outfit enum collections
     def outfits_list_make(self, context):
         
-        naming_conv = self.model_MustardUI_naming_convention
-        
         items = []
         
         for el in self.outfits_collections:
+            
+            if el.collection == None:
+                continue
+            
             if hasattr(el.collection, 'name'):
-                if naming_conv:
+                if self.model_MustardUI_naming_convention:
                     nname = el.collection.name[len(self.model_name + ' '):]
                 else:
                     nname = el.collection.name
@@ -479,35 +503,36 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def outfits_visibility_update(self, context):
         
         poll, obj = mustardui_active_object(context, config = 0)
-        rig_settings = obj.MustardUI_RigSettings
         armature_settings = obj.MustardUI_ArmatureSettings
         
-        outfits_list = rig_settings.outfits_list
+        outfits_list = self.outfits_list
+        
+        collections = [x.collection for x in self.outfits_collections]
         
         # Update the objects and masks visibility
-        for collection in rig_settings.outfits_collections:
+        for collection in collections:
             
-            locked_collection = len([x for x in collection.collection.objects if x.MustardUI_outfit_lock])>0
+            locked_collection = len([x for x in collection.objects if x.MustardUI_outfit_lock])>0
             
-            collection.collection.hide_viewport = not (collection.collection.name == outfits_list or locked_collection)
-            collection.collection.hide_render = not (collection.collection.name == outfits_list or locked_collection)
+            collection.hide_viewport = not (collection.name == outfits_list or locked_collection)
+            collection.hide_render = not (collection.name == outfits_list or locked_collection)
             
-            for obj in collection.collection.objects:
+            for obj in collection.objects:
                     
-                if locked_collection and collection.collection.name != outfits_list:
+                if locked_collection and collection.name != outfits_list:
                     
                     obj.hide_viewport = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                     obj.hide_render = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                 
-                elif collection.collection.name == outfits_list:
+                elif collection.name == outfits_list:
                     
                     obj.hide_viewport = obj.MustardUI_outfit_visibility
                     obj.hide_render = obj.MustardUI_outfit_visibility
             
-                for modifier in rig_settings.model_body.modifiers:
+                for modifier in self.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
-                        modifier.show_viewport = ( (collection.collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
-                        modifier.show_render = ( (collection.collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
+                        modifier.show_viewport = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
+                        modifier.show_render = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
 
         if len(armature_settings.layers)>0:
             outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
@@ -524,8 +549,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Function to update the global outfit properties
     def outfits_global_options_update(self, context):
         
-        for collection in self.outfits_collections:
-            for obj in collection.collection.objects:
+        collections = [x.collection for x in self.outfits_collections]
+        if self.extras_collection != None:
+            collections.append(self.extras_collection)
+        
+        for collection in collections:
+            for obj in collection.objects:
                 
                 if obj.type == "MESH":
                     obj.data.use_auto_smooth = self.outfits_global_normalautosmooth
@@ -543,8 +572,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
                 for modifier in self.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
-                        modifier.show_viewport = ( (collection.collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
-                        modifier.show_render = ( (collection.collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
+                        modifier.show_viewport = ( (collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
+                        modifier.show_render = ( (collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
             
         return
 
@@ -589,7 +618,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Order by name",
                         description = "Order the custom properties by name instead of by appareance in the list")
     
-    outfit_global_custom_properties_collapse: bpy.props.BoolProperty(default = False)
+    outfit_global_custom_properties_collapse: bpy.props.BoolProperty(default = False,
+                        name = "",
+                        description = "Show additional properties for the selected object")
     
     # Extras
     extras_collection: bpy.props.PointerProperty(name = "Extras Collection",
@@ -738,6 +769,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         items = [("arp", "Auto-Rig Pro", "Auto-Rig Pro"), ("rigify", "Rigify", "Rigify"), ("mhx", "MHX", "MHX"), ("other", "Other", "Other")],
                         name = "Rig type")
     
+    model_cleaned: bpy.props.BoolProperty(default = False)
     
     # Links
     # Property for collapsing links properties section
@@ -1622,7 +1654,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                                     overridable=True)
                     
             elif hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default') and hasattr(prop, 'description') and hasattr(prop, 'subtype'):
-                description = prop.description if not "materials" in rna else ""
+                description = prop.description if (not "node_tree.nodes" in rna and not "shape_keys" in rna) else ""
                 rna_idprop_ui_create(obj, prop_name, default=prop.default if prop.array_length == 0 else eval(rna + '.' + path),
                                     min=prop.hard_min if prop.subtype != "COLOR" else 0.,
                                     max=prop.hard_max if prop.subtype != "COLOR" else 1.,
@@ -1690,7 +1722,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 ui_data_dict = obj.id_properties_ui(prop_name).as_dict()
                 
                 if hasattr(prop, 'description'):
-                    cp.description = prop.description
+                    cp.description = ui_data_dict['description']
                 if hasattr(prop, 'default'):
                     if prop.array_length == 0:
                         if prop.type == "FLOAT":
@@ -2380,12 +2412,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 ui_data.update(min=0,max=1)
                 obj[prop_name] = min(1,max(0,int(obj[prop_name])))
             elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
+                
                 ui_data.clear()
-#                ui_data.update(min = self.min_float if prop_subtype != "COLOR" else 0.,
-#                                max = self.max_float if prop_subtype != "COLOR" else 1.,
-#                                description = self.description,
-#                                default = self.default_float if custom_prop.array_length == 0 else eval(self.default_array) if prop_subtype != "COLOR" else self.default_color,
-#                                subtype = custom_prop.subtype if prop_subtype != "FACTOR" else None)
                 
                 rna_idprop_ui_create(obj, prop_name,
                                     default=self.default_float if custom_prop.array_length == 0 else eval(self.default_array) if prop_subtype != "COLOR" else self.default_color,
@@ -2405,12 +2433,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     custom_prop.default_array = self.default_array if prop_subtype != "COLOR" else str(ui_data.as_dict()['default'])
                 custom_prop.is_bool = False
             elif not custom_prop.is_bool and (prop_type == "INT" or self.force_type == "Int"):
+                
                 ui_data.clear()
-#                ui_data.update(min = self.min_int,
-#                                max = self.max_int,
-#                                description = self.description,
-#                                default = self.default_int if custom_prop.array_length == 0 else eval(self.default_array),
-#                                subtype = custom_prop.subtype if prop_subtype != "FACTOR" else None)
                 
                 rna_idprop_ui_create(obj, prop_name,
                                     default=self.default_int if custom_prop.array_length == 0 else eval(self.default_array),
@@ -2487,7 +2511,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 else:
                     self.default_float = ui_data_dict['default']
         
-        return context.window_manager.invoke_props_dialog(self, width = 550 if settings.debug else 350)
+        return context.window_manager.invoke_props_dialog(self, width = 550 if settings.debug else 450)
             
     def draw(self, context):
         
@@ -3685,21 +3709,6 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
     bl_idname = "mustardui.dazmorphs_enabledrivers"
     bl_label = "Button"
     bl_options = {'REGISTER', 'UNDO'}
-    
-    # Function to prevent the DisableDriver operator to switch off custom properties drivers
-    def check_driver(self, arm, datapath):
-        
-        for cp in arm.MustardUI_CustomProperties:
-            if datapath in cp.rna + "." + cp.path:
-                return False
-        for cp in arm.MustardUI_CustomPropertiesOutfit:
-            if datapath in cp.rna + "." + cp.path:
-                return False
-        for cp in arm.MustardUI_CustomPropertiesHair:
-            if datapath in cp.rna + "." + cp.path:
-                return False
-        
-        return True
     
     @classmethod
     def poll(cls, context):
@@ -5723,6 +5732,281 @@ def default_custom_nodes():
     return group
 
 # ------------------------------------------------------------------------
+#    Clean Model
+# ------------------------------------------------------------------------
+
+class MustardUI_CleanModel(bpy.types.Operator):
+    """Clean the model to get better performance, at the cost of deleting some features/shape keys/morphs/outfits"""
+    bl_idname = "mustardui.cleanmodel"
+    bl_label = "Clean Model"
+    bl_options = {'UNDO'}
+    
+    remove_unselected_outfits: bpy.props.BoolProperty(default=False,
+                    name = "Delete Unselected Outfits",
+                    description = "Remove all the outfits that are not selected in the UI (Outfits list)")
+    
+    remove_nulldrivers: bpy.props.BoolProperty(default=False,
+                    name = "Remove Null Drivers",
+                    description = "Remove drivers whose equations are \'0.0\' or \'-0.0\'")
+    
+    remove_morphs: bpy.props.BoolProperty(default=False,
+                    name = "Remove Morphs",
+                    description = "Remove all morphs (except JCMs if not enabled below)")
+    remove_morphs_shapekeys: bpy.props.BoolProperty(default=False,
+                    name = "Remove Shape Keys",
+                    description = "Remove selected morphs shape keys")
+    remove_morphs_jcms: bpy.props.BoolProperty(default=False,
+                    name = "Remove JCMs",
+                    description = "Remove JCMs")
+    
+    def remove_props_from_group(self, obj, group, props_removed):
+        
+        if hasattr(obj, group):
+            props = eval("obj." + group)
+            idx = []
+            for n, prop in enumerate(props):
+                prop_name = prop.name
+                if not "pJCM" in prop.name or self.remove_morphs_jcms:
+                    idx.append(n)
+                    props_removed.append(prop.name)
+            
+            for i in reversed(idx):
+                props.remove(i)
+            
+            #exec("obj." + group + ".clear()")
+        
+        return props_removed
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        return res
+ 
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        options = self.remove_nulldrivers or self.remove_morphs or self.remove_unselected_outfits
+        
+        if not options:
+            return {'FINISHED'}
+        
+        if settings.debug:
+            print("MustardUI Clean model statistics")
+        
+        null_drivers_removed = 0
+        morphs_props_removed = 0
+        morphs_drivers_removed = 0
+        morphs_shapekeys_removed = 0
+        outfits_deleted = 0
+        outfits_cp_deleted = 0
+        
+        # Remove null drivers
+        if self.remove_nulldrivers:
+            
+            for obj in [x for x in bpy.data.objects if x.type == "MESH"]:
+                if obj.animation_data != None:
+                    drivers = obj.animation_data.drivers
+                    for driver in drivers:
+                        if driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
+                            drivers.remove(driver)
+                            null_drivers_removed = null_drivers_removed + 1
+                if obj.data.shape_keys != None:
+                    if obj.data.shape_keys.animation_data != None:
+                        drivers = obj.data.shape_keys.animation_data.drivers
+                        for driver in drivers:
+                            if driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
+                                drivers.remove(driver)
+                                morphs_drivers_removed = morphs_drivers_removed + 1
+            
+            if settings.debug:
+                print("  Null drivers removed: " + str(null_drivers_removed))
+        
+        # Check diffeomorphic custom morphs existance and delete all of them (except JCMs)
+        if self.remove_morphs:
+            
+            props_removed = []
+            
+            # Add props to the removed list from the armature
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazFacs", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazUnits", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazExpressions", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazBody", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazCustom", props_removed)
+            if self.remove_morphs_jcms:
+                props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                            "DazStandardjcms", props_removed)
+            
+            # Add props to the removed list from the body
+            props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                        "DazFacs", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                        "DazUnits", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                        "DazExpressions", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                        "DazBody", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                        "DazCustom", props_removed)
+            if self.remove_morphs_jcms:
+                props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                            "DazStandardjcms", props_removed)
+            
+            # Remove unused drivers and shape keys
+            aobj = context.active_object
+            context.view_layer.objects.active = rig_settings.model_armature_object
+            
+            #   Find objects where to remove drivers and shape keys
+            objects = [rig_settings.model_body]
+            
+            for collection in rig_settings.outfits_collections:
+                for obj in collection.collection.objects:
+                    if obj.type == "MESH":
+                        objects.append(obj)
+            for obj in rig_settings.extras_collection.objects:
+                if obj.type == "MESH":
+                    objects.append(obj)
+            for obj in bpy.data.objects:
+                if obj.find_armature() == rig_settings.model_armature_object and obj.type == "MESH":
+                    objects.append(obj)
+            
+            #   Remove
+            for obj in objects:
+                if obj.data.shape_keys != None:
+                    if obj.data.shape_keys.animation_data != None:
+                        drivers = obj.data.shape_keys.animation_data.drivers
+                        for driver in drivers:
+                            words = driver.data_path.split('"')
+                            if words[0] == "key_blocks[" and words[1] in props_removed:
+                                drivers.remove(driver)
+                                morphs_drivers_removed = morphs_drivers_removed + 1
+                        if self.remove_morphs_shapekeys:
+                            for sk in obj.data.shape_keys.key_blocks:
+                                if sk.name in props_removed:
+                                    obj.shape_key_remove(sk)
+                                    morphs_shapekeys_removed = morphs_shapekeys_removed + 1
+                
+                obj.update_tag()
+            
+            drivers = rig_settings.model_armature_object.animation_data.drivers
+            for driver in drivers:
+                if "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
+                        drivers.remove(driver)
+                        morphs_drivers_removed = morphs_drivers_removed + 1
+            
+            arm.update_tag()
+            
+            context.view_layer.objects.active = aobj
+            
+            # Remove custom properties from armature
+            for cp in props_removed:
+                if cp in rig_settings.model_armature_object.keys():
+                    del rig_settings.model_armature_object[cp]
+                    morphs_props_removed = morphs_props_removed + 1
+            
+            # Remove diffeomorphic support from the UI to avoid errors in the UI
+            rig_settings.diffeomorphic_morphs_list.clear()
+            rig_settings.diffeomorphic_support = False
+            
+            if settings.debug:
+                print("  Morph properties removed: " + str(morphs_props_removed))
+                print("  Morph drivers removed: " + str(morphs_drivers_removed))
+                print("  Morph shape keys removed: " + str(morphs_shapekeys_removed))
+        
+        # Remove unselected outfits
+        if self.remove_unselected_outfits:
+            
+            current_outfit = rig_settings.outfits_list
+            
+            for col in [x.collection for x in rig_settings.outfits_collections if x.collection.name != current_outfit]:
+                
+                # Remove custom properties
+                for cpn, cp in enumerate(arm.MustardUI_CustomPropertiesOutfit):
+                    if cp.outfit == col:
+                        mustardui_clean_prop(arm, arm.MustardUI_CustomPropertiesOutfit, cpn, settings)
+                        outfits_cp_deleted = outfits_cp_deleted + 1
+                
+                for obj in col.objects:
+                    data = obj.data
+                    obj_type = obj.type
+                    bpy.data.objects.remove(obj)
+                    if obj_type == "MESH":
+                        bpy.data.meshes.remove(data)
+                    elif obj_type == "ARMATURE":
+                        bpy.data.armatures.remove(data)
+                
+                bpy.ops.mustardui.delete_outfit(col =  col.name)
+                bpy.data.collections.remove(col)
+                outfits_deleted = outfits_deleted + 1
+            
+            rig_settings.outfits_list = current_outfit
+            
+            if settings.debug:
+                print("  Outfits deleted: " + str(outfits_deleted))
+                print("  Outfit custom properties deleted: " + str(outfits_cp_deleted))
+        
+        # Final messages
+        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + outfits_deleted + outfits_cp_deleted
+        
+        if operations > 0:
+            self.report({'INFO'}, "MustardUI - Model cleaned.")
+            rig_settings.model_cleaned = True
+        else:
+            self.report({'WARNING'}, "MustardUI - No operation was needed with current cleaning settings.")
+        
+        return{'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        return context.window_manager.invoke_props_dialog(self, width = 450)
+            
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)
+        rig_settings = obj.MustardUI_RigSettings
+        sec_obj = rig_settings.body_custom_properties_sections
+        
+        layout = self.layout
+        
+        box = layout.box()
+        box.label(text="Notes:")
+        box.label(text="Read the descriptions of all buttons (keep the mouse on the buttons).", icon="DOT")
+        box.label(text="Do not use while producing, but before starting a project with the model.", icon="DOT")
+        box.label(text="This is a highly destructive operation! Use it at your own risk!", icon="ERROR")
+        
+        box = layout.box()
+        box.label(text="General", icon="MODIFIER")
+        box.prop(self, "remove_unselected_outfits")
+        if self.remove_unselected_outfits:
+            box.label(text="Outfits objects will be deleted!", icon="ERROR")
+            box.label(text="Save and restart Blender (repeat two times) to remove unused data", icon="BLANK1")
+        box.prop(self, "remove_nulldrivers")
+        box = layout.box()
+        box.label(text="Diffeomorphic Morphs", icon="DOCUMENTS")
+        box.enabled = hasattr(rig_settings.model_armature_object, "DazMorphCats")
+        box.prop(self, "remove_morphs")
+        row = box.row()
+        row.enabled = self.remove_morphs
+        row.prop(self, "remove_morphs_jcms")
+        row = box.row()
+        row.enabled = self.remove_morphs
+        row.prop(self, "remove_morphs_shapekeys")
+
+# ------------------------------------------------------------------------
 #    Debug 
 # ------------------------------------------------------------------------
 
@@ -5806,6 +6090,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         log += "MustardUI version:" + self.tab() + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2])
         log += self.new_line()
         log += "Model rig type:" + self.tab() + self.tab() + rig_settings.model_rig_type
+        log += "Model cleaned:" + self.tab() + self.tab() + str(rig_settings.model_cleaned)
         
         log += self.new_line()
         log += self.new_line()
@@ -5955,9 +6240,12 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         if not rig_settings.body_config_collapse:
             box = layout.box()
             box.label(text="Global properties", icon="MODIFIER")
-            box.prop(rig_settings,"body_enable_subdiv")
-            box.prop(rig_settings,"body_enable_smoothcorr")
-            box.prop(rig_settings,"body_enable_norm_autosmooth")
+            col = box.column(align=True)
+            col.prop(rig_settings,"body_enable_subdiv")
+            col.prop(rig_settings,"body_enable_smoothcorr")
+            col.prop(rig_settings,"body_enable_norm_autosmooth")
+            col.prop(rig_settings,"body_enable_material_normal_nodes")
+            col.prop(rig_settings,"body_enable_preserve_volume")
             
             # Custom properties
             box = layout.box()
@@ -6027,8 +6315,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         if not rig_settings.outfit_config_collapse:
             box = layout.box()
             box.label(text="General settings", icon="MODIFIER")
-            box.prop(rig_settings,"outfit_nude")
-            box.prop(rig_settings,"outfit_additional_options")
+            col = box.column(align=True)
+            col.prop(rig_settings,"outfit_nude")
+            col.prop(rig_settings,"outfit_additional_options")
             if len(rig_settings.outfits_collections)>0:
                 box = layout.box()
                 # Outfit list
@@ -6073,10 +6362,11 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 # Outfit properties
                 box = layout.box()
                 box.label(text="Global properties", icon="MODIFIER")
-                box.prop(rig_settings,"outfits_enable_global_smoothcorrection")
-                box.prop(rig_settings,"outfits_enable_global_shrinkwrap")
-                box.prop(rig_settings,"outfits_enable_global_mask")
-                box.prop(rig_settings,"outfits_enable_global_normalautosmooth")
+                col = box.column(align=True)
+                col.prop(rig_settings,"outfits_enable_global_smoothcorrection")
+                col.prop(rig_settings,"outfits_enable_global_shrinkwrap")
+                col.prop(rig_settings,"outfits_enable_global_mask")
+                col.prop(rig_settings,"outfits_enable_global_normalautosmooth")
             
             else:
                 box = layout.box()
@@ -6401,7 +6691,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 # Panels for users
 class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Body"
-    bl_label = "Body Settings"
+    bl_label = "Body"
     bl_options = {"DEFAULT_CLOSED"}
     
     @classmethod
@@ -6413,7 +6703,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             rig_settings = arm.MustardUI_RigSettings
             
             # Check if there is any property to show
-            prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth
+            prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume
         
             return res and prop_to_show
         
@@ -6430,29 +6720,47 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         
         layout = self.layout
         
-        if rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth:
+        if rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume:
             
             box = layout.box()
-            box.label(text="Body properties", icon="OUTLINER_OB_ARMATURE")
-        
-            if rig_settings.body_enable_subdiv:
-                row = box.row(align=True)
-                row.prop(rig_settings,"body_subdiv_view")
-                row.scale_x=0.4
-                row.prop(rig_settings,"body_subdiv_view_lv")
+            box.label(text="Global settings", icon="OUTLINER_OB_ARMATURE")
+            
+            if rig_settings.body_enable_preserve_volume or rig_settings.body_enable_smoothcorr:
                 
-                row = box.row(align=True)
-                row.prop(rig_settings,"body_subdiv_rend")
-                row.scale_x=0.4
-                row.prop(rig_settings,"body_subdiv_rend_lv")
+                col = box.column(align=True)
+                
+                if rig_settings.body_enable_preserve_volume:
+                    col.prop(rig_settings,"body_preserve_volume")
+                
+                if rig_settings.body_enable_smoothcorr:
+                    col.prop(rig_settings,"body_smooth_corr")
+            
+            if rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes:
+                col = box.column(align=True)
+                
+                if rig_settings.body_enable_norm_autosmooth:
+                    col.prop(rig_settings,"body_norm_autosmooth")
+                
+                if rig_settings.body_enable_material_normal_nodes:
+                    col.prop(settings,"material_normal_nodes")
         
-            if rig_settings.body_enable_smoothcorr:
-                box.prop(rig_settings,"body_smooth_corr")
+        if rig_settings.body_enable_subdiv:
             
-            if rig_settings.body_enable_norm_autosmooth:
-                box.prop(rig_settings,"body_norm_autosmooth")
+            box = layout.box()
             
-            box.prop(settings,"material_normal_nodes")
+            box.label(text="Subdivision surface", icon = "MOD_SUBSURF")
+            
+            col = box.column(align=True)
+            
+            row = col.row(align=True)
+            row.prop(rig_settings,"body_subdiv_view", text="Viewport")
+            row.scale_x=0.7
+            row.prop(rig_settings,"body_subdiv_view_lv")
+            
+            row = col.row(align=True)
+            row.prop(rig_settings,"body_subdiv_rend", text="Render")
+            row.scale_x=0.7
+            row.prop(rig_settings,"body_subdiv_rend_lv")
         
         if len(custom_props)>0:
             
@@ -6516,7 +6824,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_ExternalMorphs"
-    bl_label = "External Morphs"
+    bl_label = "Morphs"
     bl_options = {"DEFAULT_CLOSED"}
     
     def morph_filter(self, morph, rig_settings):
@@ -6576,7 +6884,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         
         row = layout.row()    
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
-        row = row.row(align=False)
+        row = row.row(align=True)
         row.prop(rig_settings, 'diffeomorphic_filter_null', icon = "FILTER", text = "")
         row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
         
@@ -6672,13 +6980,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         
         if settings.maintenance:
             layout.operator('mustardui.dazmorphs_clearmodel', text = "Clear settings", icon = "LOOP_BACK")
-                
-class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
-    bl_idname = "PANEL_PT_MustardUI_Outfits"
-    bl_label = "Outfits & Hair Settings"
-    bl_options = {"DEFAULT_CLOSED"}
-    
-    def custom_properties_print(self, arm, settings, rig_settings, custom_properties, box, icons_show):
+
+def mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties, box, icons_show):
         
         box2 = box.box()
         for prop in custom_properties:
@@ -6701,6 +7004,11 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     row2.prop(settings, 'custom_properties_error', icon = "ERROR", text="", icon_only = True, emboss = False)
         
         return
+        
+class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
+    bl_idname = "PANEL_PT_MustardUI_Outfits"
+    bl_label = "Outfits"
+    bl_options = {"DEFAULT_CLOSED"}
     
     @classmethod
     def poll(cls, context):
@@ -6714,13 +7022,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             # Check if one of these should be shown in the UI
             outfits_avail = len(rig_settings.outfits_collections)>0
             
-            hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1 if rig_settings.hair_collection != None else False
-            
             extras_avail = len(rig_settings.extras_collection.objects)>0 if rig_settings.extras_collection != None else False
-            
-            particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"])>0 and rig_settings.particle_systems_enable if rig_settings.model_body != None else False
         
-            return res and (hair_avail or outfits_avail or extras_avail or particle_avail) if arm != None else red
+            return res and (outfits_avail or extras_avail) if arm != None else False
         
         else:
             
@@ -6751,32 +7055,35 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None], key = lambda x:x.name)
                     else:
                         custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None]
+                    
                     if len(custom_properties)>0 and rig_settings.outfit_additional_options:
                         row.prop(rig_settings,"outfit_global_custom_properties_collapse", text="", toggle=True, icon="PREFERENCES")
                         if rig_settings.outfit_global_custom_properties_collapse:
-                            self.custom_properties_print(arm, settings, rig_settings, custom_properties, box, rig_settings.outfit_custom_properties_icons)
+                            mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties, box, rig_settings.outfit_custom_properties_icons)
                     
                     for obj in bpy.data.collections[rig_settings.outfits_list].objects:
-                        row = box.row(align=True)
+                        
+                        col = box.column(align=True)
+                        row = col.row(align=True)
                         
                         if rig_settings.model_MustardUI_naming_convention:
                             row.operator("mustardui.object_visibility",text=obj.name[len(rig_settings.outfits_list + ' - '):], icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
                         else:
                             row.operator("mustardui.object_visibility",text=obj.name, icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
                         
+                        # Outfit custom properties
                         if rig_settings.outfit_custom_properties_name_order:
                             custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj], key = lambda x:x.name)
                         else:
                             custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj]
+                        
                         if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                             row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                             if obj.MustardUI_additional_options_show:
-                                self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
+                                mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, col, rig_settings.outfit_custom_properties_icons)
                         
-                        if obj.MustardUI_outfit_lock:
-                            row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='LOCKED')
-                        else:
-                            row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='UNLOCKED')
+                        row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
+                
                 else:
                     box.label(text="This Collection seems empty", icon="ERROR")
             
@@ -6790,7 +7097,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 box.separator()
                 box.label(text="Locked objects:", icon="LOCKED")
                 for obj in locked_objects:
-                    row = box.row(align=True)
+                    
+                    col = box.column(align=True)
+                    row = col.row(align=True)
                     
                     if rig_settings.model_MustardUI_naming_convention:
                         row.operator("mustardui.object_visibility",text=obj.name[len(rig_settings.model_name):], icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
@@ -6804,12 +7113,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                         row.prop(bpy.data.objects[obj.name],"MustardUI_additional_options_show_lock", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show_lock:
-                            self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
+                            mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, col, rig_settings.outfit_custom_properties_icons)
                     
-                    if obj.MustardUI_outfit_lock:
-                        row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='LOCKED')
-                    else:
-                        row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='UNLOCKED')
+                    row.prop(obj,"MustardUI_outfit_lock",toggle=True, icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
         
             # Outfit global properties
             if rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_normalautosmooth:
@@ -6819,14 +7125,15 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 row.label(text="Outfits global properties", icon="MODIFIER")
                 row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_OFF").enable = True
                 row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_ON").enable = False
+                col = box.column(align=True)
                 if rig_settings.outfits_enable_global_smoothcorrection:
-                    box.prop(rig_settings,"outfits_global_smoothcorrection")
+                    col.prop(rig_settings,"outfits_global_smoothcorrection")
                 if rig_settings.outfits_enable_global_shrinkwrap:
-                    box.prop(rig_settings,"outfits_global_shrinkwrap")
+                    col.prop(rig_settings,"outfits_global_shrinkwrap")
                 if rig_settings.outfits_enable_global_mask:
-                    box.prop(rig_settings,"outfits_global_mask")
+                    col.prop(rig_settings,"outfits_global_mask")
                 if rig_settings.outfits_enable_global_normalautosmooth:
-                    box.prop(rig_settings,"outfits_global_normalautosmooth")
+                    col.prop(rig_settings,"outfits_global_normalautosmooth")
         
         # Extras
         if rig_settings.extras_collection != None:
@@ -6837,8 +7144,10 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 box.label(text="Extras", icon="PLUS")
                 
                 # Global outfit custom properties
-                for obj in rig_settings.extras_collection.objects:
-                    row = box.row(align=True)
+                for obj in sorted(rig_settings.extras_collection.objects, key=lambda x:x.name):
+                    
+                    col = box.column(align=True)
+                    row = col.row(align=True)
                     
                     if rig_settings.model_MustardUI_naming_convention:
                         row.operator("mustardui.object_visibility",text=obj.name[len(rig_settings.extras_collection.name + ' - '):], icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
@@ -6851,8 +7160,42 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                         row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show:
-                            self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.outfit_custom_properties_icons)
+                            mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, col, rig_settings.outfit_custom_properties_icons)
+
+class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
+    bl_idname = "PANEL_PT_MustardUI_Hair"
+    bl_label = "Hair"
+    bl_options = {"DEFAULT_CLOSED"}
     
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        if arm != None:
+            
+            rig_settings = arm.MustardUI_RigSettings
+            
+            # Check if one of these should be shown in the UI
+            hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1 if rig_settings.hair_collection != None else False
+            
+            particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"])>0 and rig_settings.particle_systems_enable if rig_settings.model_body != None else False
+        
+            return res and (hair_avail or particle_avail) if arm != None else False
+        
+        else:
+            
+            return res
+
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        poll, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        layout = self.layout
+        
         # Hair
         if rig_settings.hair_collection != None:
             
@@ -6881,7 +7224,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                 row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                 if obj.MustardUI_additional_options_show:
-                    self.custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
+                    mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
         
         # Particle systems
         mod_particle_system = [x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]
@@ -6898,7 +7241,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Armature"
-    bl_label = "Armature Settings"
+    bl_label = "Armature"
     bl_options = {"DEFAULT_CLOSED"}
     
     def toggleFKIK(self, row, value, op):
@@ -7450,10 +7793,12 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         
         # Main Settings
         box = layout.box()
+        col = box.column(align=True)
         
-        box.prop(settings,"advanced")
-        box.prop(settings,"maintenance")
-        box.prop(settings,"debug")
+        col.prop(settings,"advanced")
+        col.prop(settings,"maintenance")
+        col.prop(settings,"debug")
+        
         if settings.viewport_model_selection:
             box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon = "VIEW3D", depress = True)
         else:
@@ -7471,6 +7816,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             else:
                 box.operator('mustardui.registeruifile', text="Un-register UI Script", icon = "TEXT").register = False
             
+            box.operator('mustardui.cleanmodel', text="Clean model", icon = "BRUSH_DATA")
             box.operator('mustardui.debug_log', text="Create Log file", icon = "FILE_TEXT")
             box.operator('mustardui.remove', text="UI Removal", icon = "X")
             if platform.system() == 'Windows':
@@ -7589,6 +7935,8 @@ classes = (
     MustardUI_GlobalOutfitPropSwitch,
     # Normal map optimization operator
     MustardUI_Material_NormalMap_Nodes,
+    # Clean model operator
+    MustardUI_CleanModel,
     # Debug
     MustardUI_Debug_Log,
     # Others
@@ -7611,6 +7959,7 @@ classes = (
     PANEL_PT_MustardUI_Body,
     PANEL_PT_MustardUI_ExternalMorphs,
     PANEL_PT_MustardUI_Outfits,
+    PANEL_PT_MustardUI_Hair,
     PANEL_PT_MustardUI_Armature,
     PANEL_PT_MustardUI_Tools_Physics,
     PANEL_PT_MustardUI_Tools_Lattice,
