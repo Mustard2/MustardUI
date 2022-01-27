@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "007"
+mustardui_buildnum = "008"
 
 import bpy
 import addon_utils
@@ -191,11 +191,21 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     
     def addon_version_check(addon_name):
         try:
-            mod = sys.modules[addon_name]
+            # Find the correct addon name
+            addon_utils.modules_refresh()
+            
+            for addon in addon_utils.addons_fake_modules:
+                if addon_name in addon:
+                    default, state = addon_utils.check(addon)
+                    if state:
+                        break
+            
+            mod = sys.modules[addon]
             version = mod.bl_info.get('version', (-1, -1, -1))
-            print("MustardUI - " + addon_name + " version is " + str(version[0]) + "." + str(version[1]) + "." + str(version[2]) + ".")
+            print("MustardUI - " + addon + " version is " + str(version[0]) + "." + str(version[1]) + "." + str(version[2]) + ".")
             return version
         except:
+            print("MustardUI - Can not find " + addon_name + " version.")
             return (-1, -1, -1)
     
     status_diffeomorphic_version: bpy.props.IntVectorProperty(default = addon_version_check("import_daz"))
