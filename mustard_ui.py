@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "003"
+mustardui_buildnum = "007"
 
 import bpy
 import addon_utils
@@ -146,37 +146,47 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # RIG TOOLS STATUS
     
     # This function checks that the rig_tools addon is installed and enabled.
-    def addon_check(addon_name, addon_name2):
-        
-        result = 0
+    def addon_check(addon_names):
         
         addon_utils.modules_refresh()
         
-        if addon_name not in addon_utils.addons_fake_modules and addon_name2 not in addon_utils.addons_fake_modules:
-            print("MustardUI - %s add-on not installed." % addon_name)
-        else:
-            default, state = addon_utils.check(addon_name)
-            default, state2 = addon_utils.check(addon_name2)
-            if (not state and not state2):
-                result = 1
-                print("MustardUI - %s add-on installed but not enabled." % addon_name )
-            else:
-                result = 2
-                print("MustardUI - %s add-on enabled and running." % addon_name)
+        addon_num = len(addon_names)
         
-        return result
-
+        addon_status = []
+        addon_names_found = []
+        
+        for i in range(addon_num):
+            for addon in addon_utils.addons_fake_modules:
+                if addon_names[i] in addon:
+                    addon_names_found.append(addon)
+                    default, state = addon_utils.check(addon)
+                    addon_status.append(2 if default else 1)
+        
+        if 2 in addon_status:
+            for i in range(len(addon_names_found)):
+                if addon_status[i] == 2:
+                    print("MustardUI - " + addon_names_found[i] + " add-on enabled and running.")
+                    return 2
+        elif 1 in addon_status and not 2 in addon_status:
+            for addon_name in addon_names_found:
+                print("MustardUI - " + addon_name + " add-on installed but not enabled.")
+            return 1
+        else:
+            for addon_name in addon_names:
+                print("MustardUI - %s add-on not installed." % addon_name)
+        
+        return 0
     
     # Rig-tools addon status definition
-    status_rig_tools: bpy.props.IntProperty(default = addon_check("auto_rig_pro-master", "rig_tools"),
+    status_rig_tools: bpy.props.IntProperty(default = addon_check(["auto_rig_pro-master", "rig_tools"]),
                         name = "rig_tools addon status")
     
     # Rig-tools addon status definition
-    status_diffeomorphic: bpy.props.IntProperty(default = addon_check("import_daz", "import_daz"),
+    status_diffeomorphic: bpy.props.IntProperty(default = addon_check(["import_daz"]),
                         name = "diffeomorphic addon status")
     
     # Rig-tools addon status definition
-    status_mhx: bpy.props.IntProperty(default = addon_check("mhx_rts", "mhx_rts"),
+    status_mhx: bpy.props.IntProperty(default = addon_check(["mhx_rts"]),
                         name = "mhx_rts addon status")
     
     def addon_version_check(addon_name):
@@ -3687,6 +3697,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
  
     def execute(self, context):
         
+        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config = 0)
         rig_settings = arm.MustardUI_RigSettings
         
@@ -3703,7 +3714,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         except:
             warnings = warnings + 1
             if settings.debug:
-                print('MustardUI - Error occurred while using the daz operator \'disable_drivers\'')
+                print('MustardUI - Error occurred while using the daz operator \'disable_drivers\'. Retry selecting the Armature.')
         
         for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
             for obj in collection.collection.objects:
@@ -3758,6 +3769,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
  
     def execute(self, context):
         
+        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config = 0)
         rig_settings = arm.MustardUI_RigSettings
         
@@ -3774,7 +3786,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         except:
             warnings = warnings + 1
             if settings.debug:
-                print('MustardUI - Error occurred while using the daz operator \'enable_drivers\'')
+                print('MustardUI - Error occurred while using the daz operator \'enable_drivers\'. Retry selecting the Armature.')
         
         for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
             for obj in collection.collection.objects:
