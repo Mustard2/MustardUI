@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "008"
+mustardui_buildnum = "009"
 
 import bpy
 import addon_utils
@@ -4083,11 +4083,12 @@ class MustardUI_Configuration(bpy.types.Operator):
             
             # Check Diffeomorphic 1.5 morph support script
             if rig_settings.diffeomorphic_support:
-                if not "def evalMorphsLoc(pb, idx):" in rig_settings.diffeomorphic_1_5_script.as_string():
-                    rig_settings.diffeomorphic_1_5_script = None
-                    warnings = warnings + 1
-                    if settings.debug:
-                        print('MustardUI - Configuration Warning - The Diffeomorphic 1.5 Morphs support script selected is invalid')
+                if rig_settings.diffeomorphic_1_5_script != None:
+                    if not "def evalMorphsLoc(pb, idx):" in rig_settings.diffeomorphic_1_5_script.as_string():
+                        rig_settings.diffeomorphic_1_5_script = None
+                        warnings = warnings + 1
+                        if settings.debug:
+                            print('MustardUI - Configuration Warning - The Diffeomorphic 1.5 Morphs support script selected is invalid')
             
             # Check shrinkwrap modifier requirements
             if tools_settings.lips_shrinkwrap_enable and not rig_settings.model_rig_type in ['arp', 'mhx']:
