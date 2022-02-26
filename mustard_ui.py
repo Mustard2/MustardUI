@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 22, 2),
+    "version": (0, 22, 3),
     "blender": (3, 0, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "009"
+mustardui_buildnum = "011"
 
 import bpy
 import addon_utils
@@ -1032,13 +1032,17 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     
     def layers_update(self, context):
         
+        if len(self.layers)<31:
+            return
+        
         for i in range(0,32):
             if self.config_layer[i] != self.config_layer_store[i]:
+                
                 if self.config_layer[i]:
                     self.last_id = self.last_id + 1
                     self.layers[i].id = self.last_id
+                
                 else:
-                    
                     for j in range(0,32):
                         if self.layers[j].id > self.layers[i].id:
                             self.layers[j].id = self.layers[j].id - 1
@@ -1052,6 +1056,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         return
 
     config_layer: bpy.props.BoolVectorProperty(subtype = "LAYER",
+                        name = "Layer",
                         size = 32,
                         update = layers_update)
     
@@ -1604,6 +1609,10 @@ def mustardui_clean_prop(obj, uilist, index, settings):
         
         return
 
+def mustardui_cp_path(rna, path):
+    
+    return rna + "." + path if not all(["[" in path, "]" in path]) else rna + path
+
 # Operator to add the right click button on properties
 class MustardUI_Property_MenuAdd(bpy.types.Operator):
     """Add the property to the menu"""
@@ -1701,14 +1710,14 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                     
             elif hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default') and hasattr(prop, 'description') and hasattr(prop, 'subtype'):
                 description = prop.description if (not "node_tree.nodes" in rna and not "shape_keys" in rna) else ""
-                rna_idprop_ui_create(obj, prop_name, default=prop.default if prop.array_length == 0 else eval(rna + '.' + path),
+                rna_idprop_ui_create(obj, prop_name, default=prop.default if prop.array_length == 0 else eval(mustardui_cp_path(rna, path)),
                                     min=prop.hard_min if prop.subtype != "COLOR" else 0.,
                                     max=prop.hard_max if prop.subtype != "COLOR" else 1.,
                                     description=description,
                                     overridable=True,
                                     subtype=prop.subtype if prop.subtype != "FACTOR" else None)
             elif hasattr(prop, 'description'):
-                rna_idprop_ui_create(obj, prop_name, default=eval(rna + '.' + path),
+                rna_idprop_ui_create(obj, prop_name, default=eval(mustardui_cp_path(rna, path)),
                                     description=prop.description)
         
         # Add driver
@@ -1844,7 +1853,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
             return {'FINISHED'}
         
         try:
-            parent_prop_length = len(eval(parent_prop.rna + '.' + parent_prop.path))
+            parent_prop_length = len( eval( mustardui_cp_path(parent_prop.rna, parent_prop.path) ) )
         except:
             parent_prop_length = 0
         
@@ -2177,10 +2186,7 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        if "[" in item.path and "]" in item.path:
-                            eval(item.rna+item.path)
-                        else:
-                            eval(item.rna+'.'+item.path)
+                        eval(mustardui_cp_path(item.rna,item.path))
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -2237,10 +2243,7 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        if "[" in item.path and "]" in item.path:
-                            eval(item.rna+item.path)
-                        else:
-                            eval(item.rna+'.'+item.path)
+                        eval(mustardui_cp_path(item.rna,item.path))
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -2287,10 +2290,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        if "[" in item.path and "]" in item.path:
-                            eval(item.rna+item.path)
-                        else:
-                            eval(item.rna+'.'+item.path)
+                        eval(mustardui_cp_path(item.rna,item.path))
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -2687,10 +2687,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 for lp in custom_prop.linked_properties:
                     
                     row = box.row()
-                    row.label(text=lp.rna + '.' + lp.path, icon = "RNA")
+                    row.label(text=mustardui_cp_path(lp.rna, lp.path), icon = "RNA")
                     op = row.operator('mustardui.property_removelinked', text="", icon ="X")
                     op.rna = lp.rna
                     op.path = lp.path
+                    op.type = self.type
         
         if settings.debug:
             
@@ -2736,13 +2737,14 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         self.clean_prop(obj, uilist, index)
         
         # Find the linked property index to remove it from the list
-        i = 0
+        i = -1
         for lp in uilist[index].linked_properties:
+            i +=1
             if lp.rna == self.rna and lp.path == self.path:
                 break
-            i +=1
         
-        uilist[index].linked_properties.remove(i)
+        if i != -1:
+            uilist[index].linked_properties.remove(i)
         
         obj.update_tag()
         
@@ -2760,7 +2762,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         driver = driver_object.driver_add(path)
         
         try:
-            array_length = len(eval(rna + '.' + path))
+            array_length = len(eval(mustardui_cp_path(rna,path)))
         except:
             array_length = 0
         
@@ -2807,7 +2809,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             custom_props.append((x,2))
         
         errors = 0
-            
+        
+        to_remove = []
+        
         for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
             
             prop_name = custom_prop.prop_name
@@ -2816,7 +2820,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 del obj[prop_name]
             
             if custom_prop.is_bool or custom_prop.force_type == "Bool":
-                rna_idprop_ui_create(obj, prop_name, default=int(eval(custom_prop.rna + '.' + custom_prop.path)),
+                rna_idprop_ui_create(obj, prop_name, default=int(eval(mustardui_cp_path(custom_prop.rna,custom_prop.path))),
                                     min=0,
                                     max=1,
                                     description=custom_prop.description,
@@ -2842,7 +2846,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             
             else:
                 rna_idprop_ui_create(obj, prop_name,
-                                    default=eval(custom_prop.rna + '.' + custom_prop.path),
+                                    default=eval(mustardui_cp_path(custom_prop.rna,custom_prop.path)),
                                     description=custom_prop.description,
                                     overridable=True)
             
@@ -2854,7 +2858,10 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             except:
                 errors += 1
                 
-                print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'.')
+                if "[" in custom_prop.path and "]" in custom_prop.path:
+                    print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + custom_prop.path + '\'. This custom property will be removed.')
+                else:
+                    print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'. This custom property will be removed.')
                 
                 if prop_type == 0:
                     uilist = obj.MustardUI_CustomProperties
@@ -2868,13 +2875,22 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                         break
                 
                 mustardui_clean_prop(obj, uilist, i, settings)
-                uilist.remove(i)
-                
+                to_remove.append((i,prop_type))
+        
+        for i, prop_type in reversed(to_remove):
+            
+            if prop_type == 0:
+                uilist = obj.MustardUI_CustomProperties
+            elif prop_type == 1:
+                uilist = obj.MustardUI_CustomPropertiesOutfit
+            else:
+                uilist = obj.MustardUI_CustomPropertiesHair
+            
+            uilist.remove(i)        
         
         obj.update_tag()
         
         if errors > 0:
-            print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'.')
             if errors > 1:
                 self.report({'WARNING'}, 'MustardUI - ' + str(errors) + ' custom properties were corrupted and deleted. Check the console for more infos.')
             else:
@@ -2898,7 +2914,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         driver = driver_object.driver_add(path)
         
         try:
-            array_length = len(eval(rna + '.' + path))
+            array_length = len(eval(mustardui_cp_path(rna,path)))
         except:
             array_length = 0
         
@@ -3001,7 +3017,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             
             cp.is_bool = type == "BOOLEAN"
             if cp.is_bool:
-                cp.bool_value = int(eval(rna + '.' + path))
+                cp.bool_value = int(eval(mustardui_cp_path(rna,path)))
             
             cp.is_animatable = True
             for cptr in sections_to_recover:
@@ -4364,12 +4380,16 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
         #filename = re.search('mustard_ui.py', os.path.basename(__file__)).group(1)
         
         if self.register:
-            obj.MustardUI_script_file = bpy.data.texts['mustard_ui.py']
+            try:
+                obj.MustardUI_script_file = bpy.data.texts['mustard_ui.py']
+            except:
+                self.report({'ERROR'}, "MustardUI: Can not register UI in " + obj.name + ". Change the script name to \'mustard_ui.py\'.")
+                return {'FINISHED'}
             bpy.data.texts['mustard_ui.py'].use_module = True
             self.report({'INFO'}, "MustardUI: UI correctly registered in " + obj.name)
         else:
+            obj.MustardUI_script_file.use_module = False
             obj.MustardUI_script_file = None
-            bpy.data.texts['mustard_ui.py'].use_module = False
             self.report({'INFO'}, "MustardUI: UI correctly un-registered in " + obj.name)
         
         return {'FINISHED'}
@@ -6063,7 +6083,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         box.prop(self, "remove_morphs")
         row = box.row()
         row.enabled = self.remove_morphs
-        row.prop(self, "remove_morphs_jcms")
+        row.prop(self, "remove_morphs_jcms", text = "Remove Corrective Morphs")
         row = box.row()
         row.enabled = self.remove_morphs
         row.prop(self, "remove_morphs_shapekeys")
@@ -7333,16 +7353,21 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     def poll(cls, context):
         
         res, obj = mustardui_active_object(context, config = 0)
+        
         if obj != None:
             rig_settings = obj.MustardUI_RigSettings
             armature_settings = obj.MustardUI_ArmatureSettings
             
+            if len(armature_settings.layers)<1:
+                return False
+            
             enabled_layers = [x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable]
+            enabled_IKFK = armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None
             
             if rig_settings.hair_collection != None:
-                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair))
+                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair)) or enabled_IKFK
             else:
-                return res and len(enabled_layers)>0
+                return res and len(enabled_layers)>0 or enabled_IKFK
         else:
             return res
 
