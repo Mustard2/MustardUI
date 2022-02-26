@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "008"
+mustardui_buildnum = "010"
 
 import bpy
 import addon_utils
@@ -2809,10 +2809,12 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             custom_props.append((x,2))
         
         errors = 0
-            
+        
+        to_remove = []
+        
         for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
             
-            prop_name = custom_prop.prop_name
+            prop_name = custom_prop.name
             
             if prop_name in obj.keys():
                 del obj[prop_name]
@@ -2857,9 +2859,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 errors += 1
                 
                 if "[" in custom_prop.path and "]" in custom_prop.path:
-                    print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + custom_prop.path + '\'.')
+                    print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + custom_prop.path + '\'. This custom property will be removed.')
                 else:
-                    print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'.')
+                    print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'. This custom property will be removed.')
                 
                 if prop_type == 0:
                     uilist = obj.MustardUI_CustomProperties
@@ -2873,16 +2875,22 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                         break
                 
                 mustardui_clean_prop(obj, uilist, i, settings)
-                uilist.remove(i)
-                
+                to_remove.append((i,prop_type))
+        
+        for i, prop_type in reversed(to_remove):
+            
+            if prop_type == 0:
+                uilist = obj.MustardUI_CustomProperties
+            elif prop_type == 1:
+                uilist = obj.MustardUI_CustomPropertiesOutfit
+            else:
+                uilist = obj.MustardUI_CustomPropertiesHair
+            
+            uilist.remove(i)        
         
         obj.update_tag()
         
         if errors > 0:
-            if "[" in custom_prop.path and "]" in custom_prop.path:
-                print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + custom_prop.path + '\'.')
-            else:
-                print('MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'.')
             if errors > 1:
                 self.report({'WARNING'}, 'MustardUI - ' + str(errors) + ' custom properties were corrupted and deleted. Check the console for more infos.')
             else:
