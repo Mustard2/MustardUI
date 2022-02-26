@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "011"
+mustardui_buildnum = "012"
 
 import bpy
 import addon_utils
@@ -7365,9 +7365,9 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             enabled_IKFK = armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None
             
             if rig_settings.hair_collection != None:
-                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair)) or enabled_IKFK
+                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair) or enabled_IKFK)
             else:
-                return res and len(enabled_layers)>0 or enabled_IKFK
+                return res and (len(enabled_layers)>0 or enabled_IKFK)
         else:
             return res
 
