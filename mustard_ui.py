@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "010"
+mustardui_buildnum = "011"
 
 import bpy
 import addon_utils
@@ -2814,7 +2814,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         
         for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
             
-            prop_name = custom_prop.name
+            prop_name = custom_prop.prop_name
             
             if prop_name in obj.keys():
                 del obj[prop_name]
