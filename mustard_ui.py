@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 22, 3),
+    "version": (0, 22, 4),
     "blender": (3, 0, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "012"
+mustardui_buildnum = "014"
 
 import bpy
 import addon_utils
@@ -38,7 +38,7 @@ mustardui_icon_list = [
                 ("NONE","No Icon","No Icon"),
                 ("USER", "Face", "Face","USER",1),
                 ("HIDE_OFF", "Eye", "Eye","HIDE_OFF",2),
-                ("HAIR", "Hair", "Hair","HAIR",3),
+                ("HAIR", "Hair", "Hair","STRANDS",3),
                 ("MOD_CLOTH", "Cloth", "Cloth","MOD_CLOTH",4),
                 ("MATERIAL", "Material", "Material","MATERIAL",5),
                 ("ARMATURE_DATA", "Armature", "Armature","ARMATURE_DATA",6),
@@ -379,7 +379,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
         
-        obj.data.use_auto_smooth = self.body_norm_autosmooth
+        self.model_body.data.use_auto_smooth = self.body_norm_autosmooth
         
         return
     
@@ -490,6 +490,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfits_enable_global_mask: bpy.props.BoolProperty(default = True,
                         name = "Mask modifiers")
     
+    outfits_enable_global_triangulate: bpy.props.BoolProperty(default = False,
+                        name = "Triangulate modifiers")
+    
     outfits_enable_global_normalautosmooth: bpy.props.BoolProperty(default = True,
                         name = "Normals Auto Smooth properties")
     
@@ -589,6 +592,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     elif modifier.type == "SHRINKWRAP":
                         modifier.show_viewport = self.outfits_global_shrinkwrap
                         modifier.show_render = self.outfits_global_shrinkwrap
+                    elif modifier.type == "TRIANGULATE":
+                        modifier.show_viewport = self.outfits_global_triangulate
+                        modifier.show_render = self.outfits_global_triangulate
         
                 for modifier in self.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
@@ -622,6 +628,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         
     outfits_global_mask: bpy.props.BoolProperty(default = True,
                         name = "Mask",
+                        update = outfits_global_options_update)
+    
+    outfits_global_triangulate: bpy.props.BoolProperty(default = True,
+                        name = "Triangulate",
                         update = outfits_global_options_update)
                         
     outfits_global_normalautosmooth: bpy.props.BoolProperty(default = True,
@@ -725,8 +735,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Enable Diffeomorphic support.\nIf enabled, standard morphs from Diffomorphic will be added to the UI")
     
     diffeomorphic_enable: bpy.props.BoolProperty(default = True,
-                        name = "Enable Diffeomorphic morphs",
-                        description = "Enable Diffeomorphic morphs.\nNote that this might affect performance",
+                        name = "Enable Morphs",
+                        description = "Select the model armature to enable this button.\nEnabling morphs might affect performance. You can disable them to increase performance",
                         update = diffeomorphic_enable_update)
     
     diffeomorphic_morphs_list: bpy.props.CollectionProperty(name = "Daz Morphs List",
@@ -1123,6 +1133,31 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         min = 0.0, max = 1.0,
                         name = "Influence",
                         description = "Set the influence the parent Bone will have on the Child one")
+    
+    # Auto Breath
+    autobreath_enable: bpy.props.BoolProperty(default = False,
+                        name = "Auto Breath",
+                        description = "Enable the Auto Breath tool.\nThis tool will allow a quick creation of a breathing animation")
+    
+    autobreath_frequency: bpy.props.FloatProperty(default = 16.0,
+                        min = 1.0, max = 200.0,
+                        name = "Frequency",
+                        description = "Breathing frequency in breath/minute")
+    
+    autobreath_amplitude: bpy.props.FloatProperty(default = 1.0,
+                        min = 0.0, max = 1.0,
+                        name = "Amplitude",
+                        description = "Amplitude of the breathing animation")
+    
+    autobreath_random: bpy.props.FloatProperty(default = 0.01,
+                        min = 0.0, max = 1.0,
+                        name = "Random factor",
+                        description = "Randomization of breathing")
+    
+    autobreath_sampling: bpy.props.IntProperty(default = 1,
+                        min = 1, max = 24,
+                        name = "Sampling",
+                        description = "Number of frames beetween two animations key")
     
     # Name of the modifiers created by the tool
     childof_constr_name: bpy.props.StringProperty(default = 'MustardUI_ChildOf')
@@ -2013,7 +2048,7 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
         layout = self.layout
         
         for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
-            op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, icon = "HAIR", text=obj.name[len(rig_settings.hair_collection.name):] if rig_settings.model_MustardUI_naming_convention else obj.name)
+            op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, icon = "STRANDS", text=obj.name[len(rig_settings.hair_collection.name):] if rig_settings.model_MustardUI_naming_convention else obj.name)
             op.section = ""
             op.outfit = ""
             op.outfit_piece = ""
@@ -2062,7 +2097,7 @@ def mustardui_property_menuadd(self, context):
             if len(rig_settings.hair_collection.objects) > 0:
                 for object in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
                     if object == context.active_object:
-                        op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, text = "Add to " + context.active_object.name, icon="HAIR")
+                        op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, text = "Add to " + context.active_object.name, icon="STRANDS")
                         op.section = ""
                         op.outfit = ""
                         op.outfit_piece = ""
@@ -2077,7 +2112,7 @@ def mustardui_property_menuadd(self, context):
             layout.menu(OUTLINER_MT_MustardUI_PropertyOutfitMenu.bl_idname, icon="MOD_CLOTH")
         if rig_settings.hair_collection != None:
             if len(rig_settings.hair_collection.objects) > 0:
-                layout.menu(OUTLINER_MT_MustardUI_PropertyHairMenu.bl_idname, icon="HAIR")
+                layout.menu(OUTLINER_MT_MustardUI_PropertyHairMenu.bl_idname, icon="STRANDS")
 
 def mustardui_property_link(self, context):
     
@@ -2148,7 +2183,7 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
         hair_props = [x for x in obj.MustardUI_CustomPropertiesHair if x.is_animatable and x.hair != None]
         if len(hair_props) > 0 and (len(outfit_props) > 0 or len(body_props) > 0):
             layout.separator()
-            layout.label(text = "Hair", icon = "HAIR")
+            layout.label(text = "Hair", icon = "STRANDS")
         for prop in sorted(hair_props, key = lambda x:x.name):
             hair_name = prop.hair.name[len(rig_settings.hair_collection.name + " "):] if rig_settings.model_MustardUI_naming_convention else prop.hair.name
             op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=hair_name + " - " + prop.name, icon=prop.icon)
@@ -2718,8 +2753,12 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
     def clean_prop(self, obj, uilist, index):
         
         # Remove linked property driver
-        driver_object = eval(self.rna)
-        driver_object.driver_remove(self.path)
+        try:
+            driver_object = eval(self.rna)
+            driver_object.driver_remove(self.path)
+            return True
+        except:
+            return False
     
     @classmethod
     def poll(cls, context):
@@ -2734,7 +2773,7 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
         
         # Remove custom property and driver
-        self.clean_prop(obj, uilist, index)
+        driver_removed = self.clean_prop(obj, uilist, index)
         
         # Find the linked property index to remove it from the list
         i = -1
@@ -2747,6 +2786,9 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
             uilist[index].linked_properties.remove(i)
         
         obj.update_tag()
+        
+        if not driver_removed:
+            self.report({'WARNING'}, 'MustardUI - The linked property was removed from the UI, but the associated driver was not found: you might need to remove it manually.')
         
         return{'FINISHED'}          
 
@@ -3571,6 +3613,14 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config = 1)
         rig_settings = arm.MustardUI_RigSettings
         
+        # Try to assign the rig object
+        if not arm.MustardUI_created:
+            if context.active_object != None and context.active_object.type == "ARMATURE":
+                rig_settings.model_armature_object = context.active_object
+            else:
+                self.report({'ERROR'}, 'MustardUI - You need to complete the first configuration before being able to add Morphs to the UI.')
+                return {'FINISHED'}
+        
         # Clean the morphs
         rig_settings.diffeomorphic_morphs_list.clear()
         
@@ -3713,13 +3763,6 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
                 return False
         
         return True
-    
-    @classmethod
-    def poll(cls, context):
-        
-        res, arm = mustardui_active_object(context, config = 0)
-        
-        return True
  
     def execute(self, context):
         
@@ -3749,9 +3792,12 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         
         for obj in objects:
             if obj.data.shape_keys != None:
-                for driver in obj.data.shape_keys.animation_data.drivers:
-                    if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
-                        driver.mute = self.check_driver(arm, driver.data_path)
+                if obj.data.shape_keys.animation_data != None:
+                    for driver in obj.data.shape_keys.animation_data.drivers:
+                        if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
+                            driver.mute = self.check_driver(arm, driver.data_path)
+                        if "MustardUINotDisable" in driver.data_path:
+                            driver.mute = False
         
         for driver in rig_settings.model_armature_object.animation_data.drivers:
             if "evalMorphs" in driver.driver.expression:
@@ -3777,21 +3823,6 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
     bl_idname = "mustardui.dazmorphs_enabledrivers"
     bl_label = "Button"
     bl_options = {'REGISTER', 'UNDO'}
-    
-    @classmethod
-    def poll(cls, context):
-        
-        res, arm = mustardui_active_object(context, config = 0)
-        
-        return True
-        
-        if arm != None:
-            rig_settings = arm.MustardUI_RigSettings
-        
-            return bpy.context.active_object == rig_settings.model_armature_object
-        
-        else:
-            return True
  
     def execute(self, context):
         
@@ -3821,9 +3852,11 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         
         for obj in objects:
             if obj.data.shape_keys != None:
-                for driver in obj.data.shape_keys.animation_data.drivers:
-                    if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
-                        driver.mute = False
+                if obj.data.shape_keys.animation_data != None:
+                    for driver in obj.data.shape_keys.animation_data.drivers:
+                        if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
+                            driver.mute = False
+                            
         
         for driver in rig_settings.model_armature_object.animation_data.drivers:
             
@@ -4458,6 +4491,7 @@ class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
         rig_settings.outfits_global_smoothcorrection = self.enable
         rig_settings.outfits_global_shrinkwrap = self.enable
         rig_settings.outfits_global_mask = self.enable
+        rig_settings.outfits_global_triangulate = self.enable
         rig_settings.outfits_global_normalautosmooth = self.enable
         
         return {'FINISHED'}
@@ -4544,6 +4578,90 @@ class MustardUI_Tools_ChildOf(bpy.types.Operator):
                 self.report({'INFO'}, 'MustardUI - '+str(mod_cont)+" modifiers successfully removed.")
             else:
                 self.report({'WARNING'}, 'MustardUI - No modifier was found. None was removed.')
+        
+        return {'FINISHED'}
+
+# ------------------------------------------------------------------------
+#    Tools - Auto-Breath
+# ------------------------------------------------------------------------
+
+class MustardUI_Tools_AutoBreath(bpy.types.Operator):
+    """Automatically create keyframes for breathing animation"""
+    bl_idname = "mustardui.tools_autobreath"
+    bl_label = "Auto Breath"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        poll, arm = mustardui_active_object(context, config = 0)
+        tools_settings = arm.MustardUI_ToolsSettings
+        
+        if len(bpy.context.selected_pose_bones) != 1:
+            self.report({'ERROR'}, 'MustardUI - You should select one bone only. No key has been added.')
+            return {'FINISHED'}
+        
+        # Check scene settings
+        frame_start = context.scene.frame_start
+        frame_end = context.scene.frame_end 
+        fps = context.scene.render.fps / context.scene.render.fps_base
+        context.scene.frame_current = frame_start
+        
+        # Selected bone
+        breath_bone = bpy.context.selected_pose_bones[0]
+        
+        # Check which transformations are available, and save the rest pose
+        lock_loc = [1, 1, 1]
+        rest_loc = [0., 0., 0.]
+        lock_sca = [1, 1, 1]
+        rest_sca = [0., 0., 0.]
+        for i in range(3):
+            lock_loc[i] = not breath_bone.lock_location[i]
+            rest_loc[i] = breath_bone.location[i]
+            lock_sca[i] = not breath_bone.lock_scale[i]
+            rest_sca[i] = breath_bone.scale[i]
+        
+        # Check if the bones are complying with definitions of rest pose (value = 1.)
+        warning = False
+        for i in range(3):
+            if lock_loc[i]:
+                if breath_bone.location[i] != 1.:
+                    warning = True
+                    break
+            if lock_sca[i]:
+                if breath_bone.scale[i] != 1.:
+                    warning = True
+                    break
+        
+        # Compute quantities
+        freq = 2. * 3.14 * tools_settings.autobreath_frequency/(fps*60)
+        amplitude = tools_settings.autobreath_amplitude/2.
+        sampling = tools_settings.autobreath_sampling
+        rand = tools_settings.autobreath_random
+        
+        import random
+        
+        # Create frames
+        for frame in range(frame_start, frame_end, sampling):
+            
+            freq_eff = freq * (1. + random.uniform(-rand,rand) )
+            
+            factor = (1. - math.cos( freq_eff  * (frame - frame_start) ) ) * amplitude
+            
+            for i in range(3):
+                breath_bone.location[i] = rest_loc[i] * (1. + lock_loc[i] * factor)
+                breath_bone.scale[i] = rest_sca[i] * (1 + lock_sca[i] * factor)
+            
+            if any(lock_loc):
+                breath_bone.keyframe_insert(data_path="location", frame=frame)
+            if any(lock_sca):
+                breath_bone.keyframe_insert(data_path="scale", frame=frame)
+        
+        if warning:
+            self.report({'WARNING'}, 'MustardUI - Initial unlocked transformations should be = 1. Results might be uncorrect')
+        else:
+            self.report({'INFO'}, 'MustardUI - Auto Breath applied with '+str(breath_bone.name)+".")
         
         return {'FINISHED'}
 
@@ -6447,6 +6565,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 col.prop(rig_settings,"outfits_enable_global_smoothcorrection")
                 col.prop(rig_settings,"outfits_enable_global_shrinkwrap")
                 col.prop(rig_settings,"outfits_enable_global_mask")
+                col.prop(rig_settings,"outfits_enable_global_triangulate")
                 col.prop(rig_settings,"outfits_enable_global_normalautosmooth")
             
             else:
@@ -6463,7 +6582,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         # Hair
         row = layout.row(align=False)
         row.prop(rig_settings, "hair_config_collapse", icon="TRIA_DOWN" if not rig_settings.hair_config_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-        row.label(text="Hair",icon="HAIR")
+        row.label(text="Hair",icon="STRANDS")
         
         if not rig_settings.hair_config_collapse:
             box = layout.box()
@@ -6652,9 +6771,11 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         if not tools_settings.tools_config_collapse:
             box = layout.box()
             box.label(text="Enable Tools", icon="MODIFIER")
-            box.prop(tools_settings,'childof_enable')
-            box.prop(tools_settings,'lips_shrinkwrap_enable')
-            box.prop(lattice_settings,'lattice_panel_enable')
+            col = box.column(align=True)
+            col.prop(tools_settings,'childof_enable')
+            col.prop(tools_settings,'autobreath_enable')
+            col.prop(tools_settings,'lips_shrinkwrap_enable')
+            col.prop(lattice_settings,'lattice_panel_enable')
             
             if lattice_settings.lattice_panel_enable:
                 box = layout.box()
@@ -6954,7 +7075,9 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         rig_settings = obj.MustardUI_RigSettings
         
         if settings.status_diffeomorphic > 1:
-            self.layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
+            layout = self.layout
+            layout.enabled = context.active_object == rig_settings.model_armature_object
+            layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
 
     def draw(self, context):
         
@@ -7223,6 +7346,8 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     col.prop(rig_settings,"outfits_global_shrinkwrap")
                 if rig_settings.outfits_enable_global_mask:
                     col.prop(rig_settings,"outfits_global_mask")
+                if rig_settings.outfits_enable_global_triangulate:
+                    col.prop(rig_settings,"outfits_global_triangulate")
                 if rig_settings.outfits_enable_global_normalautosmooth:
                     col.prop(rig_settings,"outfits_global_normalautosmooth")
         
@@ -7303,7 +7428,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 
                 box = layout.box()
                 row = box.row()
-                row.label(text="Hair list", icon="HAIR")
+                row.label(text="Hair list", icon="STRANDS")
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
                 
                 row = box.row(align=True)
@@ -7312,8 +7437,9 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             else:
                 box = layout.box()
                 row = box.row(align=True)
-                row.label(text="Hair", icon="HAIR")
+                row.label(text="Hair", icon="STRANDS")
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                row.prop(rig_settings.hair_collection, "hide_render", text="")
             
             if rig_settings.outfit_custom_properties_name_order:
                 custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj], key = lambda x:x.name)
@@ -7383,7 +7509,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         if rig_settings.hair_collection != None and armature_settings.enable_automatic_hair:
             if len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>0:
                 box = layout.box()
-                box.label(text='Hair Armature', icon="HAIR")
+                box.label(text='Hair Armature', icon="STRANDS")
                 box.prop(armature_settings, "hair",toggle=True)
         
         enabled_layers = [x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable]
@@ -7812,13 +7938,50 @@ class PANEL_PT_MustardUI_Tools_ChildOf(MainPanel, bpy.types.Panel):
         layout.label(text="Force one Bone to follow another Bone.")
         
         box = layout.box()
-        box.label(text="Select two bones:", icon="BONE_DATA")
-        box.label(text="  - the first will be the parent,")
-        box.label(text="  - the second will be the child.")
+        column = box.column(align=True)
+        column.label(text="Select two bones:", icon="BONE_DATA")
+        column.label(text="  - the first will be the parent,")
+        column.label(text="  - the second will be the child.")
         box.prop(tools_settings, "childof_influence")
         layout.operator('mustardui.tools_childof', text="Enable").clean = 0
         
         layout.operator('mustardui.tools_childof', text="Remove Parent instances", icon="X").clean = 1
+
+class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
+    bl_parent_id = "PANEL_PT_MustardUI_Tools"
+    bl_idname = "PANEL_PT_MustarUI_Tools_AutoBreath"
+    bl_label = "Auto Breath"
+    bl_options = {"DEFAULT_CLOSED"}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        if arm != None:
+            return res and arm.MustardUI_ToolsSettings.autobreath_enable
+        else:
+            return res
+    
+    def draw(self, context):
+        
+        poll, arm = mustardui_active_object(context, config = 0)
+        tools_settings = arm.MustardUI_ToolsSettings
+        
+        layout = self.layout
+        
+        box = layout.box()
+        column = box.column(align=True)
+        column.label(text="Select one bone:", icon="BONE_DATA")
+        column.label(text="  - unlocked transformation are animated,")
+        column.label(text="  - use 1. as rest value,")
+        column.label(text="  - and 2. as max value.")
+        column = box.column(align=True)
+        column.prop(tools_settings, "autobreath_frequency")
+        column.prop(tools_settings, "autobreath_amplitude")
+        column.prop(tools_settings, "autobreath_random")
+        column.prop(tools_settings, "autobreath_sampling")
+        
+        layout.operator('mustardui.tools_autobreath')
 
 class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Tools"
@@ -7849,8 +8012,9 @@ class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
         
         box.label(text="Main properties.", icon="MODIFIER")
         box.prop(tools_settings, "lips_shrinkwrap_obj")
-        box.prop(tools_settings, "lips_shrinkwrap_dist")
-        box.prop(tools_settings, "lips_shrinkwrap_dist_corr")
+        column = box.column(align=True)
+        column.prop(tools_settings, "lips_shrinkwrap_dist")
+        column.prop(tools_settings, "lips_shrinkwrap_dist_corr")
         
         box = layout.box()
         
@@ -8051,6 +8215,7 @@ classes = (
     MustardUI_Tools_LatticeSetup,
     MustardUI_Tools_LatticeModify,
     MustardUI_Tools_ChildOf,
+    MustardUI_Tools_AutoBreath,
     MustardUI_Tools_Physics_CreateItem,
     MustardUI_Tools_Physics_DeleteItem,
     MustardUI_Tools_Physics_Clean,
@@ -8068,6 +8233,7 @@ classes = (
     PANEL_PT_MustardUI_Tools_Lattice,
     PANEL_PT_MustardUI_Tools,
     PANEL_PT_MustardUI_Tools_ChildOf,
+    PANEL_PT_MustardUI_Tools_AutoBreath,
     PANEL_PT_MustardUI_Tools_LipsShrinkwrap,
     PANEL_PT_MustardUI_SettingsPanel,
     PANEL_PT_MustardUI_Links
