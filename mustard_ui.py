@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "014"
+mustardui_buildnum = "015"
 
 import bpy
 import addon_utils
@@ -1821,7 +1821,6 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                             cp.default_int = prop.default
                     else:
                         cp.default_array = str(ui_data_dict['default'])
-                        print(cp.default_array)
                         
                 if hasattr(prop, 'hard_min') and prop.type != "BOOLEAN":
                     if prop.type == "FLOAT":
