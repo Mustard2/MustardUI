@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "015"
+mustardui_buildnum = "016"
 
 import bpy
 import addon_utils
@@ -7429,6 +7429,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 row = box.row()
                 row.label(text="Hair list", icon="STRANDS")
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                row.prop(rig_settings.hair_collection, "hide_render", text="")
                 
                 row = box.row(align=True)
                 row.prop(rig_settings,"hair_list", text="")
