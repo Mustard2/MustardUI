@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "016"
+mustardui_buildnum = "021"
 
 import bpy
 import addon_utils
@@ -21,6 +21,7 @@ import os
 import re
 import time
 import math
+import random
 import platform
 import itertools
 from bpy.types import Header, Menu, Panel
@@ -1134,6 +1135,9 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         name = "Influence",
                         description = "Set the influence the parent Bone will have on the Child one")
     
+    # Name of the modifiers created by the tool
+    childof_constr_name: bpy.props.StringProperty(default = 'MustardUI_ChildOf')
+    
     # Auto Breath
     autobreath_enable: bpy.props.BoolProperty(default = False,
                         name = "Auto Breath",
@@ -1159,8 +1163,28 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         name = "Sampling",
                         description = "Number of frames beetween two animations key")
     
-    # Name of the modifiers created by the tool
-    childof_constr_name: bpy.props.StringProperty(default = 'MustardUI_ChildOf')
+    # Auto Blink
+    autoeyelid_enable: bpy.props.BoolProperty(default = False,
+                        name = "Auto Blink",
+                        description = "Enable the Auto Blink tool.\nThis tool will allow a quick creation of eyelid blinking animation")
+    
+    autoeyelid_driver_type: bpy.props.EnumProperty(default = "SHAPE_KEY",
+                        items = [("SHAPE_KEY", "Shape Key", "Shape Key", "SHAPEKEY_DATA", 0), ("MORPH", "Morph", "Morph", "OUTLINER_OB_ARMATURE", 1)],
+                        name = "Driver type")
+    
+    autoeyelid_blink_length: bpy.props.FloatProperty(default = 1.,
+                        min = 0.1, max = 20.0,
+                        name = "Blink Length Factor",
+                        description = "Increasing this value, you will proportionally increase the length of the blink from the common values of 0.1-0.25 ms")
+    
+    autoeyelid_blink_rate_per_minute: bpy.props.IntProperty(default = 26,
+                        min = 1, max = 104,
+                        name = "Blink Chance",
+                        description = "Number of blinks per minute.\nNote that some randomization is included in the tool, therefore the final realization number might be different")
+    
+    autoeyelid_eyeL_shapekey: bpy.props.StringProperty(name = "Left Eye Shape Key")
+    autoeyelid_eyeR_shapekey: bpy.props.StringProperty(name = "Right Eye Shape Key")
+    autoeyelid_morph: bpy.props.StringProperty(name = "Morph")
     
     # ------------------------------------------------------------------------
     #    Tools - Lips Shrinkwrap
@@ -4036,6 +4060,23 @@ class MustardUI_Configuration(bpy.types.Operator):
             for x in index_to_delete:
                 rig_settings.outfits_collections.remove(x)
             
+            if tools_settings.autoeyelid_enable:
+                
+                if (tools_settings.autoeyelid_eyeL_shapekey == "" and tools_settings.autoeyelid_eyeR_shapekey == "") and tools_settings.autoeyelid_driver_type == "SHAPE_KEY":
+                    self.report({'ERROR'}, 'MustardUI - At least one shape key should be selected if Auto Blink tool is enabled.')
+                    return {'FINISHED'}
+                
+                elif tools_settings.autoeyelid_morph == "" and tools_settings.autoeyelid_driver_type == "MORPH":
+                    self.report({'ERROR'}, 'MustardUI - At least one custom property should be selected if Auto Blink tool is enabled.')
+                    return {'FINISHED'}
+                
+                elif tools_settings.autoeyelid_morph != "" and tools_settings.autoeyelid_driver_type == "MORPH":
+                    try:
+                        rig_settings.model_armature_object[tools_settings.autoeyelid_morph] = float(rig_settings.model_armature_object[tools_settings.autoeyelid_morph])
+                    except:
+                        self.report({'ERROR'}, 'MustardUI - The custom property selected for Auto Blink can not be found.')
+                        return {'FINISHED'}
+            
             # Check lattice object definition
             if lattice_settings.lattice_object == None and lattice_settings.lattice_panel_enable:
                 self.report({'ERROR'}, 'MustardUI - A lattice object should be selected if Lattice tool is enabled.')
@@ -4639,8 +4680,6 @@ class MustardUI_Tools_AutoBreath(bpy.types.Operator):
         sampling = tools_settings.autobreath_sampling
         rand = tools_settings.autobreath_random
         
-        import random
-        
         # Create frames
         for frame in range(frame_start, frame_end, sampling):
             
@@ -4661,6 +4700,74 @@ class MustardUI_Tools_AutoBreath(bpy.types.Operator):
             self.report({'WARNING'}, 'MustardUI - Initial unlocked transformations should be = 1. Results might be uncorrect')
         else:
             self.report({'INFO'}, 'MustardUI - Auto Breath applied with '+str(breath_bone.name)+".")
+        
+        return {'FINISHED'}
+
+# ------------------------------------------------------------------------
+#    Tools - Auto Blink
+# ------------------------------------------------------------------------
+
+class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
+    """Automatically create keyframes for eyelid animation"""
+    bl_idname = "mustardui.tools_autoeyelid"
+    bl_label = "Auto Blink"
+    bl_options = {'REGISTER'}
+    
+    def blinkFrame(self, frame, value, blink_driver, obj, type):
+        if type == "SHAPE_KEY":
+            obj.data.shape_keys.key_blocks[blink_driver].value = value
+            obj.data.update_tag()
+            obj.data.shape_keys.key_blocks[blink_driver].keyframe_insert(data_path='value', index=-1, frame=frame)
+        else:
+            obj[blink_driver] = value
+            obj.update_tag()
+            obj.keyframe_insert(data_path='["' + blink_driver + '"]', index=-1, frame=frame)
+
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        poll, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        tools_settings = arm.MustardUI_ToolsSettings
+        
+        #self.report({'ERROR'}, 'MustardUI - You should select one shape key. No key has been added.')
+        #return {'FINISHED'}
+        
+        # Check scene settings
+        frame_start = context.scene.frame_start
+        frame_end = context.scene.frame_end 
+        fps = context.scene.render.fps / context.scene.render.fps_base
+        context.scene.frame_current = frame_start
+
+        blink_length_frames = [math.floor(fps * .1), math.ceil(fps * .25 * tools_settings.autoeyelid_blink_length)]  # default: 100 - 250 ms
+        blink_chance_per_half_second = tools_settings.autoeyelid_blink_rate_per_minute / (60 * 2)  # calculated every half second, default: 26
+        
+        blink_drivers = []
+        if tools_settings.autoeyelid_driver_type == "SHAPE_KEY":
+            for blink_driver in [tools_settings.autoeyelid_eyeL_shapekey, tools_settings.autoeyelid_eyeR_shapekey]:
+                if blink_driver != "":
+                    blink_drivers.append(blink_driver)
+        else:
+            blink_drivers.append(tools_settings.autoeyelid_morph)
+
+        for frame in range(frame_start, frame_end):
+            if frame % fps / 2 == 0:
+                r = random.random()
+                if r < blink_chance_per_half_second:
+                    rl = random.randint(blink_length_frames[0], blink_length_frames[1])
+                    blinkStart = frame
+                    blinkMid = frame+math.floor(rl/2)
+                    blinkEnd = frame+rl
+                    if settings.debug:
+                        print("MustardUI Auto Blink: Frame: ", frame, " - Blinking start: ", blinkStart, " - Blink Mid: ", blinkMid, " - Blink End:", blinkEnd)
+                    for blink_driver in blink_drivers:
+                        target_object = rig_settings.model_body if tools_settings.autoeyelid_driver_type == "SHAPE_KEY" else rig_settings.model_armature_object
+                        self.blinkFrame(blinkStart, 0., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
+                        self.blinkFrame(blinkMid,   1., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
+                        self.blinkFrame(blinkEnd,   0., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
+        
+        self.report({'INFO'}, 'MustardUI - Auto Blink applied.')
         
         return {'FINISHED'}
 
@@ -6773,8 +6880,20 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             col.prop(tools_settings,'childof_enable')
             col.prop(tools_settings,'autobreath_enable')
+            col.prop(tools_settings,'autoeyelid_enable')
             col.prop(tools_settings,'lips_shrinkwrap_enable')
             col.prop(lattice_settings,'lattice_panel_enable')
+            
+            if tools_settings.autoeyelid_enable:
+                box = layout.box()
+                box.label(text="Auto Eyelid Tool Settings", icon="HIDE_OFF")
+                box.prop(tools_settings,'autoeyelid_driver_type', text="Type")
+                col = box.column(align=True)
+                if tools_settings.autoeyelid_driver_type == "SHAPE_KEY":
+                    col.prop_search(tools_settings, "autoeyelid_eyeL_shapekey", rig_settings.model_body.data.shape_keys, "key_blocks")
+                    col.prop_search(tools_settings, "autoeyelid_eyeR_shapekey", rig_settings.model_body.data.shape_keys, "key_blocks")
+                else:
+                    col.prop(tools_settings, "autoeyelid_morph")
             
             if lattice_settings.lattice_panel_enable:
                 box = layout.box()
@@ -7972,9 +8091,9 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
         box = layout.box()
         column = box.column(align=True)
         column.label(text="Select one bone:", icon="BONE_DATA")
-        column.label(text="  - unlocked transformation are animated,")
-        column.label(text="  - use 1. as rest value,")
-        column.label(text="  - and 2. as max value.")
+        column.label(text="  - Unlocked transformation are animated")
+        column.label(text="  - Rest value should be 1")
+        column.label(text="  - Max value should be 2")
         column = box.column(align=True)
         column.prop(tools_settings, "autobreath_frequency")
         column.prop(tools_settings, "autobreath_amplitude")
@@ -7982,6 +8101,37 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
         column.prop(tools_settings, "autobreath_sampling")
         
         layout.operator('mustardui.tools_autobreath')
+
+class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
+    bl_parent_id = "PANEL_PT_MustardUI_Tools"
+    bl_idname = "PANEL_PT_MustarUI_Tools_AutoEyelid"
+    bl_label = "Auto Blink"
+    bl_options = {"DEFAULT_CLOSED"}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        if arm != None:
+            return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
+        else:
+            return res
+    
+    def draw(self, context):
+        
+        poll, arm = mustardui_active_object(context, config = 0)
+        tools_settings = arm.MustardUI_ToolsSettings
+        
+        layout = self.layout
+        
+        box = layout.box()
+        column = box.column(align=True)
+        column.label(text="Eyelid blink settings", icon="HIDE_OFF")
+        column = box.column(align=True)
+        column.prop(tools_settings, "autoeyelid_blink_length")
+        column.prop(tools_settings, "autoeyelid_blink_rate_per_minute")
+        
+        layout.operator('mustardui.tools_autoeyelid')
 
 class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Tools"
@@ -8216,6 +8366,7 @@ classes = (
     MustardUI_Tools_LatticeModify,
     MustardUI_Tools_ChildOf,
     MustardUI_Tools_AutoBreath,
+    MustardUI_Tools_AutoEyelid,
     MustardUI_Tools_Physics_CreateItem,
     MustardUI_Tools_Physics_DeleteItem,
     MustardUI_Tools_Physics_Clean,
@@ -8234,6 +8385,7 @@ classes = (
     PANEL_PT_MustardUI_Tools,
     PANEL_PT_MustardUI_Tools_ChildOf,
     PANEL_PT_MustardUI_Tools_AutoBreath,
+    PANEL_PT_MustardUI_Tools_AutoEyelid,
     PANEL_PT_MustardUI_Tools_LipsShrinkwrap,
     PANEL_PT_MustardUI_SettingsPanel,
     PANEL_PT_MustardUI_Links
