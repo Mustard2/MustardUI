@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "021"
+mustardui_buildnum = "024"
 
 import bpy
 import addon_utils
@@ -1182,9 +1182,12 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         name = "Blink Chance",
                         description = "Number of blinks per minute.\nNote that some randomization is included in the tool, therefore the final realization number might be different")
     
-    autoeyelid_eyeL_shapekey: bpy.props.StringProperty(name = "Left Eye Shape Key")
-    autoeyelid_eyeR_shapekey: bpy.props.StringProperty(name = "Right Eye Shape Key")
-    autoeyelid_morph: bpy.props.StringProperty(name = "Morph")
+    autoeyelid_eyeL_shapekey: bpy.props.StringProperty(name = "Key",
+                        description = "Name of the first shape key to animate (required)")
+    autoeyelid_eyeR_shapekey: bpy.props.StringProperty(name = "Optional",
+                        description = "Name of the second shape key to animate (optional)")
+    autoeyelid_morph: bpy.props.StringProperty(name = "Morph",
+                        description = "The name of the morph should be the name of the custom property in the Armature object, and not the name of the morph shown in the UI")
     
     # ------------------------------------------------------------------------
     #    Tools - Lips Shrinkwrap
@@ -4714,14 +4717,23 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
     bl_options = {'REGISTER'}
     
     def blinkFrame(self, frame, value, blink_driver, obj, type):
+        
         if type == "SHAPE_KEY":
-            obj.data.shape_keys.key_blocks[blink_driver].value = value
-            obj.data.update_tag()
-            obj.data.shape_keys.key_blocks[blink_driver].keyframe_insert(data_path='value', index=-1, frame=frame)
+            if blink_driver in obj.data.shape_keys.key_blocks.keys():
+                obj.data.shape_keys.key_blocks[blink_driver].value = value
+                obj.data.update_tag()
+                obj.data.shape_keys.key_blocks[blink_driver].keyframe_insert(data_path='value', index=-1, frame=frame)
+                return False
+            else:
+                return True
         else:
-            obj[blink_driver] = value
-            obj.update_tag()
-            obj.keyframe_insert(data_path='["' + blink_driver + '"]', index=-1, frame=frame)
+            if blink_driver in obj.keys():
+                obj[blink_driver] = value
+                obj.update_tag()
+                obj.keyframe_insert(data_path='["' + blink_driver + '"]', index=-1, frame=frame)
+                return False
+            else:
+                return True
 
     def execute(self, context):
         
@@ -4731,9 +4743,6 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
         
-        #self.report({'ERROR'}, 'MustardUI - You should select one shape key. No key has been added.')
-        #return {'FINISHED'}
-        
         # Check scene settings
         frame_start = context.scene.frame_start
         frame_end = context.scene.frame_end 
@@ -4741,7 +4750,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
         context.scene.frame_current = frame_start
 
         blink_length_frames = [math.floor(fps * .1), math.ceil(fps * .25 * tools_settings.autoeyelid_blink_length)]  # default: 100 - 250 ms
-        blink_chance_per_half_second = tools_settings.autoeyelid_blink_rate_per_minute / (60 * 2)  # calculated every half second, default: 26
+        blink_chance_per_half_second = 2. * tools_settings.autoeyelid_blink_rate_per_minute / (60 * 2)  # calculated every half second, default: 26
         
         blink_drivers = []
         if tools_settings.autoeyelid_driver_type == "SHAPE_KEY":
@@ -4750,7 +4759,9 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
                     blink_drivers.append(blink_driver)
         else:
             blink_drivers.append(tools_settings.autoeyelid_morph)
-
+        
+        error = 0
+        
         for frame in range(frame_start, frame_end):
             if frame % fps / 2 == 0:
                 r = random.random()
@@ -4763,12 +4774,15 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
                         print("MustardUI Auto Blink: Frame: ", frame, " - Blinking start: ", blinkStart, " - Blink Mid: ", blinkMid, " - Blink End:", blinkEnd)
                     for blink_driver in blink_drivers:
                         target_object = rig_settings.model_body if tools_settings.autoeyelid_driver_type == "SHAPE_KEY" else rig_settings.model_armature_object
-                        self.blinkFrame(blinkStart, 0., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
-                        self.blinkFrame(blinkMid,   1., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
-                        self.blinkFrame(blinkEnd,   0., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
+                        error = error + self.blinkFrame(blinkStart, 0., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
+                        error = error + self.blinkFrame(blinkMid,   1., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
+                        error = error + self.blinkFrame(blinkEnd,   0., blink_driver, target_object, tools_settings.autoeyelid_driver_type)
         
-        self.report({'INFO'}, 'MustardUI - Auto Blink applied.')
-        
+        if error < 1:
+            self.report({'INFO'}, 'MustardUI - Auto Blink applied.')
+        else:
+            self.report({'ERROR'}, 'MustardUI - Auto Blink shape keys/morph seems to be missing. Results might be corrupted.')
+            
         return {'FINISHED'}
 
 # ------------------------------------------------------------------------
