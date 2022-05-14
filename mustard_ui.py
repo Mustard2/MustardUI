@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "024"
+mustardui_buildnum = "025"
 
 import bpy
 import addon_utils
@@ -4743,6 +4743,10 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
         
+        
+        #self.report({'ERROR'}, 'MustardUI - You should select one shape key. No key has been added.')
+        #return {'FINISHED'}
+        
         # Check scene settings
         frame_start = context.scene.frame_start
         frame_end = context.scene.frame_end 
@@ -8091,7 +8095,10 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
         
         res, arm = mustardui_active_object(context, config = 0)
         if arm != None:
-            return res and arm.MustardUI_ToolsSettings.autobreath_enable
+            if hasattr(arm.MustardUI_ToolsSettings, "autobreath_enable"):
+                return res and arm.MustardUI_ToolsSettings.autobreath_enable
+            else:
+                return False
         else:
             return res
     
@@ -8127,7 +8134,10 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
         
         res, arm = mustardui_active_object(context, config = 0)
         if arm != None:
-            return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
+            if hasattr(arm.MustardUI_ToolsSettings, "autoeyelid_enable"):
+                return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
+            else:
+                return False
         else:
             return res
     
