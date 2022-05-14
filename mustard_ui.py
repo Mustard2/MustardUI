@@ -2443,7 +2443,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings.\nType"""
     bl_idname = "mustardui.property_settings"
-    bl_label = "Section settings"
+    bl_label = "Property settings"
     bl_icon = "PREFERENCES"
     bl_options = {'UNDO'}
     
