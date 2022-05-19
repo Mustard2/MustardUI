@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "025"
+mustardui_buildnum = "026"
 
 import bpy
 import addon_utils
@@ -739,6 +739,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Enable Morphs",
                         description = "Select the model armature to enable this button.\nEnabling morphs might affect performance. You can disable them to increase performance",
                         update = diffeomorphic_enable_update)
+    
+    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.6",
+                        items = [("1.6", "1.6", "1.6"), ("1.5", "1.5", "1.5")],
+                        name = "Diffeomorphic Version")
     
     diffeomorphic_morphs_list: bpy.props.CollectionProperty(name = "Daz Morphs List",
                         type=MustardUI_DazMorph)
@@ -2443,7 +2447,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings.\nType"""
     bl_idname = "mustardui.property_settings"
-    bl_label = "Property settings"
+    bl_label = "Section settings"
     bl_icon = "PREFERENCES"
     bl_options = {'UNDO'}
     
@@ -6959,9 +6963,15 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     
                     box2 = box.box()
                     row = box2.row(align=True)
-                    row.label(text="1.5 Support Script")
+                    row.label(text="Model Version")
                     row.scale_x = row_scale
-                    row.prop(rig_settings, "diffeomorphic_1_5_script", text="")
+                    row.prop(rig_settings, "diffeomorphic_model_version", text="")
+                    
+                    if rig_settings.diffeomorphic_model_version == "1.5":
+                        row = box2.row(align=True)
+                        row.label(text="1.5 Support Script")
+                        row.scale_x = row_scale
+                        row.prop(rig_settings, "diffeomorphic_1_5_script", text="")
                     
                     box = box.box()
                     box.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
@@ -7231,6 +7241,16 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         elif settings.status_diffeomorphic == 0:
             layout.label(icon='ERROR', text="Diffeomorphic not installed!")
             return
+        
+        # Check Diffeomorphic version and inform the user about possible issues
+        if rig_settings.diffeomorphic_model_version == "1.6" and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) < (1,6,0):
+            box = layout.box()
+            box.label(icon='ERROR', text="Diffeomorphic version not correct!")
+            box.label(icon='BLANK1', text="Please install version 1.6 or above.")
+        if rig_settings.diffeomorphic_model_version == "1.5" and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0):
+            box = layout.box()
+            box.label(icon='ERROR', text="Diffeomorphic version not correct!")
+            box.label(icon='BLANK1', text="Please install version 1.5.1.")
         
         row = layout.row()    
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
@@ -8095,10 +8115,7 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
         
         res, arm = mustardui_active_object(context, config = 0)
         if arm != None:
-            if hasattr(arm.MustardUI_ToolsSettings, "autobreath_enable"):
-                return res and arm.MustardUI_ToolsSettings.autobreath_enable
-            else:
-                return False
+            return res and arm.MustardUI_ToolsSettings.autobreath_enable
         else:
             return res
     
@@ -8134,10 +8151,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
         
         res, arm = mustardui_active_object(context, config = 0)
         if arm != None:
-            if hasattr(arm.MustardUI_ToolsSettings, "autoeyelid_enable"):
-                return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
-            else:
-                return False
+            return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
         else:
             return res
     
