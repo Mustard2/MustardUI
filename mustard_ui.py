@@ -4747,10 +4747,6 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
         
-        
-        #self.report({'ERROR'}, 'MustardUI - You should select one shape key. No key has been added.')
-        #return {'FINISHED'}
-        
         # Check scene settings
         frame_start = context.scene.frame_start
         frame_end = context.scene.frame_end 
