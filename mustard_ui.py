@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "027"
+mustardui_buildnum = "029"
 
 import bpy
 import addon_utils
@@ -7055,11 +7055,12 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         
         if arm != None:
             rig_settings = arm.MustardUI_RigSettings
+            custom_props = arm.MustardUI_CustomProperties
             
             # Check if there is any property to show
             prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume
-        
-            return res and prop_to_show
+            
+            return res and (prop_to_show or len(custom_props)>0)
         
         else:
             return res
@@ -7579,7 +7580,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             if len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1:
                 
                 box = layout.box()
-                row = box.row()
+                row = box.row(align=True)
                 row.label(text="Hair list", icon="STRANDS")
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
                 row.prop(rig_settings.hair_collection, "hide_render", text="")
