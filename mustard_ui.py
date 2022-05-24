@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "029"
+mustardui_buildnum = "030"
 
 import bpy
 import addon_utils
@@ -850,6 +850,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     url_smutbase: bpy.props.StringProperty(default = "",
                         name = "Smutba.se")
+    
+    url_documentation: bpy.props.StringProperty(default = "",
+                        name = "Documentation")
     
     url_reportbug: bpy.props.StringProperty(default = "",
                         name = "Report bug")
@@ -7002,6 +7005,11 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             row.prop(rig_settings,'url_smutbase', text="")
             
             row = box.row(align=True)
+            row.label(text="Documentation")
+            row.scale_x = row_scale
+            row.prop(rig_settings,'url_documentation', text="")
+            
+            row = box.row(align=True)
             row.label(text="Report Bug")
             row.scale_x = row_scale
             row.prop(rig_settings,'url_reportbug', text="")
@@ -8318,7 +8326,7 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
         
         layout = self.layout
         
-        if rig_settings.url_website!='' or rig_settings.url_patreon!='' or rig_settings.url_twitter!='' or rig_settings.url_smutbase!='' or rig_settings.url_reportbug!='':
+        if rig_settings.url_website!='' or rig_settings.url_patreon!='' or rig_settings.url_twitter!='' or rig_settings.url_smutbase!='' or rig_settings.url_documentation!='' or rig_settings.url_reportbug!='':
             
             box = layout.box()
             box.label(text="Social profiles/contacts", icon="BOOKMARKS")
@@ -8331,11 +8339,13 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
                 box.operator('mustardui.openlink', text="Twitter", icon = "WORLD").url = rig_settings.url_twitter
             if rig_settings.url_smutbase!='':
                 box.operator('mustardui.openlink', text="SmutBase", icon = "WORLD").url = rig_settings.url_smutbase
+            if rig_settings.url_documentation!='':
+                box.operator('mustardui.openlink', text="Documentation", icon = "WORLD").url = rig_settings.url_documentation
             if rig_settings.url_reportbug!='':
                 box.operator('mustardui.openlink', text="Report a Bug", icon = "WORLD").url = rig_settings.url_reportbug
         
         box = layout.box()
-        box.label(text="UI useful references", icon="INFO")
+        box.label(text="MustardUI References", icon="INFO")
         box.operator('mustardui.openlink', text="MustardUI - Tutorial", icon = "WORLD").url = rig_settings.url_MustardUItutorial
         box.operator('mustardui.openlink', text="MustardUI - Report Bug", icon = "WORLD").url = rig_settings.url_MustardUI_reportbug
         box.operator('mustardui.openlink', text="MustardUI - GitHub", icon = "WORLD").url = rig_settings.url_MustardUI
