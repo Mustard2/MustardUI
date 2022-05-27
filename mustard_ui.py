@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "049"
+mustardui_buildnum = "050"
 
 import bpy
 import addon_utils
@@ -740,7 +740,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Select the model armature to enable this button.\nEnabling morphs might affect performance. You can disable them to increase performance",
                         update = diffeomorphic_enable_update)
     
-    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.6",
+    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.5",
                         items = [("1.6", "1.6", "1.6"), ("1.5", "1.5", "1.5")],
                         name = "Diffeomorphic Version")
     
