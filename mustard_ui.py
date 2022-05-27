@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "030"
+mustardui_buildnum = "049"
 
 import bpy
 import addon_utils
@@ -28,7 +28,7 @@ from bpy.types import Header, Menu, Panel
 from bpy.props import *
 from bpy.app.handlers import persistent
 from rna_prop_ui import rna_idprop_ui_create
-from mathutils import Vector, Color
+from mathutils import Vector, Color, Matrix
 import webbrowser
 
 # ------------------------------------------------------------------------
@@ -3757,7 +3757,7 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
     """Set the value of all morphs to the default value"""
     bl_idname = "mustardui.dazmorphs_defaultvalues"
     bl_label = "Restore default values"
-
+    
     @classmethod
     def poll(cls, context):
         
@@ -3770,11 +3770,104 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         
         for morph in rig_settings.diffeomorphic_morphs_list:
-            exec('rig_settings.model_armature_object' + '[\"' + morph.path + '\"] = 0.')
+            rig_settings.model_armature_object[morph.path] = 0.
+        
+        arm.update_tag()
+        rig_settings.model_armature_object.update_tag()
         
         self.report({'INFO'}, 'MustardUI - Morphs values restored to default.')
         
         return {'FINISHED'}
+
+class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
+    """Revert the position of all the bones to the Rest position"""
+    bl_idname = "mustardui.dazmorphs_clearpose"
+    bl_label = "Clear pose"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def setWorldMatrix(self, ob, wmat):
+        Zero = Vector((0,0,0))
+        One = Vector((1,1,1))
+        if ob.parent:
+            if ob.parent_type in ['OBJECT', 'VERTEX', 'VERTEX_3']:
+                ob.matrix_parent_inverse = ob.parent.matrix_world.inverted()
+            elif ob.parent_type == 'BONE':
+                pb = ob.parent.pose.bones[ob.parent_bone]
+                ob.matrix_parent_inverse = pb.matrix.inverted()
+        ob.matrix_world = wmat
+        if Vector(ob.location).length < 1e-6:
+            ob.location = Zero
+        if Vector(ob.rotation_euler).length < 1e-6:
+            ob.rotation_euler = Zero
+        if (Vector(ob.scale) - One).length < 1e-6:
+            ob.scale = One
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 0)
+        return res
+ 
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 1)
+        rig_settings = arm.MustardUI_RigSettings
+        
+        warnings = 0
+        
+        try:
+            unit = Matrix()
+            self.setWorldMatrix(rig_settings.model_armature_object, unit)
+            for pb in rig_settings.model_armature_object.pose.bones:
+                pb.matrix_basis = unit
+        except:
+            warnings = warnings + 1
+        
+        if warnings < 1:
+            self.report({'INFO'}, 'MustardUI - Pose cleared successfully')
+        else:
+            self.report({'ERROR'}, 'MustardUI - An error occurred while clearing the pose')
+        
+        return{'FINISHED'}
+
+# Function to mute daz drivers
+def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale = True):
+        
+    def isDazFcurve(path):
+        for string in ["(fin)", "(rst)", ":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
+            if string in path:
+                return True
+        return False
+
+    if rig and rig.data.animation_data:
+        for fcu in rig.data.animation_data.drivers:
+            if isDazFcurve(fcu.data_path):
+                fcu.mute = mute
+
+    if rig and rig.animation_data:
+        for fcu in rig.animation_data.drivers:
+            words = fcu.data_path.split('"')
+            if words[0] == "pose.bones[":
+                channel = words[-1].rsplit(".",1)[-1]
+                if ((channel in ["rotation_euler", "rotation_quaternion"] and useRotation) or
+                    (channel == "location" and useLocation) or
+                    (channel == "scale" and useScale) or
+                    channel in ["HdOffset", "TlOffset"]):
+                    fcu.mute = mute
+
+    for ob in rig.children:
+        if ob.type == 'MESH':
+            skeys = ob.data.shape_keys
+            if skeys and skeys.animation_data:
+                for fcu in skeys.animation_data.drivers:
+                    words = fcu.data_path.split('"')
+                    if words[0] == "key_blocks[":
+                        fcu.mute = mute
+                        sname = words[1]
+                        if sname in skeys.key_blocks.keys():
+                            skey = skeys.key_blocks[sname]
+                            skey.mute = mute
 
 class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     """Disable drivers to improve performance (the correctives will not be disabled). This can be used only if the armature is selected"""
@@ -3812,11 +3905,16 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         warnings = 0
         
         try:
-            bpy.ops.daz.disable_drivers({object:rig_settings.model_armature_object})
+            if rig_settings.diffeomorphic_model_version == "1.6":
+                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True)
+                if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
+                    rig_settings.model_armature_object.DazDriversDisabled = True
+            else:
+                bpy.ops.daz.disable_drivers({object:rig_settings.model_armature_object})
         except:
             warnings = warnings + 1
             if settings.debug:
-                print('MustardUI - Error occurred while using the daz operator \'disable_drivers\'. Retry selecting the Armature.')
+                print('MustardUI - Error occurred while muting Daz drivers.')
         
         for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
             for obj in collection.collection.objects:
@@ -3845,9 +3943,9 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         context.view_layer.objects.active = aobj
         
         if warnings < 1:
-            self.report({'INFO'}, 'MustardUI - Morphs drivers disabled. Enable them to use them again.')
+            self.report({'INFO'}, 'MustardUI - Morphs drivers disabled.')
         else:
-            self.report({'WARNING'}, 'MustardUI - An error occurred while disabling morphs')
+            self.report({'WARNING'}, 'MustardUI - An error occurred while disabling morphs.')
         
         return{'FINISHED'}
 
@@ -3872,11 +3970,16 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         warnings = 0
         
         try:
-            bpy.ops.daz.enable_drivers({object:rig_settings.model_armature_object})
+            if rig_settings.diffeomorphic_model_version == "1.6":
+                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True)
+                if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
+                    rig_settings.model_armature_object.DazDriversDisabled = False
+            else:
+                bpy.ops.daz.enable_drivers({object:rig_settings.model_armature_object})
         except:
             warnings = warnings + 1
             if settings.debug:
-                print('MustardUI - Error occurred while using the daz operator \'enable_drivers\'. Retry selecting the Armature.')
+                print('MustardUI - Error occurred while un-muting Daz drivers.')
         
         for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
             for obj in collection.collection.objects:
@@ -3901,49 +4004,8 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         if warnings < 1:
             self.report({'INFO'}, 'MustardUI - Morphs drivers enabled.')
         else:
-            self.report({'WARNING'}, 'MustardUI - An error occurred while enabling morphs')  
+            self.report({'WARNING'}, 'MustardUI - An error occurred while enabling morphs.')  
     
-        return{'FINISHED'}
-
-class MustardUI_DazMorphs_ClearModel(bpy.types.Operator):
-    """Clear morphs and poses.\nNote: this will also reset the model pose"""
-    bl_idname = "mustardui.dazmorphs_clearmodel"
-    bl_label = "Button"
-    bl_options = {'REGISTER', 'UNDO'}
-    
-    @classmethod
-    def poll(cls, context):
-        
-        res, arm = mustardui_active_object(context, config = 0)
-        return res
- 
-    def execute(self, context):
-        
-        settings = bpy.context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config = 1)
-        rig_settings = arm.MustardUI_RigSettings
-        
-        warnings = 0
-        
-        try:
-            bpy.ops.daz.clear_pose({object:rig_settings.model_armature_object})
-        except:
-            warnings = warnings + 1
-            if settings.debug:
-                print('MustardUI - Error occurred while using the daz operator \'clear_pose\'')
-        
-        try:
-            bpy.ops.daz.clear_morphs({object:rig_settings.model_armature_object}, morphset="All", category="")
-        except:
-            warnings = warnings + 1
-            if settings.debug:
-                print('MustardUI - Error occurred while using the daz operator \'clear_morphs\'')
-        
-        if warnings < 1:
-            self.report({'INFO'}, 'MustardUI - Pose and morphs cleaned successfully')
-        else:
-            self.report({'ERROR'}, 'MustardUI - An error occurred while cleaning the pose or the morphs')
-        
         return{'FINISHED'}
 
 # ------------------------------------------------------------------------
@@ -6078,13 +6140,22 @@ class MustardUI_CleanModel(bpy.types.Operator):
     
     remove_morphs: bpy.props.BoolProperty(default=False,
                     name = "Remove Morphs",
-                    description = "Remove all morphs (except JCMs if not enabled below)")
+                    description = "Remove all morphs (except JCMs and FACS if not enabled below)")
     remove_morphs_shapekeys: bpy.props.BoolProperty(default=False,
                     name = "Remove Shape Keys",
                     description = "Remove selected morphs shape keys")
     remove_morphs_jcms: bpy.props.BoolProperty(default=False,
                     name = "Remove JCMs",
                     description = "Remove JCMs")
+    remove_morphs_facs: bpy.props.BoolProperty(default=False,
+                    name = "Remove FACS",
+                    description = "Remove FACS")
+    
+    def isDazFcurve(self, path):
+        for string in [":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
+            if string in path:
+                return True
+        return False
     
     def remove_props_from_group(self, obj, group, props_removed):
         
@@ -6099,8 +6170,27 @@ class MustardUI_CleanModel(bpy.types.Operator):
             
             for i in reversed(idx):
                 props.remove(i)
-            
-            #exec("obj." + group + ".clear()")
+        
+        return props_removed
+    
+    def remove_props_from_cat_group(self, obj, group, props_removed):
+        
+        if hasattr(obj, group):           
+            categories = eval("obj." + group) 
+            for cat in categories:
+                props = cat['morphs']
+                idx = []
+                for n, prop in enumerate(props):
+                    if "name" in prop:
+                        prop_name = prop['name']
+                        if not "pJCM" in prop_name or self.remove_morphs_jcms:
+                            idx.append(n)
+                            props_removed.append(prop_name)
+                    else:
+                        idx.append(n)
+                    
+                for i in reversed(idx):
+                    del props[i]
         
         return props_removed
     
@@ -6159,23 +6249,34 @@ class MustardUI_CleanModel(bpy.types.Operator):
             props_removed = []
             
             # Add props to the removed list from the armature
-            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
-                                                        "DazFacs", props_removed)
-            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
-                                                        "DazUnits", props_removed)
-            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
-                                                        "DazExpressions", props_removed)
-            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
-                                                        "DazBody", props_removed)
-            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
-                                                        "DazCustom", props_removed)
             if self.remove_morphs_jcms:
                 props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
                                                             "DazStandardjcms", props_removed)
+                props_removed.append("pJCM")
+            if self.remove_morphs_facs or rig_settings.diffeomorphic_model_version == "1.5":
+                props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                            "DazFacs", props_removed)
+                props_removed.append("facs")
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazUnits", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazExpressions", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazBody", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazCustom", props_removed)
+            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
+                                                        "DazCustom", props_removed)
+            props_removed = self.remove_props_from_cat_group(rig_settings.model_armature_object,
+                                                        "DazMorphCats", props_removed)
             
             # Add props to the removed list from the body
-            props_removed = self.remove_props_from_group(rig_settings.model_body,
-                                                        "DazFacs", props_removed)
+            if self.remove_morphs_jcms:
+                props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                            "DazStandardjcms", props_removed)
+            if self.remove_morphs_facs or rig_settings.diffeomorphic_model_version == "1.5":
+                props_removed = self.remove_props_from_group(rig_settings.model_body,
+                                                            "DazFacs", props_removed)
             props_removed = self.remove_props_from_group(rig_settings.model_body,
                                                         "DazUnits", props_removed)
             props_removed = self.remove_props_from_group(rig_settings.model_body,
@@ -6184,15 +6285,18 @@ class MustardUI_CleanModel(bpy.types.Operator):
                                                         "DazBody", props_removed)
             props_removed = self.remove_props_from_group(rig_settings.model_body,
                                                         "DazCustom", props_removed)
-            if self.remove_morphs_jcms:
-                props_removed = self.remove_props_from_group(rig_settings.model_body,
-                                                            "DazStandardjcms", props_removed)
+            props_removed = self.remove_props_from_cat_group(rig_settings.model_body,
+                                                        "DazMorphCats", props_removed)
+            
+            # Manually append to remove standard expressions and units
+            props_removed.append("eJCM")
+            props_removed.append("eCTRL")
             
             # Remove unused drivers and shape keys
             aobj = context.active_object
             context.view_layer.objects.active = rig_settings.model_armature_object
             
-            #   Find objects where to remove drivers and shape keys
+            # Find objects where to remove drivers and shape keys
             objects = [rig_settings.model_body]
             
             for collection in [x for x in [y for y in rig_settings.outfits_collections if y.collection != None] if x.collection != None]:
@@ -6206,43 +6310,77 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 if obj.find_armature() == rig_settings.model_armature_object and obj.type == "MESH":
                     objects.append(obj)
             
-            #   Remove
+            # Remove shape keys and their drivers
             for obj in objects:
                 if obj.data.shape_keys != None:
                     if obj.data.shape_keys.animation_data != None:
                         drivers = obj.data.shape_keys.animation_data.drivers
                         for driver in drivers:
                             words = driver.data_path.split('"')
-                            if words[0] == "key_blocks[" and words[1] in props_removed:
-                                drivers.remove(driver)
-                                morphs_drivers_removed = morphs_drivers_removed + 1
-                        if self.remove_morphs_shapekeys:
-                            for sk in obj.data.shape_keys.key_blocks:
-                                if sk.name in props_removed:
+                            for cp in props_removed:
+                                if words[0] == "key_blocks[" and cp in words[1]:
+                                    drivers.remove(driver)
+                                    morphs_drivers_removed = morphs_drivers_removed + 1
+                                    break
+                    if self.remove_morphs_shapekeys:
+                        for sk in obj.data.shape_keys.key_blocks:
+                            for cp in props_removed:
+                                if cp in sk.name:
                                     obj.shape_key_remove(sk)
                                     morphs_shapekeys_removed = morphs_shapekeys_removed + 1
+                                    break
                 
                 obj.update_tag()
             
-            drivers = rig_settings.model_armature_object.animation_data.drivers
-            for driver in drivers:
-                if "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
-                        drivers.remove(driver)
-                        morphs_drivers_removed = morphs_drivers_removed + 1
+            # Remove drivers from objects
+            objects.append(arm)
+            for obj in objects:
+                if obj.animation_data != None:
+                    if obj.animation_data.drivers != None:
+                        drivers = obj.animation_data.drivers
+                        for driver in drivers:
+                            ddelete = "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0"
+                            for cp in props_removed:
+                                ddelete = ddelete or (cp in driver.data_path or self.isDazFcurve(driver.data_path))
+                                for v in driver.driver.variables:
+                                    ddelete = ddelete or cp in v.targets[0].data_path
+                            if ddelete:
+                                drivers.remove(driver)
+                                morphs_drivers_removed = morphs_drivers_removed + 1
+                        obj.update_tag()
             
-            arm.update_tag()
+            # Remove drivers from bones
+            for bone in [x for x in rig_settings.model_armature_object.pose.bones if "(drv)" in x.name]:
+                bone.driver_remove('location')
+                bone.driver_remove('rotation_euler')
+                bone.driver_remove('scale')
             
             context.view_layer.objects.active = aobj
             
             # Remove custom properties from armature
+            # TODO: avoid removing jaw bone stuffs for facs (thing above is not sufficient)
             for cp in props_removed:
-                if cp in rig_settings.model_armature_object.keys():
-                    del rig_settings.model_armature_object[cp]
-                    morphs_props_removed = morphs_props_removed + 1
+                for kp in [x for x in rig_settings.model_armature_object.keys()]:
+                    if cp in kp and (not "pJCM" in kp or self.remove_morphs_jcms) or self.isDazFcurve(kp):      
+                        del rig_settings.model_armature_object[kp]
+                        morphs_props_removed = morphs_props_removed + 1
+                for kp in [x for x in arm.keys()]:
+                    if cp in kp and (not "pJCM" in kp or self.remove_morphs_jcms) or self.isDazFcurve(kp):
+                        del arm[kp]
+                        morphs_props_removed = morphs_props_removed + 1
             
-            # Remove diffeomorphic support from the UI to avoid errors in the UI
-            rig_settings.diffeomorphic_morphs_list.clear()
-            rig_settings.diffeomorphic_support = False
+            # Remove diffeomorphic support from the UI to avoid errors in the UI, or restore it if FACS are asked
+            if not self.remove_morphs_facs and not rig_settings.diffeomorphic_model_version == "1.5":
+                rig_settings.diffeomorphic_morphs_list.clear()
+                rig_settings.diffeomorphic_body_morphs = False
+                rig_settings.diffeomorphic_emotions = False
+                rig_settings.diffeomorphic_emotions_units = False
+                bpy.ops.mustardui.configuration()
+                bpy.ops.mustardui.dazmorphs_checkmorphs()
+                bpy.ops.mustardui.configuration()
+            else:
+                rig_settings.diffeomorphic_morphs_list.clear()
+                rig_settings.diffeomorphic_support = False
             
             if settings.debug:
                 print("  Morph properties removed: " + str(morphs_props_removed))
@@ -6298,7 +6436,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
         
-        return context.window_manager.invoke_props_dialog(self, width = 450)
+        return context.window_manager.invoke_props_dialog(self, width = 500)
             
     def draw(self, context):
         
@@ -6322,16 +6460,30 @@ class MustardUI_CleanModel(bpy.types.Operator):
             box.label(text="Outfits objects will be deleted!", icon="ERROR")
             box.label(text="Save and restart Blender (repeat two times) to remove unused data", icon="BLANK1")
         box.prop(self, "remove_nulldrivers")
-        box = layout.box()
-        box.label(text="Diffeomorphic Morphs", icon="DOCUMENTS")
-        box.enabled = hasattr(rig_settings.model_armature_object, "DazMorphCats")
-        box.prop(self, "remove_morphs")
-        row = box.row()
-        row.enabled = self.remove_morphs
-        row.prop(self, "remove_morphs_jcms", text = "Remove Corrective Morphs")
-        row = box.row()
-        row.enabled = self.remove_morphs
-        row.prop(self, "remove_morphs_shapekeys")
+        
+        if rig_settings.diffeomorphic_support:
+            
+            if not hasattr(rig_settings.model_armature_object, "DazMorphCats"):
+                box = layout.box()
+                box.label(text="Diffeomorphic is needed to clean morphs!", icon="ERROR")
+        
+            box = layout.box()
+            box.label(text="Diffeomorphic Morphs", icon="DOCUMENTS")
+            box.enabled = hasattr(rig_settings.model_armature_object, "DazMorphCats")
+            box.prop(self, "remove_morphs")
+            if self.remove_morphs:
+                box.label(text="Morphs will be deleted!", icon="ERROR")
+                box.label(text="Some bones of the Face rig might not work even if Remove Face Rig Morphs is disabled!", icon="BLANK1")
+            if rig_settings.diffeomorphic_model_version == "1.6":
+                row = box.row()
+                row.enabled = self.remove_morphs
+                row.prop(self, "remove_morphs_facs", text = "Remove Face Rig Morphs")
+            row = box.row()
+            row.enabled = self.remove_morphs
+            row.prop(self, "remove_morphs_jcms", text = "Remove Corrective Morphs")
+            row = box.row()
+            row.enabled = self.remove_morphs
+            row.prop(self, "remove_morphs_shapekeys")
 
 # ------------------------------------------------------------------------
 #    Debug 
@@ -7225,9 +7377,9 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
         
-        if settings.status_diffeomorphic > 1:
+        if settings.status_diffeomorphic > 1 or rig_settings.diffeomorphic_model_version == "1.6":
             layout = self.layout
-            layout.enabled = context.active_object == rig_settings.model_armature_object
+            layout.enabled = context.active_object == rig_settings.model_armature_object or rig_settings.diffeomorphic_model_version == "1.6"
             layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
 
     def draw(self, context):
@@ -7240,18 +7392,15 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = rig_settings.diffeomorphic_enable
         
-        if settings.status_diffeomorphic == 1:
-            layout.label(icon='ERROR',text="Diffeomorphic not enabled!")
-            return
-        elif settings.status_diffeomorphic == 0:
-            layout.label(icon='ERROR', text="Diffeomorphic not installed!")
-            return
+        if rig_settings.diffeomorphic_model_version != "1.6":
+            if settings.status_diffeomorphic == 1:
+                layout.label(icon='ERROR',text="Diffeomorphic not enabled!")
+                return
+            elif settings.status_diffeomorphic == 0:
+                layout.label(icon='ERROR', text="Diffeomorphic not installed!")
+                return
         
         # Check Diffeomorphic version and inform the user about possible issues
-        if rig_settings.diffeomorphic_model_version == "1.6" and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) < (1,6,0):
-            box = layout.box()
-            box.label(icon='ERROR', text="Diffeomorphic version not correct!")
-            box.label(icon='BLANK1', text="Please install version 1.6 or above.")
         if rig_settings.diffeomorphic_model_version == "1.5" and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0):
             box = layout.box()
             box.label(icon='ERROR', text="Diffeomorphic version not correct!")
@@ -7262,6 +7411,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         row = row.row(align=True)
         row.prop(rig_settings, 'diffeomorphic_filter_null', icon = "FILTER", text = "")
         row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
+        row.operator('mustardui.dazmorphs_clearpose', icon = "OUTLINER_OB_ARMATURE", text = "")
         
         # Emotions Units
         if rig_settings.diffeomorphic_emotions_units:
@@ -7352,9 +7502,6 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
                         row = box.row(align=False)
                         row.label(text = morph.name)
                         row.prop(settings, 'daz_morphs_error', text = "", icon = "ERROR", emboss=False, icon_only = True)
-        
-        if settings.maintenance:
-            layout.operator('mustardui.dazmorphs_clearmodel', text = "Clear settings", icon = "LOOP_BACK")
 
 def mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties, box, icons_show):
         
@@ -8397,7 +8544,7 @@ classes = (
     MustardUI_DazMorphs_DefaultValues,
     MustardUI_DazMorphs_DisableDrivers,
     MustardUI_DazMorphs_EnableDrivers,
-    MustardUI_DazMorphs_ClearModel,
+    MustardUI_DazMorphs_ClearPose,
     # Outfit operators
     MustardUI_OutfitVisibility,
     MustardUI_GlobalOutfitPropSwitch,
