@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 22, 4),
+    "version": (0, 23, 0),
     "blender": (3, 0, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "050"
+mustardui_buildnum = "002"
 
 import bpy
 import addon_utils
@@ -482,6 +482,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfit_config_prop_collapse: bpy.props.BoolProperty(default = True)
     
     # Global outfit properties
+    outfits_enable_global_subsurface: bpy.props.BoolProperty(default = True,
+                        name = "Subdivision Surface modifiers")
+    
     outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default = True,
                         name = "Smooth Correction modifiers")
     
@@ -490,6 +493,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     outfits_enable_global_mask: bpy.props.BoolProperty(default = True,
                         name = "Mask modifiers")
+    
+    outfits_enable_global_solidify: bpy.props.BoolProperty(default = False,
+                        name = "Solidify modifiers")
     
     outfits_enable_global_triangulate: bpy.props.BoolProperty(default = False,
                         name = "Triangulate modifiers")
@@ -584,7 +590,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     obj.data.use_auto_smooth = self.outfits_global_normalautosmooth
                 
                 for modifier in obj.modifiers:
-                    if modifier.type == "CORRECTIVE_SMOOTH":
+                    if modifier.type == "SUBSURF":
+                        modifier.show_viewport = self.outfits_global_subsurface
+                        modifier.show_render = self.outfits_global_subsurface
+                    elif modifier.type == "CORRECTIVE_SMOOTH":
                         modifier.show_viewport = self.outfits_global_smoothcorrection
                         modifier.show_render = self.outfits_global_smoothcorrection
                     elif modifier.type == "MASK":
@@ -593,6 +602,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     elif modifier.type == "SHRINKWRAP":
                         modifier.show_viewport = self.outfits_global_shrinkwrap
                         modifier.show_render = self.outfits_global_shrinkwrap
+                    elif modifier.type == "SOLIDIFY":
+                        modifier.show_viewport = self.outfits_global_solidify
+                        modifier.show_render = self.outfits_global_solidify
                     elif modifier.type == "TRIANGULATE":
                         modifier.show_viewport = self.outfits_global_triangulate
                         modifier.show_render = self.outfits_global_triangulate
@@ -619,6 +631,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Enable Nude \'outfit\' choice.\nThis will turn on/off the Nude \'outfit\' in the Outfits list, which can be useful for SFW models")
     
     # Global outfit properties
+    outfits_global_subsurface: bpy.props.BoolProperty(default = True,
+                        name = "Subdivision Surface",
+                        update = outfits_global_options_update)
+    
     outfits_global_smoothcorrection: bpy.props.BoolProperty(default = True,
                         name = "Smooth Correction",
                         update = outfits_global_options_update)
@@ -629,6 +645,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         
     outfits_global_mask: bpy.props.BoolProperty(default = True,
                         name = "Mask",
+                        update = outfits_global_options_update)
+    
+    outfits_global_solidify: bpy.props.BoolProperty(default = True,
+                        name = "Solidify",
                         update = outfits_global_options_update)
     
     outfits_global_triangulate: bpy.props.BoolProperty(default = True,
@@ -4600,9 +4620,11 @@ class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
         poll, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
         
+        rig_settings.outfits_global_subsurface = self.enable
         rig_settings.outfits_global_smoothcorrection = self.enable
         rig_settings.outfits_global_shrinkwrap = self.enable
         rig_settings.outfits_global_mask = self.enable
+        rig_settings.outfits_global_solidify = self.enable
         rig_settings.outfits_global_triangulate = self.enable
         rig_settings.outfits_global_normalautosmooth = self.enable
         
@@ -6841,9 +6863,11 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box = layout.box()
                 box.label(text="Global properties", icon="MODIFIER")
                 col = box.column(align=True)
+                col.prop(rig_settings,"outfits_enable_global_subsurface")
                 col.prop(rig_settings,"outfits_enable_global_smoothcorrection")
                 col.prop(rig_settings,"outfits_enable_global_shrinkwrap")
                 col.prop(rig_settings,"outfits_enable_global_mask")
+                col.prop(rig_settings,"outfits_enable_global_solidify")
                 col.prop(rig_settings,"outfits_enable_global_triangulate")
                 col.prop(rig_settings,"outfits_enable_global_normalautosmooth")
             
@@ -7648,12 +7672,16 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_OFF").enable = True
                 row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_ON").enable = False
                 col = box.column(align=True)
+                if rig_settings.outfits_enable_global_subsurface:
+                    col.prop(rig_settings,"outfits_global_subsurface")
                 if rig_settings.outfits_enable_global_smoothcorrection:
                     col.prop(rig_settings,"outfits_global_smoothcorrection")
                 if rig_settings.outfits_enable_global_shrinkwrap:
                     col.prop(rig_settings,"outfits_global_shrinkwrap")
                 if rig_settings.outfits_enable_global_mask:
                     col.prop(rig_settings,"outfits_global_mask")
+                if rig_settings.outfits_enable_global_solidify:
+                    col.prop(rig_settings,"outfits_global_solidify")
                 if rig_settings.outfits_enable_global_triangulate:
                     col.prop(rig_settings,"outfits_global_triangulate")
                 if rig_settings.outfits_enable_global_normalautosmooth:
