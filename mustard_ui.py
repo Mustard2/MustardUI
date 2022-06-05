@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "002"
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -483,7 +483,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     # Global outfit properties
     outfits_enable_global_subsurface: bpy.props.BoolProperty(default = True,
-                        name = "Subdivision Surface modifiers")
+                        name = "Subdivision Surface modifiers",
+                        description = "This tool will enable/disable modifiers only for Viewport")
     
     outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default = True,
                         name = "Smooth Correction modifiers")
@@ -592,7 +593,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 for modifier in obj.modifiers:
                     if modifier.type == "SUBSURF":
                         modifier.show_viewport = self.outfits_global_subsurface
-                        modifier.show_render = self.outfits_global_subsurface
                     elif modifier.type == "CORRECTIVE_SMOOTH":
                         modifier.show_viewport = self.outfits_global_smoothcorrection
                         modifier.show_render = self.outfits_global_smoothcorrection
@@ -633,6 +633,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Global outfit properties
     outfits_global_subsurface: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface",
+                        description = "Enable/disable subdivision surface modifiers in Viewport",
                         update = outfits_global_options_update)
     
     outfits_global_smoothcorrection: bpy.props.BoolProperty(default = True,
