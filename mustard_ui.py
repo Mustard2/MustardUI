@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "007"
+mustardui_buildnum = "008"
 
 import bpy
 import addon_utils
@@ -5482,7 +5482,7 @@ class MustardUI_Tools_Physics_ReBind(bpy.types.Operator):
                             if cage.cage_object == modifier.object:
                                 with context.temp_override(object=obj):
                                     bpy.ops.object.meshdeform_bind(modifier=modifier.name)
-                               if not modifier.is_bound:
+                                if not modifier.is_bound:
                                     with context.temp_override(object=obj):
                                         bpy.ops.object.meshdeform_bind(modifier=modifier.name)
             
