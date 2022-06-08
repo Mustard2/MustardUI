@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "005"
+mustardui_buildnum = "007"
 
 import bpy
 import addon_utils
@@ -5222,9 +5222,11 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
                 if obj.modifiers[i].type == "ARMATURE":
                     arm_mod_id = i
             while obj.modifiers.find(mod_name) > arm_mod_id + 1:
-                bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
+                with context.temp_override(object=obj):
+                    bpy.ops.object.modifier_move_up(modifier = mod.name)
             
-            bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=mod.name)
+            with context.temp_override(object=obj):
+                bpy.ops.object.meshdeform_bind(modifier=mod.name)
             
             mod.show_viewport = physics_settings.physics_enable
             mod.show_render = physics_settings.physics_enable
@@ -5247,9 +5249,11 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
                         if obj.modifiers[i].type == "ARMATURE":
                             arm_mod_id = i
                     while obj.modifiers.find(mod_name) > arm_mod_id + 1:
-                        bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
+                        with context.temp_override(object=obj):
+                            bpy.ops.object.modifier_move_up(modifier = mod.name)
                     
-                    bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=mod.name)
+                    with context.temp_override(object=obj):
+                        bpy.ops.object.meshdeform_bind(modifier=mod.name)
                     
                     mod.show_viewport = physics_settings.physics_enable
                     mod.show_render = physics_settings.physics_enable
@@ -5312,7 +5316,8 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
         mod.collision_settings.use_collision = False
         
         while obj.modifiers.find(mod.name) > 0:
-            bpy.ops.object.modifier_move_up({"object" : obj}, modifier = mod.name)
+            with context.temp_override(object=obj):
+                bpy.ops.object.modifier_move_up(modifier = mod.name)
         
         mod.show_viewport = physics_settings.physics_enable
         mod.show_render = physics_settings.physics_enable
@@ -5475,17 +5480,21 @@ class MustardUI_Tools_Physics_ReBind(bpy.types.Operator):
                     for modifier in obj.modifiers:
                         if modifier.type == 'MESH_DEFORM':
                             if cage.cage_object == modifier.object:
-                               bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                                with context.temp_override(object=obj):
+                                    bpy.ops.object.meshdeform_bind(modifier=modifier.name)
                                if not modifier.is_bound:
-                                   bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                                    with context.temp_override(object=obj):
+                                        bpy.ops.object.meshdeform_bind(modifier=modifier.name)
             
             obj = rig_settings.model_body
             for modifier in rig_settings.model_body.modifiers:
                 if modifier.type == 'MESH_DEFORM':
                     if cage.cage_object == modifier.object:
-                        bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                        with context.temp_override(object=obj):
+                            bpy.ops.object.meshdeform_bind(modifier=modifier.name)
                         if not modifier.is_bound:
-                            bpy.ops.object.meshdeform_bind({"object" : obj}, modifier=modifier.name)
+                            with context.temp_override(object=obj):
+                                bpy.ops.object.meshdeform_bind(modifier=modifier.name)
         
         return {'FINISHED'}
 
