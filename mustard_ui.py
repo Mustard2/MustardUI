@@ -7,12 +7,12 @@ bl_info = {
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
     "version": (0, 23, 0),
-    "blender": (3, 0, 0),
+    "blender": (3, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "003"
+mustardui_buildnum = "005"
 
 import bpy
 import addon_utils
@@ -3931,7 +3931,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = True
             else:
-                bpy.ops.daz.disable_drivers({object:rig_settings.model_armature_object})
+                bpy.ops.daz.disable_drivers()
         except:
             warnings = warnings + 1
             if settings.debug:
@@ -3996,7 +3996,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = False
             else:
-                bpy.ops.daz.enable_drivers({object:rig_settings.model_armature_object})
+                bpy.ops.daz.enable_drivers()
         except:
             warnings = warnings + 1
             if settings.debug:
