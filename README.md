@@ -23,7 +23,10 @@ The main features are:
 
 For creators of models, be sure to follow the [configuration guide](https://github.com/Mustard2/MustardUI/wiki/Installation-and-Configuration)!
 
-
 ## Tutorial
 
 You can provide the users of the UI this [tutorial](https://github.com/Mustard2/MustardUI/wiki/Tutorial).
+
+## Note for Developers/Users
+
+Feel free to open new Issues, both for bugs and new features proposals. Also, all comments are very welcome!
