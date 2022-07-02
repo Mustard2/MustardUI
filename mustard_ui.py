@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "008"
+mustardui_buildnum = "011"
 
 import bpy
 import addon_utils
@@ -803,6 +803,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Enable Morphs",
                         description = "Select the model armature to enable this button.\nEnabling morphs might affect performance. You can disable them to increase performance",
                         update = diffeomorphic_enable_update)
+    
+    diffeomorphic_enable_shapekeys: bpy.props.BoolProperty(default = True,
+                        name = "Mute Shape Keys",
+                        description = "Shape Keys will also be muted when the Morphs are disabled")
     
     diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.5",
                         items = [("1.6", "1.6", "1.6"), ("1.5", "1.5", "1.5")],
@@ -3919,7 +3923,7 @@ class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
         return{'FINISHED'}
 
 # Function to mute daz drivers
-def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale = True):
+def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale = True, muteSK = True):
         
     def isDazFcurve(path):
         for string in ["(fin)", "(rst)", ":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
@@ -3952,9 +3956,10 @@ def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale =
                     if words[0] == "key_blocks[":
                         fcu.mute = mute
                         sname = words[1]
-                        if sname in skeys.key_blocks.keys():
-                            skey = skeys.key_blocks[sname]
-                            skey.mute = mute
+                        if sname in skeys.key_blocks.keys() and muteSK:
+                            if not "MustardUINotDisable" in sname:
+                                skey = skeys.key_blocks[sname]
+                                skey.mute = mute
 
 class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     """Disable drivers to improve performance (the correctives will not be disabled). This can be used only if the armature is selected"""
@@ -3993,7 +3998,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         
         try:
             if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True)
+                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True, rig_settings.diffeomorphic_enable_shapekeys)
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = True
             else:
@@ -4058,7 +4063,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         
         try:
             if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True)
+                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True, rig_settings.diffeomorphic_enable_shapekeys)
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = False
             else:
@@ -7531,6 +7536,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         row.prop(rig_settings, 'diffeomorphic_filter_null', icon = "FILTER", text = "")
         row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
         row.operator('mustardui.dazmorphs_clearpose', icon = "OUTLINER_OB_ARMATURE", text = "")
+        if settings.advanced:
+            row.prop(rig_settings, 'diffeomorphic_enable_shapekeys', icon = "SHAPEKEY_DATA", text = "")
         
         # Emotions Units
         if rig_settings.diffeomorphic_emotions_units:
