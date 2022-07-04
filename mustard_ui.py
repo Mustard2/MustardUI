@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "011"
+mustardui_buildnum = "013"
 
 import bpy
 import addon_utils
@@ -756,6 +756,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for object in self.hair_collection.objects:
             object.hide_viewport = not self.hair_list in object.name
             object.hide_render = not self.hair_list in object.name
+            for mod in [x for x in object.modifiers if x.type == "PARTICLE_SYSTEM"]:
+                mod.show_viewport = self.hair_list in object.name
+                mod.show_render = self.hair_list in object.name
         
         return
     
