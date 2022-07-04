@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "013"
+mustardui_buildnum = "014"
 
 import bpy
 import addon_utils
@@ -39,7 +39,7 @@ mustardui_icon_list = [
                 ("NONE","No Icon","No Icon"),
                 ("USER", "Face", "Face","USER",1),
                 ("HIDE_OFF", "Eye", "Eye","HIDE_OFF",2),
-                ("HAIR", "Hair", "Hair","STRANDS",3),
+                ("STRANDS", "Hair", "Hair","STRANDS",3),
                 ("MOD_CLOTH", "Cloth", "Cloth","MOD_CLOTH",4),
                 ("MATERIAL", "Material", "Material","MATERIAL",5),
                 ("ARMATURE_DATA", "Armature", "Armature","ARMATURE_DATA",6),
