@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "015"
+mustardui_buildnum = "016"
 
 import bpy
 import addon_utils
@@ -7047,12 +7047,16 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 
                 box.label(text="General Settings",icon="MODIFIER")
                 box.prop(armature_settings, 'enable_automatic_hair')
-                col = box.column()
-                row = col.row()
-                row.prop(armature_settings, 'enable_ik_fk')
-                row = col.row()
-                row.enabled = armature_settings.enable_ik_fk
-                row.prop(armature_settings, 'enable_ik_fk_snap')
+                
+                if rig_settings.diffeomorphic_model_version == "1.5":
+                    col = box.column(align=True)
+                    row = col.row()
+                    row.prop(armature_settings, 'enable_ik_fk')
+                    row = col.row()
+                    row.enabled = armature_settings.enable_ik_fk
+                    row.prop(armature_settings, 'enable_ik_fk_snap')
+                
+                box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
                 
                 box = layout.box()
                 box.label(text="Layers List",icon="PRESET")
@@ -7110,9 +7114,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                                row = col.row()
                                row.prop(armature_settings.layers[i],'mirror_left')
                                row.prop(armature_settings.layers[i],'mirror_layer')
-                
-                box = layout.box()
-                box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
         
         # Physics
         row = layout.row(align=False)
