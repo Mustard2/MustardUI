@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 23, 0),
+    "version": (0, 23, 1),
     "blender": (3, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "009"
+mustardui_buildnum = "016"
 
 import bpy
 import addon_utils
@@ -39,7 +39,7 @@ mustardui_icon_list = [
                 ("NONE","No Icon","No Icon"),
                 ("USER", "Face", "Face","USER",1),
                 ("HIDE_OFF", "Eye", "Eye","HIDE_OFF",2),
-                ("HAIR", "Hair", "Hair","STRANDS",3),
+                ("STRANDS", "Hair", "Hair","STRANDS",3),
                 ("MOD_CLOTH", "Cloth", "Cloth","MOD_CLOTH",4),
                 ("MATERIAL", "Material", "Material","MATERIAL",5),
                 ("ARMATURE_DATA", "Armature", "Armature","ARMATURE_DATA",6),
@@ -533,12 +533,29 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Function to update the visibility of the outfits/masks/armature layers when an outfit is changed
     def outfits_visibility_update(self, context):
         
-        poll, obj = mustardui_active_object(context, config = 0)
-        armature_settings = obj.MustardUI_ArmatureSettings
+        def update_cp(hidden, outfit_cp, obj, arm):
+            
+            for cp in [x for x in outfit_cp if x.outfit_piece == obj]:
+                        
+                ui_data = arm.id_properties_ui(cp.prop_name)
+                ui_data_dict = ui_data.as_dict()
+                
+                if not hidden and cp.outfit_enable_on_switch:
+                    arm[cp.prop_name] = ui_data_dict['max']
+                elif hidden and cp.outfit_disable_on_switch:
+                    arm[cp.prop_name] = ui_data_dict['default']
+            
+            return
         
-        outfits_list = self.outfits_list
+        poll, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        armature_settings = arm.MustardUI_ArmatureSettings
+        outfit_cp = arm.MustardUI_CustomPropertiesOutfit
+        outfit_cp = [x for x in outfit_cp if x.outfit_enable_on_switch or x.outfit_disable_on_switch]
         
-        collections = [x.collection for x in self.outfits_collections if x.collection != None]
+        outfits_list = rig_settings.outfits_list
+        
+        collections = [x.collection for x in rig_settings.outfits_collections if x.collection != None]
         
         # Update the objects and masks visibility
         for collection in collections:
@@ -554,13 +571,19 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     
                     obj.hide_viewport = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                     obj.hide_render = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
+                    
+                    # Update values of custom properties
+                    update_cp(obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock, outfit_cp, obj, arm)
                 
                 elif collection.name == outfits_list:
                     
                     obj.hide_viewport = obj.MustardUI_outfit_visibility
                     obj.hide_render = obj.MustardUI_outfit_visibility
+                    
+                    # Update values of custom properties
+                    update_cp(obj.MustardUI_outfit_visibility, outfit_cp, obj, arm)
             
-                for modifier in self.model_body.modifiers:
+                for modifier in rig_settings.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
                         modifier.show_viewport = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
                         modifier.show_render = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
@@ -576,6 +599,26 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     for object in [x for x in armature_settings.layers[i].outfit_switcher_collection.objects]:
                         if object == armature_settings.layers[i].outfit_switcher_object:
                             armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+        
+        # Update also outfit global properties
+        for cp in outfit_cp:
+                        
+            ui_data = arm.id_properties_ui(cp.prop_name)
+            ui_data_dict = ui_data.as_dict()
+            
+            outfit_piece_enable = True
+            if cp.outfit_piece:
+                outfit_piece_enable = not cp.outfit_piece.hide_viewport
+            
+            if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
+                arm[cp.prop_name] = ui_data_dict['max']
+            elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
+                if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                    arm[cp.prop_name] = ui_data_dict['max']
+                else:
+                    arm[cp.prop_name] = ui_data_dict['default']
+        
+        arm.update_tag()
 
     # Function to update the global outfit properties
     def outfits_global_options_update(self, context):
@@ -713,6 +756,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for object in self.hair_collection.objects:
             object.hide_viewport = not self.hair_list in object.name
             object.hide_render = not self.hair_list in object.name
+            for mod in [x for x in object.modifiers if x.type == "PARTICLE_SYSTEM"]:
+                mod.show_viewport = self.hair_list in object.name
+                mod.show_render = self.hair_list in object.name
         
         return
     
@@ -760,6 +806,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Enable Morphs",
                         description = "Select the model armature to enable this button.\nEnabling morphs might affect performance. You can disable them to increase performance",
                         update = diffeomorphic_enable_update)
+    
+    diffeomorphic_enable_shapekeys: bpy.props.BoolProperty(default = True,
+                        name = "Mute Shape Keys",
+                        description = "Shape Keys will also be muted when the Morphs are disabled")
     
     diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.5",
                         items = [("1.6", "1.6", "1.6"), ("1.5", "1.5", "1.5")],
@@ -1240,8 +1290,14 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         elif rig_type == "mhx":
             if "LipCorner.l" in [x.name for x in armature.bones]:
                 return ['LipCorner.l', 'LipLowerOuter.l', 'LipLowerInner.l', 'LipLowerMiddle', 'LipLowerInner.r', 'LipLowerOuter.r', 'LipCorner.r', 'LipUpperMiddle', 'LipUpperOuter.l', 'LipUpperInner.l', 'LipUpperInner.r', 'LipUpperOuter.r']
-            else:
+            elif "LipCorner.L" in [x.name for x in armature.bones]:
                 return ['LipCorner.L', 'LipLowerOuter.L', 'LipLowerInner.L', 'LipLowerMiddle', 'LipLowerInner.R', 'LipLowerOuter.R', 'LipCorner.R', 'LipUpperMiddle', 'LipUpperOuter.L', 'LipUpperInner.L', 'LipUpperInner.R', 'LipUpperOuter.R']
+            elif "lipCorner.l" in [x.name for x in armature.bones]:
+                return ['lipCorner.l', 'lipLowerOuter.l', 'lipLowerInner.l', 'lipLowerMiddle', 'lipLowerInner.r', 'lipLowerOuter.r', 'lipCorner.r', 'lipUpperMiddle', 'lipUpperOuter.l', 'lipUpperInner.l', 'lipUpperInner.r', 'lipUpperOuter.r']
+            elif "lipCorner.L" in [x.name for x in armature.bones]:
+                return ['lipCorner.L', 'lipLowerOuter.L', 'lipLowerInner.L', 'lipLowerMiddle', 'lipLowerInner.R', 'lipLowerOuter.R', 'lipCorner.R', 'lipUpperMiddle', 'lipUpperOuter.L', 'lipUpperInner.L', 'lipUpperInner.R', 'lipUpperOuter.R']
+            else:
+                return []
         else:
             return []
     
@@ -1256,6 +1312,8 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
             ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
         
         bones_lips = self.lips_shrinkwrap_bones_list(rig_type, arm)
+        if bones_lips == []:
+            ShowMessageBox("Fatal error", "MustardUI Information", icon = "ERROR")
         
         ob = bpy.context.active_object
         
@@ -1579,6 +1637,12 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     outfit_piece: bpy.props.PointerProperty(name = "Outfit Piece",
                         type = bpy.types.Object,
                         poll = outfit_switcher_poll_mesh)
+    outfit_enable_on_switch: bpy.props.BoolProperty(default = False,
+                        name = "Enable on Outfit Switch",
+                        description = "Set the value of this property to the max value when you enable the outfit/outfit piece")
+    outfit_disable_on_switch: bpy.props.BoolProperty(default = False,
+                        name = "Disable on Outfit Switch",
+                        description = "Set the value of this property to the default value when you disable the outfit/outfit piece")
     
     # Hair
     hair: bpy.props.PointerProperty(name = "Hair Style",
@@ -2659,6 +2723,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config = 1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
         custom_prop = custom_props[index]
+        prop_type = custom_prop.type
         prop_cp_type = custom_prop.cp_type
         prop_name = custom_prop.prop_name
         prop_array = custom_prop.array_length > 0
@@ -2689,6 +2754,16 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.label(text="Outfit piece:")
             row.scale_x=scale
             row.prop(custom_prop, "outfit_piece", text="")
+            
+            if prop_type == "FLOAT" and custom_prop.subtype != "COLOR":
+                
+                row=box.row()
+                row.label(text="Actions on switch:")
+                row.scale_x=1.0
+                row2 = row.row()
+                row2.scale_x=0.8
+                row2.prop(custom_prop, "outfit_enable_on_switch", text="Enable")
+                row2.prop(custom_prop, "outfit_disable_on_switch", text="Disable")
         
         if prop_cp_type == "HAIR":
             row=box.row()
@@ -2697,8 +2772,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.prop(custom_prop, "hair", text="")
         
         if custom_prop.is_animatable:
-            
-            prop_type = custom_prop.type
             
             if not custom_prop.is_bool:
                 
@@ -3853,7 +3926,7 @@ class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
         return{'FINISHED'}
 
 # Function to mute daz drivers
-def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale = True):
+def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale = True, muteSK = True):
         
     def isDazFcurve(path):
         for string in ["(fin)", "(rst)", ":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
@@ -3886,9 +3959,10 @@ def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale =
                     if words[0] == "key_blocks[":
                         fcu.mute = mute
                         sname = words[1]
-                        if sname in skeys.key_blocks.keys():
-                            skey = skeys.key_blocks[sname]
-                            skey.mute = mute
+                        if sname in skeys.key_blocks.keys() and muteSK:
+                            if not "MustardUINotDisable" in sname:
+                                skey = skeys.key_blocks[sname]
+                                skey.mute = mute
 
 class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     """Disable drivers to improve performance (the correctives will not be disabled). This can be used only if the armature is selected"""
@@ -3927,7 +4001,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         
         try:
             if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True)
+                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True, rig_settings.diffeomorphic_enable_shapekeys)
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = True
             else:
@@ -3992,7 +4066,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         
         try:
             if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True)
+                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True, rig_settings.diffeomorphic_enable_shapekeys)
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = False
             else:
@@ -4575,18 +4649,36 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
     def execute(self, context):
         
+        poll, arm = mustardui_active_object(context, config = 0)
+        rig_settings = arm.MustardUI_RigSettings
+        armature_settings = arm.MustardUI_ArmatureSettings
+        outfit_cp = arm.MustardUI_CustomPropertiesOutfit
+        
         bpy.data.objects[self.obj].hide_viewport = not bpy.data.objects[self.obj].hide_viewport
         bpy.data.objects[self.obj].hide_render = bpy.data.objects[self.obj].hide_viewport
         bpy.data.objects[self.obj].MustardUI_outfit_visibility = bpy.data.objects[self.obj].hide_viewport
         
-        poll, obj = mustardui_active_object(context, config = 0)
-        rig_settings = obj.MustardUI_RigSettings
-        armature_settings = obj.MustardUI_ArmatureSettings
+        # Update values of custom properties
+        outfit_cp = [x for x in outfit_cp if bpy.data.objects[self.obj] == x.outfit_piece and (x.outfit_enable_on_switch or x.outfit_disable_on_switch)]
         
+        for cp in outfit_cp:
+            
+            ui_data = arm.id_properties_ui(cp.prop_name)
+            ui_data_dict = ui_data.as_dict()
+            
+            if not cp.outfit_piece.hide_viewport and cp.outfit_enable_on_switch:
+                arm[cp.prop_name] = ui_data_dict['max']
+            elif cp.outfit_piece.hide_viewport and cp.outfit_disable_on_switch:
+                arm[cp.prop_name] = ui_data_dict['default']
+        
+        arm.update_tag()
+        
+        # Disable Extras collection if none is active to increase performance
         if rig_settings.extras_collection != None:
             rig_settings.extras_collection.hide_viewport = len([x for x in rig_settings.extras_collection.objects if not x.hide_render]) == 0
             rig_settings.extras_collection.hide_render = rig_settings.extras_collection.hide_viewport
         
+        # Enable/disable masks on the body
         if rig_settings.model_body:
             for modifier in rig_settings.model_body.modifiers:
                 if modifier.type == "MASK" and self.obj in modifier.name and rig_settings.outfits_global_mask:
@@ -4595,6 +4687,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         else:
             self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
         
+        # Enable/disable armature layers
         if len(armature_settings.layers) > 0:
             outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
 
@@ -6954,12 +7047,16 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 
                 box.label(text="General Settings",icon="MODIFIER")
                 box.prop(armature_settings, 'enable_automatic_hair')
-                col = box.column()
-                row = col.row()
-                row.prop(armature_settings, 'enable_ik_fk')
-                row = col.row()
-                row.enabled = armature_settings.enable_ik_fk
-                row.prop(armature_settings, 'enable_ik_fk_snap')
+                
+                if rig_settings.diffeomorphic_model_version == "1.5":
+                    col = box.column(align=True)
+                    row = col.row()
+                    row.prop(armature_settings, 'enable_ik_fk')
+                    row = col.row()
+                    row.enabled = armature_settings.enable_ik_fk
+                    row.prop(armature_settings, 'enable_ik_fk_snap')
+                
+                box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
                 
                 box = layout.box()
                 box.label(text="Layers List",icon="PRESET")
@@ -7017,9 +7114,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                                row = col.row()
                                row.prop(armature_settings.layers[i],'mirror_left')
                                row.prop(armature_settings.layers[i],'mirror_layer')
-                
-                box = layout.box()
-                box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
         
         # Physics
         row = layout.row(align=False)
@@ -7446,6 +7540,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         row.prop(rig_settings, 'diffeomorphic_filter_null', icon = "FILTER", text = "")
         row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
         row.operator('mustardui.dazmorphs_clearpose', icon = "OUTLINER_OB_ARMATURE", text = "")
+        if settings.advanced:
+            row.prop(rig_settings, 'diffeomorphic_enable_shapekeys', icon = "SHAPEKEY_DATA", text = "")
         
         # Emotions Units
         if rig_settings.diffeomorphic_emotions_units:
@@ -7798,7 +7894,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
         
         # Particle systems
-        mod_particle_system = [x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]
+        mod_particle_system = sorted([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"], key = lambda x:x.particle_system.name)
         if rig_settings.particle_systems_enable  and len(mod_particle_system )> 0:
             box = layout.box()
             box.label(text="Hair particles", icon="PARTICLES")
