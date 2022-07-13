@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "014"
+mustardui_buildnum = "015"
 
 import bpy
 import addon_utils
@@ -7893,7 +7893,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
         
         # Particle systems
-        mod_particle_system = [x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]
+        mod_particle_system = sorted([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"], key = lambda x:x.particle_system.name)
         if rig_settings.particle_systems_enable  and len(mod_particle_system )> 0:
             box = layout.box()
             box.label(text="Hair particles", icon="PARTICLES")
