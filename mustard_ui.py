@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 23, 1),
+    "version": (0, 24, 0),
     "blender": (3, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "016"
+mustardui_buildnum = "005"
 
 import bpy
 import addon_utils
@@ -37,25 +37,25 @@ import webbrowser
 
 mustardui_icon_list = [
                 ("NONE","No Icon","No Icon"),
-                ("USER", "Face", "Face","USER",1),
-                ("HIDE_OFF", "Eye", "Eye","HIDE_OFF",2),
-                ("STRANDS", "Hair", "Hair","STRANDS",3),
-                ("MOD_CLOTH", "Cloth", "Cloth","MOD_CLOTH",4),
-                ("MATERIAL", "Material", "Material","MATERIAL",5),
-                ("ARMATURE_DATA", "Armature", "Armature","ARMATURE_DATA",6),
-                ("MOD_ARMATURE", "Armature", "Armature","MOD_ARMATURE",7),
-                ("EXPERIMENTAL", "Experimental", "Experimental","EXPERIMENTAL",8),
-                ("PHYSICS", "Physics", "Physics","PHYSICS",9),
-                ("WORLD", "World", "World","WORLD",10),
-                ("PARTICLEMODE", "Comb", "Comb","PARTICLEMODE",11),
-                ("OUTLINER_OB_POINTCLOUD", "Points", "Points","OUTLINER_OB_POINTCLOUD",12),
-                ("MOD_DYNAMICPAINT", "Foot", "Foot","MOD_DYNAMICPAINT",13),
-                ("OUTLINER_DATA_VOLUME", "Cloud", "Cloud","OUTLINER_DATA_VOLUME",14),
-                ("SHAPEKEY_DATA", "Shape Key", "Shape Key","SHAPEKEY_DATA",15),
-                ("FUND", "Hearth", "Hearth","FUND",16),
-                ("MATSHADERBALL", "Ball", "Ball","MATSHADERBALL",17),
-                ("COMMUNITY", "Community", "Community","COMMUNITY",18),
-                ("LIGHT", "Light", "Light","LIGHT",19)
+                ("USER", "Face", "Face", "USER",1),
+                ("HIDE_OFF", "Eye", "Eye", "HIDE_OFF",2),
+                ("STRANDS", "Hair", "Hair", "STRANDS",3),
+                ("MOD_CLOTH", "Cloth", "Cloth", "MOD_CLOTH",4),
+                ("MATERIAL", "Material", "Material", "MATERIAL",5),
+                ("ARMATURE_DATA", "Armature", "Armature", "ARMATURE_DATA",6),
+                ("MOD_ARMATURE", "Armature", "Armature", "MOD_ARMATURE",7),
+                ("EXPERIMENTAL", "Experimental", "Experimental", "EXPERIMENTAL",8),
+                ("PHYSICS", "Physics", "Physics", "PHYSICS",9),
+                ("WORLD", "World", "World", "WORLD",10),
+                ("PARTICLEMODE", "Comb", "Comb", "PARTICLEMODE",11),
+                ("OUTLINER_OB_POINTCLOUD", "Points", "Points", "OUTLINER_OB_POINTCLOUD",12),
+                ("MOD_DYNAMICPAINT", "Foot", "Foot", "MOD_DYNAMICPAINT",13),
+                ("OUTLINER_DATA_VOLUME", "Cloud", "Cloud", "OUTLINER_DATA_VOLUME",14),
+                ("SHAPEKEY_DATA", "Shape Key", "Shape Key", "SHAPEKEY_DATA",15),
+                ("FUND", "Hearth", "Hearth", "FUND",16),
+                ("MATSHADERBALL", "Ball", "Ball", "MATSHADERBALL",17),
+                ("COMMUNITY", "Community", "Community", "COMMUNITY",18),
+                ("LIGHT", "Light", "Light", "LIGHT",19)
             ]
 
 # ------------------------------------------------------------------------
@@ -224,13 +224,13 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Material normals mute
     def update_material_normal(self, context):
         
-        bpy.ops.mustardui.material_normalmap_nodes(custom = not self.material_normal_nodes)
+        bpy.ops.mustardui.material_normalmap_nodes(custom = self.material_normal_nodes)
         
         return
     
-    material_normal_nodes: bpy.props.BoolProperty(default = True,
-                        name = "Material Normals",
-                        description = "Enable the Material Normals tool.\nThis tool substitute normal nodes with more efficient ones, which can be useful to get better performance in shadow preview viewport mode",
+    material_normal_nodes: bpy.props.BoolProperty(default = False,
+                        name = "Eeevee Optimized Normals",
+                        description = "Enable an optimized version of Eevee normals.\nThis tool substitutes normal nodes with more efficient ones, which can be useful to get better performance in Render Viewport mode",
                         update = update_material_normal)
 
 # Register and create the setting class in the Scene object
@@ -456,8 +456,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     # Material normals tool
     body_enable_material_normal_nodes: bpy.props.BoolProperty(default = True,
-                        description = "Enable the Material Normals tool.\nThis tool substitute normal nodes with more efficient ones, which can be useful to get better performance in shadow preview viewport mode",
-                        name = "Material Normals tool")
+                        description = "Enable the Eevee Optimized Normals tool.\nThis tool substitutes normal nodes with more efficient ones, which can be useful to get better performance in Render Viewport mode",
+                        name = "Eevee Optimized Normals tool")
     
     # Custom properties
     body_custom_properties_icons: bpy.props.BoolProperty(default = False,
@@ -536,14 +536,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         def update_cp(hidden, outfit_cp, obj, arm):
             
             for cp in [x for x in outfit_cp if x.outfit_piece == obj]:
-                        
-                ui_data = arm.id_properties_ui(cp.prop_name)
-                ui_data_dict = ui_data.as_dict()
                 
-                if not hidden and cp.outfit_enable_on_switch:
-                    arm[cp.prop_name] = ui_data_dict['max']
-                elif hidden and cp.outfit_disable_on_switch:
-                    arm[cp.prop_name] = ui_data_dict['default']
+                if cp.prop_name in arm.keys():
+                    ui_data = arm.id_properties_ui(cp.prop_name)
+                    ui_data_dict = ui_data.as_dict()
+                    
+                    if not hidden and cp.outfit_enable_on_switch:
+                        arm[cp.prop_name] = ui_data_dict['max']
+                    elif hidden and cp.outfit_disable_on_switch:
+                        arm[cp.prop_name] = ui_data_dict['default']
             
             return
         
@@ -602,21 +603,22 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         # Update also outfit global properties
         for cp in outfit_cp:
-                        
-            ui_data = arm.id_properties_ui(cp.prop_name)
-            ui_data_dict = ui_data.as_dict()
             
-            outfit_piece_enable = True
-            if cp.outfit_piece:
-                outfit_piece_enable = not cp.outfit_piece.hide_viewport
-            
-            if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
-                arm[cp.prop_name] = ui_data_dict['max']
-            elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+            if cp.prop_name in arm.keys():
+                ui_data = arm.id_properties_ui(cp.prop_name)
+                ui_data_dict = ui_data.as_dict()
+                
+                outfit_piece_enable = True
+                if cp.outfit_piece:
+                    outfit_piece_enable = not cp.outfit_piece.hide_viewport
+                
+                if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
                     arm[cp.prop_name] = ui_data_dict['max']
-                else:
-                    arm[cp.prop_name] = ui_data_dict['default']
+                elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
+                    if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                        arm[cp.prop_name] = ui_data_dict['max']
+                    else:
+                        arm[cp.prop_name] = ui_data_dict['default']
         
         arm.update_tag()
 
@@ -874,6 +876,114 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         update = update_file_register)
     
     # ------------------------------------------------------------------------
+    #    Simplify
+    # ------------------------------------------------------------------------
+    
+    def update_simplify(self, context):
+        
+        settings = context.scene.MustardUI_Settings
+        
+        # Blender Simplify
+        if self.simplify_blender:
+            context.scene.render.use_simplify        = self.simplify_enable
+        
+        # Body
+        if self.body_enable_subdiv and self.outfits_enable_global_subsurface and self.simplify_enable:
+            self.body_subdiv_view                    = not self.simplify_enable
+        if self.body_enable_smoothcorr:
+            self.body_smooth_corr                    = not self.simplify_enable
+        if self.body_enable_norm_autosmooth and self.outfits_enable_global_normalautosmooth:
+            self.body_norm_autosmooth                = not self.simplify_enable
+        
+        # Eevee Optimized Normals
+        if self.simplify_normals_optimize:
+            settings.material_normal_nodes           = self.simplify_enable
+        
+        # Outfits
+        if len(self.outfits_list) > 1 and self.simplify_outfit_global:
+            if self.simplify_subdiv and self.outfits_enable_global_subsurface and self.simplify_enable:
+                self.outfits_global_subsurface       = not self.simplify_enable
+            if self.outfits_enable_global_mask:
+                self.outfits_global_mask             = not self.simplify_enable
+            if self.outfits_enable_global_smoothcorrection:
+                self.outfits_global_smoothcorrection = not self.simplify_enable
+            if self.outfits_enable_global_shrinkwrap:
+                self.outfits_global_shrinkwrap       = not self.simplify_enable
+            if self.outfits_enable_global_solidify:
+                self.outfits_global_solidify         = not self.simplify_enable
+            if self.outfits_enable_global_triangulate:
+                self.outfits_global_triangulate      = not self.simplify_enable
+            if self.simplify_normals_autosmooth and self.outfits_enable_global_normalautosmooth:
+                self.outfits_global_normalautosmooth = not self.simplify_enable
+        if self.outfit_nude and self.simplify_outfit_switch_nude and self.simplify_enable:
+            self.outfits_list = "Nude"
+        if self.extras_collection != None and self.simplify_extras and self.simplify_enable:
+            for obj in self.extras_collection.objects:
+                if obj.hide_viewport != self.simplify_enable:
+                    bpy.ops.mustardui.object_visibility(obj=obj.name)
+        
+        # Hair
+        if self.simplify_hair:
+            if self.hair_collection != None:
+                self.hair_collection.hide_viewport   = self.simplify_enable
+            if self.particle_systems_enable and self.simplify_enable:
+                for ps in [x for x in self.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]:
+                    ps.show_viewport                 = not self.simplify_enable
+        
+        # Diffeomorphic morphs
+        if self.diffeomorphic_support and self.simplify_diffeomorphic:
+            self.diffeomorphic_enable                = not self.simplify_enable
+        
+        # Force No Physics
+        if self.simplify_force_no_physics and self.simplify_enable:
+            for obj in bpy.data.objects:
+                for ps in [x for x in self.model_body.modifiers if x.type in ["SOFT_BODY", "CLOTH", "COLLISION"]]:
+                    if ps.type == "COLLISION" and obj.collision != None:
+                        obj.collision.use            = not self.simplify_enable
+                    else:
+                        ps.show_viewport             = not self.simplify_enable
+                    if settings.debug:
+                        print("MustardUI - Disabled " + ps.type + " modifier on: " + obj.name)
+        
+        return
+    
+    simplify_main_enable: bpy.props.BoolProperty(default = False,
+                        name = "Simplify",
+                        description = "Enable the Simplify tool, which can be used to increase Viewport performance")
+    
+    simplify_enable: bpy.props.BoolProperty(default = False,
+                        name = "Simplify",
+                        description = "Enable Simplify options to increase Viewport performance",
+                        update = update_simplify)
+    
+    simplify_blender: bpy.props.BoolProperty(default = False,
+                        name = "Blender Simplify",
+                        description = "In addition to the other options, Blender Simplify is enabled when Simplify is enabled")
+    simplify_normals_optimize: bpy.props.BoolProperty(default = False,
+                        name = "Affect Eevee Normals optimization",
+                        description = "Eevee Optimized Normals is activated when Simplify is enabled, and vice-versa.\nEevee shaders re-compilation might be needed")
+    simplify_subdiv: bpy.props.BoolProperty(default = True,
+                        name = "Affect Subdivision (Viewport)",
+                        description = "Subdivision Surface modifiers are disabled when Simplify is enabled.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again")
+    simplify_normals_autosmooth: bpy.props.BoolProperty(default = True,
+                        name = "Affect Normals Auto-Smooth")
+    
+    simplify_outfit_switch_nude: bpy.props.BoolProperty(default = False,
+                        name = "Switch to Nude")
+    simplify_outfit_global: bpy.props.BoolProperty(default = True,
+                        name = "Disable Global Outfit properties")
+    simplify_extras: bpy.props.BoolProperty(default = True,
+                        name = "Hide Extras")
+    simplify_hair: bpy.props.BoolProperty(default = True,
+                        name = "Hide Hair (Viewport)")
+    simplify_diffeomorphic: bpy.props.BoolProperty(default = True,
+                        name = "Disable Morphs")
+    
+    simplify_force_no_physics: bpy.props.BoolProperty(default = False,
+                        name = "Disable Physics",
+                        description = "Force the disabling of all physics modifiers on all scene Objects.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again")
+    
+    # ------------------------------------------------------------------------
     #    Various properties
     # ------------------------------------------------------------------------
     
@@ -953,7 +1063,8 @@ bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(default = False,
 class MustardUI_Armature_Initialize(bpy.types.Operator):
     """Initialize/remove the Armature configuration"""
     bl_idname = "mustardui.armature_initialize"
-    bl_label = "Initialize/remove the Armature configuration"
+    bl_label = "Armature Configuration"
+    bl_options = {'UNDO'}
     
     clean: bpy.props.BoolProperty(default = False)
 
@@ -993,7 +1104,7 @@ class MustardUI_Armature_Initialize(bpy.types.Operator):
 class MustardUI_Armature_Sort(bpy.types.Operator):
     """Change order of the Armature layer"""
     bl_idname = "mustardui.armature_sort"
-    bl_label = ""
+    bl_label = "Armature Layer Order"
     
     sort_id: bpy.props.IntProperty(default = False)
     up: bpy.props.BoolProperty(default = False)
@@ -1203,7 +1314,10 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     tools_config_collapse: bpy.props.BoolProperty(default = True,
                         name = "")
 
-    # Child Of
+    # ------------------------------------------------------------------------
+    #    Child Of
+    # ------------------------------------------------------------------------
+    
     childof_enable: bpy.props.BoolProperty(default = True,
                         name = "Child Of",
                         description = "Enable the Child Of tool.\nThis tool will allow a quick creation of Child Of modifiers between two selected bones")
@@ -1216,7 +1330,10 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     # Name of the modifiers created by the tool
     childof_constr_name: bpy.props.StringProperty(default = 'MustardUI_ChildOf')
     
-    # Auto Breath
+    # ------------------------------------------------------------------------
+    #    Auto - Breath
+    # ------------------------------------------------------------------------
+    
     autobreath_enable: bpy.props.BoolProperty(default = False,
                         name = "Auto Breath",
                         description = "Enable the Auto Breath tool.\nThis tool will allow a quick creation of a breathing animation")
@@ -1241,7 +1358,10 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         name = "Sampling",
                         description = "Number of frames beetween two animations key")
     
-    # Auto Blink
+    # ------------------------------------------------------------------------
+    #    Auto - Eyelid
+    # ------------------------------------------------------------------------
+    
     autoeyelid_enable: bpy.props.BoolProperty(default = False,
                         name = "Auto Blink",
                         description = "Enable the Auto Blink tool.\nThis tool will allow a quick creation of eyelid blinking animation")
@@ -1698,7 +1818,6 @@ def mustardui_update_index_cp(type, scene, index):
     else:
         scene.mustardui_property_uilist_hair_index = index
 
-# Function to add driver
 def mustardui_add_driver(obj, rna, path, prop, prop_name):
         
         driver_object = eval(rna)
@@ -1767,7 +1886,6 @@ def mustardui_cp_path(rna, path):
     
     return rna + "." + path if not all(["[" in path, "]" in path]) else rna + path
 
-# Operator to add the right click button on properties
 class MustardUI_Property_MenuAdd(bpy.types.Operator):
     """Add the property to the menu"""
     bl_idname = "mustardui.property_menuadd"
@@ -1962,11 +2080,10 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
     
         return {'FINISHED'}
 
-# Operator to add the right click button on properties
 class MustardUI_Property_MenuLink(bpy.types.Operator):
     """Link the property to an existing one.\nType"""
     bl_idname = "mustardui.property_menulink"
-    bl_label = "Link property to another MustardUI property"
+    bl_label = "Link Property"
     bl_options = {'UNDO'}
     
     parent_rna: bpy.props.StringProperty()
@@ -2083,6 +2200,7 @@ class WM_MT_button_context(Menu):
 class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertySectionMenu'
     bl_label = 'Add to MustardUI (Section)'
+    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2103,6 +2221,7 @@ class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
 class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu'
     bl_label = 'Add to MustardUI Outfit'
+    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2130,6 +2249,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
 class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertyOutfitMenu'
     bl_label = 'Add to MustardUI Outfit'
+    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2156,6 +2276,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
 class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertyHairMenu'
     bl_label = 'Add to MustardUI Hair'
+    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2244,6 +2365,7 @@ def mustardui_property_link(self, context):
 class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
     bl_idname = 'MUSTARDUI_MT_Property_LinkMenu'
     bl_label = 'Link to Property'
+    bl_options = {'UNDO'}
 
     @classmethod
     def poll(cls, context):
@@ -2460,7 +2582,8 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
 class MustardUI_Property_Remove(bpy.types.Operator):
     """Remove the selected property from the list.\nType"""
     bl_idname = "mustardui.property_remove"
-    bl_label = "Remove property"
+    bl_label = "Remove Property"
+    bl_options = {'UNDO'}
     
     type: bpy.props.EnumProperty(default = "BODY",
                         items = (("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")))
@@ -2535,7 +2658,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings.\nType"""
     bl_idname = "mustardui.property_settings"
-    bl_label = "Property settings"
+    bl_label = "Property Settings"
     bl_icon = "PREFERENCES"
     bl_options = {'UNDO'}
     
@@ -2869,7 +2992,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 class MustardUI_Property_RemoveLinked(bpy.types.Operator):
     """Remove the linked property from the list.\nType"""
     bl_idname = "mustardui.property_removelinked"
-    bl_label = "Remove linked property"
+    bl_label = "Remove Linked Property"
+    bl_options = {'UNDO'}
     
     rna: bpy.props.StringProperty()
     path: bpy.props.StringProperty()
@@ -2922,7 +3046,8 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
 class MustardUI_Property_Rebuild(bpy.types.Operator):
     """Rebuild all drivers and custom properties. This can be used if the properties aren't working or if the properties max/min/default/descriptions are broken"""
     bl_idname = "mustardui.property_rebuild"
-    bl_label = "Rebuild"
+    bl_label = "Rebuild Custom Properties"
+    bl_options = {'UNDO'}
     
     def add_driver(self, obj, rna, path, prop_name):
         
@@ -3073,7 +3198,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 class MustardUI_Property_SmartCheck(bpy.types.Operator):
     """Check if some properties respect the MustardUI Int/Float/Bool convention, and automatically add them as additional properties"""
     bl_idname = "mustardui.property_smartcheck"
-    bl_label = "Smart Check"
+    bl_label = "Properties Smart Check"
     bl_options = {'UNDO'}
     
     def add_driver(self, obj, rna, path, prop_name):
@@ -3426,7 +3551,7 @@ class MustardUI_Body_DeleteSection(bpy.types.Operator):
 class MustardUI_Body_SettingsSection(bpy.types.Operator):
     """Modify the section settings."""
     bl_idname = "mustardui.body_settingssection"
-    bl_label = "Section settings"
+    bl_label = "Section Settings"
     bl_icon = "PREFERENCES"
     bl_options = {'UNDO'}
     
@@ -3534,7 +3659,7 @@ class MustardUI_Body_SettingsSection(bpy.types.Operator):
 class MustardUI_Body_SwapSection(bpy.types.Operator):
     """Change the position of the section"""
     bl_idname = "mustardui.body_swapsection"
-    bl_label = "Change the section position"
+    bl_label = "Section Position"
     
     mod : bpy.props.BoolProperty(default = False) # False = down, True = Up
     name : bpy.props.StringProperty()
@@ -3581,7 +3706,8 @@ class MustardUI_Body_SwapSection(bpy.types.Operator):
 class MustardUI_Body_PropertyAddToSection(bpy.types.Operator):
     """Assign properties to the selected section"""
     bl_idname = "mustardui.body_propertyaddtosection"
-    bl_label = "Assign properties"
+    bl_label = "Assign Properties"
+    bl_options = {'UNDO'}
     
     section_name : bpy.props.StringProperty()
     
@@ -3638,6 +3764,7 @@ class MustardUI_AddOutfit(bpy.types.Operator):
     """Add the collection as an outfit.\nThis can be done only in Configuration mode"""
     bl_idname = "mustardui.add_collection"
     bl_label = "Add Outfit"
+    bl_options = {'UNDO'}
 
     @classmethod
     def poll(cls, context):
@@ -3681,24 +3808,35 @@ def mustardui_collection_menu(self, context):
         self.layout.operator(MustardUI_AddOutfit.bl_idname)
 
 class MustardUI_RemoveOutfit(bpy.types.Operator):
-    """Remove the selected outfit from the Menu.\nThe collection will NOT be deleted"""
+    """Remove the selected Outfit from the Menu.\nThe collection will NOT be deleted"""
     bl_idname = "mustardui.delete_outfit"
-    bl_label = "Remove the selected collection from the menu"
+    bl_label = "Remove Outfit Collection"
     bl_options = {'UNDO'}
     
     col : bpy.props.StringProperty()
 
     def execute(self, context):
         
+        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config = 1)
         rig_settings = arm.MustardUI_RigSettings
         
-        i = 0
-        for el in rig_settings.outfits_collections:
+        # Remove the custom properties
+        outfit_cp = arm.MustardUI_CustomPropertiesOutfit
+        
+        to_remove = []
+        for i, cp in enumerate(outfit_cp):
+            if cp.outfit.name == self.col:
+                mustardui_clean_prop(arm, outfit_cp, i, settings)
+                to_remove.append(i)
+        for i in reversed(to_remove):
+            outfit_cp.remove(i)
+        
+        # Remove the collection from the Outfits Collections
+        for i, el in enumerate(rig_settings.outfits_collections):
             if el.collection.name == self.col:
                 rig_settings.outfits_collections.remove(i)
                 break
-            i = i + 1
         
         self.report({'INFO'}, 'MustardUI - Outfit removed.')
         
@@ -3727,6 +3865,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
     """Search for morphs to display in the UI External Morphs panel"""
     bl_idname = "mustardui.dazmorphs_checkmorphs"
     bl_label = "Check Morphs"
+    bl_options = {'UNDO'}
 
     @classmethod
     def poll(cls, context):
@@ -3850,7 +3989,8 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
 class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
     """Set the value of all morphs to the default value"""
     bl_idname = "mustardui.dazmorphs_defaultvalues"
-    bl_label = "Restore default values"
+    bl_label = "Restore Default Values"
+    bl_options = {'UNDO'}
     
     @classmethod
     def poll(cls, context):
@@ -3876,7 +4016,7 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
 class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
     """Revert the position of all the bones to the Rest position"""
     bl_idname = "mustardui.dazmorphs_clearpose"
-    bl_label = "Clear pose"
+    bl_label = "Clear Pose"
     bl_options = {'REGISTER', 'UNDO'}
     
     def setWorldMatrix(self, ob, wmat):
@@ -3967,7 +4107,7 @@ def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale =
 class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     """Disable drivers to improve performance (the correctives will not be disabled). This can be used only if the armature is selected"""
     bl_idname = "mustardui.dazmorphs_disabledrivers"
-    bl_label = "Button"
+    bl_label = "Disable Drivers"
     bl_options = {'REGISTER', 'UNDO'}
     
     # Function to prevent the DisableDriver operator to switch off custom properties drivers
@@ -4047,7 +4187,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
     """Enable all drivers. This can be used only if the armature is selected"""
     bl_idname = "mustardui.dazmorphs_enabledrivers"
-    bl_label = "Button"
+    bl_label = "Enable Drivers"
     bl_options = {'REGISTER', 'UNDO'}
  
     def execute(self, context):
@@ -4110,8 +4250,8 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
 class MustardUI_ViewportModelSelection(bpy.types.Operator):
     """Turn on/off Viewport Model Selection"""
     bl_idname = "mustardui.viewportmodelselection"
-    bl_label = "Turn on/off Viewport Model Selection"
-    bl_options = {'REGISTER'}
+    bl_label = "Viewport Model Selection"
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         
@@ -4125,8 +4265,8 @@ class MustardUI_ViewportModelSelection(bpy.types.Operator):
 class MustardUI_SwitchModel(bpy.types.Operator):
     """Switch to the selected model"""
     bl_idname = "mustardui.switchmodel"
-    bl_label = "Switch model"
-    bl_options = {'REGISTER'}
+    bl_label = "Switch Model"
+    bl_options = {'REGISTER', 'UNDO'}
     
     model_to_switch : bpy.props.StringProperty()
     
@@ -4375,8 +4515,8 @@ class MustardUI_Configuration(bpy.types.Operator):
 class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     """Search for MustardUI configuration options based on the name of the model and its body"""
     bl_idname = "mustardui.configuration_smartcheck"
-    bl_label = "MustardUI setting smart search tool."
-    bl_options = {'REGISTER'}
+    bl_label = "Smart Search."
+    bl_options = {'REGISTER', 'UNDO'}
     
     @classmethod
     def poll(cls, context):
@@ -4565,10 +4705,10 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         return {'FINISHED'}
 
 class MustardUI_RemoveUI(bpy.types.Operator):
-    """Remove MustardUI"""
+    """The settings will be preserved on the armature if you want to re-enable it, but it will not be shown in the model list anymore"""
     bl_idname = "mustardui.remove"
-    bl_label = "RemoveUI MustardUI.\nThe settings will be preserved on the armature if you want to re-enable it, but it will not be shown in the model list anymore"
-    bl_options = {'REGISTER'}
+    bl_label = "Remove MustardUI"
+    bl_options = {'REGISTER', 'UNDO'}
     
     @classmethod
     def poll(cls, context):
@@ -4602,7 +4742,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 class MustardUI_RegisterUIFile(bpy.types.Operator):
     """Register the UI.\nThe script file will be linked to the armature and will be transfered if the model is appended in another .blend file"""
     bl_idname = "mustardui.registeruifile"
-    bl_label = "Register the UI"
+    bl_label = "Register UI"
     
     register: bpy.props.BoolProperty(default = True)
     
@@ -4642,7 +4782,7 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
 class MustardUI_OutfitVisibility(bpy.types.Operator):
     """Chenge the visibility of the selected object"""
     bl_idname = "mustardui.object_visibility"
-    bl_label = "Hide/Unhide Object visibility"
+    bl_label = "Object Visibility"
     bl_options = {'UNDO'}
     
     obj : bpy.props.StringProperty()
@@ -4705,7 +4845,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
     """Enable/disable all modifiers/functions that might impact on viewport performance"""
     bl_idname = "mustardui.switchglobal_outfits"
-    bl_label = ""
+    bl_label = "Outfits Property Switch"
     
     enable: IntProperty(default=False)
     
@@ -4731,8 +4871,8 @@ class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
 class MustardUI_Tools_ChildOf(bpy.types.Operator):
     """Apply Child Of modifier"""
     bl_idname = "mustardui.tools_childof"
-    bl_label = "Apply Child Of modifier"
-    bl_options = {'REGISTER'}
+    bl_label = "Child Of Apply"
+    bl_options = {'REGISTER', 'UNDO'}
     
     clean: IntProperty(name='CLEAN',
         description="Clean action",
@@ -4817,7 +4957,7 @@ class MustardUI_Tools_AutoBreath(bpy.types.Operator):
     """Automatically create keyframes for breathing animation"""
     bl_idname = "mustardui.tools_autobreath"
     bl_label = "Auto Breath"
-    bl_options = {'REGISTER'}
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         
@@ -4899,7 +5039,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
     """Automatically create keyframes for eyelid animation"""
     bl_idname = "mustardui.tools_autoeyelid"
     bl_label = "Auto Blink"
-    bl_options = {'REGISTER'}
+    bl_options = {'REGISTER', 'UNDO'}
     
     def blinkFrame(self, frame, value, blink_driver, obj, type):
         
@@ -4977,8 +5117,8 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
 class MustardUI_Tools_LatticeSetup(bpy.types.Operator):
     """Setup/Clean Lattice modifiers for all model Objects.\nThis function will create (or delete) Lattice modifiers linked with the Lattice object chosen and put it at the top of the modifiers list.\nWhen cleaning, only MustardUI Lattice modifiers are deleted"""
     bl_idname = "mustardui.tools_latticesetup"
-    bl_label = "Setup Lattice modification for all model Objects"
-    bl_options = {'REGISTER'}
+    bl_label = "Setup Lattice"
+    bl_options = {'REGISTER', 'UNDO'}
     
     mod: IntProperty(name='MOD',
         description="MOD",
@@ -5065,7 +5205,7 @@ class MustardUI_Tools_LatticeSetup(bpy.types.Operator):
 class MustardUI_Tools_LatticeModify(bpy.types.Operator):
     """Create a custom Lattice shape key"""
     bl_idname = "mustardui.tools_lattice"
-    bl_label = "Create a custom Lattice modification"
+    bl_label = "Custom Lattice"
     bl_options = {'REGISTER'}
     
     mod: IntProperty(name='MOD',
@@ -5249,10 +5389,10 @@ bpy.types.Armature.MustardUI_LatticeSettings = bpy.props.PointerProperty(type = 
 # ------------------------------------------------------------------------
 
 class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
-    """Create a physics panel using the selected cage object in the UI"""
+    """Create a physics panel using the selected cage object in the UI.\nThis will also create the necessary modifiers and clothes settings"""
     bl_idname = "mustardui.tools_physics_createitem"
-    bl_label = "Add the Item to the Physics Items list.\nThis will also create the necessary modifiers and clothes settings"
-    bl_options = {'REGISTER'}
+    bl_label = "Add Physics Item"
+    bl_options = {'REGISTER', 'UNDO'}
     
     @classmethod
     def poll(cls, context):
@@ -5426,8 +5566,8 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
 class MustardUI_Tools_Physics_DeleteItem(bpy.types.Operator):
     """Delete a physics panel using the selected cage object in the UI"""
     bl_idname = "mustardui.tools_physics_deleteitem"
-    bl_label = "Delete a physics panel"
-    bl_options = {'REGISTER'}
+    bl_label = "Delete Physics Item"
+    bl_options = {'REGISTER', 'UNDO'}
     
     cage_object_name: StringProperty()
     
@@ -5490,8 +5630,8 @@ class MustardUI_Tools_Physics_DeleteItem(bpy.types.Operator):
 class MustardUI_Tools_Physics_Clean(bpy.types.Operator):
     """Remove all the physics items"""
     bl_idname = "mustardui.tools_physics_clean"
-    bl_label = "Clear the physics items from the list"
-    bl_options = {'REGISTER'}
+    bl_label = "Clear Physics Items"
+    bl_options = {'REGISTER', 'UNDO'}
     
     @classmethod
     def poll(cls, context):
@@ -5594,7 +5734,7 @@ class MustardUI_Tools_Physics_ReBind(bpy.types.Operator):
 class MustardUI_Tools_Physics_SimulateObject(bpy.types.Operator):
     """Bake the physics for the selected object only"""
     bl_idname = "mustardui.tools_physics_simulateobject"
-    bl_label = "Bake the physics for the selected object only"
+    bl_label = "Bake Item Physics"
     bl_options = {'REGISTER'}
     
     cage_object_name: StringProperty()
@@ -5880,7 +6020,7 @@ bpy.types.Armature.MustardUI_PhysicsSettings = bpy.props.PointerProperty(type = 
 class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
     bl_description = "Switch normal map nodes to a faster custom node"
     bl_idname = 'mustardui.material_normalmap_nodes'
-    bl_label = "Normal Map nodes to Custom"
+    bl_label = "Eevee Optimized Normals"
     bl_options = {'UNDO'}
 
     @classmethod
@@ -6255,6 +6395,13 @@ class MustardUI_CleanModel(bpy.types.Operator):
     bl_label = "Clean Model"
     bl_options = {'UNDO'}
     
+    remove_body_cp: bpy.props.BoolProperty(default=False,
+                    name = "Remove Body Custom Properties")
+    remove_outfit_cp: bpy.props.BoolProperty(default=False,
+                    name = "Remove Outfit Custom Properties")
+    remove_hair_cp: bpy.props.BoolProperty(default=False,
+                    name = "Remove Hair Custom Properties")
+    
     remove_unselected_outfits: bpy.props.BoolProperty(default=False,
                     name = "Delete Unselected Outfits",
                     description = "Remove all the outfits that are not selected in the UI (Outfits list)")
@@ -6319,6 +6466,26 @@ class MustardUI_CleanModel(bpy.types.Operator):
         
         return props_removed
     
+    def check_removal(self, string, string_cmp):
+        
+        check_pJCM = not "pJCM" in string_cmp or self.remove_morphs_jcms
+        check_facs = not "facs" in string_cmp or self.remove_morphs_facs
+        check_eCTRL = "eCTRL" in string_cmp
+        check_eJCM = "eJCM" in string_cmp
+        
+        return (string == string_cmp or check_eCTRL or check_eJCM) and check_pJCM and check_facs
+    
+    def remove_cps(self, arm, uilist, settings):
+        
+        to_remove = []
+        for i, cp in enumerate(uilist):
+            mustardui_clean_prop(arm, uilist, i, settings)
+            to_remove.append(i)
+        for i in reversed(to_remove):
+            uilist.remove(i)
+            
+        return len(to_remove)
+    
     @classmethod
     def poll(cls, context):
         
@@ -6332,7 +6499,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config = 0)
         rig_settings = arm.MustardUI_RigSettings
         
-        options = self.remove_nulldrivers or self.remove_morphs or self.remove_unselected_outfits
+        options = self.remove_nulldrivers or self.remove_morphs or self.remove_unselected_outfits or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
         
         if not options:
             return {'FINISHED'}
@@ -6346,6 +6513,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
         morphs_shapekeys_removed = 0
         outfits_deleted = 0
         outfits_cp_deleted = 0
+        body_cp_removed = 0
+        outfit_cp_removed = 0
+        hair_cp_removed = 0
         
         # Remove null drivers
         if self.remove_nulldrivers:
@@ -6413,10 +6583,6 @@ class MustardUI_CleanModel(bpy.types.Operator):
             props_removed = self.remove_props_from_cat_group(rig_settings.model_body,
                                                         "DazMorphCats", props_removed)
             
-            # Manually append to remove standard expressions and units
-            props_removed.append("eJCM")
-            props_removed.append("eCTRL")
-            
             # Remove unused drivers and shape keys
             aobj = context.active_object
             context.view_layer.objects.active = rig_settings.model_armature_object
@@ -6443,14 +6609,14 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         for driver in drivers:
                             words = driver.data_path.split('"')
                             for cp in props_removed:
-                                if words[0] == "key_blocks[" and cp in words[1]:
+                                if words[0] == "key_blocks[" and self.check_removal(cp, words[1]):
                                     drivers.remove(driver)
                                     morphs_drivers_removed = morphs_drivers_removed + 1
                                     break
                     if self.remove_morphs_shapekeys:
                         for sk in obj.data.shape_keys.key_blocks:
                             for cp in props_removed:
-                                if cp in sk.name:
+                                if self.check_removal(cp, sk.name):
                                     obj.shape_key_remove(sk)
                                     morphs_shapekeys_removed = morphs_shapekeys_removed + 1
                                     break
@@ -6466,7 +6632,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         for driver in drivers:
                             ddelete = "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0"
                             for cp in props_removed:
-                                ddelete = ddelete or (cp in driver.data_path or self.isDazFcurve(driver.data_path))
+                                ddelete = ddelete or (self.check_removal(cp, driver.data_path) or self.isDazFcurve(driver.data_path))
                                 for v in driver.driver.variables:
                                     ddelete = ddelete or cp in v.targets[0].data_path
                             if ddelete:
@@ -6483,14 +6649,13 @@ class MustardUI_CleanModel(bpy.types.Operator):
             context.view_layer.objects.active = aobj
             
             # Remove custom properties from armature
-            # TODO: avoid removing jaw bone stuffs for facs (thing above is not sufficient)
             for cp in props_removed:
                 for kp in [x for x in rig_settings.model_armature_object.keys()]:
-                    if cp in kp and (not "pJCM" in kp or self.remove_morphs_jcms) or self.isDazFcurve(kp):      
+                    if self.check_removal(cp, kp) or self.isDazFcurve(kp):      
                         del rig_settings.model_armature_object[kp]
                         morphs_props_removed = morphs_props_removed + 1
                 for kp in [x for x in arm.keys()]:
-                    if cp in kp and (not "pJCM" in kp or self.remove_morphs_jcms) or self.isDazFcurve(kp):
+                    if self.check_removal(cp, kp) or self.isDazFcurve(kp):
                         del arm[kp]
                         morphs_props_removed = morphs_props_removed + 1
             
@@ -6519,12 +6684,6 @@ class MustardUI_CleanModel(bpy.types.Operator):
             
             for col in [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection != None] if x.collection.name != current_outfit]:
                 
-                # Remove custom properties
-                for cpn, cp in enumerate(arm.MustardUI_CustomPropertiesOutfit):
-                    if cp.outfit == col:
-                        mustardui_clean_prop(arm, arm.MustardUI_CustomPropertiesOutfit, cpn, settings)
-                        outfits_cp_deleted = outfits_cp_deleted + 1
-                
                 for obj in col.objects:
                     data = obj.data
                     obj_type = obj.type
@@ -6544,8 +6703,19 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 print("  Outfits deleted: " + str(outfits_deleted))
                 print("  Outfit custom properties deleted: " + str(outfits_cp_deleted))
         
+        # Remove custom properties
+        if self.remove_body_cp:
+            body_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomProperties, settings)
+            print("  Body Custom Properties deleted: " + str(body_cp_removed) )
+        if self.remove_outfit_cp:
+            outfit_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, settings)
+            print("  Outfit Custom Properties deleted: " + str(outfit_cp_removed) )
+        if self.remove_hair_cp:
+            hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, settings)
+            print("  Hair Custom Properties deleted: " + str(hair_cp_removed) )
+        
         # Final messages
-        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + outfits_deleted + outfits_cp_deleted
+        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + outfits_deleted + outfits_cp_deleted + body_cp_removed + outfit_cp_removed + hair_cp_removed
         
         if operations > 0:
             self.report({'INFO'}, "MustardUI - Model cleaned.")
@@ -6573,18 +6743,26 @@ class MustardUI_CleanModel(bpy.types.Operator):
         layout = self.layout
         
         box = layout.box()
-        box.label(text="Notes:")
-        box.label(text="Read the descriptions of all buttons (keep the mouse on the buttons).", icon="DOT")
-        box.label(text="Do not use while producing, but before starting a project with the model.", icon="DOT")
-        box.label(text="This is a highly destructive operation! Use it at your own risk!", icon="ERROR")
+        col = box.column(align=True)
+        col.label(text="Notes:")
+        col.label(text="Read the descriptions of all buttons (keep the mouse on the buttons).", icon="DOT")
+        col.label(text="Do not use while producing, but before starting a project with the model.", icon="DOT")
+        col.label(text="This is a highly destructive operation! Use it at your own risk!", icon="ERROR")
         
         box = layout.box()
         box.label(text="General", icon="MODIFIER")
         box.prop(self, "remove_unselected_outfits")
         if self.remove_unselected_outfits:
-            box.label(text="Outfits objects will be deleted!", icon="ERROR")
-            box.label(text="Save and restart Blender (repeat two times) to remove unused data", icon="BLANK1")
+            col = box.column(align=True)
+            col.label(text="Outfits objects will be deleted!", icon="ERROR")
+            col.label(text="Save and restart Blender (repeat two times) to remove unused data.", icon="BLANK1")
         box.prop(self, "remove_nulldrivers")
+        
+        box = layout.box()
+        box.label(text="Custom Properties", icon="PROPERTIES")
+        box.prop(self, "remove_body_cp")
+        box.prop(self, "remove_outfit_cp")
+        box.prop(self, "remove_hair_cp")
         
         if rig_settings.diffeomorphic_support:
             
@@ -6597,8 +6775,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
             box.enabled = hasattr(rig_settings.model_armature_object, "DazMorphCats")
             box.prop(self, "remove_morphs")
             if self.remove_morphs:
-                box.label(text="Morphs will be deleted!", icon="ERROR")
-                box.label(text="Some bones of the Face rig might not work even if Remove Face Rig Morphs is disabled!", icon="BLANK1")
+                col = box.column(align=True)
+                col.label(text="Morphs will be deleted!", icon="ERROR")
+                col.label(text="Some bones of the Face rig might not work even if Remove Face Rig Morphs is disabled!", icon="BLANK1")
             if rig_settings.diffeomorphic_model_version == "1.6":
                 row = box.row()
                 row.enabled = self.remove_morphs
@@ -6617,7 +6796,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 class MustardUI_Debug_Log(bpy.types.Operator):
     """Create a file with informations to debug errors.\nThis tool will only write on a .txt file and will NOT change any model or Blender setting"""
     bl_idname = "mustardui.debug_log"
-    bl_label = "Create a file with informations to debug errors"
+    bl_label = "Generate Log File"
     bl_options = {'REGISTER'}
     
     def new_line(self):
@@ -6717,7 +6896,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         # Viewport performance
         log += self.header("Viewport performance")
         
-        log += "Custom normals:" + self.tab() + self.tab() + ("Disabled" if settings.material_normal_nodes else "Enabled")
+        log += "Custom normals:" + self.tab() + self.tab() + ("Disabled" if not settings.material_normal_nodes else "Enabled")
         log += self.new_line()
         
         if rig_settings.diffeomorphic_support and settings.status_diffeomorphic > 1:
@@ -6756,7 +6935,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
 class MustardUI_LinkButton(bpy.types.Operator):
     """Open links in a web browser"""
     bl_idname = "mustardui.openlink"
-    bl_label = "Open Link in web browser"
+    bl_label = "Open Link"
     bl_options = {'REGISTER'}
     
     url: StringProperty(name='URL',
@@ -7179,6 +7358,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="Enable Tools", icon="MODIFIER")
             col = box.column(align=True)
+            col.prop(rig_settings,'simplify_main_enable')
             col.prop(tools_settings,'childof_enable')
             col.prop(tools_settings,'autobreath_enable')
             col.prop(tools_settings,'autoeyelid_enable')
@@ -7897,11 +8077,11 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         mod_particle_system = sorted([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"], key = lambda x:x.particle_system.name)
         if rig_settings.particle_systems_enable  and len(mod_particle_system )> 0:
             box = layout.box()
-            box.label(text="Hair particles", icon="PARTICLES")
+            box.label(text="Hair particles", icon="MOD_PARTICLE_INSTANCE")
             box2=box.box()
             for mod in mod_particle_system:
                 row=box2.row()
-                row.label(text=mod.particle_system.name)
+                row.label(text=mod.particle_system.name, icon="PARTICLES")
                 row2=row.row(align=True)
                 row2.prop(mod, "show_viewport", text="")
                 row2.prop(mod, "show_render", text="")
@@ -8046,6 +8226,71 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             row.operator("daz.toggle_fk_ik", text="IK").toggle = prop + " 0" + fk + ik
         else:
             row.operator("daz.toggle_fk_ik", text="FK").toggle = prop + " 1" + ik + fk
+
+class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
+    bl_idname = "PANEL_PT_MustardUI_Simplify"
+    bl_label = "Simplify"
+    bl_options = {"DEFAULT_CLOSED"}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        if obj != None:
+            
+            rig_settings = obj.MustardUI_RigSettings
+            return res and rig_settings.simplify_main_enable
+        
+        return res
+    
+    def draw_header(self,context):
+        
+        poll, obj = mustardui_active_object(context, config = 0)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        self.layout.prop(rig_settings, "simplify_enable", text = "", toggle = False)
+    
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        poll, obj = mustardui_active_object(context, config = 0)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        layout = self.layout
+        
+        box = layout.box()
+        box.label(text="General", icon="OUTLINER_OB_ARMATURE")
+        col = box.column(align=True)
+        row = col.row()
+        row.prop(rig_settings, "simplify_blender")
+        row.scale_x = 0.5
+        col2=row.column()
+        col2.enabled = rig_settings.simplify_blender
+        col2.prop(context.scene.render, "simplify_subdivision", text = "Max Subdiv")
+        if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
+            col.prop(rig_settings, "simplify_subdiv")
+        if rig_settings.outfits_enable_global_normalautosmooth or rig_settings.body_enable_norm_autosmooth:
+            col.prop(rig_settings, "simplify_normals_autosmooth")
+        col.prop(rig_settings, "simplify_normals_optimize")
+        
+        box = layout.box()
+        box.label(text="Objects", icon="OUTLINER_OB_ARMATURE")
+        col = box.column(align=True)
+        if rig_settings.outfit_nude:
+            col.prop(rig_settings, "simplify_outfit_switch_nude")
+        col.prop(rig_settings, "simplify_outfit_global")
+        col.prop(rig_settings, "simplify_extras")
+        col.prop(rig_settings, "simplify_hair")
+        if rig_settings.diffeomorphic_support:
+            col.prop(rig_settings, "simplify_diffeomorphic")
+        
+        if settings.advanced:
+            box = layout.box()
+            box.label(text="Global Disable", icon="WORLD")
+            col = box.column(align=True)
+            col.prop(rig_settings, "simplify_force_no_physics")
+        
 
 class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Tools_Physics"
@@ -8568,7 +8813,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             box.operator('mustardui.remove', text="UI Removal", icon = "X")
             if platform.system() == 'Windows':
                 box.separator()
-                box.operator('wm.console_toggle', text="Toggle System Console", icon = "TOPBAR")
+                box.operator('wm.console_toggle', text="Toggle System Console", icon = "CONSOLE")
         
         box = layout.box()
         box.label(text="Version", icon="INFO")
@@ -8613,23 +8858,23 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
             box.label(text="Social profiles/contacts", icon="BOOKMARKS")
         
             if rig_settings.url_website!='':
-                box.operator('mustardui.openlink', text="Website", icon = "WORLD").url = rig_settings.url_website
+                box.operator('mustardui.openlink', text="Website", icon = "URL").url = rig_settings.url_website
             if rig_settings.url_patreon!='':
-                box.operator('mustardui.openlink', text="Patreon", icon = "WORLD").url = rig_settings.url_patreon
+                box.operator('mustardui.openlink', text="Patreon", icon = "URL").url = rig_settings.url_patreon
             if rig_settings.url_twitter!='':
-                box.operator('mustardui.openlink', text="Twitter", icon = "WORLD").url = rig_settings.url_twitter
+                box.operator('mustardui.openlink', text="Twitter", icon = "URL").url = rig_settings.url_twitter
             if rig_settings.url_smutbase!='':
-                box.operator('mustardui.openlink', text="SmutBase", icon = "WORLD").url = rig_settings.url_smutbase
+                box.operator('mustardui.openlink', text="SmutBase", icon = "URL").url = rig_settings.url_smutbase
             if rig_settings.url_documentation!='':
-                box.operator('mustardui.openlink', text="Documentation", icon = "WORLD").url = rig_settings.url_documentation
+                box.operator('mustardui.openlink', text="Documentation", icon = "URL").url = rig_settings.url_documentation
             if rig_settings.url_reportbug!='':
-                box.operator('mustardui.openlink', text="Report a Bug", icon = "WORLD").url = rig_settings.url_reportbug
+                box.operator('mustardui.openlink', text="Report a Bug", icon = "URL").url = rig_settings.url_reportbug
         
         box = layout.box()
         box.label(text="MustardUI References", icon="INFO")
-        box.operator('mustardui.openlink', text="MustardUI - Tutorial", icon = "WORLD").url = rig_settings.url_MustardUItutorial
-        box.operator('mustardui.openlink', text="MustardUI - Report Bug", icon = "WORLD").url = rig_settings.url_MustardUI_reportbug
-        box.operator('mustardui.openlink', text="MustardUI - GitHub", icon = "WORLD").url = rig_settings.url_MustardUI
+        box.operator('mustardui.openlink', text="MustardUI - Tutorial", icon = "URL").url = rig_settings.url_MustardUItutorial
+        box.operator('mustardui.openlink', text="MustardUI - Report Bug", icon = "URL").url = rig_settings.url_MustardUI_reportbug
+        box.operator('mustardui.openlink', text="MustardUI - GitHub", icon = "URL").url = rig_settings.url_MustardUI
         
 
 # Registration of classes
@@ -8712,6 +8957,7 @@ classes = (
     PANEL_PT_MustardUI_Outfits,
     PANEL_PT_MustardUI_Hair,
     PANEL_PT_MustardUI_Armature,
+    PANEL_PT_MustardUI_Simplify,
     PANEL_PT_MustardUI_Tools_Physics,
     PANEL_PT_MustardUI_Tools_Lattice,
     PANEL_PT_MustardUI_Tools,
