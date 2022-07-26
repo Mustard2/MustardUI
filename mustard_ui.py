@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "005"
+mustardui_buildnum = "008"
 
 import bpy
 import addon_utils
@@ -573,6 +573,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     obj.hide_viewport = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                     obj.hide_render = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                     
+                    for modifier in obj.modifiers:
+                        if modifier.type == "ARMATURE":
+                            modifier.show_viewport = (not obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else obj.MustardUI_outfit_lock) if rig_settings.outfit_switch_armature_disable else True
+                    
                     # Update values of custom properties
                     update_cp(obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock, outfit_cp, obj, arm)
                 
@@ -581,9 +585,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     obj.hide_viewport = obj.MustardUI_outfit_visibility
                     obj.hide_render = obj.MustardUI_outfit_visibility
                     
+                    for modifier in obj.modifiers:
+                        if modifier.type == "ARMATURE":
+                            modifier.show_viewport = (not obj.MustardUI_outfit_visibility) if rig_settings.outfit_switch_armature_disable else True
+                    
                     # Update values of custom properties
                     update_cp(obj.MustardUI_outfit_visibility, outfit_cp, obj, arm)
-            
+                
+                else:
+                    
+                    for modifier in obj.modifiers:
+                        if modifier.type == "ARMATURE":
+                            modifier.show_viewport = not rig_settings.outfit_switch_armature_disable
+                    
+                
                 for modifier in rig_settings.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
                         modifier.show_viewport = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
@@ -719,6 +734,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "",
                         description = "Show additional properties for the selected object")
     
+    outfit_switch_armature_disable: bpy.props.BoolProperty(default = True,
+                        name = "",
+                        description = "Disable Armature modifiers of Outfits that are not visible to increase performance")
+    
     # Extras
     extras_collection: bpy.props.PointerProperty(name = "Extras Collection",
                         type = bpy.types.Collection)
@@ -758,9 +777,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for object in self.hair_collection.objects:
             object.hide_viewport = not self.hair_list in object.name
             object.hide_render = not self.hair_list in object.name
-            for mod in [x for x in object.modifiers if x.type == "PARTICLE_SYSTEM"]:
-                mod.show_viewport = self.hair_list in object.name
-                mod.show_render = self.hair_list in object.name
+            for mod in [x for x in object.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE"]]:
+                if mod.type == "PARTICLE_SYSTEM":
+                    mod.show_viewport = self.hair_list in object.name
+                    mod.show_render = self.hair_list in object.name
+                else:
+                    mod.show_viewport = self.hair_list in object.name if self.hair_switch_armature_disable else True
         
         return
     
@@ -775,6 +797,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_custom_properties_name_order: bpy.props.BoolProperty(default = False,
                         name = "Order by name",
                         description = "Order the custom properties by name instead of by appareance in the list")
+    
+    hair_switch_armature_disable: bpy.props.BoolProperty(default = True,
+                        name = "",
+                        description = "Disable Armature modifiers of Hair that are not visible to increase performance")
     
     # Particle system enable
     particle_systems_enable: bpy.props.BoolProperty(default = True,
@@ -7875,7 +7901,10 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         if len([x for x in rig_settings.outfits_collections if x.collection != None])>0:
             
             box = layout.box()
-            box.label(text="Outfits list", icon="MOD_CLOTH")
+            row = box.row()
+            row.label(text="Outfits list", icon="MOD_CLOTH")
+            if settings.advanced:
+                row.prop(rig_settings,"outfit_switch_armature_disable", text="", icon = "ARMATURE_DATA")
             row = box.row(align=True)
             row.prop(rig_settings,"outfits_list", text="")
             
@@ -8049,10 +8078,13 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             if len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1:
                 
                 box = layout.box()
-                row = box.row(align=True)
-                row.label(text="Hair list", icon="STRANDS")
-                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                row.prop(rig_settings.hair_collection, "hide_render", text="")
+                row = box.row()
+                row2 = row.row(align=True)
+                row2.label(text="Hair list", icon="STRANDS")
+                row2.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                row2.prop(rig_settings.hair_collection, "hide_render", text="")
+                if settings.advanced:
+                    row.prop(rig_settings, "hair_switch_armature_disable", text="", icon="ARMATURE_DATA")
                 
                 row = box.row(align=True)
                 row.prop(rig_settings,"hair_list", text="")
