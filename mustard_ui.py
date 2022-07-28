@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "008"
+mustardui_buildnum = "014"
 
 import bpy
 import addon_utils
@@ -838,6 +838,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_enable_shapekeys: bpy.props.BoolProperty(default = True,
                         name = "Mute Shape Keys",
                         description = "Shape Keys will also be muted when the Morphs are disabled")
+    diffeomorphic_enable_pJCM: bpy.props.BoolProperty(default = True,
+                        name = "Mute Corrective Morphs",
+                        description = "Corrective Morphs will also be muted when the Morphs are disabled")
     
     diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.5",
                         items = [("1.6", "1.6", "1.6"), ("1.5", "1.5", "1.5")],
@@ -956,6 +959,11 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 for ps in [x for x in self.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]:
                     ps.show_viewport                 = not self.simplify_enable
         
+        # Armature Children
+        if self.simplify_armature_child:
+            for child in [x for x in self.model_armature_object.children if x != self.model_body]:
+                child.hide_viewport                  = self.simplify_enable
+        
         # Diffeomorphic morphs
         if self.diffeomorphic_support and self.simplify_diffeomorphic:
             self.diffeomorphic_enable                = not self.simplify_enable
@@ -984,30 +992,44 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     simplify_blender: bpy.props.BoolProperty(default = False,
                         name = "Blender Simplify",
-                        description = "In addition to the other options, Blender Simplify is enabled when Simplify is enabled")
+                        description = "In addition to the other options, Blender Simplify is enabled when Simplify is enabled",
+                        update = update_simplify)
     simplify_normals_optimize: bpy.props.BoolProperty(default = False,
                         name = "Affect Eevee Normals optimization",
-                        description = "Eevee Optimized Normals is activated when Simplify is enabled, and vice-versa.\nEevee shaders re-compilation might be needed")
+                        description = "Eevee Optimized Normals is activated when Simplify is enabled, and vice-versa.\nEevee shaders re-compilation might be needed",
+                        update = update_simplify)
     simplify_subdiv: bpy.props.BoolProperty(default = True,
                         name = "Affect Subdivision (Viewport)",
-                        description = "Subdivision Surface modifiers are disabled when Simplify is enabled.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again")
+                        description = "Subdivision Surface modifiers are disabled when Simplify is enabled.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again",
+                        update = update_simplify)
     simplify_normals_autosmooth: bpy.props.BoolProperty(default = True,
-                        name = "Affect Normals Auto-Smooth")
+                        name = "Affect Normals Auto-Smooth",
+                        update = update_simplify)
     
     simplify_outfit_switch_nude: bpy.props.BoolProperty(default = False,
-                        name = "Switch to Nude")
+                        name = "Switch to Nude",
+                        update = update_simplify)
     simplify_outfit_global: bpy.props.BoolProperty(default = True,
-                        name = "Disable Global Outfit properties")
+                        name = "Disable Global Outfit properties",
+                        update = update_simplify)
     simplify_extras: bpy.props.BoolProperty(default = True,
-                        name = "Hide Extras")
+                        name = "Hide Extras",
+                        update = update_simplify)
     simplify_hair: bpy.props.BoolProperty(default = True,
-                        name = "Hide Hair (Viewport)")
+                        name = "Hide Hair (Viewport)",
+                        update = update_simplify)
+    simplify_armature_child: bpy.props.BoolProperty(default = True,
+                        name = "Hide Armature Children (Viewport)",
+                        description = "Disables all objects parented to the Armature, except the Body",
+                        update = update_simplify)
     simplify_diffeomorphic: bpy.props.BoolProperty(default = True,
-                        name = "Disable Morphs")
+                        name = "Disable Morphs",
+                        update = update_simplify)
     
     simplify_force_no_physics: bpy.props.BoolProperty(default = False,
                         name = "Disable Physics",
-                        description = "Force the disabling of all physics modifiers on all scene Objects.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again")
+                        description = "Force the disabling of all physics modifiers on all scene Objects.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again",
+                        update = update_simplify)
     
     # ------------------------------------------------------------------------
     #    Various properties
@@ -4092,8 +4114,11 @@ class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
         return{'FINISHED'}
 
 # Function to mute daz drivers
-def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale = True, muteSK = True):
-        
+def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale = True, muteSK = True, mutepJCM = False):
+    
+    def pJCMcheck(string):
+        return not "pJCM" in string or mutepJCM
+    
     def isDazFcurve(path):
         for string in ["(fin)", "(rst)", ":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
             if string in path:
@@ -4102,7 +4127,7 @@ def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale =
 
     if rig and rig.data.animation_data:
         for fcu in rig.data.animation_data.drivers:
-            if isDazFcurve(fcu.data_path):
+            if isDazFcurve(fcu.data_path) and pJCMcheck(fcu.data_path):
                 fcu.mute = mute
 
     if rig and rig.animation_data:
@@ -4126,12 +4151,12 @@ def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale =
                         fcu.mute = mute
                         sname = words[1]
                         if sname in skeys.key_blocks.keys() and muteSK:
-                            if not "MustardUINotDisable" in sname:
+                            if not "MustardUINotDisable" in sname and pJCMcheck(sname):
                                 skey = skeys.key_blocks[sname]
                                 skey.mute = mute
 
 class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
-    """Disable drivers to improve performance (the correctives will not be disabled). This can be used only if the armature is selected"""
+    """Disable drivers to improve performance"""
     bl_idname = "mustardui.dazmorphs_disabledrivers"
     bl_label = "Disable Drivers"
     bl_options = {'REGISTER', 'UNDO'}
@@ -4156,18 +4181,18 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config = 0)
         rig_settings = arm.MustardUI_RigSettings
-        
+    
         objects = [rig_settings.model_body]
-        
         aobj = context.active_object
-        
         context.view_layer.objects.active = rig_settings.model_armature_object
         
         warnings = 0
         
+        mutepJCM = rig_settings.diffeomorphic_enable_pJCM
+        
         try:
             if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True, rig_settings.diffeomorphic_enable_shapekeys)
+                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True, rig_settings.diffeomorphic_enable_shapekeys, mutepJCM)
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = True
             else:
@@ -4186,9 +4211,9 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
             if obj.data.shape_keys != None:
                 if obj.data.shape_keys.animation_data != None:
                     for driver in obj.data.shape_keys.animation_data.drivers:
-                        if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
+                        if (not "pJCM" in driver.data_path or mutepJCM) and not "MustardUINotDisable" in driver.data_path:
                             driver.mute = self.check_driver(arm, driver.data_path)
-                        if "MustardUINotDisable" in driver.data_path:
+                        else:
                             driver.mute = False
         
         for driver in rig_settings.model_armature_object.animation_data.drivers:
@@ -4211,7 +4236,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         return{'FINISHED'}
 
 class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
-    """Enable all drivers. This can be used only if the armature is selected"""
+    """Enable all drivers"""
     bl_idname = "mustardui.dazmorphs_enabledrivers"
     bl_label = "Enable Drivers"
     bl_options = {'REGISTER', 'UNDO'}
@@ -4223,16 +4248,16 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         
         objects = [rig_settings.model_body]
-        
         aobj = context.active_object
-        
         context.view_layer.objects.active = rig_settings.model_armature_object
         
         warnings = 0
         
+        mutepJCM = rig_settings.diffeomorphic_enable_pJCM
+        
         try:
             if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True, rig_settings.diffeomorphic_enable_shapekeys)
+                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True, rig_settings.diffeomorphic_enable_shapekeys, mutepJCM)
                 if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
                     rig_settings.model_armature_object.DazDriversDisabled = False
             else:
@@ -4251,7 +4276,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
             if obj.data.shape_keys != None:
                 if obj.data.shape_keys.animation_data != None:
                     for driver in obj.data.shape_keys.animation_data.drivers:
-                        if not "pJCM" in driver.data_path and not "MustardUINotDisable" in driver.data_path:
+                        if (not "pJCM" in driver.data_path or mutepJCM) and not "MustardUINotDisable" in driver.data_path:
                             driver.mute = False
                             
         
@@ -6431,6 +6456,12 @@ class MustardUI_CleanModel(bpy.types.Operator):
     remove_unselected_outfits: bpy.props.BoolProperty(default=False,
                     name = "Delete Unselected Outfits",
                     description = "Remove all the outfits that are not selected in the UI (Outfits list)")
+    remove_unselected_extras: bpy.props.BoolProperty(default=False,
+                    name = "Delete Unselected Extras",
+                    description = "Remove all the Extras objects that are not selected in the UI")
+    remove_unselected_hair: bpy.props.BoolProperty(default=False,
+                    name = "Delete Unselected Hair",
+                    description = "Remove all the Hair that are not currently in use")
     
     remove_nulldrivers: bpy.props.BoolProperty(default=False,
                     name = "Remove Null Drivers",
@@ -6525,7 +6556,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config = 0)
         rig_settings = arm.MustardUI_RigSettings
         
-        options = self.remove_nulldrivers or self.remove_morphs or self.remove_unselected_outfits or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
+        options = self.remove_nulldrivers or self.remove_morphs or self.remove_unselected_outfits or self.remove_unselected_extras or self.remove_unselected_hair or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
         
         if not options:
             return {'FINISHED'}
@@ -6538,6 +6569,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
         morphs_drivers_removed = 0
         morphs_shapekeys_removed = 0
         outfits_deleted = 0
+        extras_deleted = 0
+        hair_deleted = 0
         outfits_cp_deleted = 0
         body_cp_removed = 0
         outfit_cp_removed = 0
@@ -6620,9 +6653,10 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 for obj in collection.collection.objects:
                     if obj.type == "MESH":
                         objects.append(obj)
-            for obj in rig_settings.extras_collection.objects:
-                if obj.type == "MESH":
-                    objects.append(obj)
+            if rig_settings.extras_collection != None:
+                for obj in rig_settings.extras_collection.objects:
+                    if obj.type == "MESH":
+                        objects.append(obj)
             for obj in bpy.data.objects:
                 if obj.find_armature() == rig_settings.model_armature_object and obj.type == "MESH":
                     objects.append(obj)
@@ -6719,7 +6753,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     elif obj_type == "ARMATURE":
                         bpy.data.armatures.remove(data)
                 
-                bpy.ops.mustardui.delete_outfit(col =  col.name)
+                bpy.ops.mustardui.delete_outfit(col = col.name)
                 bpy.data.collections.remove(col)
                 outfits_deleted = outfits_deleted + 1
             
@@ -6727,7 +6761,47 @@ class MustardUI_CleanModel(bpy.types.Operator):
             
             if settings.debug:
                 print("  Outfits deleted: " + str(outfits_deleted))
-                print("  Outfit custom properties deleted: " + str(outfits_cp_deleted))
+        
+        # Remove unselected extras
+        if rig_settings.extras_collection != None and self.remove_unselected_extras:
+            
+            for obj in [x for x in rig_settings.extras_collection.objects if x.hide_viewport]:
+                data = obj.data
+                obj_type = obj.type
+                bpy.data.objects.remove(obj)
+                if obj_type == "MESH":
+                    bpy.data.meshes.remove(data)
+                elif obj_type == "ARMATURE":
+                    bpy.data.armatures.remove(data)
+                extras_deleted = extras_deleted + 1
+                    
+            if len(rig_settings.extras_collection.objects) < 1:
+                bpy.data.collections.remove(rig_settings.extras_collection)
+            
+            extras_deleted = extras_deleted + 1
+            
+            if settings.debug:
+                print("  Extras deleted: " + str(extras_deleted))
+        
+        # Remove unselected hair
+        if rig_settings.hair_collection != None and self.remove_unselected_hair:
+            
+            current_hair = rig_settings.hair_list
+            
+            for obj in [x for x in rig_settings.hair_collection.objects if not current_hair in x.name]:
+                data = obj.data
+                obj_type = obj.type
+                bpy.data.objects.remove(obj)
+                if obj_type == "MESH":
+                    bpy.data.meshes.remove(data)
+                elif obj_type == "ARMATURE":
+                    bpy.data.armatures.remove(data)
+                hair_deleted = hair_deleted + 1
+            
+            rig_settings.hair_list = current_hair
+            
+            if settings.debug:
+                print("  Hair deleted: " + str(hair_deleted))
         
         # Remove custom properties
         if self.remove_body_cp:
@@ -6741,7 +6815,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed) )
         
         # Final messages
-        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + outfits_deleted + outfits_cp_deleted + body_cp_removed + outfit_cp_removed + hair_cp_removed
+        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + outfits_deleted + extras_deleted + hair_deleted + outfits_cp_deleted + body_cp_removed + outfit_cp_removed + hair_cp_removed
         
         if operations > 0:
             self.report({'INFO'}, "MustardUI - Model cleaned.")
@@ -6778,10 +6852,10 @@ class MustardUI_CleanModel(bpy.types.Operator):
         box = layout.box()
         box.label(text="General", icon="MODIFIER")
         box.prop(self, "remove_unselected_outfits")
-        if self.remove_unselected_outfits:
-            col = box.column(align=True)
-            col.label(text="Outfits objects will be deleted!", icon="ERROR")
-            col.label(text="Save and restart Blender (repeat two times) to remove unused data.", icon="BLANK1")
+        if rig_settings.extras_collection != None:
+            box.prop(self, "remove_unselected_extras")
+        if rig_settings.hair_collection != None:
+            box.prop(self, "remove_unselected_hair")
         box.prop(self, "remove_nulldrivers")
         
         box = layout.box()
@@ -7742,12 +7816,14 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         
         row = layout.row()    
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
-        row = row.row(align=True)
-        row.prop(rig_settings, 'diffeomorphic_filter_null', icon = "FILTER", text = "")
-        row.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
-        row.operator('mustardui.dazmorphs_clearpose', icon = "OUTLINER_OB_ARMATURE", text = "")
+        row2 = row.row(align=True)
+        row2.prop(rig_settings, 'diffeomorphic_filter_null', icon = "FILTER", text = "")
+        row2.operator('mustardui.dazmorphs_defaultvalues', icon = "LOOP_BACK", text = "")
+        row2.operator('mustardui.dazmorphs_clearpose', icon = "OUTLINER_OB_ARMATURE", text = "")
         if settings.advanced:
-            row.prop(rig_settings, 'diffeomorphic_enable_shapekeys', icon = "SHAPEKEY_DATA", text = "")
+            row2 = row.row(align=True)
+            row2.prop(rig_settings, 'diffeomorphic_enable_shapekeys', icon = "SHAPEKEY_DATA", text = "")
+            row2.prop(rig_settings, 'diffeomorphic_enable_pJCM', icon = "SHADERFX", text = "")
         
         # Emotions Units
         if rig_settings.diffeomorphic_emotions_units:
@@ -8314,6 +8390,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "simplify_outfit_global")
         col.prop(rig_settings, "simplify_extras")
         col.prop(rig_settings, "simplify_hair")
+        col.prop(rig_settings, "simplify_armature_child")
         if rig_settings.diffeomorphic_support:
             col.prop(rig_settings, "simplify_diffeomorphic")
         
