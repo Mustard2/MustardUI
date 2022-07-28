@@ -832,7 +832,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     diffeomorphic_enable: bpy.props.BoolProperty(default = True,
                         name = "Enable Morphs",
-                        description = "Select the model armature to enable this button.\nEnabling morphs might affect performance. You can disable them to increase performance",
+                        description = "Enabling morphs might affect performance. You can disable them to increase performance",
                         update = diffeomorphic_enable_update)
     
     diffeomorphic_enable_shapekeys: bpy.props.BoolProperty(default = True,
