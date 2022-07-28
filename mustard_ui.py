@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "014"
+mustardui_buildnum = "015"
 
 import bpy
 import addon_utils
@@ -735,7 +735,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Show additional properties for the selected object")
     
     outfit_switch_armature_disable: bpy.props.BoolProperty(default = True,
-                        name = "",
+                        name = "Disable Armature Modifiers on Switch",
                         description = "Disable Armature modifiers of Outfits that are not visible to increase performance")
     
     # Extras
@@ -799,7 +799,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Order the custom properties by name instead of by appareance in the list")
     
     hair_switch_armature_disable: bpy.props.BoolProperty(default = True,
-                        name = "",
+                        name = "Disable Armature Modifiers on Switch",
                         description = "Disable Armature modifiers of Hair that are not visible to increase performance")
     
     # Particle system enable
@@ -8368,7 +8368,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         layout = self.layout
         
         box = layout.box()
-        box.label(text="General", icon="OUTLINER_OB_ARMATURE")
+        box.label(text="General", icon="OPTIONS")
         col = box.column(align=True)
         row = col.row()
         row.prop(rig_settings, "simplify_blender")
