@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "017"
+mustardui_buildnum = "018"
 
 import bpy
 import addon_utils
@@ -948,7 +948,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             self.outfits_list = "Nude"
         if self.extras_collection != None and self.simplify_extras and self.simplify_enable:
             for obj in self.extras_collection.objects:
-                if obj.hide_viewport != self.simplify_enable:
+                if obj.MustardUI_outfit_visibility != self.simplify_enable:
                     bpy.ops.mustardui.object_visibility(obj=obj.name)
         
         # Hair
@@ -961,8 +961,22 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         # Armature Children
         if self.simplify_armature_child:
-            for child in [x for x in self.model_armature_object.children if x != self.model_body]:
-                child.hide_viewport                  = self.simplify_enable
+            
+            child_all = [x for x in self.model_armature_object.children if x != self.model_body]
+            child = child_all
+            
+            if self.extras_collection != None:
+                for obj in [x for x in self.extras_collection.objects if x in child_all]:
+                    child.remove(obj)
+            if self.hair_collection != None:
+                for obj in [x for x in self.hair_collection.objects if x in child_all]:
+                    child.remove(obj)
+            for col in self.outfits_collections:
+                for obj in [x for x in col.collection.objects if x in child_all]:
+                    child.remove(obj)
+            
+            for c in child:
+                c.hide_viewport                      = self.simplify_enable
         
         # Diffeomorphic morphs
         if self.diffeomorphic_support and self.simplify_diffeomorphic:
