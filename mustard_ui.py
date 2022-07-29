@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "015"
+mustardui_buildnum = "017"
 
 import bpy
 import addon_utils
@@ -4848,6 +4848,11 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         bpy.data.objects[self.obj].hide_viewport = not bpy.data.objects[self.obj].hide_viewport
         bpy.data.objects[self.obj].hide_render = bpy.data.objects[self.obj].hide_viewport
         bpy.data.objects[self.obj].MustardUI_outfit_visibility = bpy.data.objects[self.obj].hide_viewport
+        
+        # Enable armature modifier
+        for modifier in bpy.data.objects[self.obj].modifiers:
+            if modifier.type == "ARMATURE":
+                modifier.show_viewport = not bpy.data.objects[self.obj].MustardUI_outfit_visibility
         
         # Update values of custom properties
         outfit_cp = [x for x in outfit_cp if bpy.data.objects[self.obj] == x.outfit_piece and (x.outfit_enable_on_switch or x.outfit_disable_on_switch)]
