@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "013 Beta"
+mustardui_buildnum = "015 Beta"
 
 import bpy
 import addon_utils
@@ -6821,6 +6821,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
     remove_morphs_facs: bpy.props.BoolProperty(default=False,
                     name = "Remove FACS",
                     description = "Remove FACS")
+    remove_diffeomorphic_data: bpy.props.BoolProperty(default=False,
+                    name = "Remove Diffeomorphic Data",
+                    description = "Remove Diffeomorphic data.\nAfter this operation, Morph settings in the DAZ Importer (Diffeomorphic) tool might not work")
     
     def isDazFcurve(self, path):
         for string in [":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
@@ -6885,6 +6888,14 @@ class MustardUI_CleanModel(bpy.types.Operator):
             
         return len(to_remove)
     
+    def remove_diffeomorphic_data_result(self, obj, attr):
+        
+        try:
+            del obj[attr]
+            return 1
+        except:
+            return 0
+    
     @classmethod
     def poll(cls, context):
         
@@ -6898,7 +6909,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config = 0)
         rig_settings = arm.MustardUI_RigSettings
         
-        options = self.remove_nulldrivers or self.remove_morphs or self.remove_unselected_outfits or self.remove_unselected_extras or self.remove_unselected_hair or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
+        options = self.remove_nulldrivers or self.remove_morphs or self.remove_diffeomorphic_data or self.remove_unselected_outfits or self.remove_unselected_extras or self.remove_unselected_hair or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
         
         if not options:
             return {'FINISHED'}
@@ -6910,6 +6921,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         morphs_props_removed = 0
         morphs_drivers_removed = 0
         morphs_shapekeys_removed = 0
+        diffeomorphic_data_deleted = 0
         outfits_deleted = 0
         extras_deleted = 0
         hair_deleted = 0
@@ -7079,6 +7091,22 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 print("  Morph drivers removed: " + str(morphs_drivers_removed))
                 print("  Morph shape keys removed: " + str(morphs_shapekeys_removed))
         
+        if self.remove_diffeomorphic_data:
+            
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body, "DazMorphPrefixes")
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body, "DazMorphUrls")
+            rig_settings.model_body.update_tag()
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazMorphFiles")
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazBodyPart")
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazDhdmFiles")
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazMergedGeografts")
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazOrigVerts")
+            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazMaterialSets")
+            rig_settings.model_body.data.update_tag()
+            
+            if settings.debug:
+                print("  Diffeomorphic Data Blocks removed: " + str(diffeomorphic_data_deleted))
+        
         # Remove unselected outfits
         if self.remove_unselected_outfits:
             
@@ -7157,7 +7185,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed) )
         
         # Final messages
-        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + outfits_deleted + extras_deleted + hair_deleted + outfits_cp_deleted + body_cp_removed + outfit_cp_removed + hair_cp_removed
+        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + diffeomorphic_data_deleted + outfits_deleted + extras_deleted + hair_deleted + outfits_cp_deleted + body_cp_removed + outfit_cp_removed + hair_cp_removed
         
         if operations > 0:
             self.report({'INFO'}, "MustardUI - Model cleaned.")
@@ -7213,7 +7241,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 box.label(text="Diffeomorphic is needed to clean morphs!", icon="ERROR")
         
             box = layout.box()
-            box.label(text="Diffeomorphic Morphs", icon="DOCUMENTS")
+            box.label(text="Diffeomorphic", icon="DOCUMENTS")
             box.enabled = hasattr(rig_settings.model_armature_object, "DazMorphCats")
             box.prop(self, "remove_morphs")
             if self.remove_morphs:
@@ -7230,6 +7258,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
             row = box.row()
             row.enabled = self.remove_morphs
             row.prop(self, "remove_morphs_shapekeys")
+            if rig_settings.diffeomorphic_model_version == "1.6":
+                row = box.row()
+                row.prop(self, "remove_diffeomorphic_data")
 
 # ------------------------------------------------------------------------
 #    Debug 
