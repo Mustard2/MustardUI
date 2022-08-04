@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "012 Beta"
+mustardui_buildnum = "013 Beta"
 
 import bpy
 import addon_utils
@@ -5025,10 +5025,8 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config = 0)
         
         if arm != None:
-            #rig_settings = arm.MustardUI_RigSettings
-            return True
-        else:
-            return False
+            return res
+        return False
 
     def execute(self, context):
         
@@ -5036,9 +5034,6 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config = 0)
         
         rig_settings = arm.MustardUI_RigSettings
-        tools_settings = arm.MustardUI_ToolsSettings
-        lattice_settings = arm.MustardUI_LatticeSettings
-        armature_settings = arm.MustardUI_ArmatureSettings
         
         arm_obj = rig_settings.model_armature_object
             
@@ -5064,13 +5059,14 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, settings)
             
             # Clear all settings
-            del arm['MustardUI_RigSettings']
             del arm['MustardUI_ToolsSettings']
             del arm['MustardUI_LatticeSettings']
+            del arm['MustardUI_PhysicsSettings']
             del arm['MustardUI_ArmatureSettings']
             del arm['MustardUI_CustomProperties']
             del arm['MustardUI_CustomPropertiesHair']
             del arm['MustardUI_CustomPropertiesOutfit']
+            del arm['MustardUI_RigSettings']
         
         # Remove Armature and its children objects
         if self.delete_objects:
@@ -5143,7 +5139,9 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
         
         res, obj = mustardui_active_object(context, config = 0)
         
-        return res
+        if obj != None:
+            return res
+        return False
     
     def execute(self, context):
         
