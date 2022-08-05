@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "017 Beta"
+mustardui_buildnum = "018 Beta"
 
 import bpy
 import addon_utils
@@ -7098,16 +7098,28 @@ class MustardUI_CleanModel(bpy.types.Operator):
         
         if self.remove_diffeomorphic_data:
             
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body, "DazMorphPrefixes")
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body, "DazMorphUrls")
-            rig_settings.model_body.update_tag()
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazMorphFiles")
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazBodyPart")
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazDhdmFiles")
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazMergedGeografts")
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazOrigVerts")
-            diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(rig_settings.model_body.data, "DazMaterialSets")
-            rig_settings.model_body.data.update_tag()
+            objects = [rig_settings.model_body, rig_settings.model_body.data]
+            
+            dd_colls = [x.collection for x in rig_settings.outfits_collections if x.collection != None]
+            if rig_settings.extras_collection != None:
+                dd_colls.append(rig_settings.extras_collection)
+            if rig_settings.hair_collection != None:
+                dd_colls.append(rig_settings.hair_collection)
+            
+            for col in dd_colls:
+                for obj in [x for x in col.objects if x != None]:
+                    objects.append(obj)
+                    if obj.data != None:
+                        objects.append(obj.data)
+            
+            for obj in objects:
+                items_to_remove = []
+                for k,v in obj.items():
+                    if "Daz" in k:
+                        items_to_remove.append(k)
+                for k in items_to_remove:
+                    diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(obj, k)
+                obj.update_tag()
             
             if settings.debug:
                 print("  Diffeomorphic Data Blocks removed: " + str(diffeomorphic_data_deleted))
