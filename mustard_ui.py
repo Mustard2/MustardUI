@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "015 Beta"
+mustardui_buildnum = "016 Beta"
 
 import bpy
 import addon_utils
@@ -8803,12 +8803,14 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         
-        res, obj = mustardui_active_object(context, config = 0)
+        res, arm = mustardui_active_object(context, config = 0)
         
-        if obj != None:
-            
-            rig_settings = obj.MustardUI_RigSettings
-            return res and rig_settings.simplify_main_enable
+        if arm != None:
+            rig_settings = arm.MustardUI_RigSettings
+            if hasattr(rig_settings, "simplify_main_enable"):
+                return res and rig_settings.simplify_main_enable
+            else:
+                return False
         
         return res
     
