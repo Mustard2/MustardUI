@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "016 Beta"
+mustardui_buildnum = "017 Beta"
 
 import bpy
 import addon_utils
@@ -3275,7 +3275,12 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 del obj[prop_name]
             
             if custom_prop.is_bool or custom_prop.force_type == "Bool":
-                rna_idprop_ui_create(obj, prop_name, default=int(eval(mustardui_cp_path(custom_prop.rna,custom_prop.path))),
+                try:
+                    default_bool = int(eval(mustardui_cp_path(custom_prop.rna,custom_prop.path)))
+                except:
+                    print("MustardUI - Can not find the property " + mustardui_cp_path(custom_prop.rna,custom_prop.path))
+                    default_bool = True
+                rna_idprop_ui_create(obj, prop_name, default=default_bool,
                                     min=0,
                                     max=1,
                                     description=custom_prop.description,
