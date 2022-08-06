@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "019 Beta"
+mustardui_buildnum = "020"
 
 import bpy
 import addon_utils
