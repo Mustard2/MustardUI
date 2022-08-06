@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "020"
+mustardui_buildnum = "021"
 
 import bpy
 import addon_utils
@@ -7278,6 +7278,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if rig_settings.diffeomorphic_model_version == "1.6":
                 row = box.row()
                 row.prop(self, "remove_diffeomorphic_data")
+                if self.remove_diffeomorphic_data:
+                    col = box.column(align=True)
+                    col.label(text="After cleaning, Diffeomorphic tools might now work for this model!", icon="ERROR")
+                    col.label(text="Use this option when you are not planning to use Diffeomorphic for this model anymore.", icon="BLANK1")
+                    col.label(text="On the contrary, Morphs and face controls are NOT removed.", icon="BLANK1")
 
 # ------------------------------------------------------------------------
 #    Debug 
