@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "018 Beta"
+mustardui_buildnum = "019 Beta"
 
 import bpy
 import addon_utils
@@ -653,30 +653,30 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for collection in collections:
             for obj in collection.objects:
                 
-                if obj.type == "MESH":
+                if obj.type == "MESH" and self.outfits_enable_global_normalautosmooth:
                     obj.data.use_auto_smooth = self.outfits_global_normalautosmooth
                 
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF":
+                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
                         modifier.show_viewport = self.outfits_global_subsurface
-                    elif modifier.type == "CORRECTIVE_SMOOTH":
+                    elif modifier.type == "CORRECTIVE_SMOOTH" and self.outfits_enable_global_smoothcorrection:
                         modifier.show_viewport = self.outfits_global_smoothcorrection
                         modifier.show_render = self.outfits_global_smoothcorrection
-                    elif modifier.type == "MASK":
+                    elif modifier.type == "MASK" and self.outfits_enable_global_mask:
                         modifier.show_viewport = self.outfits_global_mask
                         modifier.show_render = self.outfits_global_mask
-                    elif modifier.type == "SHRINKWRAP":
+                    elif modifier.type == "SHRINKWRAP" and self.outfits_enable_global_shrinkwrap:
                         modifier.show_viewport = self.outfits_global_shrinkwrap
                         modifier.show_render = self.outfits_global_shrinkwrap
-                    elif modifier.type == "SOLIDIFY":
+                    elif modifier.type == "SOLIDIFY" and self.outfits_enable_global_solidify:
                         modifier.show_viewport = self.outfits_global_solidify
                         modifier.show_render = self.outfits_global_solidify
-                    elif modifier.type == "TRIANGULATE":
+                    elif modifier.type == "TRIANGULATE" and self.outfits_enable_global_triangulate:
                         modifier.show_viewport = self.outfits_global_triangulate
                         modifier.show_render = self.outfits_global_triangulate
         
                 for modifier in self.model_body.modifiers:
-                    if modifier.type == "MASK" and obj.name in modifier.name:
+                    if modifier.type == "MASK" and obj.name in modifier.name and self.outfits_enable_global_mask:
                         modifier.show_viewport = ( (collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
                         modifier.show_render = ( (collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
             
@@ -841,15 +841,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         if self.hair_collection != None:
             for obj in self.hair_collection.objects:
-                if obj.type == "MESH":
+                if obj.type == "MESH" and self.hair_enable_global_normalautosmooth:
                     obj.data.use_auto_smooth = self.hair_global_normalautosmooth
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF":
+                    if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
                         modifier.show_viewport = self.hair_global_subsurface
-                    elif modifier.type == "CORRECTIVE_SMOOTH":
+                    elif modifier.type == "CORRECTIVE_SMOOTH" and self.hair_enable_global_smoothcorrection:
                         modifier.show_viewport = self.hair_global_smoothcorrection
                         modifier.show_render = self.hair_global_smoothcorrection
-                    elif modifier.type == "PARTICLE_SYSTEM":
+                    elif modifier.type == "PARTICLE_SYSTEM" and self.hair_enable_global_particles:
                         modifier.show_viewport = self.hair_global_particles
                         modifier.show_render = self.hair_global_particles
         
