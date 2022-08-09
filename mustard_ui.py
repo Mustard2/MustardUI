@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "021"
+mustardui_buildnum = "022"
 
 import bpy
 import addon_utils
@@ -4013,9 +4013,10 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
         
         # Remove the collection from the Outfits Collections
         for i, el in enumerate(rig_settings.outfits_collections):
-            if el.collection.name == self.col:
-                rig_settings.outfits_collections.remove(i)
-                break
+            if el.collection != None:
+                if el.collection.name == self.col:
+                    rig_settings.outfits_collections.remove(i)
+                    break
         
         if rig_settings.outfit_nude:
             rig_settings.outfits_list = "Nude"
@@ -5023,6 +5024,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         
         return
     
+    def remove_property(self, obj, name):
+        
+        try:
+            del obj[name]
+        except:
+            pass
+    
     @classmethod
     def poll(cls, context):
         
@@ -5043,7 +5051,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         arm_obj = rig_settings.model_armature_object
             
         # Remove or delete outfits
-        for col in [x.collection for x in rig_settings.outfits_collections]:
+        for col in [x.collection for x in rig_settings.outfits_collections if x.collection != None]:
             if self.delete_objects:
                 bpy.ops.mustardui.delete_outfit(col = col.name)
             elif self.delete_settings:
@@ -5064,14 +5072,15 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, settings)
             
             # Clear all settings
-            del arm['MustardUI_ToolsSettings']
-            del arm['MustardUI_LatticeSettings']
-            del arm['MustardUI_PhysicsSettings']
-            del arm['MustardUI_ArmatureSettings']
-            del arm['MustardUI_CustomProperties']
-            del arm['MustardUI_CustomPropertiesHair']
-            del arm['MustardUI_CustomPropertiesOutfit']
-            del arm['MustardUI_RigSettings']
+            self.remove_property(arm, 'MustardUI_ToolsSettings')
+            self.remove_property(arm, 'MustardUI_ToolsSettings')
+            self.remove_property(arm, 'MustardUI_LatticeSettings')
+            self.remove_property(arm, 'MustardUI_PhysicsSettings')
+            self.remove_property(arm, 'MustardUI_ArmatureSettings')
+            self.remove_property(arm, 'MustardUI_CustomProperties')
+            self.remove_property(arm, 'MustardUI_CustomPropertiesHair')
+            self.remove_property(arm, 'MustardUI_CustomPropertiesOutfit')
+            self.remove_property(arm, 'MustardUI_RigSettings')
         
         # Remove Armature and its children objects
         if self.delete_objects:
