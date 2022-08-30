@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "022"
+mustardui_buildnum = "023"
 
 import bpy
 import addon_utils
@@ -8592,11 +8592,11 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             rig_settings = arm.MustardUI_RigSettings
             
             # Check if one of these should be shown in the UI
-            hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1 if rig_settings.hair_collection != None else False
-            
+            hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>0 if rig_settings.hair_collection != None else False
             particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"])>0 and rig_settings.particle_systems_enable if rig_settings.model_body != None else False
-        
-            return res and (hair_avail or particle_avail) if arm != None else False
+            go_avail = rig_settings.hair_global_normalautosmooth or rig_settings.hair_global_smoothcorrection or rig_settings.hair_global_particles or rig_settings.hair_global_subsurface
+            
+            return res and (hair_avail or particle_avail or go_avail) if arm != None else False
         
         else:
             
