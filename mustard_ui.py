@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "023"
+mustardui_buildnum = "024"
 
 import bpy
 import addon_utils
@@ -4756,6 +4756,26 @@ class MustardUI_Configuration(bpy.types.Operator):
                 warnings = warnings + 1
                 if settings.debug:
                     print('MustardUI - Configuration Warning - Lips shrinkwrap requested for a rig which is not ARP or MHX. The tool has been disabled')                  
+            
+            # Check for errors in the list selection
+            if len(rig_settings.outfits_list_make(context)) > 0 and rig_settings.outfits_list == "":
+                try:
+                    rig_settings.hair_list = rig_settings.outfits_list_make(context)[0][0]
+                    warnings = warnings + 1
+                    print('MustardUI - Configuration Warning - Fixed outfit_list index')
+                except:
+                    warnings = warnings + 1
+                    if settings.debug:
+                        print('MustardUI - Configuration Warning - The outfits_list property index seems to be corrupted. Try to remove the UI and re-add it')
+            
+            if rig_settings.hair_collection != None and rig_settings.hair_list == "":
+                try:
+                    rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
+                    print('MustardUI - Configuration Warning - Fixed hair_list index')
+                except:
+                    warnings = warnings + 1
+                    if settings.debug:
+                        print('MustardUI - Configuration Warning - The hair_list property index seems to be corrupted. Try to remove the UI and re-add it')
             
             if warnings > 0:
                 if settings.debug:
