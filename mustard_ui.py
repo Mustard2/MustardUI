@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "001"
+mustardui_buildnum = "002"
 
 import bpy
 import addon_utils
@@ -3417,9 +3417,13 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
     def link_property(self, obj, rna, path, parent_prop, custom_props):
         
         for check_prop in custom_props:
+            to_remove = []
             for i in range(0,len(check_prop.linked_properties)):
                 if check_prop.linked_properties[i].rna == rna and check_prop.linked_properties[i].path == path:
-                    check_prop.linked_properties.remove(i)
+                    to_remove.append(i)
+            to_remove.reverse()
+            for i in to_remove:
+                check_prop.linked_properties.remove(i)
         
         # Add driver
         try:
