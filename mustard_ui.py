@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 25, 0),
+    "version": (0, 25, 1),
     "blender": (3, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "024"
+mustardui_buildnum = "002"
 
 import bpy
 import addon_utils
@@ -740,6 +740,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "",
                         description = "Show additional properties for the selected object")
     
+    outfits_update_tag_on_switch: bpy.props.BoolProperty(default = True,
+                        name = "Update Drivers on Switch",
+                        description = "Update the drivers when switching Outfit parts.\nDisable this option if Blender hangs or is slow when using the Outfit piece visibility buttons in the UI")
+    
     outfit_switch_armature_disable: bpy.props.BoolProperty(default = True,
                         name = "Disable Armature Modifiers on Switch",
                         description = "Disable Armature modifiers of Outfits that are not visible to increase performance")
@@ -791,18 +795,22 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             
         return sorted(items)
     
-    # Function to update global collection properties
+    # Function to update the requested hair
     def hair_list_update(self, context):
         
-        for object in self.hair_collection.objects:
-            object.hide_viewport = not self.hair_list in object.name
-            object.hide_render = not self.hair_list in object.name
-            for mod in [x for x in object.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE"]]:
+        for obj in self.hair_collection.objects:
+            obj.hide_viewport = not self.hair_list in obj.name
+            obj.hide_render = not self.hair_list in obj.name
+            for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE"]]:
                 if mod.type == "PARTICLE_SYSTEM":
-                    mod.show_viewport = self.hair_list in object.name
-                    mod.show_render = self.hair_list in object.name
+                    mod.show_viewport = self.hair_list in obj.name
+                    mod.show_render = self.hair_list in obj.name
                 else:
-                    mod.show_viewport = self.hair_list in object.name if self.hair_switch_armature_disable else True
+                    mod.show_viewport = self.hair_list in obj.name if self.hair_switch_armature_disable else True
+        
+        if self.hair_update_tag_on_switch:
+            for obj in self.hair_collection.objects:
+                obj.update_tag()
         
         return
     
@@ -871,6 +879,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_global_normalautosmooth: bpy.props.BoolProperty(default = True,
                         name = "Normals Auto Smooth",
                         update = hair_global_options_update)
+    
+    hair_update_tag_on_switch: bpy.props.BoolProperty(default = True,
+                        name = "Update Drivers on Switch",
+                        description = "Update the drivers when switching Outfit parts.\nDisable this option if Blender hangs or is slow when using the Outfit piece visibility buttons in the UI")
     
     # Particle system enable
     particle_systems_enable: bpy.props.BoolProperty(default = True,
@@ -3405,9 +3417,13 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
     def link_property(self, obj, rna, path, parent_prop, custom_props):
         
         for check_prop in custom_props:
+            to_remove = []
             for i in range(0,len(check_prop.linked_properties)):
                 if check_prop.linked_properties[i].rna == rna and check_prop.linked_properties[i].path == path:
-                    check_prop.linked_properties.remove(i)
+                    to_remove.append(i)
+            to_remove.reverse()
+            for i in to_remove:
+                check_prop.linked_properties.remove(i)
         
         # Add driver
         try:
@@ -5262,6 +5278,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                 for object in [x for x in armature_settings.layers[i].outfit_switcher_collection.objects]:
                     if object == armature_settings.layers[i].outfit_switcher_object:
                         armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+        
+        if rig_settings.outfits_update_tag_on_switch:
+            for obju in bpy.data.objects:
+                obju.update_tag()
         
         return {'FINISHED'}
 
@@ -7655,6 +7675,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             col.prop(rig_settings,"outfit_nude")
             col.prop(rig_settings,"outfit_additional_options")
+            if settings.advanced:
+                col.separator()
+                col.prop(rig_settings,"outfit_switch_armature_disable")
+                col.prop(rig_settings,"outfits_update_tag_on_switch")
             if len([x for x in rig_settings.outfits_collections if x.collection != None])>0:
                 box = layout.box()
                 # Outfit list
@@ -7732,6 +7756,13 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             if rig_settings.hair_collection != None:
                 if len(rig_settings.hair_collection.objects) > 0:
                     
+                    if settings.advanced:
+                        box = layout.box()
+                        box.label(text="General settings", icon="MODIFIER")
+                        col = box.column(align=True)
+                        col.prop(rig_settings,"hair_switch_armature_disable")
+                        col.prop(rig_settings,"hair_update_tag_on_switch")
+                    
                     # Global properties
                     box = layout.box()
                     box.label(text="Global properties", icon="MODIFIER")
@@ -7796,7 +7827,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box.label(text="General Settings",icon="MODIFIER")
                 box.prop(armature_settings, 'enable_automatic_hair')
                 
-                if rig_settings.diffeomorphic_model_version == "1.5":
+                if rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_model_version == "1.5":
                     col = box.column(align=True)
                     row = col.row()
                     row.prop(armature_settings, 'enable_ik_fk')
@@ -7844,18 +7875,20 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                         row = box2.row()
                         row.enabled = not armature_settings.layers[i].outfit_switcher_enable
                         row.prop(armature_settings.layers[i],'name')
-                        if not armature_settings.layers[i].outfit_switcher_enable:
-                            box2.prop(armature_settings.layers[i],'advanced')
+                        col = box2.column(align=True)
+                        row = col.row()
+                        row.enabled = not armature_settings.layers[i].outfit_switcher_enable
+                        row.prop(armature_settings.layers[i],'advanced')
                         
-                        box2.prop(armature_settings.layers[i],'outfit_switcher_enable')
+                        col.prop(armature_settings.layers[i],'outfit_switcher_enable')
                         if armature_settings.layers[i].outfit_switcher_enable:
-                            box2.prop(armature_settings.layers[i],'outfit_switcher_collection')
+                            col.prop(armature_settings.layers[i],'outfit_switcher_collection')
                             if armature_settings.layers[i].outfit_switcher_collection != None:
-                                box2.prop(armature_settings.layers[i],'outfit_switcher_object')
+                                col.prop(armature_settings.layers[i],'outfit_switcher_object')
                         
                         # Mirror options for debug
                         if settings.debug:
-                            col = box2.column()
+                            col = box2.column(align=True)
                             col.enabled = False
                             col.prop(armature_settings.layers[i],'mirror')
                             if armature_settings.layers[i].mirror:
@@ -8082,10 +8115,12 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         
         # Configuration button
         layout.separator()
-        layout.prop(settings,"debug")
+        col = layout.column(align=True)
+        col.prop(settings,"debug")
+        col.prop(settings,"advanced")
         if not obj.MustardUI_created:
-            layout.prop(settings,"viewport_model_selection_after_configuration")
-            layout.prop(settings,"register_UI_after_configuration")
+            col.prop(settings,"viewport_model_selection_after_configuration")
+            col.prop(settings,"register_UI_after_configuration")
         layout.operator('mustardui.configuration', text="End the configuration")
         
 
@@ -8462,10 +8497,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         if len([x for x in rig_settings.outfits_collections if x.collection != None])>0:
             
             box = layout.box()
-            row = box.row()
-            row.label(text="Outfits list", icon="MOD_CLOTH")
-            if settings.advanced:
-                row.prop(rig_settings,"outfit_switch_armature_disable", text="", icon = "ARMATURE_DATA")
+            box.label(text="Outfits list", icon="MOD_CLOTH")
             row = box.row(align=True)
             row.prop(rig_settings,"outfits_list", text="")
             
@@ -8614,13 +8646,10 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             # Check if one of these should be shown in the UI
             hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>0 if rig_settings.hair_collection != None else False
             particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"])>0 and rig_settings.particle_systems_enable if rig_settings.model_body != None else False
-            go_avail = rig_settings.hair_global_normalautosmooth or rig_settings.hair_global_smoothcorrection or rig_settings.hair_global_particles or rig_settings.hair_global_subsurface
             
-            return res and (hair_avail or particle_avail or go_avail) if arm != None else False
+            return res if (hair_avail or particle_avail) else False
         
-        else:
-            
-            return res
+        return res
 
     def draw(self, context):
         
@@ -8639,13 +8668,10 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             if len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>1:
                 
                 box = layout.box()
-                row = box.row()
-                row2 = row.row(align=True)
-                row2.label(text="Hair list", icon="STRANDS")
-                row2.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                row2.prop(rig_settings.hair_collection, "hide_render", text="")
-                if settings.advanced:
-                    row.prop(rig_settings, "hair_switch_armature_disable", text="", icon="ARMATURE_DATA")
+                row = box.row(align=True)
+                row.label(text="Hair list", icon="STRANDS")
+                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                row.prop(rig_settings.hair_collection, "hide_render", text="")
                 
                 row = box.row(align=True)
                 row.prop(rig_settings,"hair_list", text="")
