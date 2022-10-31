@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "002"
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -957,7 +957,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     diffeomorphic_facs_emotions: bpy.props.BoolProperty(default = False,
                         name = "FACS Emotions Morphs",
-                        description = "Search for Diffeomorphic FACS emotions")
+                        description = "Search for Diffeomorphic FACS emotions.\nThese morphs will be shown as Advanced Emotions in the UI")
     diffeomorphic_facs_emotions_collapse: bpy.props.BoolProperty(default = True)
     
     diffeomorphic_emotions_units: bpy.props.BoolProperty(default = False,
@@ -967,7 +967,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default = False,
                         name = "FACS Emotions Units Morphs",
-                        description = "Search for Diffeomorphic FACS emotions units")
+                        description = "Search for Diffeomorphic FACS emotions units.\nThese morphs will be shown as Advanced Emotion Units in the UI")
     diffeomorphic_facs_emotions_units_collapse: bpy.props.BoolProperty(default = True)
     
     diffeomorphic_body_morphs: bpy.props.BoolProperty(default = False,
@@ -6874,7 +6874,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     description = "Remove JCMs")
     remove_morphs_facs: bpy.props.BoolProperty(default=False,
                     name = "Remove FACS",
-                    description = "Remove FACS")
+                    description = "Remove FACS (Advanced Emotions)")
     remove_diffeomorphic_data: bpy.props.BoolProperty(default=False,
                     name = "Remove Diffeomorphic Data",
                     description = "Remove Diffeomorphic data.\nAfter this operation, Morph settings in the DAZ Importer (Diffeomorphic) tool might not work")
@@ -8387,7 +8387,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_facs_emotions_units_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_facs_emotions_units_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
             facs_emotion_units_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 2 and self.morph_filter(x, rig_settings)]
-            row.label(text="FACS Emotion Units (" + str(len(facs_emotion_units_morphs)) + ")")
+            row.label(text="Advanced Emotion Units (" + str(len(facs_emotion_units_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_facs_emotions_units_collapse:
                 
@@ -8405,7 +8405,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             row = box.row(align=False)
             row.prop(rig_settings, "diffeomorphic_facs_emotions_collapse", icon="TRIA_DOWN" if not rig_settings.diffeomorphic_facs_emotions_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
             facs_emotion_morphs = [x for x in rig_settings.diffeomorphic_morphs_list if x.type == 3 and self.morph_filter(x, rig_settings)]
-            row.label(text="FACS Emotions (" + str(len(facs_emotion_morphs)) + ")")
+            row.label(text="Advanced Emotions (" + str(len(facs_emotion_morphs)) + ")")
             
             if not rig_settings.diffeomorphic_facs_emotions_collapse:
                 
