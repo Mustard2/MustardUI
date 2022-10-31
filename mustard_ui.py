@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "003"
+mustardui_buildnum = "004"
 
 import bpy
 import addon_utils
@@ -8088,19 +8088,16 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         # Various properties
         row = layout.row(align=False)
         row.prop(rig_settings, "various_config_collapse", icon="TRIA_DOWN" if not rig_settings.various_config_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-        row.label(text="Others",icon="SETTINGS")
+        row.label(text="Version & Others",icon="SETTINGS")
         if not rig_settings.various_config_collapse:
+            
+            box = layout.box()
+            box.label(text="Version", icon="INFO")
+            box.prop(rig_settings,"model_version",text="")
             
             box = layout.box()
             box.label(text="Naming", icon="OUTLINER_DATA_FONT")
             box.prop(rig_settings,"model_MustardUI_naming_convention")
-            box = layout.box()
-            
-            box.label(text="User informations", icon="INFO")
-            row = box.row(align=True)
-            row.label(text="Model version")
-            row.scale_x = row_scale
-            row.prop(rig_settings,"model_version",text="")
         
         if settings.debug:
             row = layout.row(align=False)
