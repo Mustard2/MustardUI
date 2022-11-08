@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "004"
+mustardui_buildnum = "005"
 
 import bpy
 import addon_utils
@@ -607,8 +607,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 
                 for modifier in rig_settings.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
-                        modifier.show_viewport = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
-                        modifier.show_render = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
+                        modifier.show_viewport = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
+                        modifier.show_render = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
 
         if len(armature_settings.layers)>0:
             outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
@@ -622,7 +622,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         if object == armature_settings.layers[i].outfit_switcher_object:
                             armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
         
-        # Update also outfit global properties
         for cp in outfit_cp:
             
             if cp.prop_name in arm.keys():
@@ -633,12 +632,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 if cp.outfit_piece:
                     outfit_piece_enable = not cp.outfit_piece.hide_viewport
                 
-                if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
-                    arm[cp.prop_name] = ui_data_dict['max']
-                elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                    if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                    if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['max']
-                    else:
+                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
+                        if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                            arm[cp.prop_name] = ui_data_dict['max']
+                        else:
+                            arm[cp.prop_name] = ui_data_dict['default']
+                
+                else:
+                    if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
+                        arm[cp.prop_name] = ui_data_dict['max']
+                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['default']
         
         arm.update_tag()
