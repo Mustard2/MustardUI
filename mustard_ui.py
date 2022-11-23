@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "005"
+mustardui_buildnum = "006"
 
 import bpy
 import addon_utils
@@ -236,7 +236,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     
     material_normal_nodes: bpy.props.BoolProperty(default = False,
                         name = "Eeevee Optimized Normals",
-                        description = "Enable an optimized version of Eevee normals.\nThis tool substitutes normal nodes with more efficient ones, which can be useful to get better performance in Render Viewport mode",
+                        description = "Enable an optimized version of Eevee normals.\nThis tool substitutes normal nodes with more efficient ones, which can be useful to get better performance in Render Viewport mode. Disable this for Cycles",
                         update = update_material_normal)
 
 # Register and create the setting class in the Scene object
@@ -8181,7 +8181,12 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     col.prop(rig_settings,"body_norm_autosmooth")
                 
                 if rig_settings.body_enable_material_normal_nodes:
-                    col.prop(settings,"material_normal_nodes")
+                    row = col.row(align=True)
+                    row.scale_x=0.94
+                    if context.scene.render.engine == "CYCLES" and settings.material_normal_nodes:
+                        row.alert=True
+                    row.prop(settings,"material_normal_nodes", text="")
+                    row.label(text="Eevee Optimized Normals")
         
         if rig_settings.body_enable_subdiv:
             
