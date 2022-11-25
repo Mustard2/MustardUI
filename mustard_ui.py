@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 25, 1),
+    "version": (0, 25, 2),
     "blender": (3, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "007"
+mustardui_buildnum = "001"
 
 import bpy
 import addon_utils
@@ -609,7 +609,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     if modifier.type == "MASK" and obj.name in modifier.name:
                         modifier.show_viewport = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
                         modifier.show_render = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
-
+        
         if len(armature_settings.layers)>0:
             outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
         
@@ -646,7 +646,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['default']
         
-        arm.update_tag()
+        if rig_settings.outfits_update_tag_on_switch:
+            arm.update_tag()
 
     # Function to update the global outfit properties
     def outfits_global_options_update(self, context):
@@ -1684,7 +1685,6 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         ob.data.layers[i] = True
                 
                     ob.data.bones.active = armature.pose.bones[bone].bone
-                    #bpy.ops.constraint.childof_set_inverse(context_py, constraint=self.lips_shrink_constr_name+'_fric', owner='BONE')
                 
                     for i in range(len(org_layers)):
                         ob.data.layers[i] = org_layers[i]
@@ -2870,6 +2870,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                         default = [0.,0.,0.,1.],
                         description = "")
     
+    # UI Buttons
+    change_rna : bpy.props.BoolProperty(name='Change Path',
+                        default = False,
+                        description="Change path values.\nCareless change of values in this section might break the custom property.\nChange the values only if you know what you are doing!")
+    change_rna_linked : bpy.props.BoolProperty(name='Change Path',
+                        default = False,
+                        description="Change path values.\nCareless change of values in this section might break the custom property.\nChange the values only if you know what you are doing!")
+    
     @classmethod
     def poll(cls, context):
         
@@ -2984,6 +2992,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         self.description = custom_prop.description
         self.default_array = "[]"
         
+        self.change_rna = False
+        self.change_rna_linked = False
+        
         if custom_prop.is_animatable:
             
             prop_type = custom_prop.type
@@ -3016,7 +3027,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 else:
                     self.default_float = ui_data_dict['default']
         
-        return context.window_manager.invoke_props_dialog(self, width = 550 if settings.debug else 450)
+        return context.window_manager.invoke_props_dialog(self, width = 700 if settings.debug else 450)
             
     def draw(self, context):
         
@@ -3144,13 +3155,26 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             
             if len(custom_prop.linked_properties)>0:
                 
-                layout.label(text="Linked Properties", icon="LINK_BLEND")
+                row = layout.row()
+                row.label(text="Linked Properties", icon="LINK_BLEND")
+                if settings.debug:
+                    row.prop(self, "change_rna_linked", text="", icon="GREASEPENCIL")
+                
                 box = layout.box()
                 
                 for lp in custom_prop.linked_properties:
                     
                     row = box.row()
-                    row.label(text=mustardui_cp_path(lp.rna, lp.path), icon = "RNA")
+                    if self.change_rna_linked:
+                        row.scale_x=6
+                        row.prop(lp, "rna", icon="RNA", text="")
+                        row.scale_x=0.05
+                        row.label(text=".")
+                        row.scale_x=1.2
+                        row.prop(lp, "path", text="")
+                        row.scale_x=1
+                    else:
+                        row.label(text=mustardui_cp_path(lp.rna, lp.path), icon = "RNA")
                     op = row.operator('mustardui.property_removelinked', text="", icon ="X")
                     op.rna = lp.rna
                     op.path = lp.path
@@ -3158,13 +3182,28 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         
         if settings.debug:
             
+            row = layout.row()
+            row.label(text="Paths", icon="DECORATE_DRIVER")
+            row.prop(self, "change_rna", text="", icon="GREASEPENCIL")
+            
             box = layout.box()
             
             row=box.row()
             row.label(text="Property name: "+ custom_prop.prop_name, icon="PROPERTIES")
             
             row=box.row()
-            row.label(text=custom_prop.rna, icon="RNA")
+            if self.change_rna:
+                row.scale_x=6
+                row.prop(custom_prop, "rna", icon="RNA", text="")
+                row.scale_x=0.05
+                row.label(text=".")
+                row.scale_x=1.5
+                row.prop(custom_prop, "path", text="")
+            else:
+                row.label(text=mustardui_cp_path(custom_prop.rna, custom_prop.path), icon="RNA")
+        
+        if self.change_rna or self.change_rna_linked:
+            layout.box().label(text="Rebuild properties after modifying path values to apply the changes!", icon = "ERROR")
             
 
 class MustardUI_Property_RemoveLinked(bpy.types.Operator):
@@ -7856,10 +7895,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                         row.label(text="Layer " + str(i))
                     
                     # Showing the order ID of the armature layer on the UI for eventual debug purposes
-                    if settings.debug:
-                        col = row.column(align=True)
-                        col.scale_x = 0.4
-                        col.label(text="ID: " + str(armature_settings.layers[i].id))
+                    #if settings.debug:
+                    #    col = row.column(align=True)
+                    #    col.scale_x = 0.45
+                    #    col.label(text="ID: " + str(armature_settings.layers[i].id))
                         
                     col = row.column(align=True)
                     if not armature_settings.layers[i].id > 0:
