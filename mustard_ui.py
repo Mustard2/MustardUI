@@ -17,16 +17,13 @@ mustardui_buildnum = "002"
 import bpy
 import addon_utils
 import sys
-#import os
 import re
-#import time
 import math
 import random
 import platform
 import itertools
 from bpy.types import Header, Menu, Panel
 from bpy.props import *
-#from bpy.app.handlers import persistent
 from rna_prop_ui import rna_idprop_ui_create
 from mathutils import Vector, Color, Matrix
 import webbrowser
@@ -1314,16 +1311,22 @@ class MustardUI_Armature_Sort(bpy.types.Operator):
 def mustardui_armature_visibility_update(self, context):
     
     poll, arm = mustardui_active_object(context, config = 0)
+    armature_settings = arm.MustardUI_ArmatureSettings
+    
+    for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
+        arm.layers[i] = armature_settings.layers[i].show
+    
+    return
+
+def mustardui_armature_visibility_hair_update(self, context):
+    
+    poll, arm = mustardui_active_object(context, config = 0)
     rig_settings = arm.MustardUI_RigSettings
     armature_settings = arm.MustardUI_ArmatureSettings
     
     if rig_settings.hair_collection != None:
-        for object in [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]:
-            if rig_settings.hair_list in object.name:
-                object.hide_viewport = not armature_settings.hair
-    
-    for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
-        arm.layers[i] = armature_settings.layers[i].show
+        for object in [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE" and rig_settings.hair_list in x.name]:
+            object.hide_viewport = not armature_settings.hair
     
     return
 
@@ -1455,7 +1458,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     hair: bpy.props.BoolProperty(default = True,
                         name = "Hair",
                         description = "Show/hide the hair armature",
-                        update = mustardui_armature_visibility_update)
+                        update = mustardui_armature_visibility_hair_update)
     
     # IK/FK Support
     ik_fk_collapse: bpy.props.BoolProperty(default = True,
