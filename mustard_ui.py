@@ -12,21 +12,21 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "001"
+mustardui_buildnum = "002"
 
 import bpy
 import addon_utils
 import sys
-import os
+#import os
 import re
-import time
+#import time
 import math
 import random
 import platform
 import itertools
 from bpy.types import Header, Menu, Panel
 from bpy.props import *
-from bpy.app.handlers import persistent
+#from bpy.app.handlers import persistent
 from rna_prop_ui import rna_idprop_ui_create
 from mathutils import Vector, Color, Matrix
 import webbrowser
@@ -365,19 +365,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Update function for Subdivision Surface modifiers
     def update_subdiv(self, context):
     
-        for modifier in self.model_body.modifiers:
-            if modifier.type == "SUBSURF":
-                modifier.render_levels = self.body_subdiv_rend_lv
-                modifier.levels = self.body_subdiv_view_lv
-                modifier.show_render = self.body_subdiv_rend
-                modifier.show_viewport = self.body_subdiv_view
+        for modifier in [x for x in self.model_body.modifiers if x.type == "SUBSURF"]:
+            modifier.render_levels = self.body_subdiv_rend_lv
+            modifier.levels = self.body_subdiv_view_lv
+            modifier.show_render = self.body_subdiv_rend
+            modifier.show_viewport = self.body_subdiv_view
+        
         return
     
     # Update function for Smooth Correction modifiers
     def update_smooth_corr(self, context):
         
-        for modifier in self.model_body.modifiers:
-            if modifier.type == "CORRECTIVE_SMOOTH":
+        for modifier in [x for x in self.model_body.modifiers if x.type == "CORRECTIVE_SMOOTH"]:
                 modifier.show_viewport = self.body_smooth_corr
                 modifier.show_render = self.body_smooth_corr
         
@@ -434,9 +433,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     def update_volume_preserve(self, context):
         
-        for modifier in self.model_body.modifiers:
-            if modifier.type == "ARMATURE":
-                modifier.use_deform_preserve_volume = self.body_preserve_volume
+        for modifier in [x for x in self.model_body.modifiers if x.type == "ARMATURE"]:
+            modifier.use_deform_preserve_volume = self.body_preserve_volume
         
         collections = [x.collection for x in self.outfits_collections]
         if self.extras_collection != None:
@@ -797,7 +795,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         for el in self.hair_collection.objects:
             if hasattr(el, 'name') and el.type == "MESH":
-                items.append( (el.name,el.name,el.name) )
+                nname = el.name[len(self.model_name + ' '):] if self.model_MustardUI_naming_convention else el.name
+                items.append( (el.name,nname,el.name) )
             
         return sorted(items)
     
