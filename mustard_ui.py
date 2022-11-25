@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "006"
+mustardui_buildnum = "007"
 
 import bpy
 import addon_utils
@@ -3557,7 +3557,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             mustardui_clean_prop(obj, custom_props, i, settings)
             custom_props.remove(i)
 
-        for mat in rig_settings.model_body.data.materials:
+        for mat in [x for x in rig_settings.model_body.data.materials if x != None]:
             for j in range(len(mat.node_tree.nodes)):
                 if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type=="VALUE":
                     self.add_custom_property(obj, 'bpy.data.materials[\''+mat.name+'\'].node_tree.nodes[\''+mat.node_tree.nodes[j].name+'\'].outputs[0]', 'default_value', mat.node_tree.nodes[j].name[len("MustardUI Float - "):], "FLOAT", custom_props, sections_to_recover)
