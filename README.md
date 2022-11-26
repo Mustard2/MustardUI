@@ -16,8 +16,8 @@ The main features are:
 * Lattice deformation tool compatibility, with a tool to simplify the addition of the modifier for all outfit parts
 * Additional tools for animators
 
-![](https://i.ibb.co/4WhZDcH/1.png)
-![](https://i.ibb.co/BtYPDpR/5.png)
+![](https://i.ibb.co/2v8m743/Immagine-2022-11-26-011024.png)
+![](https://i.ibb.co/z7gbkC9/Immagine-2022-11-26-011007.png)
 
 ## Installation and Configuration
 
