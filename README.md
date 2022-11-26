@@ -24,7 +24,7 @@ For creators of models, be sure to follow the [configuration guide](https://gith
 
 ## Tutorial
 
-You can provide the users of the UI this [documentation](https://mustard3d.eu/documentation/).
+You can provide the users of the UI this [tutorial](https://mustard3d.eu/documentation/#mustardui-and-tools) (MustardUI section).
 
 ## Note for Developers/Users
 
