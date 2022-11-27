@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "004"
+mustardui_buildnum = "005"
 
 import bpy
 import addon_utils
@@ -552,11 +552,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         poll, arm = mustardui_active_object(context, config = 0)
         rig_settings = arm.MustardUI_RigSettings
-        armature_settings = arm.MustardUI_ArmatureSettings
-        
-        outfits_list = rig_settings.outfits_list
         
         # Update the objects and masks visibility
+        outfits_list = rig_settings.outfits_list
+        
         for collection in [x.collection for x in rig_settings.outfits_collections if x.collection != None]:
             
             locked_collection = len([x for x in collection.objects if x.MustardUI_outfit_lock])>0
@@ -597,7 +596,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         modifier.show_render = ( (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
         
         # Update armature layers visibility, checking if some are 'Outfit' layers
-        self.update_armature_outfit_layers(armature_settings)
+        rig_settings.update_armature_outfit_layers(arm.MustardUI_ArmatureSettings)
         
         # Update custom properties with "On Switch" options
         for cp in [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_enable_on_switch or x.outfit_disable_on_switch]:
@@ -606,10 +605,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 ui_data = arm.id_properties_ui(cp.prop_name)
                 ui_data_dict = ui_data.as_dict()
                 
-                outfit_piece_enable = True
                 if cp.outfit_piece:
+                    
                     outfit_piece_enable = not cp.outfit_piece.hide_viewport
-                
                     if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['max']
                     elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
@@ -783,6 +781,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Function to update the requested hair
     def hair_list_update(self, context):
         
+        poll, arm = mustardui_active_object(context, config = 0)
+        
         for obj in self.hair_collection.objects:
             obj.hide_viewport = not self.hair_list in obj.name
             obj.hide_render = not self.hair_list in obj.name
@@ -794,9 +794,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     mod.show_viewport = self.hair_list in obj.name if self.hair_switch_armature_disable else True
         
         # Update armature layers visibility, checking if some are 'Outfit' layers
-        poll, arm = mustardui_active_object(context, config = 0)
-        armature_settings = arm.MustardUI_ArmatureSettings
-        self.update_armature_outfit_layers(armature_settings)
+        self.update_armature_outfit_layers(arm.MustardUI_ArmatureSettings)
         
         if self.hair_update_tag_on_switch:
             for obj in self.hair_collection.objects:
