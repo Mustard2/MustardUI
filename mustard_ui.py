@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "005"
+mustardui_buildnum = "006"
 
 import bpy
 import addon_utils
@@ -1432,13 +1432,13 @@ class MustardUI_ArmatureLayer(bpy.types.PropertyGroup):
                         description = "Enable automatic Outfit layer switcher.\nWhen the selected outfit is enabled in the UI, this layer will be shown/hidden automatically",
                         update = outfit_switcher_enable_update)
     
-    outfit_switcher_collection: bpy.props.PointerProperty(name = "Outfit",
-                        description = "Outfits Switcher outfit.\nWhen Outfit Switcher is enabled, when switching to this outfit this layer will be shown/hidden.\nSet also Outfit Piece if you want the layer to be shown only for a specific outfit piece",
+    outfit_switcher_collection: bpy.props.PointerProperty(name = "Outfit/Hair",
+                        description = "When switching to this outfit, the layer will be shown/hidden. Or select the Hair collection if you want to enable this feature for all Hair pieces.\nSet also Outfit Piece/Hair if you want the layer to be shown only for a specific outfit piece/hair object",
                         type = bpy.types.Collection,
                         poll = outfit_switcher_poll_collection)
     
-    outfit_switcher_object: bpy.props.PointerProperty(name = "Outfit Piece",
-                        description = "Outfits Switcher outfit piece.\nWhen Outfit Switcher is enabled, when switching to this outfit piece this layer will be shown/hidden",
+    outfit_switcher_object: bpy.props.PointerProperty(name = "Outfit Piece/Hair",
+                        description = "When switching to this specific outfit piece/hair object, the layer will be shown/hidden",
                         type = bpy.types.Object,
                         poll = outfit_switcher_poll_mesh)
     
@@ -7934,12 +7934,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                         row.label(text="Layer " + str(i) + " (" + armature_settings.layers[i].name + ")")
                     else:
                         row.label(text="Layer " + str(i))
-                    
-                    # Showing the order ID of the armature layer on the UI for eventual debug purposes
-                    #if settings.debug:
-                    #    col = row.column(align=True)
-                    #    col.scale_x = 0.45
-                    #    col.label(text="ID: " + str(armature_settings.layers[i].id))
                         
                     col = row.column(align=True)
                     if not armature_settings.layers[i].id > 0:
@@ -7967,9 +7961,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                         
                         col.prop(armature_settings.layers[i],'outfit_switcher_enable')
                         if armature_settings.layers[i].outfit_switcher_enable:
-                            col.prop(armature_settings.layers[i],'outfit_switcher_collection')
+                            col.prop(armature_settings.layers[i],'outfit_switcher_collection', text="Collection")
                             if armature_settings.layers[i].outfit_switcher_collection != None:
-                                col.prop(armature_settings.layers[i],'outfit_switcher_object')
+                                col.prop(armature_settings.layers[i],'outfit_switcher_object', text="Object")
                         
                         # Mirror options for debug
                         if settings.debug:
