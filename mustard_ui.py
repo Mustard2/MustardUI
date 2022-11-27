@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "002"
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -1014,6 +1014,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def update_simplify(self, context):
         
         settings = context.scene.MustardUI_Settings
+        poll, arm = mustardui_active_object(context, config = 0)
+        if arm != None:
+            armature_settings = arm.MustardUI_ArmatureSettings
         
         # Blender Simplify
         if self.simplify_blender:
@@ -1055,56 +1058,86 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     bpy.ops.mustardui.object_visibility(obj=obj.name)
         
         # Hair
-        if self.simplify_hair:
-            if self.hair_collection != None:
-                self.hair_collection.hide_viewport   = self.simplify_enable
+        if self.hair_collection != None:
+            self.hair_collection.hide_viewport   = self.simplify_enable if self.simplify_hair else False
+            armature_settings.hair               = not self.simplify_enable if self.simplify_hair else True
             
+            if self.simplify_hair_global:
                 if self.simplify_subdiv and self.hair_enable_global_subsurface and self.simplify_enable:
-                    self.hair_global_subsurface          = not self.simplify_enable
+                    self.hair_global_subsurface         = not self.simplify_enable
                 if self.hair_enable_global_smoothcorrection:
-                    self.hair_global_smoothcorrection = not self.simplify_enable
+                    self.hair_global_smoothcorrection   = not self.simplify_enable
                 if self.simplify_normals_autosmooth and self.hair_enable_global_normalautosmooth:
-                    self.hair_global_normalautosmooth = not self.simplify_enable
-                if self.hair_enable_global_particles:
-                    self.hair_global_particles = not self.simplify_enable
+                    self.hair_global_normalautosmooth   = not self.simplify_enable
+        
+        # Particle systems
+        if self.simplify_particles and self.simplify_enable:
             
-            if self.particle_systems_enable and self.simplify_enable:
+            if self.particle_systems_enable:
                 for ps in [x for x in self.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]:
-                    ps.show_viewport                 = not self.simplify_enable
+                    ps.show_viewport                    = not self.simplify_enable
+            
+            if self.hair_collection != None:
+                
+                if self.hair_enable_global_particles:
+                    self.hair_global_particles          = not self.simplify_enable
+                
+                for obj in [x for x in self.hair_collection.objects]:
+                    for ps in [x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"]:
+                        ps.show_viewport                = not self.simplify_enable
         
         # Armature Children
-        if self.simplify_armature_child:
+        child_all = [x for x in self.model_armature_object.children if x != self.model_body]
+        child = child_all
+        
+        if self.extras_collection != None:
+            for obj in [x for x in self.extras_collection.objects if x in child_all]:
+                child.remove(obj)
+        if self.hair_collection != None:
+            for obj in [x for x in self.hair_collection.objects if x in child_all]:
+                child.remove(obj)
+        for col in self.outfits_collections:
+            for obj in [x for x in col.collection.objects if x in child_all]:
+                child.remove(obj)
+        
+        for c in child:
+            c.hide_viewport                      = self.simplify_enable if self.simplify_armature_child else False
+            for mod in [x for x in c.modifiers if x.type in ["SUBSURF", "SHRINKWRAP", "CORRECTIVE_SMOOTH", "SOLIDIFY", "PARTICLE_SYSTEM", "CLOTH"]]:
+                mod.show_viewport = not self.simplify_enable if self.simplify_armature_child else True
             
-            child_all = [x for x in self.model_armature_object.children if x != self.model_body]
-            child = child_all
-            
-            if self.extras_collection != None:
-                for obj in [x for x in self.extras_collection.objects if x in child_all]:
-                    child.remove(obj)
-            if self.hair_collection != None:
-                for obj in [x for x in self.hair_collection.objects if x in child_all]:
-                    child.remove(obj)
-            for col in self.outfits_collections:
-                for obj in [x for x in col.collection.objects if x in child_all]:
-                    child.remove(obj)
-            
-            for c in child:
-                c.hide_viewport                      = self.simplify_enable
         
         # Diffeomorphic morphs
         if self.diffeomorphic_support and self.simplify_diffeomorphic:
             self.diffeomorphic_enable                = not self.simplify_enable
         
+        # Physics
+        if self.simplify_physics and arm != None:
+            physics_settings = arm.MustardUI_PhysicsSettings
+            if len(physics_settings.physics_items) > 0:
+                physics_settings.physics_enable          = not self.simplify_enable
+        
         # Force No Physics
         if self.simplify_force_no_physics and self.simplify_enable:
-            for obj in bpy.data.objects:
-                for ps in [x for x in self.model_body.modifiers if x.type in ["SOFT_BODY", "CLOTH", "COLLISION"]]:
+            for obj in [x for x in bpy.data.objects if x != None]:
+                for ps in [x for x in obj.modifiers if x.type in ["SOFT_BODY", "CLOTH", "COLLISION"]]:
                     if ps.type == "COLLISION" and obj.collision != None:
                         obj.collision.use            = not self.simplify_enable
                     else:
                         ps.show_viewport             = not self.simplify_enable
                     if settings.debug:
                         print("MustardUI - Disabled " + ps.type + " modifier on: " + obj.name)
+        
+        # Force No Particles
+        if self.simplify_force_no_particles and self.simplify_enable:
+            for obj in [x for x in bpy.data.objects if x != None]:
+                for ps in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM"]]:
+                    ps.show_viewport             = not self.simplify_enable
+                    if settings.debug:
+                        print("MustardUI - Disabled " + ps.type + " modifier on: " + obj.name)
+        
+        # Update drivers
+        for obju in bpy.data.objects:
+            obju.update_tag()
         
         return
     
@@ -1137,13 +1170,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Switch to Nude",
                         update = update_simplify)
     simplify_outfit_global: bpy.props.BoolProperty(default = True,
-                        name = "Disable Global Outfit properties",
+                        name = "Disable Outfit Global properties",
                         update = update_simplify)
     simplify_extras: bpy.props.BoolProperty(default = True,
                         name = "Hide Extras",
                         update = update_simplify)
     simplify_hair: bpy.props.BoolProperty(default = True,
                         name = "Hide Hair (Viewport)",
+                        update = update_simplify)
+    simplify_particles: bpy.props.BoolProperty(default = True,
+                        name = "Disable Particles",
+                        description = "Disable Particle Systems modifiers.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again",
+                        update = update_simplify)
+    simplify_hair_global: bpy.props.BoolProperty(default = True,
+                        name = "Disable Hair Global properties",
                         update = update_simplify)
     simplify_armature_child: bpy.props.BoolProperty(default = True,
                         name = "Hide Armature Children (Viewport)",
@@ -1152,10 +1192,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     simplify_diffeomorphic: bpy.props.BoolProperty(default = True,
                         name = "Disable Morphs",
                         update = update_simplify)
+    simplify_physics: bpy.props.BoolProperty(default = False,
+                        name = "Disable Physics",
+                        update = update_simplify)
     
     simplify_force_no_physics: bpy.props.BoolProperty(default = False,
                         name = "Disable Physics",
                         description = "Force the disabling of all physics modifiers on all scene Objects.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again",
+                        update = update_simplify)
+    simplify_force_no_particles: bpy.props.BoolProperty(default = False,
+                        name = "Disable Particle Systems",
+                        description = "Force the disabling of all particle system modifiers on all scene Objects.\nThis works only when enabling Simplify, and the status will not be reverted when Simplify is disabled again",
                         update = update_simplify)
     
     # ------------------------------------------------------------------------
@@ -8951,6 +8998,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
+        physics_settings = obj.MustardUI_PhysicsSettings
         
         layout = self.layout
         
@@ -8972,20 +9020,28 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Objects", icon="OUTLINER_OB_ARMATURE")
         col = box.column(align=True)
+        if rig_settings.diffeomorphic_support:
+            col.prop(rig_settings, "simplify_diffeomorphic")
         if rig_settings.outfit_nude:
             col.prop(rig_settings, "simplify_outfit_switch_nude")
         col.prop(rig_settings, "simplify_outfit_global")
         col.prop(rig_settings, "simplify_extras")
-        col.prop(rig_settings, "simplify_hair")
         col.prop(rig_settings, "simplify_armature_child")
-        if rig_settings.diffeomorphic_support:
-            col.prop(rig_settings, "simplify_diffeomorphic")
+        col.separator()
+        col.prop(rig_settings, "simplify_hair")
+        col.prop(rig_settings, "simplify_hair_global")
+        col.prop(rig_settings, "simplify_particles")
+        
+        if len(physics_settings.physics_items) > 0:
+            col.separator()
+            col.prop(rig_settings, "simplify_physics")
         
         if settings.advanced:
             box = layout.box()
             box.label(text="Global Disable", icon="WORLD")
             col = box.column(align=True)
             col.prop(rig_settings, "simplify_force_no_physics")
+            col.prop(rig_settings, "simplify_force_no_particles")
         
 
 class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
@@ -9001,7 +9057,6 @@ class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
         if obj != None:
             
             physics_settings = obj.MustardUI_PhysicsSettings
-        
             return res and len(physics_settings.physics_items) > 0
         
         else:
