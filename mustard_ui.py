@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "006"
+mustardui_buildnum = "007"
 
 import bpy
 import addon_utils
@@ -142,7 +142,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     panel_model_selection_armature: bpy.props.PointerProperty(type = bpy.types.Armature)
     
     # Register UI after configuration
-    register_UI_after_configuration: bpy.props.BoolProperty(default = False,
+    register_UI_after_configuration: bpy.props.BoolProperty(default = True,
                         name = "Register UI",
                         description = "Register the UI after the end of the configuration")
     
