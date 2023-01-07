@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "007"
+mustardui_buildnum = "009"
 
 import bpy
 import addon_utils
@@ -1222,10 +1222,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     
     # Standard links to MustardUI documentation and tutorial
     url_MustardUI: bpy.props.StringProperty(default = "https://github.com/Mustard2/MustardUI")
-    
     url_MustardUI_reportbug: bpy.props.StringProperty(default = "https://github.com/Mustard2/MustardUI/issues")
-    
     url_MustardUItutorial: bpy.props.StringProperty(default = "https://github.com/Mustard2/MustardUI/wiki/Tutorial")
+    url_MustardUIconfigguide: bpy.props.StringProperty(default = "https://github.com/Mustard2/MustardUI/wiki/Installation-and-Configuration")
     
     # Links that can be changed by the creator in the configuration tool
     url_website: bpy.props.StringProperty(default = "",
@@ -7666,6 +7665,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         row = layout.row(align=False)
         row.label(text=obj.name, icon = "OUTLINER_DATA_ARMATURE")
         row.operator('mustardui.configuration_smartcheck', icon = "VIEWZOOM", text = "")
+        row.operator('mustardui.openlink', text="", icon = "QUESTION").url = rig_settings.url_MustardUIconfigguide
         
         box = layout.box()
         box.prop(rig_settings,"model_name", text = "Name")
@@ -7775,6 +7775,18 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     row.operator("mustardui.remove_outfit",text="",icon="X").col = collection.collection.name
                     row.operator("mustardui.delete_outfit",text="",icon="TRASH").col = collection.collection.name
                 
+                # Outfit properties
+                box = layout.box()
+                box.label(text="Global properties", icon="MODIFIER")
+                col = box.column(align=True)
+                col.prop(rig_settings,"outfits_enable_global_subsurface")
+                col.prop(rig_settings,"outfits_enable_global_smoothcorrection")
+                col.prop(rig_settings,"outfits_enable_global_shrinkwrap")
+                col.prop(rig_settings,"outfits_enable_global_mask")
+                col.prop(rig_settings,"outfits_enable_global_solidify")
+                col.prop(rig_settings,"outfits_enable_global_triangulate")
+                col.prop(rig_settings,"outfits_enable_global_normalautosmooth")
+                
                 # Custom properties
                 box = layout.box()
                 row = box.row()
@@ -7804,18 +7816,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 else:
                     box = box.box()
                     box.label(text = "No property added yet", icon = "ERROR")
-                
-                # Outfit properties
-                box = layout.box()
-                box.label(text="Global properties", icon="MODIFIER")
-                col = box.column(align=True)
-                col.prop(rig_settings,"outfits_enable_global_subsurface")
-                col.prop(rig_settings,"outfits_enable_global_smoothcorrection")
-                col.prop(rig_settings,"outfits_enable_global_shrinkwrap")
-                col.prop(rig_settings,"outfits_enable_global_mask")
-                col.prop(rig_settings,"outfits_enable_global_solidify")
-                col.prop(rig_settings,"outfits_enable_global_triangulate")
-                col.prop(rig_settings,"outfits_enable_global_normalautosmooth")
             
             else:
                 box = layout.box()
@@ -9609,9 +9609,9 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
         
         box = layout.box()
         box.label(text="MustardUI References", icon="INFO")
+        box.operator('mustardui.openlink', text="MustardUI - GitHub", icon = "URL").url = rig_settings.url_MustardUI
         box.operator('mustardui.openlink', text="MustardUI - Tutorial", icon = "URL").url = rig_settings.url_MustardUItutorial
         box.operator('mustardui.openlink', text="MustardUI - Report Bug", icon = "URL").url = rig_settings.url_MustardUI_reportbug
-        box.operator('mustardui.openlink', text="MustardUI - GitHub", icon = "URL").url = rig_settings.url_MustardUI
         
 
 # Registration of classes
