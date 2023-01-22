@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "008"
+mustardui_buildnum = "012"
 
 import bpy
 import addon_utils
@@ -1386,8 +1386,21 @@ def mustardui_armature_visibility_update(self, context):
     
     for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
         arm.layers[i] = armature_settings.layers[i].show
+    
+    return
+
+def mustardui_armature_visibility_outfits_update(self, context):
+    
+    poll, arm = mustardui_active_object(context, config = 0)
+    armature_settings = arm.MustardUI_ArmatureSettings
+    rig_settings = arm.MustardUI_RigSettings
+    
+    for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
         if armature_settings.layers[i].outfit_switcher_enable:
-            arm.layers[i] = armature_settings.outfits
+            if armature_settings.layers[i].outfit_switcher_object == None:
+                armature_settings.layers[i].show = armature_settings.outfits and bpy.data.collections[rig_settings.outfits_list] == armature_settings.layers[i].outfit_switcher_collection
+            else:
+                armature_settings.layers[i].show = armature_settings.outfits and not armature_settings.layers[i].outfit_switcher_object.MustardUI_outfit_visibility and bpy.data.collections[rig_settings.outfits_list] == armature_settings.layers[i].outfit_switcher_collection
     
     return
 
@@ -1543,7 +1556,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     outfits: bpy.props.BoolProperty(default = True,
                         name = "Outfits",
                         description = "Show/hide the outfit armature",
-                        update = mustardui_armature_visibility_update)
+                        update = mustardui_armature_visibility_outfits_update)
 
 bpy.utils.register_class(MustardUI_ArmatureSettings)
 bpy.types.Armature.MustardUI_ArmatureSettings = bpy.props.PointerProperty(type = MustardUI_ArmatureSettings)
@@ -5375,6 +5388,86 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
             obj.MustardUI_script_file.use_module = False
             obj.MustardUI_script_file = None
             self.report({'INFO'}, "MustardUI: UI correctly un-registered in " + obj.name)
+        
+        return {'FINISHED'}
+
+class MustardUI_UpdateUIFile(bpy.types.Operator):
+    """Update the UI"""
+    bl_idname = "mustardui.updateuifile"
+    bl_label = "Register UI"
+    
+    register: bpy.props.BoolProperty(default = True)
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        if obj != None:
+            return obj.MustardUI_script_file != None
+        return False
+    
+    def execute(self, context):
+        
+        import requests
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        # Import the data from the GitHub repository file
+        try:
+            response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/master/mustard_ui.py")
+            data = response.text
+        except:
+            self.report({'ERROR'}, "MustardUI: Error downloading the update. Check your connection")
+            return {'FINISHED'}
+        
+        # Check version
+        if '"version": (' in data:
+            
+            v = [0, 0, 0]
+            find = data.split('"version": (',1)[1]
+            v[0] = int(find.split(',')[0])
+            v[1] = int(find.split(',')[1])
+            v[2] = find.split(',')[2]
+            v[2] = int(v[2].split(')')[0])
+            v = (v[0], v[1], v[2])
+            
+            find = data.split('mustardui_buildnum = "',1)[1]
+            buildnum_str = find.split('"')[0]
+            buildnum = int(buildnum_str)
+            
+            print("MustardUI - Version fetched from GitHub is " + str(v[0]) + '.' + str(v[1]) + '.' + str(v[2]) + '.' + str(buildnum_str) + '.')
+            
+            if bl_info["version"] > v or (bl_info["version"] == v and mustardui_buildnum >= buildnum):
+                self.report({'ERROR'}, "MustardUI: The current version is already updated")
+                return {'FINISHED'}
+            
+        else:
+            self.report({'ERROR'}, "MustardUI: Can not find the version number of the update version")
+            return {'FINISHED'}
+        
+        # Write data to the text
+        try:
+            obj.MustardUI_script_file.name = 'mustard_ui.py'
+            obj.MustardUI_script_file.clear()
+            obj.MustardUI_script_file.write(data)
+        
+            with context.temp_override(edit_text = obj.MustardUI_script_file):
+                bpy.ops.text.run_script()
+        except:
+            self.report({'ERROR'}, "MustardUI: Error while updating")
+            return {'FINISHED'}
+        
+        # Delete all other eventual mustard_ui.py files
+        try:
+            for text in bpy.data.texts:
+                if 'mustard_ui.py' in text.name and text.name != 'mustard_ui.py':
+                    with context.temp_override(edit_text = text):
+                        bpy.ops.text.unlink()
+            self.report({'INFO'}, "MustardUI: UI successfully updated to version " + str(v[0]) + '.' + str(v[1]) + '.' + str(v[2]) + '.')
+        except:
+            self.report({'ERROR'}, "MustardUI: Error while updating")
         
         return {'FINISHED'}
 
@@ -9493,7 +9586,6 @@ class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
 
 
 
-
 class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_SettingsPanel"
     bl_label = "Settings"
@@ -9535,6 +9627,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                 box.operator('mustardui.registeruifile', text="Register UI Script", icon = "TEXT").register = True
             else:
                 box.operator('mustardui.registeruifile', text="Un-register UI Script", icon = "TEXT").register = False
+            box.operator('mustardui.updateuifile', text="Update UI Script", icon = "TRIA_UP_BAR")
             
             box.operator('mustardui.property_rebuild', icon = "MOD_BUILD", text = "Re-build Custom Properties")
             box.operator('mustardui.cleanmodel', text="Clean model", icon = "BRUSH_DATA")
@@ -9624,6 +9717,7 @@ classes = (
     MustardUI_Configuration_SmartCheck,
     MustardUI_RemoveUI,
     MustardUI_RegisterUIFile,
+    MustardUI_UpdateUIFile,
     # Model switch support operators
     MustardUI_ViewportModelSelection,
     MustardUI_SwitchModel,
