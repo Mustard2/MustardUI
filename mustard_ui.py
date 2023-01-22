@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 25, 2),
+    "version": (0, 26, 0),
     "blender": (3, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "009"
+mustardui_buildnum = "002"
 
 import bpy
 import addon_utils
@@ -361,7 +361,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Global body mesh properties
     # Update function for Subdivision Surface modifiers
     def update_subdiv(self, context):
-    
+        
         for modifier in [x for x in self.model_body.modifiers if x.type == "SUBSURF"]:
             modifier.render_levels = self.body_subdiv_rend_lv
             modifier.levels = self.body_subdiv_view_lv
@@ -386,24 +386,33 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         return
     
+    # Update function for Smooth Correction modifiers
+    def update_solidify(self, context):
+        
+        for modifier in [x for x in self.model_body.modifiers if x.type == "SOLIDIFY"]:
+                modifier.show_viewport = self.body_solidify
+                modifier.show_render = self.body_solidify
+        
+        return
+    
     # Subdivision surface
     body_subdiv_rend: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface (Render)",
-                        description = "Enable/disable the subdivision surface during rendering. \nThis won't affect the viewport or the viewport rendering preview. \nNote that, depending on the complexity of the model, enabling this can greatly affect rendering times",
+                        description = "Enable/disable the Subdivision Surface during rendering. \nThis won't affect the viewport or the viewport rendering preview. \nNote that, depending on the complexity of the model, enabling this can greatly affect rendering times",
                         update = update_subdiv)
     body_subdiv_rend_lv: bpy.props.IntProperty(default = 1,
                         min = 0,max = 4,
                         name = "Level",
-                        description = "Set the subdivision surface level during rendering. \nNote that, depending on the complexity of the model, increasing this can greatly affect rendering times",
+                        description = "Set the Subdivision Surface level during rendering. \nNote that, depending on the complexity of the model, increasing this can greatly affect rendering times",
                         update = update_subdiv)
     body_subdiv_view: bpy.props.BoolProperty(default = False,
                         name = "Subdivision Surface (Viewport)",
-                        description = "Enable/disable the subdivision surface in the viewport. \nSince it's really computationally expensive, use this only for previews and do NOT enable it during posing. \nNote that it might require a lot of time to activate, and Blender will freeze during this",
+                        description = "Enable/disable the Subdivision Surface in the viewport. \nSince it's really computationally expensive, use this only for previews and do NOT enable it during posing. \nNote that it might require a lot of time to activate, and Blender will freeze during this",
                         update = update_subdiv)
     body_subdiv_view_lv: bpy.props.IntProperty(default = 0,
                         min = 0,max = 4,
                         name = "Level",
-                        description = "Set the subdivision surface level in viewport. \nNote that, depending on the complexity of the model, increasing this can greatly affect viewport performances. Moreover, each time you change this value with Subdivision Surface (Viewport) enabled, Blender will freeze while applying the modification",
+                        description = "Set the Subdivision Surface level in viewport. \nNote that, depending on the complexity of the model, increasing this can greatly affect viewport performances. Moreover, each time you change this value with Subdivision Surface (Viewport) enabled, Blender will freeze while applying the modification",
                         update = update_subdiv)
     body_enable_subdiv: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface modifiers",
@@ -412,22 +421,32 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Smooth correction
     body_smooth_corr: bpy.props.BoolProperty(default = True,
                         name = "Smooth Correction",
-                        description = "Enable/disable the smooth correction. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
+                        description = "Enable/disable the Smooth Correction modifiers. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
                         update = update_smooth_corr)
-    body_enable_smoothcorr: bpy.props.BoolProperty(default = True,
+    body_enable_smoothcorr: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction modifiers",
                         description = "")
     
     # Normal auto smooth
     body_norm_autosmooth: bpy.props.BoolProperty(default = True,
                         name = "Normals Auto Smooth",
-                        description = "Enable/disable the auto-smooth for body normals. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
+                        description = "Enable/disable the Auto-smooth for body normals. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
                         update = update_norm_autosmooth)
     
     body_enable_norm_autosmooth: bpy.props.BoolProperty(default = True,
                         name = "Normals Auto Smooth property",
                         description = "")
     
+    # Solidify
+    body_solidify: bpy.props.BoolProperty(default = True,
+                        name = "Solidify",
+                        description = "Enable/disable the Solidify modifiers",
+                        update = update_solidify)
+    body_enable_solidify: bpy.props.BoolProperty(default = False,
+                        name = "Solidify modifiers",
+                        description = "")
+    
+    # Volume Preserve
     def update_volume_preserve(self, context):
         
         for modifier in [x for x in self.model_body.modifiers if x.type == "ARMATURE"]:
@@ -487,10 +506,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Subdivision Surface modifiers",
                         description = "This tool will enable/disable modifiers only for Viewport")
     
-    outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default = True,
+    outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction modifiers")
     
-    outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(default = True,
+    outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(default = False,
                         name = "Shrinkwrap modifiers")
     
     outfits_enable_global_mask: bpy.props.BoolProperty(default = True,
@@ -819,7 +838,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Disable Armature modifiers of Hair that are not visible to increase performance")
     
     # Hair Global Properties
-    hair_enable_global_subsurface: bpy.props.BoolProperty(default = True,
+    hair_enable_global_subsurface: bpy.props.BoolProperty(default = False,
                         name = "Subdivision Surface modifiers",
                         description = "This tool will enable/disable modifiers only for Viewport")
     
@@ -829,7 +848,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_enable_global_particles: bpy.props.BoolProperty(default = False,
                         name = "Particle Hair modifiers")
     
-    hair_enable_global_normalautosmooth: bpy.props.BoolProperty(default = True,
+    hair_enable_global_normalautosmooth: bpy.props.BoolProperty(default = False,
                         name = "Normals Auto Smooth properties")
     
     # Function to update the global hair properties
@@ -1009,12 +1028,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             context.scene.render.use_simplify        = self.simplify_enable
         
         # Body
-        if self.body_enable_subdiv and self.outfits_enable_global_subsurface and self.simplify_enable:
+        if self.body_enable_subdiv and self.simplify_enable:
             self.body_subdiv_view                    = not self.simplify_enable
         if self.body_enable_smoothcorr:
             self.body_smooth_corr                    = not self.simplify_enable
-        if self.body_enable_norm_autosmooth and self.outfits_enable_global_normalautosmooth:
+        if self.body_enable_norm_autosmooth:
             self.body_norm_autosmooth                = not self.simplify_enable
+        if seld.body_solidify and self.simplify_enable:
+            self.body_solidify                       = not self.simplify_enable
         
         # Eevee Optimized Normals
         if self.simplify_normals_optimize:
@@ -4025,6 +4046,53 @@ class MustardUI_Body_PropertyAddToSection(bpy.types.Operator):
 #    Add Collection Operator
 # ------------------------------------------------------------------------
 
+class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
+    """Search for Outfits"""
+    bl_idname = "mustardui.outfits_smartcheck"
+    bl_label = "Outfit Smart Search."
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        if arm != None:
+            rig_settings = arm.MustardUI_RigSettings
+            return rig_settings.model_MustardUI_naming_convention and rig_settings.model_body != None and rig_settings.model_name != ""
+        else:
+            return False
+
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        # Search for oufit collections
+        if settings.debug:
+            print('\nMustardUI - Smart Check - Searching for outfits\n')
+        
+        outfits_collections = [x for x in bpy.data.collections if (rig_settings.model_name in x.name) and (not 'Hair' in x.name) and (not 'Extras' in x.name) and (not 'Physics' in x.name) and (not rig_settings.model_name == x.name) and (not '_' in x.name)]
+
+        for collection in outfits_collections:
+            
+            add_collection = True
+            for el in rig_settings.outfits_collections:
+                if el.collection == collection:
+                    add_collection = False
+                    break
+            
+            if settings.debug:
+                print('MustardUI - Smart Check - ' + collection.name + ' added: ' + str(add_collection))
+            
+            if add_collection:
+                add_item = rig_settings.outfits_collections.add()
+                add_item.collection = collection
+        
+        return {'FINISHED'}
+
 # Operator to add the collection to the selected section
 class MustardUI_AddOutfit(bpy.types.Operator):
     """Add the collection as an outfit.\nThis can be done only in Configuration mode"""
@@ -4902,12 +4970,16 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     """Search for MustardUI configuration options based on the name of the model and its body"""
     bl_idname = "mustardui.configuration_smartcheck"
     bl_label = "Smart Search."
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'UNDO'}
+    
+    smartcheck_custom_properties: bpy.props.BoolProperty(name="Body Custom Properties",
+                                    default=True,
+                                    description="Search for Body Custom Properties that respects MustardUI Naming Convention.\nThis will overwrite previous manual modifications of custom properties found with this tool")
+    smartcheck_outfits: bpy.props.BoolProperty(name="Outfits", default=True)
     
     @classmethod
     def poll(cls, context):
         
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config = 1)
         
         if arm != None:
@@ -4934,32 +5006,18 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         # Initialize Smart Check header
         if settings.debug:
             print('\nMustardUI - Smart Check - Start\n')
-            
-        if settings.debug:
-            print('MustardUI - Smart Check - Searching for body additional options\n')
-        # Check for body additional properties
-        bpy.ops.mustardui.property_smartcheck()
+        
+        if self.smartcheck_custom_properties:
+            if settings.debug:
+                print('MustardUI - Smart Check - Searching for body additional options\n')
+            # Check for body additional properties
+            bpy.ops.mustardui.property_smartcheck()
         
         # Search for oufit collections
-        if settings.debug:
-            print('\nMustardUI - Smart Check - Searching for outfits\n')
-        
-        outfits_collections = [x for x in bpy.data.collections if (rig_settings.model_name in x.name) and (not 'Hair' in x.name) and (not 'Extras' in x.name) and (not 'Physics' in x.name) and (not rig_settings.model_name == x.name) and (not '_' in x.name)]
-
-        for collection in outfits_collections:
-            
-            add_collection = True
-            for el in rig_settings.outfits_collections:
-                if el.collection == collection:
-                    add_collection = False
-                    break
-            
+        if self.smartcheck_outfits:
             if settings.debug:
-                print('MustardUI - Smart Check - ' + collection.name + ' added: ' + str(add_collection))
-            
-            if add_collection:
-                add_item = rig_settings.outfits_collections.add()
-                add_item.collection = collection
+                print('\nMustardUI - Smart Check - Searching for outfits\n')
+            bpy.ops.mustardui.outfits_smartcheck()
         
         # Search for hair
         if settings.debug:
@@ -4993,7 +5051,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             print('\nMustardUI - Smart Check - Extras collection already defined. Skipping this part.')
         
         # Standard armature setup
-        
         preset_Mustard_models = []
         
         if hasattr(obj,'[\"arp_updated\"]'):
@@ -5088,6 +5145,27 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         self.report({'INFO'}, 'MustardUI - Smart Check complete.')
         
         return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        return context.window_manager.invoke_props_dialog(self, width = 550 if settings.debug else 450)
+            
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        layout = self.layout
+        
+        box = layout.box()
+        box.label(text="Categories to Smart Check", icon="VIEWZOOM")
+        col = box.column()
+        col.prop(self, 'smartcheck_custom_properties')
+        col.prop(self, 'smartcheck_outfits')
+        
 
 class MustardUI_RemoveUI(bpy.types.Operator):
     """Remove and clean the model and the UI"""
@@ -5257,9 +5335,6 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         row = box.row()
         row.enabled = self.delete_objects
         row.prop(self, "delete_bones_custom_shapes")
-
-
-
 
 class MustardUI_RegisterUIFile(bpy.types.Operator):
     """Register the UI.\nThe script file will be linked to the armature and will be transfered if the model is appended in another .blend file"""
@@ -7685,9 +7760,11 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             col.prop(rig_settings,"body_enable_subdiv")
             col.prop(rig_settings,"body_enable_smoothcorr")
+            col.prop(rig_settings,"body_enable_solidify")
+            col.separator()
+            col.prop(rig_settings,"body_enable_preserve_volume")
             col.prop(rig_settings,"body_enable_norm_autosmooth")
             col.prop(rig_settings,"body_enable_material_normal_nodes")
-            col.prop(rig_settings,"body_enable_preserve_volume")
             
             # Custom properties
             box = layout.box()
@@ -7767,7 +7844,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             if len([x for x in rig_settings.outfits_collections if x.collection != None])>0:
                 box = layout.box()
                 # Outfit list
-                box.label(text="Outfits List", icon="OUTLINER_COLLECTION")
+                row = box.row()
+                row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
+                row.operator("Mustardui.outfits_smartcheck", text="", icon = "VIEWZOOM")
                 box = box.box()
                 for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
                     row = box.row(align=True)
@@ -8216,7 +8295,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             custom_props = arm.MustardUI_CustomProperties
             
             # Check if there is any property to show
-            prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume
+            prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_solidify or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume
             
             return res and (prop_to_show or len(custom_props)>0)
         
@@ -8233,12 +8312,12 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         
         layout = self.layout
         
-        if rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume:
+        if rig_settings.body_enable_smoothcorr or rig_settings.body_enable_solidify or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume:
             
             box = layout.box()
             box.label(text="Global settings", icon="OUTLINER_OB_ARMATURE")
             
-            if rig_settings.body_enable_preserve_volume or rig_settings.body_enable_smoothcorr:
+            if rig_settings.body_enable_preserve_volume  or rig_settings.body_enable_solidify or rig_settings.body_enable_smoothcorr:
                 
                 col = box.column(align=True)
                 
@@ -8247,6 +8326,9 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 
                 if rig_settings.body_enable_smoothcorr:
                     col.prop(rig_settings,"body_smooth_corr")
+                
+                if rig_settings.body_enable_solidify:
+                    col.prop(rig_settings,"body_solidify")
             
             if rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes:
                 col = box.column(align=True)
@@ -9673,6 +9755,7 @@ classes = (
     # Others
     MustardUI_LinkButton,
     # Outfit add/remove operators
+    MustardUI_Outfit_SmartCheck,
     MustardUI_AddOutfit,
     MustardUI_RemoveOutfit,
     MustardUI_DeleteOutfit,
