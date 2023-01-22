@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "004"
+mustardui_buildnum = "006"
 
 import bpy
 import addon_utils
@@ -8439,19 +8439,12 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = rig_settings.diffeomorphic_enable
         
-        if rig_settings.diffeomorphic_model_version != "1.6":
-            if settings.status_diffeomorphic == 1:
-                layout.label(icon='ERROR',text="Diffeomorphic not enabled!")
-                return
-            elif settings.status_diffeomorphic == 0:
-                layout.label(icon='ERROR', text="Diffeomorphic not installed!")
-                return
-        
         # Check Diffeomorphic version and inform the user about possible issues
         if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0):
             box = layout.box()
-            box.label(icon='ERROR', text="Diffeomorphic version not supported!")
+            box.label(icon='ERROR',  text="Diffeomorphic version not supported!")
             box.label(icon='BLANK1', text="Only 1.6 or above is supported.")
+            return
         
         row = layout.row()
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
@@ -8862,13 +8855,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_label = "Armature"
     bl_options = {"DEFAULT_CLOSED"}
     
-    def toggleFKIK(self, row, value, op):
-        if value > 0.5:
-            row.operator(op, text="IK")
-        else:
-            row.operator(op, text="FK")
-        return
-    
     @classmethod
     def poll(cls, context):
         
@@ -8905,10 +8891,11 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 box.prop(armature_settings, "hair",toggle=True, icon="CURVES")
                 draw_separator = True
         
-        if len(rig_settings.outfits_list)>0 and rig_settings.outfits_list != "Nude":
-            if len([x for x in armature_settings.layers if (x.outfit_switcher_enable and x.outfit_switcher_collection==bpy.data.collections[rig_settings.outfits_list])]):
-                box.prop(armature_settings, "outfits",toggle=True, icon="MOD_CLOTH")
-                draw_separator = True
+        if len(rig_settings.outfits_list)>0:
+            if rig_settings.outfits_list != "Nude":
+                if len([x for x in armature_settings.layers if (x.outfit_switcher_enable and x.outfit_switcher_collection==bpy.data.collections[rig_settings.outfits_list])]):
+                    box.prop(armature_settings, "outfits",toggle=True, icon="MOD_CLOTH")
+                    draw_separator = True
         
         if draw_separator:
             box.separator()
@@ -8923,12 +8910,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                         row.prop(armature_settings.layers[armature_settings.layers[i].mirror_layer], "show", text = armature_settings.layers[armature_settings.layers[i].mirror_layer].name, toggle=True)
                     elif not armature_settings.layers[i].mirror:
                         box.prop(armature_settings.layers[i], "show", text = armature_settings.layers[i].name, toggle=True)
-    
-    def toggle(self, row, rig, prop, fk, ik):
-        if getattr(rig, prop) > 0.5:
-            row.operator("daz.toggle_fk_ik", text="IK").toggle = prop + " 0" + fk + ik
-        else:
-            row.operator("daz.toggle_fk_ik", text="FK").toggle = prop + " 1" + ik + fk
 
 class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Simplify"
@@ -9532,10 +9513,13 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Version", icon="INFO")
         if rig_settings.model_version!='':
-            box.label(text="Model:           " + rig_settings.model_version)
-        box.label(text="MustardUI:    " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum))
+            box.label(text="Model:                  " + rig_settings.model_version)
+        box.label(text="MustardUI:           " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum))
+        if settings.debug and rig_settings.diffeomorphic_support:
+            if settings.status_diffeomorphic_version[0] > 0:
+                box.label(text="Diffeomorphic:   " + str(settings.status_diffeomorphic_version[0]) + '.' + str(settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2]))
         
-        if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support):
+        if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support) or ((settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0)):
             box = layout.box()
             
             if rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1:
@@ -9547,6 +9531,9 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                 box.label(icon='ERROR',text="Diffeomorphic not enabled!")
             elif settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support:
                 box.label(icon='ERROR', text="Diffeomorphic not installed!")
+            
+            if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0):
+                box.label(icon='ERROR', text="Diffeomorphic 1.5 or below are not supported!")
 
 class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Links"
