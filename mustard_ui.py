@@ -5394,9 +5394,11 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
 class MustardUI_UpdateUIFile(bpy.types.Operator):
     """Update the UI"""
     bl_idname = "mustardui.updateuifile"
-    bl_label = "Register UI"
+    bl_label = "Update UI"
     
-    register: bpy.props.BoolProperty(default = True)
+    v = [0, 0, 0]
+    buildnum = 0
+    buildnum_str = ""
     
     @classmethod
     def poll(cls, context):
@@ -5409,38 +5411,18 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
     
     def execute(self, context):
         
-        import requests
-        
         settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config = 0)
         
-        # Import the data from the GitHub repository file
-        try:
-            response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/master/mustard_ui.py")
-            data = response.text
-        except:
-            self.report({'ERROR'}, "MustardUI: Error downloading the update. Check your connection")
-            return {'FINISHED'}
+        data = self.data
         
         # Check version
         if '"version": (' in data:
             
-            v = [0, 0, 0]
-            find = data.split('"version": (',1)[1]
-            v[0] = int(find.split(',')[0])
-            v[1] = int(find.split(',')[1])
-            v[2] = find.split(',')[2]
-            v[2] = int(v[2].split(')')[0])
-            v = (v[0], v[1], v[2])
+            version = (self.v[0], self.v[1], self.v[2])
             
-            find = data.split('mustardui_buildnum = "',1)[1]
-            buildnum_str = find.split('"')[0]
-            buildnum = int(buildnum_str)
-            
-            print("MustardUI - Version fetched from GitHub is " + str(v[0]) + '.' + str(v[1]) + '.' + str(v[2]) + '.' + str(buildnum_str) + '.')
-            
-            if bl_info["version"] > v or (bl_info["version"] == v and mustardui_buildnum >= buildnum):
-                self.report({'ERROR'}, "MustardUI: The current version is already updated")
+            if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
+                self.report({'ERROR'}, "MustardUI: The current version is already up-to-date")
                 return {'FINISHED'}
             
         else:
@@ -5470,6 +5452,51 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
             self.report({'ERROR'}, "MustardUI: Error while updating")
         
         return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        import requests
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        # Import the data from the GitHub repository file
+        try:
+            response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/master/mustard_ui.py")
+            self.data = response.text
+        except:
+            self.report({'ERROR'}, "MustardUI: Error downloading the update. Check your connection")
+            return {'FINISHED'}
+        
+        # Fetch version
+        if '"version": (' in self.data:
+            
+            find = self.data.split('"version": (',1)[1]
+            self.v[0] = int(find.split(',')[0])
+            self.v[1] = int(find.split(',')[1])
+            self.v[2] = find.split(',')[2]
+            self.v[2] = int(self.v[2].split(')')[0])
+            
+            find = self.data.split('mustardui_buildnum = "',1)[1]
+            self.buildnum_str = find.split('"')[0]
+            self.buildnum = int(self.buildnum_str)
+        else:
+            self.report({'ERROR'}, "MustardUI: Can not find the version number of the update version")
+            return {'FINISHED'}
+        
+        return context.window_manager.invoke_props_dialog(self, width = 500)
+            
+    def draw(self, context):
+        
+        layout = self.layout
+        
+        box = layout.box()
+        row = box.row()
+        row.label(text = "Current version: ")
+        row.label(text = str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum) + '.')
+        row = box.row()
+        row.label(text = "Remote version: ")
+        row.label(text = str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.' + str(self.buildnum_str) + '.')
 
 # ------------------------------------------------------------------------
 #    Outfit visibility operator
