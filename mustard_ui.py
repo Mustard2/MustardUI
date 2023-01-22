@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "002"
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -944,8 +944,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Exceptions",
                         description = "Morphs that will not be disabled when morphs are disabled.\nAdd strings to add morphs (they should map the initial part of the name of the morph), separated by commas.\nNote: spaces and order are considered")
     
-    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.5",
-                        items = [("1.6", "1.6", "1.6"), ("1.5", "1.5", "1.5")],
+    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.6",
+                        items = [("1.7", "1.7", "1.7"), ("1.6", "1.6", "1.6")],
                         name = "Diffeomorphic Version")
     
     diffeomorphic_morphs_list: bpy.props.CollectionProperty(name = "Daz Morphs List",
@@ -997,20 +997,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_facs_bones_loc = ['lowerJaw', 'NasolabialLower', 'NasolabialMouthCorner', 'LipCorner', 'LipLowerOuter',
                 'LipLowerInner', 'LipLowerMiddle', 'CheekLower', 'LipNasolabialCrease',
                 'LipUpperMiddle', 'LipUpperOuter', 'LipUpperInner', 'LipBelow', 'NasolabialMiddle']
-    
-    # Script for 1.5 morph support
-    
-    # Function to force Register in text file added
-    def update_file_register(self, context):
-        if self.diffeomorphic_1_5_script != None:
-            if "def evalMorphsLoc(pb, idx):" in rig_settings.diffeomorphic_1_5_script.as_string():
-                self.diffeomorphic_1_5_script.use_module = True
-        return
-    
-    diffeomorphic_1_5_script: PointerProperty(type=bpy.types.Text,
-                        name = "Diffeomorphic 1.5 Morph support script",
-                        description = "From Diffeomorphic 1.6.1, 1.5 Morphs are not supported. You can provide this support script to enable them",
-                        update = update_file_register)
     
     # ------------------------------------------------------------------------
     #    Simplify
@@ -1368,6 +1354,8 @@ def mustardui_armature_visibility_update(self, context):
     
     for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
         arm.layers[i] = armature_settings.layers[i].show
+        if armature_settings.layers[i].outfit_switcher_enable:
+            arm.layers[i] = armature_settings.outfits
     
     return
 
@@ -1519,18 +1507,11 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                         description = "Show/hide the hair armature",
                         update = mustardui_armature_visibility_hair_update)
     
-    # IK/FK Support
-    ik_fk_collapse: bpy.props.BoolProperty(default = True,
-                        name = "")
-    
-    enable_ik_fk: bpy.props.BoolProperty(default = False,
-                        name = "IK/FK support",
-                        description = "Enable the IK/FK switch tools if available for the current rig")
-    enable_ik_fk_snap: bpy.props.BoolProperty(default = False,
-                        name = "IK/FK snap tools",
-                        description = "Enable the IK/FK snap tools if available for the current rig")
-    
-    
+    # Outfit layers
+    outfits: bpy.props.BoolProperty(default = True,
+                        name = "Outfits",
+                        description = "Show/hide the outfit armature",
+                        update = mustardui_armature_visibility_update)
 
 bpy.utils.register_class(MustardUI_ArmatureSettings)
 bpy.types.Armature.MustardUI_ArmatureSettings = bpy.props.PointerProperty(type = MustardUI_ArmatureSettings)
@@ -4888,35 +4869,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                 if settings.debug:
                     print('MustardUI - Configuration Warning - The rig has multiple rig types. This might create problems in the UI')
             
-            # Check MHX requirements for IK/FK support
-            if armature_settings.enable_ik_fk and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0):
-                armature_settings.enable_ik_fk = False
-                armature_settings.enable_ik_fk_snap = False
-                warnings = warnings + 1
-                if settings.debug:
-                    print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but from Diffeomorphic 1.6.0 it has been moved to MHX independent panel')
-            
-            if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and settings.status_diffeomorphic < 2:
-                warnings = warnings + 1
-                if settings.debug:
-                    print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but Diffeomorphic is not installed')
-            
-            if armature_settings.enable_ik_fk and rig_settings.model_rig_type != "mhx":
-                armature_settings.enable_ik_fk = False
-                armature_settings.enable_ik_fk_snap = False
-                warnings = warnings + 1
-                if settings.debug:
-                    print('MustardUI - Configuration Warning - IK/FK support requested for non-MHX rig. The IK/FK option will be switched off')
-            
-            # Check Diffeomorphic 1.5 morph support script
-            if rig_settings.diffeomorphic_support:
-                if rig_settings.diffeomorphic_1_5_script != None:
-                    if not "def evalMorphsLoc(pb, idx):" in rig_settings.diffeomorphic_1_5_script.as_string():
-                        rig_settings.diffeomorphic_1_5_script = None
-                        warnings = warnings + 1
-                        if settings.debug:
-                            print('MustardUI - Configuration Warning - The Diffeomorphic 1.5 Morphs support script selected is invalid')
-            
             # Check shrinkwrap modifier requirements
             if tools_settings.lips_shrinkwrap_enable and not rig_settings.model_rig_type in ['arp', 'mhx']:
                 tools_settings.lips_shrinkwrap_armature_object = None
@@ -7174,7 +7126,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
                                                             "DazStandardjcms", props_removed)
                 props_removed.append("pJCM")
-            if self.remove_morphs_facs or rig_settings.diffeomorphic_model_version == "1.5":
+            if self.remove_morphs_facs:
                 props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
                                                             "DazFacs", props_removed)
                 props_removed.append("facs")
@@ -7195,7 +7147,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if self.remove_morphs_jcms:
                 props_removed = self.remove_props_from_group(rig_settings.model_body,
                                                             "DazStandardjcms", props_removed)
-            if self.remove_morphs_facs or rig_settings.diffeomorphic_model_version == "1.5":
+            if self.remove_morphs_facs:
                 props_removed = self.remove_props_from_group(rig_settings.model_body,
                                                             "DazFacs", props_removed)
             props_removed = self.remove_props_from_group(rig_settings.model_body,
@@ -7287,7 +7239,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         morphs_props_removed = morphs_props_removed + 1
             
             # Remove diffeomorphic support from the UI to avoid errors in the UI, or restore it if FACS are asked
-            if not self.remove_morphs_facs and not rig_settings.diffeomorphic_model_version == "1.5":
+            if not self.remove_morphs_facs:
                 rig_settings.diffeomorphic_morphs_list.clear()
                 rig_settings.diffeomorphic_body_morphs = False
                 rig_settings.diffeomorphic_emotions = False
@@ -7991,14 +7943,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box.label(text="General Settings",icon="MODIFIER")
                 box.prop(armature_settings, 'enable_automatic_hair')
                 
-                if rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_model_version == "1.5":
-                    col = box.column(align=True)
-                    row = col.row()
-                    row.prop(armature_settings, 'enable_ik_fk')
-                    row = col.row()
-                    row.enabled = armature_settings.enable_ik_fk
-                    row.prop(armature_settings, 'enable_ik_fk_snap')
-                
                 box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
                 
                 box = layout.box()
@@ -8171,11 +8115,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     row.label(text="Model Version")
                     row.scale_x = row_scale
                     row.prop(rig_settings, "diffeomorphic_model_version", text="")
-                    if rig_settings.diffeomorphic_model_version == "1.5":
-                        row = box2.row(align=True)
-                        row.label(text="1.5 Support Script")
-                        row.scale_x = row_scale
-                        row.prop(rig_settings, "diffeomorphic_1_5_script", text="")
                     
                     box2 = box.box()
                     box2.label(text="Morphs", icon = "SHAPEKEY_DATA")
@@ -8486,10 +8425,10 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
                 return
         
         # Check Diffeomorphic version and inform the user about possible issues
-        if rig_settings.diffeomorphic_model_version == "1.5" and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0):
+        if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0):
             box = layout.box()
-            box.label(icon='ERROR', text="Diffeomorphic version not correct!")
-            box.label(icon='BLANK1', text="Please install version 1.5.1.")
+            box.label(icon='ERROR', text="Diffeomorphic version not supported!")
+            box.label(icon='BLANK1', text="Only 1.6 or above is supported.")
         
         row = layout.row()
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
@@ -8919,12 +8858,11 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 return False
             
             enabled_layers = [x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable]
-            enabled_IKFK = armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None
             
             if rig_settings.hair_collection != None:
-                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair) or enabled_IKFK)
+                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair))
             else:
-                return res and (len(enabled_layers)>0 or enabled_IKFK)
+                return res and len(enabled_layers)>0
         else:
             return res
 
@@ -8935,18 +8873,24 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         rig_settings = obj.MustardUI_RigSettings
         armature_settings = obj.MustardUI_ArmatureSettings
         
-        layout = self.layout
+        box = self.layout
         
+        draw_separator = False
         if rig_settings.hair_collection != None and armature_settings.enable_automatic_hair:
             if len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>0:
-                box = layout.box()
-                box.label(text='Hair Armature', icon="STRANDS")
-                box.prop(armature_settings, "hair",toggle=True)
+                box.prop(armature_settings, "hair",toggle=True, icon="CURVES")
+                draw_separator = True
+        
+        if len(rig_settings.outfits_list)>0 and rig_settings.outfits_list != "Nude":
+            if len([x for x in armature_settings.layers if (x.outfit_switcher_enable and x.outfit_switcher_collection==bpy.data.collections[rig_settings.outfits_list])]):
+                box.prop(armature_settings, "outfits",toggle=True, icon="MOD_CLOTH")
+                draw_separator = True
+        
+        if draw_separator:
+            box.separator()
         
         enabled_layers = [x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable]
         if len(enabled_layers)>0:
-            box = layout.box()
-            box.label(text='Body Armature Layers', icon="ARMATURE_DATA")
             for i in sorted([x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable], key = lambda x:armature_settings.layers[x].id):
                 if (armature_settings.layers[i].advanced and settings.advanced) or not armature_settings.layers[i].advanced:
                     if armature_settings.layers[i].mirror and armature_settings.layers[i].mirror_left:
@@ -8955,79 +8899,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                         row.prop(armature_settings.layers[armature_settings.layers[i].mirror_layer], "show", text = armature_settings.layers[armature_settings.layers[i].mirror_layer].name, toggle=True)
                     elif not armature_settings.layers[i].mirror:
                         box.prop(armature_settings.layers[i], "show", text = armature_settings.layers[i].name, toggle=True)
-        
-        if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None:
-            
-            if settings.status_diffeomorphic > 1:
-                
-                if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0) or not hasattr(rig_settings.model_armature_object, '["MhaArmIk_L"]'):
-                    return
-                
-                box = layout.box()
-            
-                row = box.row(align=False)
-                row.prop(armature_settings, "ik_fk_collapse", icon="TRIA_DOWN" if not armature_settings.ik_fk_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-                row.label(text="IK/FK Settings")
-                
-                if not armature_settings.ik_fk_collapse:
-                
-                    box.label(text = "FK/IK switch")
-                    row = box.row()
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.label(text = "Arm")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaArmIk_L", " 3", " 2")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaArmIk_R", " 19", " 18")
-                    row = box.row()
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.label(text = "Leg")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaLegIk_L", " 5", " 4")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaLegIk_R", " 21", " 20")
-                    
-                    box.label(text = "IK Influence")
-                    row = box.row()
-                    row.label(text = "Arm")
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.prop(rig_settings.model_armature_object, '["MhaArmIk_L"]', text="")
-                    row.prop(rig_settings.model_armature_object, '["MhaArmIk_R"]', text="")
-                    row = box.row()
-                    row.label(text = "Leg")
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.prop(rig_settings.model_armature_object, '["MhaLegIk_L"]', text="")
-                    row.prop(rig_settings.model_armature_object, '["MhaLegIk_R"]', text="")
-                    
-                    if armature_settings.enable_ik_fk_snap:
-                        
-                        box.separator()
-                        box.label(text = "Snap Arm Bones")
-                        row = box.row()
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.label(text = "FK Arm")
-                        row.operator("daz.snap_fk_ik", text="Snap L FK Arm").data = "MhaArmIk_L 2 3 12"
-                        row.operator("daz.snap_fk_ik", text="Snap R FK Arm").data = "MhaArmIk_R 18 19 28"
-                        row = box.row()
-                        row.label(text = "IK Arm")
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.operator("daz.snap_ik_fk", text="Snap L IK Arm").data = "MhaArmIk_L 2 3 12"
-                        row.operator("daz.snap_ik_fk", text="Snap R IK Arm").data = "MhaArmIk_R 18 19 28"
-
-                        box.label(text = "Snap Leg Bones")
-                        row = box.row()
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.label(text = "FK Leg")
-                        row.operator("daz.snap_fk_ik", text="Snap L FK Leg").data = "MhaLegIk_L 4 5 12"
-                        row.operator("daz.snap_fk_ik", text="Snap R FK Leg").data = "MhaLegIk_R 20 21 28"
-                        row = box.row()
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.label(text = "IK Leg")
-                        row.operator("daz.snap_ik_fk", text="Snap L IK Leg").data = "MhaLegIk_L 4 5 12"
-                        row.operator("daz.snap_ik_fk", text="Snap R IK Leg").data = "MhaLegIk_R 20 21 28"
-            
-            else:
-                box = layout.box()
-                
-                box.label(text="IK/FK Settings")
-                box.label(text="Diffeomorphic not installed", icon = "ERROR")
-                
     
     def toggle(self, row, rig, prop, fk, ik):
         if getattr(rig, prop) > 0.5:
