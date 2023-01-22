@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "006"
+mustardui_buildnum = "008"
 
 import bpy
 import addon_utils
@@ -645,6 +645,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             arm.update_tag()
 
     # Function to update the global outfit properties
+    def outfits_global_options_subsurf_update(self, context):
+        
+        collections = [x.collection for x in self.outfits_collections]
+        if self.extras_collection != None:
+            collections.append(self.extras_collection)
+        
+        for collection in collections:
+            for obj in collection.objects:
+                for modifier in obj.modifiers:
+                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
+                        modifier.show_viewport = self.outfits_global_subsurface
+            
+        return
+    
     def outfits_global_options_update(self, context):
         
         collections = [x.collection for x in self.outfits_collections]
@@ -658,9 +672,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     obj.data.use_auto_smooth = self.outfits_global_normalautosmooth
                 
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
-                        modifier.show_viewport = self.outfits_global_subsurface
-                    elif modifier.type == "CORRECTIVE_SMOOTH" and self.outfits_enable_global_smoothcorrection:
+                    if modifier.type == "CORRECTIVE_SMOOTH" and self.outfits_enable_global_smoothcorrection:
                         modifier.show_viewport = self.outfits_global_smoothcorrection
                         modifier.show_render = self.outfits_global_smoothcorrection
                     elif modifier.type == "MASK" and self.outfits_enable_global_mask:
@@ -701,7 +713,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfits_global_subsurface: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface",
                         description = "Enable/disable subdivision surface modifiers in Viewport",
-                        update = outfits_global_options_update)
+                        update = outfits_global_options_subsurf_update)
     
     outfits_global_smoothcorrection: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction",
@@ -845,6 +857,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_enable_global_smoothcorrection: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction modifiers")
     
+    hair_enable_global_solidify: bpy.props.BoolProperty(default = False,
+                        name = "Solidify modifiers")
+    
     hair_enable_global_particles: bpy.props.BoolProperty(default = False,
                         name = "Particle Hair modifiers")
     
@@ -852,6 +867,16 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Normals Auto Smooth properties")
     
     # Function to update the global hair properties
+    def hair_global_options_subsurf_update(self, context):
+        
+        if self.hair_collection != None:
+            for obj in self.hair_collection.objects:
+                for modifier in obj.modifiers:
+                    if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
+                        modifier.show_viewport = self.hair_global_subsurface
+        
+        return
+    
     def hair_global_options_update(self, context):
         
         if self.hair_collection != None:
@@ -859,11 +884,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 if obj.type == "MESH" and self.hair_enable_global_normalautosmooth:
                     obj.data.use_auto_smooth = self.hair_global_normalautosmooth
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
-                        modifier.show_viewport = self.hair_global_subsurface
-                    elif modifier.type == "CORRECTIVE_SMOOTH" and self.hair_enable_global_smoothcorrection:
+                    if modifier.type == "CORRECTIVE_SMOOTH" and self.hair_enable_global_smoothcorrection:
                         modifier.show_viewport = self.hair_global_smoothcorrection
                         modifier.show_render = self.hair_global_smoothcorrection
+                    elif modifier.type == "SOLIDIFY" and self.hair_enable_global_solidify:
+                        modifier.show_viewport = self.hair_global_solidify
+                        modifier.show_render = self.hair_global_solidify
                     elif modifier.type == "PARTICLE_SYSTEM" and self.hair_enable_global_particles:
                         modifier.show_viewport = self.hair_global_particles
                         modifier.show_render = self.hair_global_particles
@@ -873,10 +899,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_global_subsurface: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface",
                         description = "Enable/disable subdivision surface modifiers in Viewport",
-                        update = hair_global_options_update)
+                        update = hair_global_options_subsurf_update)
     
     hair_global_smoothcorrection: bpy.props.BoolProperty(default = True,
                         name = "Smooth Correction",
+                        update = hair_global_options_update)
+    
+    hair_global_solidify: bpy.props.BoolProperty(default = True,
+                        name = "Solidify",
                         update = hair_global_options_update)
     
     hair_global_particles: bpy.props.BoolProperty(default = True,
@@ -1020,7 +1050,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             self.body_smooth_corr                    = not self.simplify_enable
         if self.body_enable_norm_autosmooth:
             self.body_norm_autosmooth                = not self.simplify_enable
-        if seld.body_solidify and self.simplify_enable:
+        if self.body_solidify and self.simplify_enable:
             self.body_solidify                       = not self.simplify_enable
         
         # Eevee Optimized Normals
@@ -1060,6 +1090,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     self.hair_global_subsurface         = not self.simplify_enable
                 if self.hair_enable_global_smoothcorrection:
                     self.hair_global_smoothcorrection   = not self.simplify_enable
+                if self.hair_enable_global_solidify:
+                    self.hair_global_solidify           = not self.simplify_enable
                 if self.simplify_normals_autosmooth and self.hair_enable_global_normalautosmooth:
                     self.hair_global_normalautosmooth   = not self.simplify_enable
         
@@ -7908,6 +7940,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     col = box.column(align=True)
                     col.prop(rig_settings,"hair_enable_global_subsurface")
                     col.prop(rig_settings,"hair_enable_global_smoothcorrection")
+                    col.prop(rig_settings,"hair_enable_global_solidify")
                     col.prop(rig_settings,"hair_enable_global_particles")
                     col.prop(rig_settings,"hair_enable_global_normalautosmooth")
                         
@@ -8822,7 +8855,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     row2.prop(mod, "show_render", text="")
             
             # Outfit global properties
-            if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
+            if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
                 
                 box = layout.box()
                 row = box.row(align=True)
@@ -8832,6 +8865,8 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     col.prop(rig_settings,"hair_global_subsurface")
                 if rig_settings.hair_enable_global_smoothcorrection:
                     col.prop(rig_settings,"hair_global_smoothcorrection")
+                if rig_settings.hair_enable_global_solidify:
+                    col.prop(rig_settings,"hair_global_solidify")
                 if rig_settings.hair_enable_global_particles:
                     col.prop(rig_settings,"hair_global_particles")
                 if rig_settings.hair_enable_global_normalautosmooth:
