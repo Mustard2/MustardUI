@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "003"
+mustardui_buildnum = "004"
 
 import bpy
 import addon_utils
@@ -1898,6 +1898,10 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     icon : bpy.props.EnumProperty(name='Icon',
                         description="Choose the icon",
                         items = mustardui_icon_list)
+    advanced : bpy.props.BoolProperty(name='Advanced',
+                        description="The property is shown only when Advanced settings are enabled")
+    hidden: bpy.props.BoolProperty(name='Hidden',
+                        description="The property is hidden from the UI.\nThis can be useful if the property is just a proxy for some functions (e.g. for On Switch actions)")
     
     # Internal stored properties
     rna : bpy.props.StringProperty(name = "RNA")
@@ -2686,6 +2690,11 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
                 except:
                     row.label(text="", icon="ERROR")
             
+                if item.hidden:
+                    row.label(text="", icon="HIDE_ON")
+                else:
+                    row.label(text="", icon="HIDE_OFF")
+            
             if item.section == "":
                 row.label(text="", icon = "LIBRARY_DATA_BROKEN")
             else:
@@ -2742,6 +2751,11 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
+                
+                if item.hidden:
+                    row.label(text="", icon="HIDE_ON")
+                else:
+                    row.label(text="", icon="HIDE_OFF")
             
             if len(item.linked_properties) > 0:
                 row.label(text="", icon="LINK_BLEND")
@@ -2789,6 +2803,11 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
+                
+                if item.hidden:
+                    row.label(text="", icon="HIDE_ON")
+                else:
+                    row.label(text="", icon="HIDE_OFF")
             
             if len(item.linked_properties) > 0:
                 row.label(text="", icon="LINK_BLEND")
@@ -3098,6 +3117,12 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         row.scale_x=scale
         row.prop(self, "icon", text="")
         
+        row=box.row()
+        row.label(text="Visibility:")
+        row.scale_x=scale/2
+        row.prop(custom_prop, "hidden", text="Hidden")
+        row.prop(custom_prop, "advanced", text="Advanced")
+        
         if prop_cp_type == "OUTFIT":
             row=box.row()
             row.label(text="Outfit:")
@@ -3113,11 +3138,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 
                 row=box.row()
                 row.label(text="Actions on switch:")
-                row.scale_x=1.0
-                row2 = row.row()
-                row2.scale_x=0.8
-                row2.prop(custom_prop, "outfit_enable_on_switch", text="Enable")
-                row2.prop(custom_prop, "outfit_disable_on_switch", text="Disable")
+                row.scale_x=scale/2
+                row.prop(custom_prop, "outfit_enable_on_switch", text="Enable")
+                row.prop(custom_prop, "outfit_disable_on_switch", text="Disable")
         
         if prop_cp_type == "HAIR":
             row=box.row()
@@ -8307,7 +8330,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             if len(unsorted_props)>0:
                 box = layout.box()
                 box.label(text = "Un-sorted properties", icon = "LIBRARY_DATA_BROKEN")
-                for prop in [x for x in custom_props if x.section == ""]:
+                for prop in [x for x in custom_props if x.section == "" and not x.hidden and (not x.advanced if not settings.advanced else True)]:
                     row = box.row()
                     if rig_settings.body_custom_properties_icons:
                         row.label(text = prop.name, icon = prop.icon if prop.icon != "NONE" else "DOT")
@@ -8329,9 +8352,9 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             for i_sec in sorted([x for x in range(0,len(rig_settings.body_custom_properties_sections))], key = lambda x:rig_settings.body_custom_properties_sections[x].id):
                 section = rig_settings.body_custom_properties_sections[i_sec]
                 if rig_settings.body_custom_properties_name_order:
-                    custom_properties_section = sorted([x for x in custom_props if x.section == section.name], key = lambda x:x.name)
+                    custom_properties_section = sorted([x for x in custom_props if x.section == section.name and not x.hidden and (not x.advanced if not settings.advanced else True)], key = lambda x:x.name)
                 else:
-                    custom_properties_section = [x for x in custom_props if x.section == section.name]
+                    custom_properties_section = [x for x in custom_props if x.section == section.name and not x.hidden and (not x.advanced if not settings.advanced else True)]
                 if len(custom_properties_section) > 0 and (not section.advanced or (section.advanced and settings.advanced)):
                     box = layout.box()
                     row = box.row(align=False)
@@ -8604,13 +8627,14 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             row.prop(rig_settings,"outfits_list", text="")
             
             if rig_settings.outfits_list != "Nude":
+                
                 if len(bpy.data.collections[rig_settings.outfits_list].objects)>0:
                     
                     # Global outfit custom properties
                     if rig_settings.outfit_custom_properties_name_order:
-                        custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None], key = lambda x:x.name)
+                        custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None and not x.hidden and (not x.advanced if not settings.advanced else True)], key = lambda x:x.name)
                     else:
-                        custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None]
+                        custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None and not x.hidden and (not x.advanced if not settings.advanced else True)]
                     
                     if len(custom_properties)>0 and rig_settings.outfit_additional_options:
                         row.prop(rig_settings,"outfit_global_custom_properties_collapse", text="", toggle=True, icon="PREFERENCES")
@@ -8629,9 +8653,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         
                         # Outfit custom properties
                         if rig_settings.outfit_custom_properties_name_order:
-                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj], key = lambda x:x.name)
+                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj and not x.hidden], key = lambda x:x.name)
                         else:
-                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj]
+                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj and not x.hidden]
                         
                         if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                             row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
@@ -8663,9 +8687,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         row.operator("mustardui.object_visibility",text=obj.name, icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
                     
                     if rig_settings.outfit_custom_properties_name_order:
-                        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj], key = lambda x:x.name)
+                        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj and not x.hidden and (not x.advanced if not settings.advanced else True)], key = lambda x:x.name)
                     else:
-                        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj]
+                        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj and not x.hidden and (not x.advanced if not settings.advanced else True)]
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                         row.prop(bpy.data.objects[obj.name],"MustardUI_additional_options_show_lock", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show_lock:
