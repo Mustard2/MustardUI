@@ -5395,10 +5395,18 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
     """Update the UI"""
     bl_idname = "mustardui.updateuifile"
     bl_label = "Update UI"
+    bl_options = {'UNDO'}
     
     v = [0, 0, 0]
     buildnum = 0
     buildnum_str = ""
+    
+    force_update: bpy.props.BoolProperty(default = False,
+                        name = "Force Update",
+                        description = "Force the installation of the remote version, even if the current UI script seems up-to-date")
+    remove_others: bpy.props.BoolProperty(default = True,
+                        name = "Remove Other UI Files",
+                        description = "Remove other UI files (mustard_ui.py) from the scene, keeping only the updated one")
     
     @classmethod
     def poll(cls, context):
@@ -5421,12 +5429,12 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
             
             version = (self.v[0], self.v[1], self.v[2])
             
-            if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
-                self.report({'ERROR'}, "MustardUI: The current version is already up-to-date")
+            if not self.force_update and (bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum)):
+                self.report({'INFO'}, "MustardUI: The current version is already up-to-date")
                 return {'FINISHED'}
             
         else:
-            self.report({'ERROR'}, "MustardUI: Can not find the version number of the update version")
+            self.report({'ERROR'}, "MustardUI: Can not find the version number on the remote file")
             return {'FINISHED'}
         
         # Write data to the text
@@ -5437,19 +5445,25 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
         
             with context.temp_override(edit_text = obj.MustardUI_script_file):
                 bpy.ops.text.run_script()
+            
+            bpy.ops.mustardui.registeruifile(register = False)
+            bpy.ops.mustardui.registeruifile(register = True)
+            
         except:
-            self.report({'ERROR'}, "MustardUI: Error while updating")
+            self.report({'ERROR'}, "MustardUI: Error while updating. Undo to revert any change.")
             return {'FINISHED'}
         
         # Delete all other eventual mustard_ui.py files
-        try:
-            for text in bpy.data.texts:
-                if 'mustard_ui.py' in text.name and text.name != 'mustard_ui.py':
-                    with context.temp_override(edit_text = text):
-                        bpy.ops.text.unlink()
-            self.report({'INFO'}, "MustardUI: UI successfully updated to version " + str(v[0]) + '.' + str(v[1]) + '.' + str(v[2]) + '.')
-        except:
-            self.report({'ERROR'}, "MustardUI: Error while updating")
+        if self.remove_others:
+            try:
+                for text in bpy.data.texts:
+                    if 'mustard_ui.py' in text.name and text.name != 'mustard_ui.py':
+                        with context.temp_override(edit_text = text):
+                            bpy.ops.text.unlink()
+            except:
+                pass
+        
+        self.report({'INFO'}, "MustardUI: UI successfully updated to version " + str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.')
         
         return {'FINISHED'}
     
@@ -5484,19 +5498,82 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
             self.report({'ERROR'}, "MustardUI: Can not find the version number of the update version")
             return {'FINISHED'}
         
-        return context.window_manager.invoke_props_dialog(self, width = 500)
+        return context.window_manager.invoke_props_dialog(self, width = 300)
             
     def draw(self, context):
         
         layout = self.layout
         
+        version = (self.v[0], self.v[1], self.v[2])
+        
         box = layout.box()
+        
+        if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
+            box.label(text = "The current version seems up-to-date!", icon = "INFO")
+        else:
+            box.label(text = "Update available!", icon = "INFO")
+        
         row = box.row()
-        row.label(text = "Current version: ")
+        row.label(text = "Current version: ", icon = "RIGHTARROW_THIN")
         row.label(text = str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum) + '.')
         row = box.row()
-        row.label(text = "Remote version: ")
+        row.label(text = "Remote version: ", icon = "WORLD")
         row.label(text = str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.' + str(self.buildnum_str) + '.')
+                
+        box = layout.box()
+        box.label(text = "Settings", icon = "MODIFIER_ON")
+        col = box.column()
+        if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
+            col.prop(self, 'force_update')
+        col.prop(self, 'remove_others')
+
+class MustardUI_RemoveOtherUIFile(bpy.types.Operator):
+    """Remove other UI files (mustard_ui.py) from the scene, keeping only the current one"""
+    bl_idname = "mustardui.removeotheruifile"
+    bl_label = "Remove Other UI Files"
+    bl_options = {'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        if obj != None:
+            if obj.MustardUI_script_file != None:
+                for text in bpy.data.texts:
+                    if 'mustard_ui.py' in text.name and text != obj.MustardUI_script_file:
+                        return True
+        return False
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)  
+        
+        # Write data to the text
+        try:
+            obj.MustardUI_script_file.name = 'mustard_ui.py'
+            bpy.ops.mustardui.registeruifile(register = False)
+            bpy.ops.mustardui.registeruifile(register = True)
+            #with context.temp_override(edit_text = obj.MustardUI_script_file):
+            #    bpy.ops.text.run_script()
+        except:
+            self.report({'ERROR'}, "MustardUI: Error while making the current UI default")
+            return {'FINISHED'}
+        
+        # Delete all other eventual mustard_ui.py files
+        try:
+            removed = 0
+            for text in bpy.data.texts:
+                if 'mustard_ui.py' in text.name and text != obj.MustardUI_script_file:
+                    with context.temp_override(edit_text = text):
+                        bpy.ops.text.unlink()
+                    removed = removed + 1
+            self.report({'INFO'}, "MustardUI: Removed " + str(removed) + " other UI files. Restart Blender for changes to take effect.")
+        except:
+            self.report({'ERROR'}, "MustardUI: Error while deleting other files.")
+        
+        return {'FINISHED'}
 
 # ------------------------------------------------------------------------
 #    Outfit visibility operator
@@ -9654,8 +9731,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                 box.operator('mustardui.registeruifile', text="Register UI Script", icon = "TEXT").register = True
             else:
                 box.operator('mustardui.registeruifile', text="Un-register UI Script", icon = "TEXT").register = False
-            box.operator('mustardui.updateuifile', text="Update UI Script", icon = "TRIA_UP_BAR")
-            
+            box.operator('mustardui.removeotheruifile', icon = "SCENE_DATA")
             box.operator('mustardui.property_rebuild', icon = "MOD_BUILD", text = "Re-build Custom Properties")
             box.operator('mustardui.cleanmodel', text="Clean model", icon = "BRUSH_DATA")
             box.operator('mustardui.remove', text="UI Removal", icon = "X")
@@ -9673,6 +9749,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         if settings.debug and rig_settings.diffeomorphic_support:
             if settings.status_diffeomorphic_version[0] > 0:
                 box.label(text="Diffeomorphic:   " + str(settings.status_diffeomorphic_version[0]) + '.' + str(settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2]))
+        box.operator('mustardui.updateuifile', text="Check for UI Updates", icon = "TRIA_UP_BAR")
         
         if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support) or ((settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0)):
             box = layout.box()
@@ -9745,6 +9822,7 @@ classes = (
     MustardUI_RemoveUI,
     MustardUI_RegisterUIFile,
     MustardUI_UpdateUIFile,
+    MustardUI_RemoveOtherUIFile,
     # Model switch support operators
     MustardUI_ViewportModelSelection,
     MustardUI_SwitchModel,
