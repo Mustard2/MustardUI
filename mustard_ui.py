@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "012"
+mustardui_buildnum = "015"
 
 import bpy
 import addon_utils
@@ -1397,10 +1397,11 @@ def mustardui_armature_visibility_outfits_update(self, context):
     
     for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
         if armature_settings.layers[i].outfit_switcher_enable:
+            check_coll = bpy.data.collections[rig_settings.outfits_list] == armature_settings.layers[i].outfit_switcher_collection if rig_settings.outfits_list != "Nude" else False
             if armature_settings.layers[i].outfit_switcher_object == None:
-                armature_settings.layers[i].show = armature_settings.outfits and bpy.data.collections[rig_settings.outfits_list] == armature_settings.layers[i].outfit_switcher_collection
+                armature_settings.layers[i].show = armature_settings.outfits and check_coll
             else:
-                armature_settings.layers[i].show = armature_settings.outfits and not armature_settings.layers[i].outfit_switcher_object.MustardUI_outfit_visibility and bpy.data.collections[rig_settings.outfits_list] == armature_settings.layers[i].outfit_switcher_collection
+                armature_settings.layers[i].show = armature_settings.outfits and not armature_settings.layers[i].outfit_switcher_object.MustardUI_outfit_visibility and (check_coll or armature_settings.layers[i].outfit_switcher_object.MustardUI_outfit_lock)
     
     return
 
@@ -2199,10 +2200,17 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             return {'FINISHED'}
         
         # Adjust the property path to be exported
-        rna, path = context.window_manager.clipboard.rsplit('.', 1)
-        if '][' in path:
+        clipboard = context.window_manager.clipboard
+        blender_custom_property = '][' in clipboard
+        if not blender_custom_property:
+            rna, path = clipboard.rsplit('.', 1)
+        else:
+            path = clipboard
+            rna = ""
+        
+        if blender_custom_property:
             path, rem = path.rsplit('[', 1)
-            rna = rna + '.' + path
+            rna = path
             path = '[' + rem
         elif '[' in path:
             path, rem = path.rsplit('[', 1)
@@ -2233,7 +2241,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         
         # Add custom property to the object
         prop_name = prop_name_ui
-        if prop.is_animatable:
+        if prop.is_animatable or blender_custom_property:
             
             add_string_num = 1
             while prop_name in obj.keys():
@@ -2264,7 +2272,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         # Add driver
         force_non_animatable = False
         try:
-            if prop.is_animatable and (not prop.type in ["BOOLEAN", "ENUM"] or (prop.type == "BOOLEAN" and prop.array_length < 1)):
+            if (prop.is_animatable or blender_custom_property) and (not prop.type in ["BOOLEAN", "ENUM"] or (prop.type == "BOOLEAN" and prop.array_length < 1)):
                 mustardui_add_driver(obj, rna, path, prop, prop_name)
             else:
                 force_non_animatable = True
@@ -2293,7 +2301,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             cp.is_bool = prop.type == "BOOLEAN"
             if prop.type == "BOOLEAN" and prop.array_length<1:
                 cp.bool_value = eval(rna + '.' + path)
-            cp.is_animatable = prop.is_animatable if not force_non_animatable else False
+            cp.is_animatable = (prop.is_animatable if not force_non_animatable else False) or blender_custom_property
             
             cp.section = self.section
             
@@ -2458,12 +2466,6 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
             self.report({'INFO'}, 'MustardUI - Property linked.')
     
         return {'FINISHED'}
-
-class WM_MT_button_context(Menu):
-    bl_label = "Custom Action"
-
-    def draw(self, context):
-        pass
 
 # Operator to create the list of sections when right clicking on a property
 class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
@@ -5634,7 +5636,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
         
         # Enable/disable armature layers
-        if len(armature_settings.layers) > 0:
+        if len(armature_settings.layers) > 0 and armature_settings.outfits:
             outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
 
             for i in outfit_armature_layers:
@@ -9124,10 +9126,9 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 draw_separator = True
         
         if len(rig_settings.outfits_list)>0:
-            if rig_settings.outfits_list != "Nude":
-                if len([x for x in armature_settings.layers if (x.outfit_switcher_enable and x.outfit_switcher_collection==bpy.data.collections[rig_settings.outfits_list])]):
-                    box.prop(armature_settings, "outfits",toggle=True, icon="MOD_CLOTH")
-                    draw_separator = True
+            if len([x for x in armature_settings.layers if (x.outfit_switcher_enable and x.outfit_switcher_collection==bpy.data.collections[rig_settings.outfits_list] if rig_settings.outfits_list != "Nude" else True)]):
+                box.prop(armature_settings, "outfits",toggle=True, icon="MOD_CLOTH")
+                draw_separator = True
         
         if draw_separator:
             box.separator()
@@ -9846,7 +9847,6 @@ classes = (
     MustardUI_Property_Settings,
     MustardUI_Property_Rebuild,
     MustardUI_Property_SmartCheck,
-    WM_MT_button_context,
     # Body custom properties sections operators
     MustardUI_Body_AddSection,
     MustardUI_Body_DeleteSection,
@@ -9919,8 +9919,8 @@ def register():
     bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(name = "", default = 0)
     
     bpy.types.OUTLINER_MT_collection.append(mustardui_collection_menu)
-    bpy.types.WM_MT_button_context.append(mustardui_property_menuadd)
-    bpy.types.WM_MT_button_context.append(mustardui_property_link)
+    bpy.types.UI_MT_button_context_menu.append(mustardui_property_menuadd)
+    bpy.types.UI_MT_button_context_menu.append(mustardui_property_link)
 
 def unregister():
     
@@ -9929,8 +9929,8 @@ def unregister():
         unregister_class(cls)
     
     bpy.types.OUTLINER_MT_collection.remove(mustardui_collection_menu)
-    bpy.types.WM_MT_button_context.remove(mustardui_property_menuadd)
-    bpy.types.WM_MT_button_context.remove(mustardui_property_link)
+    bpy.types.UI_MT_button_context_menu.remove(mustardui_property_menuadd)
+    bpy.types.UI_MT_button_context_menu.remove(mustardui_property_link)
 
 if __name__ == "__main__":
     register()
