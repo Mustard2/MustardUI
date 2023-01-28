@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "015"
+mustardui_buildnum = "016"
 
 import bpy
 import addon_utils
@@ -1397,7 +1397,11 @@ def mustardui_armature_visibility_outfits_update(self, context):
     
     for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
         if armature_settings.layers[i].outfit_switcher_enable:
+            
             check_coll = bpy.data.collections[rig_settings.outfits_list] == armature_settings.layers[i].outfit_switcher_collection if rig_settings.outfits_list != "Nude" else False
+            if rig_settings.extras_collection != None:
+                check_coll = check_coll or armature_settings.layers[i].outfit_switcher_collection == rig_settings.extras_collection
+            
             if armature_settings.layers[i].outfit_switcher_object == None:
                 armature_settings.layers[i].show = armature_settings.outfits and check_coll
             else:
