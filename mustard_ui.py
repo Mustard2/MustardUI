@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "019"
+mustardui_buildnum = "020"
 
 import bpy
 import addon_utils
@@ -5435,7 +5435,7 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
             
             version = (self.v[0], self.v[1], self.v[2])
             
-            if not self.force_update and (bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum)):
+            if not self.force_update and (bl_info["version"] > version or (bl_info["version"] == version and int(mustardui_buildnum) >= self.buildnum)):
                 self.report({'INFO'}, "MustardUI: The current version is already up-to-date")
                 return {'FINISHED'}
             
@@ -5448,13 +5448,9 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
             obj.MustardUI_script_file.name = 'mustard_ui.py'
             obj.MustardUI_script_file.clear()
             obj.MustardUI_script_file.write(data)
-        
-            with context.temp_override(edit_text = obj.MustardUI_script_file):
-                bpy.ops.text.run_script()
             
             bpy.ops.mustardui.registeruifile(register = False)
             bpy.ops.mustardui.registeruifile(register = True)
-            
         except:
             self.report({'ERROR'}, "MustardUI: Error while updating. Undo to revert any change.")
             return {'FINISHED'}
@@ -5470,7 +5466,7 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
                 pass
         
         self.report({'INFO'}, "MustardUI: UI successfully updated to version " + str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.' + self.buildnum_str + '. Restart Blender for changes to take effect.')
-        
+
         return {'FINISHED'}
     
     def invoke(self, context, event):
