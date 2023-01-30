@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "017"
+mustardui_buildnum = "018"
 
 import bpy
 import addon_utils
@@ -5514,7 +5514,7 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
         
         box = layout.box()
         
-        if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
+        if bl_info["version"] > version or (bl_info["version"] == version and int(mustardui_buildnum) >= self.buildnum):
             box.label(text = "The current version seems up-to-date!", icon = "INFO")
         else:
             box.label(text = "Update available!", icon = "INFO")
@@ -5529,7 +5529,7 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
         box = layout.box()
         box.label(text = "Settings", icon = "MODIFIER_ON")
         col = box.column()
-        if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
+        if bl_info["version"] > version or (bl_info["version"] == version and int(mustardui_buildnum) >= self.buildnum):
             col.prop(self, 'force_update')
         col.prop(self, 'remove_others')
 
