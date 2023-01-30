@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "016"
+mustardui_buildnum = "017"
 
 import bpy
 import addon_utils
@@ -5469,7 +5469,7 @@ class MustardUI_UpdateUIFile(bpy.types.Operator):
             except:
                 pass
         
-        self.report({'INFO'}, "MustardUI: UI successfully updated to version " + str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.')
+        self.report({'INFO'}, "MustardUI: UI successfully updated to version " + str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.' + self.buildnum_str + '. Restart Blender for changes to take effect.')
         
         return {'FINISHED'}
     
