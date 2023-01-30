@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 25, 2),
+    "version": (0, 26, 0),
     "blender": (3, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "009"
+mustardui_buildnum = "017"
 
 import bpy
 import addon_utils
@@ -361,7 +361,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Global body mesh properties
     # Update function for Subdivision Surface modifiers
     def update_subdiv(self, context):
-    
+        
         for modifier in [x for x in self.model_body.modifiers if x.type == "SUBSURF"]:
             modifier.render_levels = self.body_subdiv_rend_lv
             modifier.levels = self.body_subdiv_view_lv
@@ -386,24 +386,33 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         return
     
+    # Update function for Smooth Correction modifiers
+    def update_solidify(self, context):
+        
+        for modifier in [x for x in self.model_body.modifiers if x.type == "SOLIDIFY"]:
+                modifier.show_viewport = self.body_solidify
+                modifier.show_render = self.body_solidify
+        
+        return
+    
     # Subdivision surface
     body_subdiv_rend: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface (Render)",
-                        description = "Enable/disable the subdivision surface during rendering. \nThis won't affect the viewport or the viewport rendering preview. \nNote that, depending on the complexity of the model, enabling this can greatly affect rendering times",
+                        description = "Enable/disable the Subdivision Surface during rendering. \nThis won't affect the viewport or the viewport rendering preview. \nNote that, depending on the complexity of the model, enabling this can greatly affect rendering times",
                         update = update_subdiv)
     body_subdiv_rend_lv: bpy.props.IntProperty(default = 1,
                         min = 0,max = 4,
                         name = "Level",
-                        description = "Set the subdivision surface level during rendering. \nNote that, depending on the complexity of the model, increasing this can greatly affect rendering times",
+                        description = "Set the Subdivision Surface level during rendering. \nNote that, depending on the complexity of the model, increasing this can greatly affect rendering times",
                         update = update_subdiv)
     body_subdiv_view: bpy.props.BoolProperty(default = False,
                         name = "Subdivision Surface (Viewport)",
-                        description = "Enable/disable the subdivision surface in the viewport. \nSince it's really computationally expensive, use this only for previews and do NOT enable it during posing. \nNote that it might require a lot of time to activate, and Blender will freeze during this",
+                        description = "Enable/disable the Subdivision Surface in the viewport. \nSince it's really computationally expensive, use this only for previews and do NOT enable it during posing. \nNote that it might require a lot of time to activate, and Blender will freeze during this",
                         update = update_subdiv)
     body_subdiv_view_lv: bpy.props.IntProperty(default = 0,
                         min = 0,max = 4,
                         name = "Level",
-                        description = "Set the subdivision surface level in viewport. \nNote that, depending on the complexity of the model, increasing this can greatly affect viewport performances. Moreover, each time you change this value with Subdivision Surface (Viewport) enabled, Blender will freeze while applying the modification",
+                        description = "Set the Subdivision Surface level in viewport. \nNote that, depending on the complexity of the model, increasing this can greatly affect viewport performances. Moreover, each time you change this value with Subdivision Surface (Viewport) enabled, Blender will freeze while applying the modification",
                         update = update_subdiv)
     body_enable_subdiv: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface modifiers",
@@ -412,22 +421,32 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Smooth correction
     body_smooth_corr: bpy.props.BoolProperty(default = True,
                         name = "Smooth Correction",
-                        description = "Enable/disable the smooth correction. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
+                        description = "Enable/disable the Smooth Correction modifiers. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
                         update = update_smooth_corr)
-    body_enable_smoothcorr: bpy.props.BoolProperty(default = True,
+    body_enable_smoothcorr: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction modifiers",
                         description = "")
     
     # Normal auto smooth
     body_norm_autosmooth: bpy.props.BoolProperty(default = True,
                         name = "Normals Auto Smooth",
-                        description = "Enable/disable the auto-smooth for body normals. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
+                        description = "Enable/disable the Auto-smooth for body normals. \nDisable it to increase the performance in viewport, and re-enable it before rendering",
                         update = update_norm_autosmooth)
     
     body_enable_norm_autosmooth: bpy.props.BoolProperty(default = True,
                         name = "Normals Auto Smooth property",
                         description = "")
     
+    # Solidify
+    body_solidify: bpy.props.BoolProperty(default = True,
+                        name = "Solidify",
+                        description = "Enable/disable the Solidify modifiers",
+                        update = update_solidify)
+    body_enable_solidify: bpy.props.BoolProperty(default = False,
+                        name = "Solidify modifiers",
+                        description = "")
+    
+    # Volume Preserve
     def update_volume_preserve(self, context):
         
         for modifier in [x for x in self.model_body.modifiers if x.type == "ARMATURE"]:
@@ -487,10 +506,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Subdivision Surface modifiers",
                         description = "This tool will enable/disable modifiers only for Viewport")
     
-    outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default = True,
+    outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction modifiers")
     
-    outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(default = True,
+    outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(default = False,
                         name = "Shrinkwrap modifiers")
     
     outfits_enable_global_mask: bpy.props.BoolProperty(default = True,
@@ -626,6 +645,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             arm.update_tag()
 
     # Function to update the global outfit properties
+    def outfits_global_options_subsurf_update(self, context):
+        
+        collections = [x.collection for x in self.outfits_collections]
+        if self.extras_collection != None:
+            collections.append(self.extras_collection)
+        
+        for collection in collections:
+            for obj in collection.objects:
+                for modifier in obj.modifiers:
+                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
+                        modifier.show_viewport = self.outfits_global_subsurface
+            
+        return
+    
     def outfits_global_options_update(self, context):
         
         collections = [x.collection for x in self.outfits_collections]
@@ -639,9 +672,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     obj.data.use_auto_smooth = self.outfits_global_normalautosmooth
                 
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
-                        modifier.show_viewport = self.outfits_global_subsurface
-                    elif modifier.type == "CORRECTIVE_SMOOTH" and self.outfits_enable_global_smoothcorrection:
+                    if modifier.type == "CORRECTIVE_SMOOTH" and self.outfits_enable_global_smoothcorrection:
                         modifier.show_viewport = self.outfits_global_smoothcorrection
                         modifier.show_render = self.outfits_global_smoothcorrection
                     elif modifier.type == "MASK" and self.outfits_enable_global_mask:
@@ -682,7 +713,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfits_global_subsurface: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface",
                         description = "Enable/disable subdivision surface modifiers in Viewport",
-                        update = outfits_global_options_update)
+                        update = outfits_global_options_subsurf_update)
     
     outfits_global_smoothcorrection: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction",
@@ -819,20 +850,33 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         description = "Disable Armature modifiers of Hair that are not visible to increase performance")
     
     # Hair Global Properties
-    hair_enable_global_subsurface: bpy.props.BoolProperty(default = True,
+    hair_enable_global_subsurface: bpy.props.BoolProperty(default = False,
                         name = "Subdivision Surface modifiers",
                         description = "This tool will enable/disable modifiers only for Viewport")
     
     hair_enable_global_smoothcorrection: bpy.props.BoolProperty(default = False,
                         name = "Smooth Correction modifiers")
     
+    hair_enable_global_solidify: bpy.props.BoolProperty(default = False,
+                        name = "Solidify modifiers")
+    
     hair_enable_global_particles: bpy.props.BoolProperty(default = False,
                         name = "Particle Hair modifiers")
     
-    hair_enable_global_normalautosmooth: bpy.props.BoolProperty(default = True,
+    hair_enable_global_normalautosmooth: bpy.props.BoolProperty(default = False,
                         name = "Normals Auto Smooth properties")
     
     # Function to update the global hair properties
+    def hair_global_options_subsurf_update(self, context):
+        
+        if self.hair_collection != None:
+            for obj in self.hair_collection.objects:
+                for modifier in obj.modifiers:
+                    if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
+                        modifier.show_viewport = self.hair_global_subsurface
+        
+        return
+    
     def hair_global_options_update(self, context):
         
         if self.hair_collection != None:
@@ -840,11 +884,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 if obj.type == "MESH" and self.hair_enable_global_normalautosmooth:
                     obj.data.use_auto_smooth = self.hair_global_normalautosmooth
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
-                        modifier.show_viewport = self.hair_global_subsurface
-                    elif modifier.type == "CORRECTIVE_SMOOTH" and self.hair_enable_global_smoothcorrection:
+                    if modifier.type == "CORRECTIVE_SMOOTH" and self.hair_enable_global_smoothcorrection:
                         modifier.show_viewport = self.hair_global_smoothcorrection
                         modifier.show_render = self.hair_global_smoothcorrection
+                    elif modifier.type == "SOLIDIFY" and self.hair_enable_global_solidify:
+                        modifier.show_viewport = self.hair_global_solidify
+                        modifier.show_render = self.hair_global_solidify
                     elif modifier.type == "PARTICLE_SYSTEM" and self.hair_enable_global_particles:
                         modifier.show_viewport = self.hair_global_particles
                         modifier.show_render = self.hair_global_particles
@@ -854,10 +899,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_global_subsurface: bpy.props.BoolProperty(default = True,
                         name = "Subdivision Surface",
                         description = "Enable/disable subdivision surface modifiers in Viewport",
-                        update = hair_global_options_update)
+                        update = hair_global_options_subsurf_update)
     
     hair_global_smoothcorrection: bpy.props.BoolProperty(default = True,
                         name = "Smooth Correction",
+                        update = hair_global_options_update)
+    
+    hair_global_solidify: bpy.props.BoolProperty(default = True,
+                        name = "Solidify",
                         update = hair_global_options_update)
     
     hair_global_particles: bpy.props.BoolProperty(default = True,
@@ -925,8 +974,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         name = "Exceptions",
                         description = "Morphs that will not be disabled when morphs are disabled.\nAdd strings to add morphs (they should map the initial part of the name of the morph), separated by commas.\nNote: spaces and order are considered")
     
-    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.5",
-                        items = [("1.6", "1.6", "1.6"), ("1.5", "1.5", "1.5")],
+    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.6",
+                        items = [("1.7", "1.7", "1.7"), ("1.6", "1.6", "1.6")],
                         name = "Diffeomorphic Version")
     
     diffeomorphic_morphs_list: bpy.props.CollectionProperty(name = "Daz Morphs List",
@@ -979,20 +1028,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 'LipLowerInner', 'LipLowerMiddle', 'CheekLower', 'LipNasolabialCrease',
                 'LipUpperMiddle', 'LipUpperOuter', 'LipUpperInner', 'LipBelow', 'NasolabialMiddle']
     
-    # Script for 1.5 morph support
-    
-    # Function to force Register in text file added
-    def update_file_register(self, context):
-        if self.diffeomorphic_1_5_script != None:
-            if "def evalMorphsLoc(pb, idx):" in rig_settings.diffeomorphic_1_5_script.as_string():
-                self.diffeomorphic_1_5_script.use_module = True
-        return
-    
-    diffeomorphic_1_5_script: PointerProperty(type=bpy.types.Text,
-                        name = "Diffeomorphic 1.5 Morph support script",
-                        description = "From Diffeomorphic 1.6.1, 1.5 Morphs are not supported. You can provide this support script to enable them",
-                        update = update_file_register)
-    
     # ------------------------------------------------------------------------
     #    Simplify
     # ------------------------------------------------------------------------
@@ -1009,12 +1044,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             context.scene.render.use_simplify        = self.simplify_enable
         
         # Body
-        if self.body_enable_subdiv and self.outfits_enable_global_subsurface and self.simplify_enable:
+        if self.body_enable_subdiv and self.simplify_enable:
             self.body_subdiv_view                    = not self.simplify_enable
         if self.body_enable_smoothcorr:
             self.body_smooth_corr                    = not self.simplify_enable
-        if self.body_enable_norm_autosmooth and self.outfits_enable_global_normalautosmooth:
+        if self.body_enable_norm_autosmooth:
             self.body_norm_autosmooth                = not self.simplify_enable
+        if self.body_solidify and self.simplify_enable:
+            self.body_solidify                       = not self.simplify_enable
         
         # Eevee Optimized Normals
         if self.simplify_normals_optimize:
@@ -1053,6 +1090,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     self.hair_global_subsurface         = not self.simplify_enable
                 if self.hair_enable_global_smoothcorrection:
                     self.hair_global_smoothcorrection   = not self.simplify_enable
+                if self.hair_enable_global_solidify:
+                    self.hair_global_solidify           = not self.simplify_enable
                 if self.simplify_normals_autosmooth and self.hair_enable_global_normalautosmooth:
                     self.hair_global_normalautosmooth   = not self.simplify_enable
         
@@ -1350,6 +1389,26 @@ def mustardui_armature_visibility_update(self, context):
     
     return
 
+def mustardui_armature_visibility_outfits_update(self, context):
+    
+    poll, arm = mustardui_active_object(context, config = 0)
+    armature_settings = arm.MustardUI_ArmatureSettings
+    rig_settings = arm.MustardUI_RigSettings
+    
+    for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
+        if armature_settings.layers[i].outfit_switcher_enable:
+            
+            check_coll = bpy.data.collections[rig_settings.outfits_list] == armature_settings.layers[i].outfit_switcher_collection if rig_settings.outfits_list != "Nude" else False
+            if rig_settings.extras_collection != None:
+                check_coll = check_coll or armature_settings.layers[i].outfit_switcher_collection == rig_settings.extras_collection
+            
+            if armature_settings.layers[i].outfit_switcher_object == None:
+                armature_settings.layers[i].show = armature_settings.outfits and check_coll
+            else:
+                armature_settings.layers[i].show = armature_settings.outfits and not armature_settings.layers[i].outfit_switcher_object.MustardUI_outfit_visibility and (check_coll or armature_settings.layers[i].outfit_switcher_object.MustardUI_outfit_lock)
+    
+    return
+
 def mustardui_armature_visibility_hair_update(self, context):
     
     poll, arm = mustardui_active_object(context, config = 0)
@@ -1498,18 +1557,11 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                         description = "Show/hide the hair armature",
                         update = mustardui_armature_visibility_hair_update)
     
-    # IK/FK Support
-    ik_fk_collapse: bpy.props.BoolProperty(default = True,
-                        name = "")
-    
-    enable_ik_fk: bpy.props.BoolProperty(default = False,
-                        name = "IK/FK support",
-                        description = "Enable the IK/FK switch tools if available for the current rig")
-    enable_ik_fk_snap: bpy.props.BoolProperty(default = False,
-                        name = "IK/FK snap tools",
-                        description = "Enable the IK/FK snap tools if available for the current rig")
-    
-    
+    # Outfit layers
+    outfits: bpy.props.BoolProperty(default = True,
+                        name = "Outfits",
+                        description = "Show/hide the outfit armature",
+                        update = mustardui_armature_visibility_outfits_update)
 
 bpy.utils.register_class(MustardUI_ArmatureSettings)
 bpy.types.Armature.MustardUI_ArmatureSettings = bpy.props.PointerProperty(type = MustardUI_ArmatureSettings)
@@ -1896,6 +1948,10 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     icon : bpy.props.EnumProperty(name='Icon',
                         description="Choose the icon",
                         items = mustardui_icon_list)
+    advanced : bpy.props.BoolProperty(name='Advanced',
+                        description="The property is shown only when Advanced settings are enabled")
+    hidden: bpy.props.BoolProperty(name='Hidden',
+                        description="The property is hidden from the UI.\nThis can be useful if the property is just a proxy for some functions (e.g. for On Switch actions)")
     
     # Internal stored properties
     rna : bpy.props.StringProperty(name = "RNA")
@@ -2148,10 +2204,17 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             return {'FINISHED'}
         
         # Adjust the property path to be exported
-        rna, path = context.window_manager.clipboard.rsplit('.', 1)
-        if '][' in path:
+        clipboard = context.window_manager.clipboard
+        blender_custom_property = '][' in clipboard
+        if not blender_custom_property:
+            rna, path = clipboard.rsplit('.', 1)
+        else:
+            path = clipboard
+            rna = ""
+        
+        if blender_custom_property:
             path, rem = path.rsplit('[', 1)
-            rna = rna + '.' + path
+            rna = path
             path = '[' + rem
         elif '[' in path:
             path, rem = path.rsplit('[', 1)
@@ -2182,7 +2245,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         
         # Add custom property to the object
         prop_name = prop_name_ui
-        if prop.is_animatable:
+        if prop.is_animatable or blender_custom_property:
             
             add_string_num = 1
             while prop_name in obj.keys():
@@ -2213,7 +2276,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         # Add driver
         force_non_animatable = False
         try:
-            if prop.is_animatable and (not prop.type in ["BOOLEAN", "ENUM"] or (prop.type == "BOOLEAN" and prop.array_length < 1)):
+            if (prop.is_animatable or blender_custom_property) and (not prop.type in ["BOOLEAN", "ENUM"] or (prop.type == "BOOLEAN" and prop.array_length < 1)):
                 mustardui_add_driver(obj, rna, path, prop, prop_name)
             else:
                 force_non_animatable = True
@@ -2242,7 +2305,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             cp.is_bool = prop.type == "BOOLEAN"
             if prop.type == "BOOLEAN" and prop.array_length<1:
                 cp.bool_value = eval(rna + '.' + path)
-            cp.is_animatable = prop.is_animatable if not force_non_animatable else False
+            cp.is_animatable = (prop.is_animatable if not force_non_animatable else False) or blender_custom_property
             
             cp.section = self.section
             
@@ -2407,12 +2470,6 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
             self.report({'INFO'}, 'MustardUI - Property linked.')
     
         return {'FINISHED'}
-
-class WM_MT_button_context(Menu):
-    bl_label = "Custom Action"
-
-    def draw(self, context):
-        pass
 
 # Operator to create the list of sections when right clicking on a property
 class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
@@ -2684,6 +2741,11 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
                 except:
                     row.label(text="", icon="ERROR")
             
+                if item.hidden:
+                    row.label(text="", icon="HIDE_ON")
+                else:
+                    row.label(text="", icon="HIDE_OFF")
+            
             if item.section == "":
                 row.label(text="", icon = "LIBRARY_DATA_BROKEN")
             else:
@@ -2740,6 +2802,11 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
+                
+                if item.hidden:
+                    row.label(text="", icon="HIDE_ON")
+                else:
+                    row.label(text="", icon="HIDE_OFF")
             
             if len(item.linked_properties) > 0:
                 row.label(text="", icon="LINK_BLEND")
@@ -2787,6 +2854,11 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
+                
+                if item.hidden:
+                    row.label(text="", icon="HIDE_ON")
+                else:
+                    row.label(text="", icon="HIDE_OFF")
             
             if len(item.linked_properties) > 0:
                 row.label(text="", icon="LINK_BLEND")
@@ -3096,6 +3168,12 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         row.scale_x=scale
         row.prop(self, "icon", text="")
         
+        row=box.row()
+        row.label(text="Visibility:")
+        row.scale_x=scale/2
+        row.prop(custom_prop, "hidden", text="Hidden")
+        row.prop(custom_prop, "advanced", text="Advanced")
+        
         if prop_cp_type == "OUTFIT":
             row=box.row()
             row.label(text="Outfit:")
@@ -3111,11 +3189,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 
                 row=box.row()
                 row.label(text="Actions on switch:")
-                row.scale_x=1.0
-                row2 = row.row()
-                row2.scale_x=0.8
-                row2.prop(custom_prop, "outfit_enable_on_switch", text="Enable")
-                row2.prop(custom_prop, "outfit_disable_on_switch", text="Disable")
+                row.scale_x=scale/2
+                row.prop(custom_prop, "outfit_enable_on_switch", text="Enable")
+                row.prop(custom_prop, "outfit_disable_on_switch", text="Disable")
         
         if prop_cp_type == "HAIR":
             row=box.row()
@@ -4025,6 +4101,53 @@ class MustardUI_Body_PropertyAddToSection(bpy.types.Operator):
 #    Add Collection Operator
 # ------------------------------------------------------------------------
 
+class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
+    """Search for Outfits"""
+    bl_idname = "mustardui.outfits_smartcheck"
+    bl_label = "Outfit Smart Search."
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, arm = mustardui_active_object(context, config = 1)
+        
+        if arm != None:
+            rig_settings = arm.MustardUI_RigSettings
+            return rig_settings.model_MustardUI_naming_convention and rig_settings.model_body != None and rig_settings.model_name != ""
+        else:
+            return False
+
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        
+        res, obj = mustardui_active_object(context, config = 1)
+        rig_settings = obj.MustardUI_RigSettings
+        
+        # Search for oufit collections
+        if settings.debug:
+            print('\nMustardUI - Smart Check - Searching for outfits\n')
+        
+        outfits_collections = [x for x in bpy.data.collections if (rig_settings.model_name in x.name) and (not 'Hair' in x.name) and (not 'Extras' in x.name) and (not 'Physics' in x.name) and (not rig_settings.model_name == x.name) and (not '_' in x.name)]
+
+        for collection in outfits_collections:
+            
+            add_collection = True
+            for el in rig_settings.outfits_collections:
+                if el.collection == collection:
+                    add_collection = False
+                    break
+            
+            if settings.debug:
+                print('MustardUI - Smart Check - ' + collection.name + ' added: ' + str(add_collection))
+            
+            if add_collection:
+                add_item = rig_settings.outfits_collections.add()
+                add_item.collection = collection
+        
+        return {'FINISHED'}
+
 # Operator to add the collection to the selected section
 class MustardUI_AddOutfit(bpy.types.Operator):
     """Add the collection as an outfit.\nThis can be done only in Configuration mode"""
@@ -4820,35 +4943,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                 if settings.debug:
                     print('MustardUI - Configuration Warning - The rig has multiple rig types. This might create problems in the UI')
             
-            # Check MHX requirements for IK/FK support
-            if armature_settings.enable_ik_fk and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0):
-                armature_settings.enable_ik_fk = False
-                armature_settings.enable_ik_fk_snap = False
-                warnings = warnings + 1
-                if settings.debug:
-                    print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but from Diffeomorphic 1.6.0 it has been moved to MHX independent panel')
-            
-            if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and settings.status_diffeomorphic < 2:
-                warnings = warnings + 1
-                if settings.debug:
-                    print('MustardUI - Configuration Warning - IK/FK support requested for MHX rig, but Diffeomorphic is not installed')
-            
-            if armature_settings.enable_ik_fk and rig_settings.model_rig_type != "mhx":
-                armature_settings.enable_ik_fk = False
-                armature_settings.enable_ik_fk_snap = False
-                warnings = warnings + 1
-                if settings.debug:
-                    print('MustardUI - Configuration Warning - IK/FK support requested for non-MHX rig. The IK/FK option will be switched off')
-            
-            # Check Diffeomorphic 1.5 morph support script
-            if rig_settings.diffeomorphic_support:
-                if rig_settings.diffeomorphic_1_5_script != None:
-                    if not "def evalMorphsLoc(pb, idx):" in rig_settings.diffeomorphic_1_5_script.as_string():
-                        rig_settings.diffeomorphic_1_5_script = None
-                        warnings = warnings + 1
-                        if settings.debug:
-                            print('MustardUI - Configuration Warning - The Diffeomorphic 1.5 Morphs support script selected is invalid')
-            
             # Check shrinkwrap modifier requirements
             if tools_settings.lips_shrinkwrap_enable and not rig_settings.model_rig_type in ['arp', 'mhx']:
                 tools_settings.lips_shrinkwrap_armature_object = None
@@ -4902,12 +4996,16 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     """Search for MustardUI configuration options based on the name of the model and its body"""
     bl_idname = "mustardui.configuration_smartcheck"
     bl_label = "Smart Search."
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'UNDO'}
+    
+    smartcheck_custom_properties: bpy.props.BoolProperty(name="Body Custom Properties",
+                                    default=True,
+                                    description="Search for Body Custom Properties that respects MustardUI Naming Convention.\nThis will overwrite previous manual modifications of custom properties found with this tool")
+    smartcheck_outfits: bpy.props.BoolProperty(name="Outfits", default=True)
     
     @classmethod
     def poll(cls, context):
         
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config = 1)
         
         if arm != None:
@@ -4934,32 +5032,18 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         # Initialize Smart Check header
         if settings.debug:
             print('\nMustardUI - Smart Check - Start\n')
-            
-        if settings.debug:
-            print('MustardUI - Smart Check - Searching for body additional options\n')
-        # Check for body additional properties
-        bpy.ops.mustardui.property_smartcheck()
+        
+        if self.smartcheck_custom_properties:
+            if settings.debug:
+                print('MustardUI - Smart Check - Searching for body additional options\n')
+            # Check for body additional properties
+            bpy.ops.mustardui.property_smartcheck()
         
         # Search for oufit collections
-        if settings.debug:
-            print('\nMustardUI - Smart Check - Searching for outfits\n')
-        
-        outfits_collections = [x for x in bpy.data.collections if (rig_settings.model_name in x.name) and (not 'Hair' in x.name) and (not 'Extras' in x.name) and (not 'Physics' in x.name) and (not rig_settings.model_name == x.name) and (not '_' in x.name)]
-
-        for collection in outfits_collections:
-            
-            add_collection = True
-            for el in rig_settings.outfits_collections:
-                if el.collection == collection:
-                    add_collection = False
-                    break
-            
+        if self.smartcheck_outfits:
             if settings.debug:
-                print('MustardUI - Smart Check - ' + collection.name + ' added: ' + str(add_collection))
-            
-            if add_collection:
-                add_item = rig_settings.outfits_collections.add()
-                add_item.collection = collection
+                print('\nMustardUI - Smart Check - Searching for outfits\n')
+            bpy.ops.mustardui.outfits_smartcheck()
         
         # Search for hair
         if settings.debug:
@@ -4993,7 +5077,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             print('\nMustardUI - Smart Check - Extras collection already defined. Skipping this part.')
         
         # Standard armature setup
-        
         preset_Mustard_models = []
         
         if hasattr(obj,'[\"arp_updated\"]'):
@@ -5088,6 +5171,27 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         self.report({'INFO'}, 'MustardUI - Smart Check complete.')
         
         return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        return context.window_manager.invoke_props_dialog(self, width = 550 if settings.debug else 450)
+            
+    def draw(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config = 0)
+        
+        layout = self.layout
+        
+        box = layout.box()
+        box.label(text="Categories to Smart Check", icon="VIEWZOOM")
+        col = box.column()
+        col.prop(self, 'smartcheck_custom_properties')
+        col.prop(self, 'smartcheck_outfits')
+        
 
 class MustardUI_RemoveUI(bpy.types.Operator):
     """Remove and clean the model and the UI"""
@@ -5258,9 +5362,6 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         row.enabled = self.delete_objects
         row.prop(self, "delete_bones_custom_shapes")
 
-
-
-
 class MustardUI_RegisterUIFile(bpy.types.Operator):
     """Register the UI.\nThe script file will be linked to the armature and will be transfered if the model is appended in another .blend file"""
     bl_idname = "mustardui.registeruifile"
@@ -5293,6 +5394,190 @@ class MustardUI_RegisterUIFile(bpy.types.Operator):
             obj.MustardUI_script_file.use_module = False
             obj.MustardUI_script_file = None
             self.report({'INFO'}, "MustardUI: UI correctly un-registered in " + obj.name)
+        
+        return {'FINISHED'}
+
+class MustardUI_UpdateUIFile(bpy.types.Operator):
+    """Update the UI"""
+    bl_idname = "mustardui.updateuifile"
+    bl_label = "Update UI"
+    bl_options = {'UNDO'}
+    
+    v = [0, 0, 0]
+    buildnum = 0
+    buildnum_str = ""
+    
+    force_update: bpy.props.BoolProperty(default = False,
+                        name = "Force Update",
+                        description = "Force the installation of the remote version, even if the current UI script seems up-to-date")
+    remove_others: bpy.props.BoolProperty(default = True,
+                        name = "Remove Other UI Files",
+                        description = "Remove other UI files (mustard_ui.py) from the scene, keeping only the updated one")
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        if obj != None:
+            return obj.MustardUI_script_file != None
+        return False
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        data = self.data
+        
+        # Check version
+        if '"version": (' in data:
+            
+            version = (self.v[0], self.v[1], self.v[2])
+            
+            if not self.force_update and (bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum)):
+                self.report({'INFO'}, "MustardUI: The current version is already up-to-date")
+                return {'FINISHED'}
+            
+        else:
+            self.report({'ERROR'}, "MustardUI: Can not find the version number on the remote file")
+            return {'FINISHED'}
+        
+        # Write data to the text
+        try:
+            obj.MustardUI_script_file.name = 'mustard_ui.py'
+            obj.MustardUI_script_file.clear()
+            obj.MustardUI_script_file.write(data)
+        
+            with context.temp_override(edit_text = obj.MustardUI_script_file):
+                bpy.ops.text.run_script()
+            
+            bpy.ops.mustardui.registeruifile(register = False)
+            bpy.ops.mustardui.registeruifile(register = True)
+            
+        except:
+            self.report({'ERROR'}, "MustardUI: Error while updating. Undo to revert any change.")
+            return {'FINISHED'}
+        
+        # Delete all other eventual mustard_ui.py files
+        if self.remove_others:
+            try:
+                for text in bpy.data.texts:
+                    if 'mustard_ui.py' in text.name and text.name != 'mustard_ui.py':
+                        with context.temp_override(edit_text = text):
+                            bpy.ops.text.unlink()
+            except:
+                pass
+        
+        self.report({'INFO'}, "MustardUI: UI successfully updated to version " + str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.' + self.buildnum_str + '. Restart Blender for changes to take effect.')
+        
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        
+        import requests
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        # Import the data from the GitHub repository file
+        try:
+            response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/master/mustard_ui.py")
+            self.data = response.text
+        except:
+            self.report({'ERROR'}, "MustardUI: Error downloading the update. Check your connection")
+            return {'FINISHED'}
+        
+        # Fetch version
+        if '"version": (' in self.data:
+            
+            find = self.data.split('"version": (',1)[1]
+            self.v[0] = int(find.split(',')[0])
+            self.v[1] = int(find.split(',')[1])
+            self.v[2] = find.split(',')[2]
+            self.v[2] = int(self.v[2].split(')')[0])
+            
+            find = self.data.split('mustardui_buildnum = "',1)[1]
+            self.buildnum_str = find.split('"')[0]
+            self.buildnum = int(self.buildnum_str)
+        else:
+            self.report({'ERROR'}, "MustardUI: Can not find the version number of the update version")
+            return {'FINISHED'}
+        
+        return context.window_manager.invoke_props_dialog(self, width = 300)
+            
+    def draw(self, context):
+        
+        layout = self.layout
+        
+        version = (self.v[0], self.v[1], self.v[2])
+        
+        box = layout.box()
+        
+        if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
+            box.label(text = "The current version seems up-to-date!", icon = "INFO")
+        else:
+            box.label(text = "Update available!", icon = "INFO")
+        
+        row = box.row()
+        row.label(text = "Current version: ", icon = "RIGHTARROW_THIN")
+        row.label(text = str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum) + '.')
+        row = box.row()
+        row.label(text = "Remote version: ", icon = "WORLD")
+        row.label(text = str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.' + str(self.buildnum_str) + '.')
+                
+        box = layout.box()
+        box.label(text = "Settings", icon = "MODIFIER_ON")
+        col = box.column()
+        if bl_info["version"] > version or (bl_info["version"] == version and mustardui_buildnum >= buildnum):
+            col.prop(self, 'force_update')
+        col.prop(self, 'remove_others')
+
+class MustardUI_RemoveOtherUIFile(bpy.types.Operator):
+    """Remove other UI files (mustard_ui.py) from the scene, keeping only the current one"""
+    bl_idname = "mustardui.removeotheruifile"
+    bl_label = "Remove Other UI Files"
+    bl_options = {'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        
+        res, obj = mustardui_active_object(context, config = 0)
+        
+        if obj != None:
+            if obj.MustardUI_script_file != None:
+                for text in bpy.data.texts:
+                    if 'mustard_ui.py' in text.name and text != obj.MustardUI_script_file:
+                        return True
+        return False
+    
+    def execute(self, context):
+        
+        settings = bpy.context.scene.MustardUI_Settings
+        res, obj = mustardui_active_object(context, config = 0)  
+        
+        # Write data to the text
+        try:
+            obj.MustardUI_script_file.name = 'mustard_ui.py'
+            bpy.ops.mustardui.registeruifile(register = False)
+            bpy.ops.mustardui.registeruifile(register = True)
+            #with context.temp_override(edit_text = obj.MustardUI_script_file):
+            #    bpy.ops.text.run_script()
+        except:
+            self.report({'ERROR'}, "MustardUI: Error while making the current UI default")
+            return {'FINISHED'}
+        
+        # Delete all other eventual mustard_ui.py files
+        try:
+            removed = 0
+            for text in bpy.data.texts:
+                if 'mustard_ui.py' in text.name and text != obj.MustardUI_script_file:
+                    with context.temp_override(edit_text = text):
+                        bpy.ops.text.unlink()
+                    removed = removed + 1
+            self.report({'INFO'}, "MustardUI: Removed " + str(removed) + " other UI files. Restart Blender for changes to take effect.")
+        except:
+            self.report({'ERROR'}, "MustardUI: Error while deleting other files.")
         
         return {'FINISHED'}
 
@@ -5355,7 +5640,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
         
         # Enable/disable armature layers
-        if len(armature_settings.layers) > 0:
+        if len(armature_settings.layers) > 0 and armature_settings.outfits:
             outfit_armature_layers = [x for x in range(0,32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
 
             for i in outfit_armature_layers:
@@ -7099,7 +7384,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
                                                             "DazStandardjcms", props_removed)
                 props_removed.append("pJCM")
-            if self.remove_morphs_facs or rig_settings.diffeomorphic_model_version == "1.5":
+            if self.remove_morphs_facs:
                 props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
                                                             "DazFacs", props_removed)
                 props_removed.append("facs")
@@ -7120,7 +7405,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if self.remove_morphs_jcms:
                 props_removed = self.remove_props_from_group(rig_settings.model_body,
                                                             "DazStandardjcms", props_removed)
-            if self.remove_morphs_facs or rig_settings.diffeomorphic_model_version == "1.5":
+            if self.remove_morphs_facs:
                 props_removed = self.remove_props_from_group(rig_settings.model_body,
                                                             "DazFacs", props_removed)
             props_removed = self.remove_props_from_group(rig_settings.model_body,
@@ -7212,7 +7497,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         morphs_props_removed = morphs_props_removed + 1
             
             # Remove diffeomorphic support from the UI to avoid errors in the UI, or restore it if FACS are asked
-            if not self.remove_morphs_facs and not rig_settings.diffeomorphic_model_version == "1.5":
+            if not self.remove_morphs_facs:
                 rig_settings.diffeomorphic_morphs_list.clear()
                 rig_settings.diffeomorphic_body_morphs = False
                 rig_settings.diffeomorphic_emotions = False
@@ -7685,9 +7970,11 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             col.prop(rig_settings,"body_enable_subdiv")
             col.prop(rig_settings,"body_enable_smoothcorr")
+            col.prop(rig_settings,"body_enable_solidify")
+            col.separator()
+            col.prop(rig_settings,"body_enable_preserve_volume")
             col.prop(rig_settings,"body_enable_norm_autosmooth")
             col.prop(rig_settings,"body_enable_material_normal_nodes")
-            col.prop(rig_settings,"body_enable_preserve_volume")
             
             # Custom properties
             box = layout.box()
@@ -7767,7 +8054,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             if len([x for x in rig_settings.outfits_collections if x.collection != None])>0:
                 box = layout.box()
                 # Outfit list
-                box.label(text="Outfits List", icon="OUTLINER_COLLECTION")
+                row = box.row()
+                row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
+                row.operator("Mustardui.outfits_smartcheck", text="", icon = "VIEWZOOM")
                 box = box.box()
                 for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
                     row = box.row(align=True)
@@ -7854,6 +8143,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     col = box.column(align=True)
                     col.prop(rig_settings,"hair_enable_global_subsurface")
                     col.prop(rig_settings,"hair_enable_global_smoothcorrection")
+                    col.prop(rig_settings,"hair_enable_global_solidify")
                     col.prop(rig_settings,"hair_enable_global_particles")
                     col.prop(rig_settings,"hair_enable_global_normalautosmooth")
                         
@@ -7911,14 +8201,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 
                 box.label(text="General Settings",icon="MODIFIER")
                 box.prop(armature_settings, 'enable_automatic_hair')
-                
-                if rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_model_version == "1.5":
-                    col = box.column(align=True)
-                    row = col.row()
-                    row.prop(armature_settings, 'enable_ik_fk')
-                    row = col.row()
-                    row.enabled = armature_settings.enable_ik_fk
-                    row.prop(armature_settings, 'enable_ik_fk_snap')
                 
                 box.operator('mustardui.armature_initialize', text = "Remove Armature Panel").clean = True
                 
@@ -8092,11 +8374,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     row.label(text="Model Version")
                     row.scale_x = row_scale
                     row.prop(rig_settings, "diffeomorphic_model_version", text="")
-                    if rig_settings.diffeomorphic_model_version == "1.5":
-                        row = box2.row(align=True)
-                        row.label(text="1.5 Support Script")
-                        row.scale_x = row_scale
-                        row.prop(rig_settings, "diffeomorphic_1_5_script", text="")
                     
                     box2 = box.box()
                     box2.label(text="Morphs", icon = "SHAPEKEY_DATA")
@@ -8216,7 +8493,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             custom_props = arm.MustardUI_CustomProperties
             
             # Check if there is any property to show
-            prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume
+            prop_to_show = rig_settings.body_enable_subdiv or rig_settings.body_enable_smoothcorr or rig_settings.body_enable_solidify or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume
             
             return res and (prop_to_show or len(custom_props)>0)
         
@@ -8233,12 +8510,12 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         
         layout = self.layout
         
-        if rig_settings.body_enable_smoothcorr or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume:
+        if rig_settings.body_enable_smoothcorr or rig_settings.body_enable_solidify or rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes or rig_settings.body_enable_preserve_volume:
             
             box = layout.box()
             box.label(text="Global settings", icon="OUTLINER_OB_ARMATURE")
             
-            if rig_settings.body_enable_preserve_volume or rig_settings.body_enable_smoothcorr:
+            if rig_settings.body_enable_preserve_volume  or rig_settings.body_enable_solidify or rig_settings.body_enable_smoothcorr:
                 
                 col = box.column(align=True)
                 
@@ -8247,6 +8524,9 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 
                 if rig_settings.body_enable_smoothcorr:
                     col.prop(rig_settings,"body_smooth_corr")
+                
+                if rig_settings.body_enable_solidify:
+                    col.prop(rig_settings,"body_solidify")
             
             if rig_settings.body_enable_norm_autosmooth or rig_settings.body_enable_material_normal_nodes:
                 col = box.column(align=True)
@@ -8286,7 +8566,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             if len(unsorted_props)>0:
                 box = layout.box()
                 box.label(text = "Un-sorted properties", icon = "LIBRARY_DATA_BROKEN")
-                for prop in [x for x in custom_props if x.section == ""]:
+                for prop in [x for x in custom_props if x.section == "" and not x.hidden and (not x.advanced if not settings.advanced else True)]:
                     row = box.row()
                     if rig_settings.body_custom_properties_icons:
                         row.label(text = prop.name, icon = prop.icon if prop.icon != "NONE" else "DOT")
@@ -8308,9 +8588,9 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             for i_sec in sorted([x for x in range(0,len(rig_settings.body_custom_properties_sections))], key = lambda x:rig_settings.body_custom_properties_sections[x].id):
                 section = rig_settings.body_custom_properties_sections[i_sec]
                 if rig_settings.body_custom_properties_name_order:
-                    custom_properties_section = sorted([x for x in custom_props if x.section == section.name], key = lambda x:x.name)
+                    custom_properties_section = sorted([x for x in custom_props if x.section == section.name and not x.hidden and (not x.advanced if not settings.advanced else True)], key = lambda x:x.name)
                 else:
-                    custom_properties_section = [x for x in custom_props if x.section == section.name]
+                    custom_properties_section = [x for x in custom_props if x.section == section.name and not x.hidden and (not x.advanced if not settings.advanced else True)]
                 if len(custom_properties_section) > 0 and (not section.advanced or (section.advanced and settings.advanced)):
                     box = layout.box()
                     row = box.row(align=False)
@@ -8395,19 +8675,12 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = rig_settings.diffeomorphic_enable
         
-        if rig_settings.diffeomorphic_model_version != "1.6":
-            if settings.status_diffeomorphic == 1:
-                layout.label(icon='ERROR',text="Diffeomorphic not enabled!")
-                return
-            elif settings.status_diffeomorphic == 0:
-                layout.label(icon='ERROR', text="Diffeomorphic not installed!")
-                return
-        
         # Check Diffeomorphic version and inform the user about possible issues
-        if rig_settings.diffeomorphic_model_version == "1.5" and (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0):
+        if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0):
             box = layout.box()
-            box.label(icon='ERROR', text="Diffeomorphic version not correct!")
-            box.label(icon='BLANK1', text="Please install version 1.5.1.")
+            box.label(icon='ERROR',  text="Diffeomorphic version not supported!")
+            box.label(icon='BLANK1', text="Only 1.6 or above is supported.")
+            return
         
         row = layout.row()
         row.prop(rig_settings, 'diffeomorphic_search', icon = "VIEWZOOM")
@@ -8583,13 +8856,14 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             row.prop(rig_settings,"outfits_list", text="")
             
             if rig_settings.outfits_list != "Nude":
+                
                 if len(bpy.data.collections[rig_settings.outfits_list].objects)>0:
                     
                     # Global outfit custom properties
                     if rig_settings.outfit_custom_properties_name_order:
-                        custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None], key = lambda x:x.name)
+                        custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None and not x.hidden and (not x.advanced if not settings.advanced else True)], key = lambda x:x.name)
                     else:
-                        custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None]
+                        custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == None and not x.hidden and (not x.advanced if not settings.advanced else True)]
                     
                     if len(custom_properties)>0 and rig_settings.outfit_additional_options:
                         row.prop(rig_settings,"outfit_global_custom_properties_collapse", text="", toggle=True, icon="PREFERENCES")
@@ -8608,9 +8882,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         
                         # Outfit custom properties
                         if rig_settings.outfit_custom_properties_name_order:
-                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj], key = lambda x:x.name)
+                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj and not x.hidden], key = lambda x:x.name)
                         else:
-                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj]
+                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == bpy.data.collections[rig_settings.outfits_list] and x.outfit_piece == obj and not x.hidden]
                         
                         if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                             row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
@@ -8642,9 +8916,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         row.operator("mustardui.object_visibility",text=obj.name, icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
                     
                     if rig_settings.outfit_custom_properties_name_order:
-                        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj], key = lambda x:x.name)
+                        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj and not x.hidden and (not x.advanced if not settings.advanced else True)], key = lambda x:x.name)
                     else:
-                        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj]
+                        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit_piece == obj and not x.hidden and (not x.advanced if not settings.advanced else True)]
                     if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                         row.prop(bpy.data.objects[obj.name],"MustardUI_additional_options_show_lock", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show_lock:
@@ -8784,7 +9058,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     row2.prop(mod, "show_render", text="")
             
             # Outfit global properties
-            if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
+            if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
                 
                 box = layout.box()
                 row = box.row(align=True)
@@ -8794,6 +9068,8 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     col.prop(rig_settings,"hair_global_subsurface")
                 if rig_settings.hair_enable_global_smoothcorrection:
                     col.prop(rig_settings,"hair_global_smoothcorrection")
+                if rig_settings.hair_enable_global_solidify:
+                    col.prop(rig_settings,"hair_global_solidify")
                 if rig_settings.hair_enable_global_particles:
                     col.prop(rig_settings,"hair_global_particles")
                 if rig_settings.hair_enable_global_normalautosmooth:
@@ -8817,13 +9093,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_label = "Armature"
     bl_options = {"DEFAULT_CLOSED"}
     
-    def toggleFKIK(self, row, value, op):
-        if value > 0.5:
-            row.operator(op, text="IK")
-        else:
-            row.operator(op, text="FK")
-        return
-    
     @classmethod
     def poll(cls, context):
         
@@ -8837,12 +9106,11 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 return False
             
             enabled_layers = [x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable]
-            enabled_IKFK = armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None
             
             if rig_settings.hair_collection != None:
-                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair) or enabled_IKFK)
+                return res and (len(enabled_layers)>0 or (len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>1 and armature_settings.enable_automatic_hair))
             else:
-                return res and (len(enabled_layers)>0 or enabled_IKFK)
+                return res and len(enabled_layers)>0
         else:
             return res
 
@@ -8853,18 +9121,24 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         rig_settings = obj.MustardUI_RigSettings
         armature_settings = obj.MustardUI_ArmatureSettings
         
-        layout = self.layout
+        box = self.layout
         
+        draw_separator = False
         if rig_settings.hair_collection != None and armature_settings.enable_automatic_hair:
             if len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])>0:
-                box = layout.box()
-                box.label(text='Hair Armature', icon="STRANDS")
-                box.prop(armature_settings, "hair",toggle=True)
+                box.prop(armature_settings, "hair",toggle=True, icon="CURVES")
+                draw_separator = True
+        
+        if len(rig_settings.outfits_list)>0:
+            if len([x for x in armature_settings.layers if (x.outfit_switcher_enable and x.outfit_switcher_collection==bpy.data.collections[rig_settings.outfits_list] if rig_settings.outfits_list != "Nude" else True)]):
+                box.prop(armature_settings, "outfits",toggle=True, icon="MOD_CLOTH")
+                draw_separator = True
+        
+        if draw_separator:
+            box.separator()
         
         enabled_layers = [x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable]
         if len(enabled_layers)>0:
-            box = layout.box()
-            box.label(text='Body Armature Layers', icon="ARMATURE_DATA")
             for i in sorted([x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable], key = lambda x:armature_settings.layers[x].id):
                 if (armature_settings.layers[i].advanced and settings.advanced) or not armature_settings.layers[i].advanced:
                     if armature_settings.layers[i].mirror and armature_settings.layers[i].mirror_left:
@@ -8873,85 +9147,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                         row.prop(armature_settings.layers[armature_settings.layers[i].mirror_layer], "show", text = armature_settings.layers[armature_settings.layers[i].mirror_layer].name, toggle=True)
                     elif not armature_settings.layers[i].mirror:
                         box.prop(armature_settings.layers[i], "show", text = armature_settings.layers[i].name, toggle=True)
-        
-        if armature_settings.enable_ik_fk and rig_settings.model_rig_type == "mhx" and rig_settings.model_armature_object != None:
-            
-            if settings.status_diffeomorphic > 1:
-                
-                if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) >= (1,6,0) or not hasattr(rig_settings.model_armature_object, '["MhaArmIk_L"]'):
-                    return
-                
-                box = layout.box()
-            
-                row = box.row(align=False)
-                row.prop(armature_settings, "ik_fk_collapse", icon="TRIA_DOWN" if not armature_settings.ik_fk_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-                row.label(text="IK/FK Settings")
-                
-                if not armature_settings.ik_fk_collapse:
-                
-                    box.label(text = "FK/IK switch")
-                    row = box.row()
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.label(text = "Arm")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaArmIk_L", " 3", " 2")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaArmIk_R", " 19", " 18")
-                    row = box.row()
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.label(text = "Leg")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaLegIk_L", " 5", " 4")
-                    self.toggle(row, rig_settings.model_armature_object, "MhaLegIk_R", " 21", " 20")
-                    
-                    box.label(text = "IK Influence")
-                    row = box.row()
-                    row.label(text = "Arm")
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.prop(rig_settings.model_armature_object, '["MhaArmIk_L"]', text="")
-                    row.prop(rig_settings.model_armature_object, '["MhaArmIk_R"]', text="")
-                    row = box.row()
-                    row.label(text = "Leg")
-                    row.enabled = bpy.context.active_object == rig_settings.model_armature_object
-                    row.prop(rig_settings.model_armature_object, '["MhaLegIk_L"]', text="")
-                    row.prop(rig_settings.model_armature_object, '["MhaLegIk_R"]', text="")
-                    
-                    if armature_settings.enable_ik_fk_snap:
-                        
-                        box.separator()
-                        box.label(text = "Snap Arm Bones")
-                        row = box.row()
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.label(text = "FK Arm")
-                        row.operator("daz.snap_fk_ik", text="Snap L FK Arm").data = "MhaArmIk_L 2 3 12"
-                        row.operator("daz.snap_fk_ik", text="Snap R FK Arm").data = "MhaArmIk_R 18 19 28"
-                        row = box.row()
-                        row.label(text = "IK Arm")
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.operator("daz.snap_ik_fk", text="Snap L IK Arm").data = "MhaArmIk_L 2 3 12"
-                        row.operator("daz.snap_ik_fk", text="Snap R IK Arm").data = "MhaArmIk_R 18 19 28"
-
-                        box.label(text = "Snap Leg Bones")
-                        row = box.row()
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.label(text = "FK Leg")
-                        row.operator("daz.snap_fk_ik", text="Snap L FK Leg").data = "MhaLegIk_L 4 5 12"
-                        row.operator("daz.snap_fk_ik", text="Snap R FK Leg").data = "MhaLegIk_R 20 21 28"
-                        row = box.row()
-                        row.enabled = bpy.context.active_object == rig_settings.model_armature_object and bpy.context.active_object.mode == "POSE"
-                        row.label(text = "IK Leg")
-                        row.operator("daz.snap_ik_fk", text="Snap L IK Leg").data = "MhaLegIk_L 4 5 12"
-                        row.operator("daz.snap_ik_fk", text="Snap R IK Leg").data = "MhaLegIk_R 20 21 28"
-            
-            else:
-                box = layout.box()
-                
-                box.label(text="IK/FK Settings")
-                box.label(text="Diffeomorphic not installed", icon = "ERROR")
-                
-    
-    def toggle(self, row, rig, prop, fk, ik):
-        if getattr(rig, prop) > 0.5:
-            row.operator("daz.toggle_fk_ik", text="IK").toggle = prop + " 0" + fk + ik
-        else:
-            row.operator("daz.toggle_fk_ik", text="FK").toggle = prop + " 1" + ik + fk
 
 class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Simplify"
@@ -9500,7 +9695,6 @@ class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
 
 
 
-
 class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_SettingsPanel"
     bl_label = "Settings"
@@ -9542,7 +9736,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                 box.operator('mustardui.registeruifile', text="Register UI Script", icon = "TEXT").register = True
             else:
                 box.operator('mustardui.registeruifile', text="Un-register UI Script", icon = "TEXT").register = False
-            
+            box.operator('mustardui.removeotheruifile', icon = "SCENE_DATA")
             box.operator('mustardui.property_rebuild', icon = "MOD_BUILD", text = "Re-build Custom Properties")
             box.operator('mustardui.cleanmodel', text="Clean model", icon = "BRUSH_DATA")
             box.operator('mustardui.remove', text="UI Removal", icon = "X")
@@ -9555,10 +9749,14 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Version", icon="INFO")
         if rig_settings.model_version!='':
-            box.label(text="Model:           " + rig_settings.model_version)
-        box.label(text="MustardUI:    " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum))
+            box.label(text="Model:                  " + rig_settings.model_version)
+        box.label(text="MustardUI:           " + str(bl_info["version"][0]) + '.' + str(bl_info["version"][1]) + '.' + str(bl_info["version"][2]) + '.' + str(mustardui_buildnum))
+        if settings.debug and rig_settings.diffeomorphic_support:
+            if settings.status_diffeomorphic_version[0] > 0:
+                box.label(text="Diffeomorphic:   " + str(settings.status_diffeomorphic_version[0]) + '.' + str(settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2]))
+        box.operator('mustardui.updateuifile', text="Check for UI Updates", icon = "TRIA_UP_BAR")
         
-        if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support):
+        if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support) or ((settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0)):
             box = layout.box()
             
             if rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1:
@@ -9570,6 +9768,9 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                 box.label(icon='ERROR',text="Diffeomorphic not enabled!")
             elif settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support:
                 box.label(icon='ERROR', text="Diffeomorphic not installed!")
+            
+            if (settings.status_diffeomorphic_version[0],settings.status_diffeomorphic_version[1],settings.status_diffeomorphic_version[2]) <= (1,6,0):
+                box.label(icon='ERROR', text="Diffeomorphic 1.5 or below are not supported!")
 
 class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Links"
@@ -9625,6 +9826,8 @@ classes = (
     MustardUI_Configuration_SmartCheck,
     MustardUI_RemoveUI,
     MustardUI_RegisterUIFile,
+    MustardUI_UpdateUIFile,
+    MustardUI_RemoveOtherUIFile,
     # Model switch support operators
     MustardUI_ViewportModelSelection,
     MustardUI_SwitchModel,
@@ -9648,7 +9851,6 @@ classes = (
     MustardUI_Property_Settings,
     MustardUI_Property_Rebuild,
     MustardUI_Property_SmartCheck,
-    WM_MT_button_context,
     # Body custom properties sections operators
     MustardUI_Body_AddSection,
     MustardUI_Body_DeleteSection,
@@ -9673,6 +9875,7 @@ classes = (
     # Others
     MustardUI_LinkButton,
     # Outfit add/remove operators
+    MustardUI_Outfit_SmartCheck,
     MustardUI_AddOutfit,
     MustardUI_RemoveOutfit,
     MustardUI_DeleteOutfit,
@@ -9720,8 +9923,8 @@ def register():
     bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(name = "", default = 0)
     
     bpy.types.OUTLINER_MT_collection.append(mustardui_collection_menu)
-    bpy.types.WM_MT_button_context.append(mustardui_property_menuadd)
-    bpy.types.WM_MT_button_context.append(mustardui_property_link)
+    bpy.types.UI_MT_button_context_menu.append(mustardui_property_menuadd)
+    bpy.types.UI_MT_button_context_menu.append(mustardui_property_link)
 
 def unregister():
     
@@ -9730,8 +9933,8 @@ def unregister():
         unregister_class(cls)
     
     bpy.types.OUTLINER_MT_collection.remove(mustardui_collection_menu)
-    bpy.types.WM_MT_button_context.remove(mustardui_property_menuadd)
-    bpy.types.WM_MT_button_context.remove(mustardui_property_link)
+    bpy.types.UI_MT_button_context_menu.remove(mustardui_property_menuadd)
+    bpy.types.UI_MT_button_context_menu.remove(mustardui_property_link)
 
 if __name__ == "__main__":
     register()
