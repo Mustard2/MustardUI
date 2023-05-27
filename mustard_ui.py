@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "020"
+mustardui_buildnum = "021"
 
 import bpy
 import addon_utils
@@ -8656,10 +8656,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config = 0)
         rig_settings = obj.MustardUI_RigSettings
         
-        if settings.status_diffeomorphic > 1 or rig_settings.diffeomorphic_model_version == "1.6":
-            layout = self.layout
-            layout.enabled = context.active_object == rig_settings.model_armature_object or rig_settings.diffeomorphic_model_version == "1.6"
-            layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
+        layout = self.layout
+        layout.prop(rig_settings, "diffeomorphic_enable", text = "", toggle = False)
 
     def draw(self, context):
         
