@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "021"
+mustardui_buildnum = "022"
 
 import bpy
 import addon_utils
@@ -9032,7 +9032,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
                 row.prop(rig_settings.hair_collection, "hide_render", text="")
             
-            if rig_settings.outfit_custom_properties_name_order:
+            if rig_settings.hair_custom_properties_name_order:
                 custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj], key = lambda x:x.name)
             else:
                 custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj]
