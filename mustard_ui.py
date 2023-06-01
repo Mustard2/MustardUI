@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "006"
+mustardui_buildnum = "008"
 
 import bpy
 import addon_utils
@@ -4602,8 +4602,11 @@ def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale =
 
     if rig and rig.data.animation_data:
         for fcu in rig.data.animation_data.drivers:
-            if isDazFcurve(fcu.data_path) and pJCMcheck(fcu.data_path) and muteDazFcurves_facscheck(mutefacs, fcu.data_path, check_bones_rot, check_bones_loc) and muteDazFcurves_exceptionscheck(muteexceptions, fcu.data_path, exceptions):
-                fcu.mute = mute
+            if isDazFcurve(fcu.data_path) and pJCMcheck(fcu.data_path):
+                if muteDazFcurves_facscheck(mutefacs, fcu.data_path, check_bones_rot, check_bones_loc) and muteDazFcurves_exceptionscheck(muteexceptions, fcu.data_path, exceptions):
+                    fcu.mute = mute
+                else:
+                    fcu.mute = False
 
     if rig and rig.animation_data:
         for fcu in rig.animation_data.drivers:
@@ -4626,9 +4629,12 @@ def muteDazFcurves(rig, mute, useLocation = True, useRotation = True, useScale =
                         fcu.mute = mute
                         sname = words[1]
                         if sname in skeys.key_blocks.keys() and muteSK:
-                            if not "MustardUINotDisable" in sname and pJCMcheck(sname) and muteDazFcurves_facscheck(mutefacs, sname, check_bones_rot, check_bones_loc) and muteDazFcurves_exceptionscheck(muteexceptions, sname, exceptions):
+                            if not "MustardUINotDisable" in sname and pJCMcheck(sname) and muteDazFcurves_facscheck(mutefacs, sname, check_bones_rot, check_bones_loc):
                                 skey = skeys.key_blocks[sname]
-                                skey.mute = mute
+                                if muteDazFcurves_exceptionscheck(muteexceptions, sname, exceptions):
+                                    skey.mute = mute
+                                else:
+                                    skey.mute = False
 
 class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     """Disable drivers to improve performance"""
@@ -4674,12 +4680,9 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         exceptions = rig_settings.diffeomorphic_disable_exceptions
         
         try:
-            if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, True, True, True, True, rig_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot, check_bones_loc, muteexceptions, exceptions)
-                if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
-                    rig_settings.model_armature_object.DazDriversDisabled = True
-            else:
-                bpy.ops.daz.disable_drivers()
+            muteDazFcurves(rig_settings.model_armature_object, True, True, True, True, rig_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot, check_bones_loc, muteexceptions, exceptions)
+            if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
+                rig_settings.model_armature_object.DazDriversDisabled = True
         except:
             warnings = warnings + 1
             if settings.debug:
@@ -4712,7 +4715,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         context.view_layer.objects.active = aobj
         
         if warnings < 1:
-            self.report({'INFO'}, 'MustardUI - Morphs drivers disabled.')
+            self.report({'INFO'}, 'MustardUI - Morphs disabled.')
         else:
             self.report({'WARNING'}, 'MustardUI - An error occurred while disabling morphs.')
         
@@ -4747,12 +4750,9 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         exceptions = rig_settings.diffeomorphic_disable_exceptions
         
         try:
-            if rig_settings.diffeomorphic_model_version == "1.6":
-                muteDazFcurves(rig_settings.model_armature_object, False, True, True, True, rig_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot, check_bones_loc, muteexceptions, exceptions)
-                if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
-                    rig_settings.model_armature_object.DazDriversDisabled = False
-            else:
-                bpy.ops.daz.enable_drivers()
+            muteDazFcurves(rig_settings.model_armature_object, False, True, True, True, rig_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot, check_bones_loc, muteexceptions, exceptions)
+            if hasattr(rig_settings.model_armature_object,'DazDriversDisabled'):
+                rig_settings.model_armature_object.DazDriversDisabled = False
         except:
             warnings = warnings + 1
             if settings.debug:
@@ -4779,7 +4779,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         context.view_layer.objects.active = aobj
         
         if warnings < 1:
-            self.report({'INFO'}, 'MustardUI - Morphs drivers enabled.')
+            self.report({'INFO'}, 'MustardUI - Morphs enabled.')
         else:
             self.report({'WARNING'}, 'MustardUI - An error occurred while enabling morphs.')  
     
@@ -7735,24 +7735,22 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 col = box.column(align=True)
                 col.label(text="Morphs will be deleted!", icon="ERROR")
                 col.label(text="Some bones of the Face rig might not work even if Remove Face Rig Morphs is disabled!", icon="BLANK1")
-            if rig_settings.diffeomorphic_model_version == "1.6":
-                row = box.row()
-                row.enabled = self.remove_morphs
-                row.prop(self, "remove_morphs_facs", text = "Remove Face Rig Morphs")
+            row = box.row()
+            row.enabled = self.remove_morphs
+            row.prop(self, "remove_morphs_facs", text = "Remove Face Rig Morphs")
             row = box.row()
             row.enabled = self.remove_morphs
             row.prop(self, "remove_morphs_jcms", text = "Remove Corrective Morphs")
             row = box.row()
             row.enabled = self.remove_morphs
             row.prop(self, "remove_morphs_shapekeys")
-            if rig_settings.diffeomorphic_model_version == "1.6":
-                row = box.row()
-                row.prop(self, "remove_diffeomorphic_data")
-                if self.remove_diffeomorphic_data:
-                    col = box.column(align=True)
-                    col.label(text="After cleaning, Diffeomorphic tools might now work for this model!", icon="ERROR")
-                    col.label(text="Use this option when you are not planning to use Diffeomorphic for this model anymore.", icon="BLANK1")
-                    col.label(text="On the contrary, Morphs and face controls are NOT removed.", icon="BLANK1")
+            row = box.row()
+            row.prop(self, "remove_diffeomorphic_data")
+            if self.remove_diffeomorphic_data:
+                col = box.column(align=True)
+                col.label(text="After cleaning, Diffeomorphic tools might now work for this model!", icon="ERROR")
+                col.label(text="Use this option when you are not planning to use Diffeomorphic for this model anymore.", icon="BLANK1")
+                col.label(text="On the contrary, Morphs and face controls are NOT removed.", icon="BLANK1")
 
 # ------------------------------------------------------------------------
 #    Debug 
