@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 26, 0),
-    "blender": (3, 2, 0),
+    "version": (0, 27, 0),
+    "blender": (3, 5, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "022"
+mustardui_buildnum = "002"
 
 import bpy
 import addon_utils
@@ -1965,23 +1965,6 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
                         default="None",
                         items=(("None", "None", "None"), ("Int", "Int", "Int"), ("Bool", "Bool", "Bool")))
     
-    # Bool value show
-    def update_bool_value(self, context):
-        
-        settings = bpy.context.scene.MustardUI_Settings
-        res, obj = mustardui_active_object(context, config = 0)
-        
-        if obj != None:
-            
-            obj[self.prop_name] = self.bool_value
-        
-        return 
-    
-    is_bool: bpy.props.BoolProperty(name = "Bool value")
-    bool_value: bpy.props.BoolProperty(name = "",
-                        update = update_bool_value,
-                        description = "")
-    
     # Properties stored to rebuild custom properties in case of troubles
     description: bpy.props.StringProperty()
     default_int: bpy.props.IntProperty()
@@ -2257,7 +2240,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             
             # Change custom properties settings
             elif prop.type == "BOOLEAN" and prop.array_length < 1:
-                rna_idprop_ui_create(obj, prop_name, default=eval(rna + '.' + path),
+                rna_idprop_ui_create(obj, prop_name, default=eval(mustardui_cp_path(rna, path)),
                                     description=prop.description,
                                     overridable=True)
                     
@@ -2276,7 +2259,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         # Add driver
         force_non_animatable = False
         try:
-            if (prop.is_animatable or blender_custom_property) and (not prop.type in ["BOOLEAN", "ENUM"] or (prop.type == "BOOLEAN" and prop.array_length < 1)):
+            if (prop.is_animatable or blender_custom_property) and not prop.type == "ENUM":
                 mustardui_add_driver(obj, rna, path, prop, prop_name)
             else:
                 force_non_animatable = True
@@ -2302,9 +2285,6 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             elif "key_blocks" in rna:
                 cp.icon = "SHAPEKEY_DATA"
             
-            cp.is_bool = prop.type == "BOOLEAN"
-            if prop.type == "BOOLEAN" and prop.array_length<1:
-                cp.bool_value = eval(rna + '.' + path)
             cp.is_animatable = (prop.is_animatable if not force_non_animatable else False) or blender_custom_property
             
             cp.section = self.section
@@ -3012,9 +2992,15 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             self.report({'ERROR'}, 'MustardUI - Can not change type of the custom property.')
             return {'FINISHED'}
         
-        if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR" and len(eval(self.default_array)) != custom_prop.array_length:
-            self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
-            return {'FINISHED'}
+        if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR":
+            try:
+                eval(self.default_array)
+            except:
+                self.report({'ERROR'}, 'MustardUI - Can not use this default vector.')
+                return {'FINISHED'}
+            if len(eval(self.default_array)) != custom_prop.array_length:
+                self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
+                return {'FINISHED'}
         
         custom_prop.name = self.name
         custom_prop.icon = self.icon
@@ -3028,15 +3014,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             ui_data = obj.id_properties_ui(prop_name)
             ui_data_dict = ui_data.as_dict()
             
-            custom_prop.is_bool = self.force_type == "Bool" or custom_prop.type == "BOOLEAN"
-            
             if prop_type == "FLOAT":
                 custom_prop.force_type = self.force_type
             
-            if custom_prop.is_bool:
-                ui_data.update(min=0,max=1)
-                obj[prop_name] = min(1,max(0,int(obj[prop_name])))
-            elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
+            if prop_type == "FLOAT" and self.force_type == "None":
                 
                 ui_data.clear()
                 
@@ -3056,8 +3037,22 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     obj[prop_name] = float(obj[prop_name])
                 else:
                     custom_prop.default_array = self.default_array if prop_subtype != "COLOR" else str(ui_data.as_dict()['default'])
-                custom_prop.is_bool = False
-            elif not custom_prop.is_bool and (prop_type == "INT" or self.force_type == "Int"):
+            elif prop_type == "BOOLEAN" or self.force_type == "Bool":
+                
+                ui_data.clear()
+                
+                rna_idprop_ui_create(obj, prop_name,
+                                    default=self.default_bool if custom_prop.array_length == 0 else eval(self.default_array),
+                                    description=self.description,
+                                    overridable=True)
+                
+                custom_prop.description = self.description
+                if custom_prop.array_length == 0:
+                    custom_prop.default_bool = self.default_bool
+                else:
+                    custom_prop.default_array = self.default_array
+                
+            elif prop_type == "INT" or self.force_type == "Int":
                 
                 ui_data.clear()
                 
@@ -3077,7 +3072,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     obj[prop_name] = int(obj[prop_name])
                 else:
                     custom_prop.default_array = self.default_array
-                custom_prop.is_bool = False
             else:
                 ui_data.update(description = custom_prop.description)
                 custom_prop.description = self.description
@@ -3119,14 +3113,22 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 self.report({'ERROR'}, 'MustardUI - An error occurred while retrieving UI data. Try to rebuild properties to solve this')
                 return {'FINISHED'}
             
-            if not custom_prop.is_bool and (prop_type == "INT" or self.force_type == "Int"):
+            if prop_type == "INT" or self.force_type == "Int":
                 self.max_int = ui_data_dict['max']
                 self.min_int = ui_data_dict['min']
                 if custom_prop.array_length == 0:
                     self.default_int = ui_data_dict['default']
                 else:
                     self.default_array = str(ui_data_dict['default'])
-            elif not custom_prop.is_bool and prop_type == "FLOAT" and self.force_type == "None":
+            
+            if prop_type == "BOOLEAN" or self.force_type == "Bool":
+                
+                if custom_prop.array_length == 0:
+                    self.default_bool = ui_data_dict['default']
+                else:
+                    self.default_array = str(ui_data_dict['default'])
+            
+            elif prop_type == "FLOAT" and self.force_type == "None":
                 self.max_float = ui_data_dict['max']
                 self.min_float = ui_data_dict['min']
                 if self.min_float == self.max_float:
@@ -3200,74 +3202,68 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.prop(custom_prop, "hair", text="")
         
         if custom_prop.is_animatable:
-            
-            if not custom_prop.is_bool:
                 
-                box = layout.box()
+            box = layout.box()
+        
+            row=box.row()
+            row.label(text="Description:")
+            row.scale_x=scale
+            row.prop(self, "description", text="")
             
-                row=box.row()
-                row.label(text="Description:")
-                row.scale_x=scale
-                row.prop(self, "description", text="")
+            if prop_type == "FLOAT" and custom_prop.subtype != "COLOR":
                 
-                if prop_type == "FLOAT" and custom_prop.subtype != "COLOR":
-                    
-                    if custom_prop.array_length == 0:
-                        row=box.row()
-                        row.label(text="Force type:")
-                        row.scale_x=scale
-                        row.prop(self, "force_type", text="")
-                    
-                        if self.force_type == "None":
-                    
-                            row=box.row()
-                            row.label(text="Default:")
-                            row.scale_x=scale
-                            row.prop(self, "default_float", text="")
-                    else:    
+                if custom_prop.array_length == 0:
+                    row=box.row()
+                    row.label(text="Force type:")
+                    row.scale_x=scale
+                    row.prop(self, "force_type", text="")
+                
+                    if self.force_type == "None":
+                
                         row=box.row()
                         row.label(text="Default:")
                         row.scale_x=scale
-                        row.prop(self, "default_array", text="")
-                    
-                    if self.force_type == "None":
-                        
-                        row=box.row()
-                        row.label(text="Min / Max")
-                        row.scale_x=scale
-                        row2=row.row(align=True)
-                        row2.prop(self, "min_float", text="")
-                        row2.prop(self, "max_float", text="")
-                
-                if custom_prop.subtype == "COLOR":
+                        row.prop(self, "default_float", text="")
+                else:    
                     row=box.row()
                     row.label(text="Default:")
                     row.scale_x=scale
-                    row.prop(self, "default_color", text="")
+                    row.prop(self, "default_array", text="")
                 
-                if prop_type == "INT" or self.force_type == "Int":
-                    
-                    row=box.row()
-                    row.label(text="Default:")
-                    row.scale_x=scale
-                    row.prop(self, "default_int", text="")
+                if self.force_type == "None":
                     
                     row=box.row()
                     row.label(text="Min / Max")
                     row.scale_x=scale
                     row2=row.row(align=True)
-                    row2.prop(self, "min_int", text="")
-                    row2.prop(self, "max_int", text="")
-        
-            elif custom_prop.is_bool and prop_type == "FLOAT":
-                box = layout.box()
+                    row2.prop(self, "min_float", text="")
+                    row2.prop(self, "max_float", text="")
+            
+            if custom_prop.subtype == "COLOR":
                 row=box.row()
-                row.label(text="Force type:")
+                row.label(text="Default:")
                 row.scale_x=scale
-                row.prop(self, "force_type", text="")
+                row.prop(self, "default_color", text="")
+            
+            if prop_type == "INT" or self.force_type == "Int":
                 
-                if custom_prop.force_type != self.force_type and custom_prop.force_type == "Bool":
-                    box.label(text="Re-open this Settings panel to change settings", icon="ERROR")
+                row=box.row()
+                row.label(text="Default:")
+                row.scale_x=scale
+                row.prop(self, "default_int" if custom_prop.array_length == 0 else "default_array", text="")
+                
+                row=box.row()
+                row.label(text="Min / Max")
+                row.scale_x=scale
+                row2=row.row(align=True)
+                row2.prop(self, "min_int", text="")
+                row2.prop(self, "max_int", text="")
+        
+            elif prop_type == "BOOLEAN" or self.force_type == "Bool":
+                
+                row=box.row()
+                row.label(text="Default:")
+                row.prop(self, "default_bool" if custom_prop.array_length == 0 else "default_array", text="")
             
             if len(custom_prop.linked_properties)>0:
                 
@@ -3446,7 +3442,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             if prop_name in obj.keys():
                 del obj[prop_name]
             
-            if custom_prop.is_bool or custom_prop.force_type == "Bool":
+            if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
                 try:
                     default_bool = int(eval(mustardui_cp_path(custom_prop.rna,custom_prop.path)))
                 except:
@@ -3458,7 +3454,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                                     description=custom_prop.description,
                                     overridable=True)
             
-            elif not custom_prop.is_bool and custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
+            elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
                 rna_idprop_ui_create(obj, prop_name,
                                     default=custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array),
                                     min=custom_prop.min_float if custom_prop.subtype != "COLOR" else 0.,
@@ -3467,7 +3463,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                                     overridable=True,
                                     subtype=custom_prop.subtype if custom_prop.subtype != "FACTOR" else None)
                             
-            elif not custom_prop.is_bool and (custom_prop.type == "INT" or custom_prop.force_type == "Int"):
+            elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
                 rna_idprop_ui_create(obj, prop_name,
                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else eval(custom_prop.default_array),
                                     min=custom_prop.min_int,
@@ -3621,12 +3617,17 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         obj[prop_name] = eval(rna + "." + path)
         
         # Change custom properties settings
-        rna_idprop_ui_create(obj, prop_name,
-                            default=int(eval(rna + "." + path)) if type in ["INT", "BOOLEAN"] else eval(rna + "." + path),
-                            min=0 if type in ["INT", "BOOLEAN"] else 0.,
-                            max=1 if type in ["INT", "BOOLEAN"] else 1.,
-                            overridable=True,
-                            subtype="COLOR" if type == "COLOR" else None)
+        if type == "BOOLEAN":
+            rna_idprop_ui_create(obj, prop_name,
+                            default=bool(eval(rna + "." + path)),
+                            overridable=True)
+        else:
+            rna_idprop_ui_create(obj, prop_name,
+                                default=int(eval(rna + "." + path)) if type == "INT" else eval(rna + "." + path),
+                                min=0 if type == "INT" else 0.,
+                                max=1 if type == "INT" else 1.,
+                                overridable=True,
+                                subtype="COLOR" if type == "COLOR" else None)
         
         # Add driver
         try:
@@ -3650,10 +3651,6 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             cp.subtype = "COLOR" if type == "COLOR" else "NONE"
             cp.array_length = 4 if type == "COLOR" else 0
             cp.name = name
-            
-            cp.is_bool = type == "BOOLEAN"
-            if cp.is_bool:
-                cp.bool_value = int(eval(mustardui_cp_path(rna,path)))
             
             cp.is_animatable = True
             for cptr in sections_to_recover:
@@ -8568,9 +8565,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                         row.label(text = prop.name, icon = prop.icon if prop.icon != "NONE" else "DOT")
                     else:
                         row.label(text=prop.name)
-                    if prop.is_bool and prop.is_animatable:
-                        row.prop(prop, 'bool_value', text="")
-                    elif not prop.is_animatable:
+                    if not prop.is_animatable:
                         try:
                             row.prop(eval(prop.rna), prop.path, text="")
                         except:
@@ -8603,9 +8598,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                                 row.label(text=prop.name, icon = prop.icon if prop.icon != "NONE" else "DOT")
                             else:
                                 row.label(text=prop.name)
-                            if prop.is_bool and prop.is_animatable:
-                                row.prop(prop, 'bool_value', text="")
-                            elif not prop.is_animatable:
+                            if not prop.is_animatable:
                                 try:
                                     row.prop(eval(prop.rna), prop.path, text="")
                                 except:
@@ -8792,9 +8785,7 @@ def mustardui_custom_properties_print(arm, settings, rig_settings, custom_proper
                 row2.label(text=prop.name, icon = prop.icon if prop.icon != "NONE" else "DOT")
             else:
                 row2.label(text=prop.name)
-            if prop.is_bool and prop.is_animatable:
-                row2.prop(prop, 'bool_value', text="")
-            elif not prop.is_animatable:
+            if not prop.is_animatable:
                 try:
                     row2.prop(eval(prop.rna), prop.path, text="")
                 except:
