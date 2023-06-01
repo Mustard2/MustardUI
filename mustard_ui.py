@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "002"
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -2246,7 +2246,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                     
             elif hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default') and hasattr(prop, 'description') and hasattr(prop, 'subtype'):
                 description = prop.description if (not "node_tree.nodes" in rna and not "shape_keys" in rna) else ""
-                rna_idprop_ui_create(obj, prop_name, default=prop.default if prop.array_length == 0 else eval(mustardui_cp_path(rna, path)),
+                rna_idprop_ui_create(obj, prop_name, default=eval(mustardui_cp_path(rna, path)),
                                     min=prop.hard_min if prop.subtype != "COLOR" else 0.,
                                     max=prop.hard_max if prop.subtype != "COLOR" else 1.,
                                     description=description,
