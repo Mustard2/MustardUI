@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "008"
+mustardui_buildnum = "009"
 
 import bpy
 import addon_utils
@@ -983,10 +983,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_disable_exceptions: bpy.props.StringProperty(default = "",
                         name = "Exceptions",
                         description = "Morphs that will not be disabled when morphs are disabled.\nAdd strings to add morphs (they should map the initial part of the name of the morph), separated by commas.\nNote: spaces and order are considered")
-    
-    diffeomorphic_model_version: bpy.props.EnumProperty(default = "1.6",
-                        items = [("1.7", "1.7", "1.7"), ("1.6", "1.6", "1.6")],
-                        name = "Diffeomorphic Version")
     
     diffeomorphic_morphs_list: bpy.props.CollectionProperty(name = "Daz Morphs List",
                         type=MustardUI_DazMorph)
@@ -7875,8 +7871,6 @@ class MustardUI_Debug_Log(bpy.types.Operator):
                 log += self.new_line()
             
             log += self.new_line()
-            log += "Model Diffeomorphic Version: " + self.tab(tabs_num - 3) + rig_settings.diffeomorphic_model_version
-            log += self.new_line()
             log += "Morphs: " + self.tab(tabs_num + 1) + str(rig_settings.diffeomorphic_morphs_number)
             log += self.new_line()
             
@@ -8417,13 +8411,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 else:
                     
                     box.label(text="Diffeomorphic Settings", icon="OUTLINER_DATA_SURFACE")
-                    
-                    box2 = box.box()
-                    box2.label(text="General", icon="MODIFIER")
-                    row = box2.row(align=True)
-                    row.label(text="Model Version")
-                    row.scale_x = row_scale
-                    row.prop(rig_settings, "diffeomorphic_model_version", text="")
                     
                     box2 = box.box()
                     box2.label(text="Morphs", icon = "SHAPEKEY_DATA")
