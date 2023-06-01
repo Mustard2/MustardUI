@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "003"
+mustardui_buildnum = "006"
 
 import bpy
 import addon_utils
@@ -27,6 +27,7 @@ from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
 from mathutils import Vector, Color, Matrix
 import webbrowser
+import textwrap
 
 # ------------------------------------------------------------------------
 #    Global icon list
@@ -52,7 +53,11 @@ mustardui_icon_list = [
                 ("FUND", "Hearth", "Hearth", "FUND",16),
                 ("MATSHADERBALL", "Ball", "Ball", "MATSHADERBALL",17),
                 ("COMMUNITY", "Community", "Community", "COMMUNITY",18),
-                ("LIGHT", "Light", "Light", "LIGHT",19)
+                ("LIGHT", "Light", "Light", "LIGHT",19),
+                ("GHOST_ENABLED", "Ghost", "Ghost", "GHOST_ENABLED",20),
+                ("CAMERA_STEREO", "Glasses", "Glasses", "CAMERA_STEREO",21),
+                ("SOLO_ON", "Star", "Star", "SOLO_ON",22),
+                ("ERROR", "Error", "Error", "ERROR",23)
             ]
 
 # ------------------------------------------------------------------------
@@ -298,7 +303,7 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
     
     # Section icon
     icon : bpy.props.StringProperty(name="Section Icon",
-                        default="")
+                        default="NONE")
     
     # Advanced settings
     advanced: bpy.props.BoolProperty(default = False,
@@ -306,11 +311,16 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
                         description = "The section will be shown only when Advances Settings is enabled")
     
     # Collapsable
-    collapsable: bpy.props.BoolProperty(default = False,
+    collapsable: bpy.props.BoolProperty(default = True,
                         name = "Collapsable",
                         description = "Add a collapse icon to the section.\nNote that this might give bad UI results if combined with an icon")
     collapsed: bpy.props.BoolProperty(name = "",
                         default = False)
+    
+    # Description
+    description: bpy.props.StringProperty(name = "Description")
+    description_icon : bpy.props.StringProperty(name="Description Icon",
+                        default="NONE")
 
 bpy.utils.register_class(MustardUI_SectionItem)
 
@@ -2938,7 +2948,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                         description="Icon of the property",
                         items = mustardui_icon_list)
     description : bpy.props.StringProperty(name='Description',
-                        description="Choose the name of the section")
+                        description="Description of the property")
     force_type: bpy.props.EnumProperty(name = "Force Property Type",
                         default="None",
                         description="Force the type of the property to be boolean or integer. If None, the original type is preserved",
@@ -3754,10 +3764,9 @@ class MustardUI_Body_AddSection(bpy.types.Operator):
     bl_options = {'UNDO'}
     
     name : bpy.props.StringProperty(name='Name',
-                        description="Choose the name of the Section",
+                        description="Name of the Section",
                         default = "Section")
     icon : bpy.props.EnumProperty(name='Icon',
-                        description="Choose the icon.\nNote that the icon name MUST respect Blender convention. All the icons can be found in the Icon Viewer default Blender addon",
                         items = mustardui_icon_list)
     advanced: bpy.props.BoolProperty(default = False,
                         name = "Advanced",
@@ -3765,6 +3774,11 @@ class MustardUI_Body_AddSection(bpy.types.Operator):
     collapsable: bpy.props.BoolProperty(default = False,
                         name = "Collapsable",
                         description = "Add a collapse icon to the section.\nNote that this might give bad UI results if combined with an icon")
+    description : bpy.props.StringProperty(name='',
+                        description="Description of the Section.\nLeave blank to remove description",
+                        default = "")
+    description_icon : bpy.props.EnumProperty(name='Description Icon',
+                        items = mustardui_icon_list)
 
     @classmethod
     def poll(cls, context):
@@ -3795,6 +3809,8 @@ class MustardUI_Body_AddSection(bpy.types.Operator):
         
         add_item = sec_obj.add()
         add_item.name = self.name
+        add_item.description = self.description
+        add_item.description_icon = self.description_icon
         add_item.icon = self.icon
         add_item.advanced = self.advanced
         add_item.collapsable = self.collapsable
@@ -3814,23 +3830,40 @@ class MustardUI_Body_AddSection(bpy.types.Operator):
         
         scale = 3.0
         
-        row=layout.row()
+        box = layout.box()
+        
+        row=box.row()
         row.label(text="Name:")
         row.scale_x=scale
         row.prop(self, "name", text="")
         
-        row=layout.row()
+        row=box.row()
         row.label(text="Icon:")
         row.scale_x=scale
         row.prop(self, "icon", text="")
         
-        row=layout.row()
-        row.prop(self, "advanced", text="")
-        row.label(text="Advanced")
+        col = box.column()
         
-        row=layout.row()
+        row=col.row()
+        row.label(text="Advanced:")
+        row.prop(self, "advanced", text="")
+        
+        row=col.row()
+        row.label(text="Collapsable:")
         row.prop(self, "collapsable", text="")
-        row.label(text="Collapsable")
+        
+        box = layout.box()
+        
+        row=box.row()
+        row.label(text="Description:")
+        row.scale_x=scale
+        row.prop(self, "description", text="")
+        
+        row=box.row()
+        row.enabled = self.description != ""
+        row.label(text="Icon:")
+        row.scale_x=scale
+        row.prop(self, "description_icon", text="")
 
 # Delete Section
 class MustardUI_Body_DeleteSection(bpy.types.Operator):
@@ -3897,7 +3930,6 @@ class MustardUI_Body_SettingsSection(bpy.types.Operator):
     name : bpy.props.StringProperty(name='Name',
                         description="Choose the name of the section")
     icon : bpy.props.EnumProperty(name='Icon',
-                        description="Choose the icon.\nNote that the icon name MUST respect Blender convention. All the icons can be found in the Icon Viewer default Blender addon.",
                         items = mustardui_icon_list)
     advanced: bpy.props.BoolProperty(default = False,
                         name = "Advanced",
@@ -3907,7 +3939,13 @@ class MustardUI_Body_SettingsSection(bpy.types.Operator):
                         description = "Add a collapse icon to the section.\nNote that this might give bad UI results if combined with an icon")
         
     name_edit : bpy.props.StringProperty(name='Name',
-                        description="Choose the name of the section")
+                        description="Name of the section")
+                        
+    description : bpy.props.StringProperty(name='Description',
+                        description="Description of the section")
+    description_icon : bpy.props.EnumProperty(name='Icon',
+                        items = mustardui_icon_list)
+    
     ID : bpy.props.IntProperty()
 
     def find_index_section(self, collection, item):
@@ -3947,6 +3985,8 @@ class MustardUI_Body_SettingsSection(bpy.types.Operator):
             sec_obj[i].icon = self.icon
             sec_obj[i].advanced = self.advanced
             sec_obj[i].collapsable = self.collapsable
+            sec_obj[i].description = self.description
+            sec_obj[i].description_icon = self.description_icon
         
         return {'FINISHED'}
     
@@ -3962,6 +4002,8 @@ class MustardUI_Body_SettingsSection(bpy.types.Operator):
         self.icon = sec_obj[self.ID].icon
         self.advanced = sec_obj[self.ID].advanced
         self.collapsable = sec_obj[self.ID].collapsable
+        self.description = sec_obj[self.ID].description
+        self.description_icon = sec_obj[self.ID].description_icon
         
         return context.window_manager.invoke_props_dialog(self)
             
@@ -3976,23 +4018,40 @@ class MustardUI_Body_SettingsSection(bpy.types.Operator):
         
         layout = self.layout
         
-        row=layout.row()
+        box = layout.box()
+        
+        row=box.row()
         row.label(text="Name:")
         row.scale_x=scale
         row.prop(self, "name_edit", text="")
         
-        row=layout.row()
+        row=box.row()
         row.label(text="Icon:")
         row.scale_x=scale
         row.prop(self, "icon", text="")
         
-        row=layout.row()
-        row.prop(self, "advanced", text="")
-        row.label(text="Advanced")
+        col = box.column()
         
-        row=layout.row()
+        row=col.row()
+        row.label(text="Advanced:")
+        row.prop(self, "advanced", text="")
+        
+        row=col.row()
+        row.label(text="Collapsable:")
         row.prop(self, "collapsable", text="")
-        row.label(text="Collapsable")
+        
+        box = layout.box()
+        
+        row=box.row()
+        row.label(text="Description:")
+        row.scale_x=scale
+        row.prop(self, "description", text="")
+        
+        row=box.row()
+        row.enabled = self.description != ""
+        row.label(text="Icon:")
+        row.scale_x=scale
+        row.prop(self, "description_icon", text="")
 
 # Operator to change Section position
 class MustardUI_Body_SwapSection(bpy.types.Operator):
@@ -8476,6 +8535,21 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
     bl_label = "Body"
     bl_options = {"DEFAULT_CLOSED"}
     
+    def _label_multiline(self, context, text, parent, icon):
+        chars = int(context.region.width / 7) # 7 pix on 1 character
+        wrapper = textwrap.TextWrapper(width=chars)
+        text_lines = wrapper.wrap(text=text)
+        if icon in ["","NONE"]:
+            for i, text_line in enumerate(text_lines):
+                parent.label(text=text_line)
+        else:
+        
+            for i, text_line in enumerate(text_lines):
+                if not i:
+                    parent.label(text=text_line, icon = icon)
+                else:
+                    parent.label(text=text_line, icon="BLANK1")
+    
     @classmethod
     def poll(cls, context):
         
@@ -8592,6 +8666,9 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     else:
                         row.label(text = section.name)
                     if not section.collapsed:
+                        if section.description != "":
+                            box2 = box.box()
+                            self._label_multiline(context=context,text=section.description, parent=box2, icon=section.description_icon)
                         for prop in custom_properties_section:
                             row = box.row()
                             if rig_settings.body_custom_properties_icons:
