@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "016"
+mustardui_buildnum = "017"
 
 import bpy
 import addon_utils
@@ -569,12 +569,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
             for i in outfit_armature_layers:
                 if armature_settings.layers[i].outfit_switcher_object == None:
-                    armature_settings.layers[i].show = not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+                    armature_settings.layers[i].show = armature_settings.outfits and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
                 else:
                     items = armature_settings.layers[i].outfit_switcher_collection.all_objects if self.outfit_config_subcollections else armature_settings.layers[i].outfit_switcher_collection.objects
                     for object in [x for x in items]:
                         if object == armature_settings.layers[i].outfit_switcher_object:
-                            armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+                            armature_settings.layers[i].show = armature_settings.outfits and not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
         
         return
     
