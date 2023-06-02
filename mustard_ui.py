@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "017"
+mustardui_buildnum = "019"
 
 import bpy
 import addon_utils
@@ -835,7 +835,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         poll, arm = mustardui_active_object(context, config = 0)
         
-        for obj in self.hair_collection.objects:
+        for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
             obj.hide_viewport = not self.hair_list in obj.name
             obj.hide_render = not self.hair_list in obj.name
             for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE"]]:
@@ -9111,7 +9111,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"])>0 and rig_settings.particle_systems_enable if rig_settings.model_body != None else False
             curved_hair = len([x for x in rig_settings.hair_collection.objects if x.type == "CURVES"])>0 if rig_settings.hair_collection != None else False
             
-            return res if (hair_avail or particle_avail) else False
+            return res if (hair_avail or particle_avail or curved_hair) else False
         
         return res
 
