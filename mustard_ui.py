@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "019"
+mustardui_buildnum = "020"
 
 import bpy
 import addon_utils
@@ -822,6 +822,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def hair_list_make(self, context):
         
         items = []
+        
+        if self.hair_collection == None:
+            return items
         
         for el in self.hair_collection.objects:
             if hasattr(el, 'name') and el.type == "MESH":
@@ -9126,63 +9129,70 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         
         # Hair
         if rig_settings.hair_collection != None:
-            
-            obj = bpy.data.objects[rig_settings.hair_list]
-            
-            if len([x for x in rig_settings.hair_collection.objects if x.type in "MESH"])>1:
                 
-                box = layout.box()
-                row = box.row(align=True)
-                row.label(text="Hair list", icon="STRANDS")
-                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                row.prop(rig_settings.hair_collection, "hide_render", text="")
+                if len([x for x in rig_settings.hair_collection.objects if x.type in "MESH"])>1:
+                    
+                    box = layout.box()
+                    row = box.row(align=True)
+                    row.label(text="Hair list", icon="STRANDS")
+                    row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                    row.prop(rig_settings.hair_collection, "hide_render", text="")
+                    
+                    row = box.row(align=True)
+                    row.prop(rig_settings,"hair_list", text="")
                 
-                row = box.row(align=True)
-                row.prop(rig_settings,"hair_list", text="")
-            
-            else:
-                box = layout.box()
-                row = box.row(align=True)
-                row.label(text="Hair", icon="STRANDS")
-                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                row.prop(rig_settings.hair_collection, "hide_render", text="")
-            
-            if rig_settings.hair_custom_properties_name_order:
-                custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj], key = lambda x:x.name)
-            else:
-                custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj]
-            if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
-                row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
-                if obj.MustardUI_additional_options_show:
-                    mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
-            
-            mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"], key = lambda x:x.particle_system.name)
-            if rig_settings.particle_systems_enable  and len(mod_particle_system )> 0:
-                box2 = box.box()
-                for mod in mod_particle_system:
-                    row=box2.row(align=True)
-                    row.label(text=mod.particle_system.name, icon="PARTICLES")
-                    row2 = row.row(align=True)
-                    row2.prop(mod, "show_viewport", text="")
-                    row2.prop(mod, "show_render", text="")
-            
-            # Outfit global properties
-            if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
+                else:
+                    box = layout.box()
+                    row = box.row(align=True)
+                    row.label(text="Hair", icon="STRANDS")
+                    row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                    row.prop(rig_settings.hair_collection, "hide_render", text="")
                 
-                box = layout.box()
-                row = box.row(align=True)
-                row.label(text="Global properties", icon="MODIFIER")
-                col = box.column(align=True)
-                if rig_settings.hair_enable_global_subsurface:
-                    col.prop(rig_settings,"hair_global_subsurface")
-                if rig_settings.hair_enable_global_smoothcorrection:
-                    col.prop(rig_settings,"hair_global_smoothcorrection")
-                if rig_settings.hair_enable_global_solidify:
-                    col.prop(rig_settings,"hair_global_solidify")
-                if rig_settings.hair_enable_global_particles:
-                    col.prop(rig_settings,"hair_global_particles")
-                if rig_settings.hair_enable_global_normalautosmooth:
-                    col.prop(rig_settings,"hair_global_normalautosmooth")
+                try:
+                    obj = bpy.data.objects[rig_settings.hair_list]
+                    
+                    if rig_settings.hair_custom_properties_name_order:
+                        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj], key = lambda x:x.name)
+                    else:
+                        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj]
+                    if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
+                        row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
+                        if obj.MustardUI_additional_options_show:
+                            mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box, rig_settings.hair_custom_properties_icons)
+                    
+                    mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"], key = lambda x:x.particle_system.name)
+                    if rig_settings.particle_systems_enable  and len(mod_particle_system )> 0:
+                        box2 = box.box()
+                        for mod in mod_particle_system:
+                            row=box2.row(align=True)
+                            row.label(text=mod.particle_system.name, icon="PARTICLES")
+                            row2 = row.row(align=True)
+                            row2.prop(mod, "show_viewport", text="")
+                            row2.prop(mod, "show_render", text="")
+                except:
+                    box = box.box()
+                    box.label(text="An error occurred.", icon="ERROR")
+                    box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
+                    box.operator('mustardui.configuration', text = "Enter Configuration Mode", icon = "PREFERENCES")
+                    
+                
+                # Outfit global properties
+                if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
+                    
+                    box = layout.box()
+                    row = box.row(align=True)
+                    row.label(text="Global properties", icon="MODIFIER")
+                    col = box.column(align=True)
+                    if rig_settings.hair_enable_global_subsurface:
+                        col.prop(rig_settings,"hair_global_subsurface")
+                    if rig_settings.hair_enable_global_smoothcorrection:
+                        col.prop(rig_settings,"hair_global_smoothcorrection")
+                    if rig_settings.hair_enable_global_solidify:
+                        col.prop(rig_settings,"hair_global_solidify")
+                    if rig_settings.hair_enable_global_particles:
+                        col.prop(rig_settings,"hair_global_particles")
+                    if rig_settings.hair_enable_global_normalautosmooth:
+                        col.prop(rig_settings,"hair_global_normalautosmooth")
         
         # Curves
         curves_hair = sorted([x for x in rig_settings.hair_collection.objects if x.type == "CURVES"], key = lambda x:x.name)
