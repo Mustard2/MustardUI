@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "022"
+mustardui_buildnum = "023"
 
 import bpy
 import addon_utils
@@ -5050,7 +5050,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                         print('MustardUI - Configuration Warning - The outfits_list property index seems to be corrupted. Try to remove the UI and re-add it')
             
             if rig_settings.hair_collection != None and rig_settings.hair_list == "":
-                if len(rig_settings.hair_list)>0:
+                if len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])>0:
                     try:
                         rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
                         print('MustardUI - Configuration Warning - Fixed hair_list index')
@@ -9199,18 +9199,22 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     if rig_settings.hair_enable_global_normalautosmooth:
                         col.prop(rig_settings,"hair_global_normalautosmooth")
         
-        # Curves
-        curves_hair = sorted([x for x in rig_settings.hair_collection.objects if x.type == "CURVES"], key = lambda x:x.name)
-        if rig_settings.curves_hair_enable  and len(curves_hair)> 0:
-            box = layout.box()
-            box.label(text="Curves Hair", icon="OUTLINER_OB_CURVES")
-            box2=box.box()
-            for obj in curves_hair:
-                row = box2.row()
-                row.label(text=obj.name, icon="OUTLINER_DATA_CURVES")
-                row2 = row.row(align=True)
-                row2.prop(obj, "hide_viewport", text="")
-                row2.prop(obj, "hide_render", text="")
+            # Curves
+            curves_hair = sorted([x for x in rig_settings.hair_collection.objects if x.type == "CURVES"], key = lambda x:x.name)
+            if rig_settings.curves_hair_enable  and len(curves_hair)> 0:
+                box = layout.box()
+                row = box.row(align=True)
+                row.label(text="Curves Hair", icon="OUTLINER_OB_CURVES")
+                if hair_num<1:
+                    row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                    row.prop(rig_settings.hair_collection, "hide_render", text="")
+                box2=box.box()
+                for obj in curves_hair:
+                    row = box2.row()
+                    row.label(text=obj.name, icon="OUTLINER_DATA_CURVES")
+                    row2 = row.row(align=True)
+                    row2.prop(obj, "hide_viewport", text="")
+                    row2.prop(obj, "hide_render", text="")
         
         # Particle systems
         mod_particle_system = sorted([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"], key = lambda x:x.particle_system.name)
