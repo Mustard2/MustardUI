@@ -9129,25 +9129,29 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         
         # Hair
         if rig_settings.hair_collection != None:
+            
+            hair_num = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])
                 
-                if len([x for x in rig_settings.hair_collection.objects if x.type in "MESH"])>1:
-                    
-                    box = layout.box()
-                    row = box.row(align=True)
-                    row.label(text="Hair list", icon="STRANDS")
-                    row.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                    row.prop(rig_settings.hair_collection, "hide_render", text="")
-                    
-                    row = box.row(align=True)
-                    row.prop(rig_settings,"hair_list", text="")
+            if hair_num>1:
                 
-                else:
-                    box = layout.box()
-                    row = box.row(align=True)
-                    row.label(text="Hair", icon="STRANDS")
-                    row.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                    row.prop(rig_settings.hair_collection, "hide_render", text="")
+                box = layout.box()
+                row = box.row(align=True)
+                row.label(text="Hair list", icon="STRANDS")
+                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                row.prop(rig_settings.hair_collection, "hide_render", text="")
                 
+                row = box.row(align=True)
+                row.prop(rig_settings,"hair_list", text="")
+            
+            elif hair_num>0:
+                box = layout.box()
+                row = box.row(align=True)
+                row.label(text="Hair", icon="STRANDS")
+                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
+                row.prop(rig_settings.hair_collection, "hide_render", text="")
+            
+            if hair_num>0:
+            
                 try:
                     obj = bpy.data.objects[rig_settings.hair_list]
                     
@@ -9174,8 +9178,8 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     box.label(text="An error occurred.", icon="ERROR")
                     box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
                     box.operator('mustardui.configuration', text = "Enter Configuration Mode", icon = "PREFERENCES")
-                    
                 
+            
                 # Outfit global properties
                 if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
                     
