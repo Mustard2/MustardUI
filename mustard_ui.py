@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "023"
+mustardui_buildnum = "028"
 
 import bpy
 import addon_utils
@@ -1409,11 +1409,13 @@ class MustardUI_Armature_Sort(bpy.types.Operator):
 
 def mustardui_armature_visibility_update(self, context):
     
+    settings = bpy.context.scene.MustardUI_Settings
+    
     poll, arm = mustardui_active_object(context, config = 0)
     armature_settings = arm.MustardUI_ArmatureSettings
     
     for i in [x for x in range(0,32) if armature_settings.config_layer[x]]:
-        arm.layers[i] = armature_settings.layers[i].show
+        arm.layers[i] = armature_settings.layers[i].show if not armature_settings.layers[i].advanced else (armature_settings.layers[i].show and settings.advanced)
     
     return
 
@@ -1510,7 +1512,7 @@ class MustardUI_ArmatureLayer(bpy.types.PropertyGroup):
         
         if self.outfit_switcher_collection != None:
             items = self.outfit_switcher_collection.all_objects if rig_settings.outfit_config_subcollections else self.outfit_switcher_collection.objects
-            if object in items:
+            if object in [x for x in items]:
                 return object.type == 'MESH'
         
         return False
@@ -2037,7 +2039,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         
         if self.outfit != None:
             items = self.outfit.all_objects if rig_settings.outfit_config_subcollections else self.outfit.objects
-            if object in items:
+            if object in [x for x in items]:
                 return object.type == 'MESH'
         
         return False
@@ -2606,7 +2608,7 @@ def mustardui_property_menuadd(self, context):
         sep = False
         for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
-            for object in items:
+            for object in [x for x in items]:
                 if object == context.active_object:
                     op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, text = "Add to " + context.active_object.name, icon="MOD_CLOTH")
                     op.section = ""
@@ -2617,7 +2619,7 @@ def mustardui_property_menuadd(self, context):
         if rig_settings.extras_collection != None:
             items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
             if len(items) > 0:
-                for object in items:
+                for object in [x for x in items]:
                     if object == context.active_object:
                         op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, text = "Add to " + context.active_object.name, icon="PLUS")
                         op.section = ""
@@ -5731,7 +5733,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
             for i in outfit_armature_layers:
                 items = armature_settings.layers[i].outfit_switcher_collection.all_objects if rig_settings.outfit_config_subcollections else armature_settings.layers[i].outfit_switcher_collection.objects
-                for object in items:
+                for object in [x for x in items]:
                     if object == armature_settings.layers[i].outfit_switcher_object:
                         armature_settings.layers[i].show = not bpy.data.objects[object.name].hide_viewport and not armature_settings.layers[i].outfit_switcher_collection.hide_viewport
         
@@ -8897,7 +8899,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
 def mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties, box, icons_show):
         
         box2 = box.box()
-        for prop in custom_properties:
+        for prop in [x for x in custom_properties if not x.hidden]:
             row2 = box2.row(align=True)
             if icons_show:
                 row2.label(text=prop.name, icon = prop.icon if prop.icon != "NONE" else "DOT")
@@ -9088,9 +9090,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         else:
                             row.operator("mustardui.object_visibility",text=obj.name, icon='OUTLINER_OB_'+obj.type, depress = not obj.hide_viewport).obj = obj.name
                         if rig_settings.outfit_custom_properties_name_order:
-                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == rig_settings.extras_collection and x.outfit_piece == obj], key = lambda x:x.name)
+                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == rig_settings.extras_collection and x.outfit_piece == obj and not x.hidden], key = lambda x:x.name)
                         else:
-                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == rig_settings.extras_collection and x.outfit_piece == obj]
+                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if x.outfit == rig_settings.extras_collection and x.outfit_piece == obj and not x.hidden]
                         if len(custom_properties_obj)>0 and rig_settings.outfit_additional_options:
                             row.prop(obj,"MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                             if obj.MustardUI_additional_options_show:
