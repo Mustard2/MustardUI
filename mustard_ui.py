@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "029"
+mustardui_buildnum = "030"
 
 import bpy
 import addon_utils
@@ -1414,7 +1414,7 @@ def mustardui_armature_visibility_update(self, context):
     poll, arm = mustardui_active_object(context, config = 0)
     armature_settings = arm.MustardUI_ArmatureSettings
     
-    layers = sorted([x for x in range(0,32) if armature_settings.config_layer[x] and not armature_settings.layers[x].outfit_switcher_enable], key = lambda x:(not armature_settings.layers[x].show))
+    layers = sorted([x for x in range(0,32) if armature_settings.config_layer[x]], key = lambda x:(not armature_settings.layers[x].show))
     
     for i in layers:
         arm.layers[i] = armature_settings.layers[i].show if not armature_settings.layers[i].advanced else (armature_settings.layers[i].show and settings.advanced)
