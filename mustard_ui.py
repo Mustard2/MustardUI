@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "030"
+mustardui_buildnum = "031"
 
 import bpy
 import addon_utils
@@ -1075,7 +1075,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             self.body_smooth_corr                    = not self.simplify_enable
         if self.body_enable_norm_autosmooth:
             self.body_norm_autosmooth                = not self.simplify_enable
-        if self.body_solidify and self.simplify_enable:
+        if self.body_enable_solidify:
             self.body_solidify                       = not self.simplify_enable
         
         # Eevee Optimized Normals
