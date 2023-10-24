@@ -12,7 +12,7 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "031"
+mustardui_buildnum = "032"
 
 import bpy
 import addon_utils
@@ -589,15 +589,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         
         for collection in [x.collection for x in rig_settings.outfits_collections if x.collection != None]:
             
-            items = collection.all_objects if rig_settings.outfit_config_subcollections else collection.objects
-            locked_items = [x for x in items if x.MustardUI_outfit_lock]
+            items = {}
+            for obj in (collection.all_objects if rig_settings.outfit_config_subcollections else collection.objects):
+                items[obj.name] = obj
+            
+            locked_items = [items[x] for x in items if items[x].MustardUI_outfit_lock]
             
             locked_collection = len(locked_items)>0
             
             collection.hide_viewport = not (collection.name == outfits_list or locked_collection)
             collection.hide_render = not (collection.name == outfits_list or locked_collection)
             
-            for obj in items:
+            for _, obj in items.items():
                     
                 if locked_collection and collection.name != outfits_list:
                     
