@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 27, 0),
+    "version": (0, 27, 1),
     "blender": (3, 5, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "032"
+mustardui_buildnum = "001"
 
 import bpy
 import addon_utils
