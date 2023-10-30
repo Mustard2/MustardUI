@@ -1,6 +1,7 @@
 import bpy
 from ..model_selection.active_object import *
 from .misc import *
+import itertools
 
 
 class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
