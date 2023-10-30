@@ -6,13 +6,13 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 27, 1),
-    "blender": (3, 5, 0),
+    "version": (0, 28, 0),
+    "blender": (4, 0, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
-mustardui_buildnum = "001"
+mustardui_buildnum = "003"
 
 import bpy
 import addon_utils
@@ -2496,7 +2496,6 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertySectionMenu'
     bl_label = 'Add to MustardUI (Section)'
-    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2517,7 +2516,6 @@ class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
 class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu'
     bl_label = 'Add to MustardUI Outfit'
-    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2546,7 +2544,6 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
 class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertyOutfitMenu'
     bl_label = 'Add to MustardUI Outfit'
-    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2574,7 +2571,6 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
 class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
     bl_idname = 'OUTLINER_MT_MustardUI_PropertyHairMenu'
     bl_label = 'Add to MustardUI Hair'
-    bl_options = {'UNDO'}
 
     def draw(self, context):
         
@@ -2665,7 +2661,6 @@ def mustardui_property_link(self, context):
 class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
     bl_idname = 'MUSTARDUI_MT_Property_LinkMenu'
     bl_label = 'Link to Property'
-    bl_options = {'UNDO'}
 
     @classmethod
     def poll(cls, context):
@@ -6937,14 +6932,21 @@ bpy.types.Armature.MustardUI_PhysicsSettings = bpy.props.PointerProperty(type = 
 class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
     bl_description = "Switch normal map nodes to a faster custom node"
     bl_idname = 'mustardui.material_normalmap_nodes'
-    bl_label = "Eevee Optimized Normals"
+    bl_label = "Eevee Fast Normals"
     bl_options = {'UNDO'}
-
+    
+    custom: bpy.props.BoolProperty(
+        name="To Custom",
+        description="Set all normals to custom group, or revert back to normal",
+        default=True,
+    )
+    
     @classmethod
     def poll(self, context):
         return (bpy.data.materials or bpy.data.node_groups)
 
     def execute(self, context):
+        
         def mirror(new, old):
             """Copy attributes of the old node to the new node"""
             new.parent = old.parent
@@ -6984,7 +6986,7 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
             if not group:
                 return
 
-            for node in nodes:
+            for node in reversed(nodes):
                 new = None
                 if self.custom:
                     if isinstance(node, bpy.types.ShaderNodeNormalMap):
@@ -6998,6 +7000,33 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
                 if new:
                     name = node.name
                     mirror(new, node)
+                    
+                    if isinstance(node, bpy.types.ShaderNodeNormalMap):
+                        uvNode = nodes.new('ShaderNodeUVMap')
+                        uvNode.uv_map = node.uv_map
+                        uvNode.name = node.name+" UV"
+                        uvNode.parent = new.parent
+                        uvNode.mute = True
+                        uvNode.hide = True
+                        uvNode.select = False
+                        uvNode.location = Vector((new.location.x, new.location.y-150.))
+                        uvNode.id_data.links.new(uvNode.outputs['UV'], new.inputs[2])
+                    else:
+                        try:
+                            try:
+                                uvNode = nodes[node.name+" UV"]
+                            except:
+                                for input in node.inputs:
+                                    if input and isinstance(input, bpy.types.NodeSocketVector) and input.is_linked:
+                                        if isinstance(input.links[0].from_node, bpy.types.ShaderNodeUVMap):
+                                            uvNode = input.links[0].from_node
+                                            break
+                            new.uv_map = uvNode.uv_map
+                            nodes.remove(uvNode)
+                        except:
+                            print("Mustard Simplify - Could not restore UV before using Fast Normals")
+                            pass
+                    
                     nodes.remove(node)
                     new.name = name
 
@@ -7008,34 +7037,30 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
 
         if (not self.custom) and get_custom():
             bpy.data.node_groups.remove(get_custom())
-
+        
         return {'FINISHED'}
 
-    custom: bpy.props.BoolProperty(
-        name="To Custom",
-        description="Set all normals to custom group, or revert back to normal",
-        default=True,
-    )
-
 def default_custom_nodes():
-    use_new_nodes = (bpy.app.version >= (2, 81))
-
+    
     group = bpy.data.node_groups.new('Normal Map Optimized', 'ShaderNodeTree')
 
     nodes = group.nodes
     links = group.links
 
     # Input
-    input = group.inputs.new('NodeSocketFloat', 'Strength')
+    input = group.interface.new_socket("Strength", in_out='INPUT', socket_type='NodeSocketFloat')
     input.default_value = 1.0
     input.min_value = 0.0
     input.max_value = 1.0
-    input = group.inputs.new('NodeSocketColor', 'Color')
+    input = group.interface.new_socket("Color", in_out='INPUT', socket_type='NodeSocketColor')
     input.default_value = ((0.5, 0.5, 1.0, 1.0))
+    
+    # Input UV as Backup
+    input = group.interface.new_socket("UV", in_out='INPUT', socket_type='NodeSocketVector')
 
     # Output
-    group.outputs.new('NodeSocketVector', 'Normal')
-
+    group.interface.new_socket("Normal", in_out='OUTPUT', socket_type='NodeSocketVector')
+    
     # Add Nodes
     frame = nodes.new('NodeFrame')
     frame.name = 'Matrix * Normal Map'
@@ -7053,8 +7078,6 @@ def default_custom_nodes():
     node.operation = 'DOT_PRODUCT'
     node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
     node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
-    if use_new_nodes:
-        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
     node = nodes.new('ShaderNodeVectorMath')
     node.name = 'Vector Math.001'
     node.label = ''
@@ -7065,8 +7088,6 @@ def default_custom_nodes():
     node.operation = 'DOT_PRODUCT'
     node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
     node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
-    if use_new_nodes:
-        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
     node = nodes.new('ShaderNodeVectorMath')
     node.name = 'Vector Math.002'
     node.label = ''
@@ -7076,8 +7097,6 @@ def default_custom_nodes():
     node.location = Vector((-60.0, -60.0))
     node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
     node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
-    if use_new_nodes:
-        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
     node.operation = 'DOT_PRODUCT'
     node = nodes.new('ShaderNodeCombineXYZ')
     node.name = 'Combine XYZ'
@@ -7111,7 +7130,6 @@ def default_custom_nodes():
     node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
     node.location = Vector((-87.98587036132812, -2.4954071044921875))
     node.inputs[0].default_value = (0.0, 0.0, 0.0)  # Vector
-    # node.outputs.remove((node.outputs['Z']))
     node = nodes.new('ShaderNodeNewGeometry')
     node.name = 'Normal'
     node.label = 'Normal'
@@ -7119,9 +7137,6 @@ def default_custom_nodes():
     node.hide = True
     node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
     node.location = Vector((72.01412963867188, -62.49540710449219))
-    # for out in node.outputs:
-    #     if out.name not in ['Normal']:
-    #         node.outputs.remove(out)
     node = nodes.new('ShaderNodeBump')
     node.name = 'Bi-Tangent'
     node.label = 'Bi-Tangent'
@@ -7133,15 +7148,8 @@ def default_custom_nodes():
     node.inputs[0].default_value = 1.0  # Strength
     node.inputs[1].default_value = 1000.0  # Distance
     node.inputs[2].default_value = 1.0  # Height
-    #if use_new_nodes:
-        #node.inputs[3].default_value = 1.0  # Height_dx
-        #node.inputs[4].default_value = 1.0  # Height_dy
-        #node.inputs[5].default_value = (0.0, 0.0, 0.0)  # Normal
-    #else:
-        #node.inputs[3].default_value = (0.0, 0.0, 0.0)  # Normal
-    # for inp in node.inputs:
-    #     if inp.name not in ['Height']:
-    #         node.inputs.remove(inp)
+    node.inputs[3].default_value = (0.0, 0.0, 0.0)  # Normal
+    
     node = nodes.new('ShaderNodeBump')
     node.name = 'Tangent'
     node.label = 'Tangent'
@@ -7150,9 +7158,6 @@ def default_custom_nodes():
     node.color = Color((0.6079999804496765, 0.6079999804496765, 0.6079999804496765))
     node.location = Vector((72.01412963867188, 17.504592895507812))
     node.invert = True
-    # for inp in node.inputs:
-    #     if inp.name not in ['Height']:
-    #         node.inputs.remove(inp)
 
     frame = nodes.new('NodeFrame')
     frame.name = 'Node'
@@ -7184,9 +7189,6 @@ def default_custom_nodes():
     node.operation = 'SUBTRACT'
     node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
     node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
-    if use_new_nodes:
-        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
-    # node.inputs.remove(node.inputs[1])
     node = nodes.new('ShaderNodeVectorMath')
     node.name = 'Vector Math.004'
     node.label = ''
@@ -7196,8 +7198,6 @@ def default_custom_nodes():
     node.location = Vector((80.0, 20.0))
     node.inputs[0].default_value = (0.5, 0.5, 0.5)  # Vector
     node.inputs[1].default_value = (0.5, 0.5, 0.5)  # Vector
-    if use_new_nodes:
-        node.inputs[2].default_value = (1.0, 1.0, 1.0)  # Scale
 
     frame = nodes.new('NodeFrame')
     frame.name = 'Transpose Matrix'
