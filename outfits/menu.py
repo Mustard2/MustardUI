@@ -1,4 +1,7 @@
 import bpy
+from .ops_add import MustardUI_AddOutfit
+from .ops_delete import MustardUI_DeleteOutfit
+from .ops_remove import MustardUI_RemoveOutfit
 from ..model_selection.active_object import *
 
 

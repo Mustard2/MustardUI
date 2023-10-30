@@ -1,5 +1,6 @@
 import bpy
 from . import MainPanel
+from .misc import mustardui_custom_properties_print
 from ..model_selection.active_object import *
 from ..settings.rig import *
 
