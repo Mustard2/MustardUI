@@ -100,30 +100,54 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 if len(rig_settings.body_custom_properties_sections) == 0:
                     box.operator('mustardui.body_addsection')
                 else:
-                    box = box.box()
-                    row.operator('mustardui.body_addsection', text="", icon="ADD")
-                    section_len = len(rig_settings.body_custom_properties_sections)
-                    for i_sec in sorted([x for x in range(0, section_len)],
-                                        key=lambda x: rig_settings.body_custom_properties_sections[x].id):
-                        section = rig_settings.body_custom_properties_sections[i_sec]
-                        row = box.row(align=False)
-                        row.label(text=section.name,
-                                  icon=section.icon if (section.icon != "" and section.icon != "NONE") else "DOT")
-                        row.operator('mustardui.body_propertyaddtosection', text="",
-                                     icon="PRESET").section_name = section.name
-                        row.operator('mustardui.body_settingssection', text="", icon="PREFERENCES").name = section.name
-                        row2 = row.row(align=True)
-                        col = row2.column(align=True)
-                        col.enabled = section.id > 0
-                        swap_up = col.operator('mustardui.body_swapsection', text="", icon="TRIA_UP")
-                        swap_up.name = section.name
-                        swap_up.mod = True
-                        col = row2.column(align=True)
-                        col.enabled = section.id < section_len - 1
-                        swap_down = col.operator('mustardui.body_swapsection', text="", icon="TRIA_DOWN")
-                        swap_down.name = section.name
-                        swap_down.mod = False
-                        row.operator('mustardui.body_deletesection', text="", icon="X").name = section.name
+
+                    row = box.row()
+                    row.template_list("MUSTARDUI_UL_Section_UIList", "The_List", rig_settings,
+                                      "body_custom_properties_sections", scene,
+                                      "mustardui_section_uilist_index")
+                    col = row.column()
+                    col2 = col.column(align=True)
+                    col2.operator('mustardui.body_assign_to_section', text="", icon="PRESET")
+                    col.separator()
+                    col2 = col.column(align=True)
+                    col2.operator('mustardui.section_add', text="", icon="ADD")
+                    col2.operator('mustardui.body_deletesection', text="", icon="REMOVE")
+                    col.separator()
+                    col2 = col.column(align=True)
+                    opup = col2.operator('mustardui.section_switch', icon="TRIA_UP", text="")
+                    opup.direction = "UP"
+                    opdown = col2.operator('mustardui.section_switch', icon="TRIA_DOWN", text="")
+                    opdown.direction = "DOWN"
+
+                    if scene.mustardui_section_uilist_index > -1:
+
+                        sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
+
+                        row = box.row()
+                        row.label(text="Icon")
+                        row.scale_x = row_scale
+                        row.prop(sec, "icon", text="")
+
+                        col = box.column(align=True)
+
+                        row = col.row()
+                        row.label(text="Description")
+                        row.scale_x = row_scale
+                        row.prop(sec, "description", text="")
+
+                        row = col.row()
+                        row.enabled = sec.description != ""
+                        row.label(text="Icon")
+                        row.scale_x = row_scale
+                        row.prop(sec, "description_icon", text="")
+
+                        col = box.column(align=True)
+
+                        row = col.row()
+                        row.prop(sec, "advanced")
+
+                        row = col.row()
+                        row.prop(sec, "collapsable")
 
 
         # Outfits Settings

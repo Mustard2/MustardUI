@@ -24,8 +24,10 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
                 emboss=False,
                 icon=icon)
 
-        if bcoll_settings.outfit_switcher_enable:
-            layout.label(text="", icon="MOD_CLOTH")
+        row = layout.row(align=True)
+
+        row.label(text="", icon="EXPERIMENTAL" if bcoll_settings.advanced else "BLANK1")
+        row.label(text="", icon="MOD_CLOTH" if bcoll_settings.outfit_switcher_enable else "BLANK1")
 
         row = layout.row(align=True)
         col = row.column()

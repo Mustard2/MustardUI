@@ -69,7 +69,6 @@ class MustardUI_Link_Remove(bpy.types.Operator):
         return {'FINISHED'}
 
 
-
 class MustardUI_Link_Add(bpy.types.Operator):
     """Add a link to the list.\nType"""
     bl_idname = "mustardui.link_add"
@@ -100,7 +99,6 @@ class MUSTARDUI_UL_Links_UIList(bpy.types.UIList):
     """UIList for links."""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-
         row = layout.row()
         row.prop(item, 'name', text="", emboss=False, translate=False)
         row.prop(item, 'url', text="", emboss=False, translate=False)

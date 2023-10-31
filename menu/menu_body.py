@@ -139,9 +139,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                             row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
                                      emboss=False)
 
-            for i_sec in sorted([x for x in range(0, len(rig_settings.body_custom_properties_sections))],
-                                key=lambda x: rig_settings.body_custom_properties_sections[x].id):
-                section = rig_settings.body_custom_properties_sections[i_sec]
+            for section in rig_settings.body_custom_properties_sections:
                 if rig_settings.body_custom_properties_name_order:
                     custom_properties_section = sorted([x for x in custom_props if
                                                         x.section == section.name and not x.hidden and (

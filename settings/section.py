@@ -1,5 +1,6 @@
 import bpy
 from bpy.props import *
+from ..misc.icons_list import mustardui_icon_list
 
 
 # Section for body properties
@@ -7,12 +8,9 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
     # Name of the section
     name: StringProperty(name="Section name")
 
-    # Section ID
-    id: IntProperty(name="Section ID")
-
     # Section icon
-    icon: StringProperty(name="Section Icon",
-                         default="NONE")
+    icon: EnumProperty(name='Section Icon',
+                       items=mustardui_icon_list)
 
     # Advanced settings
     advanced: BoolProperty(default=False,
@@ -29,8 +27,9 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
 
     # Description
     description: StringProperty(name="Description")
-    description_icon: StringProperty(name="Description Icon",
-                                     default="NONE")
+
+    description_icon: EnumProperty(name='Description Icon',
+                                   items=mustardui_icon_list)
 
 
 def register():
