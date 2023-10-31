@@ -1,7 +1,9 @@
+from . import addon_prefs
+
 
 def register():
-    pass
+    addon_prefs.register()
 
 
 def unregister():
-    pass
+    addon_prefs.unregister()

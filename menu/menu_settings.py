@@ -27,8 +27,8 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         col = box.column(align=True)
 
         col.prop(settings, "advanced")
-        col.prop(settings, "maintenance")
-        col.prop(settings, "debug")
+        if settings.maintenance:
+            col.prop(settings, "debug")
 
         if settings.viewport_model_selection:
             box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon="VIEW3D",
@@ -39,7 +39,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
 
         if settings.maintenance:
             box = layout.box()
-            box.label(text="Maintenance Tools", icon="SETTINGS")
+            box.label(text="Developer Tools", icon="SETTINGS")
             box.operator('mustardui.configuration', text="UI Configuration", icon="PREFERENCES")
             box.operator('mustardui.property_rebuild', icon="MOD_BUILD", text="Re-build Custom Properties")
             box.operator('mustardui.cleanmodel', text="Clean model", icon="BRUSH_DATA")

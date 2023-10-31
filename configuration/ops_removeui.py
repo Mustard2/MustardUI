@@ -85,15 +85,15 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=0)
 
         rig_settings = arm.MustardUI_RigSettings
-
         arm_obj = rig_settings.model_armature_object
 
         # Remove or delete outfits
-        for col in [x.collection for x in rig_settings.outfits_collections if x.collection is not None]:
+        for i in reversed(range(len(rig_settings.outfits_collections))):
+            context.scene.mustardui_outfits_uilist_index = i
             if self.delete_objects:
-                bpy.ops.mustardui.delete_outfit(col=col.name)
+                bpy.ops.mustardui.delete_outfit()
             elif self.delete_settings:
-                bpy.ops.mustardui.remove_outfit(col=col.name)
+                bpy.ops.mustardui.remove_outfit()
 
         if self.delete_objects:
             if rig_settings.hair_collection is not None:
@@ -151,14 +151,10 @@ class MustardUI_RemoveUI(bpy.types.Operator):
     def invoke(self, context, event):
 
         settings = bpy.context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config=0)
 
         return context.window_manager.invoke_props_dialog(self, width=550 if settings.debug else 450)
 
     def draw(self, context):
-
-        settings = bpy.context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config=0)
 
         layout = self.layout
 

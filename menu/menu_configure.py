@@ -12,7 +12,8 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
-        return res
+        settings = bpy.context.scene.MustardUI_Settings
+        return res and settings.maintenance
 
     def draw(self, context):
 

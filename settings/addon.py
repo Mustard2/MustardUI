@@ -24,11 +24,24 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                                     "console.\nEnable it only if you encounter problems, as it might "
                                     "degrade general Blender performance")
 
+    def maintenance_update(self, context):
+
+        if not self.maintenance:
+            self.debug = False
+
+        try:
+            for arm in [x for x in bpy.data.armatures]:
+                if not arm.MustardUI_enable and arm.MustardUI_created and not self.maintenance:
+                    arm.MustardUI_enable = True
+        except:
+            pass
+
     # Maintenance tools
     maintenance: BoolProperty(default=False,
-                              name="Maintenance Tools",
-                              description="Enable Maintenance Tools.\nVarious maintenance tools will be "
-                                          "added to the UI and in the Settings panel")
+                              name="Developer Tools",
+                              description="Enable Developer Tools.\nVarious maintenance tools will be "
+                                          "added to the UI and in the Settings panel",
+                              update=maintenance_update)
 
     # Model selection
     viewport_model_selection: BoolProperty(default=True,

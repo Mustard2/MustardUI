@@ -157,14 +157,14 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if self.remove_nulldrivers:
 
             for obj in [x for x in bpy.data.objects if x.type == "MESH"]:
-                if obj.animation_data != None:
+                if obj.animation_data is not None:
                     drivers = obj.animation_data.drivers
                     for driver in drivers:
                         if driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
                             drivers.remove(driver)
                             null_drivers_removed = null_drivers_removed + 1
-                if obj.data.shape_keys != None:
-                    if obj.data.shape_keys.animation_data != None:
+                if obj.data.shape_keys is not None:
+                    if obj.data.shape_keys.animation_data is not None:
                         drivers = obj.data.shape_keys.animation_data.drivers
                         for driver in drivers:
                             if driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
@@ -226,13 +226,13 @@ class MustardUI_CleanModel(bpy.types.Operator):
             # Find objects where to remove drivers and shape keys
             objects = [rig_settings.model_body]
 
-            for collection in [x for x in [y for y in rig_settings.outfits_collections if y.collection != None] if
-                               x.collection != None]:
+            for collection in [x for x in [y for y in rig_settings.outfits_collections if y.collection is not None] if
+                               x.collection is not None]:
                 items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
                 for obj in items:
                     if obj.type == "MESH":
                         objects.append(obj)
-            if rig_settings.extras_collection != None:
+            if rig_settings.extras_collection is not None:
                 items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
                 for obj in items:
                     if obj.type == "MESH":
@@ -243,8 +243,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             # Remove shape keys and their drivers
             for obj in objects:
-                if obj.data.shape_keys != None:
-                    if obj.data.shape_keys.animation_data != None:
+                if obj.data.shape_keys is not None:
+                    if obj.data.shape_keys.animation_data is not None:
                         drivers = obj.data.shape_keys.animation_data.drivers
                         for driver in drivers:
                             words = driver.data_path.split('"')
@@ -266,8 +266,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
             # Remove drivers from objects
             objects.append(arm)
             for obj in objects:
-                if obj.animation_data != None:
-                    if obj.animation_data.drivers != None:
+                if obj.animation_data is not None:
+                    if obj.animation_data.drivers is not None:
                         drivers = obj.animation_data.drivers
                         for driver in drivers:
                             ddelete = "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0"
@@ -322,17 +322,17 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             objects = [rig_settings.model_body, rig_settings.model_body.data]
 
-            dd_colls = [x.collection for x in rig_settings.outfits_collections if x.collection != None]
-            if rig_settings.extras_collection != None:
+            dd_colls = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
+            if rig_settings.extras_collection is not None:
                 dd_colls.append(rig_settings.extras_collection)
-            if rig_settings.hair_collection != None:
+            if rig_settings.hair_collection is not None:
                 dd_colls.append(rig_settings.hair_collection)
 
             for col in dd_colls:
                 items = col.all_objects if rig_settings.outfit_config_subcollections else col.objects
-                for obj in [x for x in items if x != None]:
+                for obj in [x for x in items if x is not None]:
                     objects.append(obj)
-                    if obj.data != None:
+                    if obj.data is not None:
                         objects.append(obj.data)
 
             for obj in objects:
@@ -353,21 +353,20 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             current_outfit = rig_settings.outfits_list
 
-            for col in [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection != None] if
-                        x.collection.name != current_outfit]:
+            to_remove = [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection is not None]
+                         if x.collection.name != current_outfit]
 
-                items = col.all_objects if rig_settings.outfit_config_subcollections else col.objects
-                for obj in items:
-                    data = obj.data
-                    obj_type = obj.type
-                    bpy.data.objects.remove(obj)
-                    if obj_type == "MESH":
-                        bpy.data.meshes.remove(data)
-                    elif obj_type == "ARMATURE":
-                        bpy.data.armatures.remove(data)
+            for col in to_remove:
 
-                bpy.ops.mustardui.remove_outfit(col=col.name)
-                bpy.data.collections.remove(col)
+                # Find the index of the collection to remove
+                i = 0
+                for v in rig_settings.outfits_collections:
+                    if v.collection == col:
+                        break
+                    i += 1
+
+                context.scene.mustardui_outfits_uilist_index = i
+                bpy.ops.mustardui.delete_outfit()
                 outfits_deleted = outfits_deleted + 1
 
             rig_settings.outfits_list = current_outfit
@@ -376,7 +375,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 print("  Outfits deleted: " + str(outfits_deleted))
 
         # Remove unselected extras
-        if rig_settings.extras_collection != None and self.remove_unselected_extras:
+        if rig_settings.extras_collection is not None and self.remove_unselected_extras:
 
             items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
             for obj in [x for x in items if x.hide_viewport]:
@@ -399,7 +398,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 print("  Extras deleted: " + str(extras_deleted))
 
         # Remove unselected hair
-        if rig_settings.hair_collection != None and self.remove_unselected_hair:
+        if rig_settings.hair_collection is not None and self.remove_unselected_hair:
 
             current_hair = rig_settings.hair_list
 
@@ -430,7 +429,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed))
 
         # Final messages
-        operations = null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed + diffeomorphic_data_deleted + outfits_deleted + extras_deleted + hair_deleted + outfits_cp_deleted + body_cp_removed + outfit_cp_removed + hair_cp_removed
+        operations = (null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed
+                      + diffeomorphic_data_deleted + outfits_deleted + extras_deleted + hair_deleted
+                      + outfits_cp_deleted + body_cp_removed + outfit_cp_removed + hair_cp_removed)
 
         if operations > 0:
             self.report({'INFO'}, "MustardUI - Model cleaned.")

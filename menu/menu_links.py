@@ -17,11 +17,13 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
+        if arm is not None:
+            rig_settings = arm.MustardUI_RigSettings
+            return res and rig_settings.links_enable
         return res
 
     def draw(self, context):
         poll, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
 

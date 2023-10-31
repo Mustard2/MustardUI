@@ -193,7 +193,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                         'MustardUI - Configuration Warning - Lips shrinkwrap requested for a rig which is not ARP or '
                         'MHX. The tool has been disabled')
 
-                    # Check for errors in the list selection
+            # Check for errors in the list selection
             if len(rig_settings.outfits_list_make(context)) > 0 and rig_settings.outfits_list == "":
                 try:
                     rig_settings.hair_list = rig_settings.outfits_list_make(context)[0][0]
