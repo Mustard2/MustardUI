@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 30, 0, 3),
+    "version": (0, 30, 0, 18),
     "blender": (4, 0, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",

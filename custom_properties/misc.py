@@ -1,5 +1,6 @@
 import bpy
 
+
 # Function to check keys of custom properties (only for debug)
 def dump(obj, text):
     print('-' * 40, text, '-' * 40)
