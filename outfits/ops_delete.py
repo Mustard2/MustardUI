@@ -13,7 +13,6 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
 
@@ -21,8 +20,10 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         col = bpy.data.collections[self.col]
 
         # Remove Objects
-        items = col.all_objects if rig_settings.outfit_config_subcollections else col.objects
-        for obj in items:
+        items = {}
+        for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
+            items[obj.name] = obj
+        for _, obj in reversed(items.items()):
             data = obj.data
             obj_type = obj.type
             bpy.data.objects.remove(obj)
