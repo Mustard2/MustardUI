@@ -25,24 +25,14 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        if rig_settings.url_website != '' or rig_settings.url_patreon != '' or rig_settings.url_twitter != '' or rig_settings.url_smutbase != '' or rig_settings.url_documentation != '' or rig_settings.url_reportbug != '':
+        if len(obj.MustardUI_Links) > 0:
 
             box = layout.box()
-            box.label(text="Social profiles/contacts", icon="BOOKMARKS")
+            box.label(text="Creator Links", icon="BOOKMARKS")
 
-            if rig_settings.url_website != '':
-                box.operator('mustardui.openlink', text="Website", icon="URL").url = rig_settings.url_website
-            if rig_settings.url_patreon != '':
-                box.operator('mustardui.openlink', text="Patreon", icon="URL").url = rig_settings.url_patreon
-            if rig_settings.url_twitter != '':
-                box.operator('mustardui.openlink', text="Twitter", icon="URL").url = rig_settings.url_twitter
-            if rig_settings.url_smutbase != '':
-                box.operator('mustardui.openlink', text="SmutBase", icon="URL").url = rig_settings.url_smutbase
-            if rig_settings.url_documentation != '':
-                box.operator('mustardui.openlink', text="Documentation",
-                             icon="URL").url = rig_settings.url_documentation
-            if rig_settings.url_reportbug != '':
-                box.operator('mustardui.openlink', text="Report a Bug", icon="URL").url = rig_settings.url_reportbug
+            for link in obj.MustardUI_Links:
+                if link != '':
+                    box.operator('mustardui.openlink', text=link.name, icon="URL").url = link.url
 
         box = layout.box()
         box.label(text="MustardUI References", icon="INFO")

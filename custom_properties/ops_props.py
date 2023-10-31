@@ -24,7 +24,6 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         if self.outfit != "":
             custom_props = obj.MustardUI_CustomPropertiesOutfit

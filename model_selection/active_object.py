@@ -1,5 +1,4 @@
 import bpy
-#from ..settings.addon import *
 
 
 # Function to decide the active object for showing properties in the UI

@@ -9,37 +9,42 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
     bl_label = "Remove Outfit Collection"
     bl_options = {'UNDO'}
 
-    col: bpy.props.StringProperty()
-
     def execute(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
 
+        uilist = rig_settings.outfits_collections
+        index = context.scene.mustardui_outfits_uilist_index
+
+        if len(uilist) <= index:
+            return {'FINISHED'}
+
         # Remove the custom properties
         outfit_cp = arm.MustardUI_CustomPropertiesOutfit
 
         to_remove = []
         for i, cp in enumerate(outfit_cp):
-            if cp.outfit.name == self.col:
+            if cp.outfit.name == uilist[index].collection.name:
                 mustardui_clean_prop(arm, outfit_cp, i, settings)
                 to_remove.append(i)
         for i in reversed(to_remove):
             outfit_cp.remove(i)
 
         # Remove the collection from the Outfits Collections
-        for i, el in enumerate(rig_settings.outfits_collections):
-            if el.collection is not None:
-                if el.collection.name == self.col:
-                    rig_settings.outfits_collections.remove(i)
-                    break
+        uilist.remove(index)
 
         if rig_settings.outfit_nude:
             rig_settings.outfits_list = "Nude"
         else:
             if len(rig_settings.outfits_list_make(context)) > 0:
                 rig_settings.outfits_list = rig_settings.outfits_list_make(context)[0][0]
+
+        index = min(max(0, index - 1), len(uilist) - 1)
+        context.scene.mustardui_outfits_uilist_index = index
+
+        arm.update_tag()
 
         self.report({'INFO'}, 'MustardUI - Outfit removed.')
 

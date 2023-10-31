@@ -24,6 +24,7 @@ from . import sections
 from . import outfits
 from . import diffeomorphic
 from . import configuration
+from . import links
 from . import menu
 
 
@@ -38,6 +39,7 @@ def register():
     outfits.register()
     diffeomorphic.register()
     configuration.register()
+    links.register()
     menu.register()
 
 
@@ -52,4 +54,5 @@ def unregister():
     outfits.unregister()
     diffeomorphic.unregister()
     configuration.unregister()
+    links.unregister()
     menu.unregister()

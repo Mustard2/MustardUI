@@ -828,7 +828,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         settings = context.scene.MustardUI_Settings
         poll, arm = mustardui_active_object(context, config=0)
-        #if arm is not None:
+        # if arm is not None:
         #    armature_settings = arm.MustardUI_ArmatureSettings
 
         # Blender Simplify
@@ -876,7 +876,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         # Hair
         if self.hair_collection is not None:
             self.hair_collection.hide_viewport = self.simplify_enable if self.simplify_hair else False
-            #armature_settings.hair = not self.simplify_enable if self.simplify_hair else True
+            # armature_settings.hair = not self.simplify_enable if self.simplify_hair else True
 
             if self.simplify_hair_global:
                 if self.simplify_subdiv and self.hair_enable_global_subsurface and self.simplify_enable:
@@ -1058,24 +1058,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     url_config_collapse: bpy.props.BoolProperty(default=True,
                                                 name="")
 
-    # Links that can be changed by the creator in the configuration tool
-    url_website: bpy.props.StringProperty(default="",
-                                          name="Website")
-
-    url_patreon: bpy.props.StringProperty(default="",
-                                          name="Patreon")
-
-    url_twitter: bpy.props.StringProperty(default="",
-                                          name="Twitter")
-
-    url_smutbase: bpy.props.StringProperty(default="",
-                                           name="Smutba.se")
-
-    url_documentation: bpy.props.StringProperty(default="",
-                                                name="Documentation")
-
-    url_reportbug: bpy.props.StringProperty(default="",
-                                            name="Report bug")
+    # Enable link section
+    links_enable: bpy.props.BoolProperty(default=True,
+                                         name="Show Links")
 
     # Debug
     # Property for collapsing debug properties section

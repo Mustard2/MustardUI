@@ -1,9 +1,6 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
-from ..settings.rig import *
-from ..tools.lattice import *
-from ..tools.physics import *
 
 
 class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
@@ -162,15 +159,14 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                                   "outfits_collections", scene,
                                   "mustardui_outfits_uilist_index")
                 col = row.column()
-                to_remove = rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index].collection.name
                 col2 = col.column(align=True)
                 opup = col2.operator('mustardui.outfits_switch', icon="TRIA_UP", text="")
                 opup.direction = "UP"
                 opdown = col2.operator('mustardui.outfits_switch', icon="TRIA_DOWN", text="")
                 opdown.direction = "DOWN"
                 col.separator()
-                col.operator("mustardui.remove_outfit", text="", icon="X").col = to_remove
-                col.operator("mustardui.delete_outfit", text="", icon="TRASH").col = to_remove
+                col.operator("mustardui.remove_outfit", text="", icon="X")
+                col.operator("mustardui.delete_outfit", text="", icon="TRASH")
 
                 # Outfit properties
                 box = layout.box()
@@ -495,18 +491,19 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
                     box2 = box.box()
                     box2.label(text="Morphs", icon="SHAPEKEY_DATA")
-                    box2.prop(rig_settings, "diffeomorphic_emotions_units")
-                    box2.prop(rig_settings, "diffeomorphic_emotions")
+                    col = box2.column()
+                    col.prop(rig_settings, "diffeomorphic_emotions_units")
+                    col.prop(rig_settings, "diffeomorphic_emotions")
                     if rig_settings.diffeomorphic_emotions:
-                        row = box2.row(align=True)
+                        row = col.row(align=True)
                         row.label(text="Custom morphs")
                         row.scale_x = row_scale
                         row.prop(rig_settings, "diffeomorphic_emotions_custom", text="")
-                    box2.prop(rig_settings, "diffeomorphic_facs_emotions_units")
-                    box2.prop(rig_settings, "diffeomorphic_facs_emotions")
-                    box2.prop(rig_settings, "diffeomorphic_body_morphs")
+                    col.prop(rig_settings, "diffeomorphic_facs_emotions_units")
+                    col.prop(rig_settings, "diffeomorphic_facs_emotions")
+                    col.prop(rig_settings, "diffeomorphic_body_morphs")
                     if rig_settings.diffeomorphic_body_morphs:
-                        row = box2.row(align=True)
+                        row = col.row(align=True)
                         row.label(text="Custom morphs")
                         row.scale_x = row_scale
                         row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text="")
@@ -529,37 +526,29 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         row.label(text="Links", icon="WORLD")
 
         if not rig_settings.url_config_collapse:
+
             box = layout.box()
 
-            row = box.row(align=True)
-            row.label(text="Website")
-            row.scale_x = row_scale
-            row.prop(rig_settings, 'url_website', text="")
+            box.label(text="General Settings", icon="MODIFIER")
+            box.prop(rig_settings, 'links_enable')
 
-            row = box.row(align=True)
-            row.label(text="Patreon")
-            row.scale_x = row_scale
-            row.prop(rig_settings, 'url_patreon', text="")
-
-            row = box.row(align=True)
-            row.label(text="Twitter")
-            row.scale_x = row_scale
-            row.prop(rig_settings, 'url_twitter', text="")
-
-            row = box.row(align=True)
-            row.label(text="Smutba.se")
-            row.scale_x = row_scale
-            row.prop(rig_settings, 'url_smutbase', text="")
-
-            row = box.row(align=True)
-            row.label(text="Documentation")
-            row.scale_x = row_scale
-            row.prop(rig_settings, 'url_documentation', text="")
-
-            row = box.row(align=True)
-            row.label(text="Report Bug")
-            row.scale_x = row_scale
-            row.prop(rig_settings, 'url_reportbug', text="")
+            # Outfits list panel
+            box = layout.box()
+            box.label(text="Links List", icon="URL")
+            row = box.row()
+            row.template_list("MUSTARDUI_UL_Links_UIList", "The_List", arm,
+                              "MustardUI_Links", scene,
+                              "mustardui_links_uilist_index")
+            col = row.column()
+            col2 = col.column(align=True)
+            col2.operator("mustardui.link_add", text="", icon="ADD")
+            col2.operator("mustardui.link_remove", text="", icon="REMOVE")
+            col.separator()
+            col2 = col.column(align=True)
+            opup = col2.operator('mustardui.link_switch', icon="TRIA_UP", text="")
+            opup.direction = "UP"
+            opdown = col2.operator('mustardui.link_switch', icon="TRIA_DOWN", text="")
+            opdown.direction = "DOWN"
 
         # Various properties
         row = layout.row(align=False)

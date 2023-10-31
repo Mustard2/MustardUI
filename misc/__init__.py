@@ -1,9 +1,7 @@
-from . import ops_link
-
 
 def register():
-    ops_link.register()
+    pass
 
 
 def unregister():
-    ops_link.unregister()
+    pass

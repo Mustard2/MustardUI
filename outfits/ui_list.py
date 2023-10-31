@@ -9,12 +9,6 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
     bl_idname = "mustardui.outfits_switch"
     bl_label = "Move Outfit"
 
-    type: bpy.props.EnumProperty(default="BODY",
-                                 items=(
-                                     ("BODY", "Body", ""),
-                                     ("OUTFIT", "Outfit", ""),
-                                     ("HAIR", "Hair", ""))
-                                 )
     direction: bpy.props.EnumProperty(items=(('UP', 'Up', ""),
                                              ('DOWN', 'Down', ""),))
 
