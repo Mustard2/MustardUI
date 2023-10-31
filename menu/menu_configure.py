@@ -148,19 +148,29 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 col.separator()
                 col.prop(rig_settings, "outfit_switch_armature_disable")
                 col.prop(rig_settings, "outfits_update_tag_on_switch")
-            if len([x for x in rig_settings.outfits_collections if x.collection != None]) > 0:
+
+            if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
                 box = layout.box()
-                # Outfit list
                 row = box.row()
                 row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
                 row.operator("Mustardui.outfits_smartcheck", text="", icon="VIEWZOOM")
+
+                # Outfits list panel
                 box = box.box()
-                for collection in sorted([x for x in rig_settings.outfits_collections if x.collection != None],
-                                         key=lambda x: x.collection.name):
-                    row = box.row(align=True)
-                    row.label(text=collection.collection.name)
-                    row.operator("mustardui.remove_outfit", text="", icon="X").col = collection.collection.name
-                    row.operator("mustardui.delete_outfit", text="", icon="TRASH").col = collection.collection.name
+                row = box.row()
+                row.template_list("MUSTARDUI_UL_Outfits_UIList", "The_List", rig_settings,
+                                  "outfits_collections", scene,
+                                  "mustardui_outfits_uilist_index")
+                col = row.column()
+                to_remove = rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index].collection.name
+                col2 = col.column(align=True)
+                opup = col2.operator('mustardui.outfits_switch', icon="TRIA_UP", text="")
+                opup.direction = "UP"
+                opdown = col2.operator('mustardui.outfits_switch', icon="TRIA_DOWN", text="")
+                opdown.direction = "DOWN"
+                col.separator()
+                col.operator("mustardui.remove_outfit", text="", icon="X").col = to_remove
+                col.operator("mustardui.delete_outfit", text="", icon="TRASH").col = to_remove
 
                 # Outfit properties
                 box = layout.box()
@@ -288,83 +298,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             col = box.column()
             col.prop(rig_settings, "curves_hair_enable", text="Show Curves Hair")
             col.prop(rig_settings, "particle_systems_enable", text="Show Particle Systems")
-
-        # Armature
-        # row = layout.row(align=False)
-        # row.prop(armature_settings, "config_collapse",
-        #          icon="TRIA_DOWN" if not armature_settings.config_collapse else "TRIA_RIGHT", icon_only=True,
-        #          emboss=False)
-        # row.label(text="Armature", icon="ARMATURE_DATA")
-        #
-        # if not armature_settings.config_collapse:
-        #     box = layout.box()
-        #
-        #     if len(armature_settings.layers) < 1:
-        #
-        #         box.operator('mustardui.armature_initialize', text="Add Armature Panel").clean = False
-        #
-        #     else:
-        #
-        #         box.label(text="General Settings", icon="MODIFIER")
-        #         box.prop(armature_settings, 'enable_automatic_hair')
-        #
-        #         box.operator('mustardui.armature_initialize', text="Remove Armature Panel").clean = True
-        #
-        #         box = layout.box()
-        #         box.label(text="Layers List", icon="PRESET")
-        #         box.prop(armature_settings, 'config_layer', text="")
-        #
-        #         for i in sorted([x for x in range(0, 32) if armature_settings.config_layer[x]],
-        #                         key=lambda x: armature_settings.layers[x].id):
-        #             box2 = box.box()
-        #             row = box2.row(align=True)
-        #             row.prop(armature_settings.layers[i], "layer_config_collapse",
-        #                      icon="TRIA_DOWN" if not armature_settings.layers[
-        #                          i].layer_config_collapse else "TRIA_RIGHT", icon_only=True, emboss=False)
-        #             if armature_settings.layers[i].name != "":
-        #                 row.label(text="Layer " + str(i) + " (" + armature_settings.layers[i].name + ")")
-        #             else:
-        #                 row.label(text="Layer " + str(i))
-        #
-        #             col = row.column(align=True)
-        #             if not armature_settings.layers[i].id > 0:
-        #                 col.enabled = False
-        #             op_up = col.operator('mustardui.armature_sort', text="", icon="TRIA_UP")
-        #             op_up.up = True
-        #             op_up.sort_id = armature_settings.layers[i].id
-        #
-        #             col = row.column(align=True)
-        #             if not armature_settings.layers[i].id < armature_settings.last_id:
-        #                 col.enabled = False
-        #             op_down = col.operator('mustardui.armature_sort', text="", icon="TRIA_DOWN")
-        #             op_down.up = False
-        #             op_down.sort_id = armature_settings.layers[i].id
-        #
-        #             if not armature_settings.layers[i].layer_config_collapse:
-        #
-        #                 row = box2.row()
-        #                 row.enabled = not armature_settings.layers[i].outfit_switcher_enable
-        #                 row.prop(armature_settings.layers[i], 'name')
-        #                 col = box2.column(align=True)
-        #                 row = col.row()
-        #                 row.enabled = not armature_settings.layers[i].outfit_switcher_enable
-        #                 row.prop(armature_settings.layers[i], 'advanced')
-        #
-        #                 col.prop(armature_settings.layers[i], 'outfit_switcher_enable')
-        #                 if armature_settings.layers[i].outfit_switcher_enable:
-        #                     col.prop(armature_settings.layers[i], 'outfit_switcher_collection', text="Collection")
-        #                     if armature_settings.layers[i].outfit_switcher_collection != None:
-        #                         col.prop(armature_settings.layers[i], 'outfit_switcher_object', text="Object")
-        #
-        #                 # Mirror options for debug
-        #                 if settings.debug:
-        #                     col = box2.column(align=True)
-        #                     col.enabled = False
-        #                     col.prop(armature_settings.layers[i], 'mirror')
-        #                     if armature_settings.layers[i].mirror:
-        #                         row = col.row()
-        #                         row.prop(armature_settings.layers[i], 'mirror_left')
-        #                         row.prop(armature_settings.layers[i], 'mirror_layer')
 
 
         # Armature Settings

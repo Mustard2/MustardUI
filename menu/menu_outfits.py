@@ -61,13 +61,13 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     if rig_settings.outfit_custom_properties_name_order:
                         custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
                                                     x.outfit == bpy.data.collections[
-                                                        rig_settings.outfits_list] and x.outfit_piece == None and not x.hidden and (
+                                                        rig_settings.outfits_list] and x.outfit_piece is None and not x.hidden and (
                                                         not x.advanced if not settings.advanced else True)],
                                                    key=lambda x: x.name)
                     else:
                         custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if
                                              x.outfit == bpy.data.collections[
-                                                 rig_settings.outfits_list] and x.outfit_piece == None and not x.hidden and (
+                                                 rig_settings.outfits_list] and x.outfit_piece is None and not x.hidden and (
                                                  not x.advanced if not settings.advanced else True)]
 
                     if len(custom_properties) > 0 and rig_settings.outfit_additional_options:

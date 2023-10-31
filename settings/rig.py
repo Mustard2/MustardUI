@@ -248,22 +248,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Function to create an array of tuples for Outfit enum collections
     def outfits_list_make(self, context):
-
         items = []
 
         for el in self.outfits_collections:
-
             if el.collection is None:
                 continue
-
             if hasattr(el.collection, 'name'):
                 if self.model_MustardUI_naming_convention:
                     nname = el.collection.name[len(self.model_name + ' '):]
                 else:
                     nname = el.collection.name
                 items.append((el.collection.name, nname, el.collection.name))
-
-        items = sorted(items)
 
         if self.outfit_nude:
             items.insert(0, ("Nude", "Nude", "Nude"))

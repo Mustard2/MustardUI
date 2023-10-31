@@ -66,6 +66,8 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
                                                       type=bpy.types.Object,
                                                       poll=outfit_switcher_poll_mesh)
 
+    # TODO: mirror option
+
 
 # Global Armature settings
 class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):

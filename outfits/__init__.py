@@ -5,6 +5,7 @@ from . import ops_optimize
 from . import ops_smartcheck
 from . import ops_visibility
 from . import menu
+from . import ui_list
 
 
 def register():
@@ -14,6 +15,7 @@ def register():
     ops_optimize.register()
     ops_smartcheck.register()
     ops_visibility.register()
+    ui_list.register()
     menu.register()
 
 
@@ -24,4 +26,5 @@ def unregister():
     ops_optimize.unregister()
     ops_smartcheck.unregister()
     ops_visibility.unregister()
+    ui_list.unregister()
     menu.unregister()
