@@ -10,7 +10,7 @@ from . import menu_body
 from . import menu_morphs
 from . import menu_outfits
 from . import menu_hair
-#from . import menu_armature
+from . import menu_armature
 from . import menu_simplify
 from . import menu_tools_physics
 from . import menu_tools_lattice
@@ -26,7 +26,7 @@ def register():
     menu_morphs.register()
     menu_outfits.register()
     menu_hair.register()
-    #menu_armature.register()
+    menu_armature.register()
     menu_simplify.register()
     menu_tools_physics.register()
     menu_tools_lattice.register()
@@ -42,7 +42,7 @@ def unregister():
     menu_morphs.unregister()
     menu_outfits.unregister()
     menu_hair.unregister()
-    #menu_armature.unregister()
+    menu_armature.unregister()
     menu_simplify.unregister()
     menu_tools_physics.unregister()
     menu_tools_lattice.unregister()

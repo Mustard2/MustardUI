@@ -162,7 +162,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             modifier.use_deform_preserve_volume = self.body_preserve_volume
 
         collections = [x.collection for x in self.outfits_collections]
-        if self.extras_collection != None:
+        if self.extras_collection is not None:
             collections.append(self.extras_collection)
 
         for collection in collections:
@@ -253,7 +253,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         for el in self.outfits_collections:
 
-            if el.collection == None:
+            if el.collection is None:
                 continue
 
             if hasattr(el.collection, 'name'):
@@ -270,27 +270,25 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         return items
 
-    def update_armature_outfit_layers(self, armature_settings):
-        # Update armature layers visibility, checking if some are 'Outfit' layers
-        if len(armature_settings.layers) > 0:
+    def update_armature_outfit_layers(self, context, armature_settings):
 
-            outfit_armature_layers = [x for x in range(0, 32) if
-                                      armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[
-                                          x].outfit_switcher_collection is not None]
+        poll, arm = mustardui_active_object(context, config=0)
+        bcolls = [x for x in arm.collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
+                  and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection is not None]
 
-            for i in outfit_armature_layers:
-                if armature_settings.layers[i].outfit_switcher_object is None:
-                    armature_settings.layers[i].show = armature_settings.outfits and not armature_settings.layers[
-                        i].outfit_switcher_collection.hide_viewport
-                else:
-                    items = armature_settings.layers[
-                        i].outfit_switcher_collection.all_objects if self.outfit_config_subcollections else \
-                        armature_settings.layers[i].outfit_switcher_collection.objects
-                    for object in [x for x in items]:
-                        if object == armature_settings.layers[i].outfit_switcher_object:
-                            armature_settings.layers[i].show = armature_settings.outfits and not bpy.data.objects[
-                                object.name].hide_viewport and not armature_settings.layers[
-                                i].outfit_switcher_collection.hide_viewport
+        for bcoll in bcolls:
+            bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
+            if bcoll_settings.outfit_switcher_object is None:
+                bcoll.is_visible = (armature_settings.outfits and
+                                    not bcoll_settings.outfit_switcher_collection.hide_viewport)
+            else:
+                items = (bcoll_settings.outfit_switcher_collection.all_objects
+                         if self.outfit_config_subcollections else bcoll_settings.outfit_switcher_collection.objects)
+                for obj in [x for x in items]:
+                    if obj == bcoll_settings.outfit_switcher_object:
+                        bcoll.is_visible = (armature_settings.outfits and
+                                            not bpy.data.objects[obj.name].hide_viewport and
+                                            not bcoll_settings.outfit_switcher_collection.hide_viewport)
 
         return
 
@@ -352,7 +350,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
 
         # Update armature layers visibility, checking if some are 'Outfit' layers
-        #rig_settings.update_armature_outfit_layers(arm.MustardUI_ArmatureSettings)
+        rig_settings.update_armature_outfit_layers(context, arm.MustardUI_ArmatureSettings)
 
         # Update custom properties with "On Switch" options
         for cp in [x for x in arm.MustardUI_CustomPropertiesOutfit if
@@ -585,7 +583,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     mod.show_viewport = self.hair_list in obj.name if self.hair_switch_armature_disable else True
 
         # Update armature layers visibility, checking if some are 'Outfit' layers
-        self.update_armature_outfit_layers(arm.MustardUI_ArmatureSettings)
+        self.update_armature_outfit_layers(context, arm.MustardUI_ArmatureSettings)
 
         if self.hair_update_tag_on_switch:
             for obj in self.hair_collection.objects:

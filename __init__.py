@@ -17,6 +17,7 @@ bl_info = {
 from . import settings
 from . import model_selection
 from . import misc
+from . import armature
 from . import tools
 from . import custom_properties
 from . import sections
@@ -30,6 +31,7 @@ def register():
     settings.register()
     model_selection.register()
     misc.register()
+    armature.register()
     tools.register()
     custom_properties.register()
     sections.register()
@@ -43,6 +45,7 @@ def unregister():
     settings.unregister()
     model_selection.unregister()
     misc.unregister()
+    armature.unregister()
     tools.unregister()
     custom_properties.unregister()
     sections.unregister()

@@ -65,7 +65,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
         res, obj = mustardui_active_object(context, config=1)
         return obj is not None
 

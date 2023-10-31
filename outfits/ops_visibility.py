@@ -15,7 +15,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
-        #armature_settings = arm.MustardUI_ArmatureSettings
+        armature_settings = arm.MustardUI_ArmatureSettings
         outfit_cp = arm.MustardUI_CustomPropertiesOutfit
 
         bpy.data.objects[self.obj].hide_viewport = not bpy.data.objects[self.obj].hide_viewport
@@ -59,17 +59,14 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
 
         # Enable/disable armature layers
-        # if len(armature_settings.layers) > 0 and armature_settings.outfits:
-        #     outfit_armature_layers = [x for x in range(0, 32) if armature_settings.layers[x].outfit_switcher_enable and armature_settings.layers[x].outfit_switcher_collection != None]
-        #
-        #     for i in outfit_armature_layers:
-        #         items = armature_settings.layers[
-        #             i].outfit_switcher_collection.all_objects if rig_settings.outfit_config_subcollections else \
-        #             armature_settings.layers[i].outfit_switcher_collection.objects
-        #         for ob in [x for x in items]:
-        #             if ob == armature_settings.layers[i].outfit_switcher_object:
-        #                 armature_settings.layers[i].show = not bpy.data.objects[ob.name].hide_viewport and not \
-        #                     armature_settings.layers[i].outfit_switcher_collection.hide_viewport
+        if armature_settings.outfits:
+            outfit_armature_layers = [x for x in arm.collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection != None]
+            for bcoll in outfit_armature_layers:
+                bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
+                items = bcoll_settings.outfit_switcher_collection.all_objects if rig_settings.outfit_config_subcollections else bcoll_settings.outfit_switcher_collection.objects
+                for ob in [x for x in items]:
+                    if ob == bcoll_settings.outfit_switcher_object:
+                        bcoll.is_visible = not bpy.data.objects[ob.name].hide_viewport and not bcoll_settings.outfit_switcher_collection.hide_viewport
 
         if rig_settings.outfits_update_tag_on_switch:
             for obju in bpy.data.objects:

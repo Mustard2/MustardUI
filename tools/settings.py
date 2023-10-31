@@ -101,8 +101,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                 return ['LipCorner.l', 'LipCorner.r']
             else:
                 return ['LipCorner.L', 'LipCorner.R']
-        else:
-            return []
+        return []
 
     def lips_shrinkwrap_bones_list(context, rig_type, armature):
 
@@ -129,8 +128,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         'lipUpperInner.R', 'lipUpperOuter.R']
             else:
                 return []
-        else:
-            return []
+        return []
 
     def lips_shrinkwrap_update(self, context):
 
@@ -249,8 +247,6 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                         to_remove = armature.pose.bones[bone].constraints[c.name]
                         armature.pose.bones[bone].constraints.remove(to_remove)
 
-        return
-
     def lips_shrinkwrap_distance_update(self, context):
 
         poll, arm = mustardui_active_object(context, config=0)
@@ -273,8 +269,6 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                 if bone in self.lips_shrinkwrap_bones_corner_list(rig_type, arm):
                     constr.distance = constr.distance * self.lips_shrinkwrap_dist_corr
 
-        return
-
     def lips_shrinkwrap_friction_infl_update(self, context):
 
         poll, arm = mustardui_active_object(context, config=0)
@@ -293,19 +287,10 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                 constr = armature.pose.bones[bone].constraints[self.lips_shrink_constr_name + '_fric']
                 constr.influence = self.lips_shrinkwrap_friction_infl
 
-        return
-
     def lips_shrinkwrap_obj_sec_poll(self, object):
-
         if self.lips_shrinkwrap_obj.type == 'MESH':
-
             return object.type == 'VERTEXGROUP'
-
-        else:
-
-            return object.type == 'EMPTY'
-
-        return
+        return object.type == 'EMPTY'
 
     # Config enable
     lips_shrinkwrap_enable: BoolProperty(default=False,

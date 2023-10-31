@@ -14,7 +14,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
         res, arm = mustardui_active_object(context, config=1)
         return res
 
@@ -24,17 +23,18 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         scene = context.scene
 
         settings = bpy.context.scene.MustardUI_Settings
-        res, obj = mustardui_active_object(context, config=1)
-        rig_settings = obj.MustardUI_RigSettings
-        #armature_settings = obj.MustardUI_ArmatureSettings
-        tools_settings = obj.MustardUI_ToolsSettings
-        lattice_settings = obj.MustardUI_LatticeSettings
-        physics_settings = obj.MustardUI_PhysicsSettings
+        res, arm = mustardui_active_object(context, config=1)
+        rig_settings = arm.MustardUI_RigSettings
+        armature_settings = arm.MustardUI_ArmatureSettings
+        tools_settings = arm.MustardUI_ToolsSettings
+        lattice_settings = arm.MustardUI_LatticeSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
 
         row_scale = 1.2
 
+        # General Settings
         row = layout.row(align=False)
-        row.label(text=obj.name, icon="OUTLINER_DATA_ARMATURE")
+        row.label(text=arm.name, icon="OUTLINER_DATA_ARMATURE")
         row.operator('mustardui.configuration_smartcheck', icon="VIEWZOOM", text="")
         row.operator('mustardui.openlink', text="", icon="QUESTION").url = self.url_MustardUI_ConfigGuide
 
@@ -45,7 +45,8 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         layout.separator()
         layout.label(text="Settings", icon="MENU_PANEL")
 
-        # Body mesh settings
+
+        # Body mesh Settings
         row = layout.row(align=False)
         row.prop(rig_settings, "body_config_collapse",
                  icon="TRIA_DOWN" if not rig_settings.body_config_collapse else "TRIA_RIGHT", icon_only=True,
@@ -70,9 +71,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             row.label(text="Custom properties", icon="PRESET_NEW")
             row.operator('mustardui.property_smartcheck', text="", icon="VIEWZOOM")
 
-            if len(obj.MustardUI_CustomProperties) > 0:
+            if len(arm.MustardUI_CustomProperties) > 0:
                 row = box.row()
-                row.template_list("MUSTARDUI_UL_Property_UIList", "The_List", obj,
+                row.template_list("MUSTARDUI_UL_Property_UIList", "The_List", arm,
                                   "MustardUI_CustomProperties", scene, "mustardui_property_uilist_index")
                 col = row.column()
                 col.operator('mustardui.property_settings', icon="PREFERENCES", text="").type = "BODY"
@@ -95,7 +96,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box = box.box()
                 box.label(text="No property added yet", icon="ERROR")
 
-            if len(obj.MustardUI_CustomProperties) > 0:
+            if len(arm.MustardUI_CustomProperties) > 0:
                 box = layout.box()
                 row = box.row(align=False)
                 row.label(text="Sections", icon="LINENUMBERS_OFF")
@@ -127,7 +128,8 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                         swap_down.mod = False
                         row.operator('mustardui.body_deletesection', text="", icon="X").name = section.name
 
-        # Outfits properties
+
+        # Outfits Settings
         row = layout.row(align=False)
         row.prop(rig_settings, "outfit_config_collapse",
                  icon="TRIA_DOWN" if not rig_settings.outfit_config_collapse else "TRIA_RIGHT", icon_only=True,
@@ -177,9 +179,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 row = box.row()
                 row.label(text="Custom properties", icon="PRESET_NEW")
 
-                if len(obj.MustardUI_CustomPropertiesOutfit) > 0:
+                if len(arm.MustardUI_CustomPropertiesOutfit) > 0:
                     row = box.row()
-                    row.template_list("MUSTARDUI_UL_Property_UIListOutfits", "The_List", obj,
+                    row.template_list("MUSTARDUI_UL_Property_UIListOutfits", "The_List", arm,
                                       "MustardUI_CustomPropertiesOutfit", scene,
                                       "mustardui_property_uilist_outfits_index")
                     col = row.column()
@@ -214,7 +216,8 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.prop(rig_settings, "extras_collection", text="")
             box.prop(rig_settings, "extras_collapse_enable")
 
-        # Hair
+
+        # Hair Settings
         row = layout.row(align=False)
         row.prop(rig_settings, "hair_config_collapse",
                  icon="TRIA_DOWN" if not rig_settings.hair_config_collapse else "TRIA_RIGHT", icon_only=True,
@@ -226,7 +229,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.label(text="Hair Collection", icon="OUTLINER_COLLECTION")
             box.prop(rig_settings, "hair_collection", text="")
 
-            if rig_settings.hair_collection != None:
+            if rig_settings.hair_collection is not None:
                 if len(rig_settings.hair_collection.objects) > 0:
 
                     if settings.advanced:
@@ -251,9 +254,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     row = box.row()
                     row.label(text="Custom properties", icon="PRESET_NEW")
 
-                    if len(obj.MustardUI_CustomPropertiesHair) > 0:
+                    if len(arm.MustardUI_CustomPropertiesHair) > 0:
                         row = box.row()
-                        row.template_list("MUSTARDUI_UL_Property_UIListHair", "The_List", obj,
+                        row.template_list("MUSTARDUI_UL_Property_UIListHair", "The_List", arm,
                                           "MustardUI_CustomPropertiesHair", scene,
                                           "mustardui_property_uilist_hair_index")
                         col = row.column()
@@ -363,7 +366,76 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         #                         row.prop(armature_settings.layers[i], 'mirror_left')
         #                         row.prop(armature_settings.layers[i], 'mirror_layer')
 
-        # Physics
+
+        # Armature Settings
+        row = layout.row(align=False)
+        row.prop(armature_settings, "config_collapse",
+                 icon="TRIA_DOWN" if not armature_settings.config_collapse else "TRIA_RIGHT",
+                 icon_only=True,
+                 emboss=False)
+        row.label(text="Armature", icon="ARMATURE_DATA")
+        if not armature_settings.config_collapse:
+
+            box = layout.box()
+            box.label(text="Bone Collections", icon="BONE_DATA")
+
+            active_bcoll = arm.collections.active
+
+            rows = 1
+            if active_bcoll:
+                rows = 4
+
+            row = box.row()
+
+            row.template_list(
+                "MUSTARDUI_UL_Armature_UIList",
+                "collections",
+                arm,
+                "collections",
+                arm.collections,
+                "active_index",
+                rows=rows,
+            )
+
+            col = row.column(align=True)
+            col.operator("armature.collection_add", icon='ADD', text="")
+            col.operator("armature.collection_remove", icon='REMOVE', text="")
+            if active_bcoll:
+                col.separator()
+                col.operator("armature.collection_move", icon='TRIA_UP', text="").direction = 'UP'
+                col.operator("armature.collection_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+                col.separator()
+
+            row = box.row()
+
+            sub = row.row(align=True)
+            sub.operator("armature.collection_assign", text="Assign")
+            sub.operator("armature.collection_unassign", text="Remove")
+
+            sub = row.row(align=True)
+            sub.operator("armature.collection_select", text="Select")
+            sub.operator("armature.collection_deselect", text="Deselect")
+
+            if arm.collections.active_index > -1:
+
+                bcoll = arm.collections[arm.collections.active_index]
+                bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
+
+                row = box.row()
+                row.enabled = not bcoll_settings.outfit_switcher_enable
+                col = box.column(align=True)
+                row = col.row()
+                row.enabled = not bcoll_settings.outfit_switcher_enable
+                row.prop(bcoll_settings, 'advanced')
+
+                col.prop(bcoll_settings, 'outfit_switcher_enable')
+                if bcoll_settings.outfit_switcher_enable:
+                    col.prop(bcoll_settings, 'outfit_switcher_collection', text="Collection")
+                    if bcoll_settings.outfit_switcher_collection is not None:
+                        col.prop(bcoll_settings, 'outfit_switcher_object', text="Object")
+
+
+        # Physics Settings
         row = layout.row(align=False)
         row.prop(physics_settings, "config_collapse",
                  icon="TRIA_DOWN" if not physics_settings.config_collapse else "TRIA_RIGHT", icon_only=True,
@@ -381,7 +453,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
             box.prop(physics_settings, 'config_MustardUI_preset')
             box.prop(physics_settings, 'config_cage_object')
-            if physics_settings.config_cage_object != None:
+            if physics_settings.config_cage_object is not None:
                 box.prop_search(physics_settings, 'config_cage_object_pin_vertex_group',
                                 physics_settings.config_cage_object, "vertex_groups")
                 box.prop_search(physics_settings, 'config_cage_object_bending_stiff_vertex_group',
@@ -417,7 +489,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     row = box2.row()
                     row.enabled = False
                     row.prop(item, 'cage_object')
-                    if item.cage_object != None:
+                    if item.cage_object is not None:
                         row = box2.row()
                         row.enabled = False
                         row.prop_search(item, 'cage_object_pin_vertex_group', item.cage_object, "vertex_groups")
@@ -589,7 +661,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         col = layout.column(align=True)
         col.prop(settings, "debug")
         col.prop(settings, "advanced")
-        if not obj.MustardUI_created:
+        if not arm.MustardUI_created:
             col.prop(settings, "viewport_model_selection_after_configuration")
         layout.operator('mustardui.configuration', text="End the configuration")
 
