@@ -54,8 +54,8 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=0)
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Rebuild all custom properties
         custom_props = [(x, 0) for x in obj.MustardUI_CustomProperties]
@@ -140,7 +140,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                     if uilist[i].rna == custom_prop.rna and uilist[i].path == custom_prop.path:
                         break
 
-                mustardui_clean_prop(obj, uilist, i, settings)
+                mustardui_clean_prop(obj, uilist, i, addon_prefs)
                 to_remove.append((i, prop_type))
 
         for i, prop_type in reversed(to_remove):

@@ -28,12 +28,13 @@ class MustardUI_Configuration(bpy.types.Operator):
         lattice_settings = obj.MustardUI_LatticeSettings
         #armature_settings = obj.MustardUI_ArmatureSettings
         tools_settings = obj.MustardUI_ToolsSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         warnings = 0
 
         if not obj.MustardUI_enable:
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print("\n\nMustardUI - Configuration Logs")
 
             # Various checks
@@ -60,7 +61,7 @@ class MustardUI_Configuration(bpy.types.Operator):
             if rig_settings.model_body.scale[0] != 1. or rig_settings.model_body.scale[1] != 1. or \
                     rig_settings.model_body.scale[2] != 1.:
                 warnings = warnings + 1
-                if settings.debug:
+                if addon_prefs.debug:
                     print(
                         'MustardUI - Configuration Warning - The selected body mesh seems not to have the scale '
                         'applied.\n This might generate issues with the tools.')
@@ -70,7 +71,7 @@ class MustardUI_Configuration(bpy.types.Operator):
             for x in range(len(rig_settings.outfits_collections)):
                 if not hasattr(rig_settings.outfits_collections[x].collection, 'name'):
                     index_to_delete.append(x)
-                    if settings.debug:
+                    if addon_prefs.debug:
                         print('MustardUI - A ghost outfit collection has been removed.')
             for x in index_to_delete:
                 rig_settings.outfits_collections.remove(x)
@@ -178,7 +179,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                 print('MustardUI - The rig has been recognized as ' + rig_settings.model_rig_type)
             else:
                 warnings = warnings + 1
-                if settings.debug:
+                if addon_prefs.debug:
                     print(
                         'MustardUI - Configuration Warning - The rig has multiple rig types. This might create '
                         'problems in the UI')
@@ -188,7 +189,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                 tools_settings.lips_shrinkwrap_armature_object = None
                 tools_settings.lips_shrinkwrap_enable = False
                 warnings = warnings + 1
-                if settings.debug:
+                if addon_prefs.debug:
                     print(
                         'MustardUI - Configuration Warning - Lips shrinkwrap requested for a rig which is not ARP or '
                         'MHX. The tool has been disabled')
@@ -201,7 +202,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                     print('MustardUI - Configuration Warning - Fixed outfit_list index')
                 except:
                     warnings = warnings + 1
-                    if settings.debug:
+                    if addon_prefs.debug:
                         print(
                             'MustardUI - Configuration Warning - The outfits_list property index seems to be '
                             'corrupted. Try to remove the UI and re-add it')
@@ -213,19 +214,19 @@ class MustardUI_Configuration(bpy.types.Operator):
                         print('MustardUI - Configuration Warning - Fixed hair_list index')
                     except:
                         warnings = warnings + 1
-                        if settings.debug:
+                        if addon_prefs.debug:
                             print(
                                 'MustardUI - Configuration Warning - The hair_list property index seems to be '
                                 'corrupted. Try to remove the UI and re-add it')
 
             if warnings > 0:
-                if settings.debug:
+                if addon_prefs.debug:
                     print("\n\n")
                 self.report({'WARNING'},
                             'MustardUI - Some warning were generated during the configuration. Enable Debug mode and '
                             'check the console for more informations')
             else:
-                if settings.debug:
+                if addon_prefs.debug:
                     print("MustardUI - Configuration Warning - No warning or errors during the configuration\n\n")
                 self.report({'INFO'}, 'MustardUI - Configuration complete.')
 

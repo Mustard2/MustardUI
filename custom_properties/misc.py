@@ -75,20 +75,20 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
     return
 
 
-def mustardui_clean_prop(obj, uilist, index, settings):
+def mustardui_clean_prop(obj, uilist, index, addon_prefs):
     # Delete custom property and drivers
     try:
         ui_data = obj.id_properties_ui(uilist[index].prop_name)
         ui_data.clear()
     except:
-        if settings.debug:
+        if addon_prefs.debug:
             print('MustardUI - Could not clear UI properties. Skipping for this custom property')
 
     # Delete custom property
     try:
         del obj[uilist[index].prop_name]
     except:
-        if settings.debug:
+        if addon_prefs.debug:
             print('MustardUI - Properties not found. Skipping custom properties deletion')
 
     # Remove linked properties drivers

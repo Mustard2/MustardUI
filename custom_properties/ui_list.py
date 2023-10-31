@@ -9,8 +9,8 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -20,7 +20,7 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
 
             row = layout.row(align=True)
 
-            if settings.debug:
+            if addon_prefs.debug:
                 if item.is_animatable:
                     row.label(text="", icon="ANIM")
                 else:
@@ -61,9 +61,9 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -84,7 +84,7 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                 else:
                     row.label(text=item.outfit_piece.name)
 
-            if settings.debug:
+            if addon_prefs.debug:
                 if item.is_animatable:
                     row.label(text="", icon="ANIM")
                 else:
@@ -120,9 +120,9 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -138,7 +138,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                 else:
                     row.label(text=item.outfit.name)
 
-            if settings.debug:
+            if addon_prefs.debug:
                 if item.is_animatable:
                     row.label(text="", icon="ANIM")
                 else:

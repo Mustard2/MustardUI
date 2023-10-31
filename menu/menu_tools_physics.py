@@ -12,14 +12,10 @@ class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
         res, obj = mustardui_active_object(context, config=0)
-
-        if obj != None:
-
+        if obj is not None:
             physics_settings = obj.MustardUI_PhysicsSettings
             return res and len(physics_settings.physics_items) > 0
-
         else:
             return res
 
@@ -36,7 +32,7 @@ class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
-        naming_convention = rig_settings.model_MustardUI_naming_convention
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         layout = self.layout
 
@@ -198,7 +194,7 @@ class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
         row.prop(cage_cache, "frame_start", text="Start")
         row.prop(cage_cache, "frame_end", text="End")
         cache_info = cage_cache.info
-        if cache_info and settings.debug:
+        if cache_info and addon_prefs.debug:
             col = box2.column(align=True)
             col.alignment = 'CENTER'
             col.label(text='Info: ' + cache_info)
@@ -218,9 +214,9 @@ class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
         box.operator('ptcache.bake_all', icon="PHYSICS").bake = True
         box.operator('ptcache.free_bake_all', icon="X")
 
-        if settings.maintenance:
+        if addon_prefs.developer:
             box = layout.box()
-            box.label(text="Maintenance", icon="SETTINGS")
+            box.label(text="Developer", icon="SETTINGS")
             box.operator('mustardui.tools_physics_rebind', text="Re-bind Cages", icon="MOD_MESHDEFORM")
 
 

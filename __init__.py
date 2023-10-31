@@ -29,9 +29,9 @@ from . import menu
 
 
 def register():
+    misc.register()
     settings.register()
     model_selection.register()
-    misc.register()
     armature.register()
     tools.register()
     custom_properties.register()
@@ -44,9 +44,9 @@ def register():
 
 
 def unregister():
+    misc.unregister()
     settings.unregister()
     model_selection.unregister()
-    misc.unregister()
     armature.unregister()
     tools.unregister()
     custom_properties.unregister()

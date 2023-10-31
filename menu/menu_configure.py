@@ -12,8 +12,8 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
-        settings = bpy.context.scene.MustardUI_Settings
-        return res and settings.maintenance
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        return res and addon_prefs.developer
 
     def draw(self, context):
 
@@ -27,6 +27,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         tools_settings = arm.MustardUI_ToolsSettings
         lattice_settings = arm.MustardUI_LatticeSettings
         physics_settings = arm.MustardUI_PhysicsSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         row_scale = 1.2
 
@@ -590,7 +591,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.label(text="Naming", icon="OUTLINER_DATA_FONT")
             box.prop(rig_settings, "model_MustardUI_naming_convention")
 
-        if settings.debug:
+        if addon_prefs.debug:
             row = layout.row(align=False)
             row.prop(rig_settings, "debug_config_collapse",
                      icon="TRIA_DOWN" if not rig_settings.debug_config_collapse else "TRIA_RIGHT", icon_only=True,
@@ -606,7 +607,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         # Configuration button
         layout.separator()
         col = layout.column(align=True)
-        col.prop(settings, "debug")
         col.prop(settings, "advanced")
         if not arm.MustardUI_created:
             col.prop(settings, "viewport_model_selection_after_configuration")

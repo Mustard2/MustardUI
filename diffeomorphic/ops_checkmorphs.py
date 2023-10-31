@@ -18,9 +18,9 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Try to assign the rig object
         if not arm.MustardUI_created:
@@ -134,11 +134,11 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
                 mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [morph, morph, 4])
 
         properties_number = 0
-        if settings.debug:
+        if addon_prefs.debug:
             print("\nMustardUI - Diffeomorphic Daz Morphs found\n")
             # Print the options
         for el in rig_settings.diffeomorphic_morphs_list:
-            if settings.debug:
+            if addon_prefs.debug:
                 print(el.name + " with path " + el.path + ', type: ' + str(el.type))
             properties_number = properties_number + 1
 

@@ -70,10 +70,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
         custom_prop = custom_props[index]
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         if self.name == "":
             self.report({'ERROR'}, 'MustardUI - Can not rename a property with an empty name.')
@@ -180,16 +180,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
     def invoke(self, context, event):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         if len(custom_props) <= index:
             return {'FINISHED'}
 
         custom_prop = custom_props[index]
-        prop_name = custom_prop.prop_name
-        prop_array = custom_prop.array_length > 0
 
         self.name = custom_prop.name
         self.icon = custom_prop.icon
@@ -241,18 +239,16 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 else:
                     self.default_float = ui_data_dict['default']
 
-        return context.window_manager.invoke_props_dialog(self, width=700 if settings.debug else 450)
+        return context.window_manager.invoke_props_dialog(self, width=700 if addon_prefs.debug else 450)
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
         custom_prop = custom_props[index]
         prop_type = custom_prop.type
         prop_cp_type = custom_prop.cp_type
-        prop_name = custom_prop.prop_name
-        prop_array = custom_prop.array_length > 0
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         scale = 3.0
 
@@ -366,7 +362,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
                 row = layout.row()
                 row.label(text="Linked Properties", icon="LINK_BLEND")
-                if settings.debug:
+                if addon_prefs.debug:
                     row.prop(self, "change_rna_linked", text="", icon="GREASEPENCIL")
 
                 box = layout.box()
@@ -389,7 +385,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     op.path = lp.path
                     op.type = self.type
 
-        if settings.debug:
+        if addon_prefs.debug:
 
             row = layout.row()
             row.label(text="Paths", icon="DECORATE_DRIVER")

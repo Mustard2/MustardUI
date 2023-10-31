@@ -828,6 +828,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         settings = context.scene.MustardUI_Settings
         poll, arm = mustardui_active_object(context, config=0)
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
         # if arm is not None:
         #    armature_settings = arm.MustardUI_ArmatureSettings
 
@@ -945,7 +946,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         obj.collision.use = not self.simplify_enable
                     else:
                         ps.show_viewport = not self.simplify_enable
-                    if settings.debug:
+                    if addon_prefs.debug:
                         print("MustardUI - Disabled " + ps.type + " modifier on: " + obj.name)
 
         # Force No Particles
@@ -953,7 +954,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             for obj in [x for x in bpy.data.objects if x is not None]:
                 for ps in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM"]]:
                     ps.show_viewport = not self.simplify_enable
-                    if settings.debug:
+                    if addon_prefs.debug:
                         print("MustardUI - Disabled " + ps.type + " modifier on: " + obj.name)
 
         # Update drivers

@@ -31,11 +31,10 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Check scene settings
         frame_start = context.scene.frame_start
@@ -66,7 +65,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
                     blinkStart = frame
                     blinkMid = frame + math.floor(rl / 2)
                     blinkEnd = frame + rl
-                    if settings.debug:
+                    if addon_prefs.debug:
                         print("MustardUI Auto Blink: Frame: ", frame, " - Blinking start: ", blinkStart,
                               " - Blink Mid: ", blinkMid, " - Blink End:", blinkEnd)
                     for blink_driver in blink_drivers:

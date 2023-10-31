@@ -22,11 +22,11 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                                              description="Bones Custom Shapes are deleted with the Armature. Disable "
                                                          "this if some shapes are shared between different Armatures")
 
-    def remove_cps(self, arm, uilist, settings):
+    def remove_cps(self, arm, uilist, addon_prefs):
 
         to_remove = []
         for i, cp in enumerate(uilist):
-            mustardui_clean_prop(arm, uilist, i, settings)
+            mustardui_clean_prop(arm, uilist, i, addon_prefs)
             to_remove.append(i)
         for i in reversed(to_remove):
             uilist.remove(i)
@@ -83,9 +83,9 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=0)
-
         rig_settings = arm.MustardUI_RigSettings
         arm_obj = rig_settings.model_armature_object
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Remove or delete outfits
         for i in reversed(range(len(rig_settings.outfits_collections))):
@@ -104,9 +104,9 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         # Remove settings
         if self.delete_settings or self.delete_objects:
             # Remove custom properties
-            body_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomProperties, settings)
-            outfit_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, settings)
-            hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, settings)
+            body_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs)
+            outfit_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs)
+            hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs)
 
             # Clear all settings
             self.remove_property(arm, 'MustardUI_ToolsSettings')
@@ -150,9 +150,9 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
     def invoke(self, context, event):
 
-        settings = bpy.context.scene.MustardUI_Settings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
-        return context.window_manager.invoke_props_dialog(self, width=550 if settings.debug else 450)
+        return context.window_manager.invoke_props_dialog(self, width=550 if addon_prefs.debug else 450)
 
     def draw(self, context):
 

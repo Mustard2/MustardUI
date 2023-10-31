@@ -11,9 +11,9 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         uilist = rig_settings.outfits_collections
         index = context.scene.mustardui_outfits_uilist_index
@@ -27,7 +27,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
         to_remove = []
         for i, cp in enumerate(outfit_cp):
             if cp.outfit.name == uilist[index].collection.name:
-                mustardui_clean_prop(arm, outfit_cp, i, settings)
+                mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
                 to_remove.append(i)
         for i in reversed(to_remove):
             outfit_cp.remove(i)

@@ -169,10 +169,10 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         k = 0
 
@@ -186,7 +186,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 index_to_remove.append(i)
 
         for i in reversed(index_to_remove):
-            mustardui_clean_prop(obj, custom_props, i, settings)
+            mustardui_clean_prop(obj, custom_props, i, addon_prefs)
             custom_props.remove(i)
 
         for mat in [x for x in rig_settings.model_body.data.materials if x is not None]:

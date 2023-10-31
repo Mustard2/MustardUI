@@ -11,37 +11,11 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                             name="MustardUI version",
                             description="Version of MustardUI add-on")
 
-    # Settings changed by the creator
     # Advanced settings
     advanced: BoolProperty(default=False,
                            name="Advanced Options",
                            description="Unlock Advanced Options.\nMore advanced options will be shown in "
                                        "the UI")
-    # Debug mode
-    debug: BoolProperty(default=False,
-                        name="Debug Mode",
-                        description="Unlock Debug Mode.\nMore messaged will be generated in the "
-                                    "console.\nEnable it only if you encounter problems, as it might "
-                                    "degrade general Blender performance")
-
-    def maintenance_update(self, context):
-
-        if not self.maintenance:
-            self.debug = False
-
-        try:
-            for arm in [x for x in bpy.data.armatures]:
-                if not arm.MustardUI_enable and arm.MustardUI_created and not self.maintenance:
-                    arm.MustardUI_enable = True
-        except:
-            pass
-
-    # Maintenance tools
-    maintenance: BoolProperty(default=False,
-                              name="Developer Tools",
-                              description="Enable Developer Tools.\nVarious maintenance tools will be "
-                                          "added to the UI and in the Settings panel",
-                              update=maintenance_update)
 
     # Model selection
     viewport_model_selection: BoolProperty(default=True,

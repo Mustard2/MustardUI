@@ -13,14 +13,15 @@ class OUTLINER_MT_collection(bpy.types.Menu):
 
 
 def mustardui_collection_menu(self, context):
-    settings = bpy.context.scene.MustardUI_Settings
+
     res, arm = mustardui_active_object(context, config=1)
     rig_settings = arm.MustardUI_RigSettings
+    addon_prefs = context.preferences.addons["MustardUI"].preferences
 
     if res:
         self.layout.separator()
         if context.collection in [x.collection for x in rig_settings.outfits_collections]:
-            if settings.debug:
+            if addon_prefs.debug:
                 self.layout.operator(MustardUI_RemoveOutfit.bl_idname, text="Remove Outfit: " + context.collection.name,
                                      icon="X").col = context.collection.name
                 self.layout.operator(MustardUI_DeleteOutfit.bl_idname, text="Delete Outfit: " + context.collection.name,
@@ -29,7 +30,7 @@ def mustardui_collection_menu(self, context):
                 self.layout.operator(MustardUI_RemoveOutfit.bl_idname, icon="X").col = context.collection.name
                 self.layout.operator(MustardUI_DeleteOutfit.bl_idname, icon="TRASH").col = context.collection.name
         else:
-            if settings.debug:
+            if addon_prefs.debug:
                 self.layout.operator(MustardUI_AddOutfit.bl_idname, text="Add Outfit: " + context.collection.name,
                                      icon="ADD")
             else:

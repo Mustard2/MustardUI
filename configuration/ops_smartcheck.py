@@ -31,12 +31,11 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         #armature_settings = obj.MustardUI_ArmatureSettings
         tools_settings = obj.MustardUI_ToolsSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Try to assign the rig object
         if not obj.MustardUI_created:
@@ -44,23 +43,23 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 rig_settings.model_armature_object = context.active_object
 
         # Initialize Smart Check header
-        if settings.debug:
+        if addon_prefs.debug:
             print('\nMustardUI - Smart Check - Start\n')
 
         if self.smartcheck_custom_properties:
-            if settings.debug:
+            if addon_prefs.debug:
                 print('MustardUI - Smart Check - Searching for body additional options\n')
             # Check for body additional properties
             bpy.ops.mustardui.property_smartcheck()
 
         # Search for oufit collections
         if self.smartcheck_outfits:
-            if settings.debug:
+            if addon_prefs.debug:
                 print('\nMustardUI - Smart Check - Searching for outfits\n')
             bpy.ops.mustardui.outfits_smartcheck()
 
         # Search for hair
-        if settings.debug:
+        if addon_prefs.debug:
             print('\nMustardUI - Smart Check - Searching for hair.')
         hair_collections = [x for x in bpy.data.collections if
                             (rig_settings.model_name in x.name) and ('Hair' in x.name)]
@@ -80,7 +79,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             print('\nMustardUI - Smart Check - Hair collection already defined. Skipping this part.')
 
         # Search for extras
-        if settings.debug:
+        if addon_prefs.debug:
             print('\nMustardUI - Smart Check - Searching for extras.')
 
         if rig_settings.extras_collection is None:
@@ -189,7 +188,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             tools_settings.lips_shrinkwrap_armature_object = rig_settings.model_body.find_armature()
 
         # End of debug messages
-        if settings.debug:
+        if addon_prefs.debug:
             print('\nMustardUI - Smart Check - End')
 
         self.report({'INFO'}, 'MustardUI - Smart Check complete.')
@@ -197,10 +196,8 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-
-        settings = bpy.context.scene.MustardUI_Settings
-
-        return context.window_manager.invoke_props_dialog(self, width=550 if settings.debug else 450)
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        return context.window_manager.invoke_props_dialog(self, width=550 if addon_prefs.debug else 450)
 
     def draw(self, context):
 

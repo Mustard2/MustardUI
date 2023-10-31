@@ -21,13 +21,12 @@ class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         # Search for oufit collections
-        if settings.debug:
+        if addon_prefs.debug:
             print('\nMustardUI - Smart Check - Searching for outfits\n')
 
         outfits_collections = [x for x in bpy.data.collections if
@@ -43,7 +42,7 @@ class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
                     add_collection = False
                     break
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print('MustardUI - Smart Check - ' + collection.name + ' added: ' + str(add_collection))
 
             if add_collection:

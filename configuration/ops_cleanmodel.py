@@ -102,11 +102,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         return (string == string_cmp or check_eCTRL or check_eJCM) and check_pJCM and check_facs
 
-    def remove_cps(self, arm, uilist, settings):
+    def remove_cps(self, arm, uilist, addon_prefs):
 
         to_remove = []
         for i, cp in enumerate(uilist):
-            mustardui_clean_prop(arm, uilist, i, settings)
+            mustardui_clean_prop(arm, uilist, i, addon_prefs)
             to_remove.append(i)
         for i in reversed(to_remove):
             uilist.remove(i)
@@ -128,16 +128,16 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         options = self.remove_nulldrivers or self.remove_morphs or self.remove_diffeomorphic_data or self.remove_unselected_outfits or self.remove_unselected_extras or self.remove_unselected_hair or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
 
         if not options:
             return {'FINISHED'}
 
-        if settings.debug:
+        if addon_prefs.debug:
             print("MustardUI Clean model statistics")
 
         null_drivers_removed = 0
@@ -171,7 +171,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                                 drivers.remove(driver)
                                 morphs_drivers_removed = morphs_drivers_removed + 1
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print("  Null drivers removed: " + str(null_drivers_removed))
 
         # Check diffeomorphic custom morphs existance and delete all of them (except JCMs)
@@ -313,7 +313,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 rig_settings.diffeomorphic_morphs_list.clear()
                 rig_settings.diffeomorphic_support = False
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print("  Morph properties removed: " + str(morphs_props_removed))
                 print("  Morph drivers removed: " + str(morphs_drivers_removed))
                 print("  Morph shape keys removed: " + str(morphs_shapekeys_removed))
@@ -345,7 +345,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                                                                                                                     k)
                 obj.update_tag()
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print("  Diffeomorphic Data Blocks removed: " + str(diffeomorphic_data_deleted))
 
         # Remove unselected outfits
@@ -371,7 +371,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             rig_settings.outfits_list = current_outfit
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print("  Outfits deleted: " + str(outfits_deleted))
 
         # Remove unselected extras
@@ -394,7 +394,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             extras_deleted = extras_deleted + 1
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print("  Extras deleted: " + str(extras_deleted))
 
         # Remove unselected hair
@@ -414,18 +414,18 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             rig_settings.hair_list = current_hair
 
-            if settings.debug:
+            if addon_prefs.debug:
                 print("  Hair deleted: " + str(hair_deleted))
 
         # Remove custom properties
         if self.remove_body_cp:
-            body_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomProperties, settings)
+            body_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs)
             print("  Body Custom Properties deleted: " + str(body_cp_removed))
         if self.remove_outfit_cp:
-            outfit_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, settings)
+            outfit_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs)
             print("  Outfit Custom Properties deleted: " + str(outfit_cp_removed))
         if self.remove_hair_cp:
-            hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, settings)
+            hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs)
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed))
 
         # Final messages

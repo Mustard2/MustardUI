@@ -26,9 +26,9 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         objects = [rig_settings.model_body]
         aobj = context.active_object
@@ -54,7 +54,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
                 rig_settings.model_armature_object.DazDriversDisabled = True
         except:
             warnings = warnings + 1
-            if settings.debug:
+            if addon_prefs.debug:
                 print('MustardUI - Error occurred while muting Daz drivers.')
 
         for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
@@ -103,9 +103,9 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         objects = [rig_settings.model_body]
         aobj = context.active_object
@@ -131,18 +131,18 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                 rig_settings.model_armature_object.DazDriversDisabled = False
         except:
             warnings = warnings + 1
-            if settings.debug:
+            if addon_prefs.debug:
                 print('MustardUI - Error occurred while un-muting Daz drivers.')
 
-        for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
             for obj in items:
                 if obj.type == "MESH":
                     objects.append(obj)
 
         for obj in objects:
-            if obj.data.shape_keys != None:
-                if obj.data.shape_keys.animation_data != None:
+            if obj.data.shape_keys is not None:
+                if obj.data.shape_keys.animation_data is not None:
                     for driver in obj.data.shape_keys.animation_data.drivers:
                         if (not "pJCM" in driver.data_path or mutepJCM) and (
                                 not "facs" in driver.data_path or mutefacs) and muteDazFcurves_exceptionscheck(

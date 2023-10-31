@@ -26,6 +26,7 @@ class MustardUI_Tools_ChildOf(bpy.types.Operator):
 
         poll, arm = mustardui_active_object(context, config=0)
         tools_settings = arm.MustardUI_ToolsSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         if self.clean == 0:
 
@@ -83,7 +84,7 @@ class MustardUI_Tools_ChildOf(bpy.types.Operator):
                         for constr in bone.constraints:
                             if tools_settings.childof_constr_name in constr.name:
                                 bone.constraints.remove(constr)
-                                if settings.debug:
+                                if addon_prefs.debug:
                                     print(
                                         'MustardUI - Constraint of ' + bone.name + ' in ' + obj.name + ' successfully removed.')
                                 mod_cont = mod_cont + 1
