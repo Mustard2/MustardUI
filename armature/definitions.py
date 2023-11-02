@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from ..misc.icons_list import mustardui_icon_list
 
 
 # Class for single bone collection
@@ -15,6 +16,10 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
                                      name="Advanced",
                                      description="Enable Advanced layer.\nIf enabled, this layer will be shown in the "
                                                  "UI only if Advanced settings is enabled in the UI settings")
+
+    # Icon
+    icon: EnumProperty(name="Icon",
+                       items=mustardui_icon_list)
 
     # Function to remove the layer from the UI if the outfit switcher is enabled
     # This is to avoid having a bone collection in the UI that is working on the outfit automatically
@@ -65,8 +70,6 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
                                                                   "object, the layer will be shown/hidden",
                                                       type=bpy.types.Object,
                                                       poll=outfit_switcher_poll_mesh)
-
-    # TODO: mirror option
 
 
 # Global Armature settings
@@ -121,6 +124,13 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                                  name="Hair",
                                  description="Show/hide the hair armature",
                                  update=mustardui_armature_visibility_hair_update)
+
+    # Enable Mirror from name
+    mirror: bpy.props.BoolProperty(default=False,
+                                   name="Mirror from Collection Name",
+                                   description="Show two buttons (left and right) on the UI for selected bone "
+                                               "collections.\nName the collections with the same name plus .R and .L "
+                                               "to see them in the UI as two near buttons")
 
 
 def register():

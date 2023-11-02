@@ -36,6 +36,13 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                                     "console.\nEnable it only if you encounter problems, as it might "
                                     "degrade general Blender performance")
 
+    # Experimental features
+    experimental: BoolProperty(default=False,
+                               name="Experimental Features",
+                               description="Unlock experimental features throughout the add-on.\nNote that "
+                                           "experimental features might not work properly yet, or be changed/removed "
+                                           "from future versions")
+
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
@@ -43,6 +50,8 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
+        col.separator()
+        col.prop(self, "experimental")
 
 
 def register():

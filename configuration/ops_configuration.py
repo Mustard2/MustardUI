@@ -103,19 +103,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                 self.report({'ERROR'}, 'MustardUI - A lattice object should be selected if Lattice tool is enabled.')
                 return {'FINISHED'}
 
-            # Check name of armature layers
-            # for i in [x for x in range(0, 32) if armature_settings.config_layer[x]]:
-            #     if armature_settings.layers[i].name == "":
-            #         warnings = warnings + 1
-            #         if settings.debug:
-            #             print('MustardUI - Configuration Warning - Layer ' + str(i) + ' do not have a name defined')
-            #     if armature_settings.layers[i].outfit_switcher_enable and armature_settings.layers[i].outfit_switcher_collection is None:
-            #         warnings = warnings + 1
-            #         if settings.debug:
-            #             print('MustardUI - Configuration Warning - Layer ' + str(
-            #                 i) + ' has Outfit Switcher enabled, but no collection has been defined')
-            #
-            # # Check the mirror option of the layer
+            # Check the mirror option of the layer
             # for i in [x for x in range(0, 32) if armature_settings.config_layer[x]]:
             #
             #     armature_settings.layers[i].mirror = False

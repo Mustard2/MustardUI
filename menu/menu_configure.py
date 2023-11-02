@@ -332,6 +332,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         if not armature_settings.config_collapse:
 
             box = layout.box()
+            box.label(text="General Settings", icon="MODIFIER")
+            box.prop(armature_settings, 'mirror')
+
+            box = layout.box()
             box.label(text="Bone Collections", icon="BONE_DATA")
 
             active_bcoll = arm.collections.active
@@ -376,9 +380,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 bcoll = arm.collections[arm.collections.active_index]
                 bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
 
-                row = box.row()
-                row.enabled = not bcoll_settings.outfit_switcher_enable
                 col = box.column(align=True)
+                row = col.row()
+                row.enabled = not bcoll_settings.outfit_switcher_enable
+                row.prop(bcoll_settings, 'icon')
                 row = col.row()
                 row.enabled = not bcoll_settings.outfit_switcher_enable
                 row.prop(bcoll_settings, 'advanced')

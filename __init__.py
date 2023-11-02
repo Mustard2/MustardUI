@@ -6,19 +6,19 @@ bl_info = {
     "name": "MustardUI",
     "description": "Create a MustardUI for a human character.",
     "author": "Mustard",
-    "version": (0, 30, 0, 18),
+    "version": (0, 30, 0, 27),
     "blender": (4, 0, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI",
     "category": "User Interface",
 }
 
-
 from . import settings
 from . import model_selection
 from . import misc
 from . import armature
 from . import tools
+from . import tools_creators
 from . import custom_properties
 from . import sections
 from . import outfits
@@ -34,6 +34,7 @@ def register():
     model_selection.register()
     armature.register()
     tools.register()
+    tools_creators.register()
     custom_properties.register()
     sections.register()
     outfits.register()
@@ -49,6 +50,7 @@ def unregister():
     model_selection.unregister()
     armature.unregister()
     tools.unregister()
+    tools_creators.unregister()
     custom_properties.unregister()
     sections.unregister()
     outfits.unregister()

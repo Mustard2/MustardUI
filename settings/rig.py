@@ -379,7 +379,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def outfits_global_options_subsurf_update(self, context):
 
         collections = [x.collection for x in self.outfits_collections]
-        if self.extras_collection != None:
+        if self.extras_collection is not None:
             collections.append(self.extras_collection)
 
         for collection in collections:
