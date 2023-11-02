@@ -44,7 +44,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         layout.separator()
         layout.label(text="Settings", icon="MENU_PANEL")
 
-
         # Body mesh Settings
         row = layout.row(align=False)
         row.prop(rig_settings, "body_config_collapse",
@@ -122,7 +121,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     opdown.direction = "DOWN"
 
                     if scene.mustardui_section_uilist_index > -1:
-
                         sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
 
                         row = box.row()
@@ -150,7 +148,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
                         row = col.row()
                         row.prop(sec, "collapsable")
-
 
         # Outfits Settings
         row = layout.row(align=False)
@@ -248,7 +245,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.prop(rig_settings, "extras_collection", text="")
             box.prop(rig_settings, "extras_collapse_enable")
 
-
         # Hair Settings
         row = layout.row(align=False)
         row.prop(rig_settings, "hair_config_collapse",
@@ -321,7 +317,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             col.prop(rig_settings, "curves_hair_enable", text="Show Curves Hair")
             col.prop(rig_settings, "particle_systems_enable", text="Show Particle Systems")
 
-
         # Armature Settings
         row = layout.row(align=False)
         row.prop(armature_settings, "config_collapse",
@@ -365,15 +360,16 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 col.operator("armature.collection_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
                 col.separator()
 
-            row = box.row()
+            if settings.advanced:
+                row = box.row()
 
-            sub = row.row(align=True)
-            sub.operator("armature.collection_assign", text="Assign")
-            sub.operator("armature.collection_unassign", text="Remove")
+                sub = row.row(align=True)
+                sub.operator("armature.collection_assign", text="Assign")
+                sub.operator("armature.collection_unassign", text="Remove")
 
-            sub = row.row(align=True)
-            sub.operator("armature.collection_select", text="Select")
-            sub.operator("armature.collection_deselect", text="Deselect")
+                sub = row.row(align=True)
+                sub.operator("armature.collection_select", text="Select")
+                sub.operator("armature.collection_deselect", text="Deselect")
 
             if arm.collections.active_index > -1:
 
@@ -393,7 +389,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                     col.prop(bcoll_settings, 'outfit_switcher_collection', text="Collection")
                     if bcoll_settings.outfit_switcher_collection is not None:
                         col.prop(bcoll_settings, 'outfit_switcher_object', text="Object")
-
 
         # Physics Settings
         row = layout.row(align=False)
@@ -557,7 +552,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         row.label(text="Links", icon="WORLD")
 
         if not rig_settings.url_config_collapse:
-
             box = layout.box()
 
             box.label(text="General Settings", icon="MODIFIER")
