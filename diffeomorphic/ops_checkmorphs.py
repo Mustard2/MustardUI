@@ -136,7 +136,8 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         properties_number = 0
         if addon_prefs.debug:
             print("\nMustardUI - Diffeomorphic Daz Morphs found\n")
-            # Print the options
+
+        # Print the options
         for el in rig_settings.diffeomorphic_morphs_list:
             if addon_prefs.debug:
                 print(el.name + " with path " + el.path + ', type: ' + str(el.type))

@@ -103,52 +103,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                 self.report({'ERROR'}, 'MustardUI - A lattice object should be selected if Lattice tool is enabled.')
                 return {'FINISHED'}
 
-            # Check the mirror option of the layer
-            # for i in [x for x in range(0, 32) if armature_settings.config_layer[x]]:
-            #
-            #     armature_settings.layers[i].mirror = False
-            #     armature_settings.layers[i].mirror_layer = -1
-            #
-            #     mirror_string = ""
-            #     if ".R" in armature_settings.layers[i].name:
-            #         mirror_string = ".R"
-            #     elif ".L" in armature_settings.layers[i].name:
-            #         mirror_string = ".L"
-            #
-            #     if mirror_string == "":
-            #         continue
-            #
-            #     armature_settings.layers[i].mirror = mirror_string == ".R" or mirror_string == ".L"
-            #     armature_settings.layers[i].mirror_left = mirror_string == ".L"
-            #
-            #     if armature_settings.layers[i].name.find(mirror_string) > 1:
-            #         rng = list(range(0, 32))
-            #         rng.remove(i)
-            #         mirror_layer = [x for x in rng if armature_settings.config_layer[x] and (
-            #                 ".R" in armature_settings.layers[x].name or ".L" in armature_settings.layers[
-            #             x].name) and armature_settings.layers[i].name[
-            #                          :armature_settings.layers[i].name.find(mirror_string)] in
-            #                         armature_settings.layers[x].name and armature_settings.layers[i].name[
-            #                                                              armature_settings.layers[i].name.find(
-            #                                                                  mirror_string) + len(mirror_string):] in
-            #                         armature_settings.layers[x].name]
-            #         if len(mirror_layer) > 0:
-            #             armature_settings.layers[i].mirror_layer = mirror_layer[0]
-            #         else:
-            #             armature_settings.layers[i].mirror_layer = -1
-            #             warnings = warnings + 1
-            #             if settings.debug:
-            #                 print(
-            #                     'MustardUI - Configuration Warning - Can not find a mirror layer. Mirror has been '
-            #                     'disabled.')
-            #             armature_settings.layers[i].mirror = False
-            #     else:
-            #         warnings = warnings + 1
-            #         if settings.debug:
-            #             print('MustardUI - Configuration Warning - Layer ' + str(
-            #                 i) + ' seems not to have the correct mirror naming convention. Mirror has been disabled.')
-            #         armature_settings.layers[i].mirror = False
-
             # Check the type of the rig
             rig_recognized = 0
             if hasattr(obj, '[\"arp_updated\"]'):

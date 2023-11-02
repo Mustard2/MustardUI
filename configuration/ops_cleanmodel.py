@@ -442,19 +442,12 @@ class MustardUI_CleanModel(bpy.types.Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-
-        settings = bpy.context.scene.MustardUI_Settings
-        res, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
-
         return context.window_manager.invoke_props_dialog(self, width=500)
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
-        sec_obj = rig_settings.body_custom_properties_sections
 
         layout = self.layout
 
@@ -468,9 +461,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
         box = layout.box()
         box.label(text="General", icon="MODIFIER")
         box.prop(self, "remove_unselected_outfits")
-        if rig_settings.extras_collection != None:
+        if rig_settings.extras_collection is not None:
             box.prop(self, "remove_unselected_extras")
-        if rig_settings.hair_collection != None:
+        if rig_settings.hair_collection is not None:
             box.prop(self, "remove_unselected_hair")
         box.prop(self, "remove_nulldrivers")
 

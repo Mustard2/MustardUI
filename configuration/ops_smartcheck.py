@@ -33,7 +33,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
-        #armature_settings = obj.MustardUI_ArmatureSettings
         tools_settings = obj.MustardUI_ToolsSettings
         addon_prefs = context.preferences.addons["MustardUI"].preferences
 
@@ -99,6 +98,9 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         else:
             print('\nMustardUI - Smart Check - Extras collection already defined. Skipping this part.')
 
+        # TODO: Smart Check armature presets
+        # Waiting for the addons below to provide Blender 4.0 versions to generate the presets
+
         # Standard armature setup
         # preset_Mustard_models = []
         #
@@ -107,36 +109,36 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         #         print('\nMustardUI - Smart Check - Found an ARP rig, version: \'' + obj["arp_updated"] + '\' .')
         #     print('\nMustardUI - Smart Check - Setting layers as for Mustard models.')
         #
-        #     preset_Mustard_models = [(0, "Main", False),
-        #                              (1, "Advanced", False),
-        #                              (7, "Extra", False),
-        #                              (10, "Child Of - Ready", False),
-        #                              (31, "Rigging - Ready", True)]
+        #     preset_Mustard_models = [("Main", False),
+        #                              ("Advanced", False),
+        #                              ("Extra", False),
+        #                              ("Child Of - Ready", False),
+        #                              ("Rigging - Ready", True)]
         #
         # elif hasattr(obj, '[\"rig_id\"]'):
         #     if settings.debug:
         #         print('\nMustardUI - Smart Check - Found a Rigify rig.')
         #     print('\nMustardUI - Smart Check - Setting layers for Rigify.')
         #
-        #     preset_Mustard_models = [(1, "Face", False),
-        #                              (2, "Face (details)", False),
-        #                              (3, "Torso", False),
-        #                              (4, "Torso (Tweak)", False),
-        #                              (5, "Fingers", False),
-        #                              (6, "Fingers (Tweak)", False),
-        #                              (7, "Arm.L (IK)", False),
-        #                              (10, "Arm.R (IK)", False),
-        #                              (8, "Arm.L (FK)", False),
-        #                              (11, "Arm.R (FK)", False),
-        #                              (9, "Arm.L (Tweak)", False),
-        #                              (12, "Arm.R (Tweak)", False),
-        #                              (13, "Leg.L (IK)", False),
-        #                              (16, "Leg.R (IK)", False),
-        #                              (14, "Leg.L (FK)", False),
-        #                              (17, "Leg.R (FK)", False),
-        #                              (15, "Leg.L (Tweak)", False),
-        #                              (18, "Leg.R (Tweak)", False),
-        #                              (28, "Root", False)]
+        #     preset_Mustard_models = [("Face", False),
+        #                              ("Face (details)", False),
+        #                              ("Torso", False),
+        #                              ("Torso (Tweak)", False),
+        #                              ("Fingers", False),
+        #                              ("Fingers (Tweak)", False),
+        #                              ("Arm.L (IK)", False),
+        #                              ("Arm.R (IK)", False),
+        #                              ("Arm.L (FK)", False),
+        #                              ("Arm.R (FK)", False),
+        #                              ("Arm.L (Tweak)", False),
+        #                              ("Arm.R (Tweak)", False),
+        #                              ("Leg.L (IK)", False),
+        #                              ("Leg.R (IK)", False),
+        #                              ("Leg.L (FK)", False),
+        #                              ("Leg.R (FK)", False),
+        #                              ("Leg.L (Tweak)", False),
+        #                              ("Leg.R (Tweak)", False),
+        #                              ("Root", False)]
         #
         # elif rig_settings.model_armature_object is not None:
         #     if hasattr(rig_settings.model_armature_object, '[\"MhxRig\"]'):
@@ -144,27 +146,27 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         #             print('\nMustardUI - Smart Check - Found a MHX rig.')
         #         print('\nMustardUI - Smart Check - Setting layers for MHX.')
         #
-        #         preset_Mustard_models = [(10, "Face", False),
-        #                                  (8, "Face (details)", False),
-        #                                  (1, "Spine", False),
-        #                                  (2, "Arm.L (IK)", False),
-        #                                  (18, "Arm.R (IK)", False),
-        #                                  (3, "Arm.L (FK)", False),
-        #                                  (19, "Arm.R (FK)", False),
-        #                                  (4, "Leg.L (IK)", False),
-        #                                  (20, "Leg.R (IK)", False),
-        #                                  (5, "Leg.L (FK)", False),
-        #                                  (21, "Leg.R (FK)", False),
-        #                                  (12, "Extra.L", False),
-        #                                  (28, "Extra.R", False),
-        #                                  (6, "Hand.L", False),
-        #                                  (22, "Hand.R", False),
-        #                                  (7, "Fingers.L", False),
-        #                                  (23, "Fingers.R", False),
-        #                                  (13, "Toes.L", False),
-        #                                  (29, "Toes.R", False),
-        #                                  (9, "Tweak", False),
-        #                                  (0, "Root", False)]
+        #         preset_Mustard_models = [("Face", False),
+        #                                  ("Face (details)", False),
+        #                                  ("Spine", False),
+        #                                  ("Arm.L (IK)", False),
+        #                                  ("Arm.R (IK)", False),
+        #                                  ("Arm.L (FK)", False),
+        #                                  ("Arm.R (FK)", False),
+        #                                  ("Leg.L (IK)", False),
+        #                                  ("Leg.R (IK)", False),
+        #                                  ("Leg.L (FK)", False),
+        #                                  ("Leg.R (FK)", False),
+        #                                  ("Extra.L", False),
+        #                                  ("Extra.R", False),
+        #                                  ("Hand.L", False),
+        #                                  ("Hand.R", False),
+        #                                  ("Fingers.L", False),
+        #                                  ("Fingers.R", False),
+        #                                  ("Toes.L", False),
+        #                                  ("Toes.R", False),
+        #                                  ("Tweak", False),
+        #                                  ("Root", False)]
         #
         # if len(preset_Mustard_models) > 0:
         #

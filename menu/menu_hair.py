@@ -37,7 +37,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         # Hair
-        if rig_settings.hair_collection != None:
+        if rig_settings.hair_collection is not None:
 
             hair_num = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])
 
@@ -92,7 +92,9 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     box.operator('mustardui.configuration', text="Enter Configuration Mode", icon="PREFERENCES")
 
                 # Outfit global properties
-                if rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or rig_settings.hair_enable_global_normalautosmooth:
+                if (rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or
+                        rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or
+                        rig_settings.hair_enable_global_normalautosmooth):
 
                     box = layout.box()
                     row = box.row(align=True)
