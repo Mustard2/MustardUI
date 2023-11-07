@@ -4,6 +4,7 @@ from . import outfit
 from . import daz_morph
 from . import section
 from . import rig
+from . import geometry_nodes
 
 
 def register():
@@ -13,6 +14,7 @@ def register():
     daz_morph.register()
     section.register()
     rig.register()
+    geometry_nodes.register()
 
 
 def unregister():
@@ -22,3 +24,4 @@ def unregister():
     daz_morph.unregister()
     section.unregister()
     rig.unregister()
+    geometry_nodes.unregister()

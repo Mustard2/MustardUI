@@ -57,6 +57,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             col.prop(rig_settings, "body_enable_subdiv")
             col.prop(rig_settings, "body_enable_smoothcorr")
+            col.prop(rig_settings, "body_enable_geometry_nodes")
             col.prop(rig_settings, "body_enable_solidify")
             col.separator()
             col.prop(rig_settings, "body_enable_preserve_volume")
@@ -96,8 +97,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
             if len(arm.MustardUI_CustomProperties) > 0:
                 box = layout.box()
-                row = box.row(align=False)
-                row.label(text="Sections", icon="LINENUMBERS_OFF")
+                box.label(text="Sections", icon="LINENUMBERS_OFF")
+                box.prop(rig_settings, "body_enable_geometry_nodes_support")
+                box.separator()
+                box.label(text="Sections List", icon="LINENUMBERS_OFF")
                 if len(rig_settings.body_custom_properties_sections) == 0:
                     box.operator('mustardui.body_addsection')
                 else:

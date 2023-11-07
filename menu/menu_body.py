@@ -28,7 +28,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
         res, arm = mustardui_active_object(context, config=0)
 
         if arm is not None:
@@ -41,12 +40,16 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                             or rig_settings.body_enable_solidify
                             or rig_settings.body_enable_norm_autosmooth
                             or rig_settings.body_enable_material_normal_nodes
-                            or rig_settings.body_enable_preserve_volume)
+                            or rig_settings.body_enable_preserve_volume
+                            or rig_settings.body_enable_geometry_nodes)
 
-            return res and (prop_to_show or len(custom_props) > 0)
+            # Check if geometry nodes support is active and there are geometry nodes on the body object
+            geometry_nodes_support = (len([x for x in rig_settings.model_body.modifiers if x.type == "NODES"]) >0
+                                      and rig_settings.body_enable_geometry_nodes_support)
 
-        else:
-            return res
+            return res and (prop_to_show or len(custom_props) > 0 or geometry_nodes_support)
+
+        return res
 
     def draw(self, context):
 
@@ -59,17 +62,19 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         if (rig_settings.body_enable_smoothcorr
-                or rig_settings.body_enable_solidify
-                or rig_settings.body_enable_norm_autosmooth
-                or rig_settings.body_enable_material_normal_nodes
-                or rig_settings.body_enable_preserve_volume):
+            or rig_settings.body_enable_solidify
+            or rig_settings.body_enable_norm_autosmooth
+            or rig_settings.body_enable_material_normal_nodes
+            or rig_settings.body_enable_preserve_volume
+            or rig_settings.body_enable_geometry_nodes):
 
             box = layout.box()
             box.label(text="Global settings", icon="OUTLINER_OB_ARMATURE")
 
             if (rig_settings.body_enable_preserve_volume
-                    or rig_settings.body_enable_solidify
-                    or rig_settings.body_enable_smoothcorr):
+                or rig_settings.body_enable_geometry_nodes
+                or rig_settings.body_enable_solidify
+                or rig_settings.body_enable_smoothcorr):
 
                 col = box.column(align=True)
 
@@ -78,6 +83,9 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
                 if rig_settings.body_enable_smoothcorr:
                     col.prop(rig_settings, "body_smooth_corr")
+
+                if rig_settings.body_enable_geometry_nodes:
+                    col.prop(rig_settings, "body_geometry_nodes")
 
                 if rig_settings.body_enable_solidify:
                     col.prop(rig_settings, "body_solidify")
@@ -185,6 +193,32 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                                 else:
                                     row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
                                              emboss=False)
+
+            # Geometry nodes as sections
+            gnm = [x for x in rig_settings.model_body.modifiers if x.type == "NODES"]
+
+            if len(gnm) > 0 and rig_settings.body_enable_geometry_nodes_support:
+                for m in gnm:
+                    gndi = m.node_group.interface.items_tree
+                    if gndi is None:
+                        continue
+
+                    if len(gndi.keys()):
+                        box = layout.box()
+                        row = box.row()
+                        row.prop(m.node_group, "MustardUI_collapse",
+                                 icon="TRIA_DOWN" if not m.node_group.MustardUI_collapse else "TRIA_RIGHT",
+                                 icon_only=True,
+                                 emboss=False)
+                        row.label(text=m.node_group.name)
+                        row.label(icon="GEOMETRY_NODES")
+                        row2 = row.row(align=True)
+                        row2.prop(m, "show_viewport", text="")
+                        row2.prop(m, "show_render", text="")
+                        if not m.node_group.MustardUI_collapse:
+                            for i in [x for x in gndi.keys() if hasattr(gndi[x], 'identifier')]:
+                                if gndi[i].identifier in m.keys():
+                                    box.prop(m, '["' + gndi[i].identifier + '"]', text=i)
 
 
 def register():

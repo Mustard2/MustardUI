@@ -29,11 +29,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Armature object
     # Poll function for the selection of armatures for the armature object
     def poll_armature(self, object):
-
         if object.type == 'ARMATURE':
             return object.data == self.id_data
-        else:
-            return False
+        return False
 
     model_armature_object: bpy.props.PointerProperty(name="Model Armature Object",
                                                      description="Mesh that will be considered the body.\nSet or "
@@ -52,39 +50,27 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Global body mesh properties
     # Update function for Subdivision Surface modifiers
     def update_subdiv(self, context):
-
         for modifier in [x for x in self.model_body.modifiers if x.type == "SUBSURF"]:
             modifier.render_levels = self.body_subdiv_rend_lv
             modifier.levels = self.body_subdiv_view_lv
             modifier.show_render = self.body_subdiv_rend
             modifier.show_viewport = self.body_subdiv_view
 
-        return
-
     # Update function for Smooth Correction modifiers
     def update_smooth_corr(self, context):
-
         for modifier in [x for x in self.model_body.modifiers if x.type == "CORRECTIVE_SMOOTH"]:
             modifier.show_viewport = self.body_smooth_corr
             modifier.show_render = self.body_smooth_corr
 
-        return
-
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
-
         self.model_body.data.use_auto_smooth = self.body_norm_autosmooth
-
-        return
 
     # Update function for Smooth Correction modifiers
     def update_solidify(self, context):
-
         for modifier in [x for x in self.model_body.modifiers if x.type == "SOLIDIFY"]:
             modifier.show_viewport = self.body_solidify
             modifier.show_render = self.body_solidify
-
-        return
 
     # Subdivision surface
     body_subdiv_rend: bpy.props.BoolProperty(default=True,
@@ -172,8 +158,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     if modifier.type == "ARMATURE":
                         modifier.use_deform_preserve_volume = self.body_preserve_volume
 
-        return
-
     # Armature volume preserve
     body_preserve_volume: bpy.props.BoolProperty(default=True,
                                                  name="Volume Preserve",
@@ -205,6 +189,28 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                               name="Order by name",
                                                               description="Order the custom properties by name "
                                                                           "instead of by appareance in the list")
+
+    # Geometry Nodes
+    def update_geometry_nodes(self, context):
+        for modifier in [x for x in self.model_body.modifiers if x.type == "NODES"]:
+            modifier.show_viewport = self.body_geometry_nodes
+            modifier.show_render = self.body_geometry_nodes
+
+    body_geometry_nodes: bpy.props.BoolProperty(default=False,
+                                                name="Geometry Nodes",
+                                                description="",
+                                                update=update_geometry_nodes)
+
+    body_enable_geometry_nodes: bpy.props.BoolProperty(default=False,
+                                                       name="Geometry Nodes modifiers",
+                                                       description="")
+
+    # Geometry Nodes support
+    body_enable_geometry_nodes_support: bpy.props.BoolProperty(default=False,
+                                                               name="Add Geometry Nodes",
+                                                               description="Add Geometry Nodes to the UI as"
+                                                                           "Sections.\nThe properties displayed are "
+                                                                           "the attributes of the Geometry Node")
 
     # List of the sections for body custom properties
     body_custom_properties_sections: bpy.props.CollectionProperty(type=MustardUI_SectionItem)
@@ -284,8 +290,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         bcoll.is_visible = (armature_settings.outfits and
                                             not bpy.data.objects[obj.name].hide_viewport and
                                             not bcoll_settings.outfit_switcher_collection.hide_viewport)
-
-        return
 
     # Function to update the visibility of the outfits/masks/armature layers when an outfit is changed
     def outfits_visibility_update(self, context):
@@ -389,8 +393,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
                         modifier.show_viewport = self.outfits_global_subsurface
 
-        return
-
     def outfits_global_options_update(self, context):
 
         collections = [x.collection for x in self.outfits_collections]
@@ -427,8 +429,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                           collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
                         modifier.show_render = ((
                                                         collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
-
-        return
 
     # List of the collections from which to extract the outfits
     outfits_collections: bpy.props.CollectionProperty(name="Outfits Collection List",
@@ -514,8 +514,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def poll_collection_extras(self, object):
         if self.hair_collection is not None:
             return not object in [x.collection for x in self.outfits_collections] and object != self.hair_collection
-        else:
-            return not object in [x.collection for x in self.outfits_collections]
+        return not object in [x.collection for x in self.outfits_collections]
 
     extras_collection: bpy.props.PointerProperty(name="Extras Collection",
                                                  type=bpy.types.Collection,
@@ -538,10 +537,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Hair collection
     def poll_collection_hair(self, object):
-        if self.extras_collection != None:
+        if self.extras_collection is not None:
             return not object in [x.collection for x in self.outfits_collections] and object != self.extras_collection
-        else:
-            return not object in [x.collection for x in self.outfits_collections]
+        return not object in [x.collection for x in self.outfits_collections]
 
     hair_collection: bpy.props.PointerProperty(name="Hair Collection",
                                                type=bpy.types.Collection,
@@ -583,8 +581,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         if self.hair_update_tag_on_switch:
             for obj in self.hair_collection.objects:
                 obj.update_tag()
-
-        return
 
     # Hair list
     hair_list: bpy.props.EnumProperty(name="Hair List",
@@ -631,8 +627,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
                         modifier.show_viewport = self.hair_global_subsurface
 
-        return
-
     def hair_global_options_update(self, context):
 
         if self.hair_collection is not None:
@@ -649,8 +643,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     elif modifier.type == "PARTICLE_SYSTEM" and self.hair_enable_global_particles:
                         modifier.show_viewport = self.hair_global_particles
                         modifier.show_render = self.hair_global_particles
-
-        return
 
     hair_global_subsurface: bpy.props.BoolProperty(default=True,
                                                    name="Subdivision Surface",
@@ -709,8 +701,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         else:
             self.diffeomorphic_enable_settings = False
             bpy.ops.mustardui.dazmorphs_disabledrivers()
-
-        return
 
     # Diffeomorphic support
     diffeomorphic_support: bpy.props.BoolProperty(default=False,
@@ -843,6 +833,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             self.body_smooth_corr = not self.simplify_enable
         if self.body_enable_norm_autosmooth:
             self.body_norm_autosmooth = not self.simplify_enable
+        if self.body_enable_geometry_nodes:
+            self.body_geometry_nodes = not self.simplify_enable
         if self.body_enable_solidify:
             self.body_solidify = not self.simplify_enable
 
