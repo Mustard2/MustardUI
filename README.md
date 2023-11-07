@@ -20,7 +20,7 @@ The main features are:
 
 ## Installation and Configuration
 
-For creators of models, be sure to follow the [configuration guide](https://github.com/Mustard2/MustardUI/wiki/Installation-and-Configuration)!
+For creators of models, be sure to follow the [Developer Guide](Developer-Guide)!
 
 ## Tutorial
 
