@@ -9,7 +9,7 @@ bl_info = {
     "version": (0, 30, 0, 37),
     "blender": (4, 0, 0),
     "warning": "",
-    "doc_url": "https://github.com/Mustard2/MustardUI",
+    "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
     "category": "User Interface",
 }
 

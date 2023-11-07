@@ -7,7 +7,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_InitPanel"
     bl_label = "UI Configuration"
 
-    url_MustardUI_ConfigGuide = "https://github.com/Mustard2/MustardUI/wiki/Installation-and-Configuration"
+    url_MustardUI_ConfigGuide = "https://github.com/Mustard2/MustardUI/wiki/Developer-Guide"
 
     @classmethod
     def poll(cls, context):
