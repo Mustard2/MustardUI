@@ -6,7 +6,6 @@ from ..warnings.ops_fix_old_UI import check_old_UI
 class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Warnings"
     bl_label = "Warnings"
-    bl_options = {"DEFAULT_CLOSED"}
     bl_icon = "ERROR"
 
     @classmethod
