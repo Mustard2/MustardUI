@@ -4,7 +4,7 @@
 # Add-on information
 bl_info = {
     "name": "MustardUI",
-    "description": "Create a MustardUI for a human character.",
+    "description": "Easy-to-use UI for human characters.",
     "author": "Mustard",
     "version": (0, 30, 0, 37),
     "blender": (4, 0, 0),
