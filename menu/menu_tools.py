@@ -128,7 +128,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
 
         box = layout.box()
         column = box.column(align=True)
-        column.label(text="Eyelid blink settings", icon="HIDE_OFF")
+        column.label(text="Auto Blink settings", icon="HIDE_OFF")
         column = box.column(align=True)
         column.prop(tools_settings, "autoeyelid_blink_length")
         column.prop(tools_settings, "autoeyelid_blink_rate_per_minute")
