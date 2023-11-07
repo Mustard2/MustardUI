@@ -5,6 +5,7 @@ class MainPanel:
 
 
 from . import menu_select_model
+from . import menu_warnings
 from . import menu_configure
 from . import menu_tools_creators
 from . import menu_body
@@ -22,6 +23,7 @@ from . import menu_links
 
 def register():
     menu_select_model.register()
+    menu_warnings.register()
     menu_configure.register()
     menu_tools_creators.register()
     menu_body.register()
@@ -39,6 +41,7 @@ def register():
 
 def unregister():
     menu_select_model.unregister()
+    menu_warnings.unregister()
     menu_configure.unregister()
     menu_tools_creators.unregister()
     menu_body.unregister()
