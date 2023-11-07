@@ -99,8 +99,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box = layout.box()
                 box.label(text="Sections", icon="LINENUMBERS_OFF")
                 box.prop(rig_settings, "body_enable_geometry_nodes_support")
-                box.separator()
-                box.label(text="Sections List", icon="LINENUMBERS_OFF")
                 if len(rig_settings.body_custom_properties_sections) == 0:
                     box.operator('mustardui.body_addsection')
                 else:

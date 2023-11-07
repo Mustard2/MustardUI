@@ -208,7 +208,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Geometry Nodes support
     body_enable_geometry_nodes_support: bpy.props.BoolProperty(default=False,
                                                                name="Add Geometry Nodes",
-                                                               description="Add Geometry Nodes to the UI as"
+                                                               description="Add Geometry Nodes to the UI as "
                                                                            "Sections.\nThe properties displayed are "
                                                                            "the attributes of the Geometry Node")
 
