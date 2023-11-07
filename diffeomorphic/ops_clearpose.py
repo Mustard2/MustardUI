@@ -34,7 +34,6 @@ class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
 

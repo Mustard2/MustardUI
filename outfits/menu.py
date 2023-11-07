@@ -19,17 +19,8 @@ def mustardui_collection_menu(self, context):
     addon_prefs = context.preferences.addons["MustardUI"].preferences
 
     if res:
-        self.layout.separator()
-        if context.collection in [x.collection for x in rig_settings.outfits_collections]:
-            if addon_prefs.debug:
-                self.layout.operator(MustardUI_RemoveOutfit.bl_idname, text="Remove Outfit: " + context.collection.name,
-                                     icon="X").col = context.collection.name
-                self.layout.operator(MustardUI_DeleteOutfit.bl_idname, text="Delete Outfit: " + context.collection.name,
-                                     icon="TRASH").col = context.collection.name
-            else:
-                self.layout.operator(MustardUI_RemoveOutfit.bl_idname, icon="X").col = context.collection.name
-                self.layout.operator(MustardUI_DeleteOutfit.bl_idname, icon="TRASH").col = context.collection.name
-        else:
+        if not context.collection in [x.collection for x in rig_settings.outfits_collections]:
+            self.layout.separator()
             if addon_prefs.debug:
                 self.layout.operator(MustardUI_AddOutfit.bl_idname, text="Add Outfit: " + context.collection.name,
                                      icon="ADD")

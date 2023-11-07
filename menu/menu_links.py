@@ -11,6 +11,7 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
     bl_options = {"DEFAULT_CLOSED"}
 
     url_MustardUI = "https://github.com/Mustard2/MustardUI"
+    url_MustardUI_Releases = "https://github.com/Mustard2/MustardUI/releases"
     url_MustardUI_ReportBug = "https://github.com/Mustard2/MustardUI/issues"
     url_MustardUI_Tutorial = "https://github.com/Mustard2/MustardUI/wiki/Tutorial"
 
@@ -39,6 +40,7 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="MustardUI References", icon="INFO")
         box.operator('mustardui.openlink', text="MustardUI - GitHub", icon="URL").url = self.url_MustardUI
+        box.operator('mustardui.openlink', text="MustardUI - Releases", icon="URL").url = self.url_MustardUI_Releases
         box.operator('mustardui.openlink', text="MustardUI - Tutorial",
                      icon="URL").url = self.url_MustardUI_Tutorial
         box.operator('mustardui.openlink', text="MustardUI - Report Bug",
