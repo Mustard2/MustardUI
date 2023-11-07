@@ -1,0 +1,32 @@
+import bpy
+from . import MainPanel
+from ..model_selection.active_object import *
+from ..settings.rig import *
+
+class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
+    bl_idname = "PANEL_PT_MustardUI_SelectModel"
+    bl_label = "Model Selection"
+
+    @classmethod
+    def poll(cls, context):
+        settings = bpy.context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config=0)
+        return res and len(
+            [x for x in bpy.data.armatures if x.MustardUI_created]) > 1 and not settings.viewport_model_selection
+
+    def draw(self, context):
+        settings = bpy.context.scene.MustardUI_Settings
+
+        layout = self.layout
+
+        for armature in [x for x in bpy.data.armatures if x.MustardUI_created]:
+            layout.operator('mustardui.switchmodel', text=armature.MustardUI_RigSettings.model_name,
+                            depress=armature == settings.panel_model_selection_armature).model_to_switch = armature.name
+
+
+def register():
+    bpy.utils.register_class(PANEL_PT_MustardUI_SelectModel)
+
+
+def unregister():
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_SelectModel)
