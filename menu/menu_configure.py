@@ -475,7 +475,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
             if tools_settings.autoeyelid_enable:
                 box = layout.box()
-                box.label(text="Auto Eyelid Tool Settings", icon="HIDE_OFF")
+                box.label(text="Auto Blink Tool Settings", icon="HIDE_OFF")
                 box.prop(tools_settings, 'autoeyelid_driver_type', text="Type")
                 col = box.column(align=True)
                 if tools_settings.autoeyelid_driver_type == "SHAPE_KEY":
