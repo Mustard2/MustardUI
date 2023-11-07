@@ -159,7 +159,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
         if not rig_settings.outfit_config_collapse:
             box = layout.box()
-            box.label(text="General settings", icon="MODIFIER")
+            box.label(text="General Settings", icon="MODIFIER")
             col = box.column(align=True)
             col.prop(rig_settings, "outfit_nude")
             col.prop(rig_settings, "outfit_config_subcollections")
@@ -263,7 +263,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
                     if settings.advanced:
                         box = layout.box()
-                        box.label(text="General settings", icon="MODIFIER")
+                        box.label(text="General Settings", icon="MODIFIER")
                         col = box.column(align=True)
                         col.prop(rig_settings, "hair_switch_armature_disable")
                         col.prop(rig_settings, "hair_update_tag_on_switch")
@@ -353,8 +353,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             )
 
             col = row.column(align=True)
-            col.operator("armature.collection_add", icon='ADD', text="")
-            col.operator("armature.collection_remove", icon='REMOVE', text="")
+            if settings.advanced:
+                col.operator("armature.collection_add", icon='ADD', text="")
+                col.operator("armature.collection_remove", icon='REMOVE', text="")
             if active_bcoll:
                 col.separator()
                 col.operator("armature.collection_move", icon='TRIA_UP', text="").direction = 'UP'

@@ -7,13 +7,18 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
 
     def draw_item(self, _context, layout, armature, bcoll, _icon, _active_data, _active_propname, _index):
 
+        settings = bpy.context.scene.MustardUI_Settings
+
         bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
 
         active_bone = armature.edit_bones.active or armature.bones.active
         has_active_bone = active_bone and bcoll.name in active_bone.collections
 
-        layout.prop(bcoll, "name", text="", emboss=False,
-                    icon='DOT' if has_active_bone else 'BLANK1')
+        if settings.advanced:
+            layout.prop(bcoll, "name", text="", emboss=False,
+                        icon='DOT' if has_active_bone else 'BLANK1')
+        else:
+            layout.prop(bcoll, "name", text="", emboss=False)
 
         if armature.override_library:
             icon = 'LIBRARY_DATA_OVERRIDE' if bcoll.is_local_override else 'BLANK1'
@@ -35,7 +40,8 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
         col.prop(bcoll_settings, "is_in_UI", text="", emboss=False,
                  icon='GREASEPENCIL' if bcoll_settings.is_in_UI else 'OUTLINER_DATA_GP_LAYER')
 
-        row.prop(bcoll, "is_visible", text="", emboss=False, icon='HIDE_OFF' if bcoll.is_visible else 'HIDE_ON')
+        if settings.advanced:
+            row.prop(bcoll, "is_visible", text="", emboss=False, icon='HIDE_OFF' if bcoll.is_visible else 'HIDE_ON')
 
 
 def register():
