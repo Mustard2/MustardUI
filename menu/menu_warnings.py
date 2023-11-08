@@ -14,7 +14,6 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         return check_old_UI()
 
     def draw_header(self, context):
-
         self.layout.label(text="", icon="ERROR")
 
     def draw(self, context):

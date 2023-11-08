@@ -27,7 +27,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=0)
 
-        if arm != None:
+        if arm is not None:
             rig_settings = arm.MustardUI_RigSettings
 
             # Check if at least one panel is available

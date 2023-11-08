@@ -561,7 +561,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
             # Outfits list panel
             box = layout.box()
-            box.label(text="Links List", icon="URL")
+            row = box.row(align=True)
+            row.label(text="Links List", icon="URL")
+            row.operator("mustardui.link_import", text="", icon="COPYDOWN")
+            row.operator("mustardui.link_export", text="", icon="PASTEDOWN")
             row = box.row()
             row.template_list("MUSTARDUI_UL_Links_UIList", "The_List", arm,
                               "MustardUI_Links", scene,
