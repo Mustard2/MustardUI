@@ -5,7 +5,7 @@ from .misc import *
 
 
 class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
-    """UIList for custom properties."""
+    """UIList for custom properties"""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
@@ -57,7 +57,7 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
 
 
 class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
-    """UIList for outfits custom properties."""
+    """UIList for outfits custom properties"""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
@@ -116,9 +116,9 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
 
 
 class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
-    """UIList for outfits custom properties."""
+    """UIList for hair custom properties"""
 
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings

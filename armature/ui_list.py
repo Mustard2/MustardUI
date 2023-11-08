@@ -3,7 +3,7 @@ from bpy.props import *
 
 
 class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
-    """UIList for Armature layers properties."""
+    """UIList for Armature layers properties"""
 
     def draw_item(self, _context, layout, armature, bcoll, _icon, _active_data, _active_propname, _index):
 

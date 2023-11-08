@@ -206,7 +206,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
 
 class MustardUI_Property_Remove(bpy.types.Operator):
-    """Remove the selected property from the list.\nType"""
+    """Remove the selected property from the list"""
     bl_idname = "mustardui.property_remove"
     bl_label = "Remove Property"
     bl_options = {'UNDO'}
@@ -244,7 +244,7 @@ class MustardUI_Property_Remove(bpy.types.Operator):
 
 
 class MustardUI_Property_Switch(bpy.types.Operator):
-    """Move the selected property in the list.\nType"""
+    """Move the selected property in the list"""
 
     bl_idname = "mustardui.property_switch"
     bl_label = "Move property"

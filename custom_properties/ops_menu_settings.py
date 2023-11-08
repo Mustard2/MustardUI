@@ -7,7 +7,7 @@ from .misc import *
 
 
 class MustardUI_Property_Settings(bpy.types.Operator):
-    """Modify the property settings.\nType"""
+    """Modify the property settings"""
     bl_idname = "mustardui.property_settings"
     bl_label = "Property Settings"
     bl_icon = "PREFERENCES"

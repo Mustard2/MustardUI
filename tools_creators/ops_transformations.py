@@ -4,8 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_ToolsCreators_AffectTransform(bpy.types.Operator):
-    """Enable/disable the \'Affect Transform\' option for all limit transform (loc, rot, sca) constraints on the rig
-    bones"""
+    """Enable/disable the \'Affect Transform\' option for all limit transform (loc, rot, sca) constraints on the rig bones"""
     bl_idname = "mustardui.tools_creators_affect_transform"
     bl_label = "Change Affect Transform"
     bl_options = {'UNDO'}

@@ -6,7 +6,7 @@ from .misc import *
 
 
 class MustardUI_Property_MenuLink(bpy.types.Operator):
-    """Link the property to an existing one.\nType"""
+    """Link the property to an existing one"""
     bl_idname = "mustardui.property_menulink"
     bl_label = "Link Property"
     bl_options = {'UNDO'}
@@ -121,7 +121,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
 
 class MustardUI_Property_RemoveLinked(bpy.types.Operator):
-    """Remove the linked property from the list.\nType"""
+    """Remove the linked property from the list"""
     bl_idname = "mustardui.property_removelinked"
     bl_label = "Remove Linked Property"
     bl_options = {'UNDO'}
