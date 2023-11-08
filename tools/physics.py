@@ -4,8 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
-    """Create a physics panel using the selected cage object in the UI.\nThis will also create the necessary
-    modifiers and clothes settings"""
+    """Create a physics panel using the selected cage object in the UI.\nThis will also create the necessary modifiers and clothes settings"""
     bl_idname = "mustardui.tools_physics_createitem"
     bl_label = "Add Physics Item"
     bl_options = {'REGISTER', 'UNDO'}
@@ -309,8 +308,7 @@ class MustardUI_Tools_Physics_Clean(bpy.types.Operator):
 
 
 class MustardUI_Tools_Physics_ReBind(bpy.types.Operator):
-    """Re-bind mesh deform cages to the Body mesh.\nUse this tool if the mesh is deformed after the cage has been
-    modified"""
+    """Re-bind mesh deform cages to the Body mesh.\nUse this tool if the mesh is deformed after the cage has been modified"""
     bl_idname = "mustardui.tools_physics_rebind"
     bl_label = "Re-bind Cages"
     bl_options = {'REGISTER'}

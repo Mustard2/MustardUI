@@ -4,7 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
-    """Move the selected property in the list.\nType"""
+    """Move the selected property in the list"""
 
     bl_idname = "mustardui.outfits_switch"
     bl_label = "Move Outfit"
@@ -43,7 +43,7 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
 
 
 class MUSTARDUI_UL_Outfits_UIList(bpy.types.UIList):
-    """UIList for outfits."""
+    """UIList for outfits"""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         layout.prop(item.collection, 'name', text="", emboss=False, translate=False)

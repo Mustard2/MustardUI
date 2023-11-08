@@ -144,10 +144,10 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
             if obj.data.shape_keys is not None:
                 if obj.data.shape_keys.animation_data is not None:
                     for driver in obj.data.shape_keys.animation_data.drivers:
-                        if (not "pJCM" in driver.data_path or mutepJCM) and (
-                                not "facs" in driver.data_path or mutefacs) and muteDazFcurves_exceptionscheck(
-                            muteexceptions, driver.data_path,
-                            exceptions) and not "MustardUINotDisable" in driver.data_path:
+                        if ((not "pJCM" in driver.data_path or mutepJCM)
+                                and (not "facs" in driver.data_path or mutefacs)
+                                and muteDazFcurves_exceptionscheck(muteexceptions, driver.data_path, exceptions)
+                                and not "MustardUINotDisable" in driver.data_path):
                             driver.mute = False
 
         for driver in rig_settings.model_armature_object.animation_data.drivers:

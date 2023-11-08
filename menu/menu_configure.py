@@ -95,10 +95,10 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 box = box.box()
                 box.label(text="No property added yet", icon="ERROR")
 
+            box = layout.box()
+            box.label(text="Sections", icon="LINENUMBERS_OFF")
+            box.prop(rig_settings, "body_enable_geometry_nodes_support")
             if len(arm.MustardUI_CustomProperties) > 0:
-                box = layout.box()
-                box.label(text="Sections", icon="LINENUMBERS_OFF")
-                box.prop(rig_settings, "body_enable_geometry_nodes_support")
                 if len(rig_settings.body_custom_properties_sections) == 0:
                     box.operator('mustardui.body_addsection')
                 else:

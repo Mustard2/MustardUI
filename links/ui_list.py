@@ -4,7 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_Links_UIList_Switch(bpy.types.Operator):
-    """Move the selected property in the list.\nType"""
+    """Move the selected property in the list"""
 
     bl_idname = "mustardui.link_switch"
     bl_label = "Move Link"
@@ -42,7 +42,7 @@ class MustardUI_Links_UIList_Switch(bpy.types.Operator):
 
 
 class MustardUI_Link_Remove(bpy.types.Operator):
-    """Remove the selected link from the list.\nType"""
+    """Remove the selected link from the list"""
     bl_idname = "mustardui.link_remove"
     bl_label = "Remove Link"
     bl_options = {'UNDO'}
@@ -70,7 +70,7 @@ class MustardUI_Link_Remove(bpy.types.Operator):
 
 
 class MustardUI_Link_Add(bpy.types.Operator):
-    """Add a link to the list.\nType"""
+    """Add a link to the list"""
     bl_idname = "mustardui.link_add"
     bl_label = "Add Link"
     bl_options = {'UNDO'}
@@ -96,7 +96,7 @@ class MustardUI_Link_Add(bpy.types.Operator):
 
 
 class MUSTARDUI_UL_Links_UIList(bpy.types.UIList):
-    """UIList for links."""
+    """UIList for links"""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row()

@@ -4,7 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_Section_UIList_Switch(bpy.types.Operator):
-    """Move the selected section in the list.\nType"""
+    """Move the selected section in the list"""
 
     bl_idname = "mustardui.section_switch"
     bl_label = "Move Section"
@@ -72,7 +72,7 @@ class MustardUI_Body_DeleteSection(bpy.types.Operator):
 
 
 class MustardUI_Body_AddSection(bpy.types.Operator):
-    """Add a section to the list.\nType"""
+    """Add a section to the list"""
     bl_idname = "mustardui.section_add"
     bl_label = "Add Section"
     bl_options = {'UNDO'}
@@ -98,7 +98,7 @@ class MustardUI_Body_AddSection(bpy.types.Operator):
 
 
 class MUSTARDUI_UL_Section_UIList(bpy.types.UIList):
-    """UIList for outfits."""
+    """UIList for sections"""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 

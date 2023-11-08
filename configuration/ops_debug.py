@@ -4,8 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_Debug_Log(bpy.types.Operator):
-    """Create a file with information to debug errors.\nThis tool will only write on a .txt file and will NOT change
-    any model or Blender setting"""
+    """Create a file with information to debug errors.\nThis tool will only write on a .txt file and will NOT change any model or Blender setting"""
     bl_idname = "mustardui.debug_log"
     bl_label = "Generate Log File"
     bl_options = {'REGISTER'}

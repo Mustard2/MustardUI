@@ -4,9 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_Tools_LatticeSetup(bpy.types.Operator):
-    """Setup/Clean Lattice modifiers for all model Objects.\nThis function will create (or delete) Lattice modifiers
-    linked with the Lattice object chosen and put it at the top of the modifiers list.\nWhen cleaning, only MustardUI
-    Lattice modifiers are deleted"""
+    """Setup/Clean Lattice modifiers for all model Objects.\nThis function will create (or delete) Lattice modifiers linked with the Lattice object chosen and put it at the top of the modifiers list.\nWhen cleaning, only MustardUI Lattice modifiers are deleted"""
     bl_idname = "mustardui.tools_latticesetup"
     bl_label = "Setup Lattice"
     bl_options = {'REGISTER', 'UNDO'}
