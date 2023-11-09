@@ -53,6 +53,8 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         col.separator()
         col.prop(self, "experimental")
 
+        layout.operator('mustardui.updater', icon="WORLD")
+
 
 def register():
     bpy.utils.register_class(MustardUI_AddonPrefs)

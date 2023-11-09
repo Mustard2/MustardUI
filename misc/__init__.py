@@ -1,7 +1,9 @@
+from . import updater
+
 
 def register():
-    pass
+    updater.register()
 
 
 def unregister():
-    pass
+    updater.unregister()
