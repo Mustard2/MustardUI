@@ -57,12 +57,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
 
 def register():
-    # Fix for bug #130 (temporary solution)
-    try:
-        bpy.utils.register_class(MustardUI_AddonPrefs)
-    except:
-        bpy.utils.unregister_class(MustardUI_AddonPrefs)
-        bpy.utils.register_class(MustardUI_AddonPrefs)
+    bpy.utils.register_class(MustardUI_AddonPrefs)
 
 
 def unregister():
