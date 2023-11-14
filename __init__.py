@@ -14,9 +14,9 @@ bl_info = {
 }
 
 from . import settings
+from . import misc
 from . import model_selection
 from . import warnings
-from . import misc
 from . import armature
 from . import tools
 from . import tools_creators
@@ -30,8 +30,8 @@ from . import menu
 
 
 def register():
-    misc.register()
     settings.register()
+    misc.register()
     model_selection.register()
     warnings.register()
     armature.register()
@@ -47,8 +47,8 @@ def register():
 
 
 def unregister():
-    misc.unregister()
     settings.unregister()
+    misc.unregister()
     model_selection.unregister()
     warnings.unregister()
     armature.unregister()
