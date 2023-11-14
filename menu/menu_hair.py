@@ -33,6 +33,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         layout = self.layout
 
@@ -88,8 +89,10 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 except:
                     box = box.box()
                     box.label(text="An error occurred.", icon="ERROR")
-                    box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
-                    box.operator('mustardui.configuration', text="Enter Configuration Mode", icon="PREFERENCES")
+                    box.label(text="The UI Hair data seems corrupted.", icon="BLANK1")
+                    if addon_prefs.developer:
+                        box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
+                        box.operator('mustardui.configuration', text="Enter Configuration Mode", icon="PREFERENCES")
 
                 # Outfit global properties
                 if (rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or
