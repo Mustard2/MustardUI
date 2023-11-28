@@ -15,7 +15,6 @@ def mustardui_active_object(context, config=0):
         obj = context.active_object
 
         if obj.type == "ARMATURE":
-
             if config:
                 return not obj.data.MustardUI_enable, obj.data
             else:
@@ -38,7 +37,10 @@ def mustardui_active_object(context, config=0):
 
     # If Viewport Model Selection is false, use the UI with the armature selected in the model panel
     else:
-        if config:
-            return not settings.panel_model_selection_armature.MustardUI_enable, settings.panel_model_selection_armature
-        else:
-            return settings.panel_model_selection_armature.MustardUI_enable, settings.panel_model_selection_armature
+        if settings.panel_model_selection_armature is not None:
+            if config:
+                return not settings.panel_model_selection_armature.MustardUI_enable, settings.panel_model_selection_armature
+            else:
+                return settings.panel_model_selection_armature.MustardUI_enable, settings.panel_model_selection_armature
+
+    return False, None

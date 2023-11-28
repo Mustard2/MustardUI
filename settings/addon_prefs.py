@@ -55,6 +55,11 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
         layout.operator('mustardui.updater', icon="WORLD")
 
+        if self.debug:
+            box = layout.box()
+            box.label(text="Debug", icon="SEQ_STRIP_META")
+            box.operator('mustardui.fix_missing_ui', icon="MOD_BUILD")
+
 
 def register():
     bpy.utils.register_class(MustardUI_AddonPrefs)
