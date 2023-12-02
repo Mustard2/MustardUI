@@ -9,7 +9,15 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_label = "Armature"
     bl_options = {"DEFAULT_CLOSED"}
 
-    def draw_armature_button(self, bcoll, bcoll_settings, bcolls, layout):
+    def draw_armature_button(self, bcoll, bcoll_settings, bcolls, armature_settings, layout):
+
+        if not armature_settings.mirror:
+            row = layout.row()
+            row.prop(bcoll, "is_visible",
+                     text=bcoll.name,
+                     toggle=True,
+                     icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1")
+            return
 
         for b in bcolls:
             if (
@@ -95,7 +103,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         for bcoll in enabled_colls:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if (bcoll_settings.advanced and settings.advanced) or not bcoll_settings.advanced:
-                self.draw_armature_button(bcoll, bcoll_settings, enabled_colls, box)
+                self.draw_armature_button(bcoll, bcoll_settings, enabled_colls, armature_settings, box)
 
 
 def register():
