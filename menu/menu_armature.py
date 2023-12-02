@@ -12,7 +12,11 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     def draw_armature_button(self, bcoll, bcoll_settings, bcolls, layout):
 
         for b in bcolls:
-            if bcoll.name.lower().endswith(".l") and b.name.lower() == bcoll.name[:-2].lower() + ".r":
+            if (
+                    bcoll.name.lower().endswith(".l") and b.name.lower() == bcoll.name[:-2].lower() + ".r"
+            ) or (
+                    bcoll.name.lower().startswith("left") and b.name.lower() == "right" + bcoll.name[4:].lower()
+            ):
                 row = layout.row()
                 row.prop(bcoll, "is_visible",
                          text=bcoll.name,
@@ -24,7 +28,11 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                          toggle=True,
                          icon=r_icon if r_icon != "NONE" else "BLANK1")
                 return
-            elif bcoll.name.lower().endswith(".r") and b.name.lower() == bcoll.name[:-2].lower() + ".l":
+            elif (
+                    bcoll.name.lower().endswith(".r") and b.name.lower() == bcoll.name[:-2].lower() + ".l"
+            ) or (
+                    bcoll.name.lower().startswith("right") and b.name.lower() == "left" + bcoll.name[5:].lower()
+            ):
                 return
 
         row = layout.row()
@@ -80,6 +88,9 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             box.separator()
 
         enabled_colls = [x for x in obj.collections if x.MustardUI_ArmatureBoneCollection.is_in_UI]
+
+        box.use_property_split = False
+        box.use_property_decorate = True  # No animation.
 
         for bcoll in enabled_colls:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
