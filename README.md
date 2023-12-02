@@ -20,6 +20,8 @@ The main features are:
 
 ## Installation and Configuration
 
+Download the latest version from the [Releases page](https://github.com/Mustard2/MustardUI/releases/latest).
+
 For creators of models, be sure to follow the [Developer Guide](Developer-Guide)!
 
 ## Tutorial
