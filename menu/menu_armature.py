@@ -11,12 +11,20 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
 
     def draw_armature_button(self, bcoll, bcoll_settings, bcolls, armature_settings, layout):
 
+        def draw_with_icon(prop, prop_name, name, icon):
+            if icon != "NONE":
+                row.prop(prop, prop_name,
+                         text=name,
+                         toggle=True,
+                         icon=icon)
+            else:
+                row.prop(prop, prop_name,
+                         text=name,
+                         toggle=True)
+
         if not armature_settings.mirror:
             row = layout.row()
-            row.prop(bcoll, "is_visible",
-                     text=bcoll.name,
-                     toggle=True,
-                     icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1")
+            draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
             return
 
         for b in bcolls:
@@ -26,15 +34,9 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                     bcoll.name.lower().startswith("left") and b.name.lower() == "right" + bcoll.name[4:].lower()
             ):
                 row = layout.row()
-                row.prop(bcoll, "is_visible",
-                         text=bcoll.name,
-                         toggle=True,
-                         icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1")
+                draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
                 r_icon = b.MustardUI_ArmatureBoneCollection.icon
-                row.prop(b, "is_visible",
-                         text=b.name,
-                         toggle=True,
-                         icon=r_icon if r_icon != "NONE" else "BLANK1")
+                draw_with_icon(b, "is_visible", b.name, r_icon)
                 return
             elif (
                     bcoll.name.lower().endswith(".r") and b.name.lower() == bcoll.name[:-2].lower() + ".l"
@@ -44,10 +46,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 return
 
         row = layout.row()
-        row.prop(bcoll, "is_visible",
-                 text=bcoll.name,
-                 toggle=True,
-                 icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1")
+        draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
 
     @classmethod
     def poll(cls, context):
