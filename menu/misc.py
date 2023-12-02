@@ -1,3 +1,6 @@
+import bpy
+
+
 def mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties, box, icons_show):
     box2 = box.box()
     for prop in [x for x in custom_properties if not x.hidden]:
