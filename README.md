@@ -22,7 +22,7 @@ The main features are:
 
 Download the latest version from the [Releases page](https://github.com/Mustard2/MustardUI/releases/latest).
 
-For creators of models, be sure to follow the [Developer Guide](Developer-Guide)!
+For creators of models, be sure to follow the [Developer Guide](https://github.com/Mustard2/MustardUI/wiki/Developer-Guide)!
 
 ## Tutorial
 
