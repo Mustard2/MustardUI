@@ -136,7 +136,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                 if rig_settings.model_MustardUI_naming_convention:
                     row.label(text=item.hair.name[len(rig_settings.model_name) + 1:])
                 else:
-                    row.label(text=item.outfit.name)
+                    row.label(text=item.hair.name)
 
             if addon_prefs.debug:
                 if item.is_animatable:
