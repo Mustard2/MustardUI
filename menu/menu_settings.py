@@ -85,7 +85,6 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                     box.label(icon='ERROR', text="Diffeomorphic version not found!")
 
 
-
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_SettingsPanel)
 
