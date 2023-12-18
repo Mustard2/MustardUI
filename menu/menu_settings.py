@@ -71,14 +71,16 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             elif rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0:
                 box.label(icon='ERROR', text="rig_tools not installed!")
 
-            if settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support:
-                box.label(icon='ERROR', text="Diffeomorphic not enabled!")
-            elif settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support:
-                box.label(icon='ERROR', text="Diffeomorphic not installed!")
+            if rig_settings.diffeomorphic_support:
 
-            if (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
-                settings.status_diffeomorphic_version[2]) <= (1, 6, 0):
-                box.label(icon='ERROR', text="Diffeomorphic 1.5 or below are not supported!")
+                if settings.status_diffeomorphic == 1:
+                    box.label(icon='ERROR', text="Diffeomorphic not enabled!")
+                elif settings.status_diffeomorphic == 0:
+                    box.label(icon='ERROR', text="Diffeomorphic not installed!")
+
+                if (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
+                    settings.status_diffeomorphic_version[2]) <= (1, 6, 0):
+                    box.label(icon='ERROR', text="Diffeomorphic 1.5 or below are not supported!")
 
 
 def register():
