@@ -49,7 +49,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             if platform.system() == 'Windows':
                 box.operator('wm.console_toggle', text="Toggle System Console", icon="CONSOLE")
 
-        if rig_settings.model_version != '' or (addon_prefs.debug and rig_settings.diffeomorphic_support):
+        if rig_settings.model_version != '' or (addon_prefs.debug and rig_settings.diffeomorphic_support and settings.status_diffeomorphic_version[0] > 0):
             box = layout.box()
             box.label(text="Version", icon="INFO")
             if rig_settings.model_version != '':
@@ -79,8 +79,11 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                     box.label(icon='ERROR', text="Diffeomorphic not installed!")
 
                 if (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
-                    settings.status_diffeomorphic_version[2]) <= (1, 6, 0):
+                    settings.status_diffeomorphic_version[2]) <= (1, 6, 0) and settings.status_diffeomorphic_version[0] > -1:
                     box.label(icon='ERROR', text="Diffeomorphic 1.5 or below are not supported!")
+                elif settings.status_diffeomorphic_version[0] == -1:
+                    box.label(icon='ERROR', text="Diffeomorphic version not found!")
+
 
 
 def register():
