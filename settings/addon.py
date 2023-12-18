@@ -97,7 +97,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                 print("MustardUI - Can not find " + addon_name + " version.")
                 return (-1, -1, -1)
 
-            mod = sys.modules[an]
+            mod = addon_utils.addons_fake_modules[an]
             version = mod.bl_info.get('version', (-1, -1, -1))
             print("MustardUI - " + an + " version is " + str(version[0]) + "." + str(version[1]) + "." + str(
                 version[2]) + ".")
