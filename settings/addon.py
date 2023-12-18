@@ -87,7 +87,6 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
 
             an = ""
             for addon in addon_utils.addons_fake_modules:
-                print(addon_name + "   " + addon)
                 if addon_name in addon:
                     default, state = addon_utils.check(addon)
                     if default:
