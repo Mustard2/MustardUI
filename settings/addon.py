@@ -1,5 +1,6 @@
 import bpy
 from bpy.props import *
+from ..misc.updater import mustardui_check_version
 import addon_utils
 import sys
 
@@ -33,6 +34,9 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                                                                            "available on the scene")
 
     panel_model_selection_armature: PointerProperty(type=bpy.types.Armature)
+
+    # MustardUI version check
+    mustardui_update_available: BoolProperty(default=mustardui_check_version())
 
     # RIG TOOLS STATUS
 
@@ -85,15 +89,21 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
             # Find the correct addon name
             addon_utils.modules_refresh()
 
+            an = ""
             for addon in addon_utils.addons_fake_modules:
                 if addon_name in addon:
                     default, state = addon_utils.check(addon)
-                    if state:
+                    if default:
+                        an = addon
                         break
 
-            mod = sys.modules[addon]
+            if an == "":
+                print("MustardUI - Can not find " + addon_name + " version.")
+                return (-1, -1, -1)
+
+            mod = addon_utils.addons_fake_modules[an]
             version = mod.bl_info.get('version', (-1, -1, -1))
-            print("MustardUI - " + addon + " version is " + str(version[0]) + "." + str(version[1]) + "." + str(
+            print("MustardUI - " + an + " version is " + str(version[0]) + "." + str(version[1]) + "." + str(
                 version[2]) + ".")
             return (version[0], version[1], version[2])
         except:

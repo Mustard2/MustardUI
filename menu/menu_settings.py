@@ -49,7 +49,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             if platform.system() == 'Windows':
                 box.operator('wm.console_toggle', text="Toggle System Console", icon="CONSOLE")
 
-        if rig_settings.model_version != '' or (addon_prefs.debug and rig_settings.diffeomorphic_support):
+        if rig_settings.model_version != '' or (addon_prefs.debug and rig_settings.diffeomorphic_support and settings.status_diffeomorphic_version[0] > 0):
             box = layout.box()
             box.label(text="Version", icon="INFO")
             if rig_settings.model_version != '':
@@ -58,27 +58,6 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                 if settings.status_diffeomorphic_version[0] > 0:
                     box.label(text="Diffeomorphic:   " + str(settings.status_diffeomorphic_version[0]) + '.' + str(
                         settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2]))
-
-        if (rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (
-                rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (
-                settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (
-                settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support) or (
-                (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1], settings.status_diffeomorphic_version[2]) <= (1, 6, 0)):
-            box = layout.box()
-
-            if rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1:
-                box.label(icon='ERROR', text="rig_tools not enabled!")
-            elif rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0:
-                box.label(icon='ERROR', text="rig_tools not installed!")
-
-            if settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support:
-                box.label(icon='ERROR', text="Diffeomorphic not enabled!")
-            elif settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support:
-                box.label(icon='ERROR', text="Diffeomorphic not installed!")
-
-            if (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
-                settings.status_diffeomorphic_version[2]) <= (1, 6, 0):
-                box.label(icon='ERROR', text="Diffeomorphic 1.5 or below are not supported!")
 
 
 def register():
