@@ -59,7 +59,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                     box.label(text="Diffeomorphic:   " + str(settings.status_diffeomorphic_version[0]) + '.' + str(
                         settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2]))
 
-        if addon_prefs.debug and (addon_prefs(rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (
+        if addon_prefs.debug and ((rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 0) or (
                 rig_settings.model_rig_type == "arp" and settings.status_rig_tools == 1) or (
                 settings.status_diffeomorphic == 0 and rig_settings.diffeomorphic_support) or (
                 settings.status_diffeomorphic == 1 and rig_settings.diffeomorphic_support) or (
