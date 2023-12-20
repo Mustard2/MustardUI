@@ -14,22 +14,28 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
         active_bone = armature.edit_bones.active or armature.bones.active
         has_active_bone = active_bone and bcoll.name in active_bone.collections
 
+        row = layout.row(align=True)
+
+        # Check if the icon should be drawn
+        for b in armature.collections:
+            if b.MustardUI_ArmatureBoneCollection.icon != "NONE":
+                row.label(text="", icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1")
+                break
+
         if settings.advanced:
-            layout.prop(bcoll, "name", text="", emboss=False,
+            row.prop(bcoll, "name", text="", emboss=False,
                         icon='DOT' if has_active_bone else 'BLANK1')
         else:
-            layout.prop(bcoll, "name", text="", emboss=False)
+            row.prop(bcoll, "name", text="", emboss=False)
 
         if armature.override_library:
             icon = 'LIBRARY_DATA_OVERRIDE' if bcoll.is_local_override else 'BLANK1'
-            layout.prop(
+            row.prop(
                 bcoll,
                 "is_local_override",
                 text="",
                 emboss=False,
                 icon=icon)
-
-        row = layout.row(align=True)
 
         row.label(text="", icon="EXPERIMENTAL" if bcoll_settings.advanced else "BLANK1")
         row.label(text="", icon="MOD_CLOTH" if bcoll_settings.outfit_switcher_enable else "BLANK1")
