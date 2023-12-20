@@ -23,20 +23,20 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, arm = mustardui_active_object(context, config=0)
 
         if arm is not None:
             rig_settings = arm.MustardUI_RigSettings
 
             # Check if at least one panel is available
-            panels = rig_settings.diffeomorphic_emotions or rig_settings.diffeomorphic_emotions_units or rig_settings.diffeomorphic_facs_emotions_units or rig_settings.diffeomorphic_facs_emotions or rig_settings.diffeomorphic_body_morphs
+            panels = (rig_settings.diffeomorphic_emotions or rig_settings.diffeomorphic_emotions_units or
+                      rig_settings.diffeomorphic_facs_emotions_units or rig_settings.diffeomorphic_facs_emotions or
+                      rig_settings.diffeomorphic_body_morphs)
 
-            return res and rig_settings.diffeomorphic_support and panels and rig_settings.diffeomorphic_morphs_number > 0
+            return (res and rig_settings.diffeomorphic_support and panels and
+                    rig_settings.diffeomorphic_morphs_number > 0)
 
-        else:
-            return res
+        return res
 
     def draw_header(self, context):
 
@@ -60,7 +60,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
 
         # Check Diffeomorphic version and inform the user about possible issues
         if (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
-            settings.status_diffeomorphic_version[2]) <= (1, 6, 0):
+            settings.status_diffeomorphic_version[2]) <= (1, 6, 0) and settings.status_diffeomorphic_version[0] > -1:
             box = layout.box()
             box.label(icon='ERROR', text="Diffeomorphic version not supported!")
             box.label(icon='BLANK1', text="Only 1.6 or above is supported.")
