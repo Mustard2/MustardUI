@@ -386,9 +386,12 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 row.enabled = not bcoll_settings.outfit_switcher_enable
                 row.prop(bcoll_settings, 'advanced')
 
-                # Disabled for now due to Blender bug https://projects.blender.org/blender/blender/issues/116061
+                # Warning for Blender bug https://projects.blender.org/blender/blender/issues/116061
                 col = box.column(align=True)
-                col.enabled = False
+                row = col.row(align=True)
+                row.label(text="The feature below might cause", icon="ERROR")
+                row.operator("mustardui.openlink", icon="URL", text="").url = "https://projects.blender.org/blender/blender/issues/116061"
+                col.label(text="crashes due to a Blender bug!", icon="BLANK1")
                 col.prop(bcoll_settings, 'outfit_switcher_enable')
                 if bcoll_settings.outfit_switcher_enable:
                     col.prop(bcoll_settings, 'outfit_switcher_collection', text="Collection")
