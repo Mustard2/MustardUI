@@ -36,7 +36,7 @@ def mustardui_retrieve_remote_version():
 
 def mustardui_check_version():
     exit_code, v = mustardui_retrieve_remote_version()
-    version = (v[0], v[1], v[2], v[4])
+    version = (v[0], v[1], v[2], v[3])
     if bl_info["version"] < version:
         print("MustardUI - An update is available.")
     else:
@@ -58,7 +58,7 @@ class MustardUI_Updater(bpy.types.Operator):
 
     def execute(self, context):
 
-        version = (self.v[0], self.v[1], self.v[2])
+        version = (self.v[0], self.v[1], self.v[2], self.v[3])
 
         if bl_info["version"] >= version:
             self.report({'INFO'}, "MustardUI: The current version is already up-to-date")
@@ -85,7 +85,7 @@ class MustardUI_Updater(bpy.types.Operator):
 
         layout = self.layout
 
-        version = (self.v[0], self.v[1], self.v[2])
+        version = (self.v[0], self.v[1], self.v[2], self.v[3])
 
         box = layout.box()
 
