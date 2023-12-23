@@ -15,9 +15,9 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
 
         if obj is not None:
+            rig_settings = obj.MustardUI_RigSettings
             check_arp = rig_settings.model_rig_type == "arp" and settings.status_rig_tools != 2
             check_diffeomorphic = (rig_settings.diffeomorphic_support and settings.status_diffeomorphic == 2 and
                                    (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
