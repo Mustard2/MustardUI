@@ -89,7 +89,7 @@ class MustardUI_Updater(bpy.types.Operator):
 
         box = layout.box()
 
-        if bl_info["version"] > version:
+        if bl_info["version"] >= version:
             box.label(text="The current version seems up-to-date.", icon="INFO")
         else:
             box.label(text="Update available!", icon="INFO")
