@@ -36,7 +36,7 @@ def mustardui_retrieve_remote_version():
 
 def mustardui_check_version():
     exit_code, v = mustardui_retrieve_remote_version()
-    version = (v[0], v[1], v[2])
+    version = (v[0], v[1], v[2], v[4])
     if bl_info["version"] < version:
         print("MustardUI - An update is available.")
     else:
