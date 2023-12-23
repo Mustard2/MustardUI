@@ -15,15 +15,18 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
 
-        check_arp = rig_settings.model_rig_type == "arp" and settings.status_rig_tools != 2
-        check_diffeomorphic = (rig_settings.diffeomorphic_support and settings.status_diffeomorphic == 2 and
-                               (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
-                                settings.status_diffeomorphic_version[2]) <= (1, 6, 0)
-                               and settings.status_diffeomorphic_version[0] > -1)
-        check_mhx = rig_settings.diffeomorphic_support and settings.status_mhx != 2
-        return settings.mustardui_update_available or check_old_UI() or check_eevee_normals(context.scene, settings) or check_arp or check_diffeomorphic or check_mhx
+        if obj is not None:
+            rig_settings = obj.MustardUI_RigSettings
+            check_arp = rig_settings.model_rig_type == "arp" and settings.status_rig_tools != 2
+            check_diffeomorphic = (rig_settings.diffeomorphic_support and settings.status_diffeomorphic == 2 and
+                                   (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
+                                    settings.status_diffeomorphic_version[2]) <= (1, 6, 0)
+                                   and settings.status_diffeomorphic_version[0] > -1)
+            check_mhx = rig_settings.diffeomorphic_support and settings.status_mhx != 2
+            return poll and (settings.mustardui_update_available or check_old_UI() or check_eevee_normals(context.scene, settings) or check_arp or check_diffeomorphic or check_mhx)
+
+        return poll
 
     def draw_header(self, context):
         self.layout.label(text="", icon="ERROR")
@@ -41,6 +44,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             box = layout.box()
             col = box.column(align=True)
             col.label(text="MustardUI update available!", icon="ERROR")
+            col.label(text="Remember to restart after updating.", icon="BLANK1")
             box.operator("mustardui.openlink", icon="URL").url = "github.com/Mustard2/MustardUI/releases/latest"
 
         # Old UI scripts
