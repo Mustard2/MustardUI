@@ -39,6 +39,10 @@ class MustardUI_Section_UIList_Switch(bpy.types.Operator):
         index = self.move_index(uilist, index)
         context.scene.mustardui_section_uilist_index = index
 
+        # Remove the subsection status if there is no new parent section
+        if index == 0:
+            uilist[index].is_subsection = False
+
         return {'FINISHED'}
 
 
@@ -65,6 +69,10 @@ class MustardUI_Body_DeleteSection(bpy.types.Operator):
         uilist.remove(index)
         index = min(max(0, index - 1), len(uilist) - 1)
         context.scene.mustardui_section_uilist_index = index
+
+        # Remove the subsection status if there is no new parent section
+        if index == 0:
+            uilist[index].is_subsection = False
 
         obj.update_tag()
 
@@ -105,7 +113,10 @@ class MUSTARDUI_UL_Section_UIList(bpy.types.UIList):
         row = layout.row(align=True)
 
         row.label(text="", icon=item.icon if item.icon != "NONE" else "DOT")
-        row.prop(item, 'name', text="", emboss=False, translate=False)
+        if item.is_subsection:
+            row.prop(item, 'name', text="", emboss=False, translate=False, icon="FILE_PARENT")
+        else:
+            row.prop(item, 'name', text="", emboss=False, translate=False)
 
         res, obj = mustardui_active_object(context, config=1)
         custom_props = obj.MustardUI_CustomProperties

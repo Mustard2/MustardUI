@@ -31,6 +31,10 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
     description_icon: EnumProperty(name='Description Icon',
                                    items=mustardui_icon_list)
 
+    # Subsection
+    is_subsection: BoolProperty(name="Sub-section",
+                                default=False)
+
 
 def register():
     bpy.utils.register_class(MustardUI_SectionItem)
