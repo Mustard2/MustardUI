@@ -108,13 +108,13 @@ class MustardUI_Body_AddSection(bpy.types.Operator):
 class MUSTARDUI_UL_Section_UIList(bpy.types.UIList):
     """UIList for sections"""
 
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index):
 
         row = layout.row(align=True)
 
         row.label(text="", icon=item.icon if item.icon != "NONE" else "DOT")
         if item.is_subsection:
-            row.prop(item, 'name', text="", emboss=False, translate=False, icon="FILE_PARENT")
+            row.prop(item, 'name', text="", emboss=False, translate=False, icon="REMOVE")
         else:
             row.prop(item, 'name', text="", emboss=False, translate=False)
 

@@ -201,17 +201,28 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                                      emboss=False)
 
             sec_num = len(rig_settings.body_custom_properties_sections)
-            for id, section in enumerate([x for x in rig_settings.body_custom_properties_sections if not x.is_subsection]):
+            id = 0
+            for section in rig_settings.body_custom_properties_sections:
+
+                # Subsections are drawn inside standard sections
+                if section.is_subsection:
+                    continue
+
+                # Draw main section
                 sublayout, subcollapse = draw_section(context, layout, obj, settings, rig_settings, custom_props, section)
 
-                sid = id + 1
-                if sid >= sec_num:
+                # Draw subsections if available
+                id = id + 1
+                if id >= sec_num:
                     break
-                subsec = rig_settings.body_custom_properties_sections[sid]
-                while subsec.is_subsection and sid < sec_num:
-                    subsec = rig_settings.body_custom_properties_sections[sid]
+
+                subsec = rig_settings.body_custom_properties_sections[id]
+                while subsec.is_subsection:
                     draw_section(context, sublayout, obj, settings, rig_settings, custom_props, subsec, subcollapse)
-                    sid = sid + 1
+                    id = id + 1
+                    if id >= sec_num:
+                        break
+                    subsec = rig_settings.body_custom_properties_sections[id]
 
         # Geometry nodes as sections
         gnm = [x for x in rig_settings.model_body.modifiers if x.type == "NODES"]
