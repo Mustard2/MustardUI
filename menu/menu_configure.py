@@ -200,6 +200,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 col.prop(rig_settings, "outfits_enable_global_subsurface")
                 col.prop(rig_settings, "outfits_enable_global_smoothcorrection")
                 col.prop(rig_settings, "outfits_enable_global_shrinkwrap")
+                col.prop(rig_settings, "outfits_enable_global_surfacedeform")
                 col.prop(rig_settings, "outfits_enable_global_mask")
                 col.prop(rig_settings, "outfits_enable_global_solidify")
                 col.prop(rig_settings, "outfits_enable_global_triangulate")

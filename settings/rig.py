@@ -235,6 +235,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default=False,
                                                                    name="Smooth Correction modifiers")
 
+    outfits_enable_global_surfacedeform: bpy.props.BoolProperty(default=False,
+                                                             name="Surface Deform modifiers")
+
     outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(default=False,
                                                              name="Shrinkwrap modifiers")
 
@@ -416,6 +419,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     elif modifier.type == "SHRINKWRAP" and self.outfits_enable_global_shrinkwrap:
                         modifier.show_viewport = self.outfits_global_shrinkwrap
                         modifier.show_render = self.outfits_global_shrinkwrap
+                    elif modifier.type == "SURFACE_DEFORM" and self.outfits_enable_global_surfacedeform:
+                        modifier.show_viewport = self.outfits_global_surfacedeform
+                        modifier.show_render = self.outfits_global_surfacedeform
                     elif modifier.type == "SOLIDIFY" and self.outfits_enable_global_solidify:
                         modifier.show_viewport = self.outfits_global_solidify
                         modifier.show_render = self.outfits_global_solidify
@@ -460,6 +466,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfits_global_shrinkwrap: bpy.props.BoolProperty(default=True,
                                                       name="Shrinkwrap",
                                                       update=outfits_global_options_update)
+
+    outfits_global_surfacedeform: bpy.props.BoolProperty(default=True,
+                                                         name="Surface Deform",
+                                                         update=outfits_global_options_update)
 
     outfits_global_mask: bpy.props.BoolProperty(default=True,
                                                 name="Mask",

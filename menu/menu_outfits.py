@@ -155,7 +155,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                              icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
 
             # Outfit global properties
-            if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
+            if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
 
                 box = layout.box()
                 row = box.row(align=True)
@@ -169,6 +169,8 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     col.prop(rig_settings, "outfits_global_smoothcorrection")
                 if rig_settings.outfits_enable_global_shrinkwrap:
                     col.prop(rig_settings, "outfits_global_shrinkwrap")
+                if rig_settings.outfits_enable_global_surfacedeform:
+                    col.prop(rig_settings, "outfits_global_surfacedeform")
                 if rig_settings.outfits_enable_global_mask:
                     col.prop(rig_settings, "outfits_global_mask")
                 if rig_settings.outfits_enable_global_solidify:
