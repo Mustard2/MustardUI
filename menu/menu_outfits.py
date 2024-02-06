@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from .misc import *
 
@@ -12,6 +13,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
+
+        if check_old_UI():
+            return False
 
         res, arm = mustardui_active_object(context, config=0)
 
@@ -30,9 +34,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
             return res and (outfits_avail or extras_avail) if arm is not None else False
 
-        else:
-
-            return res
+        return res
 
     def draw(self, context):
 
@@ -155,7 +157,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                              icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
 
             # Outfit global properties
-            if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
+            if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
 
                 box = layout.box()
                 row = box.row(align=True)
@@ -169,6 +171,8 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     col.prop(rig_settings, "outfits_global_smoothcorrection")
                 if rig_settings.outfits_enable_global_shrinkwrap:
                     col.prop(rig_settings, "outfits_global_shrinkwrap")
+                if rig_settings.outfits_enable_global_surfacedeform:
+                    col.prop(rig_settings, "outfits_global_surfacedeform")
                 if rig_settings.outfits_enable_global_mask:
                     col.prop(rig_settings, "outfits_global_mask")
                 if rig_settings.outfits_enable_global_solidify:

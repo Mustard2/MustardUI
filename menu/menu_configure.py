@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
 
 
 class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
@@ -11,6 +12,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
+        if check_old_UI():
+            return False
+
         res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons["MustardUI"].preferences
         return res and addon_prefs.developer
@@ -99,56 +103,57 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.label(text="Sections", icon="LINENUMBERS_OFF")
             box.prop(rig_settings, "body_enable_geometry_nodes_support")
             if len(arm.MustardUI_CustomProperties) > 0:
-                if len(rig_settings.body_custom_properties_sections) == 0:
-                    box.operator('mustardui.body_addsection')
-                else:
+                row = box.row()
+                row.template_list("MUSTARDUI_UL_Section_UIList", "The_List", rig_settings,
+                                  "body_custom_properties_sections", scene,
+                                  "mustardui_section_uilist_index")
+                col = row.column()
+                col2 = col.column(align=True)
+                col2.operator('mustardui.body_assign_to_section', text="", icon="PRESET")
+                col.separator()
+                col2 = col.column(align=True)
+                col2.operator('mustardui.section_add', text="", icon="ADD")
+                col2.operator('mustardui.body_deletesection', text="", icon="REMOVE")
+                col.separator()
+                col2 = col.column(align=True)
+                opup = col2.operator('mustardui.section_switch', icon="TRIA_UP", text="")
+                opup.direction = "UP"
+                opdown = col2.operator('mustardui.section_switch', icon="TRIA_DOWN", text="")
+                opdown.direction = "DOWN"
+
+                if scene.mustardui_section_uilist_index > -1:
+                    sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
 
                     row = box.row()
-                    row.template_list("MUSTARDUI_UL_Section_UIList", "The_List", rig_settings,
-                                      "body_custom_properties_sections", scene,
-                                      "mustardui_section_uilist_index")
-                    col = row.column()
-                    col2 = col.column(align=True)
-                    col2.operator('mustardui.body_assign_to_section', text="", icon="PRESET")
-                    col.separator()
-                    col2 = col.column(align=True)
-                    col2.operator('mustardui.section_add', text="", icon="ADD")
-                    col2.operator('mustardui.body_deletesection', text="", icon="REMOVE")
-                    col.separator()
-                    col2 = col.column(align=True)
-                    opup = col2.operator('mustardui.section_switch', icon="TRIA_UP", text="")
-                    opup.direction = "UP"
-                    opdown = col2.operator('mustardui.section_switch', icon="TRIA_DOWN", text="")
-                    opdown.direction = "DOWN"
+                    row.label(text="Icon")
+                    row.scale_x = row_scale
+                    row.prop(sec, "icon", text="")
 
-                    if scene.mustardui_section_uilist_index > -1:
-                        sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
+                    col = box.column(align=True)
 
-                        row = box.row()
-                        row.label(text="Icon")
-                        row.scale_x = row_scale
-                        row.prop(sec, "icon", text="")
+                    row = col.row()
+                    row.label(text="Description")
+                    row.scale_x = row_scale
+                    row.prop(sec, "description", text="")
 
-                        col = box.column(align=True)
+                    row = col.row()
+                    row.enabled = sec.description != ""
+                    row.label(text="Icon")
+                    row.scale_x = row_scale
+                    row.prop(sec, "description_icon", text="")
 
-                        row = col.row()
-                        row.label(text="Description")
-                        row.scale_x = row_scale
-                        row.prop(sec, "description", text="")
+                    col = box.column(align=True)
+                    row = col.row()
+                    row.enabled = scene.mustardui_section_uilist_index != 0
+                    row.prop(sec, "is_subsection")
 
-                        row = col.row()
-                        row.enabled = sec.description != ""
-                        row.label(text="Icon")
-                        row.scale_x = row_scale
-                        row.prop(sec, "description_icon", text="")
+                    col = box.column(align=True)
 
-                        col = box.column(align=True)
+                    row = col.row()
+                    row.prop(sec, "advanced")
 
-                        row = col.row()
-                        row.prop(sec, "advanced")
-
-                        row = col.row()
-                        row.prop(sec, "collapsable")
+                    row = col.row()
+                    row.prop(sec, "collapsable")
 
         # Outfits Settings
         row = layout.row(align=False)
@@ -199,6 +204,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 col.prop(rig_settings, "outfits_enable_global_subsurface")
                 col.prop(rig_settings, "outfits_enable_global_smoothcorrection")
                 col.prop(rig_settings, "outfits_enable_global_shrinkwrap")
+                col.prop(rig_settings, "outfits_enable_global_surfacedeform")
                 col.prop(rig_settings, "outfits_enable_global_mask")
                 col.prop(rig_settings, "outfits_enable_global_solidify")
                 col.prop(rig_settings, "outfits_enable_global_triangulate")

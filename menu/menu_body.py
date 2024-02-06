@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 import textwrap
 
@@ -21,6 +22,58 @@ def _label_multiline(context, text, parent, icon):
                 parent.label(text=text_line, icon="BLANK1")
 
 
+def draw_section(context, layout, obj, settings, rig_settings, custom_props, section, draw_sub = True):
+    if rig_settings.body_custom_properties_name_order:
+        custom_properties_section = sorted([x for x in custom_props if
+                                            x.section == section.name and not x.hidden and (
+                                                not x.advanced if not settings.advanced else True)],
+                                           key=lambda x: x.name)
+    else:
+        custom_properties_section = [x for x in custom_props if
+                                     x.section == section.name and not x.hidden and (
+                                         not x.advanced if not settings.advanced else True)]
+    if len(custom_properties_section) > 0 and (
+            not section.advanced or (section.advanced and settings.advanced)) and draw_sub:
+        box = layout.box()
+        row = box.row(align=False)
+        if section.collapsable:
+            row.prop(section, "collapsed",
+                     icon="TRIA_DOWN" if not section.collapsed else "TRIA_RIGHT",
+                     icon_only=True,
+                     emboss=False)
+        if section.icon != "" and section.icon != "NONE":
+            row.label(text=section.name, icon=section.icon)
+        else:
+            row.label(text=section.name)
+        if not section.collapsed:
+            if section.description != "":
+                box2 = box.box()
+                _label_multiline(context=context, text=section.description, parent=box2,
+                                 icon=section.description_icon)
+            for prop in custom_properties_section:
+                row = box.row()
+                if rig_settings.body_custom_properties_icons:
+                    row.label(text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT")
+                else:
+                    row.label(text=prop.name)
+                if not prop.is_animatable:
+                    try:
+                        row.prop(eval(prop.rna), prop.path, text="")
+                    except:
+                        row.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="",
+                                 icon_only=True, emboss=False)
+                else:
+                    if prop.prop_name in obj.keys():
+                        row.prop(obj, '["' + prop.prop_name + '"]', text="")
+                    else:
+                        row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
+                                 emboss=False)
+
+        return box, not section.collapsed
+
+    return layout, False
+
+
 class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Body"
     bl_label = "Body"
@@ -28,6 +81,10 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
+
+        if check_old_UI():
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
 
         if arm is not None:
@@ -148,52 +205,29 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                             row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
                                      emboss=False)
 
+            sec_num = len(rig_settings.body_custom_properties_sections)
+            id = 0
             for section in rig_settings.body_custom_properties_sections:
-                if rig_settings.body_custom_properties_name_order:
-                    custom_properties_section = sorted([x for x in custom_props if
-                                                        x.section == section.name and not x.hidden and (
-                                                            not x.advanced if not settings.advanced else True)],
-                                                       key=lambda x: x.name)
-                else:
-                    custom_properties_section = [x for x in custom_props if
-                                                 x.section == section.name and not x.hidden and (
-                                                     not x.advanced if not settings.advanced else True)]
-                if len(custom_properties_section) > 0 and (
-                        not section.advanced or (section.advanced and settings.advanced)):
-                    box = layout.box()
-                    row = box.row(align=False)
-                    if section.collapsable:
-                        row.prop(section, "collapsed",
-                                 icon="TRIA_DOWN" if not section.collapsed else "TRIA_RIGHT",
-                                 icon_only=True,
-                                 emboss=False)
-                    if section.icon != "" and section.icon != "NONE":
-                        row.label(text=section.name, icon=section.icon)
-                    else:
-                        row.label(text=section.name)
-                    if not section.collapsed:
-                        if section.description != "":
-                            box2 = box.box()
-                            _label_multiline(context=context, text=section.description, parent=box2,
-                                             icon=section.description_icon)
-                        for prop in custom_properties_section:
-                            row = box.row()
-                            if rig_settings.body_custom_properties_icons:
-                                row.label(text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT")
-                            else:
-                                row.label(text=prop.name)
-                            if not prop.is_animatable:
-                                try:
-                                    row.prop(eval(prop.rna), prop.path, text="")
-                                except:
-                                    row.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="",
-                                             icon_only=True, emboss=False)
-                            else:
-                                if prop.prop_name in obj.keys():
-                                    row.prop(obj, '["' + prop.prop_name + '"]', text="")
-                                else:
-                                    row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
-                                             emboss=False)
+
+                # Subsections are drawn inside standard sections
+                if section.is_subsection:
+                    continue
+
+                # Draw main section
+                sublayout, subcollapse = draw_section(context, layout, obj, settings, rig_settings, custom_props, section)
+
+                # Draw subsections if available
+                id = id + 1
+                if id >= sec_num:
+                    break
+
+                subsec = rig_settings.body_custom_properties_sections[id]
+                while subsec.is_subsection:
+                    draw_section(context, sublayout, obj, settings, rig_settings, custom_props, subsec, subcollapse)
+                    id = id + 1
+                    if id >= sec_num:
+                        break
+                    subsec = rig_settings.body_custom_properties_sections[id]
 
         # Geometry nodes as sections
         gnm = [x for x in rig_settings.model_body.modifiers if x.type == "NODES"]

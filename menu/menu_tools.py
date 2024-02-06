@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 
 
@@ -12,14 +13,16 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
 
+        if check_old_UI():
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
-        if arm != None:
+        if arm is not None:
             rig_settings = arm.MustardUI_RigSettings
             return res and (arm.MustardUI_ToolsSettings.childof_enable or (
                     arm.MustardUI_ToolsSettings.lips_shrinkwrap_enable and rig_settings.model_rig_type in ["arp",
                                                                                                            "mhx"]))
-        else:
-            return res
+        return res
 
     def draw(self, context):
 

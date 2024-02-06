@@ -1,10 +1,13 @@
 import bpy
 from bpy.props import *
+
 from ..model_selection.active_object import *
 
 
+# Check presence of old UI scripts
 def check_old_UI():
-    # Check presence of old UI scripts
+    import bpy
+
     for file in bpy.data.texts:
         if "mustard_ui.py" in file.name:
             return True
@@ -23,11 +26,22 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
     def poll(cls, context):
         return check_old_UI()
 
+    def invoke(self, context, event):
+
+        return context.window_manager.invoke_props_dialog(self, width=450)
+
+    def draw(self, context):
+
+        layout = self.layout
+        box = layout.box()
+
+        box.label(text="This script removes all old MustardUI script", icon="INFO")
+        box.label(text="Ignore the errors, and save and restart Blender after using this!", icon="ERROR")
+
     def execute(self, context):
 
         # Number of UI scripts removed
         nc = 0
-
         # Number of errors
         ne = 0
 
@@ -43,7 +57,7 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
             self.report({'ERROR'}, 'MustardUI - An error occurred while removing '
                         + str(ne) + ' scripts (' + str(nc) + ' removed).')
 
-        self.report({'INFO'}, 'MustardUI - Removed ' + str(nc) + ' scripts. Restart Blender!')
+        self.report({'INFO'}, 'MustardUI - Removed ' + str(nc) + ' scripts. Save and restart Blender!')
 
         return {'FINISHED'}
 

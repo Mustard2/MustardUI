@@ -26,7 +26,6 @@ class MustardUI_Configuration(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         lattice_settings = obj.MustardUI_LatticeSettings
-        #armature_settings = obj.MustardUI_ArmatureSettings
         tools_settings = obj.MustardUI_ToolsSettings
         addon_prefs = context.preferences.addons["MustardUI"].preferences
 
@@ -179,6 +178,10 @@ class MustardUI_Configuration(bpy.types.Operator):
             bpy.ops.mustardui.viewportmodelselection()
 
         obj.MustardUI_created = True
+
+        # Fix for #148 - https://github.com/Mustard2/MustardUI/issues/148
+        for sec in rig_settings.body_custom_properties_sections:
+            sec.old_name = sec.name
 
         return {'FINISHED'}
 

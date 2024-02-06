@@ -1,6 +1,8 @@
 import bpy
+
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..misc.prop_utils import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
 
@@ -17,6 +19,11 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=0)
 
         if obj is not None:
+            # If an old script is available, only this warning is shown
+            # Fix for: https://github.com/Mustard2/MustardUI/issues/150
+            if check_old_UI():
+                return poll
+
             rig_settings = obj.MustardUI_RigSettings
             check_arp = rig_settings.model_rig_type == "arp" and settings.status_rig_tools != 2
             check_diffeomorphic = (rig_settings.diffeomorphic_support and settings.status_diffeomorphic == 2 and
@@ -24,7 +31,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
                                     settings.status_diffeomorphic_version[2]) <= (1, 6, 0)
                                    and settings.status_diffeomorphic_version[0] > -1)
             check_mhx = rig_settings.diffeomorphic_support and settings.status_mhx != 2
-            return poll and (settings.mustardui_update_available or check_old_UI() or check_eevee_normals(context.scene, settings) or check_arp or check_diffeomorphic or check_mhx)
+            return poll and (property_value(settings, "mustardui_update_available") or check_eevee_normals(context.scene, settings) or check_arp or check_diffeomorphic or check_mhx)
 
         return poll
 
@@ -39,20 +46,23 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        # New MustardUI version available
-        if settings.mustardui_update_available:
-            box = layout.box()
-            col = box.column(align=True)
-            col.label(text="MustardUI update available!", icon="ERROR")
-            col.label(text="Remember to restart after updating.", icon="BLANK1")
-            box.operator("mustardui.openlink", icon="URL").url = "github.com/Mustard2/MustardUI/releases/latest"
-
         # Old UI scripts
         if check_old_UI():
             box = layout.box()
             col = box.column(align=True)
             col.label(text="Old UI script found!", icon="ERROR")
+            col.label(text="Save and restart after using this!", icon="BLANK1")
             box.operator("mustardui.warnings_fix_old_ui")
+            # Fix for: https://github.com/Mustard2/MustardUI/issues/150
+            return
+
+        # New MustardUI version available
+        if property_value(settings, "mustardui_update_available"):
+            box = layout.box()
+            col = box.column(align=True)
+            col.label(text="MustardUI update available!", icon="ERROR")
+            col.label(text="Remember to restart after updating.", icon="BLANK1")
+            box.operator("mustardui.openlink", icon="URL").url = "github.com/Mustard2/MustardUI/releases/latest"
 
         # Eevee normals enabled in Cycles
         if check_eevee_normals(context.scene, settings):

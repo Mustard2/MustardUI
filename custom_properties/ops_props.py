@@ -221,18 +221,19 @@ class MustardUI_Property_Remove(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, obj = mustardui_active_object(context, config=1)
-        return obj != None
+        return obj is not None
 
     def execute(self, context):
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
+
+        addon_prefs = context.preferences.addons["MustardUI"].preferences
 
         if len(uilist) <= index:
             return {'FINISHED'}
 
         # Remove custom property and driver
-        mustardui_clean_prop(obj, uilist, index, settings)
+        mustardui_clean_prop(obj, uilist, index, addon_prefs)
 
         uilist.remove(index)
         index = min(max(0, index - 1), len(uilist) - 1)
