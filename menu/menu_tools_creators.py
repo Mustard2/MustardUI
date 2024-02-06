@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
 
 
 class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
@@ -9,6 +10,9 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
+        if check_old_UI():
+            return False
+
         res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons["MustardUI"].preferences
         return res and addon_prefs.developer and addon_prefs.experimental

@@ -1,7 +1,9 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
+
 
 class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_SelectModel"
@@ -9,6 +11,9 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
+        if check_old_UI():
+            return False
+
         settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=0)
         return res and len(
