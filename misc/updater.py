@@ -13,13 +13,14 @@ def mustardui_retrieve_remote_version():
 
     # Import the data from the GitHub repository file
     try:
-        response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/master/__init__.py")
+        response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/Version-0.31.1/__init__.py")
         data = response.text
     except:
         return 1, v, b
 
     # Fetch version
     try:
+        print(data)
         if '"version": (' in data and '"blender": (' in data:
             find = data.split('"version": (', 1)[1]
             v[0] = int(find.split(',')[0])
@@ -91,7 +92,7 @@ class MustardUI_Updater(bpy.types.Operator):
             self.report({'ERROR'}, "MustardUI: Can not find the version number of the remote repository")
             return {'FINISHED'}
 
-        return context.window_manager.invoke_props_dialog(self, width=300)
+        return context.window_manager.invoke_props_dialog(self, width=400)
 
     def draw(self, context):
 
@@ -107,9 +108,12 @@ class MustardUI_Updater(bpy.types.Operator):
         else:
             if bpy.app.version >= blender:
                 box.label(text="Update available!", icon="INFO")
+                box.label(text="Restart after updating.", icon="ERROR")
             else:
                 box.label(text="Update is available for a new Blender version!", icon="INFO")
-                box.label(text="Update Blender before installing the new MustardUI.", icon="INFO")
+                box.label(text="Update Blender before installing the new MustardUI.", icon="ERROR")
+
+        box = layout.box()
 
         row = box.row()
         row.label(text="Current version: ", icon="RIGHTARROW_THIN")
@@ -126,7 +130,7 @@ class MustardUI_Updater(bpy.types.Operator):
                 box.label(text="Click 'OK' to open the latest release page.", icon="ERROR")
             else:
                 row = box.row()
-                row.label(text="Minimum Blender version required: ", icon="WORLD")
+                row.label(text="Blender version required: ", icon="BLENDER")
                 row.label(
                     text=str(self.b[0]) + '.' + str(self.b[1]) + '.' + str(self.b[2]))
 

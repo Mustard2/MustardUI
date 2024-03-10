@@ -61,7 +61,6 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             box = layout.box()
             col = box.column(align=True)
             col.label(text="MustardUI update available!", icon="ERROR")
-            col.label(text="Restart after updating.", icon="BLANK1")
             box.operator("mustardui.updater", icon="WORLD")
 
         # Eevee normals enabled in Cycles
