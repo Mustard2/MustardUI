@@ -64,7 +64,16 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
-        self.model_body.data.use_auto_smooth = self.body_norm_autosmooth
+
+        if bpy.app.version < (4, 1, 0):
+            self.model_body.data.use_auto_smooth = self.body_norm_autosmooth
+            return
+
+        for modifier in [x for x in self.model_body.modifiers if x.type == "NODES"]:
+            if modifier.node_group.name != "Smooth by Angle":
+                return
+            modifier.show_viewport = self.body_norm_autosmooth
+            modifier.show_render = self.body_norm_autosmooth
 
     # Update function for Smooth Correction modifiers
     def update_solidify(self, context):
