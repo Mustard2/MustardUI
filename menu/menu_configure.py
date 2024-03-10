@@ -392,18 +392,12 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 row.enabled = not bcoll_settings.outfit_switcher_enable
                 row.prop(bcoll_settings, 'advanced')
 
-                # Warning for Blender bug https://projects.blender.org/blender/blender/issues/116061
-                if addon_prefs.experimental:
-                    col = box.column(align=True)
-                    row = col.row(align=True)
-                    row.label(text="The feature below might cause", icon="ERROR")
-                    row.operator("mustardui.openlink", icon="URL", text="").url = "https://projects.blender.org/blender/blender/issues/116061"
-                    col.label(text="crashes due to a Blender bug!", icon="BLANK1")
-                    col.prop(bcoll_settings, 'outfit_switcher_enable')
-                    if bcoll_settings.outfit_switcher_enable:
-                        col.prop(bcoll_settings, 'outfit_switcher_collection', text="Collection")
-                        if bcoll_settings.outfit_switcher_collection is not None:
-                            col.prop(bcoll_settings, 'outfit_switcher_object', text="Object")
+                col = box.column(align=True)
+                col.prop(bcoll_settings, 'outfit_switcher_enable')
+                if bcoll_settings.outfit_switcher_enable:
+                    col.prop(bcoll_settings, 'outfit_switcher_collection', text="Collection")
+                    if bcoll_settings.outfit_switcher_collection is not None:
+                        col.prop(bcoll_settings, 'outfit_switcher_object', text="Object")
 
         # Physics Settings
         row = layout.row(align=False)
