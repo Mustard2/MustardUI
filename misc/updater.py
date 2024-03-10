@@ -13,7 +13,7 @@ def mustardui_retrieve_remote_version():
 
     # Import the data from the GitHub repository file
     try:
-        response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/Version-0.31.1/__init__.py")
+        response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/master/__init__.py")
         data = response.text
     except:
         return 1, v, b
