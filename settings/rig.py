@@ -70,6 +70,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             return
 
         for modifier in [x for x in self.model_body.modifiers if x.type == "NODES"]:
+            if modifier.node_group is None:
+                continue
             if modifier.node_group.name != "Smooth by Angle":
                 continue
             modifier.show_viewport = self.body_norm_autosmooth
