@@ -288,7 +288,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def update_armature_outfit_layers(self, context, armature_settings):
 
         poll, arm = mustardui_active_object(context, config=0)
-        bcolls = [x for x in arm.collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
+        bcolls = [x for x in arm.collections_all if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
                   and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection is not None]
 
         for bcoll in bcolls:
