@@ -20,7 +20,6 @@ def mustardui_retrieve_remote_version():
 
     # Fetch version
     try:
-        print(data)
         if '"version": (' in data and '"blender": (' in data:
             find = data.split('"version": (', 1)[1]
             v[0] = int(find.split(',')[0])
