@@ -18,10 +18,10 @@ def register():
 
 
 def unregister():
-    settings.unregister()
-    lattice.unregister()
-    physics.unregister()
-    eevee_normals.unregister()
-    childof.unregister()
-    auto_eyelid.unregister()
     auto_breath.unregister()
+    auto_eyelid.unregister()
+    childof.unregister()
+    eevee_normals.unregister()
+    physics.unregister()
+    lattice.unregister()
+    settings.unregister()

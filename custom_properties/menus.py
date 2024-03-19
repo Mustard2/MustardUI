@@ -221,10 +221,10 @@ def register():
 
 
 def unregister():
-    for m in menus:
+    for m in reversed(menus):
         bpy.utils.unregister_class(m)
 
-    from .menus_functions import mustardui_property_menuadd
-    bpy.types.UI_MT_button_context_menu.remove(mustardui_property_menuadd)
     from .menus_functions import mustardui_property_link
     bpy.types.UI_MT_button_context_menu.remove(mustardui_property_link)
+    from .menus_functions import mustardui_property_menuadd
+    bpy.types.UI_MT_button_context_menu.remove(mustardui_property_menuadd)

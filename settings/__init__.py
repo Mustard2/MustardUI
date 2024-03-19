@@ -18,10 +18,10 @@ def register():
 
 
 def unregister():
-    addon_prefs.unregister()
-    addon.unregister()
-    outfit.unregister()
-    daz_morph.unregister()
-    section.unregister()
-    rig.unregister()
     geometry_nodes.unregister()
+    rig.unregister()
+    section.unregister()
+    daz_morph.unregister()
+    outfit.unregister()
+    addon.unregister()
+    addon_prefs.unregister()

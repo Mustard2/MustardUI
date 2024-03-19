@@ -8,5 +8,5 @@ def register():
 
 
 def unregister():
-    ops_assign.unregister()
     ui_list.unregister()
+    ops_assign.unregister()

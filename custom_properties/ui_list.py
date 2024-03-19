@@ -186,5 +186,5 @@ def register():
 
 
 def unregister():
-    for m in menus:
+    for m in reversed(menus):
         bpy.utils.unregister_class(m)

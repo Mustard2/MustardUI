@@ -8,5 +8,5 @@ def register():
 
 
 def unregister():
-    ops_fix_old_UI.unregister()
     ops_fix_eevee_normals.unregister()
+    ops_fix_old_UI.unregister()

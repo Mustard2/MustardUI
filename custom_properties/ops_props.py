@@ -295,6 +295,6 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Property_MenuAdd)
-    bpy.utils.unregister_class(MustardUI_Property_Remove)
     bpy.utils.unregister_class(MustardUI_Property_Switch)
+    bpy.utils.unregister_class(MustardUI_Property_Remove)
+    bpy.utils.unregister_class(MustardUI_Property_MenuAdd)

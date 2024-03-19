@@ -642,10 +642,10 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Tools_Physics_CreateItem)
-    bpy.utils.unregister_class(MustardUI_Tools_Physics_SimulateObject)
-    bpy.utils.unregister_class(MustardUI_Tools_Physics_Clean)
-    bpy.utils.unregister_class(MustardUI_Tools_Physics_ReBind)
-    bpy.utils.unregister_class(MustardUI_Tools_Physics_DeleteItem)
-    bpy.utils.unregister_class(MustardUI_PhysicsItem)
     bpy.utils.unregister_class(MustardUI_PhysicsSettings)
+    bpy.utils.unregister_class(MustardUI_PhysicsItem)
+    bpy.utils.unregister_class(MustardUI_Tools_Physics_DeleteItem)
+    bpy.utils.unregister_class(MustardUI_Tools_Physics_ReBind)
+    bpy.utils.unregister_class(MustardUI_Tools_Physics_Clean)
+    bpy.utils.unregister_class(MustardUI_Tools_Physics_SimulateObject)
+    bpy.utils.unregister_class(MustardUI_Tools_Physics_CreateItem)

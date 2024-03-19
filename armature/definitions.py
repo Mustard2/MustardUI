@@ -142,5 +142,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ArmatureBoneCollection)
     bpy.utils.unregister_class(MustardUI_ArmatureSettings)
+    bpy.utils.unregister_class(MustardUI_ArmatureBoneCollection)

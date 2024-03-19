@@ -57,5 +57,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MUSTARDUI_UL_Outfits_UIList)
     bpy.utils.unregister_class(MustardUI_Outfits_UIList_Switch)
+    bpy.utils.unregister_class(MUSTARDUI_UL_Outfits_UIList)

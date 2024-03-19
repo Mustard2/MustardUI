@@ -141,7 +141,7 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Section_UIList_Switch)
-    bpy.utils.unregister_class(MustardUI_Body_AddSection)
-    bpy.utils.unregister_class(MustardUI_Body_DeleteSection)
     bpy.utils.unregister_class(MUSTARDUI_UL_Section_UIList)
+    bpy.utils.unregister_class(MustardUI_Body_DeleteSection)
+    bpy.utils.unregister_class(MustardUI_Body_AddSection)
+    bpy.utils.unregister_class(MustardUI_Section_UIList_Switch)

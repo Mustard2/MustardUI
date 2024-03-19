@@ -187,5 +187,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Property_MenuLink)
     bpy.utils.unregister_class(MustardUI_Property_RemoveLinked)
+    bpy.utils.unregister_class(MustardUI_Property_MenuLink)

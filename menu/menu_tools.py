@@ -205,8 +205,8 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_ChildOf)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_LipsShrinkwrap)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoEyelid)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoBreath)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoEyelid)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_LipsShrinkwrap)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_ChildOf)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools)
