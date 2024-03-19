@@ -20,11 +20,11 @@ def register():
 
 
 def unregister():
-    definitions.unregister()
-    ops_props.unregister()
-    ops_link.unregister()
-    menus.unregister()
-    ui_list.unregister()
-    ops_menu_settings.unregister()
-    ops_rebuild.unregister()
     ops_smartcheck.unregister()
+    ops_rebuild.unregister()
+    ops_menu_settings.unregister()
+    ui_list.unregister()
+    menus.unregister()
+    ops_link.unregister()
+    ops_props.unregister()
+    definitions.unregister()

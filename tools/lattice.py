@@ -287,6 +287,6 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Tools_LatticeSetup)
-    bpy.utils.unregister_class(MustardUI_Tools_LatticeModify)
     bpy.utils.unregister_class(MustardUI_LatticeSettings)
+    bpy.utils.unregister_class(MustardUI_Tools_LatticeModify)
+    bpy.utils.unregister_class(MustardUI_Tools_LatticeSetup)

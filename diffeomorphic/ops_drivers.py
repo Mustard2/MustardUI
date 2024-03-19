@@ -171,5 +171,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_DazMorphs_DisableDrivers)
     bpy.utils.unregister_class(MustardUI_DazMorphs_EnableDrivers)
+    bpy.utils.unregister_class(MustardUI_DazMorphs_DisableDrivers)

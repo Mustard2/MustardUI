@@ -64,7 +64,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
-        self.model_body.data.use_auto_smooth = self.body_norm_autosmooth
+
+        if bpy.app.version < (4, 1, 0):
+            self.model_body.data.use_auto_smooth = self.body_norm_autosmooth
+            return
+
+        for modifier in [x for x in self.model_body.modifiers if x.type == "NODES"]:
+            if modifier.node_group is None:
+                continue
+            if modifier.node_group.name != "Smooth by Angle":
+                continue
+            modifier.show_viewport = self.body_norm_autosmooth
+            modifier.show_render = self.body_norm_autosmooth
 
     # Update function for Smooth Correction modifiers
     def update_solidify(self, context):
@@ -277,7 +288,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def update_armature_outfit_layers(self, context, armature_settings):
 
         poll, arm = mustardui_active_object(context, config=0)
-        bcolls = [x for x in arm.collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
+        bcolls = [x for x in arm.collections_all if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
                   and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection is not None]
 
         for bcoll in bcolls:

@@ -2,6 +2,8 @@
 
 MustardUI is a Blender script that provides an intuitive and easy-to-use user interface for human models.
 
+**Note: do not download the file from the Code button, use the .zip file on the [latest release](https://github.com/Mustard2/MustardUI/releases/latest) instead.**
+
 ## Features
 
 The main features are:

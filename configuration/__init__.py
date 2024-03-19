@@ -14,8 +14,8 @@ def register():
 
 
 def unregister():
-    ops_configuration.unregister()
-    ops_smartcheck.unregister()
-    ops_cleanmodel.unregister()
-    ops_debug.unregister()
     ops_removeui.unregister()
+    ops_debug.unregister()
+    ops_cleanmodel.unregister()
+    ops_smartcheck.unregister()
+    ops_configuration.unregister()

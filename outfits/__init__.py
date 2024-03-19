@@ -20,11 +20,11 @@ def register():
 
 
 def unregister():
-    ops_add.unregister()
-    ops_delete.unregister()
-    ops_remove.unregister()
-    ops_optimize.unregister()
-    ops_smartcheck.unregister()
-    ops_visibility.unregister()
-    ui_list.unregister()
     menu.unregister()
+    ui_list.unregister()
+    ops_visibility.unregister()
+    ops_smartcheck.unregister()
+    ops_optimize.unregister()
+    ops_remove.unregister()
+    ops_delete.unregister()
+    ops_add.unregister()

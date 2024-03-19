@@ -12,7 +12,7 @@ def register():
 
 
 def unregister():
-    ops_checkmorphs.unregister()
-    ops_clearpose.unregister()
-    ops_defvalue.unregister()
     ops_drivers.unregister()
+    ops_defvalue.unregister()
+    ops_clearpose.unregister()
+    ops_checkmorphs.unregister()

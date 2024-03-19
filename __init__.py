@@ -6,8 +6,8 @@ bl_info = {
     "name": "MustardUI",
     "description": "Easy-to-use UI for human characters.",
     "author": "Mustard",
-    "version": (0, 31, 0, 5),
-    "blender": (4, 0, 0),
+    "version": (0, 31, 1, 5),
+    "blender": (4, 1, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
     "category": "User Interface",
@@ -47,17 +47,17 @@ def register():
 
 
 def unregister():
-    settings.unregister()
-    misc.unregister()
-    model_selection.unregister()
-    warnings.unregister()
-    armature.unregister()
-    tools.unregister()
-    tools_creators.unregister()
-    custom_properties.unregister()
-    sections.unregister()
-    outfits.unregister()
-    diffeomorphic.unregister()
-    configuration.unregister()
-    links.unregister()
     menu.unregister()
+    links.unregister()
+    configuration.unregister()
+    diffeomorphic.unregister()
+    outfits.unregister()
+    sections.unregister()
+    custom_properties.unregister()
+    tools_creators.unregister()
+    tools.unregister()
+    armature.unregister()
+    warnings.unregister()
+    model_selection.unregister()
+    misc.unregister()
+    settings.unregister()

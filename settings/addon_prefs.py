@@ -22,13 +22,6 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                                         "added to the UI and in the Settings panel",
                             update=developer_update)
 
-    # Maintenance tools
-    developer: BoolProperty(default=False,
-                            name="Developer Tools",
-                            description="Enable Developer Tools.\nVarious developer tools will be "
-                                        "added to the UI and in the Settings panel",
-                            update=developer_update)
-
     # Debug mode
     debug: BoolProperty(default=False,
                         name="Debug Mode",

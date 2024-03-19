@@ -8,6 +8,7 @@ def mustardui_retrieve_remote_version():
     import requests
 
     v = [0, 0, 0, 0]
+    b = [0, 0, 0]
     data = None
 
     # Import the data from the GitHub repository file
@@ -15,11 +16,11 @@ def mustardui_retrieve_remote_version():
         response = requests.get("https://raw.githubusercontent.com/Mustard2/MustardUI/master/__init__.py")
         data = response.text
     except:
-        return 1, v
+        return 1, v, b
 
     # Fetch version
     try:
-        if '"version": (' in data:
+        if '"version": (' in data and '"blender": (' in data:
             find = data.split('"version": (', 1)[1]
             v[0] = int(find.split(',')[0])
             v[1] = int(find.split(',')[1])
@@ -27,15 +28,21 @@ def mustardui_retrieve_remote_version():
             v[3] = find.split(',')[3]
             v[3] = int(v[3].split(')')[0])
 
-            return 0, v
+            find = data.split('"blender": (', 1)[1]
+            b[0] = int(find.split(',')[0])
+            b[1] = int(find.split(',')[1])
+            b[2] = find.split(',')[2]
+            b[2] = int(b[2].split(')')[0])
+
+            return 0, v, b
     except:
         pass
 
-    return 2, v
+    return 2, v, b
 
 
 def mustardui_check_version():
-    exit_code, v = mustardui_retrieve_remote_version()
+    exit_code, v, b = mustardui_retrieve_remote_version()
     version = (v[0], v[1], v[2], v[3])
     if bl_info["version"] < version:
         print("MustardUI - An update is available.")
@@ -51,6 +58,7 @@ class MustardUI_Updater(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     v = [0, 0, 0, 0]
+    b = [0, 0, 0, 0]
 
     @classmethod
     def poll(cls, context):
@@ -59,17 +67,21 @@ class MustardUI_Updater(bpy.types.Operator):
     def execute(self, context):
 
         version = (self.v[0], self.v[1], self.v[2], self.v[3])
+        blender = (self.b[0], self.b[1], self.b[2])
 
         if bl_info["version"] >= version:
             self.report({'INFO'}, "MustardUI: The current version is already up-to-date")
         else:
-            bpy.ops.mustardui.openlink(url="github.com/Mustard2/MustardUI/releases/latest")
+            if bpy.app.version >= blender:
+                bpy.ops.mustardui.openlink(url="github.com/Mustard2/MustardUI/releases/latest")
+            else:
+                bpy.ops.mustardui.openlink(url="blender.org/download/")
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
 
-        exit_code, self.v = mustardui_retrieve_remote_version()
+        exit_code, self.v, self.b = mustardui_retrieve_remote_version()
 
         if exit_code == 1:
             self.report({'ERROR'}, "MustardUI: Error while retrieving remote version. Check your connection")
@@ -79,20 +91,28 @@ class MustardUI_Updater(bpy.types.Operator):
             self.report({'ERROR'}, "MustardUI: Can not find the version number of the remote repository")
             return {'FINISHED'}
 
-        return context.window_manager.invoke_props_dialog(self, width=300)
+        return context.window_manager.invoke_props_dialog(self, width=400)
 
     def draw(self, context):
 
         layout = self.layout
 
         version = (self.v[0], self.v[1], self.v[2], self.v[3])
+        blender = (self.b[0], self.b[1], self.b[2])
 
         box = layout.box()
 
         if bl_info["version"] >= version:
             box.label(text="The current version seems up-to-date.", icon="INFO")
         else:
-            box.label(text="Update available!", icon="INFO")
+            if bpy.app.version >= blender:
+                box.label(text="Update available!", icon="INFO")
+                box.label(text="Restart after updating.", icon="ERROR")
+            else:
+                box.label(text="Update is available for a new Blender version!", icon="INFO")
+                box.label(text="Update Blender before installing the new MustardUI.", icon="ERROR")
+
+        box = layout.box()
 
         row = box.row()
         row.label(text="Current version: ", icon="RIGHTARROW_THIN")
@@ -104,8 +124,17 @@ class MustardUI_Updater(bpy.types.Operator):
             text=str(self.v[0]) + '.' + str(self.v[1]) + '.' + str(self.v[2]) + '.' + str(self.v[3]))
 
         if bl_info["version"] < version:
-            box = layout.box()
-            box.label(text="Click 'OK' to open the latest release page.", icon="ERROR")
+            if bpy.app.version >= blender:
+                box = layout.box()
+                box.label(text="Click 'OK' to open the latest release page.", icon="ERROR")
+            else:
+                row = box.row()
+                row.label(text="Blender version required: ", icon="BLENDER")
+                row.label(
+                    text=str(self.b[0]) + '.' + str(self.b[1]) + '.' + str(self.b[2]))
+
+                box = layout.box()
+                box.label(text="Click 'OK' to open the Blender download page.", icon="ERROR")
 
 
 def register():

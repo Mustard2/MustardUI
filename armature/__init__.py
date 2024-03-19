@@ -8,5 +8,5 @@ def register():
 
 
 def unregister():
-    definitions.unregister()
     ui_list.unregister()
+    definitions.unregister()

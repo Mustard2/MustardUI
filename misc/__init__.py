@@ -8,5 +8,5 @@ def register():
 
 
 def unregister():
-    updater.unregister()
     ops_fix_missing_UI.unregister()
+    updater.unregister()

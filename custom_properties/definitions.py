@@ -117,5 +117,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_LinkedProperty)
     bpy.utils.unregister_class(MustardUI_CustomProperty)
+    bpy.utils.unregister_class(MustardUI_LinkedProperty)

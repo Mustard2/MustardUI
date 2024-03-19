@@ -60,5 +60,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ViewportModelSelection)
     bpy.utils.unregister_class(MustardUI_SwitchModel)
+    bpy.utils.unregister_class(MustardUI_ViewportModelSelection)

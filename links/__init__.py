@@ -12,7 +12,7 @@ def register():
 
 
 def unregister():
-    definitions.unregister()
-    ops_link.unregister()
-    ops_preset.unregister()
     ui_list.unregister()
+    ops_preset.unregister()
+    ops_link.unregister()
+    definitions.unregister()
