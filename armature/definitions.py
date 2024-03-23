@@ -81,7 +81,8 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         poll, arm = mustardui_active_object(context, config=0)
         armature_settings = arm.MustardUI_ArmatureSettings
         rig_settings = arm.MustardUI_RigSettings
-        for bcoll in arm.collections_all:
+        collections = arm.collections_all if bpy.app.version >= (4, 1, 0) else arm.collections
+        for bcoll in collections:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if bcoll_settings.outfit_switcher_enable:
                 check_coll = (

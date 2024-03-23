@@ -18,7 +18,7 @@ class MustardUI_LinkButton(bpy.types.Operator):
                                   )
 
     def execute(self, context):
-        webbrowser.open_new(self.url)  # opens in default browser
+        webbrowser.get().open_new(self.url)  # opens in default browser
         return {'FINISHED'}
 
 
