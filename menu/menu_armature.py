@@ -61,12 +61,12 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         if obj is not None:
             rig_settings = obj.MustardUI_RigSettings
             armature_settings = obj.MustardUI_ArmatureSettings
-            bcolls = obj.collections
+            bcolls = obj.collections_all if bpy.app.version >= (4, 1, 0) else obj.collections
 
             if len(bcolls) < 1:
                 return False
 
-            enabled_colls = [x for x in obj.collections if x.MustardUI_ArmatureBoneCollection.is_in_UI]
+            enabled_colls = [x for x in bcolls if x.MustardUI_ArmatureBoneCollection.is_in_UI]
 
             if rig_settings.hair_collection is not None:
                 return res and (len(enabled_colls) > 0 or (len([x for x in rig_settings.hair_collection.objects if
@@ -83,6 +83,8 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         armature_settings = obj.MustardUI_ArmatureSettings
         rig_settings = obj.MustardUI_RigSettings
 
+        bcolls = obj.collections_all if bpy.app.version >= (4, 1, 0) else obj.collections
+
         box = self.layout
 
         draw_separator = False
@@ -92,14 +94,14 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 draw_separator = True
 
         if len(rig_settings.outfits_list) > 0:
-            if len([x for x in obj.collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable]):
+            if len([x for x in bcolls if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable]):
                 box.prop(armature_settings, "outfits", toggle=True, icon="MOD_CLOTH")
                 draw_separator = True
 
         if draw_separator:
             box.separator()
 
-        enabled_colls = [x for x in obj.collections if x.MustardUI_ArmatureBoneCollection.is_in_UI]
+        enabled_colls = [x for x in bcolls if x.MustardUI_ArmatureBoneCollection.is_in_UI]
 
         box.use_property_split = False
         box.use_property_decorate = True  # No animation.

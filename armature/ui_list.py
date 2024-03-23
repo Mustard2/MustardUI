@@ -16,8 +16,10 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
 
         row = layout.row(align=True)
 
+        collections = armature.collections_all if bpy.app.version >= (4, 1, 0) else armature.collections
+
         # Check if the icon should be drawn
-        for b in armature.collections_all:
+        for b in collections:
             if b.MustardUI_ArmatureBoneCollection.icon != "NONE":
                 row.label(text="", icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1")
                 break
