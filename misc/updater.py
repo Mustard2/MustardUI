@@ -73,9 +73,9 @@ class MustardUI_Updater(bpy.types.Operator):
             self.report({'INFO'}, "MustardUI: The current version is already up-to-date")
         else:
             if bpy.app.version >= blender:
-                bpy.ops.mustardui.openlink(url="github.com/Mustard2/MustardUI/releases/latest")
+                bpy.ops.mustardui.openlink(url="https://github.com/Mustard2/MustardUI/releases/latest")
             else:
-                bpy.ops.mustardui.openlink(url="blender.org/download/")
+                bpy.ops.mustardui.openlink(url="https://blender.org/download/")
 
         return {'FINISHED'}
 
