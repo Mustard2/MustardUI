@@ -1,10 +1,10 @@
 import bpy
+from bpy.app.handlers import persistent
 from bpy.props import *
 from .. import bl_info
 
 
 def mustardui_retrieve_remote_version():
-
     import requests
 
     v = [0, 0, 0, 0]
@@ -42,6 +42,12 @@ def mustardui_retrieve_remote_version():
 
 
 def mustardui_check_version():
+    addon_prefs = bpy.context.preferences.addons["MustardUI"].preferences
+
+    if not addon_prefs.check_updates:
+        print("MustardUI - Automatic update disabled.")
+        return False
+
     exit_code, v, b = mustardui_retrieve_remote_version()
     version = (v[0], v[1], v[2], v[3])
     if bl_info["version"] < version:
@@ -137,9 +143,17 @@ class MustardUI_Updater(bpy.types.Operator):
                 box.label(text="Click 'OK' to open the Blender download page.", icon="ERROR")
 
 
+@persistent
+def version_handler(scene):
+    settings = bpy.context.scene.MustardUI_Settings
+    settings.mustardui_update_available = mustardui_check_version()
+
+
 def register():
     bpy.utils.register_class(MustardUI_Updater)
+    bpy.app.handlers.load_post.append(version_handler)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_Updater)
+    bpy.app.handlers.load_post.remove(version_handler)
