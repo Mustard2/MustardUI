@@ -64,19 +64,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
-
-        # if bpy.app.version < (4, 1, 0):
-        #     self.model_body.data.use_auto_smooth = self.body_norm_autosmooth
-        #     return
-
-        # for modifier in [x for x in self.model_body.modifiers if x.type == "NODES"]:
-        #     if modifier.node_group is None:
-        #         continue
-        #     if modifier.node_group.name != "Smooth by Angle":
-        #         continue
-        #     modifier.show_viewport = self.body_norm_autosmooth
-        #     modifier.show_render = self.body_norm_autosmooth
-
         MustardUI_RigSettings._set_normal_autosmooth(target_object=self.model_body,
                                                      autosmooth_value=self.body_norm_autosmooth,
                                                      autosmooth_enabled=True)
@@ -421,10 +408,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for collection in collections:
             items = collection.all_objects if self.outfit_config_subcollections else collection.objects
             for obj in items:
-
-                # if obj.type == "MESH" and self.outfits_enable_global_normalautosmooth:
-                #     obj.data.use_auto_smooth = self.outfits_global_normalautosmooth
-
                 MustardUI_RigSettings._set_normal_autosmooth(target_object=obj,
                                                      autosmooth_value=self.outfits_global_normalautosmooth,
                                                      autosmooth_enabled=self.outfits_enable_global_normalautosmooth)
@@ -661,9 +644,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         if self.hair_collection is not None:
             for obj in self.hair_collection.objects:
-                # if obj.type == "MESH" and self.hair_enable_global_normalautosmooth:
-                #     obj.data.use_auto_smooth = self.hair_global_normalautosmooth
-
                 MustardUI_RigSettings._set_normal_autosmooth(target_object=obj,
                                                      autosmooth_value=self.hair_global_normalautosmooth,
                                                      autosmooth_enabled=self.hair_enable_global_normalautosmooth)
