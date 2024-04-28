@@ -39,7 +39,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     # Check updates automatically at Blender startup
     check_updates: BoolProperty(default=True,
                                 name="Check Updates at Startup",
-                                description="Check new MustardUI versions when Blender is starting.\nThis might freeze Blender if you have a slow collection.")
+                                description="Check new MustardUI versions when Blender is starting.\nThis might freeze Blender if you have a slow collection")
 
     def draw(self, context):
         layout = self.layout
