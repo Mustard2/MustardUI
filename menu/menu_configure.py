@@ -121,7 +121,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 opdown = col2.operator('mustardui.section_switch', icon="TRIA_DOWN", text="")
                 opdown.direction = "DOWN"
 
-                if scene.mustardui_section_uilist_index > -1:
+                if scene.mustardui_section_uilist_index > -1 and len(rig_settings.body_custom_properties_sections) > 0:
                     sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
 
                     row = box.row()

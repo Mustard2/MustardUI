@@ -36,7 +36,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     panel_model_selection_armature: PointerProperty(type=bpy.types.Armature)
 
     # MustardUI version check
-    mustardui_update_available: BoolProperty(default=mustardui_check_version())
+    mustardui_update_available: BoolProperty(default=False)
 
     # RIG TOOLS STATUS
 

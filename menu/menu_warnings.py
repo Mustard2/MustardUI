@@ -43,6 +43,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
+        addon_prefs = bpy.context.preferences.addons["MustardUI"].preferences
 
         layout = self.layout
 
@@ -58,10 +59,11 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         # New MustardUI version available
         if property_value(settings, "mustardui_update_available"):
-            box = layout.box()
-            col = box.column(align=True)
-            col.label(text="MustardUI update available!", icon="ERROR")
-            box.operator("mustardui.updater", icon="WORLD")
+            if addon_prefs.check_updates:
+                box = layout.box()
+                col = box.column(align=True)
+                col.label(text="MustardUI update available!", icon="ERROR")
+                box.operator("mustardui.updater", icon="WORLD")
 
         # Eevee normals enabled in Cycles
         if check_eevee_normals(context.scene, settings):
