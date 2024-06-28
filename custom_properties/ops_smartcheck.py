@@ -3,6 +3,7 @@ from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
 from .misc import *
+from .. import __package__ as base_package
 
 
 # Operator to add the right click button on properties
@@ -171,7 +172,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         k = 0
 

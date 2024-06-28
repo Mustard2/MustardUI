@@ -3,6 +3,7 @@ from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
 from .misc import *
+from .. import __package__ as base_package
 
 
 class MustardUI_Property_Rebuild(bpy.types.Operator):
@@ -55,7 +56,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=0)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Rebuild all custom properties
         custom_props = [(x, 0) for x in obj.MustardUI_CustomProperties]

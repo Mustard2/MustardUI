@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
@@ -34,7 +35,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         tools_settings = obj.MustardUI_ToolsSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Try to assign the rig object
         if not obj.MustardUI_created:
@@ -198,7 +199,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
         return context.window_manager.invoke_props_dialog(self, width=550 if addon_prefs.debug else 450)
 
     def draw(self, context):

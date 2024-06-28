@@ -6,7 +6,6 @@ from . import section
 from . import rig
 from . import geometry_nodes
 
-
 def register():
     addon_prefs.register()
     addon.register()

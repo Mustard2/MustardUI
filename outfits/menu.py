@@ -1,8 +1,7 @@
 import bpy
 from .ops_add import MustardUI_AddOutfit
-from .ops_delete import MustardUI_DeleteOutfit
-from .ops_remove import MustardUI_RemoveOutfit
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class OUTLINER_MT_collection(bpy.types.Menu):
@@ -16,7 +15,7 @@ def mustardui_collection_menu(self, context):
 
     res, arm = mustardui_active_object(context, config=1)
     rig_settings = arm.MustardUI_RigSettings
-    addon_prefs = context.preferences.addons["MustardUI"].preferences
+    addon_prefs = context.preferences.addons[base_package].preferences
 
     if res:
         if not context.collection in [x.collection for x in rig_settings.outfits_collections]:

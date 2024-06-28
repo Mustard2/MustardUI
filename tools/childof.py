@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class MustardUI_Tools_ChildOf(bpy.types.Operator):
@@ -26,7 +27,7 @@ class MustardUI_Tools_ChildOf(bpy.types.Operator):
 
         poll, arm = mustardui_active_object(context, config=0)
         tools_settings = arm.MustardUI_ToolsSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         if self.clean == 0:
 

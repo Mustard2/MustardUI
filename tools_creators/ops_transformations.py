@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_AffectTransform(bpy.types.Operator):
@@ -14,14 +15,14 @@ class MustardUI_ToolsCreators_AffectTransform(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.experimental
 
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         if rig_settings.model_armature_object is None:
             self.report({'ERROR'}, 'MustardUI - Error occurred while retrieving Armature Object.')

@@ -2,6 +2,7 @@ import bpy
 from ..model_selection.active_object import *
 from .misc import *
 import itertools
+from .. import __package__ as base_package
 
 
 class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
@@ -20,7 +21,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Try to assign the rig object
         if not arm.MustardUI_created:
