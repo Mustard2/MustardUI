@@ -2,6 +2,7 @@ import bpy
 from bpy.app.handlers import persistent
 from bpy.props import *
 from .. import bl_info
+from .. import __package__ as base_package
 
 
 def mustardui_retrieve_remote_version():
@@ -42,7 +43,7 @@ def mustardui_retrieve_remote_version():
 
 
 def mustardui_check_version():
-    addon_prefs = bpy.context.preferences.addons["MustardUI"].preferences
+    addon_prefs = bpy.context.preferences.addons[base_package].preferences
 
     if not addon_prefs.check_updates:
         print("MustardUI - Automatic update disabled.")

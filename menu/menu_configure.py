@@ -2,6 +2,7 @@ import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
+from .. import __package__ as base_package
 
 
 class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
@@ -16,7 +17,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             return False
 
         res, arm = mustardui_active_object(context, config=1)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
     def draw(self, context):
@@ -31,7 +32,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         tools_settings = arm.MustardUI_ToolsSettings
         lattice_settings = arm.MustardUI_LatticeSettings
         physics_settings = arm.MustardUI_PhysicsSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         row_scale = 1.2
 

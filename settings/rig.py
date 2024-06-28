@@ -3,6 +3,7 @@ from ..model_selection.active_object import *
 from ..settings.outfit import *
 from ..settings.daz_morph import *
 from ..settings.section import *
+from .. import __package__ as base_package
 
 
 # Main class to store model settings
@@ -848,7 +849,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         settings = context.scene.MustardUI_Settings
         poll, arm = mustardui_active_object(context, config=0)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
         # if arm is not None:
         #    armature_settings = arm.MustardUI_ArmatureSettings
 

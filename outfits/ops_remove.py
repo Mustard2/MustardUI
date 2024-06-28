@@ -1,6 +1,7 @@
 import bpy
 from ..custom_properties.misc import mustardui_clean_prop
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class MustardUI_RemoveOutfit(bpy.types.Operator):
@@ -13,7 +14,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         uilist = rig_settings.outfits_collections
         index = context.scene.mustardui_outfits_uilist_index

@@ -3,6 +3,7 @@ from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
 from .misc import *
+from .. import __package__ as base_package
 
 
 class MustardUI_Property_MenuAdd(bpy.types.Operator):
@@ -227,7 +228,7 @@ class MustardUI_Property_Remove(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         if len(uilist) <= index:
             return {'FINISHED'}

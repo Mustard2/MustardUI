@@ -2,6 +2,7 @@ import bpy
 from ..model_selection.active_object import *
 import random
 import math
+from .. import __package__ as base_package
 
 
 class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
@@ -34,7 +35,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Check scene settings
         frame_start = context.scene.frame_start

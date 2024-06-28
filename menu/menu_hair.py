@@ -4,6 +4,7 @@ from .misc import mustardui_custom_properties_print
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
+from .. import __package__ as base_package
 
 
 class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
@@ -37,7 +38,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         layout = self.layout
 

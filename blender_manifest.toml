@@ -1,0 +1,20 @@
+schema_version = "1.0.0"
+
+id = "MustardUI"
+version = "0.32.0"
+name = "MustardUI"
+tagline = "Easy-to-use UI for human characters"
+maintainer = "Mustard"
+type = "add-on"
+
+website = "https://github.com/Mustard2/MustardUI/"
+
+tags = ["User Interface"]
+
+blender_version_min = "4.2.0"
+
+# License conforming to https://spdx.org/licenses/ (use "SPDX: prefix)
+# https://docs.blender.org/manual/en/dev/advanced/extensions/licenses.html
+license = [
+  "SPDX:MIT",
+]

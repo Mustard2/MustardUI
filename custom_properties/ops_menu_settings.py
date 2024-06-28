@@ -4,6 +4,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from ..misc.icons_list import mustardui_icon_list
 from ..model_selection.active_object import *
 from .misc import *
+from .. import __package__ as base_package
 
 
 class MustardUI_Property_Settings(bpy.types.Operator):
@@ -73,7 +74,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
         custom_prop = custom_props[index]
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         if self.name == "":
             self.report({'ERROR'}, 'MustardUI - Can not rename a property with an empty name.')
@@ -182,7 +183,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         if len(custom_props) <= index:
             return {'FINISHED'}
@@ -248,7 +249,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         custom_prop = custom_props[index]
         prop_type = custom_prop.type
         prop_cp_type = custom_prop.cp_type
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         scale = 3.0
 
