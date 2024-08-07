@@ -34,6 +34,8 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                     bcoll.name.lower().endswith(".l") and b.name.lower() == bcoll.name[:-2].lower() + ".r"
             ) or (
                     bcoll.name.lower().startswith("left") and b.name.lower() == "right" + bcoll.name[4:].lower()
+            ) or (
+                    bcoll.name.lower().endswith("left") and b.name.lower() == bcoll.name[:-4].lower() + "right"
             ):
                 row = layout.row()
                 draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
@@ -44,6 +46,8 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                     bcoll.name.lower().endswith(".r") and b.name.lower() == bcoll.name[:-2].lower() + ".l"
             ) or (
                     bcoll.name.lower().startswith("right") and b.name.lower() == "left" + bcoll.name[5:].lower()
+            ) or (
+                    bcoll.name.lower().endswith("right") and b.name.lower() == bcoll.name[:-5].lower() + "left"
             ):
                 return
 
