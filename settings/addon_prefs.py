@@ -4,8 +4,6 @@ from ..model_selection.active_object import *
 from .. import __package__ as base_package
 
 
-# Addon preferences can be accessed with
-# addon_prefs = context.preferences.addons[__name__].preferences
 class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     bl_idname = base_package
 

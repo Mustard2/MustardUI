@@ -90,7 +90,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
             for emotion in facs_emotions_units:
                 name = emotion[emotion.rfind('_', 0, 12) + 1] + ''.join(
                     [c if not c.isupper() else ' ' + c for c in emotion[emotion.rfind('_', 0, 12) + 2:]])
-                name = name.rstrip('_div2')
+                name = name.removesuffix('_div2')
                 mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 2])
 
         # FACS Emotions
