@@ -2,6 +2,7 @@ import bpy
 from .. import __package__ as base_package
 from bpy.props import *
 from ..custom_properties.misc import mustardui_clean_prop
+from ..misc.prop_utils import *
 from ..model_selection.active_object import *
 
 
@@ -60,7 +61,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
     def remove_props_from_group(self, obj, group, props_removed):
 
         if hasattr(obj, group):
-            props = eval("obj." + group)
+            props = evaluate_rna("obj." + group)
             idx = []
             for n, prop in enumerate(props):
                 prop_name = prop.name
@@ -76,7 +77,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
     def remove_props_from_cat_group(self, obj, group, props_removed):
 
         if hasattr(obj, group):
-            categories = eval("obj." + group)
+            categories = evaluate_rna("obj." + group)
             for cat in categories:
                 props = cat['morphs']
                 idx = []

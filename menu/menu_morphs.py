@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..misc.prop_utils import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 
@@ -13,7 +14,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     def morph_filter(self, morph, rig_settings):
 
         # Check null filter
-        check1 = (rig_settings.diffeomorphic_filter_null and eval(
+        check1 = (rig_settings.diffeomorphic_filter_null and evaluate_rna(
             'rig_settings.model_armature_object[\"' + morph.path + '\"]') != 0.) or not rig_settings.diffeomorphic_filter_null
 
         # Check search filter

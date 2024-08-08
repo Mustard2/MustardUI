@@ -3,6 +3,7 @@ from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
 from .misc import *
+from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
 
@@ -15,12 +16,12 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
 
     def add_driver(self, obj, rna, path, prop_name):
 
-        driver_object = eval(rna)
+        driver_object = evaluate_rna(rna)
         driver_object.driver_remove(path)
         driver = driver_object.driver_add(path)
 
         try:
-            array_length = len(eval(mustardui_cp_path(rna, path)))
+            array_length = len(evaluate_path(rna, path))
         except:
             array_length = 0
 
@@ -93,16 +94,16 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             add_string_num += 1
             prop_name = name + ' ' + str(add_string_num)
 
-        obj[prop_name] = eval(rna + "." + path)
+        obj[prop_name] = evaluate_path(rna, path)
 
         # Change custom properties settings
         if type == "BOOLEAN":
             rna_idprop_ui_create(obj, prop_name,
-                                 default=bool(eval(rna + "." + path)),
+                                 default=bool(evaluate_path(rna, path)),
                                  overridable=True)
         else:
             rna_idprop_ui_create(obj, prop_name,
-                                 default=int(eval(rna + "." + path)) if type == "INT" else eval(rna + "." + path),
+                                 default=int(evaluate_path(rna, path)) if type == "INT" else evaluate_path(rna, path),
                                  min=0 if type == "INT" else 0.,
                                  max=1 if type == "INT" else 1.,
                                  overridable=True,

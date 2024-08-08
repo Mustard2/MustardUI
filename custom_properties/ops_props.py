@@ -3,6 +3,7 @@ from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
 from .misc import *
+from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
 
@@ -75,16 +76,16 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
             # Check for .type existance
             try:
-                if eval(rna_node[0] + ".type") in ["VALUE", "RGB"]:
-                    prop_name_ui = eval(rna_node[0] + ".name")
+                if evaluate_path(rna_node[0], "type") in ["VALUE", "RGB"]:
+                    prop_name_ui = evaluate_path(rna_node[0], "name")
                 else:
-                    prop_name_ui = eval(rna + ".name")
+                    prop_name_ui = evaluate_path(rna, "name")
             except:
                 prop_name_ui = prop.name
 
         # Try to find a better name than default_value for shape keys
         elif "shape_keys" in rna and "key_block" in rna:
-            prop_name_ui = eval(rna + ".name")
+            prop_name_ui = evaluate_path(rna, "name")
         else:
             prop_name_ui = prop.name
 
@@ -102,21 +103,21 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
             # Change custom properties settings
             elif prop.type == "BOOLEAN" and prop.array_length < 1:
-                rna_idprop_ui_create(obj, prop_name, default=eval(mustardui_cp_path(rna, path)),
+                rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
                                      description=prop.description,
                                      overridable=True)
 
             elif (hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default')
                   and hasattr(prop, 'description') and hasattr(prop, 'subtype')):
                 description = prop.description if (not "node_tree.nodes" in rna and not "shape_keys" in rna) else ""
-                rna_idprop_ui_create(obj, prop_name, default=eval(mustardui_cp_path(rna, path)),
+                rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
                                      min=prop.hard_min if prop.subtype != "COLOR" else 0.,
                                      max=prop.hard_max if prop.subtype != "COLOR" else 1.,
                                      description=description,
                                      overridable=True,
                                      subtype=prop.subtype if prop.subtype != "FACTOR" else None)
             elif hasattr(prop, 'description'):
-                rna_idprop_ui_create(obj, prop_name, default=eval(mustardui_cp_path(rna, path)),
+                rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
                                      description=prop.description)
 
         # Add driver

@@ -3,6 +3,7 @@ from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
 from .misc import *
+from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
 
@@ -14,12 +15,12 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
     def add_driver(self, obj, rna, path, prop_name):
 
-        driver_object = eval(rna)
+        driver_object = evaluate_rna(rna)
         driver_object.driver_remove(path)
         driver = driver_object.driver_add(path)
 
         try:
-            array_length = len(eval(mustardui_cp_path(rna, path)))
+            array_length = len(evaluate_path(rna, path))
         except:
             array_length = 0
 
@@ -78,7 +79,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
             if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
                 try:
-                    default_bool = int(eval(mustardui_cp_path(custom_prop.rna, custom_prop.path)))
+                    default_bool = int(evaluate_path(custom_prop.rna, custom_prop.path))
                 except:
                     print(
                         "MustardUI - Can not find the property " + mustardui_cp_path(custom_prop.rna, custom_prop.path))
@@ -91,7 +92,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
             elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=custom_prop.default_float if custom_prop.array_length == 0 else eval(
+                                     default=custom_prop.default_float if custom_prop.array_length == 0 else evaluate_rna(
                                          custom_prop.default_array),
                                      min=custom_prop.min_float if custom_prop.subtype != "COLOR" else 0.,
                                      max=custom_prop.max_float if custom_prop.subtype != "COLOR" else 1.,
@@ -101,7 +102,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
             elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else eval(
+                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else evaluate_rna(
                                          custom_prop.default_array),
                                      min=custom_prop.min_int,
                                      max=custom_prop.max_int,
@@ -111,7 +112,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
             else:
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=eval(mustardui_cp_path(custom_prop.rna, custom_prop.path)),
+                                     default=evaluate_path(custom_prop.rna, custom_prop.path),
                                      description=custom_prop.description,
                                      overridable=True)
 

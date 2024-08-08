@@ -2,6 +2,7 @@ import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
 from .misc import *
+from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
 
@@ -31,7 +32,7 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        eval(mustardui_cp_path(item.rna, item.path))
+                        evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -95,7 +96,7 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        eval(mustardui_cp_path(item.rna, item.path))
+                        evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -149,7 +150,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        eval(mustardui_cp_path(item.rna, item.path))
+                        evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")

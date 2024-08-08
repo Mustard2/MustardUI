@@ -1,4 +1,5 @@
 import bpy
+from ..misc.prop_utils import *
 
 
 def mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties, box, icons_show):
@@ -11,7 +12,7 @@ def mustardui_custom_properties_print(arm, settings, rig_settings, custom_proper
             row2.label(text=prop.name)
         if not prop.is_animatable:
             try:
-                row2.prop(eval(prop.rna), prop.path, text="")
+                row2.prop(evaluate_rna(prop.rna), prop.path, text="")
             except:
                 row2.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="", icon_only=True,
                           emboss=False)
