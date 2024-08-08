@@ -1,6 +1,5 @@
 import bpy
 from bpy.props import *
-from ..misc.updater import mustardui_check_version
 import addon_utils
 import sys
 
@@ -34,9 +33,6 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                                                                            "available on the scene")
 
     panel_model_selection_armature: PointerProperty(type=bpy.types.Armature)
-
-    # MustardUI version check
-    mustardui_update_available: BoolProperty(default=False)
 
     # RIG TOOLS STATUS
 

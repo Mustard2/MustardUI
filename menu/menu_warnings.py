@@ -32,7 +32,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
                                     settings.status_diffeomorphic_version[2]) <= (1, 6, 0)
                                    and settings.status_diffeomorphic_version[0] > -1)
             check_mhx = rig_settings.diffeomorphic_support and settings.status_mhx != 2
-            return poll and (property_value(settings, "mustardui_update_available") or check_eevee_normals(context.scene, settings) or check_arp or check_diffeomorphic or check_mhx)
+            return poll and (check_eevee_normals(context.scene, settings) or check_arp or check_diffeomorphic or check_mhx)
 
         return poll
 
@@ -57,14 +57,6 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             box.operator("mustardui.warnings_fix_old_ui")
             # Fix for: https://github.com/Mustard2/MustardUI/issues/150
             return
-
-        # New MustardUI version available
-        if property_value(settings, "mustardui_update_available"):
-            if addon_prefs.check_updates:
-                box = layout.box()
-                col = box.column(align=True)
-                col.label(text="MustardUI update available!", icon="ERROR")
-                box.operator("mustardui.updater", icon="WORLD")
 
         # Eevee normals enabled in Cycles
         if check_eevee_normals(context.scene, settings):

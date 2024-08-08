@@ -37,23 +37,15 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                                            "experimental features might not work properly yet, or be changed/removed "
                                            "from future versions")
 
-    # Check updates automatically at Blender startup
-    check_updates: BoolProperty(default=True,
-                                name="Check Updates at Startup",
-                                description="Check new MustardUI versions when Blender is starting.\nThis might freeze Blender if you have a slow collection")
-
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.prop(self, "check_updates")
         col.prop(self, "developer")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
         col.separator()
         col.prop(self, "experimental")
-
-        layout.operator('mustardui.updater', icon="WORLD")
 
         if self.debug:
             box = layout.box()
