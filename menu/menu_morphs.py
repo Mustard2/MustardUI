@@ -15,7 +15,7 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
 
         # Check null filter
         check1 = (rig_settings.diffeomorphic_filter_null and evaluate_rna(
-            'rig_settings.model_armature_object[\"' + morph.path + '\"]') != 0.) or not rig_settings.diffeomorphic_filter_null
+            f'rig_settings.model_armature_object["{bpy.utils.escape_identifier(morph.path)}"]') != 0.) or not rig_settings.diffeomorphic_filter_null
 
         # Check search filter
         check2 = rig_settings.diffeomorphic_search.lower() in morph.name.lower()

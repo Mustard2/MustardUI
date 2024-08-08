@@ -351,9 +351,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
             row.template_list(
                 "MUSTARDUI_UL_Armature_UIList",
-                "collections_all" if bpy.app.version >= (4, 1, 0) else "collections",
+                "collections_all",
                 arm,
-                "collections_all" if bpy.app.version >= (4, 1, 0) else "collections",
+                "collections_all",
                 arm.collections,
                 "active_index",
                 rows=rows,
@@ -382,7 +382,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
             if arm.collections.active_index > -1:
 
-                collections = arm.collections_all if bpy.app.version >= (4, 1, 0) else arm.collections
+                collections = arm.collections_all
                 bcoll = collections[arm.collections.active_index]
                 bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
 

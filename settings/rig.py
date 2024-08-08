@@ -67,18 +67,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     @staticmethod
     def _set_normal_autosmooth(target_object, autosmooth_value, autosmooth_enabled):
         if target_object.type == "MESH" and autosmooth_enabled:
-            if bpy.app.version < (4, 1, 0):
-                target_object.data.use_auto_smooth = autosmooth_value
-            else:
-                for modifier in [x for x in target_object.modifiers if x.type == "NODES"]:
-                    if modifier.node_group is None:
-                        continue
+            for modifier in [x for x in target_object.modifiers if x.type == "NODES"]:
+                if modifier.node_group is None:
+                    continue
 
-                    if modifier.node_group.name != "Smooth by Angle":
-                        continue
+                if modifier.node_group.name != "Smooth by Angle":
+                    continue
 
-                    modifier.show_viewport = autosmooth_value
-                    modifier.show_render = autosmooth_value
+                modifier.show_viewport = autosmooth_value
+                modifier.show_render = autosmooth_value
 
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
@@ -295,7 +292,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def update_armature_outfit_layers(self, context, armature_settings):
 
         poll, arm = mustardui_active_object(context, config=0)
-        collections = arm.collections_all if bpy.app.version >= (4, 1, 0) else arm.collections
+        collections = arm.collections_all
         bcolls = [x for x in collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
                   and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection is not None]
 

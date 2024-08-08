@@ -65,7 +65,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         if obj is not None:
             rig_settings = obj.MustardUI_RigSettings
             armature_settings = obj.MustardUI_ArmatureSettings
-            bcolls = obj.collections_all if bpy.app.version >= (4, 1, 0) else obj.collections
+            bcolls = obj.collections_all
 
             if len(bcolls) < 1:
                 return False
@@ -87,7 +87,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         armature_settings = obj.MustardUI_ArmatureSettings
         rig_settings = obj.MustardUI_RigSettings
 
-        bcolls = obj.collections_all if bpy.app.version >= (4, 1, 0) else obj.collections
+        bcolls = obj.collections_all
 
         box = self.layout
 

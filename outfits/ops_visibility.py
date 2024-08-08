@@ -60,7 +60,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         # Enable/disable armature layers
         if armature_settings.outfits:
-            collections = arm.collections_all if bpy.app.version >= (4, 1, 0) else arm.collections
+            collections = arm.collections_all
             outfit_armature_layers = [x for x in collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection != None]
             for bcoll in outfit_armature_layers:
                 bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection

@@ -3,6 +3,9 @@ import ast
 
 
 def evaluate_rna(rna_path):
+
+    rna_path = bpy.utils.escape_identifier(rna_path)
+
     # Ensure the path starts with 'bpy.'
     if not rna_path.startswith("bpy."):
         print("Invalid RNA path: must start with 'bpy.'")
