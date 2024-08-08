@@ -435,7 +435,7 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     # Poll function for the selection of mesh only in pointer properties
     def poll_mesh(self, object):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(bpy.context, config=1)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         cage_objects = []
