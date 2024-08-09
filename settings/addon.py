@@ -56,15 +56,15 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
         if 2 in addon_status:
             for i in range(len(addon_names_found)):
                 if addon_status[i] == 2:
-                    print("MustardUI - " + addon_names_found[i] + " add-on enabled and running.")
+                    print("MustardUI - " + repr(addon_names_found[i]) + " add-on enabled and running.")
                     return 2
         elif 1 in addon_status and not 2 in addon_status:
             for addon_name in addon_names_found:
-                print("MustardUI - " + addon_name + " add-on installed but not enabled.")
+                print("MustardUI - " + repr(addon_name) + " add-on installed but not enabled.")
             return 1
         else:
             for addon_name in addon_names:
-                print("MustardUI - %s add-on not installed." % addon_name)
+                print("MustardUI - %s add-on not installed." % repr(addon_name))
 
         return 0
 
@@ -94,7 +94,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                         break
 
             if an == "":
-                print("MustardUI - Can not find " + addon_name + " version.")
+                print("MustardUI - Can not find " + repr(addon_name) + " version.")
                 return (-1, -1, -1)
 
             mod = addon_utils.addons_fake_modules[an]
@@ -103,7 +103,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                 version[2]) + ".")
             return (version[0], version[1], version[2])
         except:
-            print("MustardUI - Can not find " + addon_name + " version.")
+            print("MustardUI - Can not find " + repr(addon_name) + " version.")
             return (-1, -1, -1)
 
     status_diffeomorphic_version: IntVectorProperty(default=addon_version_check("import_daz"))

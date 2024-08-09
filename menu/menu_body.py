@@ -65,7 +65,7 @@ def draw_section(context, layout, obj, settings, rig_settings, custom_props, sec
                                  icon_only=True, emboss=False)
                 else:
                     if prop.prop_name in obj.keys():
-                        row.prop(obj, '["' + prop.prop_name + '"]', text="")
+                        row.prop(obj, f'["{prop.prop_name}"]', text="")
                     else:
                         row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
                                  emboss=False)
@@ -200,7 +200,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                                      icon_only=True, emboss=False)
                     else:
                         if prop.prop_name in obj.keys():
-                            row.prop(obj, '["' + prop.prop_name + '"]', text="")
+                            row.prop(obj, f'["{prop.prop_name}"]', text="")
                         else:
                             row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
                                      emboss=False)
@@ -253,7 +253,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     if not m.node_group.MustardUI_collapse:
                         for i in [x for x in gndi.items() if hasattr(gndi[x[0]], 'identifier')]:
                             if i[1].identifier in m.keys():
-                                box.prop(m, '["' + i[1].identifier + '"]', text=i[0])
+                                box.prop(m, f'["{i[1].identifier}"]', text=i[0])
 
 
 def register():

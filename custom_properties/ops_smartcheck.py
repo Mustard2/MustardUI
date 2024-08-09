@@ -33,7 +33,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             var.name = 'mustardui_var'
             var.targets[0].id_type = "ARMATURE"
             var.targets[0].id = obj
-            var.targets[0].data_path = '["' + prop_name + '"]'
+            var.targets[0].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"]'
 
         # Array property
         else:
@@ -45,7 +45,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 var.name = 'mustardui_var'
                 var.targets[0].id_type = "ARMATURE"
                 var.targets[0].id = obj
-                var.targets[0].data_path = '["' + prop_name + '"]' + '[' + str(i) + ']'
+                var.targets[0].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"][{str(i)}]'
 
         return
 
@@ -158,7 +158,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 elif type == "INT":
                     cp.max_int = ui_data_dict['max']
 
-        obj.property_overridable_library_set('["' + prop_name + '"]', True)
+        obj.property_overridable_library_set(f'["{prop_name}"]', True)
 
         return
 
@@ -193,41 +193,41 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         for mat in [x for x in rig_settings.model_body.data.materials if x is not None]:
             for j in range(len(mat.node_tree.nodes)):
                 if "MustardUI Float" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type == "VALUE":
-                    self.add_custom_property(obj, 'bpy.data.materials[\'' + mat.name + '\'].node_tree.nodes[\'' +
-                                             mat.node_tree.nodes[j].name + '\'].outputs[0]', 'default_value',
-                                             mat.node_tree.nodes[j].name[len("MustardUI Float - "):], "FLOAT",
-                                             custom_props, sections_to_recover)
+                    self.add_custom_property(obj,
+                                             f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
+                                             'default_value', mat.node_tree.nodes[j].name[len("MustardUI Float - "):],
+                                             "FLOAT", custom_props, sections_to_recover)
                     k = k + 1
                 elif "MustardUI Bool" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type == "VALUE":
-                    self.add_custom_property(obj, 'bpy.data.materials[\'' + mat.name + '\'].node_tree.nodes[\'' +
-                                             mat.node_tree.nodes[j].name + '\'].outputs[0]', 'default_value',
-                                             mat.node_tree.nodes[j].name[len("MustardUI Bool - "):], "BOOLEAN",
-                                             custom_props, sections_to_recover)
+                    self.add_custom_property(obj,
+                                             f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
+                                             'default_value', mat.node_tree.nodes[j].name[len("MustardUI Bool - "):],
+                                             "BOOLEAN", custom_props, sections_to_recover)
                     k = k + 1
                 elif "MustardUI Int" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type == "VALUE":
-                    self.add_custom_property(obj, 'bpy.data.materials[\'' + mat.name + '\'].node_tree.nodes[\'' +
-                                             mat.node_tree.nodes[j].name + '\'].outputs[0]', 'default_value',
-                                             mat.node_tree.nodes[j].name[len("MustardUI Int - "):], "INT", custom_props,
-                                             sections_to_recover)
+                    self.add_custom_property(obj,
+                                             f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
+                                             'default_value', mat.node_tree.nodes[j].name[len("MustardUI Int - "):],
+                                             "INT", custom_props, sections_to_recover)
                     k = k + 1
                 elif "MustardUI" in mat.node_tree.nodes[j].name and mat.node_tree.nodes[j].type == "RGB":
-                    self.add_custom_property(obj, 'bpy.data.materials[\'' + mat.name + '\'].node_tree.nodes[\'' +
-                                             mat.node_tree.nodes[j].name + '\'].outputs[0]', 'default_value',
-                                             mat.node_tree.nodes[j].name[len("MustardUI - "):], "COLOR", custom_props,
-                                             sections_to_recover)
+                    self.add_custom_property(obj,
+                                             f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
+                                             'default_value', mat.node_tree.nodes[j].name[len("MustardUI - "):],
+                                             "COLOR", custom_props, sections_to_recover)
                     k = k + 1
 
         if rig_settings.model_body.data.shape_keys is not None:
             for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
                     self.add_custom_property(obj,
-                                             'bpy.data.objects[\'' + rig_settings.model_body.name + '\'].data.shape_keys.key_blocks[\'' + shape_key.name + '\']',
+                                             f'bpy.data.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                                              'value', shape_key.name[len("MustardUI Float - "):], "FLOAT", custom_props,
                                              sections_to_recover)
                     k = k + 1
                 elif "MustardUI Bool" in shape_key.name:
                     self.add_custom_property(obj,
-                                             'bpy.data.objects[\'' + rig_settings.model_body.name + '\'].data.shape_keys.key_blocks[\'' + shape_key.name + '\']',
+                                             f'bpy.data.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                                              'value', shape_key.name[len("MustardUI Bool - "):], "BOOL", custom_props,
                                              sections_to_recover)
                     k = k + 1
@@ -246,4 +246,3 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_Property_SmartCheck)
-    

@@ -32,7 +32,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             var.name = 'mustardui_var'
             var.targets[0].id_type = "ARMATURE"
             var.targets[0].id = obj
-            var.targets[0].data_path = '["' + prop_name + '"]'
+            var.targets[0].data_path = f'["{prop_name}"]'
 
         # Array property
         else:
@@ -44,7 +44,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 var.name = 'mustardui_var'
                 var.targets[0].id_type = "ARMATURE"
                 var.targets[0].id = obj
-                var.targets[0].data_path = '["' + prop_name + '"]' + '[' + str(i) + ']'
+                var.targets[0].data_path = f'["{prop_name}"][{str(i)}]'
 
         return
 
@@ -91,9 +91,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                                      overridable=True)
 
             elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
+                import numpy as np
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=custom_prop.default_float if custom_prop.array_length == 0 else evaluate_rna(
-                                         custom_prop.default_array),
+                                     default=custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array),
                                      min=custom_prop.min_float if custom_prop.subtype != "COLOR" else 0.,
                                      max=custom_prop.max_float if custom_prop.subtype != "COLOR" else 1.,
                                      description=custom_prop.description,
@@ -102,8 +102,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
             elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else evaluate_rna(
-                                         custom_prop.default_array),
+                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else eval(custom_prop.default_array),
                                      min=custom_prop.min_int,
                                      max=custom_prop.max_int,
                                      description=custom_prop.description,
@@ -126,10 +125,10 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
                 if "[" in custom_prop.path and "]" in custom_prop.path:
                     print(
-                        'MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + custom_prop.path + '\'. This custom property will be removed.')
+                        'MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at ' + repr(custom_prop.rna + custom_prop.path) + '. This custom property will be removed.')
                 else:
                     print(
-                        'MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at \'' + custom_prop.rna + '.' + custom_prop.path + '\'. This custom property will be removed.')
+                        'MustardUI - Something went wrong when trying to restore ' + custom_prop.name + ' at ' + repr(custom_prop.rna + '.' + custom_prop.path) + '. This custom property will be removed.')
 
                 if prop_type == 0:
                     uilist = obj.MustardUI_CustomProperties

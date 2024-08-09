@@ -110,12 +110,21 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             elif (hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default')
                   and hasattr(prop, 'description') and hasattr(prop, 'subtype')):
                 description = prop.description if (not "node_tree.nodes" in rna and not "shape_keys" in rna) else ""
-                rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
-                                     min=prop.hard_min if prop.subtype != "COLOR" else 0.,
-                                     max=prop.hard_max if prop.subtype != "COLOR" else 1.,
-                                     description=description,
-                                     overridable=True,
-                                     subtype=prop.subtype if prop.subtype != "FACTOR" else None)
+                try:
+                    rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
+                                         min=prop.hard_min if prop.subtype != "COLOR" else 0.,
+                                         max=prop.hard_max if prop.subtype != "COLOR" else 1.,
+                                         description=description,
+                                         overridable=True,
+                                         subtype=prop.subtype if prop.subtype != "FACTOR" else None)
+                except:
+                    def_array = (0., 0., 0., 0.) if prop.array_length == 4 else (0., 0., 0.) if prop.array_length == 3 else (0., 0.)
+                    rna_idprop_ui_create(obj, prop_name, default=def_array,
+                                         min=prop.hard_min if prop.subtype != "COLOR" else 0.,
+                                         max=prop.hard_max if prop.subtype != "COLOR" else 1.,
+                                         description=description,
+                                         overridable=True,
+                                         subtype=prop.subtype if prop.subtype != "FACTOR" else None)
             elif hasattr(prop, 'description'):
                 rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
                                      description=prop.description)

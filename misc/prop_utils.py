@@ -5,9 +5,9 @@ import ast
 def evaluate_rna(rna_path):
 
     # Ensure the path starts with 'bpy.'
-    if not rna_path.startswith("bpy."):
-        print("Invalid RNA path: must start with 'bpy.'")
-        return None
+    #if not rna_path.startswith("bpy."):
+    #    print("Invalid RNA path: must start with 'bpy.'")
+    #    return None
 
     # Split the path into components
     base_name, rna_sub_path = rna_path.split('.', 1)

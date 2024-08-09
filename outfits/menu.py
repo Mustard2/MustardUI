@@ -21,7 +21,7 @@ def mustardui_collection_menu(self, context):
         if not context.collection in [x.collection for x in rig_settings.outfits_collections]:
             self.layout.separator()
             if addon_prefs.debug:
-                self.layout.operator(MustardUI_AddOutfit.bl_idname, text="Add Outfit: " + context.collection.name,
+                self.layout.operator(MustardUI_AddOutfit.bl_idname, text="Add Outfit: " + repr(context.collection.name),
                                      icon="ADD")
             else:
                 self.layout.operator(MustardUI_AddOutfit.bl_idname, icon="ADD")

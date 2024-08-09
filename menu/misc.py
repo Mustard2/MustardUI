@@ -18,7 +18,7 @@ def mustardui_custom_properties_print(arm, settings, rig_settings, custom_proper
                           emboss=False)
         else:
             if prop.prop_name in arm.keys():
-                row2.prop(arm, '["' + prop.prop_name + '"]', text="")
+                row2.prop(arm, f'["{prop.prop_name}"]', text="")
             else:
                 row2.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True, emboss=False)
 

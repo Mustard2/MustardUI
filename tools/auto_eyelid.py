@@ -25,7 +25,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
             if blink_driver in obj.keys():
                 obj[blink_driver] = value
                 obj.update_tag()
-                obj.keyframe_insert(data_path='["' + blink_driver + '"]', index=-1, frame=frame)
+                obj.keyframe_insert(data_path=f'["{blink_driver}"]', index=-1, frame=frame)
                 return False
             else:
                 return True
