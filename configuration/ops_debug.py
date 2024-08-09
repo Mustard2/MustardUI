@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+import os
 
 
 class MustardUI_Debug_Log(bpy.types.Operator):
@@ -160,8 +161,8 @@ class MustardUI_Debug_Log(bpy.types.Operator):
 
         # Write to file
         try:
-            abs_path = bpy.context.blend_data.filepath[:bpy.context.blend_data.filepath.rfind('\\')] + '\\'
-            log_file = open(abs_path + 'mustardui_log.txt', 'w')
+            abs_path = os.path.join(bpy.path.abspath("//"), 'mustardui_log.txt')
+            log_file = open(abs_path, 'w')
             log_file.write(log)
             log_file.close()
 

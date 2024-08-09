@@ -1,5 +1,6 @@
 import bpy
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
@@ -23,7 +24,7 @@ class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Search for oufit collections
         if addon_prefs.debug:

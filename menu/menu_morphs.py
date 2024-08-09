@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..misc.prop_utils import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 
@@ -13,8 +14,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
     def morph_filter(self, morph, rig_settings):
 
         # Check null filter
-        check1 = (rig_settings.diffeomorphic_filter_null and eval(
-            'rig_settings.model_armature_object[\"' + morph.path + '\"]') != 0.) or not rig_settings.diffeomorphic_filter_null
+        check1 = (rig_settings.diffeomorphic_filter_null and evaluate_rna(
+            f'rig_settings.model_armature_object["{bpy.utils.escape_identifier(morph.path)}"]') != 0.) or not rig_settings.diffeomorphic_filter_null
 
         # Check search filter
         check2 = rig_settings.diffeomorphic_search.lower() in morph.name.lower()
@@ -102,8 +103,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             if not rig_settings.diffeomorphic_emotions_units_collapse:
 
                 for morph in emotion_units_morphs:
-                    if hasattr(rig_settings.model_armature_object, '[\"' + morph.path + '\"]'):
-                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text=morph.name)
+                    if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+                        box.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]', text=morph.name)
                     else:
                         row = box.row(align=False)
                         row.label(text=morph.name)
@@ -122,8 +123,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
 
             if not rig_settings.diffeomorphic_emotions_collapse:
                 for morph in emotion_morphs:
-                    if hasattr(rig_settings.model_armature_object, '[\"' + morph.path + '\"]'):
-                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text=morph.name)
+                    if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+                        box.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]', text=morph.name)
                     else:
                         row = box.row(align=False)
                         row.label(text=morph.name)
@@ -143,8 +144,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             if not rig_settings.diffeomorphic_facs_emotions_units_collapse:
 
                 for morph in facs_emotion_units_morphs:
-                    if hasattr(rig_settings.model_armature_object, '[\"' + morph.path + '\"]'):
-                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text=morph.name)
+                    if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+                        box.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]', text=morph.name)
                     else:
                         row = box.row(align=False)
                         row.label(text=morph.name)
@@ -164,8 +165,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             if not rig_settings.diffeomorphic_facs_emotions_collapse:
 
                 for morph in facs_emotion_morphs:
-                    if hasattr(rig_settings.model_armature_object, '[\"' + morph.path + '\"]'):
-                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text=morph.name)
+                    if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+                        box.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]', text=morph.name)
                     else:
                         row = box.row(align=False)
                         row.label(text=morph.name)
@@ -185,8 +186,8 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
             if not rig_settings.diffeomorphic_body_morphs_collapse:
 
                 for morph in body_morphs:
-                    if hasattr(rig_settings.model_armature_object, '[\"' + morph.path + '\"]'):
-                        box.prop(rig_settings.model_armature_object, '[\"' + morph.path + '\"]', text=morph.name)
+                    if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+                        box.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]', text=morph.name)
                     else:
                         row = box.row(align=False)
                         row.label(text=morph.name)

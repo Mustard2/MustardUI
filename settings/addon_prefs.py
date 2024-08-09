@@ -1,12 +1,11 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
-# Addon preferences can be accessed with
-# addon_prefs = context.preferences.addons[__name__].preferences
 class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
-    bl_idname = "MustardUI"
+    bl_idname = base_package
 
     def developer_update(self, context):
         if not self.developer:
@@ -36,23 +35,15 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                                            "experimental features might not work properly yet, or be changed/removed "
                                            "from future versions")
 
-    # Check updates automatically at Blender startup
-    check_updates: BoolProperty(default=True,
-                                name="Check Updates at Startup",
-                                description="Check new MustardUI versions when Blender is starting.\nThis might freeze Blender if you have a slow collection")
-
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.prop(self, "check_updates")
         col.prop(self, "developer")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
         col.separator()
         col.prop(self, "experimental")
-
-        layout.operator('mustardui.updater', icon="WORLD")
 
         if self.debug:
             box = layout.box()

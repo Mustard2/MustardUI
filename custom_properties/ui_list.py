@@ -2,6 +2,8 @@ import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
 from .misc import *
+from ..misc.prop_utils import *
+from .. import __package__ as base_package
 
 
 class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
@@ -10,7 +12,7 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
         res, obj = mustardui_active_object(context, config=1)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -30,7 +32,7 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        eval(mustardui_cp_path(item.rna, item.path))
+                        evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -63,7 +65,7 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -94,7 +96,7 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        eval(mustardui_cp_path(item.rna, item.path))
+                        evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")
@@ -122,7 +124,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Make sure your code supports all 3 layout types
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -148,7 +150,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                     if item.is_animatable:
                         obj.id_properties_ui(item.prop_name)
                     else:
-                        eval(mustardui_cp_path(item.rna, item.path))
+                        evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
                 except:
                     row.label(text="", icon="ERROR")

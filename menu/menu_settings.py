@@ -3,6 +3,7 @@ from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 import platform
+from .. import __package__ as base_package
 
 
 class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
@@ -23,7 +24,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         layout = self.layout
 

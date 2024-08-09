@@ -43,15 +43,9 @@ class MustardUI_Body_AssignToSection(bpy.types.Operator):
     def draw(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
-        rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
 
-        uilist = rig_settings.body_custom_properties_sections
-        index = context.scene.mustardui_section_uilist_index
-
         layout = self.layout
-
-        layout.label(text="Add properties to the Section \'" + uilist[index].name + "\'")
 
         box = layout.box()
         for prop in sorted(custom_props, key=lambda x: x.name):

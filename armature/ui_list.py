@@ -6,7 +6,6 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
     """UIList for Armature layers properties"""
 
     def draw_item(self, _context, layout, armature, bcoll, _icon, _active_data, _active_propname, _index):
-
         settings = bpy.context.scene.MustardUI_Settings
 
         bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
@@ -16,7 +15,7 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
 
         row = layout.row(align=True)
 
-        collections = armature.collections_all if bpy.app.version >= (4, 1, 0) else armature.collections
+        collections = armature.collections_all
 
         # Check if the icon should be drawn
         for b in collections:
@@ -24,9 +23,10 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
                 row.label(text="", icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1")
                 break
 
+        # Display name with icon if advanced settings are enabled
         if settings.advanced:
             row.prop(bcoll, "name", text="", emboss=False,
-                        icon='DOT' if has_active_bone else 'BLANK1')
+                     icon='DOT' if has_active_bone else 'BLANK1')
         else:
             row.prop(bcoll, "name", text="", emboss=False)
 

@@ -12,7 +12,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
                            description="Enable to add this bone collection to the Armature panel")
 
     # Show the bone collection in the UI only if Advanced is enabled
-    advanced: bpy.props.BoolProperty(default=False,
+    advanced: BoolProperty(default=False,
                                      name="Advanced",
                                      description="Enable Advanced layer.\nIf enabled, this layer will be shown in the "
                                                  "UI only if Advanced settings is enabled in the UI settings")
@@ -81,7 +81,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         poll, arm = mustardui_active_object(context, config=0)
         armature_settings = arm.MustardUI_ArmatureSettings
         rig_settings = arm.MustardUI_RigSettings
-        collections = arm.collections_all if bpy.app.version >= (4, 1, 0) else arm.collections
+        collections = arm.collections_all
         for bcoll in collections:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if bcoll_settings.outfit_switcher_enable:
