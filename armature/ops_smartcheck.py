@@ -5,7 +5,6 @@ from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
 
-# Operator to add the right click button on properties
 class MustardUI_Armature_SmartCheck(bpy.types.Operator):
     """Check if a known armature type (ARP, Rigify, MHX) is available, and automatically set the Armature panel"""
     bl_idname = "mustardui.armature_smartcheck"

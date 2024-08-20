@@ -17,6 +17,11 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
                                      description="Enable Advanced layer.\nIf enabled, this layer will be shown in the "
                                                  "UI only if Advanced settings is enabled in the UI settings")
 
+    # Default bone collections are enabled when Reset is used
+    default: BoolProperty(default=False,
+                           name="Default",
+                           description="Default bone collections are enabled when Reset is used")
+
     # Icon
     icon: EnumProperty(name="Icon",
                        items=mustardui_icon_list)
@@ -26,6 +31,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
     def outfit_switcher_enable_update(self, context):
         if self.outfit_switcher_enable:
             self.is_in_UI = False
+            self.default = False
         return
 
     # Poll function for the selection of mesh belonging to an outfit in pointer properties

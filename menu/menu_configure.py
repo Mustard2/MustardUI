@@ -395,6 +395,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
                 row = col.row()
                 row.enabled = not bcoll_settings.outfit_switcher_enable
                 row.prop(bcoll_settings, 'advanced')
+                row = col.row()
+                row.enabled = not bcoll_settings.outfit_switcher_enable
+                row.prop(bcoll_settings, 'default')
 
                 col = box.column(align=True)
                 col.prop(bcoll_settings, 'outfit_switcher_enable')

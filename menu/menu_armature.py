@@ -115,6 +115,9 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             if (bcoll_settings.advanced and settings.advanced) or not bcoll_settings.advanced:
                 self.draw_armature_button(bcoll, bcoll_settings, enabled_colls, armature_settings, box)
 
+        box.separator()
+        box.operator('mustardui.armature_reset_bcoll', icon="LOOP_BACK", text="Reset Visibility")
+
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Armature)

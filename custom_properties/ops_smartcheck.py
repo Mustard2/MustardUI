@@ -7,7 +7,6 @@ from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
 
-# Operator to add the right click button on properties
 class MustardUI_Property_SmartCheck(bpy.types.Operator):
     """Check if some properties respect the MustardUI Int/Float/Bool convention, and automatically add them as additional properties"""
     bl_idname = "mustardui.property_smartcheck"
