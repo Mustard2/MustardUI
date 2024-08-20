@@ -27,6 +27,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
         found_colls = 0
 
         # Standard armature setup
+        # Format: name, advanced, icon, default
         preset_Mustard_models = []
 
         # TODO: Implement Rigify and ARP SmartCheck
@@ -73,25 +74,25 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             if addon_prefs.debug:
                 print('\nMustardUI - Smart Check - Found a MHX rig, setting layers for MHX.')
 
-            preset_Mustard_models = [("Head", False, "USER"),
-                                     ("Face", False, "USER"),
-                                     ("Spine", False, ""),
-                                     ("IK Arm Left", False, ""),
-                                     ("IK Arm Right", False, ""),
-                                     ("FK Arm Left", False, ""),
-                                     ("FK Arm Right", False, ""),
-                                     ("Hand Left", False, ""),
-                                     ("Hand Right", False, ""),
-                                     ("Fingers Left", False, ""),
-                                     ("Fingers Right", False, ""),
-                                     ("IK Leg Left", False, ""),
-                                     ("IK Leg Right", False, ""),
-                                     ("FK Leg Left", False, ""),
-                                     ("FK Leg Right", False, ""),
-                                     ("Toes Left", False, ""),
-                                     ("Toes Right", False, ""),
-                                     ("Tweak", False, ""),
-                                     ("Root", False, "")]
+            preset_Mustard_models = [("Head", False, "USER", True),
+                                     ("Face", False, "USER", False),
+                                     ("Spine", False, "", True),
+                                     ("IK Arm Left", False, "", True),
+                                     ("IK Arm Right", False, "", True),
+                                     ("FK Arm Left", False, "", False),
+                                     ("FK Arm Right", False, "", False),
+                                     ("Hand Left", False, "", False),
+                                     ("Hand Right", False, "", False),
+                                     ("Fingers Left", False, "", False),
+                                     ("Fingers Right", False, "", False),
+                                     ("IK Leg Left", False, "", True),
+                                     ("IK Leg Right", False, "", True),
+                                     ("FK Leg Left", False, "", False),
+                                     ("FK Leg Right", False, "", False),
+                                     ("Toes Left", False, "", False),
+                                     ("Toes Right", False, "", False),
+                                     ("Tweak", False, "", False),
+                                     ("Root", False, "", True)]
 
             # Mirror option enabled
             obj.MustardUI_ArmatureSettings.mirror = True
@@ -112,6 +113,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                 for coll in obj.collections_all:
                     if coll.name == preset[0]:
                         coll.MustardUI_ArmatureBoneCollection.is_in_UI = True
+                        coll.MustardUI_ArmatureBoneCollection.default = preset[3]
                         if preset[2] != "":
                             coll.MustardUI_ArmatureBoneCollection.icon = preset[2]
                         if addon_prefs.debug:
