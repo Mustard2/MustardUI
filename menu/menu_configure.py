@@ -339,7 +339,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box.prop(armature_settings, 'mirror')
 
             box = layout.box()
-            box.label(text="Bone Collections", icon="BONE_DATA")
+            row = box.row()
+            row.label(text="Bone Collections", icon="BONE_DATA")
+            row.operator("Mustardui.armature_smartcheck", text="", icon="VIEWZOOM")
 
             active_bcoll = arm.collections.active
 
