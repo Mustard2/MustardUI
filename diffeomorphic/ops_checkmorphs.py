@@ -2,6 +2,7 @@ import bpy
 from ..model_selection.active_object import *
 from .misc import *
 import itertools
+from .. import __package__ as base_package
 
 
 class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
@@ -20,7 +21,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Try to assign the rig object
         if not arm.MustardUI_created:
@@ -89,7 +90,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
             for emotion in facs_emotions_units:
                 name = emotion[emotion.rfind('_', 0, 12) + 1] + ''.join(
                     [c if not c.isupper() else ' ' + c for c in emotion[emotion.rfind('_', 0, 12) + 2:]])
-                name = name.rstrip('_div2')
+                name = name.removesuffix('_div2')
                 mustardui_add_dazmorph(rig_settings.diffeomorphic_morphs_list, [name, emotion, 2])
 
         # FACS Emotions
@@ -140,7 +141,7 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
         # Print the options
         for el in rig_settings.diffeomorphic_morphs_list:
             if addon_prefs.debug:
-                print(el.name + " with path " + el.path + ', type: ' + str(el.type))
+                print(el.name + " with path " + el.path + ", type: " + str(el.type))
             properties_number = properties_number + 1
 
         rig_settings.diffeomorphic_morphs_number = properties_number

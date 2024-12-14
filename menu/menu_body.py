@@ -1,6 +1,7 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..misc.prop_utils import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 import textwrap
@@ -58,13 +59,13 @@ def draw_section(context, layout, obj, settings, rig_settings, custom_props, sec
                     row.label(text=prop.name)
                 if not prop.is_animatable:
                     try:
-                        row.prop(eval(prop.rna), prop.path, text="")
+                        row.prop(evaluate_rna(prop.rna), prop.path, text="")
                     except:
                         row.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="",
                                  icon_only=True, emboss=False)
                 else:
                     if prop.prop_name in obj.keys():
-                        row.prop(obj, '["' + prop.prop_name + '"]', text="")
+                        row.prop(obj, f'["{prop.prop_name}"]', text="")
                     else:
                         row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
                                  emboss=False)
@@ -193,13 +194,13 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                         row.label(text=prop.name)
                     if not prop.is_animatable:
                         try:
-                            row.prop(eval(prop.rna), prop.path, text="")
+                            row.prop(evaluate_rna(prop.rna), prop.path, text="")
                         except:
                             row.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="",
                                      icon_only=True, emboss=False)
                     else:
                         if prop.prop_name in obj.keys():
-                            row.prop(obj, '["' + prop.prop_name + '"]', text="")
+                            row.prop(obj, f'["{prop.prop_name}"]', text="")
                         else:
                             row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
                                      emboss=False)
@@ -252,7 +253,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     if not m.node_group.MustardUI_collapse:
                         for i in [x for x in gndi.items() if hasattr(gndi[x[0]], 'identifier')]:
                             if i[1].identifier in m.keys():
-                                box.prop(m, '["' + i[1].identifier + '"]', text=i[0])
+                                box.prop(m, f'["{i[1].identifier}"]', text=i[0])
 
 
 def register():

@@ -1,4 +1,5 @@
 import bpy
+from ..misc.prop_utils import *
 
 
 # Function to check keys of custom properties (only for debug)
@@ -46,7 +47,7 @@ def mustardui_update_index_cp(type, scene, index):
 
 
 def mustardui_add_driver(obj, rna, path, prop, prop_name):
-    driver_object = eval(rna)
+    driver_object = evaluate_rna(rna)
     driver_object.driver_remove(path)
     driver = driver_object.driver_add(path)
 
@@ -58,7 +59,7 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
         var.name = 'mustardui_var'
         var.targets[0].id_type = "ARMATURE"
         var.targets[0].id = obj
-        var.targets[0].data_path = '["' + prop_name + '"]'
+        var.targets[0].data_path = f'["{prop_name}"]'
 
     # Array property
     else:
@@ -70,7 +71,7 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
             var.name = 'mustardui_var'
             var.targets[0].id_type = "ARMATURE"
             var.targets[0].id = obj
-            var.targets[0].data_path = '["' + prop_name + '"]' + '[' + str(i) + ']'
+            var.targets[0].data_path = f'["{prop_name}"][{str(i)}]'
 
     return
 
@@ -94,14 +95,14 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
     # Remove linked properties drivers
     for lp in uilist[index].linked_properties:
         try:
-            driver_object = eval(lp.rna)
+            driver_object = evaluate_rna(lp.rna)
             driver_object.driver_remove(lp.path)
         except:
             print("MustardUI - Could not delete driver with path: " + lp.rna)
 
     # Remove driver
     try:
-        driver_object = eval(uilist[index].rna)
+        driver_object = evaluate_rna(uilist[index].rna)
         driver_object.driver_remove(uilist[index].path)
     except:
         print("MustardUI - Could not delete driver with path: " + uilist[index].rna)

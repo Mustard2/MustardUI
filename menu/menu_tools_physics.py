@@ -4,6 +4,7 @@ from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from ..tools.physics import *
+from .. import __package__ as base_package
 
 
 class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
@@ -35,7 +36,7 @@ class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         layout = self.layout
 

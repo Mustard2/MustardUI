@@ -4,11 +4,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 from bpy.props import *
 from bpy.utils import register_class
 import json
-
-
-# ------------------------------------------------------------------------
-#    Link presets
-# ------------------------------------------------------------------------
+from .. import __package__ as base_package
 
 
 class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
@@ -27,7 +23,7 @@ class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
     def execute(self, context):
@@ -75,7 +71,7 @@ class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
     def execute(self, context):

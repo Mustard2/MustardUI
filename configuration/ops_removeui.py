@@ -2,6 +2,7 @@ import bpy
 from bpy.props import *
 from ..custom_properties.misc import mustardui_clean_prop
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class MustardUI_RemoveUI(bpy.types.Operator):
@@ -85,7 +86,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
         arm_obj = rig_settings.model_armature_object
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         # Remove or delete outfits
         for i in reversed(range(len(rig_settings.outfits_collections))):
@@ -150,7 +151,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
     def invoke(self, context, event):
 
-        addon_prefs = context.preferences.addons["MustardUI"].preferences
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         return context.window_manager.invoke_props_dialog(self, width=550 if addon_prefs.debug else 450)
 

@@ -34,6 +34,8 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                     bcoll.name.lower().endswith(".l") and b.name.lower() == bcoll.name[:-2].lower() + ".r"
             ) or (
                     bcoll.name.lower().startswith("left") and b.name.lower() == "right" + bcoll.name[4:].lower()
+            ) or (
+                    bcoll.name.lower().endswith("left") and b.name.lower() == bcoll.name[:-4].lower() + "right"
             ):
                 row = layout.row()
                 draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
@@ -44,6 +46,8 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                     bcoll.name.lower().endswith(".r") and b.name.lower() == bcoll.name[:-2].lower() + ".l"
             ) or (
                     bcoll.name.lower().startswith("right") and b.name.lower() == "left" + bcoll.name[5:].lower()
+            ) or (
+                    bcoll.name.lower().endswith("right") and b.name.lower() == bcoll.name[:-5].lower() + "left"
             ):
                 return
 
@@ -61,7 +65,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         if obj is not None:
             rig_settings = obj.MustardUI_RigSettings
             armature_settings = obj.MustardUI_ArmatureSettings
-            bcolls = obj.collections_all if bpy.app.version >= (4, 1, 0) else obj.collections
+            bcolls = obj.collections_all
 
             if len(bcolls) < 1:
                 return False
@@ -83,7 +87,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         armature_settings = obj.MustardUI_ArmatureSettings
         rig_settings = obj.MustardUI_RigSettings
 
-        bcolls = obj.collections_all if bpy.app.version >= (4, 1, 0) else obj.collections
+        bcolls = obj.collections_all
 
         box = self.layout
 
@@ -110,6 +114,9 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if (bcoll_settings.advanced and settings.advanced) or not bcoll_settings.advanced:
                 self.draw_armature_button(bcoll, bcoll_settings, enabled_colls, armature_settings, box)
+
+        box.separator()
+        box.operator('mustardui.armature_reset_bcoll', icon="LOOP_BACK", text="Reset Visibility")
 
 
 def register():

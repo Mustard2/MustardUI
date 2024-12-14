@@ -28,7 +28,6 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         custom_props, nu = mustardui_choose_cp(obj, self.type, context.scene)
 
@@ -46,76 +45,78 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
         for parent_prop in custom_props:
             if parent_prop.rna == self.parent_rna and parent_prop.path == self.parent_path:
                 found = True
+
+                try:
+                    parent_prop_length = len(evaluate_path(parent_prop.rna, parent_prop.path))
+                except:
+                    parent_prop_length = 0
+
+                if prop.array_length != parent_prop_length:
+                    self.report({'ERROR'}, 'MustardUI - Can not link properties with different array length.')
+                    return {'FINISHED'}
+
+                if parent_prop.type != prop.type:
+                    self.report({'ERROR'}, 'MustardUI - Can not link properties with different type.')
+                    return {'FINISHED'}
+
+                # dump(prop, 'button_prop')
+
+                # Copy the path of the selected property
+                try:
+                    bpy.ops.ui.copy_data_path_button(full_path=True)
+                except:
+                    self.report({'ERROR'}, 'MustardUI - Invalid selection.')
+                    return {'FINISHED'}
+
+                # Adjust the property path to be exported
+                rna, path = context.window_manager.clipboard.rsplit('.', 1)
+                if '][' in path:
+                    path, rem = path.rsplit('[', 1)
+                    rna = rna + '.' + path
+                    path = '[' + rem
+                elif '[' in path:
+                    path, rem = path.rsplit('[', 1)
+
+                if parent_prop.rna == rna and parent_prop.path == path:
+                    self.report({'ERROR'}, 'MustardUI - Can not link a property with itself.')
+                    return {'FINISHED'}
+
+                if not mustardui_check_cp(obj, rna, path):
+                    self.report({'ERROR'}, 'MustardUI - Can not link a property already added.')
+                    return {'FINISHED'}
+
+                switched_warning = False
+                for check_prop in custom_props:
+                    for i in range(0, len(check_prop.linked_properties)):
+                        if check_prop.linked_properties[i].rna == rna and check_prop.linked_properties[i].path == path:
+                            switched_warning = True
+                            check_prop.linked_properties.remove(i)
+
+                # Add driver
+                if prop.is_animatable:
+                    mustardui_add_driver(obj, rna, path, prop, parent_prop.prop_name)
+
+                # Add linked property to list
+                if not (rna, path) in [(x.rna, x.path) for x in parent_prop.linked_properties]:
+                    lp = parent_prop.linked_properties.add()
+                    lp.rna = rna
+                    lp.path = path
+                else:
+                    self.report({'ERROR'}, 'MustardUI - An error occurred while linking the property.')
+                    return {'FINISHED'}
+
+                if switched_warning:
+                    self.report({'WARNING'}, 'MustardUI - Switched linked property.')
+                else:
+                    self.report({'INFO'}, 'MustardUI - Property linked.')
+
                 break
+
         if not found:
             self.report({'ERROR'}, 'MustardUI - An error occurred while searching for parent property.')
             return {'FINISHED'}
 
-        try:
-            parent_prop_length = len(eval(mustardui_cp_path(parent_prop.rna, parent_prop.path)))
-        except:
-            parent_prop_length = 0
-
-        if prop.array_length != parent_prop_length:
-            self.report({'ERROR'}, 'MustardUI - Can not link properties with different array length.')
-            return {'FINISHED'}
-
-        if parent_prop.type != prop.type:
-            self.report({'ERROR'}, 'MustardUI - Can not link properties with different type.')
-            return {'FINISHED'}
-
-        # dump(prop, 'button_prop')
-
-        # Copy the path of the selected property
-        try:
-            bpy.ops.ui.copy_data_path_button(full_path=True)
-        except:
-            self.report({'ERROR'}, 'MustardUI - Invalid selection.')
-            return {'FINISHED'}
-
-        # Adjust the property path to be exported
-        rna, path = context.window_manager.clipboard.rsplit('.', 1)
-        if '][' in path:
-            path, rem = path.rsplit('[', 1)
-            rna = rna + '.' + path
-            path = '[' + rem
-        elif '[' in path:
-            path, rem = path.rsplit('[', 1)
-
-        if parent_prop.rna == rna and parent_prop.path == path:
-            self.report({'ERROR'}, 'MustardUI - Can not link a property with itself.')
-            return {'FINISHED'}
-
-        if not mustardui_check_cp(obj, rna, path):
-            self.report({'ERROR'}, 'MustardUI - Can not link a property already added.')
-            return {'FINISHED'}
-
-        switched_warning = False
-        for check_prop in custom_props:
-            for i in range(0, len(check_prop.linked_properties)):
-                if check_prop.linked_properties[i].rna == rna and check_prop.linked_properties[i].path == path:
-                    switched_warning = True
-                    check_prop.linked_properties.remove(i)
-
-        # Add driver
-        if prop.is_animatable:
-            mustardui_add_driver(obj, rna, path, prop, parent_prop.prop_name)
-
-        # Add linked property to list
-        if not (rna, path) in [(x.rna, x.path) for x in parent_prop.linked_properties]:
-            lp = parent_prop.linked_properties.add()
-            lp.rna = rna
-            lp.path = path
-        else:
-            self.report({'ERROR'}, 'MustardUI - An error occurred while linking the property.')
-            return {'FINISHED'}
-
         obj.update_tag()
-
-        if switched_warning:
-            self.report({'WARNING'}, 'MustardUI - Switched linked property.')
-        else:
-            self.report({'INFO'}, 'MustardUI - Property linked.')
 
         return {'FINISHED'}
 
@@ -140,7 +141,7 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
 
         # Remove linked property driver
         try:
-            driver_object = eval(self.rna)
+            driver_object = evaluate_rna(self.rna)
             driver_object.driver_remove(self.path)
             return True
         except:
