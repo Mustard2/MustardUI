@@ -53,7 +53,7 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
         new_mod = True
         obj = rig_settings.model_body
         for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-            if modifier.object == bpy.data.objects[physics_settings.config_cage_object.name]:
+            if modifier.object == context.scene.objects[physics_settings.config_cage_object.name]:
                 new_mod = False
         if new_mod and obj.type == "MESH":
             mod = obj.modifiers.new(name=mod_name, type='MESH_DEFORM')
@@ -76,12 +76,12 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
             mod.show_render = physics_settings.physics_enable
 
         # Outfits add
-        for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
             for obj in items:
                 new_mod = True
                 for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-                    if modifier.object == bpy.data.objects[physics_settings.config_cage_object.name]:
+                    if modifier.object == context.scene.objects[physics_settings.config_cage_object.name]:
                         new_mod = False
                 if new_mod and obj.type == "MESH":
                     mod = obj.modifiers.new(name=mod_name, type='MESH_DEFORM')
@@ -208,19 +208,19 @@ class MustardUI_Tools_Physics_DeleteItem(bpy.types.Operator):
         # Remove modifiers from the body
         obj = rig_settings.model_body
         for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-            if modifier.object == bpy.data.objects[self.cage_object_name]:
+            if modifier.object == context.scene.objects[self.cage_object_name]:
                 obj.modifiers.remove(obj.modifiers.get(modifier.name))
 
         # Remove objects modifiers
-        for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
             for obj in items:
                 for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-                    if modifier.object == bpy.data.objects[self.cage_object_name]:
+                    if modifier.object == context.scene.objects[self.cage_object_name]:
                         obj.modifiers.remove(obj.modifiers.get(modifier.name))
 
         # Remove cloth modifier from the cage
-        obj = bpy.data.objects[self.cage_object_name]
+        obj = context.scene.objects[self.cage_object_name]
         if obj is not None:
             for modifier in obj.modifiers:
                 if modifier.type == "CLOTH":
@@ -357,7 +357,7 @@ class MustardUI_Tools_Physics_SimulateObject(bpy.types.Operator):
             return {'FINISHED'}
 
         try:
-            cage = bpy.data.objects[self.cage_object_name]
+            cage = context.scene.objects[self.cage_object_name]
             for modifier in cage.modifiers:
                 if modifier.type == "CLOTH":
                     cage_cache = modifier.point_cache

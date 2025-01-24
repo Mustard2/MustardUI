@@ -52,7 +52,7 @@ class PANEL_PT_MustardUI_Tools_Physics(MainPanel, bpy.types.Panel):
             return
 
         # Cage specific settings
-        cage = bpy.data.objects[physics_settings.physics_items_list]
+        cage = context.scene.objects[physics_settings.physics_items_list]
 
         try:
             cage_settings = [x for x in physics_settings.physics_items if x.cage_object.name == cage.name][0]

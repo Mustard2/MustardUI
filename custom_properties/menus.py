@@ -9,7 +9,6 @@ class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
     bl_label = 'Add to MustardUI (Section)'
 
     def draw(self, context):
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
 
@@ -30,7 +29,6 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
 
@@ -64,7 +62,6 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
 
@@ -99,7 +96,6 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
     bl_label = 'Add to MustardUI Hair'
 
     def draw(self, context):
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
 
@@ -129,7 +125,6 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
 

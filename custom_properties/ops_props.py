@@ -174,9 +174,9 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             if self.outfit != "":
                 cp.outfit = bpy.data.collections[self.outfit]
                 if self.outfit_piece != "":
-                    cp.outfit_piece = bpy.data.objects[self.outfit_piece]
+                    cp.outfit_piece = context.scene.objects[self.outfit_piece]
             elif self.hair != "":
-                cp.hair = bpy.data.objects[self.hair]
+                cp.hair = context.scene.objects[self.hair]
 
             if cp.is_animatable:
 

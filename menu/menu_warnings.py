@@ -44,7 +44,6 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
-        addon_prefs = bpy.context.preferences.addons[base_package].preferences
 
         layout = self.layout
 
@@ -77,7 +76,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
                 col.label(icon='ERROR', text="rig_tools not installed!")
 
         # Diffeomorphic support checks on versions
-        if rig_settings.diffeomorphic_support and settings.status_diffeomorphic == 2 and  (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
+        if rig_settings.diffeomorphic_support and settings.status_diffeomorphic == 2 and (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
             settings.status_diffeomorphic_version[2]) <= (1, 6, 0) and settings.status_diffeomorphic_version[0] > -1:
             box = layout.box()
             box.label(icon='ERROR', text="Diffeomorphic 1.5 or below are not supported!")

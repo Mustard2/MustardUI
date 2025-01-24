@@ -30,7 +30,7 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         for _, obj in reversed(items.items()):
             data = obj.data
             obj_type = obj.type
-            bpy.data.objects.remove(obj)
+            context.scene.objects.remove(obj)
             if obj_type == "MESH":
                 bpy.data.meshes.remove(data)
             elif obj_type == "ARMATURE":

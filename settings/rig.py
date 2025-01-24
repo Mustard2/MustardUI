@@ -307,7 +307,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 for obj in [x for x in items]:
                     if obj == bcoll_settings.outfit_switcher_object:
                         bcoll.is_visible = (armature_settings.outfits and
-                                            not bpy.data.objects[obj.name].hide_viewport and
+                                            not context.scene.objects[obj.name].hide_viewport and
                                             not bcoll_settings.outfit_switcher_collection.hide_viewport)
 
     # Function to update the visibility of the outfits/masks/armature layers when an outfit is changed

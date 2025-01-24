@@ -383,7 +383,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             for obj in [x for x in items if x.hide_viewport]:
                 data = obj.data
                 obj_type = obj.type
-                bpy.data.objects.remove(obj)
+                context.scene.objects.remove(obj)
                 if obj_type == "MESH":
                     bpy.data.meshes.remove(data)
                 elif obj_type == "ARMATURE":
@@ -407,7 +407,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             for obj in [x for x in rig_settings.hair_collection.objects if not current_hair in x.name]:
                 data = obj.data
                 obj_type = obj.type
-                bpy.data.objects.remove(obj)
+                context.scene.objects.remove(obj)
                 if obj_type == "MESH":
                     bpy.data.meshes.remove(data)
                 elif obj_type == "ARMATURE":

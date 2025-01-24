@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "MustardUI"
-version = "0.32.3"
+version = "2025.1.0"
 name = "MustardUI"
 tagline = "Easy-to-use UI for human characters"
 maintainer = "Mustard"
