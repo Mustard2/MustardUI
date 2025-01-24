@@ -46,7 +46,7 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
         col = row.column()
         col.enabled = not bcoll_settings.outfit_switcher_enable
         col.prop(bcoll_settings, "is_in_UI", text="", emboss=False,
-                 icon='GREASEPENCIL' if bcoll_settings.is_in_UI else 'OUTLINER_DATA_GP_LAYER')
+                 icon='CHECKBOX_HLT' if bcoll_settings.is_in_UI else 'CHECKBOX_DEHLT')
 
         if settings.advanced:
             row.prop(bcoll, "is_visible", text="", emboss=False, icon='HIDE_OFF' if bcoll.is_visible else 'HIDE_ON')

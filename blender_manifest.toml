@@ -13,11 +13,11 @@ tags = ["User Interface"]
 
 blender_version_min = "4.2.0"
 
-[permissions]
-files = "Import/export templates from/to disk"
-
 # License conforming to https://spdx.org/licenses/ (use "SPDX: prefix)
 # https://docs.blender.org/manual/en/dev/advanced/extensions/licenses.html
 license = [
   "SPDX:GPL-3.0-or-later",
 ]
+
+[permissions]
+files = "Import/export templates from/to disk"
