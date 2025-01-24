@@ -70,7 +70,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                         bcoll.is_visible = not bpy.data.objects[ob.name].hide_viewport and not bcoll_settings.outfit_switcher_collection.hide_viewport
 
         if rig_settings.outfits_update_tag_on_switch:
-            for obju in bpy.data.objects:
+            for obju in context.scene.objects:
                 obju.update_tag()
 
         return {'FINISHED'}

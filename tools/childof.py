@@ -79,7 +79,7 @@ class MustardUI_Tools_ChildOf(bpy.types.Operator):
         else:
 
             mod_cont = 0
-            for obj in bpy.data.objects:
+            for obj in context.scene.objects:
                 if obj.type == "ARMATURE":
                     for bone in obj.pose.bones:
                         for constr in bone.constraints:

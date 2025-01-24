@@ -960,7 +960,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         # Force No Physics
         if self.simplify_force_no_physics and self.simplify_enable:
-            for obj in [x for x in bpy.data.objects if x is not None]:
+            for obj in [x for x in context.scene.objects if x is not None]:
                 for ps in [x for x in obj.modifiers if x.type in ["SOFT_BODY", "CLOTH", "COLLISION"]]:
                     if ps.type == "COLLISION" and obj.collision is not None:
                         obj.collision.use = not self.simplify_enable
@@ -971,14 +971,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         # Force No Particles
         if self.simplify_force_no_particles and self.simplify_enable:
-            for obj in [x for x in bpy.data.objects if x is not None]:
+            for obj in [x for x in context.scene.objects if x is not None]:
                 for ps in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM"]]:
                     ps.show_viewport = not self.simplify_enable
                     if addon_prefs.debug:
                         print("MustardUI - Disabled " + ps.type + " modifier on: " + obj.name)
 
         # Update drivers
-        for obju in bpy.data.objects:
+        for obju in context.scene.objects:
             obju.update_tag()
 
         return

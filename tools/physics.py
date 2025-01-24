@@ -589,9 +589,9 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
                 mod.point_cache.frame_start = self.simulation_start
                 mod.point_cache.frame_end = self.simulation_end
 
-        for object in bpy.data.objects:
+        for o in context.scene.objects:
 
-            for modifier in object.modifiers:
+            for modifier in o.modifiers:
 
                 if modifier.type == "CLOTH":
                     mod = modifier
