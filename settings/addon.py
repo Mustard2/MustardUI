@@ -153,4 +153,8 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_created
+    del bpy.types.Armature.MustardUI_enable
+    del bpy.types.Scene.MustardUI_Settings
+
     bpy.utils.unregister_class(MustardUI_Settings)

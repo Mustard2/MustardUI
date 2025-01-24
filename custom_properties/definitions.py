@@ -117,5 +117,8 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_CustomPropertiesHair
+    del bpy.types.Armature.MustardUI_CustomPropertiesOutfit
+    del bpy.types.Armature.MustardUI_CustomProperties
     bpy.utils.unregister_class(MustardUI_CustomProperty)
     bpy.utils.unregister_class(MustardUI_LinkedProperty)

@@ -363,4 +363,5 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_ToolsSettings
     bpy.utils.unregister_class(MustardUI_ToolsSettings)

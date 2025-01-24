@@ -141,6 +141,7 @@ def register():
 
 
 def unregister():
+    del bpy.types.Scene.mustardui_section_uilist_index
     bpy.utils.unregister_class(MUSTARDUI_UL_Section_UIList)
     bpy.utils.unregister_class(MustardUI_Body_DeleteSection)
     bpy.utils.unregister_class(MustardUI_Body_AddSection)

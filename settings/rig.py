@@ -1103,4 +1103,7 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_RigSettings
+    del bpy.types.Object.MustardUI_outfit_lock
+
     bpy.utils.unregister_class(MustardUI_RigSettings)

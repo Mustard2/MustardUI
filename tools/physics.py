@@ -28,11 +28,7 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, arm = mustardui_active_object(context, config=1)
-
-        arm_obj = context.active_object
 
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -190,11 +186,7 @@ class MustardUI_Tools_Physics_DeleteItem(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, arm = mustardui_active_object(context, config=1)
-
-        arm_obj = context.active_object
 
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -268,11 +260,7 @@ class MustardUI_Tools_Physics_Clean(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, arm = mustardui_active_object(context, config=1)
-
-        arm_obj = context.active_object
 
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -368,8 +356,6 @@ class MustardUI_Tools_Physics_SimulateObject(bpy.types.Operator):
             self.report({'ERROR'}, "MustardUI: Uncorrect selected object")
             return {'FINISHED'}
 
-        physics_settings = arm.MustardUI_PhysicsSettings
-
         try:
             cage = bpy.data.objects[self.cage_object_name]
             for modifier in cage.modifiers:
@@ -393,7 +379,7 @@ class MustardUI_Tools_Physics_SimulateObject(bpy.types.Operator):
 def mustardui_physics_enable_update(self, context):
     res, arm = mustardui_active_object(context, config=1)
 
-    if arm == None:
+    if arm is None:
         return
 
     rig_settings = arm.MustardUI_RigSettings
@@ -642,6 +628,7 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_PhysicsSettings
     bpy.utils.unregister_class(MustardUI_PhysicsSettings)
     bpy.utils.unregister_class(MustardUI_PhysicsItem)
     bpy.utils.unregister_class(MustardUI_Tools_Physics_DeleteItem)

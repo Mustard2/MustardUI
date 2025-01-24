@@ -59,4 +59,6 @@ def register():
 
 
 def unregister():
+    del bpy.types.Scene.mustardui_armature_uilist_index
+
     bpy.utils.unregister_class(MUSTARDUI_UL_Armature_UIList)

@@ -30,4 +30,9 @@ def register():
 
 
 def unregister():
+    del bpy.types.Object.MustardUI_outfit_lock
+    del bpy.types.Object.MustardUI_outfit_visibility
+    del bpy.types.Object.MustardUI_additional_options_show_lock
+    del bpy.types.Object.MustardUI_additional_options_show
+
     bpy.utils.unregister_class(MustardUI_Outfit)

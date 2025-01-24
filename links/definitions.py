@@ -14,4 +14,5 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_Links
     bpy.utils.unregister_class(MustardUI_Link)

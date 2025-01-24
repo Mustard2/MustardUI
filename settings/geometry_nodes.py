@@ -7,4 +7,4 @@ def register():
 
 
 def unregister():
-    pass
+    del bpy.types.NodeTree.MustardUI_collapse

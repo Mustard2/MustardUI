@@ -113,6 +113,7 @@ def register():
 
 
 def unregister():
+    del bpy.types.Scene.mustardui_links_uilist_index
     bpy.utils.unregister_class(MUSTARDUI_UL_Links_UIList)
     bpy.utils.unregister_class(MustardUI_Link_Remove)
     bpy.utils.unregister_class(MustardUI_Link_Add)
