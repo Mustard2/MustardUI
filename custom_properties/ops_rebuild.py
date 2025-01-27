@@ -93,7 +93,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
                 import numpy as np
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=custom_prop.default_float if custom_prop.array_length == 0 else eval(custom_prop.default_array),
+                                     default=custom_prop.default_float if custom_prop.array_length == 0 else ast.literal_eval(custom_prop.default_array),
                                      min=custom_prop.min_float if custom_prop.subtype != "COLOR" else 0.,
                                      max=custom_prop.max_float if custom_prop.subtype != "COLOR" else 1.,
                                      description=custom_prop.description,
@@ -102,7 +102,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
             elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else eval(custom_prop.default_array),
+                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else ast.literal_eval(custom_prop.default_array),
                                      min=custom_prop.min_int,
                                      max=custom_prop.max_int,
                                      description=custom_prop.description,
