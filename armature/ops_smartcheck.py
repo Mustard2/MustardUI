@@ -128,7 +128,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             else:
                 self.report({'INFO'}, f'MustardUI - Smart Check found a \'{found_type}\' armature but no viable collection.')
         else:
-            self.report({'ERROR'}, 'MustardUI - Smart Check found no compatible armature.')
+            self.report({'WARNING'}, 'MustardUI - Smart Check found no compatible armature. No collection has been added.')
 
         return {'FINISHED'}
 

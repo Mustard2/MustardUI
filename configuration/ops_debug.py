@@ -107,22 +107,6 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         if rig_settings.diffeomorphic_support:
             log += self.header("Diffeomorphic")
 
-            log += self.addon_status(settings.status_diffeomorphic, "Diffeomorphic")
-
-            if settings.status_diffeomorphic > 1:
-                log += "Diffeomorphic Version:" + self.tab(tabs_num - 2) + str(
-                    settings.status_diffeomorphic_version[0]) + '.' + str(
-                    settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2])
-                log += self.new_line()
-
-            log += self.new_line()
-            log += self.addon_status(settings.status_mhx, "MHX Addon", tabs_num - 1)
-
-            if settings.status_mhx > 1:
-                log += "MHX Version:" + self.tab() * tabs_num + str(settings.status_mhx_version[0]) + '.' + str(
-                    settings.status_mhx_version[1]) + '.' + str(settings.status_mhx_version[2])
-                log += self.new_line()
-
             log += self.new_line()
             log += "Morphs: " + self.tab(tabs_num + 1) + str(rig_settings.diffeomorphic_morphs_number)
             log += self.new_line()
@@ -141,7 +125,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
             "Disabled" if not settings.material_normal_nodes else "Enabled")
         log += self.new_line()
 
-        if rig_settings.diffeomorphic_support and settings.status_diffeomorphic > 1:
+        if rig_settings.diffeomorphic_support:
             log += "Morphs:" + self.tab(tabs_num + 1) + ("Enabled" if rig_settings.diffeomorphic_enable else "Disabled")
             log += self.new_line()
         if len(physics_settings.physics_items) > 0:

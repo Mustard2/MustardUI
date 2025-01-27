@@ -15,7 +15,8 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=1)
-        return res
+        rig_settings = arm.MustardUI_RigSettings
+        return res and rig_settings.diffeomorphic_support
 
     def execute(self, context):
 
@@ -146,7 +147,10 @@ class MustardUI_DazMorphs_CheckMorphs(bpy.types.Operator):
 
         rig_settings.diffeomorphic_morphs_number = properties_number
 
-        self.report({'INFO'}, 'MustardUI - Diffeomorphic Daz Morphs check completed.')
+        if len(rig_settings.diffeomorphic_morphs_list):
+            self.report({'INFO'}, 'MustardUI - Diffeomorphic Daz Morphs check completed.')
+        else:
+            self.report({'WARNING'}, 'MustardUI - No Diffeomorphic Daz Morph found.')
 
         return {'FINISHED'}
 

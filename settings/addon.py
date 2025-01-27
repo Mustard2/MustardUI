@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
-import addon_utils
-import sys
+from bpy.app.handlers import persistent
+from .. import __package__ as base_package
 
 
 class MustardUI_Settings(bpy.types.PropertyGroup):
@@ -34,81 +34,6 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
 
     panel_model_selection_armature: PointerProperty(type=bpy.types.Armature)
 
-    # RIG TOOLS STATUS
-
-    # This function checks that the rig_tools addon is installed and enabled.
-    def addon_check(addon_names):
-
-        addon_utils.modules_refresh()
-
-        addon_num = len(addon_names)
-
-        addon_status = []
-        addon_names_found = []
-
-        for i in range(addon_num):
-            for addon in addon_utils.addons_fake_modules:
-                if addon_names[i] in addon:
-                    addon_names_found.append(addon)
-                    default, state = addon_utils.check(addon)
-                    addon_status.append(2 if default else 1)
-
-        if 2 in addon_status:
-            for i in range(len(addon_names_found)):
-                if addon_status[i] == 2:
-                    print("MustardUI - " + repr(addon_names_found[i]) + " add-on enabled and running.")
-                    return 2
-        elif 1 in addon_status and not 2 in addon_status:
-            for addon_name in addon_names_found:
-                print("MustardUI - " + repr(addon_name) + " add-on installed but not enabled.")
-            return 1
-        else:
-            for addon_name in addon_names:
-                print("MustardUI - %s add-on not installed." % repr(addon_name))
-
-        return 0
-
-    # Rig-tools addon status definition
-    status_rig_tools: IntProperty(default=addon_check(["auto_rig_pro-master", "rig_tools"]),
-                                  name="rig_tools addon status")
-
-    # Rig-tools addon status definition
-    status_diffeomorphic: IntProperty(default=addon_check(["import_daz"]),
-                                      name="diffeomorphic addon status")
-
-    # Rig-tools addon status definition
-    status_mhx: IntProperty(default=addon_check(["mhx_rts"]),
-                            name="mhx_rts addon status")
-
-    def addon_version_check(addon_name):
-        try:
-            # Find the correct addon name
-            addon_utils.modules_refresh()
-
-            an = ""
-            for addon in addon_utils.addons_fake_modules:
-                if addon_name in addon:
-                    default, state = addon_utils.check(addon)
-                    if default:
-                        an = addon
-                        break
-
-            if an == "":
-                print("MustardUI - Can not find " + repr(addon_name) + " version.")
-                return (-1, -1, -1)
-
-            mod = addon_utils.addons_fake_modules[an]
-            version = mod.bl_info.get('version', (-1, -1, -1))
-            print("MustardUI - " + an + " version is " + str(version[0]) + "." + str(version[1]) + "." + str(
-                version[2]) + ".")
-            return (version[0], version[1], version[2])
-        except:
-            print("MustardUI - Can not find " + repr(addon_name) + " version.")
-            return (-1, -1, -1)
-
-    status_diffeomorphic_version: IntVectorProperty(default=addon_version_check("import_daz"))
-    status_mhx_version: IntVectorProperty(default=addon_version_check("mhx_rts"))
-
     # Property for custom properties errors
     custom_properties_error: BoolProperty(name="",
                                           description="Can not find the property.\nCheck the property or use the "
@@ -138,6 +63,24 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                                         update=update_material_normal)
 
 
+# Handler to solve a missing UI when: developer mode is on, but the UI has been left in configuration mode
+@persistent
+def load_handler(_):
+    context = bpy.context
+    scene = context.scene
+    addon_prefs = context.preferences.addons[base_package].preferences
+    if addon_prefs.debug:
+        print('MustardUI - Checking for missing UIs')
+    if hasattr(scene, 'MustardUI_Settings'):
+        for obj in [x for x in scene.objects if x.type == "ARMATURE"]:
+            arm = obj.data
+            if hasattr(arm, 'MustardUI_created') and hasattr(arm, 'MustardUI_enable'):
+                if arm.MustardUI_created and not arm.MustardUI_enable and not addon_prefs.developer:
+                    arm.MustardUI_enable = not arm.MustardUI_enable
+                    if addon_prefs.debug:
+                        print(f'MustardUI - Fixed missing UI on {repr(obj.name)}')
+
+
 def register():
     # Register and create the setting class in the Scene object
     bpy.utils.register_class(MustardUI_Settings)
@@ -151,8 +94,12 @@ def register():
     bpy.types.Armature.MustardUI_created = bpy.props.BoolProperty(default=False,
                                                                   name="")
 
+    bpy.app.handlers.load_post.append(load_handler)
+
 
 def unregister():
+    bpy.app.handlers.load_post.remove(load_handler)
+
     del bpy.types.Armature.MustardUI_created
     del bpy.types.Armature.MustardUI_enable
     del bpy.types.Scene.MustardUI_Settings

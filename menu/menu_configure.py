@@ -517,48 +517,41 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="Enable Support", icon="MODIFIER")
             row = box.row()
-            if settings.status_diffeomorphic != 2:
-                row.enabled = False
             row.prop(rig_settings, "diffeomorphic_support")
             if rig_settings.diffeomorphic_support:
 
                 box = layout.box()
-                if settings.status_diffeomorphic == 1:
-                    box.label(icon='ERROR', text="Debug: Diffeomorphic not enabled!")
-                elif settings.status_diffeomorphic == 0:
-                    box.label(icon='ERROR', text="Debug: Diffeomorphic not installed!")
-                else:
 
-                    box.label(text="Diffeomorphic Settings", icon="OUTLINER_DATA_SURFACE")
+                box.label(text="Diffeomorphic Settings", icon="OUTLINER_DATA_SURFACE")
 
-                    box2 = box.box()
-                    box2.label(text="Morphs", icon="SHAPEKEY_DATA")
-                    col = box2.column()
-                    col.prop(rig_settings, "diffeomorphic_emotions_units")
-                    col.prop(rig_settings, "diffeomorphic_emotions")
-                    if rig_settings.diffeomorphic_emotions:
-                        row = col.row(align=True)
-                        row.label(text="Custom morphs")
-                        row.scale_x = row_scale
-                        row.prop(rig_settings, "diffeomorphic_emotions_custom", text="")
-                    col.prop(rig_settings, "diffeomorphic_facs_emotions_units")
-                    col.prop(rig_settings, "diffeomorphic_facs_emotions")
-                    col.prop(rig_settings, "diffeomorphic_body_morphs")
-                    if rig_settings.diffeomorphic_body_morphs:
-                        row = col.row(align=True)
-                        row.label(text="Custom morphs")
-                        row.scale_x = row_scale
-                        row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text="")
-
-                    box2.separator()
-                    row = box2.row(align=True)
-                    row.label(text="Disable Exceptions")
+                box2 = box.box()
+                box2.label(text="Morphs", icon="SHAPEKEY_DATA")
+                col = box2.column()
+                col.prop(rig_settings, "diffeomorphic_emotions_units")
+                col.prop(rig_settings, "diffeomorphic_emotions")
+                if rig_settings.diffeomorphic_emotions:
+                    row = col.row(align=True)
+                    row.label(text="Custom morphs")
                     row.scale_x = row_scale
-                    row.prop(rig_settings, "diffeomorphic_disable_exceptions", text="")
+                    row.prop(rig_settings, "diffeomorphic_emotions_custom", text="")
+                col.prop(rig_settings, "diffeomorphic_facs_emotions_units")
+                col.prop(rig_settings, "diffeomorphic_facs_emotions")
+                col.prop(rig_settings, "diffeomorphic_body_morphs")
+                if rig_settings.diffeomorphic_body_morphs:
+                    row = col.row(align=True)
+                    row.label(text="Custom morphs")
+                    row.scale_x = row_scale
+                    row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text="")
 
-                    box = box.box()
-                    box.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
-                    box.operator('mustardui.dazmorphs_checkmorphs')
+                box2.separator()
+                row = box2.row(align=True)
+                row.label(text="Disable Exceptions")
+                row.scale_x = row_scale
+                row.prop(rig_settings, "diffeomorphic_disable_exceptions", text="")
+
+                box = box.box()
+                box.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
+                box.operator('mustardui.dazmorphs_checkmorphs')
 
         # Links
         row = layout.row(align=False)
