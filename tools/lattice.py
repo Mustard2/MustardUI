@@ -271,7 +271,7 @@ class MustardUI_LatticeSettings(bpy.types.PropertyGroup):
                                                update=lattice_prop_update)
 
     lattice_interpolation: bpy.props.EnumProperty(name="",
-                                                  description="",
+                                                  description="Lattice Interpolation",
                                                   items=[("KEY_BSPLINE", "BSpline", "BSpline"),
                                                          ("KEY_LINEAR", "Linear", "Linear"),
                                                          ("KEY_CARDINAL", "Cardinal", "Cardinal"),

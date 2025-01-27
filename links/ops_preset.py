@@ -8,7 +8,7 @@ from .. import __package__ as base_package
 
 
 class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
-    """Export Links to json file"""
+    """Export Links to json file, to be used on other UIs"""
     bl_idname = 'mustardui.link_export'
     bl_label = 'Export Links'
     bl_options = {'PRESET', 'UNDO'}

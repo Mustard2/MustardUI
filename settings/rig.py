@@ -45,8 +45,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
 
     # Property for collapsing outfit properties section
-    body_config_collapse: bpy.props.BoolProperty(default=True,
-                                                 name="")
+    body_config_collapse: bpy.props.BoolProperty(default=True, name="")
 
     # Global body mesh properties
     # Update function for Subdivision Surface modifiers
@@ -122,7 +121,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                update=update_subdiv)
     body_enable_subdiv: bpy.props.BoolProperty(default=True,
                                                name="Subdivision Surface modifiers",
-                                               description="")
+                                               description="Creates a switcher on the UI to enable/disable all "
+                                                           "modifiers of this type on the Body")
 
     # Smooth correction
     body_smooth_corr: bpy.props.BoolProperty(default=True,
@@ -133,7 +133,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                              update=update_smooth_corr)
     body_enable_smoothcorr: bpy.props.BoolProperty(default=False,
                                                    name="Smooth Correction modifiers",
-                                                   description="")
+                                                   description="Creates a switcher on the UI to enable/disable all "
+                                                               "modifiers of this type on the Body")
 
     # Normal auto smooth
     body_norm_autosmooth: bpy.props.BoolProperty(default=True,
@@ -145,16 +146,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     body_enable_norm_autosmooth: bpy.props.BoolProperty(default=True,
                                                         name="Normals Auto Smooth property",
-                                                        description="")
+                                                        description="Creates a switcher on the UI to enable/disable "
+                                                                    "all modifiers of this type on the Body")
 
     # Solidify
     body_solidify: bpy.props.BoolProperty(default=True,
                                           name="Solidify",
-                                          description="Enable/disable the Solidify modifiers",
+                                          description="Enable/disable the Solidify modifiers on the Body",
                                           update=update_solidify)
     body_enable_solidify: bpy.props.BoolProperty(default=False,
                                                  name="Solidify modifiers",
-                                                 description="")
+                                                 description="Creates a switcher on the UI to enable/disable all "
+                                                             "modifiers of this type on the Body")
 
     # Volume Preserve
     def update_volume_preserve(self, context):
@@ -183,7 +186,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     body_enable_preserve_volume: bpy.props.BoolProperty(default=False,
                                                         name="Volume Preserve property",
-                                                        description="")
+                                                        description="Creates a switcher on the UI to enable/disable "
+                                                                    "the Preserve Volume option on the Armature "
+                                                                    "modifier")
 
     # Material normals tool
     body_enable_material_normal_nodes: bpy.props.BoolProperty(default=True,
@@ -213,12 +218,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     body_geometry_nodes: bpy.props.BoolProperty(default=False,
                                                 name="Geometry Nodes",
-                                                description="",
+                                                description="Enable/disable all Geometry Nodes on the Body",
                                                 update=update_geometry_nodes)
 
     body_enable_geometry_nodes: bpy.props.BoolProperty(default=False,
                                                        name="Geometry Nodes modifiers",
-                                                       description="")
+                                                       description="Creates a switcher on the UI to enable/disable "
+                                                                   "all modifiers of this type on the Body")
 
     # Geometry Nodes support
     body_enable_geometry_nodes_support: bpy.props.BoolProperty(default=False,
@@ -235,8 +241,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
 
     # Property for collapsing outfit list section
-    outfit_config_collapse: bpy.props.BoolProperty(default=True,
-                                                   name="")
+    outfit_config_collapse: bpy.props.BoolProperty(default=True, name="")
 
     # Property for collapsing outfit properties section
     outfit_config_prop_collapse: bpy.props.BoolProperty(default=True)
@@ -244,28 +249,50 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Global outfit properties
     outfits_enable_global_subsurface: bpy.props.BoolProperty(default=True,
                                                              name="Subdivision Surface modifiers",
-                                                             description="This tool will enable/disable modifiers "
-                                                                         "only for Viewport")
+                                                             description="Creates a switcher on the UI to "
+                                                                         "enable/disable all modifiers of this type "
+                                                                         "on the Body.\nThis tool will enable/disable "
+                                                                         "modifiers only for Viewport")
 
     outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default=False,
+                                                                   description="Creates a switcher on the UI to "
+                                                                               "enable/disable all modifiers of this "
+                                                                               "type on the Body",
                                                                    name="Smooth Correction modifiers")
 
     outfits_enable_global_surfacedeform: bpy.props.BoolProperty(default=False,
-                                                             name="Surface Deform modifiers")
+                                                                description="Creates a switcher on the UI to "
+                                                                            "enable/disable all modifiers of this "
+                                                                            "type on the Body",
+                                                                name="Surface Deform modifiers")
 
     outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(default=False,
+                                                             description="Creates a switcher on the UI to "
+                                                                         "enable/disable all modifiers of this type "
+                                                                         "on the Body",
                                                              name="Shrinkwrap modifiers")
 
     outfits_enable_global_mask: bpy.props.BoolProperty(default=True,
+                                                       description="Creates a switcher on the UI to enable/disable "
+                                                                   "all modifiers of this type on the Body",
                                                        name="Mask modifiers")
 
     outfits_enable_global_solidify: bpy.props.BoolProperty(default=False,
+                                                           description="Creates a switcher on the UI to "
+                                                                       "enable/disable all modifiers of this type on "
+                                                                       "the Body",
                                                            name="Solidify modifiers")
 
     outfits_enable_global_triangulate: bpy.props.BoolProperty(default=False,
+                                                              description="Creates a switcher on the UI to "
+                                                                          "enable/disable all modifiers of this type "
+                                                                          "on the Body",
                                                               name="Triangulate modifiers")
 
     outfits_enable_global_normalautosmooth: bpy.props.BoolProperty(default=True,
+                                                                   description="Creates a switcher on the UI to "
+                                                                               "enable/disable all modifiers of this "
+                                                                               "type on the Body",
                                                                    name="Normals Auto Smooth properties")
 
     # OUTFITS FUNCTIONS AND DATA
@@ -447,10 +474,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
                 for modifier in self.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name and self.outfits_enable_global_mask:
-                        modifier.show_viewport = ((
-                                                          collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
-                        modifier.show_render = ((
-                                                        collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
+                        modifier.show_viewport = ((collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
+                        modifier.show_render = ((collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
 
     # List of the collections from which to extract the outfits
     outfits_collections: bpy.props.CollectionProperty(name="Outfits Collection List",
@@ -471,36 +496,48 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Global outfit properties
     outfits_global_subsurface: bpy.props.BoolProperty(default=True,
                                                       name="Subdivision Surface",
-                                                      description="Enable/disable subdivision surface modifiers in "
-                                                                  "Viewport",
+                                                      description="Enable/disable subdivision surface modifiers ("
+                                                                  "Viewport) on the Outfits",
                                                       update=outfits_global_options_subsurf_update)
 
     outfits_global_smoothcorrection: bpy.props.BoolProperty(default=False,
                                                             name="Smooth Correction",
+                                                            description="Enable/disable the Smooth Correction "
+                                                                        "modifiers on the Outfits",
                                                             update=outfits_global_options_update)
 
     outfits_global_shrinkwrap: bpy.props.BoolProperty(default=True,
                                                       name="Shrinkwrap",
+                                                      description="Enable/disable the Shrinkwrap modifiers on the "
+                                                                  "Outfits",
                                                       update=outfits_global_options_update)
 
     outfits_global_surfacedeform: bpy.props.BoolProperty(default=True,
                                                          name="Surface Deform",
+                                                         description="Enable/disable the Surface Deform modifiers on "
+                                                                     "the Outfits",
                                                          update=outfits_global_options_update)
 
     outfits_global_mask: bpy.props.BoolProperty(default=True,
                                                 name="Mask",
+                                                description="Enable/disable the Mask modifiers on the Outfits",
                                                 update=outfits_global_options_update)
 
     outfits_global_solidify: bpy.props.BoolProperty(default=True,
                                                     name="Solidify",
+                                                    description="Enable/disable the Solidify modifiers on the Outfits",
                                                     update=outfits_global_options_update)
 
     outfits_global_triangulate: bpy.props.BoolProperty(default=True,
                                                        name="Triangulate",
+                                                       description="Enable/disable the Triangulate modifiers on the "
+                                                                   "Outfits",
                                                        update=outfits_global_options_update)
 
     outfits_global_normalautosmooth: bpy.props.BoolProperty(default=True,
                                                             name="Normals Auto Smooth",
+                                                            description="Enable/disable the Auto Smooth modifiers on "
+                                                                        "the Outfits",
                                                             update=outfits_global_options_update)
 
     outfit_additional_options: bpy.props.BoolProperty(default=True,
@@ -549,17 +586,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                    name="Collapsable",
                                                    description="Add a collapse button for Extras.\nExtras main icon "
                                                                "will be removed")
-    extras_collapse: bpy.props.BoolProperty(default=False,
-                                            name="",
-                                            description="Show Extras")
+    extras_collapse: bpy.props.BoolProperty(default=False, name="")
 
     # ------------------------------------------------------------------------
     #    Hair properties
     # ------------------------------------------------------------------------
 
     # Property for collapsing hair properties section
-    hair_config_collapse: bpy.props.BoolProperty(default=True,
-                                                 name="")
+    hair_config_collapse: bpy.props.BoolProperty(default=True, name="")
 
     # Hair collection
     def poll_collection_hair(self, object):
@@ -633,15 +667,25 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                       "for Viewport")
 
     hair_enable_global_smoothcorrection: bpy.props.BoolProperty(default=False,
+                                                                description="Creates a switcher on the UI to "
+                                                                            "enable/disable all modifiers of this "
+                                                                            "type on the Body",
                                                                 name="Smooth Correction modifiers")
 
     hair_enable_global_solidify: bpy.props.BoolProperty(default=False,
+                                                        description="Creates a switcher on the UI to enable/disable "
+                                                                    "all modifiers of this type on the Body",
                                                         name="Solidify modifiers")
 
     hair_enable_global_particles: bpy.props.BoolProperty(default=False,
+                                                         description="Creates a switcher on the UI to enable/disable "
+                                                                     "all modifiers of this type on the Body",
                                                          name="Particle Hair modifiers")
 
     hair_enable_global_normalautosmooth: bpy.props.BoolProperty(default=False,
+                                                                description="Creates a switcher on the UI to "
+                                                                            "enable/disable all modifiers of this "
+                                                                            "type on the Body",
                                                                 name="Normals Auto Smooth properties")
 
     # Function to update the global hair properties
@@ -674,23 +718,30 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     hair_global_subsurface: bpy.props.BoolProperty(default=True,
                                                    name="Subdivision Surface",
-                                                   description="Enable/disable subdivision surface modifiers in Viewport",
+                                                   description="Enable/disable subdivision surface modifiers ("
+                                                               "Viewport) on the Hair",
                                                    update=hair_global_options_subsurf_update)
 
     hair_global_smoothcorrection: bpy.props.BoolProperty(default=True,
                                                          name="Smooth Correction",
+                                                         description="Enable/disable the Smooth Correction modifiers "
+                                                                     "on the Hair",
                                                          update=hair_global_options_update)
 
     hair_global_solidify: bpy.props.BoolProperty(default=True,
                                                  name="Solidify",
+                                                 description="Enable/disable the Solidify modifiers on the Hair",
                                                  update=hair_global_options_update)
 
     hair_global_particles: bpy.props.BoolProperty(default=True,
                                                   name="Particle Hair",
+                                                  description="Enable/disable the Particle Hair modifiers on the Hair",
                                                   update=hair_global_options_update)
 
     hair_global_normalautosmooth: bpy.props.BoolProperty(default=True,
                                                          name="Normals Auto Smooth",
+                                                         description="Enable/disable the Auto Smooth modifiers on the "
+                                                                     "Hair",
                                                          update=hair_global_options_update)
 
     hair_update_tag_on_switch: bpy.props.BoolProperty(default=True,
@@ -718,9 +769,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
 
     # Property for collapsing external addons section
-    external_addons_collapse: bpy.props.BoolProperty(default=True,
-                                                     name="")
-
+    external_addons_collapse: bpy.props.BoolProperty(default=True, name="")
     # Function to update global collection properties
     def diffeomorphic_enable_update(self, context):
 
@@ -783,7 +832,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_emotions: bpy.props.BoolProperty(default=False,
                                                    name="Emotions Morphs",
                                                    description="Search for Diffeomorphic emotions")
-    diffeomorphic_emotions_collapse: bpy.props.BoolProperty(default=True)
+    diffeomorphic_emotions_collapse: bpy.props.BoolProperty(default=True, name="")
     diffeomorphic_emotions_custom: bpy.props.StringProperty(default="",
                                                             name="Custom morphs",
                                                             description="Add strings to add custom morphs (they "
@@ -796,24 +845,24 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         description="Search for Diffeomorphic FACS emotions.\nThese "
                                                                     "morphs will be shown as Advanced Emotions in the"
                                                                     " UI")
-    diffeomorphic_facs_emotions_collapse: bpy.props.BoolProperty(default=True)
+    diffeomorphic_facs_emotions_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_emotions_units: bpy.props.BoolProperty(default=False,
                                                          name="Emotions Units Morphs",
                                                          description="Search for Diffeomorphic emotions units")
-    diffeomorphic_emotions_units_collapse: bpy.props.BoolProperty(default=True)
+    diffeomorphic_emotions_units_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default=False,
                                                               name="FACS Emotions Units Morphs",
                                                               description="Search for Diffeomorphic FACS emotions "
                                                                           "units.\nThese morphs will be shown as "
                                                                           "Advanced Emotion Units in the UI")
-    diffeomorphic_facs_emotions_units_collapse: bpy.props.BoolProperty(default=True)
+    diffeomorphic_facs_emotions_units_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_body_morphs: bpy.props.BoolProperty(default=False,
                                                       name="Body Morphs Morphs",
                                                       description="Search for Diffeomorphic Body morphs")
-    diffeomorphic_body_morphs_collapse: bpy.props.BoolProperty(default=True)
+    diffeomorphic_body_morphs_collapse: bpy.props.BoolProperty(default=True, name="")
     diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default="",
                                                                name="Custom morphs",
                                                                description="Add strings to add custom morphs (they "
@@ -1081,6 +1130,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Enable link section
     links_enable: bpy.props.BoolProperty(default=True,
+                                         description="Create a Link panel in the UI to show custom links",
                                          name="Show Links")
 
     # Debug

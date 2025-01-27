@@ -52,6 +52,7 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
 
     # Subsection
     is_subsection: BoolProperty(name="Sub-section",
+                                description="Consider this Section as a sub-section of the first section above not flagged as sub-section.\nSubsections are shown in the parent section",
                                 default=False)
 
 

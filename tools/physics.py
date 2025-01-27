@@ -414,8 +414,7 @@ def mustardui_physics_enable_update(self, context):
 # Class to store physics item informations
 class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     # Property for collapsing rig properties section
-    config_collapse: bpy.props.BoolProperty(default=True,
-                                            name="")
+    config_collapse: bpy.props.BoolProperty(default=True, name="")
 
     # Body object
     # Poll function for the selection of mesh only in pointer properties

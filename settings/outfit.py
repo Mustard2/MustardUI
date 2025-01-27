@@ -21,9 +21,7 @@ def register():
                                                                            name="",
                                                                            description="Show additional properties for "
                                                                                        "the selected object")
-    bpy.types.Object.MustardUI_outfit_visibility = BoolProperty(default=False,
-                                                                name="",
-                                                                description="")
+    bpy.types.Object.MustardUI_outfit_visibility = BoolProperty(default=False, name="")
     bpy.types.Object.MustardUI_outfit_lock = BoolProperty(default=False,
                                                           name="",
                                                           description="Lock/unlock the outfit")

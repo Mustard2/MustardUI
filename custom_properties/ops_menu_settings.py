@@ -50,8 +50,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                                  size=4,
                                                  subtype="COLOR",
                                                  min=0., max=1.,
-                                                 default=[0., 0., 0., 1.],
-                                                 description="")
+                                                 default=[0., 0., 0., 1.])
 
     # UI Buttons
     change_rna: bpy.props.BoolProperty(name='Change Path',
