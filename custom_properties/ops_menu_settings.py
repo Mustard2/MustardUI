@@ -74,7 +74,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
         custom_prop = custom_props[index]
-        addon_prefs = context.preferences.addons[base_package].preferences
 
         if self.name == "":
             self.report({'ERROR'}, 'MustardUI - Can not rename a property with an empty name.')
@@ -115,6 +114,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             if prop_type == "FLOAT" and self.force_type == "None":
 
                 ui_data.clear()
+                del obj[prop_name]
 
                 rna_idprop_ui_create(obj, prop_name,
                                      default=self.default_float if custom_prop.array_length == 0 else ast.literal_eval(
@@ -137,6 +137,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             elif prop_type == "BOOLEAN" or self.force_type == "Bool":
 
                 ui_data.clear()
+                del obj[prop_name]
 
                 rna_idprop_ui_create(obj, prop_name,
                                      default=self.default_bool if custom_prop.array_length == 0 else ast.literal_eval(
@@ -153,6 +154,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             elif prop_type == "INT" or self.force_type == "Int":
 
                 ui_data.clear()
+                del obj[prop_name]
 
                 rna_idprop_ui_create(obj, prop_name,
                                      default=self.default_int if custom_prop.array_length == 0 else ast.literal_eval(
