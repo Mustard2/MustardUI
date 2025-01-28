@@ -23,6 +23,7 @@ from . import tools_creators
 from . import custom_properties
 from . import sections
 from . import outfits
+from . import physics
 from . import diffeomorphic
 from . import configuration
 from . import links
@@ -40,6 +41,7 @@ def register():
     custom_properties.register()
     sections.register()
     outfits.register()
+    physics.register()
     diffeomorphic.register()
     configuration.register()
     links.register()
@@ -51,6 +53,7 @@ def unregister():
     links.unregister()
     configuration.unregister()
     diffeomorphic.unregister()
+    physics.unregister()
     outfits.unregister()
     sections.unregister()
     custom_properties.unregister()

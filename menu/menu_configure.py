@@ -417,57 +417,35 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
 
             box = layout.box()
             box.label(text="General Settings", icon="MODIFIER")
-            box.operator('mustardui.tools_physics_clean', text="Clean Physics Panel")
+            box.prop(physics_settings, "enable_ui")
+            row = box.row()
+            row.enabled = physics_settings.enable_ui
+            row.prop(physics_settings, "mirror")
 
-            box = layout.box()
-            box.label(text="Add Item", icon="ADD")
+            if len(physics_settings.items):
 
-            box.prop(physics_settings, 'config_MustardUI_preset')
-            box.prop(physics_settings, 'config_cage_object')
-            if physics_settings.config_cage_object is not None:
-                box.prop_search(physics_settings, 'config_cage_object_pin_vertex_group',
-                                physics_settings.config_cage_object, "vertex_groups")
-                box.prop_search(physics_settings, 'config_cage_object_bending_stiff_vertex_group',
-                                physics_settings.config_cage_object, "vertex_groups")
-            box.operator('mustardui.tools_physics_createitem', text="Add item", icon="ADD")
-
-            if len(physics_settings.physics_items) > 0:
                 box = layout.box()
-                box.label(text="Items List", icon="PRESET")
+                box.enabled = physics_settings.enable_ui
+                box.label(text="Physics Items", icon="MODIFIER")
+                row = box.row()
+                row.template_list("MUSTARDUI_UL_PhysicsItems_UIList", "The_List", physics_settings,
+                                  "items", scene,
+                                  "mustardui_physics_items_uilist_index")
+                col = row.column()
+                col2 = col.column(align=True)
+                opup = col2.operator('mustardui.physics_items_switch', icon="TRIA_UP", text="")
+                opup.direction = "UP"
+                opdown = col2.operator('mustardui.physics_items_switch', icon="TRIA_DOWN", text="")
+                opdown.direction = "DOWN"
+                col.separator()
+                col.operator("mustardui.physics_item_remove", text="", icon="X")
 
-            for item in physics_settings.physics_items:
+                if scene.mustardui_physics_items_uilist_index > -1:
+                    pi = physics_settings.items[scene.mustardui_physics_items_uilist_index]
 
-                box2 = box.box()
-
-                try:
-                    cage_object_name = item.cage_object.name
-                    row = box2.row(align=False)
-                    row.prop(item, "config_collapse", icon="TRIA_DOWN" if not item.config_collapse else "TRIA_RIGHT",
-                             icon_only=True, emboss=False)
-                    row.label(text=item.cage_object.name[
-                                   len(rig_settings.model_name + ' Physics - '):] if rig_settings.model_MustardUI_naming_convention else item.cage_object.name)
-                    row.operator('mustardui.tools_physics_deleteitem', text="",
-                                 icon="X").cage_object_name = item.cage_object.name
-                except:
-                    row = box2.row(align=False)
-                    row.label(text="Item not found.", icon="ERROR")
-                    row.operator('mustardui.tools_physics_deleteitem', text="", icon="X").cage_object_name = ""
-                    continue
-
-                if not item.config_collapse:
-
-                    box2.prop(item, 'MustardUI_preset')
-                    row = box2.row()
-                    row.enabled = False
-                    row.prop(item, 'cage_object')
-                    if item.cage_object is not None:
-                        row = box2.row()
-                        row.enabled = False
-                        row.prop_search(item, 'cage_object_pin_vertex_group', item.cage_object, "vertex_groups")
-                        row = box2.row()
-                        row.enabled = False
-                        row.prop_search(item, 'cage_object_bending_stiff_vertex_group', item.cage_object,
-                                        "vertex_groups")
+                    col = box.column()
+                    row = col.row()
+                    row.prop(pi, 'type')
 
         # Tools
         row = layout.row(align=False)
