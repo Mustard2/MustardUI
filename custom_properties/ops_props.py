@@ -91,6 +91,12 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
         # Add custom property to the object
         prop_name = prop_name_ui
+
+        # Fix for unknown name
+        if prop_name is None:
+            prop_name = "Property"
+            prop_name_ui = prop_name
+
         if prop.is_animatable or blender_custom_property:
 
             add_string_num = 1
