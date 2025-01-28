@@ -78,7 +78,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
-        MustardUI_RigSettings._set_normal_autosmooth(self.model_body, self.body_norm_autosmooth,True)
+        MustardUI_RigSettings._set_normal_autosmooth(self.model_body, self.body_norm_autosmooth, True)
 
     # Update function for Smooth Correction modifiers
     def update_solidify(self, context):
@@ -770,6 +770,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Property for collapsing external addons section
     external_addons_collapse: bpy.props.BoolProperty(default=True, name="")
+
     # Function to update global collection properties
     def diffeomorphic_enable_update(self, context):
 

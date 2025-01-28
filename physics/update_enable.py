@@ -1,0 +1,70 @@
+import bpy
+from ..model_selection.active_object import *
+
+
+def set_cage_modifiers(physics_item, iterator, s):
+    for mod in iterator:
+        if mod.type == 'MESH_DEFORM':
+            if physics_item.object == mod.object:
+                mod.show_viewport = s
+                mod.show_render = s
+        elif mod.type == 'SURFACE_DEFORM':
+            if physics_item.object == mod.target:
+                mod.show_viewport = s
+                mod.show_render = s
+
+
+def enable_physics_update(self, context):
+
+    res, arm = mustardui_active_object(context, config=0)
+
+    if arm is None:
+        return
+
+    rig_settings = arm.MustardUI_RigSettings
+
+    for pi in [x for x in self.items]:
+        status = self.enable_physics and pi.enable
+        for modifier in pi.object.modifiers:
+            if (modifier.type == 'CLOTH' and pi.type in ["CAGE", "SINGLE_ITEM"]) or (modifier.type == 'COLLISION' and pi.type == "COLLISION"):
+                modifier.show_viewport = status
+                modifier.show_render = status
+        if pi.type == "CAGE":
+            set_cage_modifiers(pi, rig_settings.model_body.modifiers, status)
+
+    for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
+        items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
+        for obj in items:
+            for pi in [x for x in self.items if x.type == "CAGE"]:
+                status = self.enable_physics and pi.enable
+                set_cage_modifiers(pi, obj.modifiers, status)
+
+    return
+
+
+def enable_physics_update_single(self, context):
+
+    res, arm = mustardui_active_object(context, config=0)
+
+    if arm is None:
+        return
+
+    rig_settings = arm.MustardUI_RigSettings
+    physics_settings = arm.MustardUI_PhysicsSettings
+
+    status = physics_settings.enable_physics and self.enable
+    for modifier in self.object.modifiers:
+        if (modifier.type == 'CLOTH' and self.type in ["CAGE", "SINGLE_ITEM"]) or (modifier.type == 'COLLISION' and pi.type == "COLLISION"):
+            modifier.show_viewport = status
+            modifier.show_render = status
+    if self.type == "CAGE":
+        set_cage_modifiers(self, rig_settings.model_body.modifiers, status)
+
+    for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
+        items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
+        for obj in items:
+            if self.type == "CAGE":
+                status = physics_settings.enable_physics and self.enable
+                set_cage_modifiers(self, obj.modifiers, status)
+
+    return
