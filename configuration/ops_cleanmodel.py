@@ -158,7 +158,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         # Remove null drivers
         if self.remove_nulldrivers:
 
-            for obj in [x for x in bpy.data.objects if x.type == "MESH"]:
+            for obj in [x for x in context.scene.objects if x.type == "MESH"]:
                 if obj.animation_data is not None:
                     drivers = obj.animation_data.drivers
                     for driver in drivers:
@@ -239,7 +239,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 for obj in items:
                     if obj.type == "MESH":
                         objects.append(obj)
-            for obj in bpy.data.objects:
+            for obj in context.scene.objects:
                 if obj.find_armature() == rig_settings.model_armature_object and obj.type == "MESH":
                     objects.append(obj)
 
@@ -383,7 +383,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             for obj in [x for x in items if x.hide_viewport]:
                 data = obj.data
                 obj_type = obj.type
-                bpy.data.objects.remove(obj)
+                context.scene.objects.remove(obj)
                 if obj_type == "MESH":
                     bpy.data.meshes.remove(data)
                 elif obj_type == "ARMATURE":
@@ -407,7 +407,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             for obj in [x for x in rig_settings.hair_collection.objects if not current_hair in x.name]:
                 data = obj.data
                 obj_type = obj.type
-                bpy.data.objects.remove(obj)
+                context.scene.objects.remove(obj)
                 if obj_type == "MESH":
                     bpy.data.meshes.remove(data)
                 elif obj_type == "ARMATURE":

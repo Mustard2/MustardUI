@@ -28,11 +28,7 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, arm = mustardui_active_object(context, config=1)
-
-        arm_obj = context.active_object
 
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -57,7 +53,7 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
         new_mod = True
         obj = rig_settings.model_body
         for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-            if modifier.object == bpy.data.objects[physics_settings.config_cage_object.name]:
+            if modifier.object == context.scene.objects[physics_settings.config_cage_object.name]:
                 new_mod = False
         if new_mod and obj.type == "MESH":
             mod = obj.modifiers.new(name=mod_name, type='MESH_DEFORM')
@@ -80,12 +76,12 @@ class MustardUI_Tools_Physics_CreateItem(bpy.types.Operator):
             mod.show_render = physics_settings.physics_enable
 
         # Outfits add
-        for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
             for obj in items:
                 new_mod = True
                 for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-                    if modifier.object == bpy.data.objects[physics_settings.config_cage_object.name]:
+                    if modifier.object == context.scene.objects[physics_settings.config_cage_object.name]:
                         new_mod = False
                 if new_mod and obj.type == "MESH":
                     mod = obj.modifiers.new(name=mod_name, type='MESH_DEFORM')
@@ -190,11 +186,7 @@ class MustardUI_Tools_Physics_DeleteItem(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, arm = mustardui_active_object(context, config=1)
-
-        arm_obj = context.active_object
 
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -216,19 +208,19 @@ class MustardUI_Tools_Physics_DeleteItem(bpy.types.Operator):
         # Remove modifiers from the body
         obj = rig_settings.model_body
         for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-            if modifier.object == bpy.data.objects[self.cage_object_name]:
+            if modifier.object == context.scene.objects[self.cage_object_name]:
                 obj.modifiers.remove(obj.modifiers.get(modifier.name))
 
         # Remove objects modifiers
-        for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
             for obj in items:
                 for modifier in [x for x in obj.modifiers if x.type == "MESH_DEFORM"]:
-                    if modifier.object == bpy.data.objects[self.cage_object_name]:
+                    if modifier.object == context.scene.objects[self.cage_object_name]:
                         obj.modifiers.remove(obj.modifiers.get(modifier.name))
 
         # Remove cloth modifier from the cage
-        obj = bpy.data.objects[self.cage_object_name]
+        obj = context.scene.objects[self.cage_object_name]
         if obj is not None:
             for modifier in obj.modifiers:
                 if modifier.type == "CLOTH":
@@ -268,11 +260,7 @@ class MustardUI_Tools_Physics_Clean(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
         res, arm = mustardui_active_object(context, config=1)
-
-        arm_obj = context.active_object
 
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -368,10 +356,8 @@ class MustardUI_Tools_Physics_SimulateObject(bpy.types.Operator):
             self.report({'ERROR'}, "MustardUI: Uncorrect selected object")
             return {'FINISHED'}
 
-        physics_settings = arm.MustardUI_PhysicsSettings
-
         try:
-            cage = bpy.data.objects[self.cage_object_name]
+            cage = context.scene.objects[self.cage_object_name]
             for modifier in cage.modifiers:
                 if modifier.type == "CLOTH":
                     cage_cache = modifier.point_cache
@@ -393,7 +379,7 @@ class MustardUI_Tools_Physics_SimulateObject(bpy.types.Operator):
 def mustardui_physics_enable_update(self, context):
     res, arm = mustardui_active_object(context, config=1)
 
-    if arm == None:
+    if arm is None:
         return
 
     rig_settings = arm.MustardUI_RigSettings
@@ -428,8 +414,7 @@ def mustardui_physics_enable_update(self, context):
 # Class to store physics item informations
 class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     # Property for collapsing rig properties section
-    config_collapse: bpy.props.BoolProperty(default=True,
-                                            name="")
+    config_collapse: bpy.props.BoolProperty(default=True, name="")
 
     # Body object
     # Poll function for the selection of mesh only in pointer properties
@@ -589,9 +574,9 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
                 mod.point_cache.frame_start = self.simulation_start
                 mod.point_cache.frame_end = self.simulation_end
 
-        for object in bpy.data.objects:
+        for o in context.scene.objects:
 
-            for modifier in object.modifiers:
+            for modifier in o.modifiers:
 
                 if modifier.type == "CLOTH":
                     mod = modifier
@@ -642,6 +627,7 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_PhysicsSettings
     bpy.utils.unregister_class(MustardUI_PhysicsSettings)
     bpy.utils.unregister_class(MustardUI_PhysicsItem)
     bpy.utils.unregister_class(MustardUI_Tools_Physics_DeleteItem)

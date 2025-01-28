@@ -54,15 +54,10 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             if platform.system() == 'Windows':
                 box.operator('wm.console_toggle', text="Toggle System Console", icon="CONSOLE")
 
-        if rig_settings.model_version != '' or (addon_prefs.debug and rig_settings.diffeomorphic_support and settings.status_diffeomorphic_version[0] > 0):
+        if rig_settings.model_version != '':
             box = layout.box()
             box.label(text="Version", icon="INFO")
-            if rig_settings.model_version != '':
-                box.label(text="Model:                  " + rig_settings.model_version)
-            if addon_prefs.debug and rig_settings.diffeomorphic_support:
-                if settings.status_diffeomorphic_version[0] > 0:
-                    box.label(text="Diffeomorphic:   " + str(settings.status_diffeomorphic_version[0]) + '.' + str(
-                        settings.status_diffeomorphic_version[1]) + '.' + str(settings.status_diffeomorphic_version[2]))
+            box.label(text="Model:                  " + rig_settings.model_version)
 
 
 def register():

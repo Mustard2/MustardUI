@@ -68,7 +68,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             if hair_num > 0:
 
                 try:
-                    obj = bpy.data.objects[rig_settings.hair_list]
+                    obj = context.scene.objects[rig_settings.hair_list]
 
                     if rig_settings.hair_custom_properties_name_order:
                         custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj],

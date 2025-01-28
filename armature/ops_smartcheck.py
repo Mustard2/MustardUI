@@ -77,6 +77,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             preset_Mustard_models = [("Head", False, "USER", True),
                                      ("Face", False, "USER", False),
                                      ("Spine", False, "", True),
+                                     ("Spine 2", False, "", True),
                                      ("IK Arm Left", False, "", True),
                                      ("IK Arm Right", False, "", True),
                                      ("FK Arm Left", False, "", False),
@@ -127,7 +128,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             else:
                 self.report({'INFO'}, f'MustardUI - Smart Check found a \'{found_type}\' armature but no viable collection.')
         else:
-            self.report({'ERROR'}, 'MustardUI - Smart Check found no compatible armature.')
+            self.report({'WARNING'}, 'MustardUI - Smart Check found no compatible armature. No collection has been added.')
 
         return {'FINISHED'}
 

@@ -188,5 +188,9 @@ def register():
 
 
 def unregister():
+    del bpy.types.Scene.mustardui_property_uilist_hair_index
+    del bpy.types.Scene.mustardui_property_uilist_outfits_index
+    del bpy.types.Scene.mustardui_property_uilist_index
+
     for m in reversed(menus):
         bpy.utils.unregister_class(m)

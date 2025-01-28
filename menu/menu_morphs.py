@@ -63,14 +63,6 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = rig_settings.diffeomorphic_enable
 
-        # Check Diffeomorphic version and inform the user about possible issues
-        if (settings.status_diffeomorphic_version[0], settings.status_diffeomorphic_version[1],
-            settings.status_diffeomorphic_version[2]) <= (1, 6, 0) and settings.status_diffeomorphic_version[0] > -1:
-            box = layout.box()
-            box.label(icon='ERROR', text="Diffeomorphic version not supported!")
-            box.label(icon='BLANK1', text="Only 1.6 or above is supported.")
-            return
-
         row = layout.row()
         row.prop(rig_settings, 'diffeomorphic_search', icon="VIEWZOOM")
         row2 = row.row(align=True)

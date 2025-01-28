@@ -147,7 +147,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                                                  x.outfit_piece == obj and not x.hidden and (
                                                      not x.advanced if not settings.advanced else True)]
                     if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
-                        row.prop(bpy.data.objects[obj.name], "MustardUI_additional_options_show_lock", toggle=True,
+                        row.prop(context.scene.objects[obj.name], "MustardUI_additional_options_show_lock", toggle=True,
                                  icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show_lock:
                             mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, col,

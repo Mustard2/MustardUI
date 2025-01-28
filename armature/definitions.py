@@ -149,5 +149,7 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_ArmatureSettings
+    del bpy.types.BoneCollection.MustardUI_ArmatureBoneCollection
     bpy.utils.unregister_class(MustardUI_ArmatureSettings)
     bpy.utils.unregister_class(MustardUI_ArmatureBoneCollection)

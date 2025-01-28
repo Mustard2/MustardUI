@@ -220,13 +220,13 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
             for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
                     self.add_custom_property(obj,
-                                             f'bpy.data.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                                             f'context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                                              'value', shape_key.name[len("MustardUI Float - "):], "FLOAT", custom_props,
                                              sections_to_recover)
                     k = k + 1
                 elif "MustardUI Bool" in shape_key.name:
                     self.add_custom_property(obj,
-                                             f'bpy.data.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                                             f'context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                                              'value', shape_key.name[len("MustardUI Bool - "):], "BOOL", custom_props,
                                              sections_to_recover)
                     k = k + 1

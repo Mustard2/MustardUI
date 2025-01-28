@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "MustardUI"
-version = "0.32.3"
+version = "2025.1.1"
 name = "MustardUI"
 tagline = "Easy-to-use UI for human characters"
 maintainer = "Mustard"
@@ -18,3 +18,6 @@ blender_version_min = "4.2.0"
 license = [
   "SPDX:GPL-3.0-or-later",
 ]
+
+[permissions]
+files = "Import/export templates from/to disk"

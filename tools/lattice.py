@@ -114,7 +114,7 @@ class MustardUI_Tools_LatticeModify(bpy.types.Operator):
         latt = lattice_settings.lattice_object
 
         # Store armature object to use it as active object at the end
-        for object in bpy.data.objects:
+        for object in context.scene.objects:
             if object.data == obj:
                 arm_obj = object
 
@@ -196,8 +196,8 @@ class MustardUI_LatticeSettings(bpy.types.PropertyGroup):
 
     def lattice_enable_update(self, context):
 
-        for object in bpy.data.objects:
-            for modifier in object.modifiers:
+        for o in context.scene.objects:
+            for modifier in o.modifiers:
                 if modifier.type == "LATTICE" and self.lattice_modifiers_name in modifier.name:
                     modifier.show_render = self.lattice_enable
                     modifier.show_viewport = self.lattice_enable
@@ -271,7 +271,7 @@ class MustardUI_LatticeSettings(bpy.types.PropertyGroup):
                                                update=lattice_prop_update)
 
     lattice_interpolation: bpy.props.EnumProperty(name="",
-                                                  description="",
+                                                  description="Lattice Interpolation",
                                                   items=[("KEY_BSPLINE", "BSpline", "BSpline"),
                                                          ("KEY_LINEAR", "Linear", "Linear"),
                                                          ("KEY_CARDINAL", "Cardinal", "Cardinal"),
@@ -287,6 +287,7 @@ def register():
 
 
 def unregister():
+    del bpy.types.Armature.MustardUI_LatticeSettings
     bpy.utils.unregister_class(MustardUI_LatticeSettings)
     bpy.utils.unregister_class(MustardUI_Tools_LatticeModify)
     bpy.utils.unregister_class(MustardUI_Tools_LatticeSetup)

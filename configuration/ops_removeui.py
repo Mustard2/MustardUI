@@ -34,13 +34,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         return len(to_remove)
 
-    def remove_data_col(self, col, remove_subcoll=False):
+    def remove_data_col(self, context, col, remove_subcoll=False):
 
         items = col.all_objects if remove_subcoll else col.objects
         for obj in items:
             data = obj.data
             obj_type = obj.type
-            bpy.data.objects.remove(obj)
+            context.scene.objects.remove(obj)
             if obj_type == "MESH":
                 bpy.data.meshes.remove(data)
             elif obj_type == "ARMATURE":
@@ -50,12 +50,12 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         return
 
-    def remove_data_list(self, list):
+    def remove_data_list(self, context, ll):
 
-        for obj in list:
+        for obj in ll:
             data = obj.data
             obj_type = obj.type
-            bpy.data.objects.remove(obj)
+            context.scene.objects.remove(obj)
             if obj_type == "MESH":
                 bpy.data.meshes.remove(data)
             elif obj_type == "ARMATURE":
@@ -98,9 +98,9 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         if self.delete_objects:
             if rig_settings.hair_collection is not None:
-                self.remove_data_col(rig_settings.hair_collection)
+                self.remove_data_col(context, rig_settings.hair_collection)
             if rig_settings.extras_collection is not None:
-                self.remove_data_col(rig_settings.extras_collection, rig_settings.outfit_config_subcollections)
+                self.remove_data_col(context, rig_settings.extras_collection, rig_settings.outfit_config_subcollections)
 
         # Remove settings
         if self.delete_settings or self.delete_objects:
@@ -124,7 +124,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         if self.delete_objects:
 
             # Remove Armature Children
-            self.remove_data_list(arm_obj.children)
+            self.remove_data_list(context, arm_obj.children)
 
             # Remove bones custom properties
             if self.delete_bones_custom_shapes:
@@ -133,10 +133,10 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                     if bone.custom_shape is not None:
                         if not bone.custom_shape in csb:
                             csb.append(bone.custom_shape)
-                self.remove_data_list(csb)
+                self.remove_data_list(context, csb)
 
             # Remove Armature
-            self.remove_data_list([arm_obj])
+            self.remove_data_list(context, [arm_obj])
 
         else:
 

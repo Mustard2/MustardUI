@@ -30,7 +30,8 @@ class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=0)
-        return res
+        rig_settings = arm.MustardUI_RigSettings
+        return res and rig_settings.diffeomorphic_support
 
     def execute(self, context):
 

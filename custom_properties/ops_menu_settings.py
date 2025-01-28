@@ -50,8 +50,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                                  size=4,
                                                  subtype="COLOR",
                                                  min=0., max=1.,
-                                                 default=[0., 0., 0., 1.],
-                                                 description="")
+                                                 default=[0., 0., 0., 1.])
 
     # UI Buttons
     change_rna: bpy.props.BoolProperty(name='Change Path',
@@ -90,11 +89,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR":
             try:
-                evaluate_rna(self.default_array)
+                ast.literal_eval(self.default_array)
             except:
                 self.report({'ERROR'}, 'MustardUI - Can not use this default vector.')
                 return {'FINISHED'}
-            if len(evaluate_rna(self.default_array)) != custom_prop.array_length:
+            if len(ast.literal_eval(self.default_array)) != custom_prop.array_length:
                 self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
                 return {'FINISHED'}
 
@@ -118,7 +117,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 ui_data.clear()
 
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=self.default_float if custom_prop.array_length == 0 else evaluate_rna(
+                                     default=self.default_float if custom_prop.array_length == 0 else ast.literal_eval(
                                          self.default_array) if prop_subtype != "COLOR" else self.default_color,
                                      min=self.min_float if prop_subtype != "COLOR" else 0.,
                                      max=self.max_float if prop_subtype != "COLOR" else 1.,
@@ -140,7 +139,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 ui_data.clear()
 
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=self.default_bool if custom_prop.array_length == 0 else evaluate_rna(
+                                     default=self.default_bool if custom_prop.array_length == 0 else ast.literal_eval(
                                          self.default_array),
                                      description=self.description,
                                      overridable=True)
@@ -156,7 +155,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 ui_data.clear()
 
                 rna_idprop_ui_create(obj, prop_name,
-                                     default=self.default_int if custom_prop.array_length == 0 else evaluate_rna(
+                                     default=self.default_int if custom_prop.array_length == 0 else ast.literal_eval(
                                          self.default_array),
                                      min=self.min_int,
                                      max=self.max_int,
