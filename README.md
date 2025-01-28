@@ -25,15 +25,17 @@ The main features are:
 ![](https://i.ibb.co/2v8m743/Immagine-2022-11-26-011024.png)
 ![](https://i.ibb.co/z7gbkC9/Immagine-2022-11-26-011007.png)
 
-## Installation and Configuration
+## How to install
 
-Download the latest version from the [Releases page](https://github.com/Mustard2/MustardUI/releases/latest).
+There are two supported ways to install the add-on:
 
-For creators of models, be sure to follow the [Developer Guide](https://github.com/Mustard2/MustardUI/wiki/Developer-Guide)!
+- (Recommended) Install the add-on as a Blender extension, either from the [website](https://extensions.blender.org/add-ons/mustardui/) or in the Get Extensions panel of Blender settings. **This is the recommended method for installing the add-on, as it ensures automatic updates.**
+- Download the [latest version](https://github.com/Mustard2/MustardUI/releases/latest) from the Releases page, and install it as a Blender Extension or a Legacy Blender add-on. **Do not download the code from the repository! Only use the .zip files in the Release page.**
 
-## Tutorial
+## Configuration and Tutorial
 
-You can provide the users of the UI this [tutorial](https://mustard3d.eu/documentation/#mustardui-and-tools) (MustardUI section).
+- For creators of models, be sure to follow the [Developer Guide](https://github.com/Mustard2/MustardUI/wiki/Developer-Guide)!
+- For users, check the [tutorial](https://mustard3d.eu/documentation/#mustardui-and-tools) (MustardUI section).
 
 ## Note for Developers/Users
 
