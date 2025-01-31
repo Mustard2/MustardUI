@@ -18,10 +18,8 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=0)
         if arm is not None:
-            rig_settings = arm.MustardUI_RigSettings
-            return res and (arm.MustardUI_ToolsSettings.childof_enable or (
-                    arm.MustardUI_ToolsSettings.lips_shrinkwrap_enable and rig_settings.model_rig_type in ["arp",
-                                                                                                           "mhx"]))
+            return res and (arm.MustardUI_ToolsSettings.childof_enable or arm.MustardUI_ToolsSettings.autobreath_enable
+                            or arm.MustardUI_ToolsSettings.autoeyelid_enable)
         return res
 
     def draw(self, context):
