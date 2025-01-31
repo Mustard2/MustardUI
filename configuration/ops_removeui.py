@@ -40,7 +40,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         for obj in items:
             data = obj.data
             obj_type = obj.type
-            context.scene.objects.remove(obj)
+            bpy.data.objects.remove(obj)
             if obj_type == "MESH":
                 bpy.data.meshes.remove(data)
             elif obj_type == "ARMATURE":
@@ -55,7 +55,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         for obj in ll:
             data = obj.data
             obj_type = obj.type
-            context.scene.objects.remove(obj)
+            bpy.data.objects.remove(obj)
             if obj_type == "MESH":
                 bpy.data.meshes.remove(data)
             elif obj_type == "ARMATURE":
