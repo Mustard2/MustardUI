@@ -26,18 +26,9 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
     def draw(self, context):
 
         layout = self.layout
-        scene = context.scene
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
-        armature_settings = arm.MustardUI_ArmatureSettings
-        tools_settings = arm.MustardUI_ToolsSettings
-        lattice_settings = arm.MustardUI_LatticeSettings
-        physics_settings = arm.MustardUI_PhysicsSettings
-        addon_prefs = context.preferences.addons[base_package].preferences
-
-        row_scale = 1.2
 
         # General Settings
         row = layout.row(align=False)

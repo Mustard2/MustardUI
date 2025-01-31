@@ -39,7 +39,7 @@ class PANEL_PT_MustardUI_Tools_ChildOf(MainPanel, bpy.types.Panel):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=0)
-        if arm != None:
+        if arm:
             return res and arm.MustardUI_ToolsSettings.childof_enable
         else:
             return res
@@ -74,7 +74,7 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=0)
-        if arm != None:
+        if arm:
             if hasattr(arm.MustardUI_ToolsSettings, "autobreath_enable"):
                 return res and arm.MustardUI_ToolsSettings.autobreath_enable
             else:
@@ -114,7 +114,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=0)
-        if arm != None:
+        if arm:
             if hasattr(arm.MustardUI_ToolsSettings, "autoeyelid_enable"):
                 return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
             else:
@@ -139,74 +139,15 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
         layout.operator('mustardui.tools_autoeyelid')
 
 
-class PANEL_PT_MustardUI_Tools_LipsShrinkwrap(MainPanel, bpy.types.Panel):
-    bl_parent_id = "PANEL_PT_MustardUI_Tools"
-    bl_idname = "PANEL_PT_MustardUI_Tools_LipsShrinkwrap"
-    bl_label = "Lips Shrinkwrap"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    @classmethod
-    def poll(cls, context):
-
-        res, arm = mustardui_active_object(context, config=0)
-        if arm != None:
-            rig_settings = arm.MustardUI_RigSettings
-            return res and arm.MustardUI_ToolsSettings.lips_shrinkwrap_enable and rig_settings.model_rig_type in ["arp",
-                                                                                                                  "mhx"]
-        else:
-            return res
-
-    def draw(self, context):
-
-        poll, arm = mustardui_active_object(context, config=0)
-        tools_settings = arm.MustardUI_ToolsSettings
-
-        layout = self.layout
-
-        layout.label(text="Force the lips bones to stay outside the Object.")
-
-        box = layout.box()
-
-        box.label(text="Main properties.", icon="MODIFIER")
-        box.prop(tools_settings, "lips_shrinkwrap_obj")
-        column = box.column(align=True)
-        column.prop(tools_settings, "lips_shrinkwrap_dist")
-        column.prop(tools_settings, "lips_shrinkwrap_dist_corr")
-
-        box = layout.box()
-
-        box.label(text="Friction properties.", icon="FORCE_TURBULENCE")
-        row = box.row(align=True)
-        row.prop(tools_settings, "lips_shrinkwrap_friction")
-        row.scale_x = 0.8
-        row.prop(tools_settings, "lips_shrinkwrap_friction_infl")
-        box.prop(tools_settings, "lips_shrinkwrap_obj_fric")
-        if tools_settings.lips_shrinkwrap_obj_fric:
-            if tools_settings.lips_shrinkwrap_obj_fric.type == "MESH":
-                box.prop_search(tools_settings, "lips_shrinkwrap_obj_fric_sec", tools_settings.lips_shrinkwrap_obj_fric,
-                                "vertex_groups")
-            if tools_settings.lips_shrinkwrap_obj_fric.type == "ARMATURE":
-                box.prop_search(tools_settings, "lips_shrinkwrap_obj_fric_sec",
-                                tools_settings.lips_shrinkwrap_obj_fric.pose, "bones")
-
-        row = layout.row()
-        if tools_settings.lips_shrinkwrap:
-            row.prop(tools_settings, "lips_shrinkwrap", text="Disable", toggle=True, icon="CANCEL")
-        else:
-            row.prop(tools_settings, "lips_shrinkwrap", toggle=True)
-
-
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools)
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools_AutoBreath)
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools_AutoEyelid)
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools_ChildOf)
-    bpy.utils.register_class(PANEL_PT_MustardUI_Tools_LipsShrinkwrap)
 
 
 def unregister():
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoBreath)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoEyelid)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_LipsShrinkwrap)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_ChildOf)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoEyelid)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoBreath)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools)

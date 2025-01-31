@@ -39,7 +39,6 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         col.prop(tools_settings, 'childof_enable')
         col.prop(tools_settings, 'autobreath_enable')
         col.prop(tools_settings, 'autoeyelid_enable')
-        col.prop(tools_settings, 'lips_shrinkwrap_enable')
         col.prop(lattice_settings, 'lattice_panel_enable')
 
         if tools_settings.autoeyelid_enable:
