@@ -18,7 +18,7 @@ def enable_physics_update(self, context):
 
     res, arm = mustardui_active_object(context, config=0)
 
-    if arm is None:
+    if arm is None or not res:
         return
 
     rig_settings = arm.MustardUI_RigSettings
@@ -26,9 +26,11 @@ def enable_physics_update(self, context):
     for pi in [x for x in self.items]:
         status = self.enable_physics and pi.enable
         for modifier in pi.object.modifiers:
-            if (modifier.type == 'CLOTH' and pi.type in ["CAGE", "SINGLE_ITEM"]) or (modifier.type == 'COLLISION' and pi.type == "COLLISION"):
+            if modifier.type in ['CLOTH', 'SOFT_BODY'] and pi.type in ["CAGE", "SINGLE_ITEM"]:
                 modifier.show_viewport = status
                 modifier.show_render = status
+            elif modifier.type == 'COLLISION' and pi.type == "COLLISION":
+                pi.object.collision.use = status
         if pi.type == "CAGE":
             set_cage_modifiers(pi, rig_settings.model_body.modifiers, status)
 
@@ -46,7 +48,7 @@ def enable_physics_update_single(self, context):
 
     res, arm = mustardui_active_object(context, config=0)
 
-    if arm is None:
+    if arm is None or not res:
         return
 
     rig_settings = arm.MustardUI_RigSettings

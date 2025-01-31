@@ -897,6 +897,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         settings = context.scene.MustardUI_Settings
         poll, arm = mustardui_active_object(context, config=0)
         addon_prefs = context.preferences.addons[base_package].preferences
+        physics_settings = arm.MustardUI_PhysicsSettings
+
         # if arm is not None:
         #    armature_settings = arm.MustardUI_ArmatureSettings
 
@@ -990,13 +992,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             items = col.collection.all_objects if self.outfit_config_subcollections else col.collection.objects
             for obj in [x for x in items if x in child_all]:
                 child.remove(obj)
+        for obj in [x.object for x in physics_settings.items if x.object in child_all]:
+            child.remove(obj)
 
         for c in child:
             c.hide_viewport = self.simplify_enable if self.simplify_armature_child else False
-            for mod in [x for x in c.modifiers if
-                        x.type in ["SUBSURF", "SHRINKWRAP", "CORRECTIVE_SMOOTH", "SOLIDIFY", "PARTICLE_SYSTEM",
-                                   "CLOTH"]]:
-                mod.show_viewport = not self.simplify_enable if self.simplify_armature_child else True
+            for mod in [x for x in c.modifiers]:
+                if mod.type in ["SUBSURF", "SHRINKWRAP", "CORRECTIVE_SMOOTH", "SOLIDIFY", "PARTICLE_SYSTEM", "CLOTH"]:
+                    mod.show_viewport = not self.simplify_enable if self.simplify_armature_child else True
 
         # Diffeomorphic morphs
         if self.diffeomorphic_support and self.simplify_diffeomorphic:
@@ -1004,9 +1007,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         # Physics
         if self.simplify_physics and arm is not None:
-            physics_settings = arm.MustardUI_PhysicsSettings
-            if len(physics_settings.physics_items) > 0:
-                physics_settings.physics_enable = not self.simplify_enable
+            if len(physics_settings.items) > 0:
+                physics_settings.enable_physics = not self.simplify_enable
 
         # Force No Physics
         if self.simplify_force_no_physics and self.simplify_enable:
