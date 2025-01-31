@@ -3,7 +3,6 @@ from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from .. import __package__ as base_package
-from .menu_configure import row_scale
 
 
 class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):

@@ -3,7 +3,6 @@ from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from .. import __package__ as base_package
-from .menu_configure import row_scale
 
 
 class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
@@ -32,11 +31,6 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
-        armature_settings = arm.MustardUI_ArmatureSettings
-        tools_settings = arm.MustardUI_ToolsSettings
-        lattice_settings = arm.MustardUI_LatticeSettings
-        physics_settings = arm.MustardUI_PhysicsSettings
-        addon_prefs = context.preferences.addons[base_package].preferences
 
         box = layout.box()
         box.label(text="General Settings", icon="MODIFIER")
