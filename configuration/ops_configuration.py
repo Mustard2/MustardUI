@@ -50,8 +50,6 @@ class MustardUI_Configuration(bpy.types.Operator):
             if not obj.MustardUI_created:
                 if context.active_object is not None and context.active_object.type == "ARMATURE":
                     rig_settings.model_armature_object = context.active_object
-                    if tools_settings.lips_shrinkwrap_enable:
-                        tools_settings.lips_shrinkwrap_armature_object = rig_settings.model_armature_object
                 else:
                     self.report({'ERROR'},
                                 'MustardUI - Be sure to select the armature Object in the viewport before continuing.')
@@ -125,16 +123,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                     print(
                         'MustardUI - Configuration Warning - The rig has multiple rig types. This might create '
                         'problems in the UI')
-
-            # Check shrinkwrap modifier requirements
-            if tools_settings.lips_shrinkwrap_enable and not rig_settings.model_rig_type in ['arp', 'mhx']:
-                tools_settings.lips_shrinkwrap_armature_object = None
-                tools_settings.lips_shrinkwrap_enable = False
-                warnings = warnings + 1
-                if addon_prefs.debug:
-                    print(
-                        'MustardUI - Configuration Warning - Lips shrinkwrap requested for a rig which is not ARP or '
-                        'MHX. The tool has been disabled')
 
             # Check for errors in the list selection
             if len(rig_settings.outfits_list_make(context)) > 0 and rig_settings.outfits_list == "":

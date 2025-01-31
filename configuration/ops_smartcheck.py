@@ -106,10 +106,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         if self.smartcheck_armature:
             bpy.ops.mustardui.armature_smartcheck()
 
-        # Lips Shrinkwrap
-        if tools_settings.lips_shrinkwrap_armature_object is None:
-            tools_settings.lips_shrinkwrap_armature_object = rig_settings.model_body.find_armature()
-
         # End of debug messages
         if addon_prefs.debug:
             print('\nMustardUI - Smart Check - End')
