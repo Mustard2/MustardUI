@@ -309,7 +309,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 rig_settings.diffeomorphic_emotions = False
                 rig_settings.diffeomorphic_emotions_units = False
                 bpy.ops.mustardui.configuration()
-                bpy.ops.mustardui.dazmorphs_checkmorphs()
+                bpy.ops.mustardui.morphs_check()
                 bpy.ops.mustardui.configuration()
             else:
                 rig_settings.diffeomorphic_morphs_list.clear()

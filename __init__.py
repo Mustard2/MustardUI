@@ -24,7 +24,7 @@ from . import custom_properties
 from . import sections
 from . import outfits
 from . import physics
-from . import diffeomorphic
+from . import morphs
 from . import configuration
 from . import links
 from . import menu
@@ -42,7 +42,7 @@ def register():
     sections.register()
     outfits.register()
     physics.register()
-    diffeomorphic.register()
+    morphs.register()
     configuration.register()
     links.register()
     menu.register()
@@ -52,7 +52,7 @@ def unregister():
     menu.unregister()
     links.unregister()
     configuration.unregister()
-    diffeomorphic.unregister()
+    morphs.unregister()
     physics.unregister()
     outfits.unregister()
     sections.unregister()

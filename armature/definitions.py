@@ -80,8 +80,6 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
 
 # Global Armature settings
 class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
-    config_collapse: bpy.props.BoolProperty(default=True, name="")
-
     # Outfit layers
     def mustardui_armature_visibility_outfits_update(self, context):
         poll, arm = mustardui_active_object(context, config=0)

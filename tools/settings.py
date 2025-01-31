@@ -4,10 +4,6 @@ from ..misc.message_box import *
 
 
 class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
-    # Property for collapsing tools properties section
-    tools_config_collapse: BoolProperty(default=True,
-                                        name="")
-
     # ------------------------------------------------------------------------
     #    Child Of
     # ------------------------------------------------------------------------

@@ -44,9 +44,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Body properties
     # ------------------------------------------------------------------------
 
-    # Property for collapsing outfit properties section
-    body_config_collapse: bpy.props.BoolProperty(default=True, name="")
-
     # Global body mesh properties
     # Update function for Subdivision Surface modifiers
     def update_subdiv(self, context):
@@ -239,9 +236,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
     #    Outfit properties
     # ------------------------------------------------------------------------
-
-    # Property for collapsing outfit list section
-    outfit_config_collapse: bpy.props.BoolProperty(default=True, name="")
 
     # Property for collapsing outfit properties section
     outfit_config_prop_collapse: bpy.props.BoolProperty(default=True)
@@ -592,9 +586,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Hair properties
     # ------------------------------------------------------------------------
 
-    # Property for collapsing hair properties section
-    hair_config_collapse: bpy.props.BoolProperty(default=True, name="")
-
     # Hair collection
     def poll_collection_hair(self, object):
         if self.extras_collection is not None:
@@ -768,9 +759,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    External addons
     # ------------------------------------------------------------------------
 
-    # Property for collapsing external addons section
-    external_addons_collapse: bpy.props.BoolProperty(default=True, name="")
-
     # Function to update global collection properties
     def diffeomorphic_enable_update(self, context):
 
@@ -833,7 +821,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_emotions: bpy.props.BoolProperty(default=False,
                                                    name="Emotions Morphs",
                                                    description="Search for Diffeomorphic emotions")
-    diffeomorphic_emotions_collapse: bpy.props.BoolProperty(default=True, name="")
+
     diffeomorphic_emotions_custom: bpy.props.StringProperty(default="",
                                                             name="Custom morphs",
                                                             description="Add strings to add custom morphs (they "
@@ -846,24 +834,21 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         description="Search for Diffeomorphic FACS emotions.\nThese "
                                                                     "morphs will be shown as Advanced Emotions in the"
                                                                     " UI")
-    diffeomorphic_facs_emotions_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_emotions_units: bpy.props.BoolProperty(default=False,
                                                          name="Emotions Units Morphs",
                                                          description="Search for Diffeomorphic emotions units")
-    diffeomorphic_emotions_units_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default=False,
                                                               name="FACS Emotions Units Morphs",
                                                               description="Search for Diffeomorphic FACS emotions "
                                                                           "units.\nThese morphs will be shown as "
                                                                           "Advanced Emotion Units in the UI")
-    diffeomorphic_facs_emotions_units_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_body_morphs: bpy.props.BoolProperty(default=False,
                                                       name="Body Morphs Morphs",
                                                       description="Search for Diffeomorphic Body morphs")
-    diffeomorphic_body_morphs_collapse: bpy.props.BoolProperty(default=True, name="")
+
     diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default="",
                                                                name="Custom morphs",
                                                                description="Add strings to add custom morphs (they "
@@ -1104,10 +1089,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Various properties
     # ------------------------------------------------------------------------
 
-    # Property for collapsing other properties section
-    various_config_collapse: bpy.props.BoolProperty(default=True,
-                                                    name="")
-
     # Version of the model
     model_version: bpy.props.StringProperty(name="Model version",
                                             description="Version of the model",
@@ -1127,19 +1108,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     model_cleaned: bpy.props.BoolProperty(default=False)
 
     # Links
-    # Property for collapsing links properties section
-    url_config_collapse: bpy.props.BoolProperty(default=True,
-                                                name="")
-
     # Enable link section
     links_enable: bpy.props.BoolProperty(default=True,
                                          description="Create a Link panel in the UI to show custom links",
                                          name="Show Links")
-
-    # Debug
-    # Property for collapsing debug properties section
-    debug_config_collapse: bpy.props.BoolProperty(default=True,
-                                                  name="")
 
     # END OF MustardUI_RigSettings class
 

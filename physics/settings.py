@@ -83,10 +83,6 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
     items: bpy.props.CollectionProperty(name="Outfits Collection List",
                                         type=MustardUI_PhysicsItem)
 
-    # Property for collapsing rig properties section
-    config_collapse: bpy.props.BoolProperty(default=True,
-                                            name="")
-
 
 def register():
     bpy.utils.register_class(MustardUI_PhysicsSettings)
