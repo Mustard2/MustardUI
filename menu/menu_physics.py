@@ -5,6 +5,7 @@ from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from .. import __package__ as base_package
 from ..misc.ui_collapse import ui_collapse_prop
+from ..misc.mirror import check_mirror
 
 
 def cloth_panel(layout, pi, mod):
@@ -65,6 +66,8 @@ def cloth_panel(layout, pi, mod):
             col.prop(collisions, "distance_min", slider=True, text="Distance")
             col.prop(collisions, "impulse_clamp")
 
+    # Add all settings inserted here also in the mirror operator
+
 
 def soft_panel(layout, pi, mod):
 
@@ -85,6 +88,8 @@ def soft_panel(layout, pi, mod):
             row.prop(cache, "frame_start")
             row.prop(cache, "frame_end")
             row.prop(pi, 'unique_cache_frames', icon="TRACKING_REFINE_BACKWARDS", text="")
+
+    # Add all settings inserted here also in the mirror operator
 
 
 def collision_panel(layout, pi, mod):
@@ -113,6 +118,9 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
             return False
 
         res, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+        if res:
+            return len(physics_settings.items)
         return res
 
     def draw_header(self, context):
@@ -138,15 +146,15 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
             return False
 
         res, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+        if res:
+            return len(physics_settings.items)
         return res
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
-        addon_prefs = context.preferences.addons[base_package].preferences
 
         layout = self.layout
 
@@ -161,6 +169,13 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
         if pi.object and pi.type in ["CAGE", "COLLISION", "SINGLE_ITEM"]:
             row.prop(pi, 'enable', text="", icon="PHYSICS")
             row.prop(pi.object, 'hide_viewport', text="")
+
+            row = row.row()
+            row.enabled = False
+            for on in [x.object.name for x in physics_settings.items if x.object != pi.object]:
+                if check_mirror(pi.object.name, on, left=True) or check_mirror(pi.object.name, on, left=False):
+                    row.enabled = True
+            row.operator("mustardui.physics_mirror", text="", icon="MOD_MIRROR").obj_name = pi.object.name
 
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
                 for mod in pi.object.modifiers:
@@ -195,15 +210,15 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
             return False
 
         res, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+        if res:
+            return len(physics_settings.items)
         return res
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
-        addon_prefs = context.preferences.addons[base_package].preferences
 
         layout = self.layout
 

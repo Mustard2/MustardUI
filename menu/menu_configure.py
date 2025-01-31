@@ -418,9 +418,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="General Settings", icon="MODIFIER")
             box.prop(physics_settings, "enable_ui")
-            row = box.row()
-            row.enabled = physics_settings.enable_ui
-            row.prop(physics_settings, "mirror")
 
             if len(physics_settings.items):
 

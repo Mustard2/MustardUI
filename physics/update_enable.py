@@ -54,9 +54,11 @@ def enable_physics_update_single(self, context):
 
     status = physics_settings.enable_physics and self.enable
     for modifier in self.object.modifiers:
-        if (modifier.type == 'CLOTH' and self.type in ["CAGE", "SINGLE_ITEM"]) or (modifier.type == 'COLLISION' and pi.type == "COLLISION"):
+        if modifier.type in ['CLOTH', 'SOFT_BODY'] and self.type in ["CAGE", "SINGLE_ITEM"]:
             modifier.show_viewport = status
             modifier.show_render = status
+        elif modifier.type == 'COLLISION' and self.type == "COLLISION":
+            self.object.collision.use = status
     if self.type == "CAGE":
         set_cage_modifiers(self, rig_settings.model_body.modifiers, status)
 
