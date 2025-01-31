@@ -4,55 +4,45 @@ from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
+from ..misc.mirror import check_mirror
+
+
+def draw_armature_button(bcoll, bcoll_settings, bcolls, armature_settings, layout):
+
+    def draw_with_icon(prop, prop_name, name, icon):
+        if icon != "NONE":
+            row.prop(prop, prop_name,
+                     text=name,
+                     toggle=True,
+                     icon=icon)
+        else:
+            row.prop(prop, prop_name,
+                     text=name,
+                     toggle=True)
+
+    if not armature_settings.mirror:
+        row = layout.row()
+        draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
+        return
+
+    for b in bcolls:
+        if check_mirror(bcoll.name, b.name, left=True):
+            row = layout.row()
+            draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
+            r_icon = b.MustardUI_ArmatureBoneCollection.icon
+            draw_with_icon(b, "is_visible", b.name, r_icon)
+            return
+        elif check_mirror(bcoll.name, b.name, left=False):
+            return
+
+    row = layout.row()
+    draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
 
 
 class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Armature"
     bl_label = "Armature"
     bl_options = {"DEFAULT_CLOSED"}
-
-    def draw_armature_button(self, bcoll, bcoll_settings, bcolls, armature_settings, layout):
-
-        def draw_with_icon(prop, prop_name, name, icon):
-            if icon != "NONE":
-                row.prop(prop, prop_name,
-                         text=name,
-                         toggle=True,
-                         icon=icon)
-            else:
-                row.prop(prop, prop_name,
-                         text=name,
-                         toggle=True)
-
-        if not armature_settings.mirror:
-            row = layout.row()
-            draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
-            return
-
-        for b in bcolls:
-            if (
-                    bcoll.name.lower().endswith(".l") and b.name.lower() == bcoll.name[:-2].lower() + ".r"
-            ) or (
-                    bcoll.name.lower().startswith("left") and b.name.lower() == "right" + bcoll.name[4:].lower()
-            ) or (
-                    bcoll.name.lower().endswith("left") and b.name.lower() == bcoll.name[:-4].lower() + "right"
-            ):
-                row = layout.row()
-                draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
-                r_icon = b.MustardUI_ArmatureBoneCollection.icon
-                draw_with_icon(b, "is_visible", b.name, r_icon)
-                return
-            elif (
-                    bcoll.name.lower().endswith(".r") and b.name.lower() == bcoll.name[:-2].lower() + ".l"
-            ) or (
-                    bcoll.name.lower().startswith("right") and b.name.lower() == "left" + bcoll.name[5:].lower()
-            ) or (
-                    bcoll.name.lower().endswith("right") and b.name.lower() == bcoll.name[:-5].lower() + "left"
-            ):
-                return
-
-        row = layout.row()
-        draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
 
     @classmethod
     def poll(cls, context):
@@ -113,7 +103,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         for bcoll in enabled_colls:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if (bcoll_settings.advanced and settings.advanced) or not bcoll_settings.advanced:
-                self.draw_armature_button(bcoll, bcoll_settings, enabled_colls, armature_settings, box)
+                draw_armature_button(bcoll, bcoll_settings, enabled_colls, armature_settings, box)
 
         box.separator()
         box.operator('mustardui.armature_reset_bcoll', icon="LOOP_BACK", text="Reset Visibility")
