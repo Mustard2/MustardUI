@@ -2,7 +2,6 @@ import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
-from ..settings.rig import *
 from ..tools.lattice import *
 
 

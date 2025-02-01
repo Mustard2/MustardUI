@@ -4,32 +4,37 @@ from ..model_selection.active_object import *
 import os
 
 
+def tab(n=1):
+    return "\t" * n
+
+
+def new_line(n=1):
+    return "\n" * n
+
+
+def bar(l=15):
+    return "-" * l + new_line()
+
+
+def addon_status(status, addon_name, tabs=2):
+    if status == 2:
+        return addon_name + " status:" + tab(tabs) + "Correctly installed and enabled" + new_line()
+    elif status == 1:
+        return addon_name + " status:" + tab(tabs) + "Installed but not enabled" + new_line()
+    else:
+        return addon_name + " status:" + tab(
+            tabs) + "Not correctly installed or wrong add-on folder name" + new_line()
+
+
+def header(name):
+    return bar() + name + new_line() + new_line()
+
+
 class MustardUI_Debug_Log(bpy.types.Operator):
     """Create a file with information to debug errors.\nThis tool will only write on a .txt file and will NOT change any model or Blender setting"""
     bl_idname = "mustardui.debug_log"
     bl_label = "Generate Log File"
     bl_options = {'REGISTER'}
-
-    def new_line(self, n=1):
-        return "\n" * n
-
-    def tab(self, n=1):
-        return "\t" * n
-
-    def bar(self, l=15):
-        return "-" * l + self.new_line()
-
-    def header(self, name):
-        return self.bar() + name + self.new_line() + self.new_line()
-
-    def addon_status(self, status, addon_name, tabs=2):
-        if status == 2:
-            return addon_name + " status:" + self.tab(tabs) + "Correctly installed and enabled" + self.new_line()
-        elif status == 1:
-            return addon_name + " status:" + self.tab(tabs) + "Installed but not enabled" + self.new_line()
-        else:
-            return addon_name + " status:" + self.tab(
-                tabs) + "Not correctly installed or wrong add-on folder name" + self.new_line()
 
     @classmethod
     def poll(cls, context):
@@ -50,98 +55,100 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         # Create logs
 
         # System
-        log += self.header("System")
+        log += header("System")
 
-        log += "Blender version:" + self.tab(tabs_num - 1) + bpy.app.version_string
-        log += self.new_line()
+        log += "Blender version:" + tab(tabs_num - 1) + bpy.app.version_string
+        log += new_line()
 
         if bpy.context.preferences.addons['cycles']:
 
             device_type = bpy.context.preferences.addons['cycles'].preferences.compute_device_type
 
-            log += "Device type:" + self.tab(tabs_num) + device_type
-            log += self.new_line()
+            log += "Device type:" + tab(tabs_num) + device_type
+            log += new_line()
 
             log += "Devices"
-            log += self.new_line()
+            log += new_line()
             for device in [x for x in bpy.context.preferences.addons['cycles'].preferences.devices if
                            (x.type == device_type or x.type == "CPU")]:
-                log += self.tab() + '- '
+                log += tab() + '- '
                 if device.use:
                     log += "[active] "
                 log += device.name
-                log += self.new_line()
+                log += new_line()
 
-        log += self.new_line(2)
+        log += new_line(2)
 
         # Model
-        log += self.header("Model")
+        log += header("Model")
 
-        log += "Model name:" + self.tab(tabs_num) + rig_settings.model_name
-        log += self.new_line()
+        log += "Model name:" + tab(tabs_num) + rig_settings.model_name
+        log += new_line()
         if rig_settings.model_version != '':
-            log += "Model version:" + self.tab(tabs_num) + rig_settings.model_version
-            log += self.new_line()
-        log += self.new_line()
-        log += "Model rig type:" + self.tab(tabs_num - 1) + rig_settings.model_rig_type
-        log += self.new_line()
-        log += "Model cleaned:" + self.tab(tabs_num) + str(rig_settings.model_cleaned)
-        log += self.new_line(2)
+            log += "Model version:" + tab(tabs_num) + rig_settings.model_version
+            log += new_line()
+        log += new_line()
+        log += "Model rig type:" + tab(tabs_num - 1) + rig_settings.model_rig_type
+        log += new_line()
+        log += "Model cleaned:" + tab(tabs_num) + str(rig_settings.model_cleaned)
+        log += new_line(2)
 
         log += "Custom Properties:"
-        log += self.new_line()
+        log += new_line()
         body_cp = len(arm.MustardUI_CustomProperties)
-        log += self.tab() + "- Body: " + self.tab(tabs_num) + str(body_cp)
-        log += self.new_line()
+        log += tab() + "- Body: " + tab(tabs_num) + str(body_cp)
+        log += new_line()
         outf_cp = len(arm.MustardUI_CustomPropertiesOutfit)
-        log += self.tab() + "- Outfit: " + self.tab(tabs_num - 1) + str(outf_cp)
-        log += self.new_line()
+        log += tab() + "- Outfit: " + tab(tabs_num - 1) + str(outf_cp)
+        log += new_line()
         hair_cp = len(arm.MustardUI_CustomPropertiesHair)
-        log += self.tab() + "- Hair: " + self.tab(tabs_num) + str(hair_cp)
-        log += self.new_line()
-        log += self.tab() + "Total: " + self.tab(tabs_num) + str(body_cp + outf_cp + hair_cp)
+        log += tab() + "- Hair: " + tab(tabs_num) + str(hair_cp)
+        log += new_line()
+        log += tab() + "Total: " + tab(tabs_num) + str(body_cp + outf_cp + hair_cp)
 
-        log += self.new_line(3)
+        log += new_line(3)
 
         # Diffeomorphic
         if rig_settings.diffeomorphic_support:
-            log += self.header("Diffeomorphic")
+            log += header("Diffeomorphic")
 
-            log += self.new_line()
-            log += "Morphs: " + self.tab(tabs_num + 1) + str(rig_settings.diffeomorphic_morphs_number)
-            log += self.new_line()
+            log += new_line()
+            log += "Morphs: " + tab(tabs_num + 1) + str(rig_settings.diffeomorphic_morphs_number)
+            log += new_line()
 
-            log += self.new_line(3)
+            log += new_line(3)
 
         # Viewport
-        log += self.header("Viewport")
+        log += header("Viewport")
 
         if rig_settings.simplify_main_enable:
-            log += "Simplify status:" + self.tab(tabs_num - 1) + (
+            log += "Simplify status:" + tab(tabs_num - 1) + (
                 "Enabled" if rig_settings.simplify_enable else "Disabled")
-            log += self.new_line()
+            log += new_line()
 
-        log += "Custom normals:" + self.tab(tabs_num - 1) + (
+        log += "Custom normals:" + tab(tabs_num - 1) + (
             "Disabled" if not settings.material_normal_nodes else "Enabled")
-        log += self.new_line()
+        log += new_line()
 
         if rig_settings.diffeomorphic_support:
-            log += "Morphs:" + self.tab(tabs_num + 1) + ("Enabled" if rig_settings.diffeomorphic_enable else "Disabled")
-            log += self.new_line()
-        if len(physics_settings.physics_items) > 0:
-            log += "Physics:" + self.tab(tabs_num) + ("Enabled" if physics_settings.physics_enable else "Disabled")
-            log += self.new_line()
+            log += "Morphs:" + tab(tabs_num + 1) + ("Enabled" if rig_settings.diffeomorphic_enable else "Disabled")
+            log += new_line()
+        if len(physics_settings.items) > 0:
+            log += "Physics:" + tab(tabs_num) + ("Enabled" if physics_settings.enable_physics else "Disabled")
+            log += new_line()
+            log += "- Physics items:" + tab(tabs_num) + str(len(physics_settings.items))
+            log += new_line()
 
         if rig_settings.hair_collection is not None:
-            log += "Hair status:" + self.tab(tabs_num) + (
+            log += "Hair status:" + tab(tabs_num) + (
                 "Hidden" if rig_settings.hair_collection.hide_viewport else "Shown")
-            log += self.new_line()
+            log += new_line()
         if rig_settings.extras_collection is not None:
-            log += "Extras status:" + self.tab(tabs_num) + (
+            log += "Extras status:" + tab(tabs_num) + (
                 "Hidden" if rig_settings.extras_collection.hide_viewport else "Shown")
-            log += self.new_line()
+            log += new_line()
 
-        log += self.new_line()
+        log += new_line()
 
         # Write to file
         try:
