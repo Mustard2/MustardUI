@@ -44,9 +44,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Body properties
     # ------------------------------------------------------------------------
 
-    # Property for collapsing outfit properties section
-    body_config_collapse: bpy.props.BoolProperty(default=True, name="")
-
     # Global body mesh properties
     # Update function for Subdivision Surface modifiers
     def update_subdiv(self, context):
@@ -78,7 +75,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
-        MustardUI_RigSettings._set_normal_autosmooth(self.model_body, self.body_norm_autosmooth,True)
+        MustardUI_RigSettings._set_normal_autosmooth(self.model_body, self.body_norm_autosmooth, True)
 
     # Update function for Smooth Correction modifiers
     def update_solidify(self, context):
@@ -239,9 +236,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
     #    Outfit properties
     # ------------------------------------------------------------------------
-
-    # Property for collapsing outfit list section
-    outfit_config_collapse: bpy.props.BoolProperty(default=True, name="")
 
     # Property for collapsing outfit properties section
     outfit_config_prop_collapse: bpy.props.BoolProperty(default=True)
@@ -592,9 +586,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Hair properties
     # ------------------------------------------------------------------------
 
-    # Property for collapsing hair properties section
-    hair_config_collapse: bpy.props.BoolProperty(default=True, name="")
-
     # Hair collection
     def poll_collection_hair(self, object):
         if self.extras_collection is not None:
@@ -768,16 +759,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    External addons
     # ------------------------------------------------------------------------
 
-    # Property for collapsing external addons section
-    external_addons_collapse: bpy.props.BoolProperty(default=True, name="")
     # Function to update global collection properties
     def diffeomorphic_enable_update(self, context):
 
         if self.diffeomorphic_enable:
-            bpy.ops.mustardui.dazmorphs_enabledrivers()
+            bpy.ops.mustardui.morphs_enabledrivers()
         else:
             self.diffeomorphic_enable_settings = False
-            bpy.ops.mustardui.dazmorphs_disabledrivers()
+            bpy.ops.mustardui.morphs_disabledrivers()
 
     # Diffeomorphic support
     diffeomorphic_support: bpy.props.BoolProperty(default=False,
@@ -832,7 +821,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_emotions: bpy.props.BoolProperty(default=False,
                                                    name="Emotions Morphs",
                                                    description="Search for Diffeomorphic emotions")
-    diffeomorphic_emotions_collapse: bpy.props.BoolProperty(default=True, name="")
+
     diffeomorphic_emotions_custom: bpy.props.StringProperty(default="",
                                                             name="Custom morphs",
                                                             description="Add strings to add custom morphs (they "
@@ -845,24 +834,21 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         description="Search for Diffeomorphic FACS emotions.\nThese "
                                                                     "morphs will be shown as Advanced Emotions in the"
                                                                     " UI")
-    diffeomorphic_facs_emotions_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_emotions_units: bpy.props.BoolProperty(default=False,
                                                          name="Emotions Units Morphs",
                                                          description="Search for Diffeomorphic emotions units")
-    diffeomorphic_emotions_units_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default=False,
                                                               name="FACS Emotions Units Morphs",
                                                               description="Search for Diffeomorphic FACS emotions "
                                                                           "units.\nThese morphs will be shown as "
                                                                           "Advanced Emotion Units in the UI")
-    diffeomorphic_facs_emotions_units_collapse: bpy.props.BoolProperty(default=True, name="")
 
     diffeomorphic_body_morphs: bpy.props.BoolProperty(default=False,
                                                       name="Body Morphs Morphs",
                                                       description="Search for Diffeomorphic Body morphs")
-    diffeomorphic_body_morphs_collapse: bpy.props.BoolProperty(default=True, name="")
+
     diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default="",
                                                                name="Custom morphs",
                                                                description="Add strings to add custom morphs (they "
@@ -896,6 +882,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         settings = context.scene.MustardUI_Settings
         poll, arm = mustardui_active_object(context, config=0)
         addon_prefs = context.preferences.addons[base_package].preferences
+        physics_settings = arm.MustardUI_PhysicsSettings
+
         # if arm is not None:
         #    armature_settings = arm.MustardUI_ArmatureSettings
 
@@ -989,13 +977,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             items = col.collection.all_objects if self.outfit_config_subcollections else col.collection.objects
             for obj in [x for x in items if x in child_all]:
                 child.remove(obj)
+        for obj in [x.object for x in physics_settings.items if x.object in child_all]:
+            child.remove(obj)
 
         for c in child:
             c.hide_viewport = self.simplify_enable if self.simplify_armature_child else False
-            for mod in [x for x in c.modifiers if
-                        x.type in ["SUBSURF", "SHRINKWRAP", "CORRECTIVE_SMOOTH", "SOLIDIFY", "PARTICLE_SYSTEM",
-                                   "CLOTH"]]:
-                mod.show_viewport = not self.simplify_enable if self.simplify_armature_child else True
+            for mod in [x for x in c.modifiers]:
+                if mod.type in ["SUBSURF", "SHRINKWRAP", "CORRECTIVE_SMOOTH", "SOLIDIFY", "PARTICLE_SYSTEM", "CLOTH"]:
+                    mod.show_viewport = not self.simplify_enable if self.simplify_armature_child else True
 
         # Diffeomorphic morphs
         if self.diffeomorphic_support and self.simplify_diffeomorphic:
@@ -1003,9 +992,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         # Physics
         if self.simplify_physics and arm is not None:
-            physics_settings = arm.MustardUI_PhysicsSettings
-            if len(physics_settings.physics_items) > 0:
-                physics_settings.physics_enable = not self.simplify_enable
+            if len(physics_settings.items) > 0:
+                physics_settings.enable_physics = not self.simplify_enable
 
         # Force No Physics
         if self.simplify_force_no_physics and self.simplify_enable:
@@ -1101,10 +1089,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Various properties
     # ------------------------------------------------------------------------
 
-    # Property for collapsing other properties section
-    various_config_collapse: bpy.props.BoolProperty(default=True,
-                                                    name="")
-
     # Version of the model
     model_version: bpy.props.StringProperty(name="Model version",
                                             description="Version of the model",
@@ -1124,19 +1108,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     model_cleaned: bpy.props.BoolProperty(default=False)
 
     # Links
-    # Property for collapsing links properties section
-    url_config_collapse: bpy.props.BoolProperty(default=True,
-                                                name="")
-
     # Enable link section
     links_enable: bpy.props.BoolProperty(default=True,
                                          description="Create a Link panel in the UI to show custom links",
                                          name="Show Links")
-
-    # Debug
-    # Property for collapsing debug properties section
-    debug_config_collapse: bpy.props.BoolProperty(default=True,
-                                                  name="")
 
     # END OF MustardUI_RigSettings class
 

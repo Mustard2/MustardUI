@@ -35,7 +35,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
-        tools_settings = obj.MustardUI_ToolsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Try to assign the rig object
@@ -105,10 +104,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
         if self.smartcheck_armature:
             bpy.ops.mustardui.armature_smartcheck()
-
-        # Lips Shrinkwrap
-        if tools_settings.lips_shrinkwrap_armature_object is None:
-            tools_settings.lips_shrinkwrap_armature_object = rig_settings.model_body.find_armature()
 
         # End of debug messages
         if addon_prefs.debug:

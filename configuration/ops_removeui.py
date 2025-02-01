@@ -40,7 +40,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         for obj in items:
             data = obj.data
             obj_type = obj.type
-            context.scene.objects.remove(obj)
+            bpy.data.objects.remove(obj)
             if obj_type == "MESH":
                 bpy.data.meshes.remove(data)
             elif obj_type == "ARMATURE":
@@ -55,7 +55,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         for obj in ll:
             data = obj.data
             obj_type = obj.type
-            context.scene.objects.remove(obj)
+            bpy.data.objects.remove(obj)
             if obj_type == "MESH":
                 bpy.data.meshes.remove(data)
             elif obj_type == "ARMATURE":
@@ -166,9 +166,10 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         col.label(text="This is a highly destructive operation! Use it at your own risk!", icon="ERROR")
 
         box = layout.box()
-        box.prop(self, "delete_settings")
-        box.prop(self, "delete_objects")
-        row = box.row()
+        col = box.column(align=True)
+        col.prop(self, "delete_settings")
+        col.prop(self, "delete_objects")
+        row = col.row()
         row.enabled = self.delete_objects
         row.prop(self, "delete_bones_custom_shapes")
 

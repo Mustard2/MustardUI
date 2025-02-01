@@ -74,7 +74,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "simplify_hair_global")
         col.prop(rig_settings, "simplify_particles")
 
-        if len(physics_settings.physics_items) > 0:
+        if len(physics_settings.items) > 0:
             col.separator()
             col.prop(rig_settings, "simplify_physics")
 
