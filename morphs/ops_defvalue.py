@@ -19,9 +19,10 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
 
         for morph in rig_settings.diffeomorphic_morphs_list:
-            if isinstance(rig_settings.model_armature_object[morph.path], float):
+            val = rig_settings.model_armature_object[morph.path]
+            if isinstance(val, float):
                 rig_settings.model_armature_object[morph.path] = 0.
-            elif isinstance(rig_settings.model_armature_object[morph.path], bool):
+            elif isinstance(val, bool):
                 rig_settings.model_armature_object[morph.path] = True
 
         arm.update_tag()

@@ -1,15 +1,18 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
-from ..misc.prop_utils import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 
 
 def morph_filter(morph, rig_settings):
     # Check null filter
-    check1 = (rig_settings.diffeomorphic_filter_null and evaluate_rna(
-        f'rig_settings.model_armature_object["{bpy.utils.escape_identifier(morph.path)}"]') != 0.) or not rig_settings.diffeomorphic_filter_null
+    val = rig_settings.model_armature_object[bpy.utils.escape_identifier(morph.path)]
+    check1 = False
+    if isinstance(val, float):
+        check1 = (rig_settings.diffeomorphic_filter_null and val != 0.) or not rig_settings.diffeomorphic_filter_null
+    elif isinstance(val, bool):
+        check1 = (rig_settings.diffeomorphic_filter_null and not val) or not rig_settings.diffeomorphic_filter_null
 
     # Check search filter
     check2 = rig_settings.diffeomorphic_search.lower() in morph.name.lower()
@@ -52,8 +55,6 @@ class PANEL_PT_MustardUI_ExternalMorphs(MainPanel, bpy.types.Panel):
         layout.prop(rig_settings, "diffeomorphic_enable", text="", toggle=False)
 
     def draw(self, context):
-
-        settings = bpy.context.scene.MustardUI_Settings
 
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
