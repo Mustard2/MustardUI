@@ -1,6 +1,5 @@
 from bpy.props import *
 from ..model_selection.active_object import *
-from ..misc.message_box import *
 
 
 class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
