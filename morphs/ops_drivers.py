@@ -64,7 +64,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
             if addon_prefs.debug:
                 print('MustardUI - Error occurred while muting Daz drivers.')
 
-        for collection in [x for x in rig_settings.outfits_collections if x.collection != None]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
             for obj in items:
                 if obj.type == "MESH":
@@ -158,14 +158,13 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
             if obj.data.shape_keys:
                 if obj.data.shape_keys.animation_data:
                     for driver in obj.data.shape_keys.animation_data.drivers:
-                        if ((not "pJCM" in driver.data_path or mutepJCM)
-                                and (not "facs" in driver.data_path or mutefacs)
+                        if (not ("pJCM" in driver.data_path or mutepJCM)
+                                and not ("facs" in driver.data_path or mutefacs)
                                 and muteDazFcurves_exceptionscheck(muteexceptions, driver.data_path, exceptions)
-                                and not "MustardUINotDisable" in driver.data_path):
+                                and not ("MustardUINotDisable" in driver.data_path)):
                             driver.mute = False
 
         for driver in rig_settings.model_armature_object.animation_data.drivers:
-
             if "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
                 driver.mute = False
 

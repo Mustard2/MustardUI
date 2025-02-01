@@ -82,7 +82,13 @@ def muteDazFcurves(rig, mute, useLocation=True, useRotation=True, useScale=True,
                 for fcu in skeys.animation_data.drivers:
                     words = fcu.data_path.split('"')
                     if words[0] == "key_blocks[":
-                        fcu.mute = mute
+                        if muteDazFcurves_facscheck(mutefacs, fcu.data_path, check_bones_rot,
+                                                    check_bones_loc) and muteDazFcurves_exceptionscheck(muteexceptions,
+                                                                                                        fcu.data_path,
+                                                                                                        exceptions):
+                            fcu.mute = mute
+                        else:
+                            fcu.mute = False
                         sname = words[1]
                         if sname in skeys.key_blocks.keys() and muteSK:
                             if not "MustardUINotDisable" in sname and pJCMcheck(sname, mutepJCM) and muteDazFcurves_facscheck(
