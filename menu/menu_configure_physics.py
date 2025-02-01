@@ -35,11 +35,12 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box.label(text="General Settings", icon="MODIFIER")
         box.prop(physics_settings, "enable_ui")
 
+        box = layout.box()
+        box.enabled = physics_settings.enable_ui
+        box.label(text="Physics Items", icon="MODIFIER")
+
         if len(physics_settings.items):
 
-            box = layout.box()
-            box.enabled = physics_settings.enable_ui
-            box.label(text="Physics Items", icon="MODIFIER")
             row = box.row()
             row.template_list("MUSTARDUI_UL_PhysicsItems_UIList", "The_List", physics_settings,
                               "items", scene,
@@ -59,6 +60,12 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
                 col = box.column()
                 row = col.row()
                 row.prop(pi, 'type')
+
+        else:
+
+            col = box.column()
+            col.label(text="No Physics Item found", icon="ERROR")
+            col.label(text="Right-click on Objects in Outliner to add", icon="BLANK1")
 
 
 def register():
