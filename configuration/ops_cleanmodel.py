@@ -2,15 +2,8 @@ import bpy
 from .. import __package__ as base_package
 from bpy.props import *
 from ..custom_properties.misc import mustardui_clean_prop
-from ..misc.prop_utils import *
 from ..model_selection.active_object import *
-
-
-def isDazFcurve(path):
-    for string in [":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
-        if string in path:
-            return True
-    return False
+from ..morphs.misc import isDazFcurve
 
 
 def remove_cps(arm, uilist, addon_prefs):
@@ -245,6 +238,10 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 if obj.find_armature() == rig_settings.model_armature_object and obj.type == "MESH":
                     objects.append(obj)
 
+            # Add Children to Objects
+            for c in [x for x in rig_settings.model_armature_object.children if x != rig_settings.model_body and not (x in objects)]:
+                objects.append(c)
+
             # Remove shape keys and their drivers
             for obj in objects:
                 if obj.data.shape_keys is not None:
@@ -270,9 +267,10 @@ class MustardUI_CleanModel(bpy.types.Operator):
             # Remove drivers from objects
             objects.append(arm)
             for obj in objects:
-                if obj.animation_data is not None:
-                    if obj.animation_data.drivers is not None:
+                if obj.animation_data:
+                    if obj.animation_data.drivers:
                         drivers = obj.animation_data.drivers
+
                         for driver in drivers:
                             ddelete = "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0"
                             for cp in props_removed:
@@ -283,6 +281,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                             if ddelete:
                                 drivers.remove(driver)
                                 morphs_drivers_removed = morphs_drivers_removed + 1
+
                         obj.update_tag()
 
             # Remove drivers from bones
@@ -406,7 +405,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             current_hair = rig_settings.hair_list
 
-            for obj in [x for x in rig_settings.hair_collection.objects if not current_hair in x.name]:
+            for obj in [x for x in rig_settings.hair_collection.objects if not (current_hair in x.name)]:
                 data = obj.data
                 obj_type = obj.type
                 bpy.data.objects.remove(obj)

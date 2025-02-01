@@ -37,22 +37,24 @@ def muteDazFcurves_facscheck(mutefacs, string, check_bones_rot, check_bones_loc)
     return (not "facs" in string and not check_final) or mutefacs
 
 
+def pJCMcheck(string, mutepJCM):
+    return not ("pJCM" in string) or mutepJCM
+
+
+def isDazFcurve(path):
+    for string in ["(fin)", "(rst)", ":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
+        if string in path:
+            return True
+    return False
+
+
 # Function to mute daz drivers
 def muteDazFcurves(rig, mute, useLocation=True, useRotation=True, useScale=True, muteSK=True, mutepJCM=False,
                    mutefacs=False, check_bones_rot=[], check_bones_loc=[], muteexceptions=False, exceptions=[]):
 
-    def pJCMcheck(string):
-        return not "pJCM" in string or mutepJCM
-
-    def isDazFcurve(path):
-        for string in ["(fin)", "(rst)", ":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
-            if string in path:
-                return True
-        return False
-
     if rig and rig.data.animation_data:
         for fcu in rig.data.animation_data.drivers:
-            if isDazFcurve(fcu.data_path) and pJCMcheck(fcu.data_path):
+            if isDazFcurve(fcu.data_path) and pJCMcheck(fcu.data_path, mutepJCM):
                 if muteDazFcurves_facscheck(mutefacs, fcu.data_path, check_bones_rot,
                                             check_bones_loc) and muteDazFcurves_exceptionscheck(muteexceptions,
                                                                                                 fcu.data_path,
@@ -83,7 +85,7 @@ def muteDazFcurves(rig, mute, useLocation=True, useRotation=True, useScale=True,
                         fcu.mute = mute
                         sname = words[1]
                         if sname in skeys.key_blocks.keys() and muteSK:
-                            if not "MustardUINotDisable" in sname and pJCMcheck(sname) and muteDazFcurves_facscheck(
+                            if not "MustardUINotDisable" in sname and pJCMcheck(sname, mutepJCM) and muteDazFcurves_facscheck(
                                     mutefacs, sname, check_bones_rot, check_bones_loc):
                                 skey = skeys.key_blocks[sname]
                                 if muteDazFcurves_exceptionscheck(muteexceptions, sname, exceptions):
