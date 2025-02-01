@@ -165,8 +165,6 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(physics_settings, 'items_ui_list', text="")
 
-        layout.separator()
-
         pi = physics_settings.items[int(physics_settings.items_ui_list)]
         if pi.object and pi.type in ["CAGE", "COLLISION", "SINGLE_ITEM"]:
             row.prop(pi, 'enable', text="", icon="PHYSICS")
