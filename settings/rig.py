@@ -763,10 +763,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def diffeomorphic_enable_update(self, context):
 
         if self.diffeomorphic_enable:
-            bpy.ops.mustardui.dazmorphs_enabledrivers()
+            bpy.ops.mustardui.morphs_enabledrivers()
         else:
             self.diffeomorphic_enable_settings = False
-            bpy.ops.mustardui.dazmorphs_disabledrivers()
+            bpy.ops.mustardui.morphs_disabledrivers()
 
     # Diffeomorphic support
     diffeomorphic_support: bpy.props.BoolProperty(default=False,

@@ -118,9 +118,10 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
             return False
 
         res, obj = mustardui_active_object(context, config=0)
-        physics_settings = obj.MustardUI_PhysicsSettings
-        if res:
-            return len(physics_settings.items)
+        if obj:
+            physics_settings = obj.MustardUI_PhysicsSettings
+            if res:
+                return res and len(physics_settings.items)
         return res
 
     def draw_header(self, context):
@@ -146,9 +147,10 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
             return False
 
         res, obj = mustardui_active_object(context, config=0)
-        physics_settings = obj.MustardUI_PhysicsSettings
-        if res:
-            return len(physics_settings.items)
+        if obj:
+            physics_settings = obj.MustardUI_PhysicsSettings
+            if res:
+                return res and len(physics_settings.items)
         return res
 
     def draw(self, context):
@@ -210,9 +212,10 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
             return False
 
         res, obj = mustardui_active_object(context, config=0)
-        physics_settings = obj.MustardUI_PhysicsSettings
-        if res:
-            return len(physics_settings.items)
+        if obj:
+            physics_settings = obj.MustardUI_PhysicsSettings
+            if res:
+                return res and len(physics_settings.items)
         return res
 
     def draw(self, context):

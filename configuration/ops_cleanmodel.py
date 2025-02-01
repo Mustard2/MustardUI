@@ -6,6 +6,32 @@ from ..misc.prop_utils import *
 from ..model_selection.active_object import *
 
 
+def isDazFcurve(path):
+    for string in [":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
+        if string in path:
+            return True
+    return False
+
+
+def remove_cps(arm, uilist, addon_prefs):
+    to_remove = []
+    for i, cp in enumerate(uilist):
+        mustardui_clean_prop(arm, uilist, i, addon_prefs)
+        to_remove.append(i)
+    for i in reversed(to_remove):
+        uilist.remove(i)
+
+    return len(to_remove)
+
+
+def remove_diffeomorphic_data_result(obj, attr):
+    try:
+        del obj[attr]
+        return 1
+    except:
+        return 0
+
+
 class MustardUI_CleanModel(bpy.types.Operator):
     """Clean the model to get better performance, at the cost of deleting some features/shape keys/morphs/outfits"""
     bl_idname = "mustardui.cleanmodel"
@@ -52,46 +78,41 @@ class MustardUI_CleanModel(bpy.types.Operator):
                                                         "settings in the DAZ Importer (Diffeomorphic) tool might not "
                                                         "work")
 
-    def isDazFcurve(self, path):
-        for string in [":Loc:", ":Rot:", ":Sca:", ":Hdo:", ":Tlo"]:
-            if string in path:
-                return True
-        return False
-
     def remove_props_from_group(self, obj, group, props_removed):
 
         if hasattr(obj, group):
-            props = evaluate_rna("obj." + group)
-            idx = []
-            for n, prop in enumerate(props):
-                prop_name = prop.name
-                if not "pJCM" in prop.name or self.remove_morphs_jcms:
-                    idx.append(n)
-                    props_removed.append(prop.name)
+            props = getattr(obj, group)
+            if props:
+                idx = []
+                for n, prop in enumerate(props):
+                    if not ("pJCM" in prop.name) or self.remove_morphs_jcms:
+                        idx.append(n)
+                        props_removed.append(prop.name)
 
-            for i in reversed(idx):
-                props.remove(i)
+                for i in reversed(idx):
+                    props.remove(i)
 
         return props_removed
 
     def remove_props_from_cat_group(self, obj, group, props_removed):
 
         if hasattr(obj, group):
-            categories = evaluate_rna("obj." + group)
-            for cat in categories:
-                props = cat['morphs']
-                idx = []
-                for n, prop in enumerate(props):
-                    if "name" in prop:
-                        prop_name = prop['name']
-                        if not "pJCM" in prop_name or self.remove_morphs_jcms:
+            categories = getattr(obj, group)
+            if categories:
+                for cat in categories:
+                    props = cat['morphs']
+                    idx = []
+                    for n, prop in enumerate(props):
+                        if "name" in prop:
+                            prop_name = prop['name']
+                            if not "pJCM" in prop_name or self.remove_morphs_jcms:
+                                idx.append(n)
+                                props_removed.append(prop_name)
+                        else:
                             idx.append(n)
-                            props_removed.append(prop_name)
-                    else:
-                        idx.append(n)
 
-                for i in reversed(idx):
-                    del props[i]
+                    for i in reversed(idx):
+                        del props[i]
 
         return props_removed
 
@@ -99,29 +120,10 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         check_eCTRL = "eCTRL" in string_cmp
         check_eJCM = "eJCM" in string_cmp
-        check_pJCM = not "pJCM" in string_cmp or self.remove_morphs_jcms
-        check_facs = not "facs" in string_cmp or self.remove_morphs_facs
+        check_pJCM = not ("pJCM" in string_cmp) or self.remove_morphs_jcms
+        check_facs = not ("facs" in string_cmp) or self.remove_morphs_facs
 
         return (string == string_cmp or check_eCTRL or check_eJCM) and check_pJCM and check_facs
-
-    def remove_cps(self, arm, uilist, addon_prefs):
-
-        to_remove = []
-        for i, cp in enumerate(uilist):
-            mustardui_clean_prop(arm, uilist, i, addon_prefs)
-            to_remove.append(i)
-        for i in reversed(to_remove):
-            uilist.remove(i)
-
-        return len(to_remove)
-
-    def remove_diffeomorphic_data_result(self, obj, attr):
-
-        try:
-            del obj[attr]
-            return 1
-        except:
-            return 0
 
     @classmethod
     def poll(cls, context):
@@ -274,7 +276,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         for driver in drivers:
                             ddelete = "evalMorphs" in driver.driver.expression or driver.driver.expression == "0.0" or driver.driver.expression == "-0.0"
                             for cp in props_removed:
-                                ddelete = ddelete or (self.check_removal(cp, driver.data_path) or self.isDazFcurve(
+                                ddelete = ddelete or (self.check_removal(cp, driver.data_path) or isDazFcurve(
                                     driver.data_path))
                                 for v in driver.driver.variables:
                                     ddelete = ddelete or cp in v.targets[0].data_path
@@ -294,11 +296,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
             # Remove custom properties from armature
             for cp in props_removed:
                 for kp in [x for x in rig_settings.model_armature_object.keys()]:
-                    if self.check_removal(cp, kp) or self.isDazFcurve(kp):
+                    if self.check_removal(cp, kp) or isDazFcurve(kp):
                         del rig_settings.model_armature_object[kp]
                         morphs_props_removed = morphs_props_removed + 1
                 for kp in [x for x in arm.keys()]:
-                    if self.check_removal(cp, kp) or self.isDazFcurve(kp):
+                    if self.check_removal(cp, kp) or isDazFcurve(kp):
                         del arm[kp]
                         morphs_props_removed = morphs_props_removed + 1
 
@@ -343,8 +345,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     if "Daz" in k:
                         items_to_remove.append(k)
                 for k in items_to_remove:
-                    diffeomorphic_data_deleted = diffeomorphic_data_deleted + self.remove_diffeomorphic_data_result(obj,
-                                                                                                                    k)
+                    diffeomorphic_data_deleted = diffeomorphic_data_deleted + remove_diffeomorphic_data_result(obj,
+                                                                                                               k)
                 obj.update_tag()
 
             if addon_prefs.debug:
@@ -421,13 +423,13 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         # Remove custom properties
         if self.remove_body_cp:
-            body_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs)
+            body_cp_removed = remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs)
             print("  Body Custom Properties deleted: " + str(body_cp_removed))
         if self.remove_outfit_cp:
-            outfit_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs)
+            outfit_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs)
             print("  Outfit Custom Properties deleted: " + str(outfit_cp_removed))
         if self.remove_hair_cp:
-            hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs)
+            hair_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs)
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed))
 
         # Final messages

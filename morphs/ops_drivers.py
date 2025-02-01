@@ -104,7 +104,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
 class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
     """Enable all drivers"""
-    bl_idname = "mustardui.dazmorphs_enabledrivers"
+    bl_idname = "mustardui.morphs_enabledrivers"
     bl_label = "Enable Drivers"
     bl_options = {'REGISTER', 'UNDO'}
 
