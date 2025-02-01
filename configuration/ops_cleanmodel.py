@@ -463,18 +463,20 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         box = layout.box()
         box.label(text="General", icon="MODIFIER")
-        box.prop(self, "remove_unselected_outfits")
+        col = box.column(align=True)
+        col.prop(self, "remove_unselected_outfits")
         if rig_settings.extras_collection is not None:
-            box.prop(self, "remove_unselected_extras")
+            col.prop(self, "remove_unselected_extras")
         if rig_settings.hair_collection is not None:
-            box.prop(self, "remove_unselected_hair")
-        box.prop(self, "remove_nulldrivers")
+            col.prop(self, "remove_unselected_hair")
+        col.prop(self, "remove_nulldrivers")
 
         box = layout.box()
         box.label(text="Custom Properties", icon="PROPERTIES")
-        box.prop(self, "remove_body_cp")
-        box.prop(self, "remove_outfit_cp")
-        box.prop(self, "remove_hair_cp")
+        col = box.column(align=True)
+        col.prop(self, "remove_body_cp")
+        col.prop(self, "remove_outfit_cp")
+        col.prop(self, "remove_hair_cp")
 
         if rig_settings.diffeomorphic_support:
 
@@ -485,29 +487,30 @@ class MustardUI_CleanModel(bpy.types.Operator):
             box = layout.box()
             box.label(text="Diffeomorphic", icon="DOCUMENTS")
             box.enabled = hasattr(rig_settings.model_armature_object, "DazMorphCats")
-            box.prop(self, "remove_morphs")
+            col = box.column(align=True)
+            col.prop(self, "remove_morphs")
             if self.remove_morphs:
-                col = box.column(align=True)
-                col.label(text="Morphs will be deleted!", icon="ERROR")
-                col.label(text="Some bones of the Face rig might not work even if Remove Face Rig Morphs is disabled!",
+                col2 = col.column(align=True)
+                col2.label(text="Morphs will be deleted!", icon="ERROR")
+                col2.label(text="Some bones of the Face rig might not work even if Remove Face Rig Morphs is disabled!",
                           icon="BLANK1")
-            row = box.row()
+            row = col.row()
             row.enabled = self.remove_morphs
             row.prop(self, "remove_morphs_facs", text="Remove Face Rig Morphs")
-            row = box.row()
+            row = col.row()
             row.enabled = self.remove_morphs
             row.prop(self, "remove_morphs_jcms", text="Remove Corrective Morphs")
-            row = box.row()
+            row = col.row()
             row.enabled = self.remove_morphs
             row.prop(self, "remove_morphs_shapekeys")
-            row = box.row()
+            row = col.row()
             row.prop(self, "remove_diffeomorphic_data")
             if self.remove_diffeomorphic_data:
-                col = box.column(align=True)
-                col.label(text="After cleaning, Diffeomorphic tools might now work for this model!", icon="ERROR")
-                col.label(text="Use this option when you are not planning to use Diffeomorphic for this model anymore.",
+                col2 = col.column(align=True)
+                col2.label(text="After cleaning, Diffeomorphic tools might now work for this model!", icon="ERROR")
+                col2.label(text="Use this option when you are not planning to use Diffeomorphic for this model anymore.",
                           icon="BLANK1")
-                col.label(text="On the contrary, Morphs and face controls are NOT removed.", icon="BLANK1")
+                col2.label(text="On the contrary, Morphs and face controls are NOT removed.", icon="BLANK1")
 
 
 def register():
