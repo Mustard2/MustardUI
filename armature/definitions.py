@@ -77,6 +77,10 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
                                                       type=bpy.types.Object,
                                                       poll=outfit_switcher_poll_mesh)
 
+    # Children
+    # Button to show children of the bone
+    show_children: BoolProperty(default=False, name = "")
+
 
 # Global Armature settings
 class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):

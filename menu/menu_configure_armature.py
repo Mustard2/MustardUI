@@ -50,9 +50,9 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
 
         row.template_list(
             "MUSTARDUI_UL_Armature_UIList",
-            "collections_all",
+            "collections",
             arm,
-            "collections_all",
+            "collections",
             arm.collections,
             "active_index",
             rows=rows,
@@ -102,6 +102,41 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
                 col.prop(bcoll_settings, 'outfit_switcher_collection', text="Collection")
                 if bcoll_settings.outfit_switcher_collection is not None:
                     col.prop(bcoll_settings, 'outfit_switcher_object', text="Object")
+
+            if bcoll.children:
+                box = layout.box()
+                box.label(text="Children", icon="CON_CHILDOF")
+
+                box.template_list(
+                    "MUSTARDUI_UL_Armature_UIList_Children",
+                    "collections_all",
+                    bcoll,
+                    "children",
+                    context.scene,
+                    "mustardui_armature_uilist_index",
+                    rows=rows,
+                )
+
+                child = bcoll.children[context.scene.mustardui_armature_uilist_index]
+                cbcoll_settings = child.MustardUI_ArmatureBoneCollection
+
+                col = box.column(align=True)
+                row = col.row()
+                row.enabled = not cbcoll_settings.outfit_switcher_enable
+                row.prop(cbcoll_settings, 'icon')
+                row = col.row()
+                row.enabled = not cbcoll_settings.outfit_switcher_enable
+                row.prop(cbcoll_settings, 'advanced')
+                row = col.row()
+                row.enabled = not cbcoll_settings.outfit_switcher_enable
+                row.prop(cbcoll_settings, 'default')
+
+                col = box.column(align=True)
+                col.prop(cbcoll_settings, 'outfit_switcher_enable')
+                if cbcoll_settings.outfit_switcher_enable:
+                    col.prop(cbcoll_settings, 'outfit_switcher_collection', text="Collection")
+                    if cbcoll_settings.outfit_switcher_collection is not None:
+                        col.prop(cbcoll_settings, 'outfit_switcher_object', text="Object")
 
 
 def register():

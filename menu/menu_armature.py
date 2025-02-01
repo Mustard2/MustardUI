@@ -9,7 +9,13 @@ from ..misc.mirror import check_mirror
 
 def draw_armature_button(bcoll, bcoll_settings, bcolls, armature_settings, layout):
 
-    def draw_with_icon(prop, prop_name, name, icon):
+    def draw_with_icon(layout, prop, prop_name, name, icon):
+
+        row = layout.row(align=True)
+        if prop.children:
+            show_children = prop.MustardUI_ArmatureBoneCollection.show_children
+            row.prop(prop.MustardUI_ArmatureBoneCollection, "show_children", toggle=True, icon="TRIA_DOWN" if show_children else "TRIA_RIGHT")
+
         if icon != "NONE":
             row.prop(prop, prop_name,
                      text=name,
@@ -20,23 +26,33 @@ def draw_armature_button(bcoll, bcoll_settings, bcolls, armature_settings, layou
                      text=name,
                      toggle=True)
 
+    def draw_children(layout, bcoll):
+        if bcoll.children and bcoll.MustardUI_ArmatureBoneCollection.show_children:
+            for c in bcoll.children:
+                row = layout.row(align=True)
+                row.label(icon="BLANK1")
+                draw_with_icon(row, c, "is_visible", c.name, c.MustardUI_ArmatureBoneCollection.icon)
+
     if not armature_settings.mirror:
         row = layout.row()
-        draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
+        draw_with_icon(row, bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
+        draw_children(layout, bcoll)
         return
 
     for b in bcolls:
         if check_mirror(bcoll.name, b.name, left=True):
             row = layout.row()
-            draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
+            draw_with_icon(row, bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
             r_icon = b.MustardUI_ArmatureBoneCollection.icon
-            draw_with_icon(b, "is_visible", b.name, r_icon)
+            draw_with_icon(row, b, "is_visible", b.name, r_icon)
             return
         elif check_mirror(bcoll.name, b.name, left=False):
             return
 
     row = layout.row()
-    draw_with_icon(bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
+    draw_with_icon(row, bcoll, "is_visible", bcoll.name, bcoll_settings.icon)
+
+    draw_children(layout, bcoll)
 
 
 class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
@@ -77,7 +93,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         armature_settings = obj.MustardUI_ArmatureSettings
         rig_settings = obj.MustardUI_RigSettings
 
-        bcolls = obj.collections_all
+        bcolls = obj.collections
 
         box = self.layout
 
