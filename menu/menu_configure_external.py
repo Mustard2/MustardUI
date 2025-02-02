@@ -4,6 +4,7 @@ from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from .. import __package__ as base_package
 from .menu_configure import row_scale
+from ..morphs.misc import DazCheckVersion
 
 
 class PANEL_PT_MustardUI_InitPanel_External(MainPanel, bpy.types.Panel):
@@ -30,6 +31,7 @@ class PANEL_PT_MustardUI_InitPanel_External(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         box = layout.box()
         box.label(text="Enable Support", icon="MODIFIER")
@@ -69,6 +71,16 @@ class PANEL_PT_MustardUI_InitPanel_External(MainPanel, bpy.types.Panel):
             box = box.box()
             box.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
             box.operator('mustardui.morphs_check')
+
+            if addon_prefs.debug:
+
+                daz_id = DazCheckVersion(arm.MustardUI_RigSettings.model_armature_object)
+
+                box = layout.box()
+                if daz_id:
+                    box.label(text="Genesis version: " + str(daz_id), icon="ARMATURE_DATA")
+                else:
+                    box.label(text="Genesis version not found", icon="ERROR")
 
 
 def register():
