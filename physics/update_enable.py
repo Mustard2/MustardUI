@@ -33,6 +33,12 @@ def enable_physics_update(self, context):
                 pi.object.collision.use = status
         if pi.type == "CAGE":
             set_cage_modifiers(pi, rig_settings.model_body.modifiers, status)
+            for modifier in rig_settings.model_body.modifiers:
+                if modifier.type == 'CORRECTIVE_SMOOTH' and pi.object.name in modifier.name:
+                    modifier.show_viewport = status
+                    modifier.show_render = status
+
+        pi.object.hide_viewport = not status
 
     for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
@@ -40,6 +46,10 @@ def enable_physics_update(self, context):
             for pi in [x for x in self.items if x.type == "CAGE"]:
                 status = self.enable_physics and pi.enable
                 set_cage_modifiers(pi, obj.modifiers, status)
+                for modifier in obj.modifiers:
+                    if modifier.type == 'CORRECTIVE_SMOOTH' and pi.object.name in modifier.name:
+                        modifier.show_viewport = status
+                        modifier.show_render = status
 
     return
 
@@ -82,12 +92,9 @@ def collisions_physics_update_single(self, context):
     if arm is None or not res or not self.object and not (self.type in ["CAGE", "SINGLE_ITEM"]):
         return
 
-    rig_settings = arm.MustardUI_RigSettings
-    physics_settings = arm.MustardUI_PhysicsSettings
-
-    status = physics_settings.enable_physics and self.enable
+    status = self.collisions and self.enable
     for modifier in self.object.modifiers:
         if modifier.type in ['CLOTH']:
-            modifier.collision_settings.use_collision = self.collisions
+            modifier.collision_settings.use_collision = status
 
     return
