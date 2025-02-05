@@ -18,6 +18,8 @@ def cloth_panel(layout, pi, mod):
         col.prop(cloth, 'time_scale')
         col.prop(cloth, "mass", text="Vertex Mass")
         col.prop(cloth, "air_damping", text="Air Viscosity")
+        col.separator()
+        col.prop(cloth, 'pin_stiffness')
 
         if ui_collapse_prop(box, pi, 'collapse_cloth_stiffness', "Stiffness"):
             col = box.column(align=True)
@@ -133,11 +135,24 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
+        poll, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+
+        layout = self.layout
+
+        for pi in physics_settings.items:
+
+            row = layout.row(align=True)
+            row.prop(pi, 'enable', text=pi.object.name, icon="PHYSICS")
+            if pi.type in ["CAGE", "SINGLE_ITEM"]:
+                row.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
+            row.prop(pi.object, 'hide_viewport', text="")
+
         pass
 
 
 class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
-    bl_label = "Items"
+    bl_label = "Settings"
     bl_parent_id = "PANEL_PT_MustardUI_Tools_Physics"
     bl_options = {"DEFAULT_CLOSED"}
 

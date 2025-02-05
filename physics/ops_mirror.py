@@ -55,6 +55,8 @@ def mirror_cloth(obj, obj_mirror) -> bool:
     cache_mirror.frame_start = cache.frame_start
     cache_mirror.frame_end = cache.frame_end
 
+    cloth_mirror.pin_stiffness = cloth.pin_stiffness
+
     collisions_mirror.use_collision = collisions.use_collision
     collisions_mirror.distance_min = collisions.distance_min
     collisions_mirror.impulse_clamp = collisions.impulse_clamp
