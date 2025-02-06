@@ -71,7 +71,7 @@ def cloth_panel(layout, pi, mod):
         row.prop(collisions, 'use_collision', text="")
         row.label(text="Collisions")
 
-        if pi.collapse_cloth_collisions:
+        if not pi.collapse_cloth_collisions:
             collisions = mod.collision_settings
             col = box.column(align=True)
             col.prop(collisions, "distance_min", slider=True, text="Distance")
