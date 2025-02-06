@@ -10,8 +10,7 @@ from ..physics.settings_item import mustardui_physics_item_type_dict
 
 def cloth_panel(layout, pi, mod):
 
-    row = layout.row(align=True)
-    if ui_collapse_prop(row, pi, 'collapse_cloth', "Cloth settings", icon="MOD_CLOTH"):
+    if ui_collapse_prop(layout, pi, 'collapse_cloth', "Cloth settings", icon="MOD_CLOTH"):
 
         cloth = mod.settings
         box = layout.box()
