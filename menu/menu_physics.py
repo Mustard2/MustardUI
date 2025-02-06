@@ -6,11 +6,13 @@ from ..settings.rig import *
 from .. import __package__ as base_package
 from ..misc.ui_collapse import ui_collapse_prop
 from ..misc.mirror import check_mirror
+from ..physics.settings_item import mustardui_physics_item_type_dict
 
 
 def cloth_panel(layout, pi, mod):
 
-    if ui_collapse_prop(layout, pi, 'collapse_cloth', "Cloth settings", icon="MOD_CLOTH"):
+    row = layout.row(align=True)
+    if ui_collapse_prop(row, pi, 'collapse_cloth', "Cloth settings", icon="MOD_CLOTH"):
 
         cloth = mod.settings
         box = layout.box()
@@ -61,10 +63,17 @@ def cloth_panel(layout, pi, mod):
             row.prop(cache, "frame_end")
             row.prop(pi, 'unique_cache_frames', icon="TRACKING_REFINE_BACKWARDS", text="")
 
-        if ui_collapse_prop(box, pi, 'collapse_cloth_collisions', "Collisions"):
+        row = box.row(align=True)
+        collisions = mod.collision_settings
+        row.prop(pi, 'collapse_cloth_collisions',
+                 icon="TRIA_DOWN" if not pi.collapse_cloth_collisions else "TRIA_RIGHT", icon_only=True,
+                 emboss=False)
+        row.prop(collisions, 'use_collision', text="")
+        row.label(text="Collisions")
+
+        if pi.collapse_cloth_collisions:
             collisions = mod.collision_settings
             col = box.column(align=True)
-            col.prop(collisions, "use_collision")
             col.prop(collisions, "distance_min", slider=True, text="Distance")
             col.prop(collisions, "impulse_clamp")
 
@@ -143,7 +152,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         for pi in physics_settings.items:
 
             row = layout.row(align=True)
-            row.prop(pi, 'enable', text=pi.object.name, icon="PHYSICS")
+            row.prop(pi, 'enable', text=pi.object.name, icon=mustardui_physics_item_type_dict[pi.type])
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
                 row.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
             row.prop(pi.object, 'hide_viewport', text="")

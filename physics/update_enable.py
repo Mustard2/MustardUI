@@ -37,8 +37,7 @@ def enable_physics_update(self, context):
                 if modifier.type == 'CORRECTIVE_SMOOTH' and pi.object.name in modifier.name:
                     modifier.show_viewport = status
                     modifier.show_render = status
-
-        pi.object.hide_viewport = not status
+            pi.object.hide_viewport = not status
 
     for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
@@ -80,8 +79,7 @@ def enable_physics_update_single(self, context):
             if self.type == "CAGE":
                 status = physics_settings.enable_physics and self.enable
                 set_cage_modifiers(self, obj.modifiers, status)
-
-    self.object.hide_viewport = not status
+                self.object.hide_viewport = not status
 
     return
 
