@@ -131,7 +131,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len(physics_settings.items)
+                return res and len([x for x in physics_settings.items if x.object])
         return res
 
     def draw_header(self, context):
@@ -153,13 +153,14 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
         for pi in physics_settings.items:
 
+            if not pi.object:
+                continue
+
             row = box.row(align=True)
             row.prop(pi, 'enable', text=pi.object.name, icon=mustardui_physics_item_type_dict[pi.type])
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
                 row.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
             row.prop(pi.object, 'hide_viewport', text="")
-
-        pass
 
 
 class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
@@ -176,7 +177,7 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len(physics_settings.items)
+                return res and len([x for x in physics_settings.items if x.object])
         return res
 
     def draw(self, context):
@@ -198,7 +199,8 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
 
             row = row.row()
             row.enabled = False
-            for on in [x.object.name for x in physics_settings.items if x.object != pi.object]:
+            items = [x for x in physics_settings.items if x.object]
+            for on in [x.object.name for x in items if x.object != pi.object]:
                 if check_mirror(pi.object.name, on, left=True) or check_mirror(pi.object.name, on, left=False):
                     row.enabled = True
             row.operator("mustardui.physics_mirror", text="", icon="MOD_MIRROR").obj_name = pi.object.name
@@ -239,7 +241,7 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len(physics_settings.items)
+                return res and len([x for x in physics_settings.items if x.object])
         return res
 
     def draw(self, context):
