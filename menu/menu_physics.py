@@ -3,7 +3,6 @@ from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
-from .. import __package__ as base_package
 from ..misc.ui_collapse import ui_collapse_prop
 from ..misc.mirror import check_mirror
 from ..physics.settings_item import mustardui_physics_item_type_dict
@@ -149,9 +148,12 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
+        box = layout.box()
+        box.label(text="Physics Items", icon="OUTLINER_OB_GROUP_INSTANCE")
+
         for pi in physics_settings.items:
 
-            row = layout.row(align=True)
+            row = box.row(align=True)
             row.prop(pi, 'enable', text=pi.object.name, icon=mustardui_physics_item_type_dict[pi.type])
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
                 row.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
