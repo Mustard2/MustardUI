@@ -24,9 +24,10 @@ def update_frame(self, context):
     context.scene.rigidbody_world.point_cache.frame_start = self.frame_start
     context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
 
-    for obj in [x.object for x in self.items if x.type == "CAGE"]:
+    for pi in [x for x in self.items if x.type == "CAGE"]:
+        obj = pi.object
         for md in obj.modifiers:
-            if md.type in ["CLOTH", "SOFT_BODY"] and not md.unique_cache_frames:
+            if md.type in ["CLOTH", "SOFT_BODY"] and not pi.unique_cache_frames:
                 md.point_cache.frame_start = self.frame_start
                 md.point_cache.frame_end = self.frame_end
             elif md.type == "PARTICLE_SYSTEM":
