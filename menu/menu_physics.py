@@ -147,6 +147,8 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
+        layout.enabled = physics_settings.enable_physics
+
         box = layout.box()
         box.label(text="Physics Items", icon="OUTLINER_OB_GROUP_INSTANCE")
 
