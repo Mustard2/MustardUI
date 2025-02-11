@@ -15,8 +15,7 @@ class MustardUI_ToolsCreators_AffectTransform(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
-        addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.experimental
+        return res
 
     def execute(self, context):
 
