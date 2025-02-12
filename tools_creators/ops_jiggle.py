@@ -602,8 +602,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             layout.prop(self, 'merge_proxies', text='Merge Proxies', emboss=True)
 
         layout.separator()
-        layout.label(text="UI", icon="MENU_PANEL")
-        layout.prop(self, 'add_to_panel', emboss=True)
+        box = layout.box()
+        box.label(text="UI", icon="MENU_PANEL")
+        box.prop(self, 'add_to_panel', emboss=True)
 
     def invoke(self, context, event):
         self.merge_proxies = True

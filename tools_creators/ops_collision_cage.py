@@ -252,8 +252,9 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         layout.prop(self, 'decimate_proxy', text='Decimate Proxy', icon_value=0, emboss=True)
 
         layout.separator()
-        layout.label(text="UI", icon="MENU_PANEL")
-        layout.prop(self, 'add_to_panel', icon_value=0, emboss=True)
+        box = layout.box()
+        box.label(text="UI", icon="MENU_PANEL")
+        box.prop(self, 'add_to_panel', icon_value=0, emboss=True)
 
     def invoke(self, context, event):
         self.decimate_proxy = True

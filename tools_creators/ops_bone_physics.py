@@ -168,8 +168,9 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             layout.prop(self, 'curve_tilt', emboss=True)
 
         layout.separator()
-        layout.label(text="UI", icon="MENU_PANEL")
-        layout.prop(self, 'add_to_panel', emboss=True)
+        box = layout.box()
+        box.label(text="UI", icon="MENU_PANEL")
+        box.prop(self, 'add_to_panel', emboss=True)
 
     def invoke(self, context, event):
         self.pinned_bones = 1

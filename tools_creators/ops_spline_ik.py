@@ -236,13 +236,15 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         layout = self.layout
 
         box = layout.box()
-        box.label(text="Main Settings", icon="CON_SPLINEIK")
         col = box.column()
         col.prop(self, "ik_spline_number")
         if settings.advanced:
             col.prop(self, "ik_spline_resolution")
+
+        box.separator()
+        col = box.column(align=True)
         col.prop(self, "ik_spline_bendy")
-        col = box.column()
+        col = col.column()
         if not self.ik_spline_bendy:
             col.enabled = False
         col.prop(self, "ik_spline_bendy_segments")
