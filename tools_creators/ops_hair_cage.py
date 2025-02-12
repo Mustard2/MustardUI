@@ -33,10 +33,10 @@ def update_voxel_res(self, context):
 class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_hair_cage"
     bl_label = "Hair Cage"
-    bl_description = "Create a Hair Cage on a Mesh for Physics"
+    bl_description = "Create a Hair Cage on a Mesh"
     bl_options = {"REGISTER", "UNDO"}
 
-    max_density: bpy.props.BoolProperty(name='Increase density',
+    max_density: bpy.props.BoolProperty(name='Increase Density',
                                         description='Enable Subdivision during the process. Might get better results, but it is slower',
                                         default=False)
     attempt_tight_bind: bpy.props.BoolProperty(name='Attempt Tight Binding',
@@ -547,15 +547,16 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         return {"FINISHED"}
 
     def draw(self, context):
+
         layout = self.layout
-        layout.prop(self, 'voxel_res', text='Voxel Resolution', icon_value=477, emboss=True)
+        layout.prop(self, 'voxel_res', text='Cage Resolution')
 
-        row = layout.row(align=False)
-        row.prop(self, 'max_density', text='Max Density', emboss=True)
-        row.prop(self, 'attempt_tight_bind', text='Attempt tight bind',emboss=True)
+        layout.prop(self, 'max_density', text='Increase Cage Density')
+        layout.prop(self, 'attempt_tight_bind', text='Attempt Tight Bind')
 
-        row = layout.row(align=False)
-        row.prop(self, 'add_to_panel', emboss=True)
+        layout.separator()
+        layout.label(text="UI", icon="MENU_PANEL")
+        layout.prop(self, 'add_to_panel')
 
     def invoke(self, context, event):
         bpy.ops.object.mode_set('INVOKE_DEFAULT', mode='OBJECT')

@@ -4,9 +4,9 @@ from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
+    """This function adds cloth physics with default settings to the mesh.\nIn Object Mode, it uses the active vertex group as the 'Pin Group'. If called in Edit Mode, the pin group is assigned to the selected vertices.\nThe operation applies to both the active object and any selected objects."""
     bl_idname = "mustardui.tools_creators_add_cloth_to_hair"
     bl_label = "Add cloth physics to selected (Hair)"
-    bl_description = "Adds cloth physics with default settings to mesh. Uses active vtx group as 'Pin Group' in object mode. If in edit mode then it creates a new vtx group from selection and uses it instead. Applies to active and selected"
     bl_options = {"REGISTER", "UNDO"}
 
     quality: bpy.props.IntProperty(name='Quality', description='', default=7, subtype='NONE',

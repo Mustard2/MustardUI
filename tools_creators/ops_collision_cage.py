@@ -5,12 +5,14 @@ from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
+    """Create a collision cage by duplicating the current mesh and masking it based on the selection in Edit Mode. If nothing is selected or if the mesh is in Object Mode, the entire mesh is used.\nThe inflation value of the cage can be adjusted via the object's 'Inflate' custom property.\nThe operation applies to both the active object and any selected objects."""
     bl_idname = "mustardui.tools_creators_create_collision_cage"
     bl_label = "Create collision cage"
-    bl_description = "Creates a collision cage by duplicating mesh and masking it to current edit mode selection. If nothing is selected or mesh is in object mode then the created cage is made of the entire mesh. Inflation value may be adjusted by tweaking 'Inflate' in the object's custom properties. Applies to active and selected"
     bl_options = {"REGISTER", "UNDO"}
 
-    decimate_proxy: bpy.props.BoolProperty(name='Decimate Proxy', description='', default=True)
+    decimate_proxy: bpy.props.BoolProperty(name='Decimate Cage',
+                                           description='Decrease the density of the cage mesh.\nThis considerably improve performance, and it usually lead to similar results to un-decimated cages',
+                                           default=True)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
                                          description='Add the Collision item to Physics Panel', default=True)
 
@@ -248,6 +250,9 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, 'decimate_proxy', text='Decimate Proxy', icon_value=0, emboss=True)
+
+        layout.separator()
+        layout.label(text="UI", icon="MENU_PANEL")
         layout.prop(self, 'add_to_panel', icon_value=0, emboss=True)
 
     def invoke(self, context, event):

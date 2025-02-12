@@ -7,12 +7,15 @@ from ..model_selection.active_object import *
 class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_bone_physics"
     bl_label = "Bone Physics"
-    bl_description = "Add physics to a set of selected bones"
+    bl_description = "Add physics to a set of selected bones in Pose Mode"
     bl_options = {"REGISTER", "UNDO"}
 
-    curve_width: bpy.props.FloatProperty(default=0.01, name="Curve Width", description="")
-    curve_tilt: bpy.props.FloatProperty(default=math.radians(90), name="Curve Width", description="", subtype="ANGLE")
-    pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones", description="", min=0)
+    curve_width: bpy.props.FloatProperty(default=0.01, name="Curve Width",
+                                         description="Width of the curve used for physics.\nIncrease this value if the item driven by the curve is larger")
+    curve_tilt: bpy.props.FloatProperty(default=math.radians(90), name="Curve Tilt", subtype="ANGLE",
+                                        description="Tilt of the curve mesh.\nIn some cases, a value of 0 degrees might improve results")
+    pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones",
+                                        description="Number of bones to be pinned in the Physics.\nPinned bones will not move, but are included to generate the curve", min=0)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
                                          description='Add the Collision item to Physics Panel', default=True)
 
@@ -163,6 +166,9 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         if settings.advanced:
             layout.prop(self, 'curve_width', emboss=True)
             layout.prop(self, 'curve_tilt', emboss=True)
+
+        layout.separator()
+        layout.label(text="UI", icon="MENU_PANEL")
         layout.prop(self, 'add_to_panel', emboss=True)
 
     def invoke(self, context, event):

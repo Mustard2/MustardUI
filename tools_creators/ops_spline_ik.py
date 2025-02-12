@@ -4,7 +4,7 @@ from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
-    """This tool will create an IK spline on the selected chain.\nSelect the bones, the last one being the tip of the chain.\nThe minimum number of bones is 4"""
+    """Create an IK spline on the selected chain.\nSelect the bones, the last one being the tip of the chain.\nThe minimum number of bones is 4"""
     bl_idname = "mustardui.tools_creators_ikspline"
     bl_label = "Create"
     bl_options = {'REGISTER', 'UNDO'}

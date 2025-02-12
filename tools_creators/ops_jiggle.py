@@ -159,12 +159,15 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
 class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_create_jiggle"
     bl_label = "Create Jiggle"
-    bl_description = "Creates a jiggle proxy using the bounding box of the selected regions in edit mode then attaches it to active mesh"
+    bl_description = "Needs to select vertices in Edit Mode.\nCreates a jiggle cage using the selected regions in Edit Mode and attaches it to the active mesh"
     bl_options = {"REGISTER", "UNDO"}
 
-    merge_proxies: bpy.props.BoolProperty(name='Merge Proxies', description='', default=True)
-    proxy_subdivisions: bpy.props.IntProperty(name='Proxy Subdivisions', description='', default=1,
-                                                                   subtype='NONE', min=1, max=4)
+    merge_proxies: bpy.props.BoolProperty(name='Merge Cages',
+                                          description='Merge the cages if the belong to disconnected vertex selections in Edit Mode.\nOtherwise different Objects will be created for each disconnected vertex island',
+                                          default=True)
+    proxy_subdivisions: bpy.props.IntProperty(name='Cage Resolution',
+                                              description='Resolution of the cage.\nThis is the number of subdivisions in the resulting cage',
+                                              default=1, subtype='NONE', min=1, max=4)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
                                          description='Add the Collision item to Physics Panel', default=True)
 
@@ -597,6 +600,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         layout.prop(self, 'proxy_subdivisions', text='Subdivisions', emboss=True)
         if settings.advanced:
             layout.prop(self, 'merge_proxies', text='Merge Proxies', emboss=True)
+
+        layout.separator()
+        layout.label(text="UI", icon="MENU_PANEL")
         layout.prop(self, 'add_to_panel', emboss=True)
 
     def invoke(self, context, event):
