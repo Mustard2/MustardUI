@@ -1,3 +1,5 @@
+import math
+
 import bpy
 from ..model_selection.active_object import *
 
@@ -9,7 +11,8 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     curve_width: bpy.props.FloatProperty(default=0.01, name="Curve Width", description="")
-    pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones", description="")
+    curve_tilt: bpy.props.FloatProperty(default=math.radians(90), name="Curve Width", description="", subtype="ANGLE")
+    pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones", description="", min=0)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
                                          description='Add the Collision item to Physics Panel', default=True)
 
@@ -46,13 +49,16 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
         # Set the curve points to the bone head/tails
         spline.points.add(count=len(bones))
-        spline.points[0].co = bones[0].head.to_tuple() + (1,)
+        spline.points[0].co = (armature.matrix_world @ bones[0].head).to_tuple() + (1,)
+        spline.points[0].tilt = self.curve_tilt
         for i, bone in enumerate(bones):
             i += 1
             if i == len(bones):
-                spline.points[i].co = bone.tail.to_tuple() + (1,)
+                spline.points[i].co = (armature.matrix_world @ bone.tail).to_tuple() + (1,)
+                spline.points[i].tilt = self.curve_tilt
             else:
-                spline.points[i].co = bone.tail.to_tuple() + (1,)
+                spline.points[i].co = (armature.matrix_world @ bone.tail).to_tuple() + (1,)
+                spline.points[i].tilt = self.curve_tilt
 
         # Extrude to solidify the curve
         curve_data.extrude = self.curve_width
@@ -156,6 +162,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         layout.prop(self, 'pinned_bones', emboss=True)
         if settings.advanced:
             layout.prop(self, 'curve_width', emboss=True)
+            layout.prop(self, 'curve_tilt', emboss=True)
         layout.prop(self, 'add_to_panel', emboss=True)
 
     def invoke(self, context, event):
