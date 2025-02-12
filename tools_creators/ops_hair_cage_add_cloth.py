@@ -13,7 +13,7 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
                                    min=1, soft_max=10)
     collision_quality: bpy.props.IntProperty(name='Collision Steps', description='Sets the quality of collisions evaluation during the simulation', default=2,
                                              min=1, soft_max=10)
-    timescale: bpy.props.FloatProperty(name='Timescale', description='Lower value will slow the simulation (more dragged effect)', default=1.0,
+    timescale: bpy.props.FloatProperty(name='Speed Multiplier', description='Lower value will slow the simulation (more dragged effect)', default=1.0,
                                        min=0.0, soft_max=10.0, step=3,
                                        precision=3)
     vertex_mass: bpy.props.FloatProperty(name='Vertex Mass', description='Mass of each vertex for gravity and inertia evaluations', default=1.0,
@@ -173,16 +173,16 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
 
         col = layout.column(align=True)
         col.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
-        col.prop(self, 'quality', text='Quality')
-        col.prop(self, 'collision_quality', text='Collision Quality')
-        col.prop(self, 'timescale', text='Timescale')
-        col.prop(self, 'vertex_mass', text='Vertex Mass')
-        col.prop(self, 'shear_stiffness', text='Shear Stiffness')
+        col.prop(self, 'quality')
+        col.prop(self, 'collision_quality')
+        col.prop(self, 'timescale')
+        col.prop(self, 'vertex_mass')
+        col.prop(self, 'shear_stiffness')
 
         row = col.row(align=True)
         row.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
-        row.prop(self, 'collision', text='Collision', icon_value=414, emboss=True)
-        row.prop(self, 'self_collision', text='Self Collision', icon_value=414, emboss=True)
+        row.prop(self, 'collision', icon_value=414, emboss=True)
+        row.prop(self, 'self_collision', icon_value=414, emboss=True)
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=300)

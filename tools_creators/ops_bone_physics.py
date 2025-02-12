@@ -4,6 +4,22 @@ import bpy
 from ..model_selection.active_object import *
 
 
+def check_bones_connections(selected_bones):
+    is_chain = True
+
+    # Check if the selected bones are parented in a chain
+    for i in range(1, len(selected_bones)):
+        previous_bone = selected_bones[i - 1]
+        current_bone = selected_bones[i]
+
+        # Check if current_bone's parent is the previous_bone
+        if current_bone.parent != previous_bone:
+            is_chain = False
+            break
+
+    return is_chain
+
+
 class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_bone_physics"
     bl_label = "Bone Physics"
@@ -12,7 +28,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
     curve_width: bpy.props.FloatProperty(default=0.01, name="Curve Width",
                                          description="Width of the curve used for physics.\nIncrease this value if the item driven by the curve is larger")
-    curve_tilt: bpy.props.FloatProperty(default=math.radians(90), name="Curve Tilt", subtype="ANGLE",
+    curve_tilt: bpy.props.FloatProperty(default=0, name="Curve Tilt", subtype="ANGLE",
                                         description="Tilt of the curve mesh.\nIn some cases, a value of 0 degrees might improve results")
     pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones",
                                         description="Number of bones to be pinned in the Physics.\nPinned bones will not move, but are included to generate the curve", min=0)
@@ -29,7 +45,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
         if armature and armature.type == 'ARMATURE' and armature.mode == 'POSE':
             selected_bones = [bone for bone in armature.pose.bones if bone.bone.select]
-            return len(selected_bones) >= 2
+            return len(selected_bones) >= 2 and check_bones_connections(selected_bones)
 
         return False
 
