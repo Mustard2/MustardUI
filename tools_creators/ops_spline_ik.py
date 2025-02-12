@@ -4,7 +4,7 @@ from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
-    """This tool will create an IK spline on the selected chain.\nSelect the bones, the last one being the tip of the chain.\n\nConditions:\n    - select at least 4 bones\n    - the number of controllers should be lower than the number of bones - 1"""
+    """This tool will create an IK spline on the selected chain.\nSelect the bones, the last one being the tip of the chain.\nThe minimum number of bones is 4"""
     bl_idname = "mustardui.tools_creators_ikspline"
     bl_label = "Create"
     bl_options = {'REGISTER', 'UNDO'}
@@ -67,6 +67,8 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         chain_last_bone = chain_bones[chain_length - 1]
 
         if self.ik_spline_number > len(chain_bones) - 1:
+            self.report({'WARNING'},
+                        'MustardUI - The number of bones selected can not be smaller than the number of requested spline bones.')
             return {'FINISHED'}
 
         # Output a warning if the location has not been applied to the armature

@@ -241,6 +241,8 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
             add_item.object = bpy.context.object
             add_item.type = 'COLLISION'
 
+        self.report({'INFO'}, 'MustardUI - Collision Cage created.')
+
         return {"FINISHED"}
 
     def draw(self, context):

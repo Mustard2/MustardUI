@@ -37,7 +37,7 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
             return False
 
         if bpy.context.active_object and bpy.context.active_object.type == 'MESH':
-            return bpy.context.active_object.MustardUI_tools_creators_is_cage
+            return bpy.context.active_object.MustardUI_tools_creators_is_created
 
         return False
 
@@ -47,7 +47,7 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
             return {"FINISHED"}
 
         obj = bpy.context.active_object
-        if not obj.type == 'MESH' or not obj.MustardUI_tools_creators_is_cage:
+        if not obj.type == 'MESH' or not obj.MustardUI_tools_creators_is_created:
             return {"FINISHED"}
 
         # Set the playback sync mode to 'NONE' (Play Every Frame)

@@ -18,8 +18,6 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
 
     def execute(self, context):
 
-        addon_prefs = context.preferences.addons[base_package].preferences
-
         # Set the playback sync mode to 'NONE' (Play Every Frame)
         bpy.context.scene.sync_mode = 'NONE'
 
@@ -255,9 +253,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             bpy.ops.object.surfacedeform_bind(modifier=mod.name)  # Bind the modifier
             return mod
 
-        def add_corrective_smooth_modifier(obj, group_name=None, iterations=20, smooth_type='SIMPLE'):
+        def add_corrective_smooth_modifier(obj, group_name=None, name="", iterations=20, smooth_type='SIMPLE'):
             # Add a Corrective Smooth modifier with specified settings
-            mod = obj.modifiers.new(name="Jiggle Corrective", type='CORRECTIVE_SMOOTH')
+            mod = obj.modifiers.new(name="Jiggle Corrective" if name == "" else name, type='CORRECTIVE_SMOOTH')
             mod.iterations = iterations
             mod.smooth_type = smooth_type
             mod.rest_source = 'BIND'
@@ -365,7 +363,10 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                 proxy.select_set(True)
 
         # Add Corrective Smooth modifier to the source mesh
-        add_corrective_smooth_modifier(obj, combined_vertex_group.name)
+        name = ""
+        for n in [x.name for x in bpy.context.selected_objects]:
+            name = name + n
+        add_corrective_smooth_modifier(obj, combined_vertex_group.name, name)
 
         # Now, apply a corrective smooth modifier to the selected proxies/meshes
         for selected_obj in bpy.context.selected_objects:
@@ -579,9 +580,12 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
         # Add the object to the Physics Panel
         if self.add_to_panel:
-            add_item = physics_settings.items.add()
-            add_item.object = bpy.context.object
-            add_item.type = 'CAGE'
+            for obj in bpy.context.selected_objects:
+                add_item = physics_settings.items.add()
+                add_item.object = obj
+                add_item.type = 'CAGE'
+
+        self.report({'INFO'}, 'MustardUI - Jiggle Cage created.')
 
         return {"FINISHED"}
 
@@ -590,9 +594,10 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         settings = context.scene.MustardUI_Settings
 
         layout = self.layout
-        layout.prop(self, 'proxy_subdivisions', text='Subdivisions', icon_value=0, emboss=True)
+        layout.prop(self, 'proxy_subdivisions', text='Subdivisions', emboss=True)
         if settings.advanced:
-            layout.prop(self, 'merge_proxies', text='Merge Proxies', icon_value=0, emboss=True)
+            layout.prop(self, 'merge_proxies', text='Merge Proxies', emboss=True)
+        layout.prop(self, 'add_to_panel', emboss=True)
 
     def invoke(self, context, event):
         self.merge_proxies = True

@@ -64,7 +64,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
             # Make the new selected object the active one
             bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
 
-        return {'CANCELLED'}
+        return None
 
     def execute(self, context):
 
@@ -531,7 +531,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                     print("No active vertex group found.")
 
         # Flag the mesh as Cage
-        obj.MustardUI_tools_creators_is_cage = True
+        obj.MustardUI_tools_creators_is_created = True
 
         # Call function to add physics
         bpy.ops.mustardui.tools_creators_add_cloth_to_hair('INVOKE_DEFAULT', )
@@ -630,12 +630,8 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
 
 def register():
-    bpy.types.Object.MustardUI_tools_creators_is_cage = bpy.props.BoolProperty(default=False)
-
     bpy.utils.register_class(MustardUI_ToolsCreators_HairCage)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_ToolsCreators_HairCage)
-
-    del bpy.types.Object.MustardUI_tools_creators_is_cage

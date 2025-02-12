@@ -71,6 +71,10 @@ def enable_physics_update_single(self, context):
             self.object.collision.use = status
     if self.type == "CAGE":
         set_cage_modifiers(self, rig_settings.model_body.modifiers, status)
+        for modifier in rig_settings.model_body.modifiers:
+            if self.object.name in modifier.name:
+                modifier.show_viewport = status
+                modifier.show_render = status
 
     for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
