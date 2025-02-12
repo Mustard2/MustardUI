@@ -1,3 +1,33 @@
+"""
+This file is part of MustardUI.
+
+MustardUI is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
+
+MustardUI is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MustardUI.  If not, see <https://www.gnu.org/licenses/>.
+
+The original operator in this file was created by BS_Creative and is
+distributed under the terms of the GPL. Modifications have been made by
+Mustard, and the modified software is released under the GPL as well,
+in compliance with the terms of use of Blender relatively to the scripts
+<https://www.blender.org/about/license/>.
+
+Changes made:
+- Integrated the code in MustardUI (Physics Panel and UI)
+- Updated the implementation with additional functionalities within
+the scope of MustardUI
+- Fixed several bugs
+"""
+
+
 import bpy
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
