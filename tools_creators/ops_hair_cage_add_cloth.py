@@ -6,25 +6,24 @@ from .. import __package__ as base_package
 class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
     """This function adds cloth physics with default settings to the mesh.\nIn Object Mode, it uses the active vertex group as the 'Pin Group'. If called in Edit Mode, the pin group is assigned to the selected vertices.\nThe operation applies to both the active object and any selected objects."""
     bl_idname = "mustardui.tools_creators_add_cloth_to_hair"
-    bl_label = "Add cloth physics to selected (Hair)"
+    bl_label = "Add Cloth Physics to Hair Cage"
     bl_options = {"REGISTER", "UNDO"}
 
-    quality: bpy.props.IntProperty(name='Quality', description='', default=7, subtype='NONE',
+    quality: bpy.props.IntProperty(name='Simulation Steps', description='Sets the quality of the Physics simulation', default=7,
                                    min=1, soft_max=10)
-    collision_quality: bpy.props.IntProperty(name='Collision Quality', description='', default=2,
-                                             subtype='NONE', min=1, soft_max=10)
-    timescale: bpy.props.FloatProperty(name='Timescale', description='', default=1.0,
-                                       subtype='NONE', unit='NONE', min=0.0, soft_max=10.0, step=3,
+    collision_quality: bpy.props.IntProperty(name='Collision Steps', description='Sets the quality of collisions evaluation during the simulation', default=2,
+                                             min=1, soft_max=10)
+    timescale: bpy.props.FloatProperty(name='Timescale', description='Lower value will slow the simulation (more dragged effect)', default=1.0,
+                                       min=0.0, soft_max=10.0, step=3,
                                        precision=3)
-    vertex_mass: bpy.props.FloatProperty(name='Vertex Mass', description='', default=1.0,
-                                         subtype='NONE', unit='NONE', min=0.0, soft_max=10.0,
+    vertex_mass: bpy.props.FloatProperty(name='Vertex Mass', description='Mass of each vertex for gravity and inertia evaluations', default=1.0,
+                                         min=0.0, soft_max=10.0,
                                          step=3, precision=3)
     shear_stiffness: bpy.props.FloatProperty(name='Shear Stiffness', description='',
-                                             default=0.1, subtype='NONE',
-                                             unit='NONE', min=0.0, soft_max=10.0, step=3,
+                                             default=0.1, min=0.0, soft_max=10.0, step=3,
                                              precision=3)
-    collision: bpy.props.BoolProperty(name='Collision', description='', default=True)
-    self_collision: bpy.props.BoolProperty(name='Self Collision', description='', default=False)
+    collision: bpy.props.BoolProperty(name='Collision', description='Enables collisions', default=True)
+    self_collision: bpy.props.BoolProperty(name='Self Collision', description='Enables collisions between parts of the cage', default=False)
 
     @classmethod
     def poll(cls, context):
@@ -169,32 +168,18 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
         return {"FINISHED"}
 
     def draw(self, context):
+
         layout = self.layout
-        col = layout.column(heading='', align=True)
-        col.alert = False
-        col.enabled = True
-        col.active = True
-        col.use_property_split = False
-        col.use_property_decorate = False
-        col.scale_x = 1.0
-        col.scale_y = 1.0
-        col.alignment = 'Expand'.upper()
+
+        col = layout.column(align=True)
         col.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
-        col.separator(factor=1.0)
-        col.prop(self, 'quality', text='Quality', icon_value=0, emboss=True)
-        col.prop(self, 'collision_quality', text='Collision Quality', icon_value=0, emboss=True)
-        col.prop(self, 'timescale', text='Timescale', icon_value=0, emboss=True)
-        col.prop(self, 'vertex_mass', text='Vertex Mass', icon_value=0, emboss=True)
-        col.prop(self, 'shear_stiffness', text='Shear Stiffness', icon_value=0, emboss=True)
-        row = col.row(heading='', align=True)
-        row.alert = False
-        row.enabled = True
-        row.active = True
-        row.use_property_split = False
-        row.use_property_decorate = False
-        row.scale_x = 1.0
-        row.scale_y = 1.0
-        row.alignment = 'Expand'.upper()
+        col.prop(self, 'quality', text='Quality')
+        col.prop(self, 'collision_quality', text='Collision Quality')
+        col.prop(self, 'timescale', text='Timescale')
+        col.prop(self, 'vertex_mass', text='Vertex Mass')
+        col.prop(self, 'shear_stiffness', text='Shear Stiffness')
+
+        row = col.row(align=True)
         row.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
         row.prop(self, 'collision', text='Collision', icon_value=414, emboss=True)
         row.prop(self, 'self_collision', text='Self Collision', icon_value=414, emboss=True)

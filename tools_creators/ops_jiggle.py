@@ -597,9 +597,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         settings = context.scene.MustardUI_Settings
 
         layout = self.layout
-        layout.prop(self, 'proxy_subdivisions', text='Subdivisions', emboss=True)
+        layout.prop(self, 'proxy_subdivisions', emboss=True)
         if settings.advanced:
-            layout.prop(self, 'merge_proxies', text='Merge Proxies', emboss=True)
+            layout.prop(self, 'merge_proxies', emboss=True)
 
         layout.separator()
         box = layout.box()

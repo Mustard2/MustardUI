@@ -249,7 +249,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(self, 'decimate_proxy', text='Decimate Proxy', icon_value=0, emboss=True)
+        layout.prop(self, 'decimate_proxy', icon_value=0, emboss=True)
 
         layout.separator()
         box = layout.box()

@@ -42,7 +42,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
     attempt_tight_bind: bpy.props.BoolProperty(name='Attempt Tight Binding',
                                                description='Add a Displace modifier to the cage to attempt a tighter binding',
                                                default=True)
-    voxel_res: bpy.props.FloatProperty(name='voxel_res', description='', default=100.0,
+    voxel_res: bpy.props.FloatProperty(name='Cage Resolution', description='', default=100.0,
                                        subtype='NONE', unit='NONE', min=1.0, step=3, precision=3,
                                        update=update_voxel_res)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
@@ -548,11 +548,14 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
     def draw(self, context):
 
-        layout = self.layout
-        layout.prop(self, 'voxel_res', text='Cage Resolution')
+        settings = context.scene.MustardUI_Settings
 
-        layout.prop(self, 'max_density', text='Increase Cage Density')
-        layout.prop(self, 'attempt_tight_bind', text='Attempt Tight Bind')
+        layout = self.layout
+        layout.prop(self, 'voxel_res')
+
+        if settings.advanced:
+            layout.prop(self, 'max_density')
+            layout.prop(self, 'attempt_tight_bind')
 
         layout.separator()
         box = layout.box()
