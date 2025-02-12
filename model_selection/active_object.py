@@ -20,19 +20,6 @@ def mustardui_active_object(context, config=0):
             else:
                 return obj.data.MustardUI_enable, obj.data
 
-        # The lattice case should be considered in order for the Lattice tool to work
-        # In fact, it is needed for the LatticeSetting operator
-        elif obj.type == "LATTICE":
-
-            for armature in bpy.data.armatures:
-                if obj == armature.MustardUI_LatticeSettings.lattice_object:
-                    if config:
-                        return False, None
-                    else:
-                        return armature.MustardUI_enable, armature
-
-            return False, None
-
         return False, None
 
     # If Viewport Model Selection is false, use the UI with the armature selected in the model panel
