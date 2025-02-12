@@ -19,8 +19,9 @@ The main features are:
 * Settings like Subsurface Scattering and Normals Auto Smooth can be toggled on/off for all model parts in one click
 * Any Blender property can be added with a simple right-click to Body, Outfit and Hair panels
 * Simplify button to quickly turn off modifiers and settings that can decrease Viewport performance
+* Creator tools to quickly add physics effects (Cages, Bone Physics) and useful rigs (Spline IK). Plus many others.
 * Diffeomorphic Daz Morphs support for Daz based models
-* Various other tools for animators (physics panel, lattice tool, and many others)
+* Various other user tools for animators (physics panel, lattice tool, and many others)
 
 ![](https://i.ibb.co/2v8m743/Immagine-2022-11-26-011024.png)
 ![](https://i.ibb.co/z7gbkC9/Immagine-2022-11-26-011007.png)
