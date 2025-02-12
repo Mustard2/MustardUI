@@ -3,9 +3,9 @@ from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
-from .. import __package__ as base_package
 from ..misc.ui_collapse import ui_collapse_prop
 from ..misc.mirror import check_mirror
+from ..physics.settings_item import mustardui_physics_item_type_dict
 
 
 def cloth_panel(layout, pi, mod):
@@ -18,6 +18,8 @@ def cloth_panel(layout, pi, mod):
         col.prop(cloth, 'time_scale')
         col.prop(cloth, "mass", text="Vertex Mass")
         col.prop(cloth, "air_damping", text="Air Viscosity")
+        col.separator()
+        col.prop(cloth, 'pin_stiffness')
 
         if ui_collapse_prop(box, pi, 'collapse_cloth_stiffness', "Stiffness"):
             col = box.column(align=True)
@@ -59,10 +61,17 @@ def cloth_panel(layout, pi, mod):
             row.prop(cache, "frame_end")
             row.prop(pi, 'unique_cache_frames', icon="TRACKING_REFINE_BACKWARDS", text="")
 
-        if ui_collapse_prop(box, pi, 'collapse_cloth_collisions', "Collisions"):
+        row = box.row(align=True)
+        collisions = mod.collision_settings
+        row.prop(pi, 'collapse_cloth_collisions',
+                 icon="TRIA_DOWN" if not pi.collapse_cloth_collisions else "TRIA_RIGHT", icon_only=True,
+                 emboss=False)
+        row.prop(collisions, 'use_collision', text="")
+        row.label(text="Collisions")
+
+        if not pi.collapse_cloth_collisions:
             collisions = mod.collision_settings
             col = box.column(align=True)
-            col.prop(collisions, "use_collision")
             col.prop(collisions, "distance_min", slider=True, text="Distance")
             col.prop(collisions, "impulse_clamp")
 
@@ -121,7 +130,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len(physics_settings.items)
+                return res and len([x for x in physics_settings.items if x.object])
         return res
 
     def draw_header(self, context):
@@ -133,11 +142,30 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        pass
+        poll, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+
+        layout = self.layout
+
+        layout.enabled = physics_settings.enable_physics
+
+        box = layout.box()
+        box.label(text="Physics Items", icon="OUTLINER_OB_GROUP_INSTANCE")
+
+        for pi in physics_settings.items:
+
+            if not pi.object:
+                continue
+
+            row = box.row(align=True)
+            row.prop(pi, 'enable', text=pi.object.name, icon=mustardui_physics_item_type_dict[pi.type])
+            if pi.type in ["CAGE", "SINGLE_ITEM"]:
+                row.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
+            row.prop(pi.object, 'hide_viewport', text="")
 
 
 class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
-    bl_label = "Items"
+    bl_label = "Settings"
     bl_parent_id = "PANEL_PT_MustardUI_Tools_Physics"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -150,7 +178,7 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len(physics_settings.items)
+                return res and len([x for x in physics_settings.items if x.object])
         return res
 
     def draw(self, context):
@@ -172,7 +200,8 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
 
             row = row.row()
             row.enabled = False
-            for on in [x.object.name for x in physics_settings.items if x.object != pi.object]:
+            items = [x for x in physics_settings.items if x.object]
+            for on in [x.object.name for x in items if x.object != pi.object]:
                 if check_mirror(pi.object.name, on, left=True) or check_mirror(pi.object.name, on, left=False):
                     row.enabled = True
             row.operator("mustardui.physics_mirror", text="", icon="MOD_MIRROR").obj_name = pi.object.name
@@ -213,7 +242,7 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len(physics_settings.items)
+                return res and len([x for x in physics_settings.items if x.object])
         return res
 
     def draw(self, context):

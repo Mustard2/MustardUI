@@ -10,23 +10,12 @@ class MustardUI_Configuration(bpy.types.Operator):
     bl_label = "Configure MustardUI"
     bl_options = {'REGISTER', 'UNDO'}
 
-    @classmethod
-    def poll(cls, context):
-
-        settings = bpy.context.scene.MustardUI_Settings
-
-        if settings.viewport_model_selection:
-            return context.active_object.type != "LATTICE"
-        else:
-            return True
-
     def execute(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
-        lattice_settings = obj.MustardUI_LatticeSettings
         tools_settings = obj.MustardUI_ToolsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -95,11 +84,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                         self.report({'ERROR'},
                                     'MustardUI - The custom property selected for Auto Blink can not be found.')
                         return {'FINISHED'}
-
-            # Check lattice object definition
-            if lattice_settings.lattice_object is None and lattice_settings.lattice_panel_enable:
-                self.report({'ERROR'}, 'MustardUI - A lattice object should be selected if Lattice tool is enabled.')
-                return {'FINISHED'}
 
             # Check the type of the rig
             rig_recognized = 0

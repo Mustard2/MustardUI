@@ -112,7 +112,6 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             # Clear all settings
             self.remove_property(arm, 'MustardUI_ToolsSettings')
             self.remove_property(arm, 'MustardUI_ToolsSettings')
-            self.remove_property(arm, 'MustardUI_LatticeSettings')
             self.remove_property(arm, 'MustardUI_PhysicsSettings')
             self.remove_property(arm, 'MustardUI_ArmatureSettings')
             self.remove_property(arm, 'MustardUI_CustomProperties')
