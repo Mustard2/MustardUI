@@ -37,7 +37,7 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
     """This function adds cloth physics with default settings to the mesh.\nIn Object Mode, it uses the active vertex group as the 'Pin Group'. If called in Edit Mode, the pin group is assigned to the selected vertices.\nThe operation applies to both the active object and any selected objects."""
     bl_idname = "mustardui.tools_creators_add_cloth_to_hair"
     bl_label = "Add Cloth Physics to Hair Cage"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     quality: bpy.props.IntProperty(name='Simulation Steps', description='Sets the quality of the Physics simulation', default=7,
                                    min=1, soft_max=10)
