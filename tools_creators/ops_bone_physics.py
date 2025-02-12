@@ -29,7 +29,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
     curve_width: bpy.props.FloatProperty(default=0.01, name="Curve Width",
                                          description="Width of the curve used for physics.\nIncrease this value if the item driven by the curve is larger")
     curve_tilt: bpy.props.FloatProperty(default=0, name="Curve Tilt", subtype="ANGLE",
-                                        description="Tilt of the curve mesh.\nIn some cases, a value of 0 degrees might improve results")
+                                        description="Tilt of the curve mesh.\nIn some cases, a value of 90 degrees might improve results")
     pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones",
                                         description="Number of bones to be pinned in the Physics.\nPinned bones will not move, but are included to generate the curve", min=0)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
