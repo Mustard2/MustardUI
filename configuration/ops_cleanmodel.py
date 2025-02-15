@@ -356,7 +356,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             current_outfit = rig_settings.outfits_list
 
-            to_remove = [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection is not None and y not in self.locked_outfits_collections(rig_settings)]
+            to_remove = [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection is not None and y not in self.__locked_outfits_collections(rig_settings)]
                          if x.collection.name != current_outfit]
 
             for col in to_remove:
@@ -444,7 +444,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         return {'FINISHED'}
 
-    def locked_outfits_collections(self, rig_settings):
+    def __locked_outfits_collections(self, rig_settings):
         locked_objects = set()
         for coll in [x for x in rig_settings.outfits_collections if x.collection != None]:
             items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
