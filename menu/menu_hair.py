@@ -25,7 +25,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
             # Check if one of these should be shown in the UI
             hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"]) > 0 if rig_settings.hair_collection is not None else False
-            particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]) > 0 and rig_settings.particle_systems_enable if rig_settings.model_body != None else False
+            particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]) > 0 and rig_settings.particle_systems_enable if rig_settings.model_body is not None else False
             curved_hair = len([x for x in rig_settings.hair_collection.objects if x.type == "CURVES"]) > 0 if rig_settings.hair_collection is not None else False
 
             return res if (hair_avail or particle_avail or curved_hair) else False
