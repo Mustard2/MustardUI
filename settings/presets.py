@@ -4,7 +4,7 @@ from bl_ui.utils import PresetPanel
 from ..model_selection.active_object import *
 
 
-class MustarUI_PT_Presets(PresetPanel, bpy.types.Panel):
+class MustardUI_PT_Presets(PresetPanel, bpy.types.Panel):
     bl_label = 'MustardUI Presets'
     preset_subdir = 'mustardui/configuration'
     preset_operator = 'script.execute_preset'
@@ -96,10 +96,10 @@ class MustardUI_OT_AddPreset(AddPresetBase, bpy.types.Operator):
 def register():
     bpy.utils.register_class(MustardUI_OT_AddPreset)
     bpy.utils.register_class(MustardUI_MT_Presets)
-    bpy.utils.register_class(MustarUI_PT_Presets)
+    bpy.utils.register_class(MustardUI_PT_Presets)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustarUI_PT_Presets)
+    bpy.utils.unregister_class(MustardUI_PT_Presets)
     bpy.utils.unregister_class(MustardUI_MT_Presets)
     bpy.utils.unregister_class(MustardUI_OT_AddPreset)
