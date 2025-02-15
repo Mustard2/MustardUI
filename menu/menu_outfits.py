@@ -117,7 +117,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
             # Locked objects list
             locked_objects = []
-            for coll in [x for x in rig_settings.outfits_collections if x.collection != None]:
+            for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
                 items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
                 for obj in items:
                     if obj.MustardUI_outfit_lock:

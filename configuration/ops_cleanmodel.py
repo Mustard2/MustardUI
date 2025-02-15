@@ -118,6 +118,16 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         return (string == string_cmp or check_eCTRL or check_eJCM) and check_pJCM and check_facs
 
+    def locked_outfits_collections(self, rig_settings):
+
+        locked_objects = set()
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
+            items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
+            for obj in items:
+                if obj.MustardUI_outfit_lock:
+                    locked_objects.add(coll)
+        return list(locked_objects)
+
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
@@ -356,7 +366,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             current_outfit = rig_settings.outfits_list
 
-            to_remove = [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection is not None]
+            to_remove = [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection is not None and y not in self.locked_outfits_collections(rig_settings)]
                          if x.collection.name != current_outfit]
 
             for col in to_remove:
@@ -443,6 +453,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
             self.report({'WARNING'}, "MustardUI - No operation was needed with current cleaning settings.")
 
         return {'FINISHED'}
+
+
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=500)
