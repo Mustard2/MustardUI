@@ -122,11 +122,28 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                         obj.collections.move(coll.index, 0)
                         found_colls += 1
 
-        if found_type != "":
+        # Check for Outfit switcher
+        outfits = 0
+        outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
+        for coll in outfit_colls:
+            for o in coll.objects:
+                for bcoll in obj.collections_all:
+                    if bcoll.name == o.name:
+                        bcoll.MustardUI_ArmatureBoneCollection.is_in_UI = True
+                        bcoll.MustardUI_ArmatureBoneCollection.outfit_switcher_enable = True
+                        bcoll.MustardUI_ArmatureBoneCollection.outfit_switcher_collection = coll
+                        bcoll.MustardUI_ArmatureBoneCollection.outfit_switcher_object = o
+                        if addon_prefs.debug:
+                            print('\nMustardUI - Smart Check - Armature layer ' + bcoll.name + ' added as Outfit Switcher.')
+                        outfits += 1
+
+        if found_type != "" and not outfits:
             if found_colls > 0:
                 self.report({'INFO'}, f'MustardUI - Smart Check found {found_colls} collections in a \'{found_type}\' armature.')
             else:
-                self.report({'INFO'}, f'MustardUI - Smart Check found a \'{found_type}\' armature but no viable collection.')
+                self.report({'WARNING'}, f'MustardUI - Smart Check found a \'{found_type}\' armature but no viable collection.')
+        elif outfits:
+            self.report({'INFO'}, 'MustardUI - Outfits Switcher bone collections were added.')
         else:
             self.report({'WARNING'}, 'MustardUI - Smart Check found no compatible armature. No collection has been added.')
 

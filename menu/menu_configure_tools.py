@@ -30,16 +30,13 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
-        lattice_settings = arm.MustardUI_LatticeSettings
 
         box = layout.box()
         box.label(text="Enable Tools", icon="MODIFIER")
         col = box.column(align=True)
         col.prop(rig_settings, 'simplify_main_enable')
-        col.prop(tools_settings, 'childof_enable')
         col.prop(tools_settings, 'autobreath_enable')
         col.prop(tools_settings, 'autoeyelid_enable')
-        col.prop(lattice_settings, 'lattice_panel_enable')
 
         if tools_settings.autoeyelid_enable:
             box = layout.box()
@@ -53,13 +50,6 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
                                 "key_blocks")
             else:
                 col.prop(tools_settings, "autoeyelid_morph")
-
-        if lattice_settings.lattice_panel_enable:
-            box = layout.box()
-            box.label(text="Lattice Tool Settings", icon="MOD_LATTICE")
-            box.prop(lattice_settings, 'lattice_object')
-            box.operator('mustardui.tools_latticesetup', text="Lattice Setup").mod = 0
-            box.operator('mustardui.tools_latticesetup', text="Lattice Clean").mod = 1
 
 
 def register():

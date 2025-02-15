@@ -77,7 +77,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
                 row.label(text="", icon="BLANK1")
                 row.label(text="", icon="BLANK1")
         else:
-            layout.label(text="", icon="ERROR")
+            layout.label(text="Object not found!", icon="ERROR")
 
 
 def register():

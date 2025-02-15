@@ -4,23 +4,6 @@ from ..model_selection.active_object import *
 
 class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
-    #    Child Of
-    # ------------------------------------------------------------------------
-
-    childof_enable: BoolProperty(default=False,
-                                 name="Child Of",
-                                 description="Enable the Child Of tool.\nThis tool will allow a quick creation of "
-                                             "Child Of modifiers between two selected bones")
-
-    childof_influence: FloatProperty(default=1.0,
-                                     min=0.0, max=1.0,
-                                     name="Influence",
-                                     description="Set the influence the parent Bone will have on the Child one")
-
-    # Name of the modifiers created by the tool
-    childof_constr_name: StringProperty(default='MustardUI_ChildOf')
-
-    # ------------------------------------------------------------------------
     #    Auto - Breath
     # ------------------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 import bpy
 from ..model_selection.active_object import *
-from .update_enable import enable_physics_update_single
+from .update_enable import enable_physics_update_single, collisions_physics_update_single
 
 
 def poll_mesh(self, o):
@@ -46,6 +46,11 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     type: bpy.props.EnumProperty(default="NONE",
                                  items=mustardui_physics_item_type,
                                  name="Type")
+
+    collisions: bpy.props.BoolProperty(default=False,
+                                       name="Collisions",
+                                       description="Enable/disable collisions on the modifiers",
+                                       update=collisions_physics_update_single)
 
     # UI Collapse
 

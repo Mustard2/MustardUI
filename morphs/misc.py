@@ -98,3 +98,13 @@ def muteDazFcurves(rig, mute, useLocation=True, useRotation=True, useScale=True,
                                     skey.mute = mute
                                 else:
                                     skey.mute = False
+
+
+def DazCheckVersion(arm_obj):
+    if hasattr(arm_obj, 'DazId'):
+        daz_id = arm_obj.DazId
+        if "Genesis8" in daz_id:
+            return 8
+        elif "Genesis9" in daz_id:
+            return 9
+    return 0

@@ -141,7 +141,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                              "and re-enable it before rendering",
                                                  update=update_norm_autosmooth)
 
-    body_enable_norm_autosmooth: bpy.props.BoolProperty(default=True,
+    body_enable_norm_autosmooth: bpy.props.BoolProperty(default=False,
                                                         name="Normals Auto Smooth property",
                                                         description="Creates a switcher on the UI to enable/disable "
                                                                     "all modifiers of this type on the Body")
@@ -237,9 +237,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Outfit properties
     # ------------------------------------------------------------------------
 
-    # Property for collapsing outfit properties section
-    outfit_config_prop_collapse: bpy.props.BoolProperty(default=True)
-
     # Global outfit properties
     outfits_enable_global_subsurface: bpy.props.BoolProperty(default=True,
                                                              name="Subdivision Surface modifiers",
@@ -283,7 +280,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                           "on the Body",
                                                               name="Triangulate modifiers")
 
-    outfits_enable_global_normalautosmooth: bpy.props.BoolProperty(default=True,
+    outfits_enable_global_normalautosmooth: bpy.props.BoolProperty(default=False,
                                                                    description="Creates a switcher on the UI to "
                                                                                "enable/disable all modifiers of this "
                                                                                "type on the Body",
