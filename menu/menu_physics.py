@@ -194,7 +194,7 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
         row.prop(physics_settings, 'items_ui_list', text="")
 
         pi = physics_settings.items[int(physics_settings.items_ui_list)]
-        if pi.object and pi.type in ["CAGE", "COLLISION", "SINGLE_ITEM"]:
+        if pi.object and pi.type in ["CAGE", "COLLISION", "SINGLE_ITEM", "BONES_DRIVER"]:
             row.prop(pi, 'enable', text="", icon="PHYSICS")
             row.prop(pi.object, 'hide_viewport', text="")
 
@@ -205,6 +205,13 @@ class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
                 if check_mirror(pi.object.name, on, left=True) or check_mirror(pi.object.name, on, left=False):
                     row.enabled = True
             row.operator("mustardui.physics_mirror", text="", icon="MOD_MIRROR").obj_name = pi.object.name
+
+            if pi.type == "BONES_DRIVER":
+                row = layout.row()
+                row.prop(pi, 'bone_influence')
+            elif pi.type == "CAGE":
+                row = layout.row()
+                row.prop(pi, 'cage_influence')
 
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
                 for mod in pi.object.modifiers:
