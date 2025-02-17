@@ -131,7 +131,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
             # Add Damped Track constraint to the bone
             constraint = bone.constraints.new(type='DAMPED_TRACK')
-            constraint.name = "MustardUI Bone Physics"
+            constraint.name = curve_obj.name
             constraint.target = curve_obj  # The curve object as the target
             constraint.track_axis = 'TRACK_Y'  # Track the Y axis (you can change this if needed)
 
@@ -149,7 +149,6 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         # Configure cloth modifier
         cloth_modifier.settings.quality = 5
         cloth_modifier.settings.mass = 0.15
-        cloth_modifier.collision_settings.use_collision = True
         cloth_modifier.settings.tension_stiffness = 5.
         cloth_modifier.settings.compression_stiffness = 5.
         cloth_modifier.settings.shear_stiffness = 5.
@@ -158,6 +157,9 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         cloth_modifier.settings.compression_damping = 0.05
         cloth_modifier.settings.shear_damping = 0.05
         cloth_modifier.settings.bending_damping = 0.05
+
+        cloth_modifier.collision_settings.use_collision = True
+        cloth_modifier.collision_settings.distance_min = 0.001
 
         # Add the object to the Physics Panel
         if self.add_to_panel:
@@ -234,7 +236,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
         # Loop through all pose bones and remove the specific Damped Track constraints
         for bone in armature.pose.bones:
             for constraint in bone.constraints:
-                if constraint.type == 'DAMPED_TRACK' and constraint.name == 'MustardUI Bone Physics':
+                if constraint.type == 'DAMPED_TRACK' and constraint.target == curve_obj:
                     bone.constraints.remove(constraint)
 
         # Remove the item from the list if available
