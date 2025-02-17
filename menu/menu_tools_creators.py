@@ -46,9 +46,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
 
         row = layout.row(align=True)
         row.operator('mustardui.tools_creators_create_jiggle', text="Add Jiggle Cage", icon="OUTLINER_OB_FORCE_FIELD")
-        row.operator('mustardui.tools_creators_bone_physics_clean', text="", icon="X")
         row = layout.row(align=True)
         row.operator('mustardui.tools_creators_bone_physics', text="Add Bone Physics", icon="BONE_DATA")
+        row.operator('mustardui.tools_creators_bone_physics_clean', text="", icon="X")
         row = layout.row(align=True)
         row.operator('mustardui.tools_creators_hair_cage', text="Create Hair Cage", icon="OUTLINER_OB_CURVES")
         row.operator('mustardui.tools_creators_add_cloth_to_hair', text="", icon="MOD_CLOTH")

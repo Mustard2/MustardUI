@@ -104,7 +104,4 @@ def collisions_physics_update_single(self, context):
         if modifier.type in ['CLOTH']:
             modifier.collision_settings.use_collision = status
 
-    if not status:
-        self.object.hide_viewport = True
-
     return
