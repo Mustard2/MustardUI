@@ -11,7 +11,7 @@ def items_list_make(self, context):
     for el in self.items:
         if el.object is None:
             continue
-        if hasattr(el.object, 'name') and el.type in ["CAGE", "COLLISION", "SINGLE_ITEM"]:
+        if hasattr(el.object, 'name') and el.type in ["CAGE", "COLLISION", "SINGLE_ITEM", "BONES_DRIVER"]:
             items.append((str(i), el.object.name, el.object.name, mustardui_physics_item_type_dict[el.type], i))
         i += 1
 
