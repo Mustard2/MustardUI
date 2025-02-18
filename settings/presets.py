@@ -4,14 +4,14 @@ from bl_ui.utils import PresetPanel
 from ..model_selection.active_object import *
 
 
-class MustarUI_PT_Presets(PresetPanel, bpy.types.Panel):
+class MUI_PT_Presets(PresetPanel, bpy.types.Panel):
     bl_label = 'MustardUI Presets'
     preset_subdir = 'mustardui/configuration'
     preset_operator = 'script.execute_preset'
     preset_add_operator = 'mustardui.add_preset'
 
 
-class MustardUI_MT_Presets(bpy.types.Menu):
+class MUI_MT_Presets(bpy.types.Menu):
     bl_label = 'MustardUI Presets'
     preset_subdir = 'mustardui/configuration'
     preset_operator = 'script.execute_preset'
@@ -21,7 +21,7 @@ class MustardUI_MT_Presets(bpy.types.Menu):
 class MustardUI_OT_AddPreset(AddPresetBase, bpy.types.Operator):
     bl_idname = 'mustardui.add_preset'
     bl_label = 'Add MustardUI Preset'
-    preset_menu = 'MustardUI_MT_Presets'
+    preset_menu = 'MUI_MT_Presets'
 
     @property
     def preset_defines(self):
@@ -95,11 +95,11 @@ class MustardUI_OT_AddPreset(AddPresetBase, bpy.types.Operator):
 
 def register():
     bpy.utils.register_class(MustardUI_OT_AddPreset)
-    bpy.utils.register_class(MustardUI_MT_Presets)
-    bpy.utils.register_class(MustarUI_PT_Presets)
+    bpy.utils.register_class(MUI_MT_Presets)
+    bpy.utils.register_class(MUI_PT_Presets)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustarUI_PT_Presets)
-    bpy.utils.unregister_class(MustardUI_MT_Presets)
+    bpy.utils.unregister_class(MUI_PT_Presets)
+    bpy.utils.unregister_class(MUI_MT_Presets)
     bpy.utils.unregister_class(MustardUI_OT_AddPreset)

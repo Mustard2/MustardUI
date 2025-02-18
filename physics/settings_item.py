@@ -1,6 +1,6 @@
 import bpy
 from ..model_selection.active_object import *
-from .update_enable import enable_physics_update_single, collisions_physics_update_single
+from .update_enable import *
 
 
 def poll_mesh(self, o):
@@ -20,12 +20,14 @@ def poll_mesh_linked(self, o):
 mustardui_physics_item_type = [("NONE", "None", "Disable Physics", "BLANK1", 0),
                                ("CAGE", "Cage", "A mesh that modifies another one through Mesh or Surface Deform modifiers", "MESH_UVSPHERE", 1),
                                ("COLLISION", "Collision", "A mesh that acts as collision for other meshes", "MOD_PHYSICS", 2),
-                               ("SINGLE_ITEM", "Single Item", "An item that does not need Mesh or Surface Deform modifiers on the Body or the Outfits", "OBJECT_ORIGIN", 3)]
+                               ("SINGLE_ITEM", "Single Item", "An item that does not need Mesh or Surface Deform modifiers on the Body or the Outfits", "OBJECT_ORIGIN", 3),
+                               ("BONES_DRIVER", "Bone Driver", "An item that drives the motion of bones through Constraints.\nOnly constraints with 'target' are supported", "BONE_DATA", 4)]
 mustardui_physics_item_type_dict = {
     "NONE": "BLANK1",
     "CAGE": "MESH_UVSPHERE",
     "COLLISION": "MOD_PHYSICS",
-    "SINGLE_ITEM": "OBJECT_ORIGIN"
+    "SINGLE_ITEM": "OBJECT_ORIGIN",
+    "BONES_DRIVER": "BONE_DATA"
 }
 
 
@@ -51,6 +53,18 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
                                        name="Collisions",
                                        description="Enable/disable collisions on the modifiers",
                                        update=collisions_physics_update_single)
+
+    cage_influence: bpy.props.FloatProperty(default=1.0,
+                                            max=1.0, min=0.0,
+                                            name="Influence",
+                                            description="Influence of this Cage on other Objects",
+                                            update=cage_influence_update)
+
+    bone_influence: bpy.props.FloatProperty(default=1.0,
+                                            max=1.0, min=0.0,
+                                            name="Influence",
+                                            description="Influence of this item on bones constraints",
+                                            update=bone_influence_update)
 
     # UI Collapse
 
