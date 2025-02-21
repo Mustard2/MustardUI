@@ -91,7 +91,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                          "preview. \nNote that, depending on the complexity of the "
                                                          "model, enabling this can greatly affect rendering times",
                                              update=update_subdiv)
-    body_subdiv_rend_lv: bpy.props.IntProperty(default=1,
+    body_subdiv_rend_lv: bpy.props.IntProperty(default=2,
                                                min=0, max=4,
                                                name="Level",
                                                description="Set the Subdivision Surface level during rendering. "
@@ -106,7 +106,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                          "posing. \nNote that it might require a lot of time to "
                                                          "activate, and Blender will freeze during this",
                                              update=update_subdiv)
-    body_subdiv_view_lv: bpy.props.IntProperty(default=0,
+    body_subdiv_view_lv: bpy.props.IntProperty(default=1,
                                                min=0, max=4,
                                                name="Level",
                                                description="Set the Subdivision Surface level in viewport. \nNote "

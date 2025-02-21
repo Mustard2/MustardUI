@@ -23,6 +23,13 @@ def influence_cage_modifiers(physics_item, iterator, influence):
                 mod.show_render = influence > 0.001
 
 
+def set_modifiers(physics_item, obj, status):
+    for modifier in obj.modifiers:
+        if physics_item.object.name in modifier.name:
+            modifier.show_viewport = status
+            modifier.show_render = status
+
+
 def enable_physics_update(self, context):
 
     res, arm = mustardui_active_object(context, config=0)
@@ -41,23 +48,23 @@ def enable_physics_update(self, context):
                 pi.object.collision.use = status
         if pi.type == "CAGE":
             set_cage_modifiers(pi, rig_settings.model_body.modifiers, status)
-            for modifier in rig_settings.model_body.modifiers:
-                if pi.object.name in modifier.name:
-                    modifier.show_viewport = status
-                    modifier.show_render = status
+            set_modifiers(pi, rig_settings.model_body, status)
         if not status:
             pi.object.hide_viewport = True
 
     for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
-        for obj in items:
+        for obj in [x for x in items if x.type == "MESH"]:
             for pi in [x for x in self.items if x.type == "CAGE"]:
                 status = self.enable_physics and pi.enable
                 set_cage_modifiers(pi, obj.modifiers, status)
-                for modifier in obj.modifiers:
-                    if pi.object.name in modifier.name:
-                        modifier.show_viewport = status
-                        modifier.show_render = status
+                set_modifiers(pi, obj, status)
+
+    for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+        for pi in [x for x in self.items if x.type == "CAGE"]:
+            status = self.enable_physics and pi.enable
+            set_cage_modifiers(pi, obj.modifiers, status)
+            set_modifiers(pi, obj, status)
 
     return
 
@@ -80,20 +87,17 @@ def enable_physics_update_single(self, context):
             self.object.collision.use = status
     if self.type == "CAGE":
         set_cage_modifiers(self, rig_settings.model_body.modifiers, status)
-        for modifier in rig_settings.model_body.modifiers:
-            if self.object.name in modifier.name:
-                modifier.show_viewport = status
-                modifier.show_render = status
+        set_modifiers(self, rig_settings.model_body, status)
 
         for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
-            for obj in items:
-                status = physics_settings.enable_physics and self.enable
+            for obj in [x for x in items if x.type == "MESH"]:
                 set_cage_modifiers(self, obj.modifiers, status)
-                for modifier in obj.modifiers:
-                    if self.object.name in modifier.name:
-                        modifier.show_viewport = status
-                        modifier.show_render = status
+                set_modifiers(self, obj, status)
+
+        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+            set_cage_modifiers(self, obj.modifiers, status)
+            set_modifiers(self, obj, status)
 
     if not status:
         self.object.hide_viewport = True
@@ -151,6 +155,8 @@ def bone_influence_update(self, context):
         for constraint in [x for x in bone.constraints if hasattr(x, "target") and x.target == self.object]:
             if hasattr(constraint, 'influence'):
                 constraint.influence = influence
+            elif hasattr(constraint, 'strength'):
+                constraint.strength = influence
             constraint.enabled = status
 
     return
