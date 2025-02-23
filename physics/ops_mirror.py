@@ -44,22 +44,40 @@ def mirror_cloth(obj, obj_mirror) -> bool:
     cloth_mirror.shear_damping = cloth.shear_damping
     cloth_mirror.bending_damping = cloth.bending_damping
 
+    cloth_mirror.use_internal_springs = cloth.use_internal_springs
+    cloth_mirror.internal_spring_max_length = cloth.internal_spring_max_length
+    cloth_mirror.internal_spring_max_diversion = cloth.internal_spring_max_diversion
+    cloth_mirror.internal_spring_normal_check = cloth.internal_spring_normal_check
     cloth_mirror.internal_tension_stiffness = cloth.internal_tension_stiffness
     cloth_mirror.internal_compression_stiffness = cloth.internal_compression_stiffness
     cloth_mirror.internal_tension_stiffness_max = cloth.internal_tension_stiffness_max
     cloth_mirror.internal_compression_stiffness_max = cloth.internal_compression_stiffness_max
 
+    cloth_mirror.use_pressure = cloth.use_pressure
     cloth_mirror.uniform_pressure_force = cloth.uniform_pressure_force
+    cloth_mirror.use_pressure_volume = cloth.use_pressure_volume
+    cloth_mirror.target_volume = cloth.target_volume
     cloth_mirror.pressure_factor = cloth.pressure_factor
+    cloth_mirror.fluid_density = cloth.fluid_density
 
     cache_mirror.frame_start = cache.frame_start
     cache_mirror.frame_end = cache.frame_end
 
     cloth_mirror.pin_stiffness = cloth.pin_stiffness
+    cloth_mirror.use_sewing_springs = cloth.use_sewing_springs
+    cloth_mirror.sewing_force_max = cloth.sewing_force_max
+    cloth_mirror.shrink_min = cloth.shrink_min
+    cloth_mirror.use_dynamic_mesh = cloth.use_dynamic_mesh
 
     collisions_mirror.use_collision = collisions.use_collision
+    collisions_mirror.collision_quality = collisions.collision_quality
     collisions_mirror.distance_min = collisions.distance_min
     collisions_mirror.impulse_clamp = collisions.impulse_clamp
+
+    collisions_mirror.use_self_collision = collisions.use_self_collision
+    collisions_mirror.self_friction = collisions.self_friction
+    collisions_mirror.self_distance_min = collisions.self_distance_min
+    collisions_mirror.self_impulse_clamp = collisions.self_impulse_clamp
 
     return True
 
