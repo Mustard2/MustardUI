@@ -15,6 +15,7 @@ def cloth_panel(layout, pi, mod):
         cloth = mod.settings
         box = layout.box()
         col = box.column(align=True)
+        col.prop(cloth, 'quality')
         col.prop(cloth, 'time_scale')
         col.prop(cloth, "mass", text="Vertex Mass")
         col.prop(cloth, "air_damping", text="Air Viscosity")

@@ -30,6 +30,8 @@ def mirror_cloth(obj, obj_mirror) -> bool:
         return False
 
     # Copy settings
+    cloth_mirror.quality = cloth.quality
+
     cloth_mirror.time_scale = cloth.time_scale
     cloth_mirror.mass = cloth.mass
     cloth_mirror.air_damping = cloth.air_damping
