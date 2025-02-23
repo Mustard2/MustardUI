@@ -99,7 +99,7 @@ def mirror_soft_body(obj, obj_mirror) -> bool:
 class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
     """Mirror the settings of this Physics Item"""
     bl_idname = "mustardui.physics_mirror"
-    bl_label = "Remove Physics Item"
+    bl_label = "Mirror Physics Item"
     bl_options = {'UNDO'}
 
     obj_name: bpy.props.StringProperty(default="")
