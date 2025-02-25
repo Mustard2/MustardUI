@@ -15,10 +15,10 @@ class MustardUI_Physics_SyncFrames(bpy.types.Operator):
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=0)
-        settings = arm.MustardUI_PhysicsSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
 
-        settings.frame_start = context.scene.frame_start
-        settings.frame_end = context.scene.frame_end
+        physics_settings.frame_start = context.scene.frame_start
+        physics_settings.frame_end = context.scene.frame_end
 
         return {'FINISHED'}
 
@@ -30,7 +30,19 @@ class MustardUI_Physics_BakeAll(bpy.types.Operator):
 
     bake: bpy.props.BoolProperty()
 
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=0)
+        return res
+
     def execute(self, context):
+
+        res, arm = mustardui_active_object(context, config=0)
+        physics_settings = arm.MustardUI_PhysicsSettings
+
+        physics_settings.frame_start = physics_settings.frame_start
+        physics_settings.frame_end = physics_settings.frame_end
+
         bpy.ops.ptcache.bake_all('INVOKE_DEFAULT', bake=self.bake)
 
         return {'FINISHED'}

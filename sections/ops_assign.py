@@ -9,6 +9,13 @@ class MustardUI_Body_AssignToSection(bpy.types.Operator):
     bl_label = "Assign Properties"
     bl_options = {'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
+
+        return res and len(rig_settings.body_custom_properties_sections)
+
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
