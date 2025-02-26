@@ -614,8 +614,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         poll, arm = mustardui_active_object(context, config=0)
 
         for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
-            obj.hide_viewport = not self.hair_list in obj.name
-            obj.hide_render = not self.hair_list in obj.name
+            obj.hide_viewport = not (self.hair_list in obj.name)
+            obj.hide_render = not (self.hair_list in obj.name)
             for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE"]]:
                 if mod.type == "PARTICLE_SYSTEM":
                     mod.show_viewport = self.hair_list in obj.name
