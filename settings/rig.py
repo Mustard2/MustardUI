@@ -648,6 +648,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                          description="Disable Armature modifiers of Hair that are not "
                                                                      "visible to increase performance")
 
+    def hair_particle_children_viewport_factor_update(self, context):
+
+        for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
+            for p in [x.settings for x in obj.particle_systems]:
+                if p.type == "HAIR":
+                    p.child_percent = max(1, int(p.rendered_child_count * self.hair_particle_children_viewport_factor))
+
+    hair_particle_children_viewport_factor: bpy.props.FloatProperty(default=0.1,
+                                                                    name="Children Viewport Factor",
+                                                                    description="Factor of children shown in Viewport "
+                                                                                "with respect to Render value",
+                                                                    min=0., max=1.,
+                                                                    update=hair_particle_children_viewport_factor_update)
+
     # Hair Global Properties
     hair_enable_global_subsurface: bpy.props.BoolProperty(default=False,
                                                           name="Subdivision Surface modifiers",
