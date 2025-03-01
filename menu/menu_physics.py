@@ -15,6 +15,7 @@ def cloth_panel(layout, pi, mod):
         cloth = mod.settings
         box = layout.box()
         col = box.column(align=True)
+        col.prop(cloth, 'quality')
         col.prop(cloth, 'time_scale')
         col.prop(cloth, "mass", text="Vertex Mass")
         col.prop(cloth, "air_damping", text="Air Viscosity")
@@ -74,6 +75,21 @@ def cloth_panel(layout, pi, mod):
             col = box.column(align=True)
             col.prop(collisions, "distance_min", slider=True, text="Distance")
             col.prop(collisions, "impulse_clamp")
+
+        row = box.row(align=True)
+        collisions = mod.collision_settings
+        row.prop(pi, 'collapse_cloth_self_collisions',
+                 icon="TRIA_DOWN" if not pi.collapse_cloth_self_collisions else "TRIA_RIGHT", icon_only=True,
+                 emboss=False)
+        row.prop(collisions, 'use_self_collision', text="")
+        row.label(text="Self Collisions")
+
+        if not pi.collapse_cloth_self_collisions:
+            collisions = mod.collision_settings
+            col = box.column(align=True)
+            col.prop(collisions, "self_friction", slider=True, text="Friction")
+            col.prop(collisions, "self_distance_min", slider=True, text="Minimum Distance")
+            col.prop(collisions, "self_impulse_clamp", slider=True, text="Impulse Clamping")
 
     # Add all settings inserted here also in the mirror operator
 
@@ -165,7 +181,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
 
 class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
-    bl_label = "Settings"
+    bl_label = "Items Settings"
     bl_parent_id = "PANEL_PT_MustardUI_Tools_Physics"
     bl_options = {"DEFAULT_CLOSED"}
 

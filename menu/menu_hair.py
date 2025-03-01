@@ -7,6 +7,12 @@ from ..settings.rig import *
 from .. import __package__ as base_package
 
 
+# Function to format dynamic name
+def format_dynamic_name(x):
+    return x.particle_system.name if not ("Dynamic" in x.particle_system.name) else x.particle_system.name.replace(
+        "Dynamic", "").lstrip().rstrip()
+
+
 class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Hair"
     bl_label = "Hair"
@@ -82,13 +88,22 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                                                               rig_settings.hair_custom_properties_icons)
 
                     mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
-                                                 key=lambda x: x.particle_system.name)
+                                                 key=format_dynamic_name)
                     if rig_settings.particle_systems_enable and len(mod_particle_system) > 0:
+                        row = box.row(align=True)
+                        row.prop(rig_settings, 'hair_particle_children_viewport_factor')
+                        if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
+                            status = any(x.particle_system.use_hair_dynamics for x in mod_particle_system)
+                            op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS")
+                            op.enable = not status
+                            op.obj = obj.name
                         box2 = box.box()
                         for mod in mod_particle_system:
                             row = box2.row(align=True)
-                            row.label(text=mod.particle_system.name, icon="PARTICLES")
+                            row.label(text=format_dynamic_name(mod), icon="PARTICLES")
                             row2 = row.row(align=True)
+                            if "Dynamic" in mod.particle_system.name:
+                                row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
                             row2.prop(mod, "show_viewport", text="")
                             row2.prop(mod, "show_render", text="")
                 except:
@@ -99,7 +114,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                         box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
                         box.operator('mustardui.configuration', text="Enter Configuration Mode", icon="PREFERENCES")
 
-                # Outfit global properties
+                # Hair global properties
                 if (rig_settings.hair_enable_global_subsurface or rig_settings.hair_enable_global_smoothcorrection or
                         rig_settings.hair_enable_global_solidify or rig_settings.hair_enable_global_particles or
                         rig_settings.hair_enable_global_normalautosmooth):

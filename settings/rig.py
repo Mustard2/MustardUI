@@ -614,8 +614,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         poll, arm = mustardui_active_object(context, config=0)
 
         for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
-            obj.hide_viewport = not self.hair_list in obj.name
-            obj.hide_render = not self.hair_list in obj.name
+            obj.hide_viewport = not (self.hair_list in obj.name)
+            obj.hide_render = not (self.hair_list in obj.name)
             for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE"]]:
                 if mod.type == "PARTICLE_SYSTEM":
                     mod.show_viewport = self.hair_list in obj.name
@@ -647,6 +647,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                          name="Disable Armature Modifiers on Switch",
                                                          description="Disable Armature modifiers of Hair that are not "
                                                                      "visible to increase performance")
+
+    def hair_particle_children_viewport_factor_update(self, context):
+
+        for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
+            for p in [x.settings for x in obj.particle_systems]:
+                if p.type == "HAIR":
+                    p.child_percent = max(1, int(p.rendered_child_count * self.hair_particle_children_viewport_factor))
+
+    hair_particle_children_viewport_factor: bpy.props.FloatProperty(default=0.1,
+                                                                    name="Children Viewport Factor",
+                                                                    description="Factor of children shown in Viewport "
+                                                                                "with respect to Render value",
+                                                                    min=0., max=1.,
+                                                                    update=hair_particle_children_viewport_factor_update)
 
     # Hair Global Properties
     hair_enable_global_subsurface: bpy.props.BoolProperty(default=False,
