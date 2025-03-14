@@ -122,9 +122,11 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                         obj.collections.move(coll.index, 0)
                         found_colls += 1
 
-        # Check for Outfit switcher
+        # Check for Outfit/Hair/Extras switcher
         outfits = 0
         outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
+        outfit_colls.append(rig_settings.extras_collection)
+        outfit_colls.append(rig_settings.hair_collection)
         for coll in outfit_colls:
             for o in coll.objects:
                 for bcoll in obj.collections_all:
