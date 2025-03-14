@@ -21,8 +21,9 @@ def items_list_make(self, context):
 def update_frame(self, context):
 
     # Rigid Body
-    context.scene.rigidbody_world.point_cache.frame_start = self.frame_start
-    context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
+    if context.scene.rigidbody_world:
+        context.scene.rigidbody_world.point_cache.frame_start = self.frame_start
+        context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
 
     for pi in [x for x in self.items if x.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]]:
         obj = pi.object
