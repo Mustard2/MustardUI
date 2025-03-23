@@ -146,7 +146,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len([x for x in physics_settings.items if x.object])
+                return res and physics_settings.enable_ui and len([x for x in physics_settings.items if x.object])
         return res
 
     def draw_header(self, context):
