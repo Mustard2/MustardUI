@@ -19,7 +19,12 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
         return res and addon_prefs.developer
 
     def draw(self, context):
-        pass
+        settings = bpy.context.scene.MustardUI_Settings
+        if settings.viewport_model_selection:
+            layout = self.layout
+            box = layout.box()
+            box.label(text="Viewport Model selection should be", icon="ERROR")
+            box.label(text="disabled to use Creator tools", icon="BLANK1")
 
 
 class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
@@ -34,7 +39,8 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        settings = bpy.context.scene.MustardUI_Settings
+        return res and addon_prefs.developer and not settings.viewport_model_selection
 
     def draw_header(self, context):
         layout = self.layout
@@ -68,7 +74,8 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        settings = bpy.context.scene.MustardUI_Settings
+        return res and addon_prefs.developer and not settings.viewport_model_selection
 
     def draw_header(self, context):
         layout = self.layout
