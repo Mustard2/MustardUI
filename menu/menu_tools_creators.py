@@ -23,8 +23,11 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
         if settings.viewport_model_selection:
             layout = self.layout
             box = layout.box()
-            box.label(text="Viewport Model selection should be", icon="ERROR")
-            box.label(text="disabled to use Creator tools", icon="BLANK1")
+            col = box.column(align=True)
+            col.label(text="Viewport Model selection should be", icon="ERROR")
+            col.label(text="disabled to use Creator tools", icon="BLANK1")
+            box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon="VIEW3D",
+                         depress=settings.viewport_model_selection).config = 1
 
 
 class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):

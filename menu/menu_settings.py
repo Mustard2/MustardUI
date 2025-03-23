@@ -34,12 +34,8 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
 
         col.prop(settings, "advanced")
 
-        if settings.viewport_model_selection:
-            box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon="VIEW3D",
-                         depress=True)
-        else:
-            box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon="VIEW3D",
-                         depress=False)
+        box.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon="VIEW3D",
+                     depress=settings.viewport_model_selection)
 
         if addon_prefs.developer:
             box = layout.box()
