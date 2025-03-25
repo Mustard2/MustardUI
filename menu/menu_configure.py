@@ -37,7 +37,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         # General Settings
         row = layout.row(align=False)
         row.label(text=arm.name, icon="OUTLINER_DATA_ARMATURE")
-        row.operator('mustardui.configuration_smartcheck', icon="VIEWZOOM", text="")
+        row.operator('mustardui.configuration_smartcheck', icon="SHADERFX", text="")
         row.operator('mustardui.openlink', text="", icon="QUESTION").url = self.url_MustardUI_ConfigGuide
 
         box = layout.box()

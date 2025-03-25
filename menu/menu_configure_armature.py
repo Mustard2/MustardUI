@@ -38,7 +38,7 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         box = layout.box()
         row = box.row()
         row.label(text="Bone Collections", icon="BONE_DATA")
-        row.operator("Mustardui.armature_smartcheck", text="", icon="VIEWZOOM")
+        row.operator("Mustardui.armature_smartcheck", text="", icon="SHADERFX")
 
         active_bcoll = arm.collections.active
 

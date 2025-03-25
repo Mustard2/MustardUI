@@ -48,7 +48,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         box = layout.box()
         row = box.row()
         row.label(text="Custom properties", icon="PRESET_NEW")
-        row.operator('mustardui.property_smartcheck', text="", icon="VIEWZOOM")
+        row.operator('mustardui.property_smartcheck', text="", icon="SHADERFX")
 
         if len(arm.MustardUI_CustomProperties) > 0:
             row = box.row()
