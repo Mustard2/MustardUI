@@ -125,8 +125,10 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
         # Check for Outfit/Hair/Extras switcher
         outfits = 0
         outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
-        outfit_colls.append(rig_settings.extras_collection)
-        outfit_colls.append(rig_settings.hair_collection)
+        if rig_settings.extras_collection is not None:
+            outfit_colls.append(rig_settings.extras_collection)
+        if rig_settings.hair_collection is not None:
+            outfit_colls.append(rig_settings.hair_collection)
         for coll in outfit_colls:
             for o in coll.objects:
                 for bcoll in obj.collections_all:

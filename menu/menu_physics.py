@@ -147,6 +147,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
                 return res and physics_settings.enable_ui and len([x for x in physics_settings.items if x.object])
+
         return res
 
     def draw_header(self, context):
@@ -166,7 +167,9 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         layout.enabled = physics_settings.enable_physics
 
         box = layout.box()
-        box.label(text="Physics Items", icon="OUTLINER_OB_GROUP_INSTANCE")
+        row = box.row(align=True)
+        row.label(text="Physics Items", icon="OUTLINER_OB_GROUP_INSTANCE")
+        row.operator("mustardui.physics_rebind", text="", icon="FILE_REFRESH")
 
         for pi in physics_settings.items:
 
