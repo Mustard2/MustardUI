@@ -191,7 +191,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
                 items = [x for x in physics_settings.items if x.object]
                 for on in [x.object.name for x in items if x.object != pi.object]:
                     if check_mirror(pi.object.name, on, left=True) or check_mirror(pi.object.name, on, left=False):
-                        row.enabled = True
+                        row.enabled = pi.enable and True
                 row.operator("mustardui.physics_mirror", text="", icon="MOD_MIRROR").obj_name = pi.object.name
 
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
