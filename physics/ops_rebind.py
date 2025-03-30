@@ -3,7 +3,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
-    """Rebind cages to the model meshes (Body, Outfits, Hair)"""
+    """Rebind cages to the model meshes (Body, Outfits, Hair).\nDepending on the number of Physics Items, Blender might freeze for a while"""
     bl_idname = "mustardui.physics_rebind"
     bl_label = "Rebind Physics"
     bl_options = {'UNDO'}
