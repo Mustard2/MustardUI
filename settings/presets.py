@@ -63,7 +63,6 @@ class MustardUI_OT_AddPreset(AddPresetBase, bpy.types.Operator):
         'rig_settings.outfit_config_subcollections',
         'rig_settings.outfits_update_tag_on_switch',
         'rig_settings.outfit_switch_armature_disable',
-        'rig_settings.extras_collapse_enable',
         'rig_settings.hair_collection',
         'rig_settings.hair_custom_properties_icons',
         'rig_settings.hair_custom_properties_name_order',

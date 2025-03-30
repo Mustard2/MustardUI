@@ -573,10 +573,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     extras_collection: bpy.props.PointerProperty(name="Extras Collection",
                                                  type=bpy.types.Collection,
                                                  poll=poll_collection_extras)
-    extras_collapse_enable: bpy.props.BoolProperty(default=False,
-                                                   name="Collapsable",
-                                                   description="Add a collapse button for Extras.\nExtras main icon "
-                                                               "will be removed")
     extras_collapse: bpy.props.BoolProperty(default=False, name="")
 
     # ------------------------------------------------------------------------
