@@ -37,7 +37,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
     url_MustardUI = "https://github.com/Mustard2/MustardUI"
     url_MustardUI_ReportBug = "https://github.com/Mustard2/MustardUI/issues"
-    url_MustardUI_Tutorial = "https://github.com/Mustard2/MustardUI/wiki/Tutorial"
+    url_MustardUI_Tutorial = "https://github.com/Mustard2/MustardUI/wiki/User-Guide"
 
     def draw(self, context):
         layout = self.layout
@@ -59,7 +59,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
         row = layout.row(align=True)
         row.operator('mustardui.openlink', text="GitHub", icon="URL").url = self.url_MustardUI
-        row.operator('mustardui.openlink', text="Tutorial",
+        row.operator('mustardui.openlink', text="User Guide",
                      icon="URL").url = self.url_MustardUI_Tutorial
         row.operator('mustardui.openlink', text="Report Bug",
                      icon="URL").url = self.url_MustardUI_ReportBug
