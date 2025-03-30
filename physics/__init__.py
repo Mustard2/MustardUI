@@ -7,6 +7,7 @@ from . import ops_add
 from . import ops_remove
 from . import ops_rebind
 from . import ui_list
+from . import ui_list_menu
 from . import ops_hair_particles
 
 
@@ -20,11 +21,13 @@ def register():
     ops_remove.register()
     ops_rebind.register()
     ui_list.register()
+    ui_list_menu.register()
     ops_hair_particles.register()
 
 
 def unregister():
     ops_hair_particles.unregister()
+    ui_list_menu.unregister()
     ui_list.unregister()
     ops_rebind.unregister()
     ops_remove.unregister()

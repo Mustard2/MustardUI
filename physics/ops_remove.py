@@ -14,7 +14,7 @@ class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         uilist = physics_settings.items
-        index = context.scene.mustardui_physics_items_uilist_index
+        index = arm.mustardui_physics_items_uilist_index
 
         if len(uilist) <= index:
             return {'FINISHED'}
@@ -23,7 +23,7 @@ class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
         uilist.remove(index)
 
         index = min(max(0, index - 1), len(uilist) - 1)
-        context.scene.mustardui_physics_items_uilist_index = index
+        arm.mustardui_physics_items_uilist_index = index
 
         arm.update_tag()
 

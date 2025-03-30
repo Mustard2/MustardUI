@@ -30,7 +30,7 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         physics_settings = obj.MustardUI_PhysicsSettings
         uilist = physics_settings.items
-        index = context.scene.mustardui_physics_items_uilist_index
+        index = obj.mustardui_physics_items_uilist_index
 
         if len(uilist) <= index:
             return {'FINISHED'}
@@ -38,7 +38,7 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
         neighbour = index + (-1 if self.direction == 'UP' else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
-        context.scene.mustardui_physics_items_uilist_index = index
+        obj.mustardui_physics_items_uilist_index = index
 
         return {'FINISHED'}
 
@@ -84,11 +84,11 @@ def register():
     bpy.utils.register_class(MUSTARDUI_UL_PhysicsItems_UIList)
     bpy.utils.register_class(MustardUI_PhysicsItems_UIList_Switch)
 
-    bpy.types.Scene.mustardui_physics_items_uilist_index = IntProperty(name="", default=0)
+    bpy.types.Armature.mustardui_physics_items_uilist_index = IntProperty(name="", default=0)
 
 
 def unregister():
-    del bpy.types.Scene.mustardui_physics_items_uilist_index
+    del bpy.types.Armature.mustardui_physics_items_uilist_index
 
     bpy.utils.unregister_class(MustardUI_PhysicsItems_UIList_Switch)
     bpy.utils.unregister_class(MUSTARDUI_UL_PhysicsItems_UIList)
