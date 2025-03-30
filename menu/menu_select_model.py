@@ -25,8 +25,12 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         for armature in [x for x in bpy.data.armatures if x.MustardUI_created]:
-            layout.operator('mustardui.switchmodel', text=armature.MustardUI_RigSettings.model_name,
-                            depress=armature == settings.panel_model_selection_armature).model_to_switch = armature.name
+            row = layout.row(align=True)
+            row.operator('mustardui.switchmodel', text=armature.MustardUI_RigSettings.model_name,
+                         depress=armature == settings.panel_model_selection_armature,
+                         icon="ERROR" if not armature.MustardUI_RigSettings.model_armature_object.name in bpy.context.scene.objects else "BLANK1").model_to_switch = armature.name
+            if not (armature.MustardUI_RigSettings.model_armature_object.name in bpy.context.scene.objects):
+                row.operator('mustardui.remove_armature', text="", icon="X").armature = armature.name
 
 
 def register():
