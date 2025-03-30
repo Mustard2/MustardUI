@@ -18,7 +18,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
     if otype < 0 or otype > 3:
         return
 
-    if level > 3:
+    if level > rig_settings.outfits_max_hierarchy_level:
         return
 
     col = layout.column(align=True)

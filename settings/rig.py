@@ -286,6 +286,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                                "type on the Body",
                                                                    name="Normals Auto Smooth properties")
 
+    outfits_max_hierarchy_level: bpy.props.IntProperty(default=3)
+
     # OUTFITS FUNCTIONS AND DATA
 
     # Function to create an array of tuples for Outfit enum collections
