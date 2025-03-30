@@ -52,7 +52,10 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         # row2.prop(self, "experimental")
 
         if self.debug:
+            layout.separator()
+            layout.operator('mustardui.debug_log', text="Create Log file", icon="FILE_TEXT")
             layout.operator('mustardui.fix_missing_ui', icon="MOD_BUILD")
+            layout.separator()
 
         row = layout.row(align=True)
         row.operator('mustardui.openlink', text="GitHub", icon="URL").url = self.url_MustardUI

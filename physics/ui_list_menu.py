@@ -12,7 +12,12 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
             layout.label(text="Object not found!", icon="ERROR")
             return
 
-        layout.label(text=item.object.name, icon=mustardui_physics_item_type_dict[item.type])
+        res, obj = mustardui_active_object(bpy.context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
+
+        name = item.object.name
+        name = name if not rig_settings.model_MustardUI_naming_convention else name[len(rig_settings.model_name)+1:]
+        layout.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
         row = layout.row(align=True)
         row.prop(item, 'enable', text="", icon="PHYSICS")
         if item.type in ["CAGE", "SINGLE_ITEM"]:

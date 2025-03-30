@@ -27,14 +27,9 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        if len(arm.MustardUI_Links) > 0:
-
-            box = layout.box()
-            box.label(text="Creator Links", icon="BOOKMARKS")
-
-            for link in arm.MustardUI_Links:
-                if link != '':
-                    box.operator('mustardui.openlink', text=link.name, icon="URL").url = link.url
+        for link in arm.MustardUI_Links:
+            if link != '':
+                layout.operator('mustardui.openlink', text=link.name, icon="URL").url = link.url
 
 
 def register():

@@ -4,7 +4,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_ViewportModelSelection(bpy.types.Operator):
-    """Turn on/off Viewport Model Selection"""
+    """Turn on/off Viewport Model Selection.\nWhen active, the model associated to the selected Armature is shown in the UI.\nWhen disabled, the model can be selected from the Model Selection panel."""
     bl_idname = "mustardui.viewportmodelselection"
     bl_label = "Viewport Model Selection"
     bl_options = {'UNDO'}
