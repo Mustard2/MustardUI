@@ -4,20 +4,6 @@ from .settings_item import MustardUI_PhysicsItem, mustardui_physics_item_type_di
 from .update_enable import enable_physics_update
 
 
-def items_list_make(self, context):
-    items = []
-    i = 0
-
-    for el in self.items:
-        if el.object is None:
-            continue
-        if hasattr(el.object, 'name') and el.type in ["CAGE", "COLLISION", "SINGLE_ITEM", "BONES_DRIVER"]:
-            items.append((str(i), el.object.name, el.object.name, mustardui_physics_item_type_dict[el.type], i))
-        i += 1
-
-    return items
-
-
 def update_frame(self, context):
 
     # Rigid Body
@@ -64,10 +50,6 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
                                            name="",
                                            description="Enable Physics for the current model",
                                            update=enable_physics_update)
-
-    # List of Physics Items
-    items_ui_list: bpy.props.EnumProperty(name="Items List",
-                                          items=items_list_make)
 
     # Bake settings
     frame_start: bpy.props.IntProperty(default=1, min=0, max=1048574,
