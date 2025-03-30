@@ -69,16 +69,6 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
             mustardui_custom_properties_print(arm, settings, custom_properties_obj,
                                               row2, rig_settings.outfit_custom_properties_icons)
 
-    if rig_settings.outfit_custom_properties_name_order:
-        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                        x.outfit_piece == obj and not x.hidden and (
-                                            not x.advanced if not settings.advanced else True)],
-                                       key=lambda x: x.name)
-    else:
-        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                 x.outfit_piece == obj and not x.hidden and (
-                                     not x.advanced if not settings.advanced else True)]
-
     if otype != 2:
         row.prop(obj, "MustardUI_outfit_lock", toggle=True,
                  icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
