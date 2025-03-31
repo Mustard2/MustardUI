@@ -26,7 +26,6 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
     def draw(self, context):
 
         layout = self.layout
-        scene = context.scene
 
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -43,7 +42,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
 
             row = box.row()
             row.template_list("MUSTARDUI_UL_PhysicsItems_UIList", "The_List", physics_settings,
-                              "items", scene,
+                              "items", arm,
                               "mustardui_physics_items_uilist_index")
             col = row.column()
             col2 = col.column(align=True)
@@ -54,8 +53,9 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             col.separator()
             col.operator("mustardui.physics_item_remove", text="", icon="X")
 
-            if scene.mustardui_physics_items_uilist_index > -1:
-                pi = physics_settings.items[scene.mustardui_physics_items_uilist_index]
+            index = arm.mustardui_physics_items_uilist_index
+            if index > -1:
+                pi = physics_settings.items[index]
 
                 col = box.column()
                 row = col.row()

@@ -18,6 +18,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                                                                      "custom properties found with this tool")
     smartcheck_outfits: bpy.props.BoolProperty(name="Outfits", default=True)
     smartcheck_armature: bpy.props.BoolProperty(name="Armature", default=True)
+    smartcheck_settings: bpy.props.BoolProperty(name="Global Settings", default=True)
 
     @classmethod
     def poll(cls, context):
@@ -99,11 +100,107 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         else:
             print('\nMustardUI - Smart Check - Extras collection already defined. Skipping this part.')
 
-        # TODO: Smart Check armature presets
-        # Waiting for the addons below to provide Blender 4.0 versions to generate the presets
-
         if self.smartcheck_armature:
             bpy.ops.mustardui.armature_smartcheck()
+
+        if self.smartcheck_settings:
+            if addon_prefs.debug:
+                print('\nMustardUI - Smart Check - Searching for Global Settings to enable.')
+
+            # Body
+            if rig_settings.model_body is not None:
+                rig_settings.body_enable_subdiv = False
+                rig_settings.body_enable_smoothcorr = False
+                rig_settings.body_enable_solidify = False
+                rig_settings.body_enable_norm_autosmooth = False
+
+                for m in rig_settings.model_body.modifiers:
+                    if m.type == "SUBSURF":
+                        rig_settings.body_enable_subdiv = True
+                    elif m.type == "CORRECTIVE_SMOOTH":
+                        rig_settings.body_enable_smoothcorr = True
+                    elif m.type == "SOLIDIFY":
+                        rig_settings.body_enable_solidify = True
+                    elif m.type == "NODES":
+                        if m.node_group is None:
+                            continue
+                        if m.node_group.name != "Smooth by Angle":
+                            continue
+                        rig_settings.body_enable_norm_autosmooth = True
+            else:
+                if addon_prefs.debug:
+                    print('\nMustardUI - Smart Check - Could not check Body Global Properties.')
+
+            # Outfits
+            objects = []
+            outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
+            for c in outfit_colls:
+                for obj in [x for x in c.objects if x.type == "MESH"]:
+                    objects.append(obj)
+            if rig_settings.extras_collection is not None:
+                for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+                    objects.append(obj)
+
+            rig_settings.outfits_enable_global_subsurface = False
+            rig_settings.outfits_enable_global_smoothcorrection = False
+            rig_settings.outfits_enable_global_surfacedeform = False
+            rig_settings.outfits_enable_global_shrinkwrap = False
+            rig_settings.outfits_enable_global_mask = False
+            rig_settings.outfits_enable_global_solidify = False
+            rig_settings.outfits_enable_global_triangulate = False
+            rig_settings.outfits_enable_global_normalautosmooth = False
+
+            for obj in [x for x in objects if x is not None]:
+                for m in obj.modifiers:
+                    if m.type == "SUBSURF":
+                        rig_settings.outfits_enable_global_subsurface = True
+                    elif m.type == "CORRECTIVE_SMOOTH":
+                        rig_settings.outfits_enable_global_smoothcorrection = True
+                    elif m.type == "SURFACE_DEFORM":
+                        rig_settings.outfits_enable_global_surfacedeform = True
+                    elif m.type == "SHRINKWRAP":
+                        rig_settings.outfits_enable_global_shrinkwrap = True
+                    elif m.type == "MASK":
+                        rig_settings.outfits_enable_global_mask = True
+                    elif m.type == "SOLIDIFY":
+                        rig_settings.outfits_enable_global_solidify = True
+                    elif m.type == "TRIANGULATE":
+                        rig_settings.outfits_enable_global_triangulate = True
+                    elif m.type == "NODES":
+                        if m.node_group is None:
+                            continue
+                        if m.node_group.name != "Smooth by Angle":
+                            continue
+                        rig_settings.outfits_enable_global_normalautosmooth = True
+
+            # Hair
+            if rig_settings.hair_collection is not None:
+                objects = []
+                for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+                    objects.append(obj)
+
+                rig_settings.hair_enable_global_subsurface = False
+                rig_settings.hair_enable_global_smoothcorrection = False
+                rig_settings.hair_enable_global_solidify = False
+                rig_settings.hair_enable_global_particles = False
+                rig_settings.hair_enable_global_normalautosmooth = False
+
+                for obj in [x for x in objects if x is not None]:
+                    for m in obj.modifiers:
+                        if m.type == "SUBSURF":
+                            rig_settings.hair_enable_global_subsurface = True
+                        elif m.type == "CORRECTIVE_SMOOTH":
+                            rig_settings.hair_enable_global_smoothcorrection = True
+                        elif m.type == "SOLIDIFY":
+                            rig_settings.hair_enable_global_solidify = True
+                        elif m.type == "PARTICLE_SYSTEM":
+                            rig_settings.hair_enable_global_particles = True
+                        elif m.type == "NODES":
+                            if m.node_group is None:
+                                continue
+                            if m.node_group.name != "Smooth by Angle":
+                                continue
+                            rig_settings.hair_enable_global_normalautosmooth = True
 
         # End of debug messages
         if addon_prefs.debug:
@@ -122,11 +219,13 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         layout = self.layout
 
         box = layout.box()
-        box.label(text="Categories to Smart Check", icon="VIEWZOOM")
+        box.label(text="Categories to Smart Check")
         col = box.column()
-        col.prop(self, 'smartcheck_custom_properties')
         col.prop(self, 'smartcheck_outfits')
         col.prop(self, 'smartcheck_armature')
+        col.separator()
+        col.prop(self, 'smartcheck_settings')
+        col.prop(self, 'smartcheck_custom_properties')
 
 
 def register():

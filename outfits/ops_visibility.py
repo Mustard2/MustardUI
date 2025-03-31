@@ -10,6 +10,11 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     obj: bpy.props.StringProperty()
+    shift: bpy.props.BoolProperty()
+
+    def invoke(self, context, event):
+        self.shift = event.shift
+        return self.execute(context)
 
     def execute(self, context):
 
@@ -18,17 +23,19 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         armature_settings = arm.MustardUI_ArmatureSettings
         outfit_cp = arm.MustardUI_CustomPropertiesOutfit
 
-        context.scene.objects[self.obj].hide_viewport = not context.scene.objects[self.obj].hide_viewport
-        context.scene.objects[self.obj].hide_render = context.scene.objects[self.obj].hide_viewport
-        context.scene.objects[self.obj].MustardUI_outfit_visibility = context.scene.objects[self.obj].hide_viewport
+        object = context.scene.objects[self.obj]
+
+        object.hide_viewport = not context.scene.objects[self.obj].hide_viewport
+        object.hide_render = context.scene.objects[self.obj].hide_viewport
+        object.MustardUI_outfit_visibility = context.scene.objects[self.obj].hide_viewport
 
         # Enable armature modifier
-        for modifier in context.scene.objects[self.obj].modifiers:
+        for modifier in object.modifiers:
             if modifier.type == "ARMATURE":
-                modifier.show_viewport = not context.scene.objects[self.obj].MustardUI_outfit_visibility
+                modifier.show_viewport = not object.MustardUI_outfit_visibility
 
         # Update values of custom properties
-        outfit_cp = [x for x in outfit_cp if context.scene.objects[self.obj] == x.outfit_piece and (
+        outfit_cp = [x for x in outfit_cp if object == x.outfit_piece and (
                 x.outfit_enable_on_switch or x.outfit_disable_on_switch)]
 
         for cp in outfit_cp:
@@ -53,8 +60,8 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         if rig_settings.model_body:
             for modifier in rig_settings.model_body.modifiers:
                 if modifier.type == "MASK" and self.obj in modifier.name and rig_settings.outfits_global_mask:
-                    modifier.show_viewport = not context.scene.objects[self.obj].hide_viewport
-                    modifier.show_render = not context.scene.objects[self.obj].hide_viewport
+                    modifier.show_viewport = not object.hide_viewport
+                    modifier.show_render = not object.hide_viewport
         else:
             self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
 
@@ -72,6 +79,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         if rig_settings.outfits_update_tag_on_switch:
             for obju in context.scene.objects:
                 obju.update_tag()
+
+        if self.shift:
+            for c in object.children:
+                bpy.ops.mustardui.object_visibility(obj = c.name)
 
         return {'FINISHED'}
 

@@ -84,7 +84,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
                         row.prop(obj, "MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_additional_options_show:
-                            mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, box,
+                            mustardui_custom_properties_print(arm, settings, custom_properties_obj, box,
                                                               rig_settings.hair_custom_properties_icons)
 
                     mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],

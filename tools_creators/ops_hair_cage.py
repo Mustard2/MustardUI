@@ -588,9 +588,8 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
             layout.prop(self, 'attempt_tight_bind')
 
         layout.separator()
-        box = layout.box()
-        box.label(text="UI", icon="MENU_PANEL")
-        box.prop(self, 'add_to_panel')
+
+        layout.prop(self, 'add_to_panel')
 
     def invoke(self, context, event):
         bpy.ops.object.mode_set('INVOKE_DEFAULT', mode='OBJECT')

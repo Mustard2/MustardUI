@@ -10,6 +10,7 @@ from . import menu_warnings
 
 # Configure panel
 from . import menu_configure
+from . import menu_developement
 # Sub-panels
 from . import menu_configure_body
 from . import menu_configure_outfit
@@ -38,6 +39,7 @@ from . import menu_links
 
 def register():
     menu_select_model.register()
+    menu_developement.register()
     menu_warnings.register()
     menu_configure.register()
     menu_configure_body.register()
@@ -89,4 +91,5 @@ def unregister():
     menu_configure_body.unregister()
     menu_configure.unregister()
     menu_warnings.unregister()
+    menu_developement.unregister()
     menu_select_model.unregister()

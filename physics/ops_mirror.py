@@ -75,6 +75,10 @@ def mirror_cloth(obj, obj_mirror) -> bool:
     collisions_mirror.collision_quality = collisions.collision_quality
     collisions_mirror.distance_min = collisions.distance_min
     collisions_mirror.impulse_clamp = collisions.impulse_clamp
+    try:
+        collisions_mirror.collection = collisions.collection
+    except:
+        pass
 
     collisions_mirror.use_self_collision = collisions.use_self_collision
     collisions_mirror.self_friction = collisions.self_friction

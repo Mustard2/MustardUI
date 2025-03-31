@@ -48,7 +48,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row()
             row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
-            row.operator("Mustardui.outfits_smartcheck", text="", icon="VIEWZOOM")
+            row.operator("Mustardui.outfits_smartcheck", text="", icon="SHADERFX")
 
             # Outfits list panel
             box = box.box()
@@ -119,7 +119,6 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         # Extras list
         box.label(text="Extras", icon="PLUS")
         box.prop(rig_settings, "extras_collection", text="")
-        box.prop(rig_settings, "extras_collapse_enable")
 
 
 def register():

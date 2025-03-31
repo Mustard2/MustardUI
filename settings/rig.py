@@ -286,6 +286,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                                "type on the Body",
                                                                    name="Normals Auto Smooth properties")
 
+    outfits_max_hierarchy_level: bpy.props.IntProperty(default=3)
+
     # OUTFITS FUNCTIONS AND DATA
 
     # Function to create an array of tuples for Outfit enum collections
@@ -573,10 +575,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     extras_collection: bpy.props.PointerProperty(name="Extras Collection",
                                                  type=bpy.types.Collection,
                                                  poll=poll_collection_extras)
-    extras_collapse_enable: bpy.props.BoolProperty(default=False,
-                                                   name="Collapsable",
-                                                   description="Add a collapse button for Extras.\nExtras main icon "
-                                                               "will be removed")
     extras_collapse: bpy.props.BoolProperty(default=False, name="")
 
     # ------------------------------------------------------------------------

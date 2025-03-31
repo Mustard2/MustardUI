@@ -9,7 +9,6 @@ from ..physics.settings_item import mustardui_physics_item_type_dict
 
 
 def cloth_panel(layout, pi, mod):
-
     if ui_collapse_prop(layout, pi, 'collapse_cloth', "Cloth settings", icon="MOD_CLOTH"):
 
         cloth = mod.settings
@@ -75,6 +74,8 @@ def cloth_panel(layout, pi, mod):
             col = box.column(align=True)
             col.prop(collisions, "distance_min", slider=True, text="Distance")
             col.prop(collisions, "impulse_clamp")
+            col = box.column(align=True)
+            col.prop(collisions, "collection", text="Collection")
 
         row = box.row(align=True)
         collisions = mod.collision_settings
@@ -95,7 +96,6 @@ def cloth_panel(layout, pi, mod):
 
 
 def soft_panel(layout, pi, mod):
-
     if ui_collapse_prop(layout, pi, 'collapse_softbody', "Soft Body settings", icon="MOD_SOFT"):
 
         softbody = mod.settings
@@ -118,9 +118,7 @@ def soft_panel(layout, pi, mod):
 
 
 def collision_panel(layout, pi, mod):
-
     if ui_collapse_prop(layout, pi, 'collapse_collisions', "Collisions settings", icon="MOD_PHYSICS"):
-
         settings = pi.object.collision
 
         box = layout.box()
@@ -146,7 +144,8 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
-                return res and len([x for x in physics_settings.items if x.object])
+                return res and physics_settings.enable_ui and len([x for x in physics_settings.items if x.object])
+
         return res
 
     def draw_header(self, context):
@@ -166,85 +165,48 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         layout.enabled = physics_settings.enable_physics
 
         box = layout.box()
-        box.label(text="Physics Items", icon="OUTLINER_OB_GROUP_INSTANCE")
+        row = box.row(align=True)
+        row.label(text="Physics Items", icon="OUTLINER_OB_GROUP_INSTANCE")
+        row.operator("mustardui.physics_rebind", text="", icon="FILE_REFRESH")
 
-        for pi in physics_settings.items:
+        box.template_list("MUSTARDUI_UL_PhysicsItems_UIList_Menu", "The_List", physics_settings,
+                          "items", obj,
+                          "mustardui_physics_items_uilist_index")
 
-            if not pi.object:
-                continue
+        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
-            row = box.row(align=True)
-            row.prop(pi, 'enable', text=pi.object.name, icon=mustardui_physics_item_type_dict[pi.type])
-            if pi.type in ["CAGE", "SINGLE_ITEM"]:
-                row.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
-            row.prop(pi.object, 'hide_viewport', text="")
-
-
-class PANEL_PT_MustardUI_Physics_Items(MainPanel, bpy.types.Panel):
-    bl_label = "Items Settings"
-    bl_parent_id = "PANEL_PT_MustardUI_Tools_Physics"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    @classmethod
-    def poll(cls, context):
-        if check_old_UI():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
-        if obj:
-            physics_settings = obj.MustardUI_PhysicsSettings
-            if res:
-                return res and len([x for x in physics_settings.items if x.object])
-        return res
-
-    def draw(self, context):
-
-        poll, obj = mustardui_active_object(context, config=0)
-        physics_settings = obj.MustardUI_PhysicsSettings
-
-        layout = self.layout
-
-        layout.enabled = physics_settings.enable_physics
-
-        row = layout.row(align=True)
-        row.prop(physics_settings, 'items_ui_list', text="")
-
-        pi = physics_settings.items[int(physics_settings.items_ui_list)]
         if pi.object and pi.type in ["CAGE", "COLLISION", "SINGLE_ITEM", "BONES_DRIVER"]:
-            row.prop(pi, 'enable', text="", icon="PHYSICS")
-            row.prop(pi.object, 'hide_viewport', text="")
+            if pi.type == "BONES_DRIVER":
+                row = box.row()
+                row.enabled = pi.enable
+                row.prop(pi, 'bone_influence')
+            elif pi.type == "CAGE":
+                row = box.row()
+                row.enabled = pi.enable
+                row.prop(pi, 'cage_influence')
 
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
-                row = row.row()
-                row.enabled = False
                 items = [x for x in physics_settings.items if x.object]
                 for on in [x.object.name for x in items if x.object != pi.object]:
                     if check_mirror(pi.object.name, on, left=True) or check_mirror(pi.object.name, on, left=False):
-                        row.enabled = True
+                        row.enabled = pi.enable and True
                 row.operator("mustardui.physics_mirror", text="", icon="MOD_MIRROR").obj_name = pi.object.name
-
-            if pi.type == "BONES_DRIVER":
-                row = layout.row()
-                row.prop(pi, 'bone_influence')
-            elif pi.type == "CAGE":
-                row = layout.row()
-                row.prop(pi, 'cage_influence')
 
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
                 for mod in pi.object.modifiers:
                     if mod.type in ["CLOTH"]:
-                        col = layout.column()
+                        col = box.column()
                         col.enabled = pi.enable
                         cloth_panel(col, pi, mod)
 
                     if mod.type in ["SOFT_BODY"]:
-                        col = layout.column()
+                        col = box.column()
                         col.enabled = pi.enable
                         soft_panel(col, pi, mod)
             elif pi.type == "COLLISION":
                 for mod in pi.object.modifiers:
                     if mod.type in ["COLLISION"]:
-                        col = layout.column()
+                        col = box.column()
                         col.enabled = pi.enable
                         collision_panel(col, pi, mod)
         else:
@@ -291,11 +253,9 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Physics)
-    bpy.utils.register_class(PANEL_PT_MustardUI_Physics_Items)
     bpy.utils.register_class(PANEL_PT_MustardUI_Physics_Cache)
 
 
 def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics_Cache)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics_Items)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics)

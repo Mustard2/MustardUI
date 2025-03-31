@@ -35,10 +35,14 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                                            "experimental features might not work properly yet, or be changed/removed "
                                            "from future versions")
 
+    url_MustardUI = "https://github.com/Mustard2/MustardUI"
+    url_MustardUI_ReportBug = "https://github.com/Mustard2/MustardUI/issues"
+    url_MustardUI_Tutorial = "https://github.com/Mustard2/MustardUI/wiki/User-Guide"
+
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.prop(self, "developer")
+        col.prop(self, "developer", text="Developer Tools (for Model creators)")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
@@ -48,9 +52,17 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         # row2.prop(self, "experimental")
 
         if self.debug:
-            box = layout.box()
-            box.label(text="Debug", icon="SEQ_STRIP_META")
-            box.operator('mustardui.fix_missing_ui', icon="MOD_BUILD")
+            layout.separator()
+            layout.operator('mustardui.debug_log', text="Create Log file", icon="FILE_TEXT")
+            layout.operator('mustardui.fix_missing_ui', icon="MOD_BUILD")
+            layout.separator()
+
+        row = layout.row(align=True)
+        row.operator('mustardui.openlink', text="GitHub", icon="URL").url = self.url_MustardUI
+        row.operator('mustardui.openlink', text="User Guide",
+                     icon="URL").url = self.url_MustardUI_Tutorial
+        row.operator('mustardui.openlink', text="Report Bug",
+                     icon="URL").url = self.url_MustardUI_ReportBug
 
 
 def register():

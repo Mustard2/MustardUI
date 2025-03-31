@@ -23,14 +23,19 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
+        if rig_settings.model_armature_object is None:
+            self.report({'WARNING'},
+                        'MustardUI - An error occurred while using Armature Smart Check. '
+                        'End Configuration, re-enter Configuration mode and re-try')
+
         found_type = ""
         found_colls = 0
 
         # Standard armature setup
-        # Format: name, advanced, icon, default
-        preset_Mustard_models = []
+        # Format: Collection name, name to change, icon, default
+        preset_mustard_models = []
 
-        # TODO: Implement Rigify and ARP SmartCheck
+        # TODO: Implement ARP SmartCheck
         #
         # if hasattr(obj, '[\"arp_updated\"]'):
         #     if settings.debug:
@@ -43,57 +48,62 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
         #                              ("Child Of - Ready", False),
         #                              ("Rigging - Ready", True)]
         #
-        # elif hasattr(obj, '[\"rig_id\"]'):
-        #     if settings.debug:
-        #         print('\nMustardUI - Smart Check - Found a Rigify rig.')
-        #     print('\nMustardUI - Smart Check - Setting layers for Rigify.')
-        #
-        #     preset_Mustard_models = [("Face", False),
-        #                              ("Face (details)", False),
-        #                              ("Torso", False),
-        #                              ("Torso (Tweak)", False),
-        #                              ("Fingers", False),
-        #                              ("Fingers (Tweak)", False),
-        #                              ("Arm.L (IK)", False),
-        #                              ("Arm.R (IK)", False),
-        #                              ("Arm.L (FK)", False),
-        #                              ("Arm.R (FK)", False),
-        #                              ("Arm.L (Tweak)", False),
-        #                              ("Arm.R (Tweak)", False),
-        #                              ("Leg.L (IK)", False),
-        #                              ("Leg.R (IK)", False),
-        #                              ("Leg.L (FK)", False),
-        #                              ("Leg.R (FK)", False),
-        #                              ("Leg.L (Tweak)", False),
-        #                              ("Leg.R (Tweak)", False),
-        #                              ("Root", False)]
-        #
+        if hasattr(obj, '[\"rig_id\"]'):
+            if addon_prefs.debug:
+                print('\nMustardUI - Smart Check - Found a Rigify rig, setting layers for Rigify.')
+
+            # Collection name, name to change, icon, default
+            preset_mustard_models = [("Face", "", "USER", True),
+                                     ("Face (Primary)", "", "USER", False),
+                                     ("Torso", "", "", True),
+                                     ("Torso (Tweak)", "", "", False),
+                                     ("Fingers", "", "", True),
+                                     ("Fingers (Detail)", "", "", False),
+                                     ("Arm.L (IK)", "IK Arm Left", "", True),
+                                     ("Arm.R (IK)", "IK Arm Right", "", True),
+                                     ("Arm.L (FK)", "FK Arm Left", "", False),
+                                     ("Arm.R (FK)", "FK Arm Right", "", False),
+                                     ("Arm.L (Tweak)", "Tweak Arm Left", "", False),
+                                     ("Arm.R (Tweak)", "Tweak Arm Right", "", False),
+                                     ("Leg.L (IK)", "IK Leg Left", "", True),
+                                     ("Leg.R (IK)", "IK Leg Right", "", True),
+                                     ("Leg.L (FK)", "FK Leg Left", "", False),
+                                     ("Leg.R (FK)", "FK Leg Right", "", False),
+                                     ("Leg.L (Tweak)", "Tweak Leg Left", "", False),
+                                     ("Leg.R (Tweak)", "Tweak Leg Right", "", False),
+                                     ("Root", "", "", True)]
+
+            # Mirror option enabled
+            obj.MustardUI_ArmatureSettings.mirror = True
+
+            found_type = "Rigify"
+
         # MHX Rig
-        if rig_settings.model_armature_object is not None and hasattr(rig_settings.model_armature_object,
-                                                                      '[\"MhxRig\"]'):
+        elif hasattr(rig_settings.model_armature_object, '[\"MhxRig\"]'):
             if addon_prefs.debug:
                 print('\nMustardUI - Smart Check - Found a MHX rig, setting layers for MHX.')
 
-            preset_Mustard_models = [("Head", False, "USER", True),
-                                     ("Face", False, "USER", False),
-                                     ("Spine", False, "", True),
-                                     ("Spine 2", False, "", True),
-                                     ("IK Arm Left", False, "", True),
-                                     ("IK Arm Right", False, "", True),
-                                     ("FK Arm Left", False, "", False),
-                                     ("FK Arm Right", False, "", False),
-                                     ("Hand Left", False, "", False),
-                                     ("Hand Right", False, "", False),
-                                     ("Fingers Left", False, "", False),
-                                     ("Fingers Right", False, "", False),
-                                     ("IK Leg Left", False, "", True),
-                                     ("IK Leg Right", False, "", True),
-                                     ("FK Leg Left", False, "", False),
-                                     ("FK Leg Right", False, "", False),
-                                     ("Toes Left", False, "", False),
-                                     ("Toes Right", False, "", False),
-                                     ("Tweak", False, "", False),
-                                     ("Root", False, "", True)]
+            # Collection name, name to change, icon, default
+            preset_mustard_models = [("Head", "", "USER", True),
+                                     ("Face", "", "USER", False),
+                                     ("Spine 2", "Spine", "", True),
+                                     ("Spine", "Spine Advanced", "", True),
+                                     ("IK Arm Left", "", "", True),
+                                     ("IK Arm Right", "", "", True),
+                                     ("FK Arm Left", "", "", False),
+                                     ("FK Arm Right", "", "", False),
+                                     ("Hand Left", "", "", False),
+                                     ("Hand Right", "", "", False),
+                                     ("Fingers Left", "", "", False),
+                                     ("Fingers Right", "", "", False),
+                                     ("IK Leg Left", "", "", True),
+                                     ("IK Leg Right", "", "", True),
+                                     ("FK Leg Left", "", "", False),
+                                     ("FK Leg Right", "", "", False),
+                                     ("Toes Left", "", "", False),
+                                     ("Toes Right", "", "", False),
+                                     ("Tweak", "", "", False),
+                                     ("Root", "", "", True)]
 
             # Mirror option enabled
             obj.MustardUI_ArmatureSettings.mirror = True
@@ -101,7 +111,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             found_type = "MHX"
 
         # Apply preset
-        if len(preset_Mustard_models) > 0:
+        if len(preset_mustard_models) > 0:
 
             obj.MustardUI_ArmatureSettings.mirror = True
 
@@ -110,9 +120,11 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                 coll.MustardUI_ArmatureBoneCollection.is_in_UI = False
 
             # Apply new preset
-            for preset in reversed(preset_Mustard_models):
+            for preset in reversed(preset_mustard_models):
                 for coll in obj.collections_all:
-                    if coll.name == preset[0]:
+                    if coll.name == preset[0] or coll.name == preset[1]:
+                        if preset[1] != "":
+                            coll.name = preset[1]
                         coll.MustardUI_ArmatureBoneCollection.is_in_UI = True
                         coll.MustardUI_ArmatureBoneCollection.default = preset[3]
                         if preset[2] != "":
@@ -125,8 +137,10 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
         # Check for Outfit/Hair/Extras switcher
         outfits = 0
         outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
-        outfit_colls.append(rig_settings.extras_collection)
-        outfit_colls.append(rig_settings.hair_collection)
+        if rig_settings.extras_collection is not None:
+            outfit_colls.append(rig_settings.extras_collection)
+        if rig_settings.hair_collection is not None:
+            outfit_colls.append(rig_settings.hair_collection)
         for coll in outfit_colls:
             for o in coll.objects:
                 for bcoll in obj.collections_all:
@@ -136,18 +150,22 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                         bcoll.MustardUI_ArmatureBoneCollection.outfit_switcher_collection = coll
                         bcoll.MustardUI_ArmatureBoneCollection.outfit_switcher_object = o
                         if addon_prefs.debug:
-                            print('\nMustardUI - Smart Check - Armature layer ' + bcoll.name + ' added as Outfit Switcher.')
+                            print(
+                                '\nMustardUI - Smart Check - Armature layer ' + bcoll.name + ' added as Outfit Switcher.')
                         outfits += 1
 
         if found_type != "" and not outfits:
             if found_colls > 0:
-                self.report({'INFO'}, f'MustardUI - Smart Check found {found_colls} collections in a \'{found_type}\' armature.')
+                self.report({'INFO'},
+                            f'MustardUI - Smart Check found {found_colls} collections in a \'{found_type}\' armature.')
             else:
-                self.report({'WARNING'}, f'MustardUI - Smart Check found a \'{found_type}\' armature but no viable collection.')
+                self.report({'WARNING'},
+                            f'MustardUI - Smart Check found a \'{found_type}\' armature but no viable collection.')
         elif outfits:
             self.report({'INFO'}, 'MustardUI - Outfits Switcher bone collections were added.')
         else:
-            self.report({'WARNING'}, 'MustardUI - Smart Check found no compatible armature. No collection has been added.')
+            self.report({'WARNING'},
+                        'MustardUI - Smart Check found no compatible armature. No collection has been added.')
 
         return {'FINISHED'}
 

@@ -21,12 +21,14 @@ class MustardUI_PhysicsAddItem(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         # Check if the item is already used as Extras, Hair or Outfit
-        if context.object in [x for x in rig_settings.extras_collection.objects]:
-            self.report({'ERROR'}, 'MustardUI - Object already added in Extras.')
-            return {'FINISHED'}
-        if context.object in [x for x in rig_settings.hair_collection.objects]:
-            self.report({'ERROR'}, 'MustardUI - Object already added in Hair.')
-            return {'FINISHED'}
+        if rig_settings.extras_collection is not None:
+            if context.object in [x for x in rig_settings.extras_collection.objects]:
+                self.report({'ERROR'}, 'MustardUI - Object already added in Extras.')
+                return {'FINISHED'}
+        if rig_settings.hair_collection is not None:
+            if context.object in [x for x in rig_settings.hair_collection.objects]:
+                self.report({'ERROR'}, 'MustardUI - Object already added in Hair.')
+                return {'FINISHED'}
         for coll in [x.collection for x in rig_settings.outfits_collections]:
             if context.object in [x for x in coll.objects]:
                 self.report({'ERROR'}, 'MustardUI - Object already added in Outfits.')

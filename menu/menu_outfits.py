@@ -1,9 +1,81 @@
 import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
+from ..misc.ui_collapse import ui_collapse_prop
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from .misc import *
+
+
+def extract_items(collection, subcollections):
+    items = [x for x in (collection.all_objects if subcollections else collection.objects)]
+    return [x for x in items if x.parent is None or x.parent not in items]
+
+
+# Type: 0 - Standrd, 1 - Locked Objects, 2 - Extras
+def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0):
+
+    if otype < 0 or otype > 3:
+        return
+
+    if level > rig_settings.outfits_max_hierarchy_level:
+        return
+
+    col = layout.column(align=True)
+    row = col.row(align=True)
+    for lvl in range(level):
+        row.label(text="", icon="BLANK1")
+
+    collapse = False
+    if obj.children:
+        collapse = not ui_collapse_prop(row, obj, 'MustardUI_outfit_collapse_children', "", icon="",
+                                        align=False, use_layout=True, emboss=True, invert_checkbox=True)
+
+    if rig_settings.model_MustardUI_naming_convention:
+        if otype == 0:
+            coll_name = rig_settings.outfits_list+' - '
+        elif otype == 1:
+            coll_name = rig_settings.model_name+' '
+        else:
+            coll_name = rig_settings.extras_collection.name+' - '
+        row.operator("mustardui.object_visibility",
+                     text=obj.name[len(coll_name):],
+                     icon='OUTLINER_OB_' + obj.type, depress=not obj.hide_viewport).obj = obj.name
+    else:
+        row.operator("mustardui.object_visibility", text=obj.name, icon='OUTLINER_OB_' + obj.type,
+                     depress=not obj.hide_viewport).obj = obj.name
+
+    # Outfit custom properties
+    co_coll = None
+    if otype == 0:
+        co_coll = bpy.data.collections[rig_settings.outfits_list]
+    elif otype == 2:
+        co_coll = rig_settings.extras_collection
+
+    if rig_settings.outfit_custom_properties_name_order:
+        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
+                                        (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden],
+                                       key=lambda x: x.name)
+    else:
+        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
+                                 (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden]
+
+    if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
+        row.prop(obj, "MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
+        if obj.MustardUI_additional_options_show:
+            row2 = col.row(align=True)
+            for lvl in range(level):
+                row2.label(text="", icon="BLANK1")
+            mustardui_custom_properties_print(arm, settings, custom_properties_obj,
+                                              row2, rig_settings.outfit_custom_properties_icons)
+
+    if otype != 2:
+        row.prop(obj, "MustardUI_outfit_lock", toggle=True,
+                 icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
+
+    if not collapse:
+        for c in obj.children:
+            draw_outfit_piece(layout, c, arm, rig_settings, settings, otype, level + 1)
 
 
 class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
@@ -55,7 +127,8 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
             if rig_settings.outfits_list != "Nude":
 
-                items = bpy.data.collections[rig_settings.outfits_list].all_objects if rig_settings.outfit_config_subcollections else bpy.data.collections[rig_settings.outfits_list].objects
+                collection = bpy.data.collections[rig_settings.outfits_list]
+                items = extract_items(collection, rig_settings.outfit_config_subcollections)
 
                 if len(items) > 0:
 
@@ -76,85 +149,42 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         row.prop(rig_settings, "outfit_global_custom_properties_collapse", text="", toggle=True,
                                  icon="PREFERENCES")
                         if rig_settings.outfit_global_custom_properties_collapse:
-                            mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties, box,
+                            mustardui_custom_properties_print(arm, settings, custom_properties, box,
                                                               rig_settings.outfit_custom_properties_icons)
 
                     for obj in sorted(items, key=lambda x: x.name):
-
-                        col = box.column(align=True)
-                        row = col.row(align=True)
-
-                        if rig_settings.model_MustardUI_naming_convention:
-                            row.operator("mustardui.object_visibility",
-                                         text=obj.name[len(rig_settings.outfits_list + ' - '):],
-                                         icon='OUTLINER_OB_' + obj.type, depress=not obj.hide_viewport).obj = obj.name
-                        else:
-                            row.operator("mustardui.object_visibility", text=obj.name, icon='OUTLINER_OB_' + obj.type,
-                                         depress=not obj.hide_viewport).obj = obj.name
-
-                        # Outfit custom properties
-                        if rig_settings.outfit_custom_properties_name_order:
-                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                                            x.outfit == bpy.data.collections[
-                                                                rig_settings.outfits_list] and x.outfit_piece == obj and not x.hidden],
-                                                           key=lambda x: x.name)
-                        else:
-                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                                     x.outfit == bpy.data.collections[
-                                                         rig_settings.outfits_list] and x.outfit_piece == obj and not x.hidden]
-
-                        if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
-                            row.prop(obj, "MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
-                            if obj.MustardUI_additional_options_show:
-                                mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj,
-                                                                  col, rig_settings.outfit_custom_properties_icons)
-
-                        row.prop(obj, "MustardUI_outfit_lock", toggle=True,
-                                 icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
+                        draw_outfit_piece(box, obj, arm, rig_settings, settings, 0, 0)
 
                 else:
                     box.label(text="This Collection seems empty", icon="ERROR")
 
-            # Locked objects list
+            # Locked objects
             locked_objects = []
             for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
                 items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
                 for obj in items:
-                    if obj.MustardUI_outfit_lock:
+                    if obj.MustardUI_outfit_lock and obj.parent not in locked_objects:
                         locked_objects.append(obj)
+
             if len(locked_objects) > 0:
                 box.separator()
                 box.label(text="Locked objects:", icon="LOCKED")
                 for obj in locked_objects:
+                    draw_outfit_piece(box, obj, arm, rig_settings, settings, 1, 0)
 
-                    col = box.column(align=True)
-                    row = col.row(align=True)
+            # Extras
+            if rig_settings.extras_collection is not None:
 
-                    if rig_settings.model_MustardUI_naming_convention:
-                        row.operator("mustardui.object_visibility", text=obj.name[len(rig_settings.model_name):],
-                                     icon='OUTLINER_OB_' + obj.type, depress=not obj.hide_viewport).obj = obj.name
-                    else:
-                        row.operator("mustardui.object_visibility", text=obj.name, icon='OUTLINER_OB_' + obj.type,
-                                     depress=not obj.hide_viewport).obj = obj.name
+                eitems = extract_items(rig_settings.extras_collection,
+                                       rig_settings.outfit_config_subcollections)
 
-                    if rig_settings.outfit_custom_properties_name_order:
-                        custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                                        x.outfit_piece == obj and not x.hidden and (
-                                                            not x.advanced if not settings.advanced else True)],
-                                                       key=lambda x: x.name)
-                    else:
-                        custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                                 x.outfit_piece == obj and not x.hidden and (
-                                                     not x.advanced if not settings.advanced else True)]
-                    if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
-                        row.prop(context.scene.objects[obj.name], "MustardUI_additional_options_show_lock", toggle=True,
-                                 icon="PREFERENCES")
-                        if obj.MustardUI_additional_options_show_lock:
-                            mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj, col,
-                                                              rig_settings.outfit_custom_properties_icons)
+                if len(eitems) > 0:
 
-                    row.prop(obj, "MustardUI_outfit_lock", toggle=True,
-                             icon='LOCKED' if obj.MustardUI_outfit_lock else 'UNLOCKED')
+                    box = layout.box()
+
+                    if ui_collapse_prop(box, rig_settings, 'extras_collapse', "Extras", icon="", align=False):
+                        for obj in sorted(eitems, key=lambda x: x.name):
+                            draw_outfit_piece(box, obj, arm, rig_settings, settings, 2, 0)
 
             # Outfit global properties
             if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
@@ -181,52 +211,6 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     col.prop(rig_settings, "outfits_global_triangulate")
                 if rig_settings.outfits_enable_global_normalautosmooth:
                     col.prop(rig_settings, "outfits_global_normalautosmooth")
-
-        # Extras
-        if rig_settings.extras_collection is not None:
-
-            eitems = (
-                rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects)
-
-            if len(eitems) > 0:
-
-                box = layout.box()
-
-                if rig_settings.extras_collapse_enable:
-                    row = box.row(align=False)
-                    row.prop(rig_settings, "extras_collapse",
-                             icon="TRIA_DOWN" if not rig_settings.extras_collapse else "TRIA_RIGHT", icon_only=True,
-                             emboss=False)
-                    row.label(text="Extras")
-                else:
-                    box.label(text="Extras", icon="PLUS")
-
-                if not rig_settings.extras_collapse or not rig_settings.extras_collapse_enable:
-                    # Global outfit custom properties
-                    for obj in sorted(eitems, key=lambda x: x.name):
-
-                        col = box.column(align=True)
-                        row = col.row(align=True)
-
-                        if rig_settings.model_MustardUI_naming_convention:
-                            row.operator("mustardui.object_visibility",
-                                         text=obj.name[len(rig_settings.extras_collection.name + ' - '):],
-                                         icon='OUTLINER_OB_' + obj.type, depress=not obj.hide_viewport).obj = obj.name
-                        else:
-                            row.operator("mustardui.object_visibility", text=obj.name, icon='OUTLINER_OB_' + obj.type,
-                                         depress=not obj.hide_viewport).obj = obj.name
-                        if rig_settings.outfit_custom_properties_name_order:
-                            custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                                            x.outfit == rig_settings.extras_collection and x.outfit_piece == obj and not x.hidden],
-                                                           key=lambda x: x.name)
-                        else:
-                            custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                                     x.outfit == rig_settings.extras_collection and x.outfit_piece == obj and not x.hidden]
-                        if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
-                            row.prop(obj, "MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
-                            if obj.MustardUI_additional_options_show:
-                                mustardui_custom_properties_print(arm, settings, rig_settings, custom_properties_obj,
-                                                                  col, rig_settings.outfit_custom_properties_icons)
 
 
 def register():

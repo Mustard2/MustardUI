@@ -199,7 +199,11 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                                               description='Resolution of the cage.\nThis is the number of subdivisions in the resulting cage',
                                               default=1, subtype='NONE', min=1, max=4)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
-                                         description='Add the Collision item to Physics Panel', default=True)
+                                         description='Add the Collision item to Physics Panel',
+                                         default=True)
+    name: bpy.props.StringProperty(name='Cage Name',
+                                   description='Assign a name to the Cage and the associated modifiers',
+                                   default="")
 
     @classmethod
     def poll(cls, context):
@@ -234,6 +238,11 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                 count += 1
             return name
 
+        # Assign names
+        base_name = generate_unique_name(self.name) if self.name != "" else "Physics_Proxy"
+        corrective_name = base_name
+        surfdef_name = base_name + " Deform"
+
         def add_subdivided_cube(location, bbox_dimensions):
             # Deselect all objects
             bpy.ops.object.select_all(action='DESELECT')
@@ -242,7 +251,6 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Get the cube object
             cube = bpy.context.object
             # Generate a unique name for the cube
-            base_name = "Physics_Proxy"
             unique_name = generate_unique_name(base_name)
             # Rename the cube
             cube.name = unique_name
@@ -288,7 +296,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
         def add_corrective_smooth_modifier(obj, group_name=None, name="", iterations=20, smooth_type='SIMPLE'):
             # Add a Corrective Smooth modifier with specified settings
-            mod = obj.modifiers.new(name="Jiggle Corrective" if name == "" else name, type='CORRECTIVE_SMOOTH')
+            mod = obj.modifiers.new(name=corrective_name if name == "" else name, type='CORRECTIVE_SMOOTH')
             mod.iterations = iterations
             mod.smooth_type = smooth_type
             mod.rest_source = 'BIND'
@@ -381,7 +389,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             bpy.ops.object.join()
             merged_proxy = bpy.context.object
             # Add a single Surface Deform modifier targeting the merged proxy
-            add_surface_deform_modifier(obj, merged_proxy, combined_vertex_group.name, "Jiggle Deform")
+            add_surface_deform_modifier(obj, merged_proxy, combined_vertex_group.name, surfdef_name)
             # Select the merged proxy
             bpy.ops.object.select_all(action='DESELECT')
             merged_proxy.select_set(True)
@@ -389,7 +397,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Add a Surface Deform modifier for each individual proxy using the correct vertex group for each
             for idx, proxy in enumerate(created_proxies):
                 group_name = region_vertex_groups[idx]  # Use the dynamically created vertex group
-                add_surface_deform_modifier(obj, proxy, group_name, f"Jiggle Deform {idx + 1}")
+                add_surface_deform_modifier(obj, proxy, group_name, f"{surfdef_name} {idx + 1}")
             # Select all proxies
             bpy.ops.object.select_all(action='DESELECT')
             for proxy in created_proxies:
@@ -630,11 +638,11 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         layout.prop(self, 'proxy_subdivisions', emboss=True)
         if settings.advanced:
             layout.prop(self, 'merge_proxies', emboss=True)
+        layout.prop(self, 'name')
 
         layout.separator()
-        box = layout.box()
-        box.label(text="UI", icon="MENU_PANEL")
-        box.prop(self, 'add_to_panel', emboss=True)
+
+        layout.prop(self, 'add_to_panel', emboss=True)
 
     def invoke(self, context, event):
         self.merge_proxies = True
