@@ -9,7 +9,6 @@ from ..physics.settings_item import mustardui_physics_item_type_dict
 
 
 def cloth_panel(layout, pi, mod):
-
     if ui_collapse_prop(layout, pi, 'collapse_cloth', "Cloth settings", icon="MOD_CLOTH"):
 
         cloth = mod.settings
@@ -75,6 +74,8 @@ def cloth_panel(layout, pi, mod):
             col = box.column(align=True)
             col.prop(collisions, "distance_min", slider=True, text="Distance")
             col.prop(collisions, "impulse_clamp")
+            col = box.column(align=True)
+            col.prop(collisions, "collection", text="Collection")
 
         row = box.row(align=True)
         collisions = mod.collision_settings
@@ -95,7 +96,6 @@ def cloth_panel(layout, pi, mod):
 
 
 def soft_panel(layout, pi, mod):
-
     if ui_collapse_prop(layout, pi, 'collapse_softbody', "Soft Body settings", icon="MOD_SOFT"):
 
         softbody = mod.settings
@@ -118,9 +118,7 @@ def soft_panel(layout, pi, mod):
 
 
 def collision_panel(layout, pi, mod):
-
     if ui_collapse_prop(layout, pi, 'collapse_collisions', "Collisions settings", icon="MOD_PHYSICS"):
-
         settings = pi.object.collision
 
         box = layout.box()
@@ -172,8 +170,8 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         row.operator("mustardui.physics_rebind", text="", icon="FILE_REFRESH")
 
         box.template_list("MUSTARDUI_UL_PhysicsItems_UIList_Menu", "The_List", physics_settings,
-                             "items", obj,
-                             "mustardui_physics_items_uilist_index")
+                          "items", obj,
+                          "mustardui_physics_items_uilist_index")
 
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
