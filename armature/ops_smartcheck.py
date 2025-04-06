@@ -87,7 +87,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             preset_mustard_models = [("Head", "", "USER", True),
                                      ("Face", "", "USER", False),
                                      ("Spine 2", "Spine", "", True),
-                                     ("Spine", "Spine Advanced", "", True),
+                                     ("Spine", "Spine Advanced", "", False),
                                      ("IK Arm Left", "", "", True),
                                      ("IK Arm Right", "", "", True),
                                      ("FK Arm Left", "", "", False),
