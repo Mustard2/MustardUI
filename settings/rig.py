@@ -1102,6 +1102,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     model_version: bpy.props.StringProperty(name="Model version",
                                             description="Version of the model",
                                             default="")
+    model_version_date_enable: bpy.props.BoolProperty(name="Add Date to version",
+                                                      description="Automatically add the date to the version when ending Configuration mode",
+                                                      default=False)
+    model_version_date: bpy.props.StringProperty(default="")
 
     # Object and Collection MustardUI naming convention
     model_MustardUI_naming_convention: bpy.props.BoolProperty(default=True,
