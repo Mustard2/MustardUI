@@ -6,7 +6,7 @@ from .. import __package__ as base_package
 
 
 class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
-    bl_label = "Version"
+    bl_label = "Version & Others"
     bl_parent_id = "PANEL_PT_MustardUI_InitPanel"
     bl_options = {"DEFAULT_CLOSED"}
 

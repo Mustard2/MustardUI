@@ -60,11 +60,19 @@ def enable_physics_update(self, context):
                 set_cage_modifiers(pi, obj.modifiers, status)
                 set_modifiers(pi, obj, status)
 
-    for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
-        for pi in [x for x in self.items if x.type == "CAGE"]:
-            status = self.enable_physics and pi.enable
-            set_cage_modifiers(pi, obj.modifiers, status)
-            set_modifiers(pi, obj, status)
+    if rig_settings.hair_collection is not None:
+        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+            for pi in [x for x in self.items if x.type == "CAGE"]:
+                status = self.enable_physics and pi.enable
+                set_cage_modifiers(pi, obj.modifiers, status)
+                set_modifiers(pi, obj, status)
+
+    if rig_settings.extras_collection is not None:
+        for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            for pi in [x for x in self.items if x.type == "CAGE"]:
+                status = self.enable_physics and pi.enable
+                set_cage_modifiers(pi, obj.modifiers, status)
+                set_modifiers(pi, obj, status)
 
     return
 
@@ -95,9 +103,15 @@ def enable_physics_update_single(self, context):
                 set_cage_modifiers(self, obj.modifiers, status)
                 set_modifiers(self, obj, status)
 
-        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
-            set_cage_modifiers(self, obj.modifiers, status)
-            set_modifiers(self, obj, status)
+        if rig_settings.extras_collection is not None:
+            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+                set_cage_modifiers(self, obj.modifiers, status)
+                set_modifiers(self, obj, status)
+
+        if rig_settings.hair_collection is not None:
+            for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+                set_cage_modifiers(self, obj.modifiers, status)
+                set_modifiers(self, obj, status)
 
     if not status:
         self.object.hide_viewport = True

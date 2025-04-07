@@ -198,6 +198,14 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
     proxy_subdivisions: bpy.props.IntProperty(name='Cage Resolution',
                                               description='Resolution of the cage.\nThis is the number of subdivisions in the resulting cage',
                                               default=1, subtype='NONE', min=1, max=4)
+    object_direction: bpy.props.EnumProperty(name="Pin Direction",
+                                             description="Direction where to create the Pin group weights.\nThe direction in global coordinates is the direction in which the weights decreases",
+                                             items=[("+X", "+X", "+X"), ("-X", "-X", "-X"), ("+Y", "+Y", "+Y"),
+                                                    ("-Y", "-Y", "-Y"), ("+Z", "+Z", "+Z"), ("-Z", "-Z", "-Z")],
+                                             default="+Y")
+    parent_to_model: bpy.props.BoolProperty(name='Parent to Model',
+                                            description='Parent the cage to the Model Armature',
+                                            default=False)
     add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
                                          description='Add the Collision item to Physics Panel',
                                          default=True)
@@ -213,6 +221,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -486,11 +495,38 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                 # Collect world coordinates and vertex indices for the current island
                 world_coords = [(v.index, obj.matrix_world @ v.co) for v in island_verts]
                 # Calculate min and max Y coordinates in world space for this island
-                bbox_min_y = min(world_coords, key=lambda vc: vc[1].y)[1].y
-                bbox_max_y = max(world_coords, key=lambda vc: vc[1].y)[1].y
-                bbox_depth = bbox_max_y - bbox_min_y if bbox_max_y != bbox_min_y else 1  # Avoid division by zero
+                if self.object_direction in ["+Y", "-Y"]:
+                    bbox_min = min(world_coords, key=lambda vc: vc[1].y)[1].y
+                    bbox_max = max(world_coords, key=lambda vc: vc[1].y)[1].y
+                elif self.object_direction in ["+X", "-X"]:
+                    bbox_min = min(world_coords, key=lambda vc: vc[1].x)[1].x
+                    bbox_max = max(world_coords, key=lambda vc: vc[1].x)[1].x
+                else:
+                    bbox_min = min(world_coords, key=lambda vc: vc[1].z)[1].z
+                    bbox_max = max(world_coords, key=lambda vc: vc[1].z)[1].z
+                bbox_depth = bbox_max - bbox_min if bbox_max != bbox_min else 1  # Avoid division by zero
                 # Collect vertex weights for this island
-                vertex_weights = [(v_idx, (world_co.y - bbox_min_y) / bbox_depth) for v_idx, world_co in world_coords]
+                invert = self.object_direction in ["-X", "-Y", "-Z"]
+                if invert:
+                    if self.object_direction in ["+Y", "-Y"]:
+                        vertex_weights = [(v_idx, (world_co.y - bbox_min) / bbox_depth) for v_idx, world_co in
+                                          world_coords]
+                    elif self.object_direction in ["+X", "-X"]:
+                        vertex_weights = [(v_idx, (world_co.x - bbox_min) / bbox_depth) for v_idx, world_co in
+                                          world_coords]
+                    else:
+                        vertex_weights = [(v_idx, (world_co.z - bbox_min) / bbox_depth) for v_idx, world_co in
+                                          world_coords]
+                else:
+                    if self.object_direction in ["+Y", "-Y"]:
+                        vertex_weights = [(v_idx, 1 - (world_co.y - bbox_min) / bbox_depth) for v_idx, world_co in
+                                          world_coords]
+                    elif self.object_direction in ["+X", "-X"]:
+                        vertex_weights = [(v_idx, 1 - (world_co.x - bbox_min) / bbox_depth) for v_idx, world_co in
+                                          world_coords]
+                    else:
+                        vertex_weights = [(v_idx, 1 - (world_co.z - bbox_min) / bbox_depth) for v_idx, world_co in
+                                          world_coords]
                 all_vertex_weights.extend(vertex_weights)
             # Apply weights to the vertex group in object mode
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -625,6 +661,10 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                 add_item = physics_settings.items.add()
                 add_item.object = obj
                 add_item.type = 'CAGE'
+                if self.parent_to_model and rig_settings.model_armature_object is not None:
+                    parent = rig_settings.model_armature_object
+                    obj.parent = parent
+                    obj.matrix_parent_inverse = parent.matrix_world.inverted()
 
         self.report({'INFO'}, 'MustardUI - Jiggle Cage created.')
 
@@ -632,17 +672,17 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
     def draw(self, context):
 
-        settings = context.scene.MustardUI_Settings
-
         layout = self.layout
-        layout.prop(self, 'proxy_subdivisions', emboss=True)
-        if settings.advanced:
-            layout.prop(self, 'merge_proxies', emboss=True)
+        layout.prop(self, 'proxy_subdivisions')
+        layout.prop(self, 'merge_proxies')
+        layout.prop(self, 'object_direction')
+
         layout.prop(self, 'name')
 
         layout.separator()
 
-        layout.prop(self, 'add_to_panel', emboss=True)
+        layout.prop(self, 'add_to_panel')
+        layout.prop(self, 'parent_to_model')
 
     def invoke(self, context, event):
         self.merge_proxies = True
