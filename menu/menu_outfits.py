@@ -2,7 +2,6 @@ import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
 from ..misc.ui_collapse import ui_collapse_prop
-from ..misc.icons_list import get_icon_show_visibility
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from .misc import *
