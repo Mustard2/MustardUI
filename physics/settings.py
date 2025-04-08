@@ -6,26 +6,51 @@ from .update_enable import enable_physics_update
 
 def update_frame(self, context):
 
+    def update_modifiers(s, o):
+        for md in o.modifiers:
+            if md.type in ["CLOTH", "SOFT_BODY"] and not pi.unique_cache_frames:
+                md.point_cache.frame_start = s.frame_start
+                md.point_cache.frame_end = s.frame_end
+            elif md.type == "PARTICLE_SYSTEM":
+                psys = md.particle_system
+                if psys.point_cache:
+                    psys.point_cache.frame_start = s.frame_start
+                    psys.point_cache.frame_end = s.frame_end
+            # elif md.type == "DYNAMIC_PAINT":
+            #    for canvas in md.canvas_settings.canvas_surfaces:
+            #        canvas.frame_start = s.frame_start
+            #        canvas.frame_end = s.frame_end
+
     # Rigid Body
     if context.scene.rigidbody_world:
         context.scene.rigidbody_world.point_cache.frame_start = self.frame_start
         context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
 
+    # Update all objects linked to physics items
     for pi in [x for x in self.items if x.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]]:
         obj = pi.object
-        for md in obj.modifiers:
-            if md.type in ["CLOTH", "SOFT_BODY"] and not pi.unique_cache_frames:
-                md.point_cache.frame_start = self.frame_start
-                md.point_cache.frame_end = self.frame_end
-            elif md.type == "PARTICLE_SYSTEM":
-                psys = md.particle_system
-                if psys.point_cache:
-                    psys.point_cache.frame_start = self.frame_start
-                    psys.point_cache.frame_end = self.frame_end
-            #elif md.type == "DYNAMIC_PAINT":
-            #    for canvas in md.canvas_settings.canvas_surfaces:
-            #        canvas.frame_start = self.frame_start
-            #        canvas.frame_end = self.frame_end
+        update_modifiers(self, obj)
+
+    # Also update outfits, extras, and hair
+    res, arm = mustardui_active_object(context, config=0)
+    if arm is None or not res:
+        return
+    rig_settings = arm.MustardUI_RigSettings
+
+    if rig_settings.outfit_physics_support:
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
+            items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
+            for obj in [x for x in items if x.type == "MESH"]:
+                update_modifiers(self, obj)
+
+        if rig_settings.extras_collection is not None:
+            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+                update_modifiers(self, obj)
+
+    if rig_settings.hair_collection is not None:
+        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+            update_modifiers(self, obj)
+
     return
 
 

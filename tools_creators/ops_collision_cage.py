@@ -54,6 +54,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
 
         def add_driver(source, target, prop, data_path, index=-1):
@@ -103,7 +104,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.duplicate(linked=True)
             duplicate_obj = bpy.context.active_object
-            duplicate_obj.name = f"{obj.name} Proxy"
+            duplicate_obj.name = f"{obj.name} Collision Cage"
 
             # Clear existing custom property
             if "Inflate" in obj.keys():
@@ -271,6 +272,8 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         if self.add_to_panel:
             add_item = physics_settings.items.add()
             add_item.object = bpy.context.object
+            if rig_settings.model_name != "":
+                add_item.object.name = f"{rig_settings.model_name} {add_item.object.name}"
             add_item.type = 'COLLISION'
 
         self.report({'INFO'}, 'MustardUI - Collision Cage created.')

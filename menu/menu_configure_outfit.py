@@ -36,6 +36,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         box.label(text="General Settings", icon="MODIFIER")
         col = box.column(align=True)
         col.prop(rig_settings, "outfit_nude")
+        col.prop(rig_settings, "outfit_physics_support", text="Physics Support")
         col.prop(rig_settings, "outfit_config_subcollections")
         col.prop(rig_settings, "outfit_additional_options")
 

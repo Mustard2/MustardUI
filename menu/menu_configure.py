@@ -44,6 +44,8 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         box.prop(rig_settings, "model_name", text="Name")
         box.prop(rig_settings, "model_body", text="Body")
 
+        box.prop(rig_settings, "model_MustardUI_naming_convention")
+
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_InitPanel)

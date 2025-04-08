@@ -51,6 +51,10 @@ def enable_physics_update(self, context):
             set_modifiers(pi, rig_settings.model_body, status)
         if not status:
             pi.object.hide_viewport = True
+        if not self.enable_physics:
+            pi.collapse_cloth = True
+            pi.collapse_softbody = True
+            pi.collapse_collisions = True
 
     for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
@@ -60,11 +64,19 @@ def enable_physics_update(self, context):
                 set_cage_modifiers(pi, obj.modifiers, status)
                 set_modifiers(pi, obj, status)
 
-    for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
-        for pi in [x for x in self.items if x.type == "CAGE"]:
-            status = self.enable_physics and pi.enable
-            set_cage_modifiers(pi, obj.modifiers, status)
-            set_modifiers(pi, obj, status)
+    if rig_settings.hair_collection is not None:
+        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+            for pi in [x for x in self.items if x.type == "CAGE"]:
+                status = self.enable_physics and pi.enable
+                set_cage_modifiers(pi, obj.modifiers, status)
+                set_modifiers(pi, obj, status)
+
+    if rig_settings.extras_collection is not None:
+        for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            for pi in [x for x in self.items if x.type == "CAGE"]:
+                status = self.enable_physics and pi.enable
+                set_cage_modifiers(pi, obj.modifiers, status)
+                set_modifiers(pi, obj, status)
 
     return
 
@@ -95,12 +107,23 @@ def enable_physics_update_single(self, context):
                 set_cage_modifiers(self, obj.modifiers, status)
                 set_modifiers(self, obj, status)
 
-        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
-            set_cage_modifiers(self, obj.modifiers, status)
-            set_modifiers(self, obj, status)
+        if rig_settings.extras_collection is not None:
+            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+                set_cage_modifiers(self, obj.modifiers, status)
+                set_modifiers(self, obj, status)
+
+        if rig_settings.hair_collection is not None:
+            for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+                set_cage_modifiers(self, obj.modifiers, status)
+                set_modifiers(self, obj, status)
 
     if not status:
         self.object.hide_viewport = True
+
+    if not self.enable:
+        self.collapse_cloth = True
+        self.collapse_softbody = True
+        self.collapse_collisions = True
 
     return
 

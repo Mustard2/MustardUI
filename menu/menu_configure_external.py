@@ -8,7 +8,7 @@ from ..morphs.misc import DazCheckVersion
 
 
 class PANEL_PT_MustardUI_InitPanel_External(MainPanel, bpy.types.Panel):
-    bl_label = "External Add-ons"
+    bl_label = "Morphs (Diffeomorphic)"
     bl_parent_id = "PANEL_PT_MustardUI_InitPanel"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -34,18 +34,13 @@ class PANEL_PT_MustardUI_InitPanel_External(MainPanel, bpy.types.Panel):
         addon_prefs = context.preferences.addons[base_package].preferences
 
         box = layout.box()
-        box.label(text="Enable Support", icon="MODIFIER")
+        box.label(text="General", icon="MODIFIER")
         row = box.row()
-        row.prop(rig_settings, "diffeomorphic_support")
+        row.prop(rig_settings, "diffeomorphic_support", text="Enable Morph Panel")
         if rig_settings.diffeomorphic_support:
-
             box = layout.box()
-
-            box.label(text="Diffeomorphic Settings", icon="OUTLINER_DATA_SURFACE")
-
-            box2 = box.box()
-            box2.label(text="Morphs", icon="SHAPEKEY_DATA")
-            col = box2.column()
+            box.label(text="Categories", icon="SHAPEKEY_DATA")
+            col = box.column()
             col.prop(rig_settings, "diffeomorphic_emotions_units")
             col.prop(rig_settings, "diffeomorphic_emotions")
             if rig_settings.diffeomorphic_emotions:
@@ -62,15 +57,15 @@ class PANEL_PT_MustardUI_InitPanel_External(MainPanel, bpy.types.Panel):
                 row.scale_x = row_scale
                 row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text="")
 
-            box2.separator()
-            row = box2.row(align=True)
+            box.separator()
+            row = box.row(align=True)
             row.label(text="Disable Exceptions")
             row.scale_x = row_scale
             row.prop(rig_settings, "diffeomorphic_disable_exceptions", text="")
 
-            box = box.box()
-            box.label(text="  Current morphs number: " + str(rig_settings.diffeomorphic_morphs_number))
-            box.operator('mustardui.morphs_check')
+            box = layout.box()
+            box.label(text="Morphs added: " + str(rig_settings.diffeomorphic_morphs_number), icon="LINENUMBERS_ON")
+            box.operator('mustardui.morphs_check', text="Search and Add Morphs", icon="ADD")
 
             if addon_prefs.debug:
 
