@@ -51,6 +51,10 @@ def enable_physics_update(self, context):
             set_modifiers(pi, rig_settings.model_body, status)
         if not status:
             pi.object.hide_viewport = True
+        if not self.enable_physics:
+            pi.collapse_cloth = True
+            pi.collapse_softbody = True
+            pi.collapse_collisions = True
 
     for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
@@ -115,6 +119,11 @@ def enable_physics_update_single(self, context):
 
     if not status:
         self.object.hide_viewport = True
+
+    if not self.enable:
+        self.collapse_cloth = True
+        self.collapse_softbody = True
+        self.collapse_collisions = True
 
     return
 

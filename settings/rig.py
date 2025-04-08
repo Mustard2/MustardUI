@@ -566,6 +566,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                            description="Disable Armature modifiers of Outfits that "
                                                                        "are not visible to increase performance")
 
+    outfit_physics_support: bpy.props.BoolProperty(default=True,
+                                                   name="Enable Outfit Physics support",
+                                                   description="If enabled, a button near outfit pieces with Physics modifiers is added to enable/disable physics")
+
     # Extras
     def poll_collection_extras(self, object):
         if self.hair_collection is not None:

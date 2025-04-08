@@ -86,7 +86,6 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     collapse_collisions: bpy.props.BoolProperty(default=True, name="")
 
 
-
 def register():
     bpy.utils.register_class(MustardUI_PhysicsItem)
 

@@ -2,6 +2,7 @@ import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
 from ..misc.ui_collapse import ui_collapse_prop
+from ..misc.icons_list import get_icon_show_visibility
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from .misc import *
@@ -28,7 +29,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
 
     collapse = False
     if obj.children:
-        collapse = not ui_collapse_prop(row, obj, 'MustardUI_outfit_collapse_children', "", icon="",
+        collapse = not ui_collapse_prop(row, obj.MustardUI_OutfitSettings, 'collapse_children', "", icon="",
                                         align=False, use_layout=True, emboss=True, invert_checkbox=True)
 
     if rig_settings.model_MustardUI_naming_convention:
@@ -44,6 +45,14 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
     else:
         row.operator("mustardui.object_visibility", text=obj.name, icon='OUTLINER_OB_' + obj.type,
                      depress=not obj.hide_viewport).obj = obj.name
+
+    # Physics
+    if rig_settings.outfit_physics_support:
+        for m in obj.modifiers:
+            mtype = m.type
+            if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
+                row.prop(obj.MustardUI_OutfitSettings, 'physics', text="", icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS")
+                break
 
     # Outfit custom properties
     co_coll = None
@@ -61,8 +70,9 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
                                  (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden]
 
     if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
-        row.prop(obj, "MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
-        if obj.MustardUI_additional_options_show:
+        row.prop(obj.MustardUI_OutfitSettings, "additional_options_show" if otype != 1 else "additional_options_show_lock", toggle=True, icon="PREFERENCES")
+        check_show = obj.MustardUI_OutfitSettings.additional_options_show if otype != 1 else obj.MustardUI_OutfitSettings.additional_options_show_lock
+        if check_show:
             row2 = col.row(align=True)
             for lvl in range(level):
                 row2.label(text="", icon="BLANK1")
