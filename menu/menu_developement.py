@@ -32,6 +32,8 @@ class PANEL_PT_MustardUI_Developement(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         layout.operator('mustardui.configuration', text="UI Configuration", icon="PREFERENCES")
+
+        layout.separator()
         layout.operator('mustardui.property_rebuild', icon="MOD_BUILD", text="Re-build Custom Properties")
         layout.operator('mustardui.cleanmodel', text="Clean model", icon="BRUSH_DATA")
         layout.operator('mustardui.remove', text="UI Removal", icon="X")

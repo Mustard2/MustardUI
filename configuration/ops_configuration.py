@@ -2,6 +2,7 @@ import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
 from .. import __package__ as base_package
+from datetime import datetime
 
 
 class MustardUI_Configuration(bpy.types.Operator):
@@ -132,6 +133,13 @@ class MustardUI_Configuration(bpy.types.Operator):
                             print(
                                 'MustardUI - Configuration Warning - The hair_list property index seems to be '
                                 'corrupted. Try to remove the UI and re-add it')
+
+            # Setting the model version date if requested
+            if rig_settings.model_version_date_enable:
+                date = datetime.today().strftime('%d/%m/%Y')
+                rig_settings.model_version_date = date
+            else:
+                rig_settings.model_version_date = ""
 
             if warnings > 0:
                 if addon_prefs.debug:

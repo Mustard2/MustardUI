@@ -34,7 +34,10 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
         if rig_settings.model_version != '':
             box = layout.box()
             box.label(text="Model Version: ", icon="INFO")
-            box.label(text=rig_settings.model_version, icon="BLANK1")
+            version = rig_settings.model_version
+            if rig_settings.model_version_date_enable and rig_settings.model_version_date != "":
+                version = version + ' - ' + rig_settings.model_version_date
+            box.label(text=version, icon="BLANK1")
 
 
 def register():

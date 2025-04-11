@@ -566,6 +566,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                            description="Disable Armature modifiers of Outfits that "
                                                                        "are not visible to increase performance")
 
+    outfit_physics_support: bpy.props.BoolProperty(default=True,
+                                                   name="Enable Outfit Physics support",
+                                                   description="If enabled, a button near outfit pieces with Physics modifiers is added to enable/disable physics")
+
     # Extras
     def poll_collection_extras(self, object):
         if self.hair_collection is not None:
@@ -1102,6 +1106,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     model_version: bpy.props.StringProperty(name="Model version",
                                             description="Version of the model",
                                             default="")
+    model_version_date_enable: bpy.props.BoolProperty(name="Add Date to version",
+                                                      description="Automatically add the date to the version when ending Configuration mode",
+                                                      default=False)
+    model_version_date: bpy.props.StringProperty(default="")
 
     # Object and Collection MustardUI naming convention
     model_MustardUI_naming_convention: bpy.props.BoolProperty(default=True,

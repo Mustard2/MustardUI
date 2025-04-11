@@ -5,7 +5,7 @@ from ..model_selection.active_object import *
 class MustardUI_Physics_SyncFrames(bpy.types.Operator):
     """Synchronise the physics bake frames with the scene ones"""
     bl_idname = "mustardui.physics_bake_syncframes"
-    bl_label = "Synchornise frames with scene"
+    bl_label = "Synchronise frames with scene"
 
     @classmethod
     def poll(cls, context):

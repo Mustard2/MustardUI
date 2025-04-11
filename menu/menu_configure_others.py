@@ -33,10 +33,7 @@ class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Version", icon="INFO")
         box.prop(rig_settings, "model_version", text="")
-
-        box = layout.box()
-        box.label(text="Naming", icon="OUTLINER_DATA_FONT")
-        box.prop(rig_settings, "model_MustardUI_naming_convention")
+        box.prop(rig_settings, "model_version_date_enable")
 
 
 def register():

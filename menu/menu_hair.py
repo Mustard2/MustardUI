@@ -82,8 +82,8 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     else:
                         custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj]
                     if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
-                        row.prop(obj, "MustardUI_additional_options_show", toggle=True, icon="PREFERENCES")
-                        if obj.MustardUI_additional_options_show:
+                        row.prop(obj.MustardUI_OutfitSettings, "additional_options_show", toggle=True, icon="PREFERENCES")
+                        if obj.MustardUI_OutfitSettings.additional_options_show:
                             mustardui_custom_properties_print(arm, settings, custom_properties_obj, box,
                                                               rig_settings.hair_custom_properties_icons)
 
