@@ -13,7 +13,8 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
     shift: bpy.props.BoolProperty()
 
     def invoke(self, context, event):
-        self.shift = event.shift
+        if not self.shift:
+            self.shift = event.shift
         return self.execute(context)
 
     def execute(self, context):
@@ -82,7 +83,9 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         if self.shift:
             for c in object.children:
-                bpy.ops.mustardui.object_visibility(obj = c.name)
+                bpy.ops.mustardui.object_visibility(obj=c.name, shift=True)
+
+        self.shift = False
 
         return {'FINISHED'}
 
