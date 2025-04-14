@@ -1,6 +1,4 @@
 import bpy
-from bpy.props import *
-from .. import bl_info
 
 
 class MustardUI_FixMissingUI(bpy.types.Operator):
@@ -9,14 +7,9 @@ class MustardUI_FixMissingUI(bpy.types.Operator):
     bl_label = "Fix Missing UI"
     bl_options = {'UNDO'}
 
-    @classmethod
-    def poll(cls, context):
-        return True
-
     def execute(self, context):
 
         settings = context.scene.MustardUI_Settings
-
         settings.viewport_model_selection = True
 
         return {'FINISHED'}
