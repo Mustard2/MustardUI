@@ -273,7 +273,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
             add_item = physics_settings.items.add()
             add_item.object = bpy.context.object
             if rig_settings.model_name != "":
-                add_item.object.name = f"{rig_settings.model_name} {add_item.object.name}"
+                add_item.object.name = f"{add_item.object.name}" if rig_settings.model_name in add_item.object.name else f"{rig_settings.model_name} {add_item.object.name}"
             add_item.type = 'COLLISION'
 
         # Disable shadows for viewport/render

@@ -67,6 +67,9 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             col.label(text="No Physics Item found", icon="ERROR")
             col.label(text="Right-click on Objects in Outliner to add", icon="BLANK1")
 
+        box = layout.box()
+        box.operator('mustardui.physics_setup')
+
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_InitPanel_Physics)

@@ -1,15 +1,20 @@
 import bpy
 from ..model_selection.active_object import *
+from ..misc.mesh_intersection import check_mesh_intersection
 
 
-def set_cage_modifiers(physics_item, iterator, s):
+def set_cage_modifiers(physics_item, iterator, s, obj, body):
+    intersecting_objects = [x.object for x in physics_item.intersecting_objects]
     for mod in iterator:
         if mod.type == 'MESH_DEFORM':
             if physics_item.object == mod.object:
                 mod.show_viewport = s
                 mod.show_render = s
         elif mod.type == 'SURFACE_DEFORM':
-            if physics_item.object == mod.target:
+            if mod.target == physics_item.object:
+                mod.show_viewport = s
+                mod.show_render = s
+            elif obj is not None and mod.target == body and obj in intersecting_objects:
                 mod.show_viewport = s
                 mod.show_render = s
 
@@ -38,6 +43,7 @@ def enable_physics_update(self, context):
         return
 
     rig_settings = arm.MustardUI_RigSettings
+    body = rig_settings.model_body
 
     for pi in [x for x in self.items]:
         status = self.enable_physics and pi.enable
@@ -49,7 +55,7 @@ def enable_physics_update(self, context):
                 # Make the object visibile otherwise collisions might not work (Blender bug)
                 pi.object.hide_viewport = not status
         if pi.type == "CAGE":
-            set_cage_modifiers(pi, rig_settings.model_body.modifiers, status)
+            set_cage_modifiers(pi, rig_settings.model_body.modifiers, status, None, body)
             set_modifiers(pi, rig_settings.model_body, status)
         if not status:
             pi.object.hide_viewport = True
@@ -62,22 +68,22 @@ def enable_physics_update(self, context):
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
         for obj in [x for x in items if x.type == "MESH"]:
             for pi in [x for x in self.items if x.type == "CAGE"]:
-                status = self.enable_physics and pi.enable
-                set_cage_modifiers(pi, obj.modifiers, status)
+                status = self.enable_physics and pi.enable and not coll.collection.hide_viewport and not obj.hide_viewport
+                set_cage_modifiers(pi, obj.modifiers, status, obj, body)
                 set_modifiers(pi, obj, status)
 
     if rig_settings.hair_collection is not None:
         for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
             for pi in [x for x in self.items if x.type == "CAGE"]:
-                status = self.enable_physics and pi.enable
-                set_cage_modifiers(pi, obj.modifiers, status)
+                status = self.enable_physics and pi.enable and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
+                set_cage_modifiers(pi, obj.modifiers, status, obj, body)
                 set_modifiers(pi, obj, status)
 
     if rig_settings.extras_collection is not None:
         for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
             for pi in [x for x in self.items if x.type == "CAGE"]:
-                status = self.enable_physics and pi.enable
-                set_cage_modifiers(pi, obj.modifiers, status)
+                status = self.enable_physics and pi.enable and not rig_settings.extras_collection.hide_viewport and not obj.hide_viewport
+                set_cage_modifiers(pi, obj.modifiers, status, obj, body)
                 set_modifiers(pi, obj, status)
 
     return
@@ -93,6 +99,8 @@ def enable_physics_update_single(self, context):
     rig_settings = arm.MustardUI_RigSettings
     physics_settings = arm.MustardUI_PhysicsSettings
 
+    body = rig_settings.model_body
+
     status = physics_settings.enable_physics and self.enable
     for modifier in self.object.modifiers:
         modifier.show_viewport = status
@@ -102,24 +110,27 @@ def enable_physics_update_single(self, context):
             # Make the object visibile otherwise collisions might not work (Blender bug)
             self.object.hide_viewport = not status
     if self.type == "CAGE":
-        set_cage_modifiers(self, rig_settings.model_body.modifiers, status)
+        set_cage_modifiers(self, rig_settings.model_body.modifiers, status, None, body)
         set_modifiers(self, rig_settings.model_body, status)
 
         for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
             for obj in [x for x in items if x.type == "MESH"]:
-                set_cage_modifiers(self, obj.modifiers, status)
-                set_modifiers(self, obj, status)
+                status_int = status and not coll.collection.hide_viewport and not obj.hide_viewport
+                set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
+                set_modifiers(self, obj, status_int)
 
         if rig_settings.extras_collection is not None:
             for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
-                set_cage_modifiers(self, obj.modifiers, status)
-                set_modifiers(self, obj, status)
+                status_int = status and not rig_settings.extras_collection.hide_viewport and not obj.hide_viewport
+                set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
+                set_modifiers(self, obj, status_int)
 
-        if rig_settings.hair_collection is not None:
+        if rig_settings.hair_collection is not None and not rig_settings.hair_collection.hide_viewport:
             for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
-                set_cage_modifiers(self, obj.modifiers, status)
-                set_modifiers(self, obj, status)
+                status_int = status and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
+                set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
+                set_modifiers(self, obj, status_int)
 
     if not status:
         self.object.hide_viewport = True

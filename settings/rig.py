@@ -3,6 +3,7 @@ from ..model_selection.active_object import *
 from ..settings.outfit import *
 from ..settings.daz_morph import *
 from ..settings.section import *
+from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
 
 
@@ -335,6 +336,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
 
         # Update the objects and masks visibility
         outfits_list = rig_settings.outfits_list
@@ -414,6 +416,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         arm[cp.prop_name] = ui_data_dict['max']
                     elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['default']
+
+        # Force Physics recheck
+        if physics_settings.enable_ui:
+            enable_physics_update(physics_settings, context)
 
         if rig_settings.outfits_update_tag_on_switch:
             arm.update_tag()
