@@ -46,6 +46,8 @@ def enable_physics_update(self, context):
             modifier.show_render = status
             if modifier.type == 'COLLISION' and pi.type == "COLLISION":
                 pi.object.collision.use = status
+                # Make the object visibile otherwise collisions might not work (Blender bug)
+                pi.object.hide_viewport = not status
         if pi.type == "CAGE":
             set_cage_modifiers(pi, rig_settings.model_body.modifiers, status)
             set_modifiers(pi, rig_settings.model_body, status)
@@ -97,6 +99,8 @@ def enable_physics_update_single(self, context):
         modifier.show_render = status
         if modifier.type == 'COLLISION' and self.type == "COLLISION":
             self.object.collision.use = status
+            # Make the object visibile otherwise collisions might not work (Blender bug)
+            self.object.hide_viewport = not status
     if self.type == "CAGE":
         set_cage_modifiers(self, rig_settings.model_body.modifiers, status)
         set_modifiers(self, rig_settings.model_body, status)
