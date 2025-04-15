@@ -110,6 +110,16 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                 pi_found = False
 
                 for pi in [x for x in items if x.type == "CAGE"]:
+
+                    # To avoid the hair to affect the intersections, remove all hair physics items from the check
+                    check_hair = False
+                    if rig_settings.hair_collection is not None:
+                        for ho in rig_settings.hair_collection.objects:
+                            if pi.object in [x.target for x in ho.modifiers if x.type == "SURFACE_DEFORM"]:
+                                check_hair = True
+                    if check_hair:
+                        continue
+
                     if check_mesh_intersection(pi.object, obj):
 
                         # Add the object to the intersecting objects of the physics item
