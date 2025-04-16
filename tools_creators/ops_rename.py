@@ -1,7 +1,6 @@
 import bpy
 from bpy.props import *
-from custom_properties.misc import mustardui_clean_prop
-from model_selection.active_object import *
+from ..model_selection.active_object import *
 from .. import __package__ as base_package
 
 
@@ -34,6 +33,16 @@ class MustardUI_RenameModel(bpy.types.Operator):
             if old_name in modifier.name:
                 modifier.name = modifier.name.replace(old_name, self.name)
 
+    def change_materials_name(self, obj, old_name):
+        if obj.data is None:
+            return
+        if obj.data.materials is None:
+            return
+
+        for mat in obj.data.materials:
+            if old_name in mat.name:
+                mat.name = mat.name.replace(old_name, self.name)
+
     def execute(self, context):
 
         if self.name == "":
@@ -53,6 +62,7 @@ class MustardUI_RenameModel(bpy.types.Operator):
             if old_name in obj.name:
                 obj.name = obj.name.replace(old_name, self.name)
             self.change_modifiers_name(obj, old_name)
+            self.change_materials_name(obj, old_name)
 
         # Physics items
         for pi in [x for x in physics_settings.items if x.object is not None]:
@@ -66,6 +76,7 @@ class MustardUI_RenameModel(bpy.types.Operator):
             for obj in [x for x in items if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
+                self.change_materials_name(obj, old_name)
             coll.name = coll.name.replace(old_name, self.name)
 
         # Extras
@@ -73,6 +84,7 @@ class MustardUI_RenameModel(bpy.types.Operator):
             for obj in [x for x in rig_settings.extras_collection.all_objects if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
+                self.change_materials_name(obj, old_name)
             rig_settings.extras_collection.name = rig_settings.extras_collection.name.replace(old_name, self.name)
 
         # Hair
@@ -80,6 +92,7 @@ class MustardUI_RenameModel(bpy.types.Operator):
             for obj in [x for x in rig_settings.hair_collection.all_objects if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
+                self.change_materials_name(obj, old_name)
             rig_settings.hair_collection.name = rig_settings.hair_collection.name.replace(old_name, self.name)
 
         # Finally change the model name
