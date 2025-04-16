@@ -7,7 +7,7 @@ def set_cage_modifiers(physics_item, iterator, s, obj, body):
     intersecting_objects = [x.object for x in physics_item.intersecting_objects]
     for mod in iterator:
         if mod.type == 'MESH_DEFORM':
-            if physics_item.object == mod.object:
+            if mod.object == physics_item.object:
                 mod.show_viewport = s
                 mod.show_render = s
         elif mod.type == 'SURFACE_DEFORM':
