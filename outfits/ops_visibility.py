@@ -33,9 +33,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         object.MustardUI_outfit_visibility = context.scene.objects[self.obj].hide_viewport
 
         # Enable armature modifier
-        for modifier in object.modifiers:
-            if modifier.type == "ARMATURE":
-                modifier.show_viewport = not object.MustardUI_outfit_visibility
+        if rig_settings.outfit_switch_armature_disable:
+            for modifier in object.modifiers:
+                if modifier.type == "ARMATURE":
+                    modifier.show_viewport = not object.MustardUI_outfit_visibility
 
         # Update values of custom properties
         outfit_cp = [x for x in outfit_cp if object == x.outfit_piece and (
