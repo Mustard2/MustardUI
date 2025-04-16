@@ -57,4 +57,5 @@ def unregister():
 
     del bpy.types.Object.MustardUI_OutfitSettings
 
+    bpy.utils.unregister_class(MustardUI_OutfitSettings)
     bpy.utils.unregister_class(MustardUI_Outfit)

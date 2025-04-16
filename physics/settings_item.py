@@ -31,6 +31,10 @@ mustardui_physics_item_type_dict = {
 }
 
 
+class MustardUI_PhysicsItem_Intersecting(bpy.types.PropertyGroup):
+    object: bpy.props.PointerProperty(type=bpy.types.Object)
+
+
 class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
 
     enable: bpy.props.BoolProperty(default=False,
@@ -85,10 +89,15 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     # Collisions
     collapse_collisions: bpy.props.BoolProperty(default=True, name="")
 
+    # Intersecting Objects for Outfits
+    intersecting_objects: bpy.props.CollectionProperty(type=MustardUI_PhysicsItem_Intersecting)
+
 
 def register():
+    bpy.utils.register_class(MustardUI_PhysicsItem_Intersecting)
     bpy.utils.register_class(MustardUI_PhysicsItem)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_PhysicsItem)
+    bpy.utils.unregister_class(MustardUI_PhysicsItem_Intersecting)

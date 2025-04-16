@@ -1,5 +1,6 @@
 import bpy
 from ..model_selection.active_object import *
+from ..physics.update_enable import enable_physics_update
 
 
 # Operator to switch visibility of an object
@@ -13,7 +14,8 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
     shift: bpy.props.BoolProperty()
 
     def invoke(self, context, event):
-        self.shift = event.shift
+        if not self.shift:
+            self.shift = event.shift
         return self.execute(context)
 
     def execute(self, context):
@@ -21,6 +23,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
         armature_settings = arm.MustardUI_ArmatureSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
         outfit_cp = arm.MustardUI_CustomPropertiesOutfit
 
         object = context.scene.objects[self.obj]
@@ -30,9 +33,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         object.MustardUI_outfit_visibility = context.scene.objects[self.obj].hide_viewport
 
         # Enable armature modifier
-        for modifier in object.modifiers:
-            if modifier.type == "ARMATURE":
-                modifier.show_viewport = not object.MustardUI_outfit_visibility
+        if rig_settings.outfit_switch_armature_disable:
+            for modifier in object.modifiers:
+                if modifier.type == "ARMATURE":
+                    modifier.show_viewport = not object.MustardUI_outfit_visibility
 
         # Update values of custom properties
         outfit_cp = [x for x in outfit_cp if object == x.outfit_piece and (
@@ -82,7 +86,13 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         if self.shift:
             for c in object.children:
-                bpy.ops.mustardui.object_visibility(obj = c.name)
+                bpy.ops.mustardui.object_visibility(obj=c.name, shift=True)
+
+        # Force Physics recheck
+        if physics_settings.enable_ui:
+            enable_physics_update(physics_settings, context)
+
+        self.shift = False
 
         return {'FINISHED'}
 

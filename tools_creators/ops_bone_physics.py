@@ -167,6 +167,10 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             add_item.object = bpy.context.object
             add_item.type = 'CAGE'
 
+        # Disable shadows for viewport/render
+        bpy.context.object.visible_camera = False
+        bpy.context.object.visible_shadow = False
+
         # Set the armature as the parent
         bpy.context.view_layer.objects.active = armature
         bpy.ops.object.parent_set(type='ARMATURE')

@@ -46,10 +46,9 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
-        # col.separator()
-        # row2 = col.row()
-        # row2.enabled = False
-        # row2.prop(self, "experimental")
+        col.separator()
+        row = col.row()
+        row.prop(self, "experimental")
 
         if self.debug:
             layout.separator()

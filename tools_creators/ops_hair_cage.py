@@ -572,6 +572,10 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
             add_item.object = bpy.context.object
             add_item.type = 'CAGE'
 
+        # Disable shadows for viewport/render
+        bpy.context.object.visible_camera = False
+        bpy.context.object.visible_shadow = False
+
         self.report({'INFO'}, 'MustardUI - Hair Cage created.')
 
         return {"FINISHED"}

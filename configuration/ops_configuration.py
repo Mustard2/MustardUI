@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
 from datetime import datetime
 
@@ -17,6 +18,7 @@ class MustardUI_Configuration(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
+        physics_settings = obj.MustardUI_PhysicsSettings
         tools_settings = obj.MustardUI_ToolsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -163,6 +165,9 @@ class MustardUI_Configuration(bpy.types.Operator):
         # Fix for #148 - https://github.com/Mustard2/MustardUI/issues/148
         for sec in rig_settings.body_custom_properties_sections:
             sec.old_name = sec.name
+
+        # Force Physics update
+        enable_physics_update(physics_settings, context)
 
         return {'FINISHED'}
 

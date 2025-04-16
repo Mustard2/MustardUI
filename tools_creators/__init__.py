@@ -6,6 +6,7 @@ from . import ops_collision_cage
 from . import ops_spline_ik
 from . import ops_jiggle
 from . import ops_bone_physics
+from . import ops_rename
 
 
 def register():
@@ -18,9 +19,11 @@ def register():
     ops_spline_ik.register()
     ops_jiggle.register()
     ops_bone_physics.register()
+    ops_rename.register()
 
 
 def unregister():
+    ops_rename.unregister()
     ops_bone_physics.unregister()
     ops_jiggle.unregister()
     ops_spline_ik.unregister()

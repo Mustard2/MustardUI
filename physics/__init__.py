@@ -2,6 +2,7 @@ from . import settings_item
 from . import settings
 from . import ops_cache
 from . import menu
+from . import ops_setup
 from . import ops_mirror
 from . import ops_add
 from . import ops_remove
@@ -16,6 +17,7 @@ def register():
     settings.register()
     ops_cache.register()
     menu.register()
+    ops_setup.register()
     ops_mirror.register()
     ops_add.register()
     ops_remove.register()
@@ -33,6 +35,7 @@ def unregister():
     ops_remove.unregister()
     ops_add.unregister()
     ops_mirror.unregister()
+    ops_setup.unregister()
     menu.unregister()
     ops_cache.unregister()
     settings.unregister()

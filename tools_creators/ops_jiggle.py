@@ -666,6 +666,11 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     obj.parent = parent
                     obj.matrix_parent_inverse = parent.matrix_world.inverted()
 
+        # Disable shadows for viewport/render
+        for obj in bpy.context.selected_objects:
+            obj.visible_camera = False
+            obj.visible_shadow = False
+
         self.report({'INFO'}, 'MustardUI - Jiggle Cage created.')
 
         return {"FINISHED"}
