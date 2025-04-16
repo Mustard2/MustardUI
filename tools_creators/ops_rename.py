@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
-from ..custom_properties.misc import mustardui_clean_prop
-from ..model_selection.active_object import *
+from custom_properties.misc import mustardui_clean_prop
+from model_selection.active_object import *
 from .. import __package__ as base_package
 
 
