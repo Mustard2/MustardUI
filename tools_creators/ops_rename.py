@@ -34,12 +34,14 @@ class MustardUI_RenameModel(bpy.types.Operator):
                 modifier.name = modifier.name.replace(old_name, self.name)
 
     def change_materials_name(self, obj, old_name):
+        if obj.type != "MESH":
+            return
         if obj.data is None:
             return
         if obj.data.materials is None:
             return
 
-        for mat in obj.data.materials:
+        for mat in [x for x in obj.data.materials if x is not None]:
             if old_name in mat.name:
                 mat.name = mat.name.replace(old_name, self.name)
 

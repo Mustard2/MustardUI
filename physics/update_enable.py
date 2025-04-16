@@ -7,7 +7,7 @@ def set_cage_modifiers(physics_item, iterator, s, obj, body):
     intersecting_objects = [x.object for x in physics_item.intersecting_objects]
     for mod in iterator:
         if mod.type == 'MESH_DEFORM':
-            if physics_item.object == mod.object:
+            if mod.object == physics_item.object:
                 mod.show_viewport = s
                 mod.show_render = s
         elif mod.type == 'SURFACE_DEFORM':
@@ -126,7 +126,7 @@ def enable_physics_update_single(self, context):
                 set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
                 set_modifiers(self, obj, status_int)
 
-        if rig_settings.hair_collection is not None and not rig_settings.hair_collection.hide_viewport:
+        if rig_settings.hair_collection is not None:
             for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
                 status_int = status and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
                 set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
