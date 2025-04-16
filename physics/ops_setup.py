@@ -290,9 +290,53 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         col.prop(self, 'clean_modifiers')
 
 
+class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
+    """Clear the data driving the enable/disable of surface deform modifiers when Physics is activated/disabled"""
+    bl_idname = "mustardui.physics_setup_clear"
+    bl_label = "Clear Setup Outfits Physics"
+    bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=1)
+        physics_settings = arm.MustardUI_PhysicsSettings
+        return res and physics_settings.enable_ui
+
+    def execute(self, context):
+
+        res, arm = mustardui_active_object(context, config=1)
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+
+        body = rig_settings.model_body
+        items = physics_settings.items
+
+        # Clear current intersection objects
+        for pi in [x for x in items if x.type == "CAGE"]:
+            pi.intersecting_objects.clear()
+
+        # Disable all Surface Deform modifiers
+        colls = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
+        if rig_settings.extras_collection is not None:
+            colls.append(rig_settings.extras_collection)
+
+        for coll in colls:
+            objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
+            for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
+                for mod in [x for x in obj.modifiers if x.type == "SURFACE_DEFORM" and x.target == body]:
+                    mod.show_viewport = False
+                    mod.show_render = False
+
+        self.report({'INFO'}, f'MustardUI - Cleared Physics Setup settings.')
+
+        return {'FINISHED'}
+
+
 def register():
     bpy.utils.register_class(MustardUI_Physics_Setup)
+    bpy.utils.register_class(MustardUI_Physics_Setup_Clear)
 
 
 def unregister():
+    bpy.utils.unregister_class(MustardUI_Physics_Setup_Clear)
     bpy.utils.unregister_class(MustardUI_Physics_Setup)
