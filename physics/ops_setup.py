@@ -58,7 +58,6 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
             bpy.ops.object.surfacedeform_bind(modifier=mod.name)
 
         obj.update_tag()
-        mod.update_tag()
         bpy.context.view_layer.update()
 
     def execute(self, context):
@@ -77,6 +76,14 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
 
         items = physics_settings.items
         body = rig_settings.model_body
+
+        # Disable subdivision modifiers on the body to attempt binding with less vertices
+        body_show = False
+        for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
+            body_show = m.show_viewport
+            m.show_viewport = False
+        body.data.update_tag()
+        body.update_tag()
 
         arm.pose_position = 'REST'
 
@@ -179,6 +186,12 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                         obj.modifiers.remove(mod)
 
                 obj.update_tag()
+
+        # Re-enable subdivision modifiers on the body
+        for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
+            m.show_viewport = body_show
+        body.data.update_tag()
+        body.update_tag()
 
         if self.attempt_fix_bind:
 
