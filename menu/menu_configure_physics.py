@@ -28,6 +28,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         res, arm = mustardui_active_object(context, config=1)
+        addon_prefs = context.preferences.addons[base_package].preferences
         physics_settings = arm.MustardUI_PhysicsSettings
 
         box = layout.box()
@@ -67,10 +68,11 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             col.label(text="No Physics Item found", icon="ERROR")
             col.label(text="Right-click on Objects in Outliner to add", icon="BLANK1")
 
-        box = layout.box()
-        row = box.row(align=True)
-        row.operator('mustardui.physics_setup', icon="MOD_CLOTH")
-        row.operator('mustardui.physics_setup_clear', icon="X", text="")
+        if addon_prefs.experimental:
+            box = layout.box()
+            row = box.row(align=True)
+            row.operator('mustardui.physics_setup', icon="MOD_CLOTH")
+            row.operator('mustardui.physics_setup_clear', icon="X", text="")
 
 
 def register():
