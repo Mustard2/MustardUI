@@ -6,12 +6,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: linuxserver/blender:4.4.1
+      image: lscr.io/linuxserver/blender:latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
+          sudo apt install python3
           python -m pip install --upgrade pip
           pip install pylint
 
