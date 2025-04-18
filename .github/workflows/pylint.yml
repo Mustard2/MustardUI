@@ -3,22 +3,31 @@ name: Pylint
 on: [push]
 
 jobs:
-  build:
+  pylint:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: [3.11]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
-          python3 -m pip3 install --upgrade pip
-          pip3 install bpy
-          pip3 install pylint
-      - name: Analysing the code with pylint
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget https://mirror.blender.org/ftp/sergey/ci/blender-headless-linux-x64.tar.xz
+          tar -xf blender-headless-linux-x64.tar.xz
+          export PATH=$PATH:$(pwd)/blender-headless-linux-x64
+          blender --version  # Check Blender installation
+          python3 -m pip install --upgrade pip
+          pip install pylint
+          python3 -m pip install --user bpy  # Install bpy after Blender installation
+
+      - name: Analyzing the code with pylint
         run: |
           pylint $(git ls-files '*.py')
