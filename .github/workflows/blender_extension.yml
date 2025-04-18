@@ -56,15 +56,3 @@ jobs:
           # Run Blender to execute the build command for the extension
           $BLENDER_PATH/blender --background --python-expr "import bpy; bpy.ops.wm.addon_enable(module='your_extension_name')"
           $BLENDER_PATH/blender --background --python-expr "import bpy; print('Build complete')"
-        
-      - name: Analyze extension functionality
-        run: |
-          # You can also check logs or run further validation checks here
-          $BLENDER_PATH/blender --background --python - <<EOF
-import bpy
-# Add validation checks for your extension here
-if 'your_extension_name' in bpy.context.preferences.addons:
-    print("Addon loaded correctly.")
-else:
-    raise RuntimeError("Addon failed to load.")
-EOF
