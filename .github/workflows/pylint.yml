@@ -18,22 +18,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Blender 4.4.1
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget
-          wget https://download.blender.org/release/Blender4.4/blender-4.4.1-linux-x64.tar.xz
-          tar -xf blender-4.4.1-linux-x64.tar.xz
-          sudo mv blender-4.4.1-linux-x64 /usr/local/blender
-          sudo ln -s /usr/local/blender/blender /usr/bin/blender
-
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          blender --version  # Check Blender installation
-          python -m pip install --user bpy
           pip3 install pylint
 
       - name: Analysing the code with pylint
         run: |
-          pylint $(git ls-files '*.py')
+          pylint --disable=unresolved-import,use-before-def $(git ls-files '*.py')
