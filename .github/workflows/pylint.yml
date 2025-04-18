@@ -6,7 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu/python:latest
+      image: ubuntu/python:3.12-24.04_stable
+    
     steps:
       - uses: actions/checkout@v4
 
