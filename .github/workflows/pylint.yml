@@ -1,33 +1,20 @@
-name: Pylint
+name: Run in Custom Docker Image
 
 on: [push]
 
 jobs:
-  pylint:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.11]
+    container:
+      image: linuxserver/blender:4.4.1
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget
-          wget https://mirror.blender.org/ftp/sergey/ci/blender-headless-linux-x64.tar.xz
-          tar -xf blender-headless-linux-x64.tar.xz
-          export PATH=$PATH:$(pwd)/blender-headless-linux-x64
-          blender --version  # Check Blender installation
-          python3 -m pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install pylint
-          python3 -m pip install --user bpy  # Install bpy after Blender installation
 
-      - name: Analyzing the code with pylint
+      - name: Analysing the code with pylint
         run: |
           pylint $(git ls-files '*.py')
