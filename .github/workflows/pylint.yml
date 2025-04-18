@@ -13,6 +13,8 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
+          blender --version  # Check Blender installation
+          python -m pip install --user bpy
           pip3 install pylint
 
       - name: Analysing the code with pylint
