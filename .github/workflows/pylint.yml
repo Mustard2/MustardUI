@@ -5,10 +5,13 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: lscr.io/linuxserver/blender:latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install blender
 
       - name: Install dependencies
         run: |
