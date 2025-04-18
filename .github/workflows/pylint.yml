@@ -8,10 +8,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Blender
+      - name: Install Blender 4.4
         run: |
           sudo apt-get update
-          sudo apt-get install blender
+          sudo apt-get install -y wget
+          wget https://download.blender.org/release/Blender4.4/blender-4.4.0-linux-x64.tar.xz
+          tar -xf blender-4.4.0-linux-x64.tar.xz
+          sudo mv blender-4.4.0-linux-x64 /usr/local/blender
+          sudo ln -s /usr/local/blender/blender /usr/bin/blender
 
       - name: Install dependencies
         run: |
