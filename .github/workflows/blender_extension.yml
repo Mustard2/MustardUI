@@ -1,0 +1,70 @@
+name: Blender Extension Build and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.11  # Specify the Python version you need for your extension
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget python3-dev build-essential
+
+      - name: Install Blender
+        run: |
+          wget https://mirror.blender.org/ftp/sergey/ci/blender-headless-linux-x64.tar.xz
+          tar -xf blender-headless-linux-x64.tar.xz
+          export PATH=$PATH:$(pwd)/blender-headless-linux-x64
+          blender --version  # Verify Blender installation
+
+      - name: Install Blender Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bpy  # Install the bpy library to work with Blender's Python API
+
+      - name: Install your Blender extension (if necessary)
+        run: |
+          # Assume your extension is in the 'blender_extension' directory
+          # Replace this with the actual installation steps for your extension
+          cp -r ./blender_extension ~/.config/blender/3.11/scripts/addons/
+
+      - name: Validate Blender extension
+        run: |
+          # Run Blender with the validate command to check if the extension is working correctly
+          $BLENDER_PATH/blender --background --python-expr "import bpy; bpy.ops.wm.addon_enable(module='your_extension_name')"
+          $BLENDER_PATH/blender --background --python-expr "import bpy; bpy.ops.wm.addon_enable(module='your_extension_name')"
+          $BLENDER_PATH/blender --background --python-expr "import bpy; print('Validation complete')"
+      
+      - name: Run extension build command
+        run: |
+          # Run Blender to execute the build command for the extension
+          $BLENDER_PATH/blender --background --python-expr "import bpy; bpy.ops.wm.addon_enable(module='your_extension_name')"
+          $BLENDER_PATH/blender --background --python-expr "import bpy; print('Build complete')"
+        
+      - name: Analyze extension functionality
+        run: |
+          # You can also check logs or run further validation checks here
+          $BLENDER_PATH/blender --background --python - <<EOF
+import bpy
+# Add validation checks for your extension here
+if 'your_extension_name' in bpy.context.preferences.addons:
+    print("Addon loaded correctly.")
+else:
+    raise RuntimeError("Addon failed to load.")
+EOF
