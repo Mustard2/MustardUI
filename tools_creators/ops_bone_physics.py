@@ -52,6 +52,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
 
         armature = context.object
@@ -85,7 +86,11 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='OBJECT')
 
         # Create a new object for the curve and link it to the scene
-        curve_obj = bpy.data.objects.new('MustardUI Bone Physics', curve_data)
+        if rig_settings.model_name != "" and armature.name != "":
+            bp_name = f"{rig_settings.model_name} {armature.name.replace(rig_settings.model_name, '')} Bone Physics"
+        else:
+            bp_name = "Bone Physics"
+        curve_obj = bpy.data.objects.new(bp_name, curve_data)
         bpy.context.collection.objects.link(curve_obj)
         curve_obj.MustardUI_tools_creators_is_created = True
 
