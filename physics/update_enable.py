@@ -57,6 +57,9 @@ def enable_physics_update(self, context):
         if pi.type == "CAGE":
             set_cage_modifiers(pi, rig_settings.model_body.modifiers, status, None, body)
             set_modifiers(pi, rig_settings.model_body, status)
+        elif pi.type == "BONES_DRIVER":
+            pi.bone_influence = status
+
         if not status:
             pi.object.hide_viewport = True
         if not self.enable_physics:
@@ -131,6 +134,8 @@ def enable_physics_update_single(self, context):
                 status_int = status and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
                 set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
                 set_modifiers(self, obj, status_int)
+    elif self.type == "BONES_DRIVER":
+        self.bone_influence = status
 
     if not status:
         self.object.hide_viewport = True

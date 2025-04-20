@@ -165,7 +165,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         if self.add_to_panel:
             add_item = physics_settings.items.add()
             add_item.object = bpy.context.object
-            add_item.type = 'CAGE'
+            add_item.type = 'BONES_DRIVER'
 
         # Disable shadows for viewport/render
         bpy.context.object.visible_camera = False

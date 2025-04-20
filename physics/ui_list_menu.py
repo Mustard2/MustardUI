@@ -19,7 +19,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
         name = name if not rig_settings.model_MustardUI_naming_convention else name[len(rig_settings.model_name)+1:]
         layout.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
         row = layout.row(align=True)
-        if item.type in ["CAGE", "SINGLE_ITEM"]:
+        if item.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
             row.prop(item, 'enable', text="", icon="PHYSICS")
             row.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
         else:
