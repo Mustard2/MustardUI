@@ -28,6 +28,7 @@ from . import morphs
 from . import configuration
 from . import links
 from . import menu
+from . import viewport_panel
 
 
 def register():
@@ -46,9 +47,11 @@ def register():
     configuration.register()
     links.register()
     menu.register()
+    viewport_panel.register()
 
 
 def unregister():
+    viewport_panel.unregister()
     menu.unregister()
     links.unregister()
     configuration.unregister()
