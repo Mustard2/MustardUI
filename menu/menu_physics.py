@@ -5,11 +5,18 @@ from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from ..misc.ui_collapse import ui_collapse_prop
 from ..misc.mirror import check_mirror
-from ..physics.settings_item import mustardui_physics_item_type_dict
+from ..physics.presets_cloth import MUI_PT_PhysicsClothPresets
 
 
 def cloth_panel(layout, pi, mod):
-    if ui_collapse_prop(layout, pi, 'collapse_cloth', "Cloth settings", icon="MOD_CLOTH"):
+    row = layout.row(align=True)
+    row.prop(pi, 'collapse_cloth',
+             icon="TRIA_DOWN" if not pi.collapse_cloth else "TRIA_RIGHT", icon_only=True,
+             emboss=False)
+    row.label(text="Cloth", icon="MOD_CLOTH")
+    MUI_PT_PhysicsClothPresets.draw_panel_header(row)
+
+    if not pi.collapse_cloth:
 
         cloth = mod.settings
         box = layout.box()
