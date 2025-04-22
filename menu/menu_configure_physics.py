@@ -63,6 +63,21 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
                 row = col.row()
                 row.prop(pi, 'type')
 
+            if addon_prefs.experimental and index > -1 and len(
+                    physics_settings.items[arm.mustardui_physics_items_uilist_index].intersecting_objects) > 0:
+                box = layout.box()
+                box.label(text="Outfits Affected by Physics Item", icon="XRAY")
+
+                row = box.row()
+                row.template_list("MUSTARDUI_UL_PhysicsItems_Outfits_UIList", "The_List",
+                                  physics_settings.items[arm.mustardui_physics_items_uilist_index],
+                                  "intersecting_objects", arm,
+                                  "mustardui_physics_items_outfits_uilist_index")
+                col = row.column()
+                col.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = True
+                col.separator()
+                col.operator("mustardui.physics_intersecting_object_remove", text="", icon="X")
+
         else:
 
             col = box.column()
@@ -76,17 +91,6 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             row.operator('mustardui.physics_setup', icon="PHYSICS")
             row.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = False
             row.operator('mustardui.physics_setup_clear', icon="X", text="")
-
-            if index > -1 and len(physics_settings.items[arm.mustardui_physics_items_uilist_index].intersecting_objects) > 0:
-
-                row = box.row()
-                row.template_list("MUSTARDUI_UL_PhysicsItems_Outfits_UIList", "The_List", physics_settings.items[arm.mustardui_physics_items_uilist_index],
-                                  "intersecting_objects", arm,
-                                  "mustardui_physics_items_outfits_uilist_index")
-                col = row.column()
-                col.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = True
-                col.separator()
-                col.operator("mustardui.physics_intersecting_object_remove", text="", icon="X")
 
 
 def register():

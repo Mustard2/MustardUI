@@ -7,7 +7,7 @@ from .update_enable import enable_physics_update
 
 
 class MustardUI_Physics_Setup(bpy.types.Operator):
-    """This button creates Surface Deform modifiers on Outfit pieces affected by Cages physics items.\nThe modifier is added only if the Outfit piece and the Cage intersect"""
+    """This button creates Surface Deform modifiers on Outfit pieces affected by Cages physics items.\nThe modifier is added only if the Outfit piece and the Cage intersect.\nBlender might freeze during the process"""
     bl_idname = "mustardui.physics_setup"
     bl_label = "Setup Outfits Physics"
     bl_options = {'UNDO'}
@@ -48,7 +48,7 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
-        return res and physics_settings.enable_ui
+        return res and physics_settings.enable_ui and [x for x in physics_settings.items if x.type == "CAGE"]
 
     def bind_attempt_fix(self, obj, mod):
 
@@ -311,7 +311,7 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
         for pi in physics_settings.items:
             if len(pi.intersecting_objects) > 0:
-                return res and physics_settings.enable_ui
+                return res and physics_settings.enable_ui and [x for x in physics_settings.items if x.type == "CAGE"]
         return False
 
     def execute(self, context):
@@ -399,7 +399,7 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
-        return res and physics_settings.enable_ui
+        return res and physics_settings.enable_ui and [x for x in physics_settings.items if x.type == "CAGE"]
 
     def execute(self, context):
 
