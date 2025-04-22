@@ -17,10 +17,10 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                                              description="Attempt to fix the rebinding if errors occur (Simplify should be off).\nTo use the model with these fixes, read carefully the warnings if generated")
     override_armature_check: bpy.props.BoolProperty(default=False,
                                                     name="Override Armature Check",
-                                                    description="Surface Deform modifiers are added even if the Armature modifier is not available on the Object")
+                                                    description="Enable this to add Surface Deform modifiers even if the Armature modifier is not available on the Object")
     override_physics_check: bpy.props.BoolProperty(default=False,
                                                     name="Override Physics Check",
-                                                    description="Surface Deform modifiers are not added if Physics modifiers are found on the Object.\nEnable this to remove this condition")
+                                                    description="Enable this to add Surface Deform modifiers even if Physics modifiers are found on the Object")
     clean_modifiers: bpy.props.BoolProperty(default=False,
                                             name="Clean Modifiers",
                                             description="Remove modifiers for mesh not affected by Physics cages")
@@ -117,18 +117,7 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                 pi_found = False
 
                 for pi in [x for x in items if x.type == "CAGE"]:
-
-                    # To avoid the hair to affect the intersections, remove all hair physics items from the check
-                    check_hair = False
-                    if rig_settings.hair_collection is not None:
-                        for ho in rig_settings.hair_collection.objects:
-                            if pi.object in [x.target for x in ho.modifiers if x.type == "SURFACE_DEFORM"]:
-                                check_hair = True
-                    if check_hair:
-                        continue
-
                     if check_mesh_intersection(pi.object, obj):
-
                         # Add the object to the intersecting objects of the physics item
                         npi = pi.intersecting_objects.add()
                         npi.object = obj
@@ -293,14 +282,107 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
 
         layout = self.layout
 
-        box = layout.box()
-        col = box.column(align=True)
+        col = layout.column(align=True)
         col.prop(self, 'attempt_fix_bind')
         col.prop(self, 'override_armature_check')
         col.prop(self, 'override_physics_check')
 
-        col = box.column(align=True)
+        col = layout.column(align=True)
         col.prop(self, 'clean_modifiers')
+
+
+class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
+    """Compute Outfits Intersecting with Physics Items.\nBlender might freeze for a while, depending on the complexity of the Outfits mesh"""
+    bl_idname = "mustardui.physics_setup_intersecting_objects"
+    bl_label = "Compute Intersecting Outfits"
+    bl_options = {'UNDO'}
+
+    override_armature_check: bpy.props.BoolProperty(default=False,
+                                                    name="Override Armature Check",
+                                                    description="Enable this to add Surface Deform modifiers even if the Armature modifier is not available on the Object")
+    override_physics_check: bpy.props.BoolProperty(default=False,
+                                                   name="Override Physics Check",
+                                                   description="Enable this to add Surface Deform modifiers even if Physics modifiers are found on the Object")
+    unique: bpy.props.BoolProperty(default=False)
+
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=1)
+        physics_settings = arm.MustardUI_PhysicsSettings
+        for pi in physics_settings.items:
+            if len(pi.intersecting_objects) > 0:
+                return res and physics_settings.enable_ui
+        return False
+
+    def execute(self, context):
+
+        res, arm = mustardui_active_object(context, config=1)
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+
+        items = physics_settings.items
+
+        if self.unique:
+            if arm.mustardui_physics_items_uilist_index < 0:
+                return {'FINISHED'}
+            if physics_settings.items[arm.mustardui_physics_items_uilist_index].object is None:
+                return {'FINISHED'}
+
+        # Clear current intersection objects
+        if self.unique:
+            pi = physics_settings.items[arm.mustardui_physics_items_uilist_index]
+            pi.intersecting_objects.clear()
+        else:
+            bpy.ops.mustardui.physics_setup_clear()
+
+        colls = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
+        if rig_settings.extras_collection is not None:
+            colls.append(rig_settings.extras_collection)
+
+        for coll in colls:
+            objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
+            for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
+                # Check if the Armature modifier is available on the Object
+                # This should be an indication of the fact that the Object should be driven by the body with Surface
+                # Deform modifiers
+                if not self.override_armature_check:
+                    if len([x for x in obj.modifiers if
+                            x.type == "ARMATURE" and x.object == rig_settings.model_armature_object]) == 0:
+                        continue
+
+                # Check if Physics modifiers are available on the mesh
+                # If these modifiers are available, most probably the item does not need to be driven by Surface Deform
+                if not self.override_armature_check:
+                    if any(x.type in ["CLOTH", "SOFT_BODY"] for x in obj.modifiers):
+                        continue
+
+                if self.unique:
+                    pi = physics_settings.items[arm.mustardui_physics_items_uilist_index]
+                    if check_mesh_intersection(pi.object, obj):
+                        # Add the object to the intersecting objects of the physics item
+                        npi = pi.intersecting_objects.add()
+                        npi.object = obj
+                else:
+                    for pi in [x for x in items if x.type == "CAGE"]:
+                        if check_mesh_intersection(pi.object, obj):
+                            # Add the object to the intersecting objects of the physics item
+                            npi = pi.intersecting_objects.add()
+                            npi.object = obj
+
+        self.report({'INFO'}, f'MustardUI - Recomputed Physics Outfits settings.')
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=450)
+
+    def draw(self, context):
+
+        layout = self.layout
+
+        col = layout.column(align=True)
+        col.prop(self, 'override_armature_check')
+        col.prop(self, 'override_physics_check')
 
 
 class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
@@ -308,6 +390,10 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
     bl_idname = "mustardui.physics_setup_clear"
     bl_label = "Clear Setup Outfits Physics"
     bl_options = {'UNDO'}
+
+    clean_modifiers: bpy.props.BoolProperty(default=False,
+                                            name="Clean Modifiers",
+                                            description="Remove Surface Deform modifiers")
 
     @classmethod
     def poll(cls, context):
@@ -328,7 +414,7 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
         for pi in [x for x in items if x.type == "CAGE"]:
             pi.intersecting_objects.clear()
 
-        # Disable all Surface Deform modifiers
+        # Disable or remove all Surface Deform modifiers
         colls = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
         if rig_settings.extras_collection is not None:
             colls.append(rig_settings.extras_collection)
@@ -336,20 +422,37 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
         for coll in colls:
             objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
             for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
-                for mod in [x for x in obj.modifiers if x.type == "SURFACE_DEFORM" and x.target == body]:
-                    mod.show_viewport = False
-                    mod.show_render = False
+                mods = [x for x in obj.modifiers if x.type == "SURFACE_DEFORM" and x.target == body]
+                mods.reverse()
+                for mod in mods:
+                    if self.clean_modifiers:
+                        obj.modifiers.remove(mod)
+                    else:
+                        mod.show_viewport = False
+                        mod.show_render = False
 
-        self.report({'INFO'}, f'MustardUI - Cleared Physics Setup settings.')
+        self.report({'INFO'}, 'MustardUI - Cleared Physics Setup settings.')
 
         return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=450)
+
+    def draw(self, context):
+
+        layout = self.layout
+
+        col = layout.column(align=True)
+        col.prop(self, 'clean_modifiers')
 
 
 def register():
     bpy.utils.register_class(MustardUI_Physics_Setup)
+    bpy.utils.register_class(MustardUI_Physics_Setup_IntersectingObjects)
     bpy.utils.register_class(MustardUI_Physics_Setup_Clear)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_Physics_Setup_Clear)
+    bpy.utils.unregister_class(MustardUI_Physics_Setup_IntersectingObjects)
     bpy.utils.unregister_class(MustardUI_Physics_Setup)

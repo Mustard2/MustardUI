@@ -39,6 +39,8 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box.enabled = physics_settings.enable_ui
         box.label(text="Physics Items", icon="MODIFIER")
 
+        index = arm.mustardui_physics_items_uilist_index
+
         if len(physics_settings.items):
 
             row = box.row()
@@ -54,7 +56,6 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             col.separator()
             col.operator("mustardui.physics_item_remove", text="", icon="X")
 
-            index = arm.mustardui_physics_items_uilist_index
             if index > -1:
                 pi = physics_settings.items[index]
 
@@ -70,9 +71,22 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
 
         if addon_prefs.experimental:
             box = layout.box()
+            box.label(text="Outfits Support", icon="MOD_CLOTH")
             row = box.row(align=True)
-            row.operator('mustardui.physics_setup', icon="MOD_CLOTH")
+            row.operator('mustardui.physics_setup', icon="PHYSICS")
+            row.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = False
             row.operator('mustardui.physics_setup_clear', icon="X", text="")
+
+            if index > -1 and len(physics_settings.items[arm.mustardui_physics_items_uilist_index].intersecting_objects) > 0:
+
+                row = box.row()
+                row.template_list("MUSTARDUI_UL_PhysicsItems_Outfits_UIList", "The_List", physics_settings.items[arm.mustardui_physics_items_uilist_index],
+                                  "intersecting_objects", arm,
+                                  "mustardui_physics_items_outfits_uilist_index")
+                col = row.column()
+                col.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = True
+                col.separator()
+                col.operator("mustardui.physics_intersecting_object_remove", text="", icon="X")
 
 
 def register():
