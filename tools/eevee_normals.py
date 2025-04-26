@@ -223,7 +223,10 @@ def default_custom_nodes():
     node.inputs[0].default_value = 1.0  # Strength
     node.inputs[1].default_value = 1000.0  # Distance
     node.inputs[2].default_value = 1.0  # Height
-    node.inputs[4].default_value = (0.0, 0.0, 0.0)  # Normal
+    if bpy.app.version < (4, 4, 0):
+        node.inputs[3].default_value = (0.0, 0.0, 0.0)  # Normal
+    else:
+        node.inputs[4].default_value = (0.0, 0.0, 0.0)  # Normal
 
     node = nodes.new('ShaderNodeBump')
     node.name = 'Tangent'
