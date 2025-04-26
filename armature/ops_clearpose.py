@@ -5,7 +5,7 @@ from mathutils import Vector, Matrix
 
 class MustardUI_Armature_ClearPose(bpy.types.Operator):
     """Revert the position of all the bones to the Rest position"""
-    bl_idname = "mustardui.morphs_clearpose"
+    bl_idname = "mustardui.armature_clearpose"
     bl_label = "Clear Pose"
     bl_options = {'REGISTER', 'UNDO'}
 

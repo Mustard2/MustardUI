@@ -1,7 +1,7 @@
 # Function to add a option to the object, if not already there
 def mustardui_add_morph(collection, item, custom_property=True):
     for el in collection:
-        if el.name == item[0] and el.path == item[1]:
+        if el.name == item[0] and el.path == item[1] and el.custom_property == custom_property:
             return
 
     add_item = collection.add()

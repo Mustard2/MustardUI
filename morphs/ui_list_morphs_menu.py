@@ -14,11 +14,23 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
 
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
+        morphs_settings = obj.MustardUI_MorphsSettings
 
-        if item.custom_property:
-            layout.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(item.path)}"]', text=item.name, emboss=False, translate=False)
-        elif item.shape_key:
-            layout.prop(rig_settings.model_body.data.shape_keys.key_blocks[item.path], 'value', text=item.name, emboss=False, translate=False)
+        if morphs_settings.type == "GENERIC" and morphs_settings.show_type_icon:
+            icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
+            if item.custom_property:
+                layout.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(item.path)}"]',
+                            icon=icon, text=item.name)
+            elif item.shape_key:
+                layout.prop(rig_settings.model_body.data.shape_keys.key_blocks[item.path], 'value',
+                            icon=icon, text=item.name)
+        else:
+            if item.custom_property:
+                layout.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(item.path)}"]',
+                            text=item.name)
+            elif item.shape_key:
+                layout.prop(rig_settings.model_body.data.shape_keys.key_blocks[item.path], 'value',
+                            text=item.name)
 
 
 def register():

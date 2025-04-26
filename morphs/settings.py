@@ -20,7 +20,9 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
                                  description="Type of Morphs to add.\nIf Morphs are already available, this setting can not be changed. Clear the Morphs before changing this setting",
                                  name="Morphs Type")
 
-    # UI
+    show_type_icon: bpy.props.BoolProperty(default=False,
+                                           name="Show Type Icon",
+                                           description="Show Morph type icon in the UI")
 
     # INTERNAL
 

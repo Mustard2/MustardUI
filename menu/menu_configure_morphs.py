@@ -97,6 +97,9 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                 col.separator()
                 col.operator("mustardui.morphs_remove", text="", icon="X")
 
+                if morphs_settings.type == "GENERIC":
+                    box.prop(morphs_settings, 'show_type_icon')
+
             if morphs_settings.type != "GENERIC":
                 box = layout.box()
                 box.enabled = morphs_settings.enable_ui

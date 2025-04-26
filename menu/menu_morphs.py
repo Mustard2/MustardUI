@@ -74,7 +74,6 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
             row2 = row.row(align=True)
             row2.prop(rig_settings, 'diffeomorphic_filter_null', icon="FILTER", text="")
             row2.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK", text="")
-            row2.operator('mustardui.morphs_clearpose', icon="OUTLINER_OB_ARMATURE", text="")
             row2.prop(rig_settings, 'diffeomorphic_enable_settings', icon="PREFERENCES", text="")
             if rig_settings.diffeomorphic_enable_settings:
                 box = layout.box()
@@ -87,6 +86,8 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 row.prop(rig_settings, 'diffeomorphic_enable_facs_bones')
         # Generic panel
         else:
+            row = layout.row()
+            row.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK", text="")
             for section in [x for x in morphs_settings.sections if x.morphs]:
                 box = layout.box()
                 if ui_collapse_prop(box, section, 'collapse', section.name, icon=section.icon):

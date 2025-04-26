@@ -75,8 +75,18 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
 class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
     """UIList for Morphs"""
 
+    def poll(cls, context):
+        res, obj = mustardui_active_object(context, config=1)
+        return res if obj is not None else False
+
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        if item:
+        poll, obj = mustardui_active_object(context, config=1)
+        morphs_settings = obj.MustardUI_MorphsSettings
+
+        if morphs_settings.type == "GENERIC":
+            icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
+            layout.prop(item, 'name', text="", emboss=False, translate=False, icon=icon)
+        else:
             layout.prop(item, 'name', text="", emboss=False, translate=False)
 
 
