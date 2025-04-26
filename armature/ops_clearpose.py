@@ -30,8 +30,7 @@ class MustardUI_Armature_ClearPose(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=0)
-        morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui
+        return res if arm is not None else False
 
     def execute(self, context):
 
