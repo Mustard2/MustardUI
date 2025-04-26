@@ -86,15 +86,14 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 row.prop(rig_settings, 'diffeomorphic_enable_facs_bones')
         # Generic panel
         else:
-            row = layout.row()
-            row.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK", text="")
             for section in [x for x in morphs_settings.sections if x.morphs]:
-                box = layout.box()
-                if ui_collapse_prop(box, section, 'collapse', section.name, icon=section.icon):
-                    box.template_list("MUSTARDUI_UL_Morphs_UIList_Menu", "The_List",
+                if ui_collapse_prop(layout, section, 'collapse', section.name, icon=section.icon):
+                    layout.template_list("MUSTARDUI_UL_Morphs_UIList_Menu", "The_List",
                                       section, "morphs",
                                       obj, "mustardui_morphs_uilist_menu_index")
 
+            row = layout.row()
+            row.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK")
 
 
 class PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits(MainPanel, bpy.types.Panel):
