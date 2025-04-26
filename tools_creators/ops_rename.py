@@ -4,7 +4,7 @@ from ..model_selection.active_object import *
 from .. import __package__ as base_package
 
 
-class MustardUI_RenameModel(bpy.types.Operator):
+class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
     """Rename the model. This also changes the name of objects, collections and physics items associated to the model.\nThe renaming tool only works if MustardUI Naming Convention is active"""
     bl_idname = "mustardui.rename_model"
     bl_label = "Rename Model"
@@ -126,8 +126,8 @@ class MustardUI_RenameModel(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_RenameModel)
+    bpy.utils.register_class(MustardUI_ToolsCreators_RenameModel)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_RenameModel)
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_RenameModel)
