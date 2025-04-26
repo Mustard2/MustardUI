@@ -27,7 +27,7 @@ class MustardUI_Morphs_Clear(bpy.types.Operator):
 
         morphs_settings.sections.clear()
         morphs_settings.is_diffeomorphic = False
-        rig_settings.diffeomorphic_morphs_number = 0
+        morphs_settings.morphs_number = 0
 
         # Reset UI List indices
         arm.mustardui_morphs_section_uilist_index = 0
@@ -90,7 +90,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
             # Emotions Units
             mustardui_add_section(morphs_settings.sections, ["Emotion Units"])
-            if rig_settings.diffeomorphic_emotions_units and morphs_settings.type == "DIFFEO_GENESIS_8":
+            if morphs_settings.diffeomorphic_emotions_units and morphs_settings.type == "DIFFEO_GENESIS_8":
                 emotions_units = [x for x in rig_settings.model_armature_object.keys() if (
                         'eCTRL' in x or 'ECTRL' in x) and not "HD" in x and not "eCTRLSmile" in x and not 'eCTRLv' in x and sum(
                     1 for c in x if c.isupper()) >= 6]
@@ -102,7 +102,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
             # Emotions
             mustardui_add_section(morphs_settings.sections, ["Emotions"])
-            if rig_settings.diffeomorphic_emotions and morphs_settings.type == "DIFFEO_GENESIS_8":
+            if morphs_settings.diffeomorphic_emotions and morphs_settings.type == "DIFFEO_GENESIS_8":
 
                 emotions = [x for x in rig_settings.model_armature_object.keys() if
                             'eCTRL' in x and not "HD" in x and not 'eCTRLv' in x and (
@@ -110,7 +110,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
                 # Custom Diffeomorphic emotions
                 emotions_custom = []
-                for string in [x for x in rig_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
+                for string in [x for x in morphs_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
                     for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                         if string in x:
                             emotions_custom.append(x)
@@ -125,7 +125,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             # FACS Emotions Units
             sec = "Advanced Emotion Units" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotion Units"
             mustardui_add_section(morphs_settings.sections, [sec])
-            if rig_settings.diffeomorphic_facs_emotions_units:
+            if morphs_settings.diffeomorphic_facs_emotions_units:
 
                 facs_emotions_units = []
                 facs_emotions_units.append([x for x in rig_settings.model_armature_object.keys() if
@@ -145,7 +145,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             # FACS Emotions
             sec = "Advanced Emotions" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotions"
             mustardui_add_section(morphs_settings.sections, [sec])
-            if rig_settings.diffeomorphic_facs_emotions:
+            if morphs_settings.diffeomorphic_facs_emotions:
 
                 facs_emotions = [x for x in rig_settings.model_armature_object.keys() if x in facs_emotions_default_list]
 
@@ -153,7 +153,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 emotions_custom = []
                 if morphs_settings.type == "DIFFEO_GENESIS_9":
                     emotions_custom = []
-                    for string in [x for x in rig_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
+                    for string in [x for x in morphs_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
                         for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                             if string in x:
                                 emotions_custom.append(x)
@@ -168,7 +168,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
             # Body Morphs for Genesis 8
             mustardui_add_section(morphs_settings.sections, ["Body"])
-            if rig_settings.diffeomorphic_body_morphs:
+            if morphs_settings.diffeomorphic_body_morphs:
 
                 body_morphs_FBM = [x for x in rig_settings.model_armature_object.keys() if
                                    'FBM' in x and sum(1 for c in x if c.isdigit()) < 1 and sum(
@@ -187,7 +187,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
                 # Custom Diffeomorphic emotions
                 body_morphs_custom = []
-                for string in [x for x in rig_settings.diffeomorphic_body_morphs_custom.split(',') if x != '']:
+                for string in [x for x in morphs_settings.diffeomorphic_body_morphs_custom.split(',') if x != '']:
                     for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                         if string in x:  # and sum(1 for c in x if c.isupper()) < 6:
                             body_morphs_custom.append(x)
@@ -243,7 +243,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     print(f"  {repr(morph.name)} in section: {repr(section.name)}")
                 properties_number = properties_number + 1
 
-        rig_settings.diffeomorphic_morphs_number = properties_number
+        morphs_settings.morphs_number = properties_number
 
         if properties_number:
             self.report({'INFO'}, 'MustardUI - Morphs check completed.')
@@ -272,7 +272,6 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
     def draw(self, context):
 
         res, arm = mustardui_active_object(context, config=1)
-        rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 
         layout = self.layout
@@ -280,32 +279,32 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
         if morphs_settings.type in ["DIFFEO_GENESIS_8", "DIFFEO_GENESIS_9"]:
             col = layout.column()
             if morphs_settings.type == "DIFFEO_GENESIS_8":
-                col.prop(rig_settings, "diffeomorphic_emotions_units")
-                col.prop(rig_settings, "diffeomorphic_emotions")
-                if rig_settings.diffeomorphic_emotions:
+                col.prop(morphs_settings, "diffeomorphic_emotions_units")
+                col.prop(morphs_settings, "diffeomorphic_emotions")
+                if morphs_settings.diffeomorphic_emotions:
                     row = col.row(align=True)
                     row.label(text="Custom morphs")
                     row.scale_x = row_scale
-                    row.prop(rig_settings, "diffeomorphic_emotions_custom", text="")
+                    row.prop(morphs_settings, "diffeomorphic_emotions_custom", text="")
 
             if morphs_settings.type == "DIFFEO_GENESIS_8":
-                col.prop(rig_settings, "diffeomorphic_facs_emotions_units")
-                col.prop(rig_settings, "diffeomorphic_facs_emotions")
+                col.prop(morphs_settings, "diffeomorphic_facs_emotions_units")
+                col.prop(morphs_settings, "diffeomorphic_facs_emotions")
             else:
-                col.prop(rig_settings, "diffeomorphic_facs_emotions_units", text="Emotions Units Morphs")
-                col.prop(rig_settings, "diffeomorphic_facs_emotions", text="Emotions Morphs")
-                if rig_settings.diffeomorphic_facs_emotions:
+                col.prop(morphs_settings, "diffeomorphic_facs_emotions_units", text="Emotions Units Morphs")
+                col.prop(morphs_settings, "diffeomorphic_facs_emotions", text="Emotions Morphs")
+                if morphs_settings.diffeomorphic_facs_emotions:
                     row = col.row(align=True)
                     row.label(text="Custom morphs")
                     row.scale_x = row_scale
-                    row.prop(rig_settings, "diffeomorphic_emotions_custom", text="")
+                    row.prop(morphs_settings, "diffeomorphic_emotions_custom", text="")
 
-            col.prop(rig_settings, "diffeomorphic_body_morphs")
-            if rig_settings.diffeomorphic_body_morphs:
+            col.prop(morphs_settings, "diffeomorphic_body_morphs")
+            if morphs_settings.diffeomorphic_body_morphs:
                 row = col.row(align=True)
                 row.label(text="Custom morphs")
                 row.scale_x = row_scale
-                row.prop(rig_settings, "diffeomorphic_body_morphs_custom", text="")
+                row.prop(morphs_settings, "diffeomorphic_body_morphs_custom", text="")
 
 
 def register():

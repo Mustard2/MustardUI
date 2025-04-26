@@ -18,6 +18,15 @@ def mustardui_add_section(collection, item):
     return
 
 
+diffeomorphic_facs_bones_rot = ['lowerJaw', 'EyelidOuter', 'EyelidInner', 'EyelidUpperInner', 'EyelidUpper',
+                                'EyelidUpperOuter',
+                                'EyelidLowerOuter', 'EyelidLower', 'EyelidLowerInner']
+diffeomorphic_facs_bones_loc = ['lowerJaw', 'NasolabialLower', 'NasolabialMouthCorner', 'LipCorner',
+                                'LipLowerOuter',
+                                'LipLowerInner', 'LipLowerMiddle', 'CheekLower', 'LipNasolabialCrease',
+                                'LipUpperMiddle', 'LipUpperOuter', 'LipUpperInner', 'LipBelow', 'NasolabialMiddle']
+
+
 def muteDazFcurves_exceptionscheck(muteexceptions, string, exceptions):
     check_final = False
     for s in [x for x in exceptions.split(',') if x != '']:

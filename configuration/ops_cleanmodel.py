@@ -317,9 +317,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
             # Remove diffeomorphic support from the UI to avoid errors in the UI, or restore it if FACS are asked
             if not self.remove_morphs_facs:
                 morphs_settings.sections.clear()
-                rig_settings.diffeomorphic_body_morphs = False
-                rig_settings.diffeomorphic_emotions = False
-                rig_settings.diffeomorphic_emotions_units = False
+                morphs_settings.diffeomorphic_body_morphs = False
+                morphs_settings.diffeomorphic_emotions = False
+                morphs_settings.diffeomorphic_emotions_units = False
                 bpy.ops.mustardui.configuration()
                 bpy.ops.mustardui.morphs_check()
                 bpy.ops.mustardui.configuration()

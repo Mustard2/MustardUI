@@ -17,6 +17,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
 
         if obj is not None:
             # If an old script is available, only this warning is shown
@@ -24,7 +25,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             if check_old_UI():
                 return poll
 
-            return poll and check_eevee_normals(context.scene, settings)
+            return poll and (check_eevee_normals(context.scene, settings) or rig_settings.diffeomorphic_support)
 
         return poll
 
@@ -34,6 +35,8 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
+        poll, obj = mustardui_active_object(context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
 
@@ -53,6 +56,12 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             col.label(text="Eevee Optimed Normals are active with Cycles!", icon="ERROR")
             box.operator("mustardui.warnings_fix_eevee_normals")
+
+        if rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0:
+            box = layout.box()
+            col = box.column(align=True)
+            col.label(text="Morphs are outdated.", icon="ERROR")
+            box.operator("mustardui.warnings_fix_old_morphs")
 
 
 def register():

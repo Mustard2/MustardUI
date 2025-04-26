@@ -106,7 +106,7 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                 row = box.row(align=True)
                 row.label(text="Disable Exceptions")
                 row.scale_x = row_scale
-                row.prop(rig_settings, "diffeomorphic_disable_exceptions", text="")
+                row.prop(morphs_settings, "diffeomorphic_disable_exceptions", text="")
 
 
 def register():

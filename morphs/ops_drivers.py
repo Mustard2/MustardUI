@@ -2,6 +2,7 @@ import bpy
 from ..model_selection.active_object import *
 from .misc import *
 from .. import __package__ as base_package
+from .misc import diffeomorphic_facs_bones_rot, diffeomorphic_facs_bones_loc
 
 
 class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
@@ -35,6 +36,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         objects = [rig_settings.model_body]
@@ -43,19 +45,19 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
         warnings = 0
 
-        mutepJCM = rig_settings.diffeomorphic_enable_pJCM
+        mutepJCM = morphs_settings.diffeomorphic_enable_pJCM
 
-        mutefacs = rig_settings.diffeomorphic_enable_facs
-        mutefacs_bones = True if mutefacs else rig_settings.diffeomorphic_enable_facs_bones
-        check_bones_rot = rig_settings.diffeomorphic_facs_bones_rot if not mutefacs_bones else []
-        check_bones_loc = rig_settings.diffeomorphic_facs_bones_loc if not mutefacs_bones else []
+        mutefacs = morphs_settings.diffeomorphic_enable_facs
+        mutefacs_bones = True if mutefacs else morphs_settings.diffeomorphic_enable_facs_bones
+        check_bones_rot = diffeomorphic_facs_bones_rot if not mutefacs_bones else []
+        check_bones_loc = diffeomorphic_facs_bones_loc if not mutefacs_bones else []
 
         muteexceptions = False
-        exceptions = rig_settings.diffeomorphic_disable_exceptions
+        exceptions = morphs_settings.diffeomorphic_disable_exceptions
 
         try:
             muteDazFcurves(rig_settings.model_armature_object, True, True, True, True,
-                           rig_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot,
+                           morphs_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot,
                            check_bones_loc, muteexceptions, exceptions)
             if hasattr(rig_settings.model_armature_object, 'DazDriversDisabled'):
                 rig_settings.model_armature_object.DazDriversDisabled = True
@@ -86,12 +88,6 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
             if "evalMorphs" in driver.driver.expression:
                 driver.mute = self.check_driver(arm, driver.data_path)
 
-        rig_settings.diffeomorphic_emotions_units_collapse = True
-        rig_settings.diffeomorphic_emotions_collapse = True
-        rig_settings.diffeomorphic_facs_emotions_units_collapse = True
-        rig_settings.diffeomorphic_facs_emotions_collapse = True
-        rig_settings.diffeomorphic_body_morphs_collapse = True
-
         context.view_layer.objects.active = aobj
 
         if warnings < 1:
@@ -118,6 +114,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         objects = [rig_settings.model_body]
@@ -126,19 +123,19 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
 
         warnings = 0
 
-        mutepJCM = rig_settings.diffeomorphic_enable_pJCM
+        mutepJCM = morphs_settings.diffeomorphic_enable_pJCM
 
-        mutefacs = rig_settings.diffeomorphic_enable_facs
-        mutefacs_bones = True if mutefacs else rig_settings.diffeomorphic_enable_facs_bones
-        check_bones_rot = rig_settings.diffeomorphic_facs_bones_rot if not mutefacs_bones else []
-        check_bones_loc = rig_settings.diffeomorphic_facs_bones_loc if not mutefacs_bones else []
+        mutefacs = morphs_settings.diffeomorphic_enable_facs
+        mutefacs_bones = True if mutefacs else morphs_settings.diffeomorphic_enable_facs_bones
+        check_bones_rot = diffeomorphic_facs_bones_rot if not mutefacs_bones else []
+        check_bones_loc = diffeomorphic_facs_bones_loc if not mutefacs_bones else []
 
         muteexceptions = False
-        exceptions = rig_settings.diffeomorphic_disable_exceptions
+        exceptions = morphs_settings.diffeomorphic_disable_exceptions
 
         try:
             muteDazFcurves(rig_settings.model_armature_object, False, True, True, True,
-                           rig_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot,
+                           morphs_settings.diffeomorphic_enable_shapekeys, mutepJCM, mutefacs, check_bones_rot,
                            check_bones_loc, muteexceptions, exceptions)
             if hasattr(rig_settings.model_armature_object, 'DazDriversDisabled'):
                 rig_settings.model_armature_object.DazDriversDisabled = False

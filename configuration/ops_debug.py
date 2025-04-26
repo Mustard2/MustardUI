@@ -114,7 +114,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
             log += header("Morphs")
 
             log += new_line()
-            log += "Morphs: " + tab(tabs_num + 1) + str(rig_settings.diffeomorphic_morphs_number)
+            log += "Morphs: " + tab(tabs_num + 1) + str(morphs_settings.morphs_number)
             log += new_line()
 
             log += new_line(3)
@@ -132,7 +132,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         log += new_line()
 
         if morphs_settings.enable_ui:
-            log += "Morphs:" + tab(tabs_num + 1) + ("Enabled" if rig_settings.diffeomorphic_enable else "Disabled")
+            log += "Morphs:" + tab(tabs_num + 1) + ("Enabled" if morphs_settings.diffeomorphic_enable else "Disabled")
             log += new_line()
 
         if len(physics_settings.items) > 0:
