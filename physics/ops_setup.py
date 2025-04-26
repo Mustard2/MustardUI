@@ -6,13 +6,19 @@ from ..model_selection.active_object import *
 from .update_enable import enable_physics_update
 
 
+fixes = [("NONE", "None", "No fix attempt if the binding fails"),
+         ("SUBDIVISION", "Subdivision", "Increase the Subdivision modifier level and re-attempt a binding"),
+         ("CONCAVE_SPLIT", "Concave Split", "Use the Concave Split operator before re-attempting a binding")]
+
+
 class MustardUI_Physics_Setup(bpy.types.Operator):
     """This button creates Surface Deform modifiers on Outfit pieces affected by Cages physics items.\nThe modifier is added only if the Outfit piece and the Cage intersect.\nBlender might freeze during the process"""
     bl_idname = "mustardui.physics_setup"
     bl_label = "Setup Outfits Physics"
     bl_options = {'UNDO'}
 
-    attempt_fix_bind: bpy.props.BoolProperty(default=False,
+    attempt_fix_bind: bpy.props.EnumProperty(items=fixes,
+                                             default="NONE",
                                              name="Attempt Fix Binding",
                                              description="Attempt to fix the rebinding if errors occur (Simplify should be off).\nTo use the model with these fixes, read carefully the warnings if generated")
     override_armature_check: bpy.props.BoolProperty(default=False,
@@ -182,25 +188,42 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         body.data.update_tag()
         body.update_tag()
 
-        if self.attempt_fix_bind:
+        if self.attempt_fix_bind != "NONE" and warnings > 0:
 
             warnings_objects = []
 
-            # Disable simplify
             scene = context.scene
             level = scene.render.simplify_subdivision
-            if scene.render.use_simplify and scene.render.simplify_subdivision < 2:
-                scene.render.simplify_subdivision = 2
-
-            # Activate subdivision modifiers on the body
             body_levels = 0
             body_show = False
-            for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
-                body_levels = m.levels
-                m.levels = 2
-                body_show = m.show_viewport
-                m.show_viewport = True
-                break
+
+            if self.attempt_fix_bind == "SUBDIVISION":
+                # Disable simplify
+                if scene.render.use_simplify and scene.render.simplify_subdivision < 2:
+                    scene.render.simplify_subdivision = 2
+
+                # Activate subdivision modifiers on the body
+                for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
+                    body_levels = m.levels
+                    m.levels = 2
+                    body_show = m.show_viewport
+                    m.show_viewport = True
+                    break
+            else:
+                rig_settings.model_body.hide_viewport = False
+
+                bpy.ops.object.mode_set(mode='OBJECT')
+                bpy.ops.object.select_all(action='DESELECT')
+                bpy.context.view_layer.objects.active = rig_settings.model_body
+
+                # Use Split Concave operator to attempt a fix
+                with bpy.context.temp_override(active_object=rig_settings.model_body):
+                    bpy.ops.object.mode_set(mode='EDIT')
+                    bpy.ops.mesh.select_all(action='SELECT')
+                    bpy.ops.mesh.vert_connect_concave()
+                    bpy.ops.object.mode_set(mode='OBJECT')
+
+                bpy.context.view_layer.objects.active = rig_settings.model_armature_object
 
             for coll in colls:
                 objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
@@ -224,8 +247,12 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                                 warnings_objects.append((obj.name, mod.is_bound))
 
                                 if mod.is_bound:
-                                    print(
-                                        f"MustardUI Physics Setup - Surface Deform binding fixed on {repr(obj.name)}, but requires Subdivision Surface on the Body to work properly")
+                                    if self.attempt_fix_bind == "SUBDIVISION":
+                                        print(
+                                            f"MustardUI Physics Setup - Surface Deform binding fixed on {repr(obj.name)}, but requires Subdivision Surface on the Body to work properly")
+                                    else:
+                                        print(
+                                            f"MustardUI Physics Setup - Surface Deform binding fixed on {repr(obj.name)}")
                                     warnings += 1
 
                                 mod.show_viewport = False
@@ -238,16 +265,18 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                 coll.hide_viewport = show_coll
                 bpy.context.view_layer.update()
 
-            # Revert Simplify settings
-            if level != 2:
-                scene.render.simplify_subdivision = level
+            if self.attempt_fix_bind == "SUBDIVISION":
+                # Revert Simplify settings
+                if level != 2:
+                    scene.render.simplify_subdivision = level
 
-            # Disable subdivision modifiers on the Body
-            for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
-                m.levels = body_levels
-                m.show_viewport = body_show
-                break
+                # Disable subdivision modifiers on the Body
+                for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
+                    m.levels = body_levels
+                    m.show_viewport = body_show
+                    break
 
+        # Switch back to pose mode
         arm.pose_position = 'POSE'
 
         # Force Physics recheck
@@ -275,8 +304,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        self.attempt_fix_bind = False
-        return context.window_manager.invoke_props_dialog(self, width=450)
+        self.attempt_fix_bind = "NONE"
+        return context.window_manager.invoke_props_dialog(self, width=300)
 
     def draw(self, context):
 
@@ -284,6 +313,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
 
         col = layout.column(align=True)
         col.prop(self, 'attempt_fix_bind')
+
+        col = layout.column(align=True)
         col.prop(self, 'override_armature_check')
         col.prop(self, 'override_physics_check')
 
