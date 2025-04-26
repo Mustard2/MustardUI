@@ -13,8 +13,8 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
-        rig_settings = arm.MustardUI_RigSettings
-        return res and rig_settings.diffeomorphic_support
+        morphs_settings = arm.MustardUI_MorphsSettings
+        return res and morphs_settings.enable_ui
 
     # Function to prevent the DisableDriver operator to switch off custom properties drivers
     def check_driver(self, arm, datapath):
@@ -111,8 +111,8 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
-        rig_settings = arm.MustardUI_RigSettings
-        return res and rig_settings.diffeomorphic_support
+        morphs_settings = arm.MustardUI_MorphsSettings
+        return res and morphs_settings.enable_ui
 
     def execute(self, context):
 

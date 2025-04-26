@@ -11,19 +11,21 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
-        rig_settings = arm.MustardUI_RigSettings
-        return res and rig_settings.diffeomorphic_support
+        morphs_settings = arm.MustardUI_MorphsSettings
+        return res and morphs_settings.enable_ui
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
 
-        for morph in rig_settings.diffeomorphic_morphs_list:
-            val = rig_settings.model_armature_object[morph.path]
-            if isinstance(val, float):
-                rig_settings.model_armature_object[morph.path] = 0.
-            elif isinstance(val, bool):
-                rig_settings.model_armature_object[morph.path] = True
+        for section in morphs_settings.sections:
+            for morph in section.morphs:
+                val = rig_settings.model_armature_object[morph.path]
+                if isinstance(val, float):
+                    rig_settings.model_armature_object[morph.path] = 0.
+                elif isinstance(val, bool):
+                    rig_settings.model_armature_object[morph.path] = True
 
         arm.update_tag()
         rig_settings.model_armature_object.update_tag()

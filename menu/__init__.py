@@ -18,7 +18,7 @@ from . import menu_configure_hair
 from . import menu_configure_armature
 from . import menu_configure_physics
 from . import menu_configure_tools
-from . import menu_configure_external
+from . import menu_configure_morphs
 from . import menu_configure_links
 from . import menu_configure_others
 from . import menu_configure_debug
@@ -48,7 +48,7 @@ def register():
     menu_configure_armature.register()
     menu_configure_physics.register()
     menu_configure_tools.register()
-    menu_configure_external.register()
+    menu_configure_morphs.register()
     menu_configure_links.register()
     menu_configure_others.register()
     menu_configure_debug.register()
@@ -82,7 +82,7 @@ def unregister():
     menu_configure_debug.unregister()
     menu_configure_others.unregister()
     menu_configure_links.unregister()
-    menu_configure_external.unregister()
+    menu_configure_morphs.unregister()
     menu_configure_tools.unregister()
     menu_configure_physics.unregister()
     menu_configure_armature.unregister()

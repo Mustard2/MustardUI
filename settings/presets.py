@@ -34,7 +34,8 @@ class MustardUI_OT_AddPreset(AddPresetBase, bpy.types.Operator):
         if bpy.context.scene.MustardUI_Settings.viewport_model_selection:
             return ['rig_settings = bpy.context.object.data.MustardUI_RigSettings']
 
-        return [f'rig_settings = bpy.context.scene.objects[{repr(model_armature_object.name)}].data.MustardUI_RigSettings']
+        return [f'rig_settings = bpy.context.scene.objects[{repr(model_armature_object.name)}].data.MustardUI_RigSettings',
+                f'morph_settings = bpy.context.scene.objects[{repr(model_armature_object.name)}].data.MustardUI_MorphsSettings']
 
     preset_values = [
         'rig_settings.body_enable_subdiv',
@@ -75,7 +76,7 @@ class MustardUI_OT_AddPreset(AddPresetBase, bpy.types.Operator):
         'rig_settings.hair_update_tag_on_switch',
         'rig_settings.curves_hair_enable',
         'rig_settings.particle_systems_enable',
-        'rig_settings.diffeomorphic_support',
+        'morphs_settings.enable_ui',
         'rig_settings.diffeomorphic_enable_shapekeys',
         'rig_settings.diffeomorphic_enable_facs',
         'rig_settings.diffeomorphic_enable_facs_bones',

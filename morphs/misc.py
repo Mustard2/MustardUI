@@ -1,14 +1,20 @@
 # Function to add a option to the object, if not already there
-def mustardui_add_dazmorph(collection, item):
+def mustardui_add_morph(collection, item, custom_property=True):
     for el in collection:
-        if el.name == item[0] and el.path == item[1] and el.type == item[2]:
+        if el.name == item[0] and el.path == item[1]:
             return
 
     add_item = collection.add()
     add_item.name = item[0]
     add_item.path = item[1]
-    add_item.type = item[2]
+    add_item.custom_property = custom_property
+    add_item.shape_key = not custom_property
+    return
 
+
+def mustardui_add_section(collection, item):
+    add_item = collection.add()
+    add_item.name = item[0]
     return
 
 
@@ -98,13 +104,3 @@ def muteDazFcurves(rig, mute, useLocation=True, useRotation=True, useScale=True,
                                     skey.mute = mute
                                 else:
                                     skey.mute = False
-
-
-def DazCheckVersion(arm_obj):
-    if hasattr(arm_obj, 'DazId'):
-        daz_id = arm_obj.DazId
-        if "Genesis8" in daz_id:
-            return 8
-        elif "Genesis9" in daz_id:
-            return 9
-    return 0

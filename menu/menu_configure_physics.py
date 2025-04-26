@@ -25,6 +25,8 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
+        settings = bpy.context.scene.MustardUI_Settings
+
         layout = self.layout
 
         res, arm = mustardui_active_object(context, config=1)
@@ -63,7 +65,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
                 row = col.row()
                 row.prop(pi, 'type')
 
-            if index > -1 and len(
+            if settings.advanced and index > -1 and len(
                     physics_settings.items[arm.mustardui_physics_items_uilist_index].intersecting_objects) > 0:
                 box = layout.box()
                 box.label(text="Outfits Affected by Physics Item", icon="XRAY")
@@ -88,7 +90,8 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box.label(text="Outfits Support", icon="MOD_CLOTH")
         row = box.row(align=True)
         row.operator('mustardui.physics_setup', icon="PHYSICS")
-        row.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = False
+        if settings.advanced:
+            row.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = False
         row.operator('mustardui.physics_setup_clear', icon="X", text="")
 
 

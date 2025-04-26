@@ -106,7 +106,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
     def invoke(self, context, event):
         addon_prefs = context.preferences.addons[base_package].preferences
-        return context.window_manager.invoke_props_dialog(self, width=550 if addon_prefs.debug else 450)
+        return context.window_manager.invoke_props_dialog(self, width=250)
 
     def draw(self, context):
 

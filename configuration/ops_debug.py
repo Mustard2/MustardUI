@@ -47,6 +47,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
 
         tabs_num = 4
 
@@ -109,8 +110,8 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         log += new_line(3)
 
         # Diffeomorphic
-        if rig_settings.diffeomorphic_support:
-            log += header("Diffeomorphic")
+        if morphs_settings.enable_ui:
+            log += header("Morphs")
 
             log += new_line()
             log += "Morphs: " + tab(tabs_num + 1) + str(rig_settings.diffeomorphic_morphs_number)
@@ -130,9 +131,10 @@ class MustardUI_Debug_Log(bpy.types.Operator):
             "Disabled" if not settings.material_normal_nodes else "Enabled")
         log += new_line()
 
-        if rig_settings.diffeomorphic_support:
+        if morphs_settings.enable_ui:
             log += "Morphs:" + tab(tabs_num + 1) + ("Enabled" if rig_settings.diffeomorphic_enable else "Disabled")
             log += new_line()
+
         if len(physics_settings.items) > 0:
             log += "Physics:" + tab(tabs_num) + ("Enabled" if physics_settings.enable_physics else "Disabled")
             log += new_line()

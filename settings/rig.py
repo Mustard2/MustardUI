@@ -1,7 +1,7 @@
 import bpy
 from ..model_selection.active_object import *
 from ..settings.outfit import *
-from ..settings.daz_morph import *
+from ..morphs.settings_morph import MustardUI_Morph
 from ..settings.section import *
 from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
@@ -788,10 +788,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             bpy.ops.mustardui.morphs_disabledrivers()
 
     # Diffeomorphic support
-    diffeomorphic_support: bpy.props.BoolProperty(default=False,
-                                                  name="Diffeomorphic",
-                                                  description="Enable Diffeomorphic support.\nIf enabled, standard "
-                                                              "morphs from Diffomorphic will be added to the UI")
 
     diffeomorphic_enable: bpy.props.BoolProperty(default=True,
                                                  name="Enable Morphs",
@@ -830,9 +826,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                            "of the name of the morph), separated by "
                                                                            "commas.\nNote: spaces and order are "
                                                                            "considered")
-
-    diffeomorphic_morphs_list: bpy.props.CollectionProperty(name="Daz Morphs List",
-                                                            type=MustardUI_DazMorph)
 
     diffeomorphic_morphs_number: bpy.props.IntProperty(default=0,
                                                        name="")
@@ -902,6 +895,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         poll, arm = mustardui_active_object(context, config=0)
         addon_prefs = context.preferences.addons[base_package].preferences
         physics_settings = arm.MustardUI_PhysicsSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
 
         # if arm is not None:
         #    armature_settings = arm.MustardUI_ArmatureSettings
@@ -1006,7 +1000,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     mod.show_viewport = not self.simplify_enable if self.simplify_armature_child else True
 
         # Diffeomorphic morphs
-        if self.diffeomorphic_support and self.simplify_diffeomorphic:
+        if morphs_settings.enable_ui and self.simplify_diffeomorphic:
             self.diffeomorphic_enable = not self.simplify_enable
 
         # Physics
