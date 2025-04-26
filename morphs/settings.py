@@ -44,6 +44,8 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
 
     sections: bpy.props.CollectionProperty(type=MustardUI_Morph_Section)
 
+
+
     # DIFFEOMORPHIC support
 
     # Switcher for Morphs (drivers, shape keys, etc..) in the Diffeomorphic case

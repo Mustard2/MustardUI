@@ -9,7 +9,7 @@ class MustardUI_Warnings_FixOldMorphs(bpy.types.Operator):
     bl_label = "Update Morphs"
     bl_options = {'UNDO'}
 
-    disable_notification: bpy.props.BoolProperty(default=False)
+    ignore: bpy.props.BoolProperty(default=False)
 
     @classmethod
     def poll(cls, context):
@@ -24,7 +24,7 @@ class MustardUI_Warnings_FixOldMorphs(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
 
-        if self.disable_notification:
+        if self.ignore:
             rig_settings.diffeomorphic_support = False
             return {'FINISHED'}
 
