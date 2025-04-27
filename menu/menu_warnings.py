@@ -17,13 +17,14 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
 
         if obj is not None:
             # If an old script is available, only this warning is shown
             # Fix for: https://github.com/Mustard2/MustardUI/issues/150
             if check_old_UI():
                 return poll
+
+            rig_settings = obj.MustardUI_RigSettings
 
             return poll and (check_eevee_normals(context.scene, settings) or rig_settings.diffeomorphic_support)
 
