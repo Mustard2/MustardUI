@@ -31,9 +31,10 @@ class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
             print('\nMustardUI - Smart Check - Searching for outfits\n')
 
         outfits_collections = [x for x in bpy.data.collections if
-                               (rig_settings.model_name in x.name) and (not 'Hair' in x.name) and (
-                                   not 'Extras' in x.name) and (not 'Physics' in x.name) and (
-                                   not rig_settings.model_name == x.name) and (not '_' in x.name)]
+                               (rig_settings.model_name in x.name) and (not 'Hair' in x.name) and
+                               (not 'Extras' in x.name) and (not 'Physics' in x.name) and
+                               (not 'Collision' in x.name) and
+                               (not rig_settings.model_name == x.name) and (not '_' in x.name)]
 
         for collection in outfits_collections:
 
