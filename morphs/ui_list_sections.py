@@ -35,6 +35,25 @@ class MustardUI_Morphs_Section_Remove(bpy.types.Operator):
     bl_label = "Remove Morphs"
     bl_options = {'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=1)
+
+        if arm is None:
+            return False
+
+        morphs_settings = arm.MustardUI_MorphsSettings
+        uilist = morphs_settings.sections
+        index = arm.mustardui_morphs_section_uilist_index
+
+        if len(uilist) <= index:
+            return False
+
+        if uilist[arm.mustardui_morphs_section_uilist_index].is_internal:
+            return False
+
+        return res
+
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=1)
@@ -70,8 +89,22 @@ class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
-        return obj is not None
+        res, arm = mustardui_active_object(context, config=1)
+
+        if arm is None:
+            return False
+
+        morphs_settings = arm.MustardUI_MorphsSettings
+        uilist = morphs_settings.sections
+        index = arm.mustardui_morphs_section_uilist_index
+
+        if len(uilist) <= index:
+            return False
+
+        if uilist[arm.mustardui_morphs_section_uilist_index].is_internal:
+            return False
+
+        return res
 
     def move_index(self, uilist, index):
         """ Move index of an item render queue while clamping it. """
@@ -91,6 +124,10 @@ class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
             return {'FINISHED'}
 
         neighbour = index + (-1 if self.direction == 'UP' else 1)
+
+        if len(uilist) <= neighbour or uilist[neighbour].is_internal:
+            return {'FINISHED'}
+
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         obj.mustardui_morphs_section_uilist_index = index

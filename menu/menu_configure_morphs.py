@@ -62,7 +62,6 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                               "sections", arm,
                               "mustardui_morphs_section_uilist_index")
             col = row.column()
-            col.enabled = morphs_settings.type == "GENERIC"
             col2 = col.column(align=True)
             col2.operator("mustardui.morphs_section_add", text="", icon="ADD")
             col2.operator("mustardui.morphs_section_remove", text="", icon="X")
@@ -71,20 +70,19 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
             col2.operator('mustardui.morphs_section_items_switch', icon="TRIA_UP", text="").direction = "UP"
             col2.operator('mustardui.morphs_section_items_switch', icon="TRIA_DOWN", text="").direction = "DOWN"
 
-            if morphs_settings.type == "GENERIC":
-                section = morphs_settings.sections[arm.mustardui_morphs_section_uilist_index]
+            section = morphs_settings.sections[arm.mustardui_morphs_section_uilist_index]
 
-                col = box.column(align=True)
-                col.prop(section, 'icon')
-                col.prop(section, 'shape_keys')
-                col.prop(section, 'custom_properties')
-                col.prop(section, 'string')
+            col = box.column(align=True)
+            col.enabled = not section.is_internal
+            col.prop(section, 'icon')
+            col.prop(section, 'shape_keys')
+            col.prop(section, 'custom_properties')
+            col.prop(section, 'string')
 
             if (arm.mustardui_morphs_section_uilist_index > -1 and
                     morphs_settings.sections[arm.mustardui_morphs_section_uilist_index].morphs):
-                if morphs_settings.type == "GENERIC":
-                    box = layout.box()
-                    box.label(text="Morphs", icon="SHAPEKEY_DATA")
+                box = layout.box()
+                box.label(text="Morphs", icon="SHAPEKEY_DATA")
 
                 row = box.row()
                 row.template_list("MUSTARDUI_UL_Morphs_UIList", "The_List",
@@ -98,7 +96,9 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                 col.operator("mustardui.morphs_remove", text="", icon="X")
 
                 if morphs_settings.type == "GENERIC":
-                    box.prop(morphs_settings, 'show_type_icon')
+                    col = box.column(align=True)
+                    col.enabled = not section.is_internal
+                    col.prop(morphs_settings, 'show_type_icon')
 
             if morphs_settings.type != "GENERIC":
                 box = layout.box()

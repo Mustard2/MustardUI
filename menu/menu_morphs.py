@@ -4,11 +4,19 @@ from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from ..misc.ui_collapse import ui_collapse_prop
+from ..morphs.misc import get_section_by_diffeomorphic_id
 
 
 def morph_filter(morph, rig_settings, morphs_settings):
     # Check null filter
-    val = rig_settings.model_armature_object[bpy.utils.escape_identifier(morph.path)]
+    val = None
+
+    if morph.custom_property and hasattr(rig_settings.model_armature_object,
+                                         f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+        val = rig_settings.model_armature_object[bpy.utils.escape_identifier(morph.path)]
+    elif morph.shape_key and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys():
+        val = rig_settings.model_body.data.shape_keys.key_blocks[morph.path].value
+
     check1 = False
     if isinstance(val, float):
         check1 = (morphs_settings.diffeomorphic_filter_null and val != 0.) or not morphs_settings.diffeomorphic_filter_null
@@ -113,7 +121,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits(MainPanel, bpy.types.Panel)
             return False
 
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions_units and
-                morphs_settings.sections[0].morphs)
+                get_section_by_diffeomorphic_id(morphs_settings, 0).morphs)
 
     def draw_header(self, context):
 
@@ -122,7 +130,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits(MainPanel, bpy.types.Panel)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
-        emotion_units_morphs = [x for x in morphs_settings.sections[0].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        emotion_units_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 0).morphs if morph_filter(x, rig_settings, morphs_settings)]
         layout.label(text="(" + str(len(emotion_units_morphs)) + ")")
 
     def draw(self, context):
@@ -136,7 +144,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits(MainPanel, bpy.types.Panel)
         layout = self.layout
         layout.enabled = morphs_settings.diffeomorphic_enable
 
-        emotion_units_morphs = [x for x in morphs_settings.sections[0].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        emotion_units_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 0).morphs if morph_filter(x, rig_settings, morphs_settings)]
 
         for morph in emotion_units_morphs:
             if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
@@ -168,7 +176,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Emotions(MainPanel, bpy.types.Panel):
             return False
 
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions and
-                morphs_settings.sections[1].morphs)
+                get_section_by_diffeomorphic_id(morphs_settings, 1).morphs)
 
     def draw_header(self, context):
 
@@ -177,7 +185,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Emotions(MainPanel, bpy.types.Panel):
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
-        emotion_morphs = [x for x in morphs_settings.sections[1].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        emotion_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 1).morphs if morph_filter(x, rig_settings, morphs_settings)]
         layout.label(text="(" + str(len(emotion_morphs)) + ")")
 
     def draw(self, context):
@@ -191,7 +199,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Emotions(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = morphs_settings.diffeomorphic_enable
 
-        emotion_morphs = [x for x in morphs_settings.sections[1].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        emotion_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 1).morphs if morph_filter(x, rig_settings, morphs_settings)]
 
         for morph in emotion_morphs:
             if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
@@ -223,7 +231,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACSUnits(MainPanel, bpy.types.Panel):
             return False
 
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_facs_emotions_units and
-                morphs_settings.sections[2].morphs)
+                get_section_by_diffeomorphic_id(morphs_settings, 2).morphs)
 
     def draw_header(self, context):
 
@@ -232,7 +240,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACSUnits(MainPanel, bpy.types.Panel):
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
-        emotion_morphs = [x for x in morphs_settings.sections[2].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        emotion_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 2).morphs if morph_filter(x, rig_settings, morphs_settings)]
         layout.label(text="(" + str(len(emotion_morphs)) + ")")
 
     def draw(self, context):
@@ -246,7 +254,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACSUnits(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = morphs_settings.diffeomorphic_enable
 
-        facs_emotion_units_morphs = [x for x in morphs_settings.sections[2].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        facs_emotion_units_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 2).morphs if morph_filter(x, rig_settings, morphs_settings)]
 
         for morph in facs_emotion_units_morphs:
             if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
@@ -278,7 +286,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACS(MainPanel, bpy.types.Panel):
             return False
 
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_facs_emotions and
-                morphs_settings.sections[3].morphs)
+                get_section_by_diffeomorphic_id(morphs_settings, 3).morphs)
 
     def draw_header(self, context):
 
@@ -287,7 +295,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACS(MainPanel, bpy.types.Panel):
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
-        emotion_morphs = [x for x in morphs_settings.sections[3].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        emotion_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 3).morphs if morph_filter(x, rig_settings, morphs_settings)]
         layout.label(text="(" + str(len(emotion_morphs)) + ")")
 
     def draw(self, context):
@@ -301,7 +309,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACS(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = morphs_settings.diffeomorphic_enable
 
-        facs_emotion_morphs = [x for x in morphs_settings.sections[3].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        facs_emotion_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 3).morphs if morph_filter(x, rig_settings, morphs_settings)]
 
         for morph in facs_emotion_morphs:
             if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
@@ -333,7 +341,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Body(MainPanel, bpy.types.Panel):
             return False
 
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_body_morphs and
-                morphs_settings.sections[4].morphs)
+                get_section_by_diffeomorphic_id(morphs_settings, 4).morphs)
 
     def draw_header(self, context):
 
@@ -342,7 +350,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Body(MainPanel, bpy.types.Panel):
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
-        emotion_morphs = [x for x in morphs_settings.sections[4].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        emotion_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 4).morphs if morph_filter(x, rig_settings, morphs_settings)]
         layout.label(text="(" + str(len(emotion_morphs)) + ")")
 
     def draw(self, context):
@@ -357,7 +365,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Body(MainPanel, bpy.types.Panel):
         layout.enabled = morphs_settings.diffeomorphic_enable
 
         # Body Morphs
-        body_morphs = [x for x in morphs_settings.sections[4].morphs if morph_filter(x, rig_settings, morphs_settings)]
+        body_morphs = [x for x in get_section_by_diffeomorphic_id(morphs_settings, 4).morphs if morph_filter(x, rig_settings, morphs_settings)]
 
         for morph in body_morphs:
             if hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
@@ -369,6 +377,67 @@ class PANEL_PT_MustardUI_ExternalMorphs_Body(MainPanel, bpy.types.Panel):
                 row.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
 
 
+class PANEL_PT_MustardUI_ExternalMorphs_Custom(MainPanel, bpy.types.Panel):
+    bl_label = "Custom"
+    bl_parent_id = "PANEL_PT_MustardUI_Morphs"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        if check_old_UI():
+            return False
+
+        res, arm = mustardui_active_object(context, config=0)
+        if arm is None:
+            return False
+
+        morphs_settings = arm.MustardUI_MorphsSettings
+
+        if morphs_settings.type == "GENERIC":
+            return False
+
+        return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_body_morphs and
+                get_section_by_diffeomorphic_id(morphs_settings, 4).morphs)
+
+    def draw_header(self, context):
+
+        poll, obj = mustardui_active_object(context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
+        morphs_settings = obj.MustardUI_MorphsSettings
+
+        layout = self.layout
+        count = 0
+        for section in [x for x in morphs_settings.sections if x.morphs and not x.is_internal]:
+            count += len([x for x in section.morphs if morph_filter(x, rig_settings, morphs_settings)])
+        layout.label(text="(" + str(count) + ")")
+
+    def draw(self, context):
+
+        settings = bpy.context.scene.MustardUI_Settings
+
+        poll, obj = mustardui_active_object(context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
+        morphs_settings = obj.MustardUI_MorphsSettings
+
+        layout = self.layout
+        layout.enabled = morphs_settings.diffeomorphic_enable
+
+        for section in [x for x in morphs_settings.sections if x.morphs and not x.is_internal]:
+            box = layout.box()
+            if ui_collapse_prop(box, section, 'collapse', section.name, icon=section.icon):
+                for morph in section.morphs:
+                    if morph.custom_property and hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+                        box.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]',
+                                    text=morph.name)
+                    elif morph.shape_key and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys():
+                        box.prop(rig_settings.model_body.data.shape_keys.key_blocks[morph.path], 'value',
+                                    text=morph.name)
+                    else:
+                        row = box.row(align=False)
+                        row.label(text=morph.name)
+                        row.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
+
+
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Morphs)
     bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits)
@@ -376,9 +445,11 @@ def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_FACSUnits)
     bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_FACS)
     bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_Body)
+    bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_Custom)
 
 
 def unregister():
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_Custom)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_Body)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_FACS)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_FACSUnits)

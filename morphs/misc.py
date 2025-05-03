@@ -12,10 +12,21 @@ def mustardui_add_morph(collection, item, custom_property=True):
     return
 
 
-def mustardui_add_section(collection, item):
+def mustardui_add_section(collection, item, is_internal=False, diffeomorphic=-1):
+    if is_internal:
+        for el in collection:
+            if el.is_internal and el.diffeomorphic_id == diffeomorphic:
+                return
+
     add_item = collection.add()
     add_item.name = item[0]
+    add_item.is_internal = is_internal
+    add_item.diffeomorphic_id = diffeomorphic
     return
+
+
+def get_section_by_diffeomorphic_id(morphs_settings, did):
+    return [x for x in morphs_settings.sections if x.diffeomorphic_id == did][0]
 
 
 diffeomorphic_facs_bones_rot = ['lowerJaw', 'EyelidOuter', 'EyelidInner', 'EyelidUpperInner', 'EyelidUpper',

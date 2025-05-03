@@ -80,14 +80,15 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
         return res if obj is not None else False
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        poll, obj = mustardui_active_object(context, config=1)
-        morphs_settings = obj.MustardUI_MorphsSettings
-
-        if morphs_settings.type == "GENERIC":
-            icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
+        res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
+        icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
+        if ((item.custom_property and hasattr(rig_settings.model_armature_object,
+                                             f'["{bpy.utils.escape_identifier(item.path)}"]'))
+                or (item.shape_key and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys())):
             layout.prop(item, 'name', text="", emboss=False, translate=False, icon=icon)
         else:
-            layout.prop(item, 'name', text="", emboss=False, translate=False)
+            layout.prop(item, 'name', text="", emboss=False, translate=False, icon="ERROR")
 
 
 def register():

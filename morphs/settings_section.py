@@ -27,6 +27,12 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
     # Collapse button
     collapse: bpy.props.BoolProperty(name="", default=True)
 
+    # Internal
+    # Prpperty for sections generated automatically that can not be modified
+    is_internal: bpy.props.BoolProperty(default=False)
+    # TYPE: 0: Emotion Units, 1: Emotions, 2: FACS Emotion Units, 3: FACS Emotions, 4: Body Morphs
+    diffeomorphic_id: bpy.props.IntProperty(default=-1)
+
 
 def register():
     bpy.utils.register_class(MustardUI_Morph_Section)

@@ -22,15 +22,14 @@ class MustardUI_Morphs_Clear(bpy.types.Operator):
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=1)
-        rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 
         morphs_settings.sections.clear()
-        morphs_settings.is_diffeomorphic = False
+        morphs_settings.diffeomorphic_genesis_version = -1
         morphs_settings.morphs_number = 0
 
         # Reset UI List indices
-        arm.mustardui_morphs_section_uilist_index = 0
+        arm.mustardui_morphs_section_uilist_index = -1
 
         self.report({'INFO'}, 'MustardUI - Morphs cleared.')
 
@@ -70,12 +69,9 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                             'to the UI.')
                 return {'FINISHED'}
 
-        # Clean the morphs
-        if morphs_settings.type != "GENERIC":
-            morphs_settings.sections.clear()
-        else:
-            for section in morphs_settings.sections:
-                section.morphs.clear()
+        # Clean the existing morph settings
+        for section in morphs_settings.sections:
+            section.morphs.clear()
 
         properties_number = 0
 
@@ -89,7 +85,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                                           'facs_ctrl_Surprised']
 
             # Emotions Units
-            mustardui_add_section(morphs_settings.sections, ["Emotion Units"])
+            mustardui_add_section(morphs_settings.sections, ["Emotion Units"], is_internal=True, diffeomorphic=0)
             if morphs_settings.diffeomorphic_emotions_units and morphs_settings.type == "DIFFEO_GENESIS_8":
                 emotions_units = [x for x in rig_settings.model_armature_object.keys() if (
                         'eCTRL' in x or 'ECTRL' in x) and not "HD" in x and not "eCTRLSmile" in x and not 'eCTRLv' in x and sum(
@@ -101,7 +97,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     mustardui_add_morph(morphs_settings.sections[0].morphs, [name, emotion])
 
             # Emotions
-            mustardui_add_section(morphs_settings.sections, ["Emotions"])
+            mustardui_add_section(morphs_settings.sections, ["Emotions"], is_internal=True, diffeomorphic=1)
             if morphs_settings.diffeomorphic_emotions and morphs_settings.type == "DIFFEO_GENESIS_8":
 
                 emotions = [x for x in rig_settings.model_armature_object.keys() if
@@ -124,7 +120,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
             # FACS Emotions Units
             sec = "Advanced Emotion Units" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotion Units"
-            mustardui_add_section(morphs_settings.sections, [sec])
+            mustardui_add_section(morphs_settings.sections, [sec], is_internal=True, diffeomorphic=2)
             if morphs_settings.diffeomorphic_facs_emotions_units:
 
                 facs_emotions_units = []
@@ -144,7 +140,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
             # FACS Emotions
             sec = "Advanced Emotions" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotions"
-            mustardui_add_section(morphs_settings.sections, [sec])
+            mustardui_add_section(morphs_settings.sections, [sec], is_internal=True, diffeomorphic=3)
             if morphs_settings.diffeomorphic_facs_emotions:
 
                 facs_emotions = [x for x in rig_settings.model_armature_object.keys() if x in facs_emotions_default_list]
@@ -167,7 +163,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     mustardui_add_morph(morphs_settings.sections[3].morphs, [emotion, emotion])
 
             # Body Morphs for Genesis 8
-            mustardui_add_section(morphs_settings.sections, ["Body"])
+            mustardui_add_section(morphs_settings.sections, ["Body"], is_internal=True, diffeomorphic=4)
             if morphs_settings.diffeomorphic_body_morphs:
 
                 body_morphs_FBM = [x for x in rig_settings.model_armature_object.keys() if
@@ -211,27 +207,25 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 for morph in body_morphs_custom:
                     mustardui_add_morph(morphs_settings.sections[4].morphs, [morph, morph])
 
-                morphs_settings.is_diffeomorphic = True
                 morphs_settings.diffeomorphic_genesis_version = 8 if morphs_settings.type == "DIFFEO_GENESIS_8" else 9
 
-        else:
-            for i, section in enumerate(morphs_settings.sections):
+        for i, section in enumerate(morphs_settings.sections):
 
-                shape_keys = section.shape_keys
-                custom_properties = section.custom_properties
-                string = section.string
+            shape_keys = section.shape_keys
+            custom_properties = section.custom_properties
+            string = section.string
 
-                if custom_properties:
-                    custom_props = [x for x in rig_settings.model_armature_object.keys() if string in x]
-                    for morph in custom_props:
-                        mustardui_add_morph(morphs_settings.sections[i].morphs, [morph, morph], custom_property=True)
+            if custom_properties:
+                custom_props = [x for x in rig_settings.model_armature_object.keys() if string in x]
+                for morph in custom_props:
+                    mustardui_add_morph(morphs_settings.sections[i].morphs, [morph, morph], custom_property=True)
 
-                if shape_keys:
-                    sks = [x.name for x in rig_settings.model_body.data.shape_keys.key_blocks if string in x.name]
-                    for morph in sks:
-                        mustardui_add_morph(morphs_settings.sections[i].morphs, [morph, morph], custom_property=False)
+            if shape_keys:
+                sks = [x.name for x in rig_settings.model_body.data.shape_keys.key_blocks if string in x.name]
+                for morph in sks:
+                    mustardui_add_morph(morphs_settings.sections[i].morphs, [morph, morph], custom_property=False)
 
-                morphs_settings.is_diffeomorphic = False
+        morphs_settings.diffeomorphic_genesis_version = -1 if morphs_settings.type == "GENERIC" else morphs_settings.diffeomorphic_genesis_version
 
         if addon_prefs.debug:
             print("\nMustardUI - Morphs found\n")
@@ -256,11 +250,10 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=1)
         morphs_settings = arm.MustardUI_MorphsSettings
 
-        if morphs_settings.is_diffeomorphic:
-            if morphs_settings.diffeomorphic_genesis_version == 8:
-                morphs_settings.type = "DIFFEO_GENESIS_8"
-            elif morphs_settings.diffeomorphic_genesis_version == 9:
-                morphs_settings.type = "DIFFEO_GENESIS_9"
+        if morphs_settings.diffeomorphic_genesis_version == 8:
+            morphs_settings.type = "DIFFEO_GENESIS_8"
+        elif morphs_settings.diffeomorphic_genesis_version == 9:
+            morphs_settings.type = "DIFFEO_GENESIS_9"
 
         if morphs_settings.type != "GENERIC":
             return context.window_manager.invoke_props_dialog(self, width=300)
