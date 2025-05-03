@@ -3,7 +3,6 @@ from . import MainPanel
 from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from .. import __package__ as base_package
-from ..settings.presets import MUI_PT_Presets
 
 
 row_scale = 1.2
@@ -23,9 +22,6 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
-
-    def draw_header_preset(self, _context):
-        MUI_PT_Presets.draw_panel_header(self.layout)
 
     def draw(self, context):
 
