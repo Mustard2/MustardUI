@@ -29,6 +29,7 @@ def get_section_by_diffeomorphic_id(morphs_settings, did):
     secs = [x for x in morphs_settings.sections if x.diffeomorphic_id == did]
     if len(secs):
         return secs[0]
+    return None
 
 
 diffeomorphic_facs_bones_rot = ['lowerJaw', 'EyelidOuter', 'EyelidInner', 'EyelidUpperInner', 'EyelidUpper',

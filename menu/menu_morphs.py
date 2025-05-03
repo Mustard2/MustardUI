@@ -42,17 +42,25 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=0)
 
-        if arm is not None:
-            morphs_settings = arm.MustardUI_MorphsSettings
+        if arm is None:
+            return False
 
-            # Check if at least one panel is available in the Diffeomiorphic case
-            panels = (morphs_settings.diffeomorphic_emotions or morphs_settings.diffeomorphic_emotions_units or
-                      morphs_settings.diffeomorphic_facs_emotions_units or morphs_settings.diffeomorphic_facs_emotions or
-                      morphs_settings.diffeomorphic_body_morphs) if morphs_settings.type != "GENERIC" else True
+        morphs_settings = arm.MustardUI_MorphsSettings
 
-            return res and morphs_settings.enable_ui and panels and morphs_settings.morphs_number > 0
+        if morphs_settings.type == "GENERIC":
+            return res and morphs_settings.enable_ui and morphs_settings.morphs_number > 0
 
-        return res
+        if not get_section_by_diffeomorphic_id(morphs_settings, 0):
+            return False
+
+        # Check if at least one panel is available in the Diffeomiorphic case
+        panels = (get_section_by_diffeomorphic_id(morphs_settings, 0).morphs
+                  or get_section_by_diffeomorphic_id(morphs_settings, 1).morphs
+                  or get_section_by_diffeomorphic_id(morphs_settings, 2).morphs
+                  or get_section_by_diffeomorphic_id(morphs_settings, 3).morphs
+                  or get_section_by_diffeomorphic_id(morphs_settings, 4).morphs)
+
+        return res and morphs_settings.enable_ui and panels and morphs_settings.morphs_number > 0
 
     def draw_header(self, context):
 
@@ -120,6 +128,9 @@ class PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits(MainPanel, bpy.types.Panel)
         if morphs_settings.type == "GENERIC":
             return False
 
+        if not get_section_by_diffeomorphic_id(morphs_settings, 0).morphs:
+            return False
+
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions_units and
                 get_section_by_diffeomorphic_id(morphs_settings, 0).morphs)
 
@@ -173,6 +184,9 @@ class PANEL_PT_MustardUI_ExternalMorphs_Emotions(MainPanel, bpy.types.Panel):
         morphs_settings = arm.MustardUI_MorphsSettings
 
         if morphs_settings.type == "GENERIC":
+            return False
+
+        if not get_section_by_diffeomorphic_id(morphs_settings, 1).morphs:
             return False
 
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions and
@@ -230,6 +244,9 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACSUnits(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
+        if not get_section_by_diffeomorphic_id(morphs_settings, 2).morphs:
+            return False
+
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_facs_emotions_units and
                 get_section_by_diffeomorphic_id(morphs_settings, 2).morphs)
 
@@ -285,6 +302,9 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACS(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
+        if not get_section_by_diffeomorphic_id(morphs_settings, 3).morphs:
+            return False
+
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_facs_emotions and
                 get_section_by_diffeomorphic_id(morphs_settings, 3).morphs)
 
@@ -338,6 +358,9 @@ class PANEL_PT_MustardUI_ExternalMorphs_Body(MainPanel, bpy.types.Panel):
         morphs_settings = arm.MustardUI_MorphsSettings
 
         if morphs_settings.type == "GENERIC":
+            return False
+
+        if not get_section_by_diffeomorphic_id(morphs_settings, 4).morphs:
             return False
 
         return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_body_morphs and
@@ -396,8 +419,15 @@ class PANEL_PT_MustardUI_ExternalMorphs_Custom(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
-        return (res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_body_morphs and
-                get_section_by_diffeomorphic_id(morphs_settings, 4).morphs)
+        secs = [x for x in morphs_settings.sections if x.morphs and not x.is_internal]
+
+        if not secs:
+            return False
+
+        if not any([x.morphs for x in secs]):
+            return False
+
+        return res and morphs_settings.enable_ui
 
     def draw_header(self, context):
 
