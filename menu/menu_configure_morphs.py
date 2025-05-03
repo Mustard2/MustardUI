@@ -74,10 +74,10 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
 
             col = box.column(align=True)
             col.enabled = not section.is_internal
-            col.prop(section, 'icon')
+            col.prop(section, 'string')
             col.prop(section, 'shape_keys')
             col.prop(section, 'custom_properties')
-            col.prop(section, 'string')
+            col.prop(section, 'icon')
 
             if (arm.mustardui_morphs_section_uilist_index > -1 and
                     morphs_settings.sections[arm.mustardui_morphs_section_uilist_index].morphs):
