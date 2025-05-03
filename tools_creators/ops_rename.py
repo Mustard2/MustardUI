@@ -4,7 +4,7 @@ from ..model_selection.active_object import *
 from .. import __package__ as base_package
 
 
-class MustardUI_RenameModel(bpy.types.Operator):
+class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
     """Rename the model. This also changes the name of objects, collections and physics items associated to the model.\nThe renaming tool only works if MustardUI Naming Convention is active"""
     bl_idname = "mustardui.rename_model"
     bl_label = "Rename Model"
@@ -34,12 +34,14 @@ class MustardUI_RenameModel(bpy.types.Operator):
                 modifier.name = modifier.name.replace(old_name, self.name)
 
     def change_materials_name(self, obj, old_name):
+        if obj.type != "MESH":
+            return
         if obj.data is None:
             return
         if obj.data.materials is None:
             return
 
-        for mat in obj.data.materials:
+        for mat in [x for x in obj.data.materials if x is not None]:
             if old_name in mat.name:
                 mat.name = mat.name.replace(old_name, self.name)
 
@@ -104,7 +106,7 @@ class MustardUI_RenameModel(bpy.types.Operator):
 
     def invoke(self, context, event):
         addon_prefs = context.preferences.addons[base_package].preferences
-        return context.window_manager.invoke_props_dialog(self, width=550 if addon_prefs.debug else 450)
+        return context.window_manager.invoke_props_dialog(self, width=250)
 
     def draw(self, context):
 
@@ -124,8 +126,8 @@ class MustardUI_RenameModel(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_RenameModel)
+    bpy.utils.register_class(MustardUI_ToolsCreators_RenameModel)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_RenameModel)
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_RenameModel)

@@ -89,8 +89,7 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
     # INTERNAL
 
     # Physics Items
-    items: bpy.props.CollectionProperty(name="Outfits Collection List",
-                                        type=MustardUI_PhysicsItem)
+    items: bpy.props.CollectionProperty(type=MustardUI_PhysicsItem)
 
 
 def register():

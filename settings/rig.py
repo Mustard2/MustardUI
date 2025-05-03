@@ -1,7 +1,7 @@
 import bpy
 from ..model_selection.active_object import *
 from ..settings.outfit import *
-from ..settings.daz_morph import *
+from ..morphs.settings_morph import MustardUI_Morph
 from ..settings.section import *
 from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
@@ -775,124 +775,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                 "be added to the UI")
 
     # ------------------------------------------------------------------------
-    #    External addons
-    # ------------------------------------------------------------------------
-
-    # Function to update global collection properties
-    def diffeomorphic_enable_update(self, context):
-
-        if self.diffeomorphic_enable:
-            bpy.ops.mustardui.morphs_enabledrivers()
-        else:
-            self.diffeomorphic_enable_settings = False
-            bpy.ops.mustardui.morphs_disabledrivers()
-
-    # Diffeomorphic support
-    diffeomorphic_support: bpy.props.BoolProperty(default=False,
-                                                  name="Diffeomorphic",
-                                                  description="Enable Diffeomorphic support.\nIf enabled, standard "
-                                                              "morphs from Diffomorphic will be added to the UI")
-
-    diffeomorphic_enable: bpy.props.BoolProperty(default=True,
-                                                 name="Enable Morphs",
-                                                 description="Enabling morphs might affect performance. You can "
-                                                             "disable them to increase performance",
-                                                 update=diffeomorphic_enable_update)
-
-    diffeomorphic_enable_settings: bpy.props.BoolProperty(default=False,
-                                                          name="Morph Settings",
-                                                          description="Show the Morph Settings panel")
-    diffeomorphic_enable_shapekeys: bpy.props.BoolProperty(default=True,
-                                                           name="Mute Shape Keys",
-                                                           description="Shape Keys will also be muted when the Morphs "
-                                                                       "are disabled")
-    diffeomorphic_enable_facs: bpy.props.BoolProperty(default=True,
-                                                      name="Mute Face Controls",
-                                                      description="Face Controls will also be muted when the Morphs "
-                                                                  "are disabled")
-    diffeomorphic_enable_facs_bones: bpy.props.BoolProperty(default=True,
-                                                            name="Mute Face Controls Bones",
-                                                            description="Bones for Face Controls will also be muted "
-                                                                        "when the Morphs are disabled.\nDisabling "
-                                                                        "this option, Jaw and Eyes Face controls will "
-                                                                        "work correctly, at the price of performance "
-                                                                        "decrease.\nNote: if Mute Face Controls is "
-                                                                        "enabled, bones will always be disabled")
-    diffeomorphic_enable_pJCM: bpy.props.BoolProperty(default=True,
-                                                      name="Mute Corrective Morphs",
-                                                      description="Corrective Morphs will also be muted when the "
-                                                                  "Morphs are disabled")
-    diffeomorphic_disable_exceptions: bpy.props.StringProperty(default="",
-                                                               name="Exceptions",
-                                                               description="Morphs that will not be disabled when "
-                                                                           "morphs are disabled.\nAdd strings to add "
-                                                                           "morphs (they should map the initial part "
-                                                                           "of the name of the morph), separated by "
-                                                                           "commas.\nNote: spaces and order are "
-                                                                           "considered")
-
-    diffeomorphic_morphs_list: bpy.props.CollectionProperty(name="Daz Morphs List",
-                                                            type=MustardUI_DazMorph)
-
-    diffeomorphic_morphs_number: bpy.props.IntProperty(default=0,
-                                                       name="")
-
-    diffeomorphic_emotions: bpy.props.BoolProperty(default=False,
-                                                   name="Emotions Morphs",
-                                                   description="Search for Diffeomorphic emotions")
-
-    diffeomorphic_emotions_custom: bpy.props.StringProperty(default="",
-                                                            name="Custom morphs",
-                                                            description="Add strings to add custom morphs (they "
-                                                                        "should map the initial part of the name of "
-                                                                        "the morph), separated by commas.\nNote: "
-                                                                        "spaces and order are considered")
-
-    diffeomorphic_facs_emotions: bpy.props.BoolProperty(default=False,
-                                                        name="FACS Emotions Morphs",
-                                                        description="Search for Diffeomorphic FACS emotions.\nThese "
-                                                                    "morphs will be shown as Advanced Emotions in the"
-                                                                    " UI")
-
-    diffeomorphic_emotions_units: bpy.props.BoolProperty(default=False,
-                                                         name="Emotions Units Morphs",
-                                                         description="Search for Diffeomorphic emotions units")
-
-    diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default=False,
-                                                              name="FACS Emotions Units Morphs",
-                                                              description="Search for Diffeomorphic FACS emotions "
-                                                                          "units.\nThese morphs will be shown as "
-                                                                          "Advanced Emotion Units in the UI")
-
-    diffeomorphic_body_morphs: bpy.props.BoolProperty(default=False,
-                                                      name="Body Morphs Morphs",
-                                                      description="Search for Diffeomorphic Body morphs")
-
-    diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default="",
-                                                               name="Custom morphs",
-                                                               description="Add strings to add custom morphs (they "
-                                                                           "should map the initial part of the name "
-                                                                           "of the morph), separated by "
-                                                                           "commas.\nNote: spaces and order are "
-                                                                           "considered")
-
-    diffeomorphic_search: bpy.props.StringProperty(name="",
-                                                   description="Search for a specific morph",
-                                                   default="")
-    diffeomorphic_filter_null: bpy.props.BoolProperty(default=False,
-                                                      name="Filter morphs",
-                                                      description="Filter used morphs.\nOnly non null morphs will be "
-                                                                  "shown")
-
-    diffeomorphic_facs_bones_rot = ['lowerJaw', 'EyelidOuter', 'EyelidInner', 'EyelidUpperInner', 'EyelidUpper',
-                                    'EyelidUpperOuter',
-                                    'EyelidLowerOuter', 'EyelidLower', 'EyelidLowerInner']
-    diffeomorphic_facs_bones_loc = ['lowerJaw', 'NasolabialLower', 'NasolabialMouthCorner', 'LipCorner',
-                                    'LipLowerOuter',
-                                    'LipLowerInner', 'LipLowerMiddle', 'CheekLower', 'LipNasolabialCrease',
-                                    'LipUpperMiddle', 'LipUpperOuter', 'LipUpperInner', 'LipBelow', 'NasolabialMiddle']
-
-    # ------------------------------------------------------------------------
     #    Simplify
     # ------------------------------------------------------------------------
 
@@ -902,6 +784,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         poll, arm = mustardui_active_object(context, config=0)
         addon_prefs = context.preferences.addons[base_package].preferences
         physics_settings = arm.MustardUI_PhysicsSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
 
         # if arm is not None:
         #    armature_settings = arm.MustardUI_ArmatureSettings
@@ -1006,8 +889,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     mod.show_viewport = not self.simplify_enable if self.simplify_armature_child else True
 
         # Diffeomorphic morphs
-        if self.diffeomorphic_support and self.simplify_diffeomorphic:
-            self.diffeomorphic_enable = not self.simplify_enable
+        if morphs_settings.enable_ui and self.simplify_diffeomorphic:
+            morphs_settings.diffeomorphic_enable = not self.simplify_enable
 
         # Physics
         if self.simplify_physics and arm is not None:
@@ -1135,6 +1018,24 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     links_enable: bpy.props.BoolProperty(default=True,
                                          description="Create a Link panel in the UI to show custom links",
                                          name="Show Links")
+
+    # ------------------------------------------------------------------------
+    #    Deprecated stuffs (support for warnings/fixes/etc..)
+    # ------------------------------------------------------------------------
+
+    # Diffeomorphic support
+    # Keep this setting while the other Morphs implementation is considered deprecated
+    # At the moment this is used to check if there was an old morphs version and try to readd the morphs
+    diffeomorphic_support: bpy.props.BoolProperty(default=False)
+    diffeomorphic_morphs_number: bpy.props.IntProperty(default=0)
+    # Also keeping the settings to attempt a quick fix
+    diffeomorphic_emotions: bpy.props.BoolProperty(default=False)
+    diffeomorphic_emotions_custom: bpy.props.StringProperty(default="")
+    diffeomorphic_facs_emotions: bpy.props.BoolProperty(default=False)
+    diffeomorphic_emotions_units: bpy.props.BoolProperty(default=False)
+    diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(default=False)
+    diffeomorphic_body_morphs: bpy.props.BoolProperty(default=False)
+    diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default="")
 
     # END OF MustardUI_RigSettings class
 

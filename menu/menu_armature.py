@@ -122,7 +122,8 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 draw_armature_button(bcoll, bcoll_settings, enabled_colls, armature_settings, box)
 
         box.separator()
-        box.operator('mustardui.armature_reset_bcoll', icon="LOOP_BACK", text="Reset Visibility")
+        box.operator('mustardui.armature_reset_bcoll', icon="LOOP_BACK", text="Reset Layers Visibility")
+        box.operator('mustardui.armature_clearpose', icon="OUTLINER_OB_ARMATURE", text="Reset Pose")
 
 
 def register():

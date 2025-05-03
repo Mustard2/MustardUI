@@ -3,9 +3,9 @@ from ..model_selection.active_object import *
 from mathutils import Vector, Matrix
 
 
-class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
+class MustardUI_Armature_ClearPose(bpy.types.Operator):
     """Revert the position of all the bones to the Rest position"""
-    bl_idname = "mustardui.morphs_clearpose"
+    bl_idname = "mustardui.armature_clearpose"
     bl_label = "Clear Pose"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -30,8 +30,7 @@ class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=0)
-        rig_settings = arm.MustardUI_RigSettings
-        return res and rig_settings.diffeomorphic_support
+        return res if arm is not None else False
 
     def execute(self, context):
 
@@ -57,8 +56,8 @@ class MustardUI_DazMorphs_ClearPose(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_DazMorphs_ClearPose)
+    bpy.utils.register_class(MustardUI_Armature_ClearPose)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_DazMorphs_ClearPose)
+    bpy.utils.unregister_class(MustardUI_Armature_ClearPose)

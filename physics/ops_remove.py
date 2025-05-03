@@ -3,7 +3,7 @@ from ..model_selection.active_object import *
 
 
 class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
-    """Remove the selected Cage Item from the UI"""
+    """Remove the selected Physics Item from the UI"""
     bl_idname = "mustardui.physics_item_remove"
     bl_label = "Remove Physics Item"
     bl_options = {'UNDO'}

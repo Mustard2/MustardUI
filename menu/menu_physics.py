@@ -131,7 +131,7 @@ def collision_panel(layout, pi, mod):
 
 
 class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
-    bl_idname = "PANEL_PT_MustardUI_Tools_Physics"
+    bl_idname = "PANEL_PT_MustardUI_Physics"
     bl_label = "Physics"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -216,7 +216,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
     bl_label = "Cache"
-    bl_parent_id = "PANEL_PT_MustardUI_Tools_Physics"
+    bl_parent_id = "PANEL_PT_MustardUI_Physics"
     bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod

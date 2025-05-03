@@ -137,6 +137,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         options = self.remove_nulldrivers or self.remove_morphs or self.remove_diffeomorphic_data or self.remove_unselected_outfits or self.remove_unselected_extras or self.remove_unselected_hair or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
@@ -315,16 +316,16 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             # Remove diffeomorphic support from the UI to avoid errors in the UI, or restore it if FACS are asked
             if not self.remove_morphs_facs:
-                rig_settings.diffeomorphic_morphs_list.clear()
-                rig_settings.diffeomorphic_body_morphs = False
-                rig_settings.diffeomorphic_emotions = False
-                rig_settings.diffeomorphic_emotions_units = False
+                morphs_settings.sections.clear()
+                morphs_settings.diffeomorphic_body_morphs = False
+                morphs_settings.diffeomorphic_emotions = False
+                morphs_settings.diffeomorphic_emotions_units = False
                 bpy.ops.mustardui.configuration()
                 bpy.ops.mustardui.morphs_check()
                 bpy.ops.mustardui.configuration()
             else:
-                rig_settings.diffeomorphic_morphs_list.clear()
-                rig_settings.diffeomorphic_support = False
+                morphs_settings.sections.clear()
+                morphs_settings.enable_ui = False
 
             if addon_prefs.debug:
                 print("  Morph properties removed: " + str(morphs_props_removed))
@@ -463,6 +464,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
+        morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
 
@@ -490,7 +492,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         col.prop(self, "remove_outfit_cp")
         col.prop(self, "remove_hair_cp")
 
-        if rig_settings.diffeomorphic_support:
+        if morphs_settings.enable_ui:
 
             if not hasattr(rig_settings.model_armature_object, "DazMorphCats"):
                 box = layout.box()

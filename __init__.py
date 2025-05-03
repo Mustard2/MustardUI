@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Easy-to-use UI for human characters.",
     "author": "Mustard",
-    "version": (2025, 4, 2),
+    "version": (2025, 5, 0),
     "blender": (4, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
@@ -28,6 +28,7 @@ from . import morphs
 from . import configuration
 from . import links
 from . import menu
+from . import viewport_panel
 
 
 def register():
@@ -46,9 +47,11 @@ def register():
     configuration.register()
     links.register()
     menu.register()
+    viewport_panel.register()
 
 
 def unregister():
+    viewport_panel.unregister()
     menu.unregister()
     links.unregister()
     configuration.unregister()
