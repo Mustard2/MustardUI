@@ -26,7 +26,9 @@ def mustardui_add_section(collection, item, is_internal=False, diffeomorphic=-1)
 
 
 def get_section_by_diffeomorphic_id(morphs_settings, did):
-    return [x for x in morphs_settings.sections if x.diffeomorphic_id == did][0]
+    secs = [x for x in morphs_settings.sections if x.diffeomorphic_id == did]
+    if len(secs):
+        return secs[0]
 
 
 diffeomorphic_facs_bones_rot = ['lowerJaw', 'EyelidOuter', 'EyelidInner', 'EyelidUpperInner', 'EyelidUpper',
