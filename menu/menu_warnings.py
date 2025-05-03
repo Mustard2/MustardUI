@@ -24,7 +24,9 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             if check_old_UI():
                 return poll
 
-            return poll and check_eevee_normals(context.scene, settings)
+            rig_settings = obj.MustardUI_RigSettings
+
+            return poll and (check_eevee_normals(context.scene, settings) or rig_settings.diffeomorphic_support)
 
         return poll
 
@@ -34,6 +36,8 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
+        poll, obj = mustardui_active_object(context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
 
@@ -41,9 +45,9 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         if check_old_UI():
             box = layout.box()
             col = box.column(align=True)
-            col.label(text="Old UI script found!", icon="ERROR")
+            col.label(text="Old UI script found!", icon="TEXT")
             col.label(text="Save and restart after using this!", icon="BLANK1")
-            box.operator("mustardui.warnings_fix_old_ui")
+            box.operator("mustardui.warnings_fix_old_ui", icon="BRUSH_DATA")
             # Fix for: https://github.com/Mustard2/MustardUI/issues/150
             return
 
@@ -51,8 +55,17 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         if check_eevee_normals(context.scene, settings):
             box = layout.box()
             col = box.column(align=True)
-            col.label(text="Eevee Optimed Normals are active with Cycles!", icon="ERROR")
-            box.operator("mustardui.warnings_fix_eevee_normals")
+            col.label(text="Eevee Optimed Normals are active with Cycles!", icon="NORMALS_FACE")
+            box.operator("mustardui.warnings_fix_eevee_normals", icon="NORMALS_FACE")
+
+        if rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0:
+            box = layout.box()
+
+            row = box.row(align=True)
+            row.label(text="Morphs are outdated.", icon="SHAPEKEY_DATA")
+            row.operator("mustardui.warnings_fix_old_morphs", icon="X", text="").ignore = True
+
+            box.operator("mustardui.warnings_fix_old_morphs", icon="TRIA_DOWN_BAR").ignore = False
 
 
 def register():

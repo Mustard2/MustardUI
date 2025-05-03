@@ -1,15 +1,44 @@
 # Function to add a option to the object, if not already there
-def mustardui_add_dazmorph(collection, item):
+def mustardui_add_morph(collection, item, custom_property=True):
     for el in collection:
-        if el.name == item[0] and el.path == item[1] and el.type == item[2]:
+        if el.name == item[0] and el.path == item[1] and el.custom_property == custom_property:
             return
 
     add_item = collection.add()
     add_item.name = item[0]
     add_item.path = item[1]
-    add_item.type = item[2]
-
+    add_item.custom_property = custom_property
+    add_item.shape_key = not custom_property
     return
+
+
+def mustardui_add_section(collection, item, is_internal=False, diffeomorphic=-1):
+    if is_internal:
+        for el in collection:
+            if el.is_internal and el.diffeomorphic_id == diffeomorphic:
+                return
+
+    add_item = collection.add()
+    add_item.name = item[0]
+    add_item.is_internal = is_internal
+    add_item.diffeomorphic_id = diffeomorphic
+    return
+
+
+def get_section_by_diffeomorphic_id(morphs_settings, did):
+    secs = [x for x in morphs_settings.sections if x.diffeomorphic_id == did]
+    if len(secs):
+        return secs[0]
+    return None
+
+
+diffeomorphic_facs_bones_rot = ['lowerJaw', 'EyelidOuter', 'EyelidInner', 'EyelidUpperInner', 'EyelidUpper',
+                                'EyelidUpperOuter',
+                                'EyelidLowerOuter', 'EyelidLower', 'EyelidLowerInner']
+diffeomorphic_facs_bones_loc = ['lowerJaw', 'NasolabialLower', 'NasolabialMouthCorner', 'LipCorner',
+                                'LipLowerOuter',
+                                'LipLowerInner', 'LipLowerMiddle', 'CheekLower', 'LipNasolabialCrease',
+                                'LipUpperMiddle', 'LipUpperOuter', 'LipUpperInner', 'LipBelow', 'NasolabialMiddle']
 
 
 def muteDazFcurves_exceptionscheck(muteexceptions, string, exceptions):
@@ -98,13 +127,3 @@ def muteDazFcurves(rig, mute, useLocation=True, useRotation=True, useScale=True,
                                     skey.mute = mute
                                 else:
                                     skey.mute = False
-
-
-def DazCheckVersion(arm_obj):
-    if hasattr(arm_obj, 'DazId'):
-        daz_id = arm_obj.DazId
-        if "Genesis8" in daz_id:
-            return 8
-        elif "Genesis9" in daz_id:
-            return 9
-    return 0

@@ -39,6 +39,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         settings = bpy.context.scene.MustardUI_Settings
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
+        morphs_settings = obj.MustardUI_MorphsSettings
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -62,7 +63,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Objects", icon="OUTLINER_OB_ARMATURE")
         col = box.column(align=True)
-        if rig_settings.diffeomorphic_support:
+        if morphs_settings.enable_ui:
             col.prop(rig_settings, "simplify_diffeomorphic")
         if rig_settings.outfit_nude:
             col.prop(rig_settings, "simplify_outfit_switch_nude")
