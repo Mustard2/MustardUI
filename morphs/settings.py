@@ -39,7 +39,6 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
 
     morphs_number: bpy.props.IntProperty(default=0)
 
-    is_diffeomorphic: bpy.props.BoolProperty(default=False)
     diffeomorphic_genesis_version: bpy.props.IntProperty(default=0)
 
     sections: bpy.props.CollectionProperty(type=MustardUI_Morph_Section)
