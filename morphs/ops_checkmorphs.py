@@ -61,6 +61,9 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
     custom_rename: bpy.props.BoolProperty(default=False,
                                           name="Attempt Renaming",
                                           description="Apply a predefined set of rules to attempt a better renaming of the Morphs")
+    clear_existing_morphs: bpy.props.BoolProperty(default=False,
+                                                  name="Clear Existing Morphs",
+                                                  description="Remove existing Morphs from the sections before re-adding them")
 
     @classmethod
     def poll(cls, context):
@@ -90,8 +93,9 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 return {'FINISHED'}
 
         # Clean the existing morph settings
-        for section in morphs_settings.sections:
-            section.morphs.clear()
+        if self.clear_existing_morphs:
+            for section in morphs_settings.sections:
+                section.morphs.clear()
 
         properties_number = 0
 
@@ -287,7 +291,13 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
         layout = self.layout
 
+        col = layout.column()
+        col.prop(self, "custom_rename")
+        col.prop(self, "clear_existing_morphs")
+
         if morphs_settings.type in ["DIFFEO_GENESIS_8", "DIFFEO_GENESIS_9"]:
+            layout.separator()
+
             col = layout.column()
             if morphs_settings.type == "DIFFEO_GENESIS_8":
                 col.prop(morphs_settings, "diffeomorphic_emotions_units")
@@ -316,11 +326,6 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 row.label(text="Custom morphs")
                 row.scale_x = row_scale
                 row.prop(morphs_settings, "diffeomorphic_body_morphs_custom", text="")
-
-            layout.separator()
-
-        col = layout.column()
-        col.prop(self, "custom_rename")
 
 
 def register():
