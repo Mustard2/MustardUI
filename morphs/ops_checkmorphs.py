@@ -1,9 +1,25 @@
 import bpy
+import re
 from ..model_selection.active_object import *
 from .misc import *
 import itertools
 from .. import __package__ as base_package
 from ..menu.menu_configure import row_scale
+
+
+def rename_morph(self, name):
+    if not self.custom_rename:
+        return name
+
+    name = name.replace('_', ' ')
+
+    # Add a space before a capital letter if it's preceded by a lowercase letter or another capital letter
+    name = re.sub(r'(?<=[a-zA-Z])([A-Z])', r' \1', name)
+
+    # Add a space before a number if it's preceded by a letter
+    name = re.sub(r'(?<=[a-zA-Z])(\d)', r' \1', name)
+
+    return name
 
 
 class MustardUI_Morphs_Clear(bpy.types.Operator):
@@ -41,6 +57,10 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
     bl_idname = "mustardui.morphs_check"
     bl_label = "Check Morphs"
     bl_options = {'UNDO'}
+
+    custom_rename: bpy.props.BoolProperty(default=False,
+                                          name="Attempt Renaming",
+                                          description="Apply a predefined set of rules to attempt a better renaming of the Morphs")
 
     @classmethod
     def poll(cls, context):
@@ -215,15 +235,18 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             custom_properties = section.custom_properties
             string = section.string
 
+            strings = string.split(",")
+
             if custom_properties:
-                custom_props = [x for x in rig_settings.model_armature_object.keys() if string in x]
+                custom_props = [x for x in rig_settings.model_armature_object.keys() if any(s in x for s in strings)]
                 for morph in custom_props:
-                    mustardui_add_morph(morphs_settings.sections[i].morphs, [morph, morph], custom_property=True)
+                    mustardui_add_morph(morphs_settings.sections[i].morphs, [rename_morph(self, morph), morph], custom_property=True)
 
             if shape_keys:
-                sks = [x.name for x in rig_settings.model_body.data.shape_keys.key_blocks if string in x.name]
+                sks = [x.name for x in rig_settings.model_body.data.shape_keys.key_blocks if
+                       any(s in x.name for s in strings)]
                 for morph in sks:
-                    mustardui_add_morph(morphs_settings.sections[i].morphs, [morph, morph], custom_property=False)
+                    mustardui_add_morph(morphs_settings.sections[i].morphs, [rename_morph(self, morph), morph], custom_property=False)
 
         morphs_settings.diffeomorphic_genesis_version = -1 if morphs_settings.type == "GENERIC" else morphs_settings.diffeomorphic_genesis_version
 
@@ -255,12 +278,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
         elif morphs_settings.diffeomorphic_genesis_version == 9:
             morphs_settings.type = "DIFFEO_GENESIS_9"
 
-        if morphs_settings.type != "GENERIC":
-            return context.window_manager.invoke_props_dialog(self, width=300)
-
-        self.execute(context)
-
-        return {'FINISHED'}
+        return context.window_manager.invoke_props_dialog(self, width=300)
 
     def draw(self, context):
 
@@ -298,6 +316,11 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 row.label(text="Custom morphs")
                 row.scale_x = row_scale
                 row.prop(morphs_settings, "diffeomorphic_body_morphs_custom", text="")
+
+            layout.separator()
+
+        col = layout.column()
+        col.prop(self, "custom_rename")
 
 
 def register():
