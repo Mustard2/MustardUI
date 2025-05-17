@@ -47,12 +47,12 @@ def register():
 
 # Unregister everything
 def unregister():
-    bpy.utils.unregister_class(VIEW3D_MT_PIE_MustardUI_ViewportPieMenu)
-    bpy.utils.unregister_class(MustardUI_ViewportPieMenu_KeymapOperator)
-
     # Remove keymap item
     wm = bpy.context.window_manager
     keymap = wm.keyconfigs.active.keymaps['3D View']
     for item in keymap.keymap_items:
         if item.idname == MustardUI_ViewportPieMenu_KeymapOperator.bl_idname:
             keymap.keymap_items.remove(item)
+
+    bpy.utils.unregister_class(MustardUI_ViewportPieMenu_KeymapOperator)
+    bpy.utils.unregister_class(VIEW3D_MT_PIE_MustardUI_ViewportPieMenu)
