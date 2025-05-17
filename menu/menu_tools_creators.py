@@ -98,8 +98,13 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
+        row.operator('mustardui.tools_creators_face_controller', icon="USER")
+        row.operator('mustardui.tools_creators_face_controller_remove', text="", icon="X")
+
+        row = layout.row(align=True)
         row.operator('mustardui.tools_creators_ikspline', text="Create IK Spline", icon="CON_SPLINEIK")
         row.operator('mustardui.tools_creators_ikspline_clean', text="", icon="X")
+
         row = layout.row(align=True)
         row.operator('mustardui.tools_creators_affect_transform', text="Affect Transform on Bone Constraints", icon="CONSTRAINT_BONE").enable = True
         row.operator('mustardui.tools_creators_affect_transform', text="", icon="X").enable = False
