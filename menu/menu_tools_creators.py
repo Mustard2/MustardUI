@@ -99,6 +99,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
 
         row = layout.row(align=True)
         row.operator('mustardui.tools_creators_face_controller', icon="USER")
+        row.operator('mustardui.tools_creators_face_controller_remove', text="", icon="X")
 
         row = layout.row(align=True)
         row.operator('mustardui.tools_creators_ikspline', text="Create IK Spline", icon="CON_SPLINEIK")

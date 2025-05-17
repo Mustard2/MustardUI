@@ -2,8 +2,15 @@ import bpy
 from ..model_selection.active_object import *
 from .. import __package__ as base_package
 import os
+import re
 
-import bpy
+fctrl_bones = ['face_Controls_XYZ', 'r_Mouth_Corner', 'l_Mouth_Corner', 'Mouth_Press_Top', 'Lips_Funnel_R', 'r_Dimple',
+         'l_Dimple', 'r_Mouth_Down', 'r_Mouth_Up', 'Mouth', 'l_Mouth_Down', 'l_Mouth_Up', 'r_Squint', 'r_Eyelid',
+         'r_Blink', 'l_Squint', 'l_Eyelid', 'l_Blink', 'Eyes', 'r_Nose', 'l_Nose', 'Jaw', 'Jaw_In', 'Jaw_Out',
+         'Mouth_Close', 'r_Cheek', 'l_Cheek', 'r_Puff', 'l_Puff', 'r_Brow_Down', 'r_Brow_Up', 'l_Brow_Down',
+         'l_Brow_Up', 'Nostrils_Dilate', 'Mouth_Press_Bottom', 'Lips_Funnel_L', 'Mouth_Shrug_Upper',
+         'Mouth_Shrug_Lower', 'r_Eye', 'l_Eye', 'r_Eyebrow_Outer', 'l_Eyebrow_Outer', 'l_Eyebrow_Inner',
+         'r_Eyebrow_Inner']
 
 # Bone, Shape Key, Direction, Factor, MaxDirection, OverrideNumber
 data = [
@@ -169,6 +176,9 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
                                         name="Head Bone",
                                         description="Head bone to parent the face controller to")
 
+    add_to_armature_panel: bpy.props.BoolProperty(default=True,
+                                                  name="Add Collection to Armature Panel")
+
     @classmethod
     def poll(cls, context):
 
@@ -300,39 +310,38 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
 
                         fixed_expression = compute_fixes(driver, var, model_armature, bone, sk, fac)
 
-                        term_to_add = f" {sign} {fac} * fcd{str(num)}" if "SCALE" not in direction else f" {sign} {fac} * (1-fcd{str(num)})"
+                        term_to_add = f"{sign}{fac}*fcd{str(num)}" if "SCALE" not in direction else f"{sign}{fac}*(1-fcd{str(num)})"
                         if fixed_expression != "":
                             term_to_add = fixed_expression
                         if term_to_add not in current_expression:
                             # Append the term only if it doesn't already exist in the expression
                             if current_expression:
-                                driver.expression = f"{current_expression} {term_to_add}"
+                                driver.expression = f"{current_expression}{term_to_add}"
                             else:
                                 driver.expression = term_to_add
 
                         num += 1
                         ctrl_added += 1
 
-            # Fix brow bones
-            for brow_bone in ['r_Eyebrow_Outer', 'l_Eyebrow_Outer', 'l_Eyebrow_Inner', 'r_Eyebrow_Inner']:
-                pose_bone = model_armature.pose.bones.get(brow_bone)
-                if pose_bone is None:
-                    continue
-
-                constraint = None
-                for con in pose_bone.constraints:
-                    if con.type == "CHILD_OF":
-                        constraint = con
-                        break
-
-                if constraint is None:
-                    continue
-
-                bpy.context.active_object.data.bones.active = pose_bone.bone
-                with bpy.context.temp_override(active_object=pose_bone):
-                    bpy.ops.constraint.childof_set_inverse(constraint=constraint.name, owner='BONE')
-
             bpy.ops.object.mode_set(mode='OBJECT')
+
+            if self.add_to_armature_panel:
+                face_found = False
+                for bcoll in arm.collections_all:
+                    if bcoll.name == "Face Controllers":
+                        bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
+                        bcoll_settings.is_in_UI = True
+                        bcoll_settings.icon = "USER"
+                    elif bcoll.name == "Face":
+                        face_found = True
+
+                if face_found:
+                    index_face = arm.collections.find("Face")
+                    index = arm.collections.find("Face Controllers")
+
+                    while index > index_face + 1:
+                        arm.collections.move(index, index - 1)
+                        index = arm.collections.find("Face Controllers")
 
             if addon_prefs.debug:
                 self.report({'INFO'}, f"MustardUI - Controller successfully added to the model (controls added: " + str(ctrl_added) + ").")
@@ -366,11 +375,128 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
 
         layout = self.layout
         layout.prop_search(self, "head_bone", model_armature.pose, "bones")
+        layout.prop(self, "add_to_armature_panel")
+
+
+class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
+    """Remove a Face Controller rig to the model"""
+    bl_idname = "mustardui.tools_creators_face_controller_remove"
+    bl_label = "Remove Face Controller"
+    bl_options = {"REGISTER", "UNDO"}
+
+    head_bone: bpy.props.StringProperty(default="",
+                                        name="Head Bone",
+                                        description="Head bone to parent the face controller to")
+
+    @classmethod
+    def poll(cls, context):
+
+        res, arm = mustardui_active_object(context, config=1)
+        if arm is None:
+            return False
+
+        rig_settings = arm.MustardUI_RigSettings
+        model_armature = rig_settings.model_armature_object
+
+        # Check if the face controller rig is already available
+        for b in [x[0] for x in data]:
+            if b not in model_armature.pose.bones:
+                return False
+
+        return res
+
+    def execute(self, context):
+
+        res, arm = mustardui_active_object(context, config=1)
+        rig_settings = arm.MustardUI_RigSettings
+        model_armature = rig_settings.model_armature_object
+
+        addon_prefs = context.preferences.addons[base_package].preferences
+
+        # Clean drivers
+        for dr in model_armature.data.animation_data.drivers:
+            driver = dr.driver
+
+            if driver is None:
+                continue
+
+            # Remove variables related to fcd or fcd_fix
+            variables_to_remove = [var for var in driver.variables if
+                                   "fcd" in var.name or "fcd_fix" in var.name]
+
+            # Also remove variables related to bones in fctrl_bones list
+            for var in driver.variables:
+                if var.type != 'TRANSFORMS':
+                    continue
+                for target in var.targets:
+                    if any(target.id == model_armature and bone == target.bone_target for bone in fctrl_bones):
+                        if var not in variables_to_remove:
+                            variables_to_remove.append(var)
+
+            if not variables_to_remove:
+                continue
+
+            if addon_prefs.debug:
+                print(f"MustardUI - Working on driver '{dr.data_path}'...")
+                for v in [var.name for var in variables_to_remove]:
+                    print(f"MustardUI - Variables '{v}' to be deleted from '{dr.data_path}'.")
+
+            # Remove variables from current expression
+            current_expression = driver.expression.strip()
+            if addon_prefs.debug:
+                print(f"MustardUI - Expression before removal: {current_expression}'.")
+            for v in [var.name for var in variables_to_remove]:
+                if 'fcd' in var.name:
+                    pattern = rf'([+\-]?\s*\d*\.?\d*)\s?\*(?:\s*\d*\.?\d*\s?\*)*\s?(min\([^\)]+fcd[^\)]+[^\)]+fcd[^\)]+\)|\w*fcd\w*(\*\w*fcd\w*)*|\([^\)]+fcd[^\)]+\))'
+                    current_expression = re.sub(pattern, lambda m: "" if m.group(0).strip() else "", current_expression)
+                pattern = rf'([+\-]?\s*\d*\.?\d*)\s?\*\s?\(?\s?([a-zA-Z0-9_]+|{re.escape(v)}\d+)\s?\)?'
+                current_expression = re.sub(pattern, lambda m: "" if m.group(0).strip() else "", current_expression)
+            if addon_prefs.debug:
+                print(f"MustardUI - Expression before removal: {current_expression.strip()}'.")
+            driver.expression = current_expression.strip()
+
+            # Remove variables
+            for var in variables_to_remove:
+                driver.variables.remove(var)
+
+            # After removing variables, check if any variables remain
+            if len(driver.variables) == 0:
+                model_armature.data.animation_data.drivers.remove(driver)
+
+        bpy.context.view_layer.objects.active = model_armature
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        # Remove appended bones
+        for bone_name in fctrl_bones:
+            if bone_name in model_armature.data.edit_bones:
+                bone = model_armature.data.edit_bones[bone_name]
+                model_armature.data.edit_bones.remove(bone)
+                if addon_prefs.debug:
+                    print(f"MustardUI - Bone '{bone_name}' deleted'.")
+            else:
+                if addon_prefs.debug:
+                    print(f"MustardUI - Bone '{bone_name}' not found'.")
+
+        # Finally remove the Bone Collections
+        for brm in ["Face Controllers", "Face Controllers Not Implemented"]:
+            for bcoll in arm.collections_all:
+                if bcoll.name == brm:
+                    arm.collections.remove(bcoll)
+                    break
+
+        # Optionally, return to Object Mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        self.report({'INFO'}, "MustardUI - Controller successfully removed from the model.")
+
+        return {'FINISHED'}
 
 
 def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_FaceController)
+    bpy.utils.register_class(MustardUI_ToolsCreators_FaceController_Remove)
 
 
 def unregister():
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_FaceController_Remove)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_FaceController)
