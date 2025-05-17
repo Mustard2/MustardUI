@@ -16,7 +16,7 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
     # Types for GENERIC type section
     string: bpy.props.StringProperty(default="",
                                      name="String",
-                                     description="String to search for adding Morphs")
+                                     description="String to search for adding Morphs.\nSeveral strings can be added if separated by commas.\nNote: spaces and order are considered")
     shape_keys: bpy.props.BoolProperty(default=False,
                                        name="Shape Keys",
                                        description="Search shape keys to be added as Morphs")
