@@ -67,6 +67,12 @@ def enable_physics_update(self, context):
             pi.collapse_softbody = True
             pi.collapse_collisions = True
 
+    for obj in rig_settings.model_armature_object.children:
+        for pi in [x for x in self.items if x.type == "CAGE"]:
+            status = self.enable_physics and pi.enable and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
+            set_cage_modifiers(pi, obj.modifiers, status, obj, body)
+            set_modifiers(pi, obj, status)
+
     for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
         for obj in [x for x in items if x.type == "MESH"]:
@@ -115,6 +121,11 @@ def enable_physics_update_single(self, context):
     if self.type == "CAGE":
         set_cage_modifiers(self, rig_settings.model_body.modifiers, status, None, body)
         set_modifiers(self, rig_settings.model_body, status)
+
+        for obj in rig_settings.model_armature_object.children:
+            status = self.enable_physics and self.enable and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
+            set_cage_modifiers(self, obj.modifiers, status, obj, body)
+            set_modifiers(self, obj, status)
 
         for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
