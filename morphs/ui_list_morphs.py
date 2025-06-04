@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from .misc import get_cp_source
 
 
 class MustardUI_Morphs_Remove(bpy.types.Operator):
@@ -83,8 +84,8 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
-        if ((item.custom_property and hasattr(rig_settings.model_armature_object,
-                                             f'["{bpy.utils.escape_identifier(item.path)}"]'))
+        cp_source = get_cp_source(item.custom_property_source, rig_settings)
+        if ((cp_source and item.custom_property and hasattr(cp_source, f'["{bpy.utils.escape_identifier(item.path)}"]'))
                 or (item.shape_key and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys())):
             layout.prop(item, 'name', text="", emboss=False, translate=False, icon=icon)
         else:

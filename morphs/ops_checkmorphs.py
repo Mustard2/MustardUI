@@ -237,14 +237,18 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
             shape_keys = section.shape_keys
             custom_properties = section.custom_properties
+            custom_properties_source = section.custom_properties_source
             string = section.string
 
             strings = string.split(",")
 
             if custom_properties:
-                custom_props = [x for x in rig_settings.model_armature_object.keys() if any(s in x for s in strings)]
+                cp_source = get_cp_source(custom_properties_source, rig_settings)
+                if cp_source is None:
+                    continue
+                custom_props = [x for x in cp_source.keys() if any(s in x for s in strings)]
                 for morph in custom_props:
-                    mustardui_add_morph(morphs_settings.sections[i].morphs, [rename_morph(self, morph), morph], custom_property=True)
+                    mustardui_add_morph(morphs_settings.sections[i].morphs, [rename_morph(self, morph), morph], custom_property=True, custom_property_source=custom_properties_source)
 
             if shape_keys:
                 sks = [x.name for x in rig_settings.model_body.data.shape_keys.key_blocks if

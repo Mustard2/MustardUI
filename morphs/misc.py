@@ -1,5 +1,5 @@
 # Function to add a option to the object, if not already there
-def mustardui_add_morph(collection, item, custom_property=True):
+def mustardui_add_morph(collection, item, custom_property=True, custom_property_source="ARMATURE"):
     for el in collection:
         if el.path == item[1] and el.custom_property == custom_property:
             return
@@ -9,6 +9,8 @@ def mustardui_add_morph(collection, item, custom_property=True):
     add_item.path = item[1]
     add_item.custom_property = custom_property
     add_item.shape_key = not custom_property
+    if custom_property:
+        add_item.custom_property_source = custom_property_source
     return
 
 
@@ -23,6 +25,18 @@ def mustardui_add_section(collection, item, is_internal=False, diffeomorphic=-1)
     add_item.is_internal = is_internal
     add_item.diffeomorphic_id = diffeomorphic
     return
+
+
+def get_cp_source(custom_property_source, rig_settings):
+    if custom_property_source == "ARMATURE_OBJ":
+        return rig_settings.model_armature_object
+    elif custom_property_source == "ARMATURE_DATA":
+        return rig_settings.model_armature_object.data
+    elif custom_property_source == "BODY_OBJ":
+        return rig_settings.model_body
+    elif custom_property_source == "BODY_DATA":
+        return rig_settings.model_body.data
+    return None
 
 
 def get_section_by_diffeomorphic_id(morphs_settings, did):

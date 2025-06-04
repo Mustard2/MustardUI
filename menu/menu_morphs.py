@@ -4,16 +4,17 @@ from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from ..misc.ui_collapse import ui_collapse_prop
-from ..morphs.misc import get_section_by_diffeomorphic_id
+from ..morphs.misc import get_section_by_diffeomorphic_id, get_cp_source
 
 
 def morph_filter(morph, rig_settings, morphs_settings):
     # Check null filter
     val = None
 
-    if morph.custom_property and hasattr(rig_settings.model_armature_object,
+    cp_source = get_cp_source(morph.custom_property_source, rig_settings)
+    if cp_source and morph.custom_property and hasattr(cp_source,
                                          f'["{bpy.utils.escape_identifier(morph.path)}"]'):
-        val = rig_settings.model_armature_object[bpy.utils.escape_identifier(morph.path)]
+        val = cp_source[bpy.utils.escape_identifier(morph.path)]
     elif morph.shape_key and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys():
         val = rig_settings.model_body.data.shape_keys.key_blocks[morph.path].value
 
@@ -109,7 +110,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
             row.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK")
 
 
-class PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits(MainPanel, bpy.types.Panel):
+class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
     bl_label = "Emotion Units"
     bl_parent_id = "PANEL_PT_MustardUI_Morphs"
     bl_options = {"DEFAULT_CLOSED"}
@@ -167,7 +168,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits(MainPanel, bpy.types.Panel)
                 row.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
 
 
-class PANEL_PT_MustardUI_ExternalMorphs_Emotions(MainPanel, bpy.types.Panel):
+class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
     bl_label = "Emotions"
     bl_parent_id = "PANEL_PT_MustardUI_Morphs"
     bl_options = {"DEFAULT_CLOSED"}
@@ -225,7 +226,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Emotions(MainPanel, bpy.types.Panel):
                 row.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
 
 
-class PANEL_PT_MustardUI_ExternalMorphs_FACSUnits(MainPanel, bpy.types.Panel):
+class PANEL_PT_MustardUI_Morphs_FACSUnits(MainPanel, bpy.types.Panel):
     bl_label = "Advanced Emotion Units"
     bl_parent_id = "PANEL_PT_MustardUI_Morphs"
     bl_options = {"DEFAULT_CLOSED"}
@@ -283,7 +284,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACSUnits(MainPanel, bpy.types.Panel):
                 row.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
 
 
-class PANEL_PT_MustardUI_ExternalMorphs_FACS(MainPanel, bpy.types.Panel):
+class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
     bl_label = "Advanced Emotion"
     bl_parent_id = "PANEL_PT_MustardUI_Morphs"
     bl_options = {"DEFAULT_CLOSED"}
@@ -341,7 +342,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_FACS(MainPanel, bpy.types.Panel):
                 row.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
 
 
-class PANEL_PT_MustardUI_ExternalMorphs_Body(MainPanel, bpy.types.Panel):
+class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
     bl_label = "Body"
     bl_parent_id = "PANEL_PT_MustardUI_Morphs"
     bl_options = {"DEFAULT_CLOSED"}
@@ -400,7 +401,7 @@ class PANEL_PT_MustardUI_ExternalMorphs_Body(MainPanel, bpy.types.Panel):
                 row.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
 
 
-class PANEL_PT_MustardUI_ExternalMorphs_Custom(MainPanel, bpy.types.Panel):
+class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
     bl_label = "Custom"
     bl_parent_id = "PANEL_PT_MustardUI_Morphs"
     bl_options = {"DEFAULT_CLOSED"}
@@ -456,9 +457,9 @@ class PANEL_PT_MustardUI_ExternalMorphs_Custom(MainPanel, bpy.types.Panel):
             box = layout.box()
             if ui_collapse_prop(box, section, 'collapse', section.name, icon=section.icon):
                 for morph in section.morphs:
-                    if morph.custom_property and hasattr(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
-                        box.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(morph.path)}"]',
-                                    text=morph.name)
+                    cp_source = get_cp_source(morph.custom_property_source, rig_settings)
+                    if cp_source and morph.custom_property and hasattr(cp_source, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
+                        box.prop(cp_source, f'["{bpy.utils.escape_identifier(morph.path)}"]', text=morph.name)
                     elif morph.shape_key and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys():
                         box.prop(rig_settings.model_body.data.shape_keys.key_blocks[morph.path], 'value',
                                     text=morph.name)
@@ -470,19 +471,19 @@ class PANEL_PT_MustardUI_ExternalMorphs_Custom(MainPanel, bpy.types.Panel):
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Morphs)
-    bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits)
-    bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_Emotions)
-    bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_FACSUnits)
-    bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_FACS)
-    bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_Body)
-    bpy.utils.register_class(PANEL_PT_MustardUI_ExternalMorphs_Custom)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Morphs_EmotionUnits)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Morphs_Emotions)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Morphs_FACSUnits)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Morphs_FACS)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Morphs_Body)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Morphs_Custom)
 
 
 def unregister():
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_Custom)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_Body)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_FACS)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_FACSUnits)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_Emotions)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ExternalMorphs_EmotionUnits)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Morphs_Custom)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Morphs_Body)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Morphs_FACS)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Morphs_FACSUnits)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Morphs_Emotions)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Morphs_EmotionUnits)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Morphs)

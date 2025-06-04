@@ -1,5 +1,5 @@
 import bpy
-from .settings_morph import MustardUI_Morph
+from .settings_morph import *
 from ..misc.icons_list import mustardui_icon_list
 
 
@@ -23,6 +23,10 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
     custom_properties: bpy.props.BoolProperty(default=False,
                                               name="Custom Properties",
                                               description="Search custom properties to be added as Morphs")
+    custom_properties_source: bpy.props.EnumProperty(items=cp_source,
+                                                     default="ARMATURE_OBJ",
+                                                     description="Object to look for Morphs",
+                                                     name="Morphs Source")
 
     # Collapse button
     collapse: bpy.props.BoolProperty(name="", default=True)
