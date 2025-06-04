@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
+from .misc import get_cp_source
 
 
 class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
@@ -20,9 +21,10 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
 
         if morphs_settings.type == "GENERIC" and morphs_settings.show_type_icon:
             icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
-            if item.custom_property and hasattr(rig_settings.model_armature_object,
+            cp_source = get_cp_source(item.custom_property_source, rig_settings)
+            if cp_source and item.custom_property and hasattr(cp_source,
                                              f'["{bpy.utils.escape_identifier(item.path)}"]'):
-                layout.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(item.path)}"]',
+                layout.prop(cp_source, f'["{bpy.utils.escape_identifier(item.path)}"]',
                             icon=icon, text=item.name)
             elif item.shape_key and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys():
                 layout.prop(rig_settings.model_body.data.shape_keys.key_blocks[item.path], 'value',
@@ -30,9 +32,10 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
             else:
                 layout.prop(settings, 'daz_morphs_error', text="", icon="ERROR", emboss=False, icon_only=True)
         else:
-            if item.custom_property and hasattr(rig_settings.model_armature_object,
+            cp_source = get_cp_source(item.custom_property_source, rig_settings)
+            if cp_source and item.custom_property and hasattr(cp_source,
                                              f'["{bpy.utils.escape_identifier(item.path)}"]'):
-                layout.prop(rig_settings.model_armature_object, f'["{bpy.utils.escape_identifier(item.path)}"]',
+                layout.prop(cp_source, f'["{bpy.utils.escape_identifier(item.path)}"]',
                             text=item.name)
             elif item.shape_key and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys():
                 layout.prop(rig_settings.model_body.data.shape_keys.key_blocks[item.path], 'value',
