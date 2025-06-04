@@ -102,11 +102,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         if custom_prop.is_animatable:
 
             prop_name = custom_prop.prop_name
-            prop_array = custom_prop.array_length > 0
             prop_subtype = custom_prop.subtype
 
             ui_data = obj.id_properties_ui(prop_name)
-            ui_data_dict = ui_data.as_dict()
 
             if prop_type == "FLOAT":
                 custom_prop.force_type = self.force_type
@@ -132,10 +130,16 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     custom_prop.default_float = self.default_float
                     obj[prop_name] = float(obj[prop_name])
                 else:
-                    custom_prop.default_array = self.default_array if prop_subtype != "COLOR" else str(
-                        ui_data.as_dict()['default'])
+                    if prop_subtype != "COLOR":
+                        custom_prop.default_array = self.default_array
+                    else:
+                        custom_prop.default_array = ("("
+                                                     + str(self.default_color[0]) + ","
+                                                     + str(self.default_color[1]) + ","
+                                                     + str(self.default_color[2]) + ","
+                                                     + str(self.default_color[3])
+                                                     + ")")
             elif prop_type == "BOOLEAN" or self.force_type == "Bool":
-
                 ui_data.clear()
                 del obj[prop_name]
 
@@ -238,7 +242,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     if custom_prop.subtype != "COLOR":
                         self.default_array = str(ui_data_dict['default'])
                     else:
-                        self.default_color = ui_data_dict['default']
+                        try:
+                            self.default_color = ui_data_dict['default']
+                        except:
+                            self.default_color = [0., 0., 0., 1.]
                 else:
                     self.default_float = ui_data_dict['default']
 

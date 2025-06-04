@@ -72,54 +72,54 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
         for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
 
-            prop_name = custom_prop.prop_name
-
-            if prop_name in obj.keys():
-                del obj[prop_name]
-
-            if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
-                try:
-                    default_bool = int(evaluate_path(custom_prop.rna, custom_prop.path))
-                except:
-                    print(
-                        "MustardUI - Can not find the property " + mustardui_cp_path(custom_prop.rna, custom_prop.path))
-                    default_bool = True
-                rna_idprop_ui_create(obj, prop_name, default=default_bool,
-                                     min=0,
-                                     max=1,
-                                     description=custom_prop.description,
-                                     overridable=True)
-
-            elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
-                import numpy as np
-                rna_idprop_ui_create(obj, prop_name,
-                                     default=custom_prop.default_float if custom_prop.array_length == 0 else ast.literal_eval(custom_prop.default_array),
-                                     min=custom_prop.min_float if custom_prop.subtype != "COLOR" else 0.,
-                                     max=custom_prop.max_float if custom_prop.subtype != "COLOR" else 1.,
-                                     description=custom_prop.description,
-                                     overridable=True,
-                                     subtype=custom_prop.subtype if custom_prop.subtype != "FACTOR" else None)
-
-            elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
-                rna_idprop_ui_create(obj, prop_name,
-                                     default=int(custom_prop.default_int) if custom_prop.array_length == 0 else ast.literal_eval(custom_prop.default_array),
-                                     min=custom_prop.min_int,
-                                     max=custom_prop.max_int,
-                                     description=custom_prop.description,
-                                     overridable=True,
-                                     subtype=custom_prop.subtype if custom_prop.subtype != "FACTOR" else None)
-
-            else:
-                rna_idprop_ui_create(obj, prop_name,
-                                     default=evaluate_path(custom_prop.rna, custom_prop.path),
-                                     description=custom_prop.description,
-                                     overridable=True)
-
             # Rebuilding custom properties and their linked properties drivers
             try:
-                self.add_driver(obj, custom_prop.rna, custom_prop.path, custom_prop.prop_name)
-                for linked_custom_prop in custom_prop.linked_properties:
-                    self.add_driver(obj, linked_custom_prop.rna, linked_custom_prop.path, custom_prop.prop_name)
+
+                prop_name = custom_prop.prop_name
+
+                if prop_name in obj.keys():
+                    del obj[prop_name]
+
+                if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
+                    try:
+                        default_bool = int(evaluate_path(custom_prop.rna, custom_prop.path))
+                    except:
+                        print(
+                            "MustardUI - Can not find the property " + mustardui_cp_path(custom_prop.rna, custom_prop.path))
+                        default_bool = True
+                    rna_idprop_ui_create(obj, prop_name, default=default_bool,
+                                         min=0,
+                                         max=1,
+                                         description=custom_prop.description,
+                                         overridable=True)
+
+                elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
+                    rna_idprop_ui_create(obj, prop_name,
+                                         default=custom_prop.default_float if custom_prop.array_length == 0 else ast.literal_eval(custom_prop.default_array),
+                                         min=custom_prop.min_float if custom_prop.subtype != "COLOR" else 0.,
+                                         max=custom_prop.max_float if custom_prop.subtype != "COLOR" else 1.,
+                                         description=custom_prop.description,
+                                         overridable=True,
+                                         subtype=custom_prop.subtype if custom_prop.subtype != "FACTOR" else None)
+
+                elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
+                    rna_idprop_ui_create(obj, prop_name,
+                                         default=int(custom_prop.default_int) if custom_prop.array_length == 0 else ast.literal_eval(custom_prop.default_array),
+                                         min=custom_prop.min_int,
+                                         max=custom_prop.max_int,
+                                         description=custom_prop.description,
+                                         overridable=True,
+                                         subtype=custom_prop.subtype if custom_prop.subtype != "FACTOR" else None)
+
+                else:
+                    rna_idprop_ui_create(obj, prop_name,
+                                         default=evaluate_path(custom_prop.rna, custom_prop.path),
+                                         description=custom_prop.description,
+                                         overridable=True)
+
+                    self.add_driver(obj, custom_prop.rna, custom_prop.path, custom_prop.prop_name)
+                    for linked_custom_prop in custom_prop.linked_properties:
+                        self.add_driver(obj, linked_custom_prop.rna, linked_custom_prop.path, custom_prop.prop_name)
             except:
                 errors += 1
 

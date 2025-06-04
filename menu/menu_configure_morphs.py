@@ -56,7 +56,7 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
         if morphs_settings.sections:
             box = layout.box()
             box.enabled = morphs_settings.enable_ui
-            box.label(text="Sections and Morphs", icon="SHAPEKEY_DATA" if morphs_settings.type != "GENERIC" else "LINENUMBERS_OFF")
+            box.label(text="Sections", icon="LINENUMBERS_OFF")
             row = box.row()
             row.template_list("MUSTARDUI_UL_Morphs_Section_UIList", "The_List", morphs_settings,
                               "sections", arm,
