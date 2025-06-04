@@ -69,7 +69,7 @@ def enable_physics_update(self, context):
 
     for obj in rig_settings.model_armature_object.children:
         for pi in [x for x in self.items if x.type == "CAGE"]:
-            status = self.enable_physics and pi.enable and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
+            status = self.enable_physics and pi.enable and not obj.hide_viewport
             set_cage_modifiers(pi, obj.modifiers, status, obj, body)
             set_modifiers(pi, obj, status)
 
@@ -123,7 +123,7 @@ def enable_physics_update_single(self, context):
         set_modifiers(self, rig_settings.model_body, status)
 
         for obj in rig_settings.model_armature_object.children:
-            status = self.enable_physics and self.enable and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport
+            status = status and not obj.hide_viewport
             set_cage_modifiers(self, obj.modifiers, status, obj, body)
             set_modifiers(self, obj, status)
 
