@@ -190,16 +190,21 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             op.type = "OUTFIT"
             no_prop = False
 
-        hair_props = [x for x in obj.MustardUI_CustomPropertiesHair if x.is_animatable and x.hair is not None]
+        hair_props = [x for x in obj.MustardUI_CustomPropertiesHair if x.is_animatable]
         if len(hair_props) > 0 and (len(outfit_props) > 0 or len(body_props) > 0):
             layout.separator()
             layout.label(text="Hair", icon="STRANDS")
         for prop in sorted(hair_props, key=lambda x: x.name):
-            hair_name = prop.hair.name[
-                        len(rig_settings.hair_collection.name + " "):] if rig_settings.model_MustardUI_naming_convention else prop.hair.name
-            op = layout.operator(MustardUI_Property_MenuLink.bl_idname,
-                                 text=hair_name + " - " + prop.name,
-                                 icon=prop.icon)
+            if prop.hair is not None:
+                hair_name = prop.hair.name[
+                            len(rig_settings.hair_collection.name + " "):] if rig_settings.model_MustardUI_naming_convention else prop.hair.name
+                op = layout.operator(MustardUI_Property_MenuLink.bl_idname,
+                                     text=hair_name + " - " + prop.name,
+                                     icon=prop.icon)
+            else:
+                op = layout.operator(MustardUI_Property_MenuLink.bl_idname,
+                                     text="Global - " + prop.name,
+                                     icon=prop.icon)
             op.parent_rna = prop.rna
             op.parent_path = prop.path
             op.type = "HAIR"
