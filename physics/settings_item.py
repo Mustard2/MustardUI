@@ -1,6 +1,7 @@
 import bpy
 from ..model_selection.active_object import *
 from .update_enable import *
+from ..misc.outfits import outfit_poll_mesh_physics, outfit_poll_collection
 
 
 def poll_mesh(self, o):
@@ -14,14 +15,22 @@ def poll_mesh_linked(self, o):
     res, obj = mustardui_active_object(bpy.context, config=1)
     physics_settings = obj.MustardUI_PhysicsSettings
 
-    return o.type == 'MESH' and (o in [x.object for x in physics_settings.items if x.type == "CAGE"]) and o != self.object
+    return o.type == 'MESH' and (
+            o in [x.object for x in physics_settings.items if x.type == "CAGE"]) and o != self.object
 
 
 mustardui_physics_item_type = [("NONE", "None", "Disable Physics", "BLANK1", 0),
-                               ("CAGE", "Cage", "A mesh that modifies another one through Mesh or Surface Deform modifiers", "MESH_UVSPHERE", 1),
-                               ("COLLISION", "Collision", "A mesh that acts as collision for other meshes", "MOD_PHYSICS", 2),
-                               ("SINGLE_ITEM", "Single Item", "An item that does not need Mesh or Surface Deform modifiers on the Body or the Outfits", "OBJECT_ORIGIN", 3),
-                               ("BONES_DRIVER", "Bone Driver", "An item that drives the motion of bones through Constraints.\nOnly constraints with 'target' are supported", "BONE_DATA", 4)]
+                               ("CAGE", "Cage",
+                                "A mesh that modifies another one through Mesh or Surface Deform modifiers",
+                                "MESH_UVSPHERE", 1),
+                               ("COLLISION", "Collision", "A mesh that acts as collision for other meshes",
+                                "MOD_PHYSICS", 2),
+                               ("SINGLE_ITEM", "Single Item",
+                                "An item that does not need Mesh or Surface Deform modifiers on the Body or the Outfits",
+                                "OBJECT_ORIGIN", 3),
+                               ("BONES_DRIVER", "Bone Driver",
+                                "An item that drives the motion of bones through Constraints.\nOnly constraints with 'target' are supported",
+                                "BONE_DATA", 4)]
 mustardui_physics_item_type_dict = {
     "NONE": "BLANK1",
     "CAGE": "MESH_UVSPHERE",
@@ -36,7 +45,6 @@ class MustardUI_PhysicsItem_Intersecting(bpy.types.PropertyGroup):
 
 
 class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
-
     enable: bpy.props.BoolProperty(default=False,
                                    name="Enable Physics",
                                    update=enable_physics_update_single)
@@ -53,6 +61,23 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
                                  items=mustardui_physics_item_type,
                                  name="Type")
 
+    # Outfits support
+    outfit_enable: bpy.props.BoolProperty(default=False,
+                                          name="Outfit Physics",
+                                          description="Assign this Physics Item to an outfit.\n The outfit will be "
+                                                      "shown near the Outfit piece instead of the Physics Items list")
+
+    outfit_collection: bpy.props.PointerProperty(name="Outfit/Hair",
+                                                 description="Outfit/Hair collection",
+                                                 type=bpy.types.Collection,
+                                                 poll=outfit_poll_collection)
+
+    outfit_object: bpy.props.PointerProperty(name="Outfit Piece/Hair",
+                                             description="Specific Outfit/hair piece",
+                                             type=bpy.types.Object,
+                                             poll=outfit_poll_mesh_physics)
+
+    # UI switchers
     collisions: bpy.props.BoolProperty(default=False,
                                        name="Collisions",
                                        description="Enable/disable collisions on the modifiers",

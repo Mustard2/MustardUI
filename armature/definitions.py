@@ -2,6 +2,7 @@ import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
 from ..misc.icons_list import mustardui_icon_list
+from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh
 
 
 # Class for single bone collection
@@ -34,25 +35,6 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
             self.default = False
         return
 
-    # Poll function for the selection of mesh belonging to an outfit in pointer properties
-    def outfit_switcher_poll_collection(self, object):
-        rig_settings = self.id_data.MustardUI_RigSettings
-        collections = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
-        if rig_settings.extras_collection is not None:
-            collections.append(rig_settings.extras_collection)
-        if rig_settings.hair_collection is not None:
-            collections.append(rig_settings.hair_collection)
-        return object in collections
-
-    # Poll function for the selection of mesh belonging to an outfit in pointer properties
-    def outfit_switcher_poll_mesh(self, object):
-        rig_settings = self.id_data.MustardUI_RigSettings
-        if self.outfit_switcher_collection is not None:
-            items = self.outfit_switcher_collection.all_objects if rig_settings.outfit_config_subcollections else self.outfit_switcher_collection.objects
-            if object in [x for x in items]:
-                return object.type == 'MESH'
-        return False
-
     # Automatic outfits layer switcher
     outfit_switcher_enable: bpy.props.BoolProperty(default=False,
                                                    name="Outfit Switcher",
@@ -69,13 +51,13 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
                                                                       "you want the layer to be shown only for a "
                                                                       "specific outfit piece/hair object",
                                                           type=bpy.types.Collection,
-                                                          poll=outfit_switcher_poll_collection)
+                                                          poll=outfit_poll_collection)
 
     outfit_switcher_object: bpy.props.PointerProperty(name="Outfit Piece/Hair",
                                                       description="When switching to this specific outfit piece/hair "
                                                                   "object, the layer will be shown/hidden",
                                                       type=bpy.types.Object,
-                                                      poll=outfit_switcher_poll_mesh)
+                                                      poll=outfit_poll_mesh)
 
     # Children
     # Button to show children of the bone
