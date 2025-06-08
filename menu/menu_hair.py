@@ -30,11 +30,12 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             rig_settings = arm.MustardUI_RigSettings
 
             # Check if one of these should be shown in the UI
+            hair_global_properties_avail = len([x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None])
             hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"]) > 0 if rig_settings.hair_collection is not None else False
             particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]) > 0 and rig_settings.particle_systems_enable if rig_settings.model_body is not None else False
             curved_hair = len([x for x in rig_settings.hair_collection.objects if x.type == "CURVES"]) > 0 if rig_settings.hair_collection is not None else False
 
-            return res if (hair_avail or particle_avail or curved_hair) else False
+            return res if (hair_avail or particle_avail or curved_hair or hair_global_properties_avail) else False
 
         return res
 
@@ -49,13 +50,13 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         # Hair
-        hair_gloabal_properties = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None]
-        if len(hair_gloabal_properties) > 0:
+        hair_global_properties = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None]
+        if len(hair_global_properties) > 0:
             box = layout.box()
             row = box.row(align=True)
             row.label(text="Global settings", icon="MODIFIER")
 
-            mustardui_custom_properties_print(arm, settings, hair_gloabal_properties, box,
+            mustardui_custom_properties_print(arm, settings, hair_global_properties, box,
                                           rig_settings.hair_custom_properties_icons)
 
         if rig_settings.hair_collection is not None:
