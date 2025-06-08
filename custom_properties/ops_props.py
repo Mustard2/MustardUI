@@ -17,6 +17,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
     outfit: StringProperty(default="")
     outfit_piece: StringProperty(default="")
     hair: StringProperty(default="")
+    hair_global: BoolProperty(default=False)
 
     @classmethod
     def poll(cls, context):
@@ -29,7 +30,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         if self.outfit != "":
             custom_props = obj.MustardUI_CustomPropertiesOutfit
-        elif self.hair != "":
+        elif self.hair != "" or self.hair_global:
             custom_props = obj.MustardUI_CustomPropertiesHair
         else:
             custom_props = obj.MustardUI_CustomProperties
@@ -171,7 +172,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             # Assign type
             if self.outfit != "":
                 cp.cp_type = "OUTFIT"
-            elif self.hair != "":
+            elif self.hair != "" or self.hair_global:
                 cp.cp_type = "HAIR"
             else:
                 cp.cp_type = "BODY"

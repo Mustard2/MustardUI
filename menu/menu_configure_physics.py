@@ -65,6 +65,13 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
                 row = col.row()
                 row.prop(pi, 'type')
 
+                col = box.column(align=True)
+                col.prop(pi, 'outfit_enable')
+                if pi.outfit_enable:
+                    col.prop(pi, 'outfit_collection', text="Collection")
+                    if pi.outfit_collection is not None:
+                        col.prop(pi, 'outfit_object', text="Object")
+
             if settings.advanced and index > -1 and len(
                     physics_settings.items[arm.mustardui_physics_items_uilist_index].intersecting_objects) > 0:
                 box = layout.box()

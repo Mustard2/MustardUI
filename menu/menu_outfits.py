@@ -12,13 +12,16 @@ def extract_items(collection, subcollections):
     return [x for x in items if x.parent is None or x.parent not in items]
 
 
-# Type: 0 - Standrd, 1 - Locked Objects, 2 - Extras
-def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0):
+# Type: 0 - Standard, 1 - Locked Objects, 2 - Extras
+def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, otype=0, level=0):
 
     if otype < 0 or otype > 3:
         return
 
     if level > rig_settings.outfits_max_hierarchy_level:
+        return
+
+    if obj in [x.object for x in physics_settings.items]:
         return
 
     col = layout.column(align=True)
@@ -46,7 +49,20 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
                      depress=not obj.hide_viewport).obj = obj.name
 
     # Physics
-    if rig_settings.outfit_physics_support:
+    pi = None
+    for pii in [x for x in physics_settings.items]:
+        if pii.outfit_object == obj:
+            pi = pii
+            break
+    if pi is not None:
+        col2 = row.column(align=True)
+        col2.enabled = physics_settings.enable_physics
+        col2.prop(pi, 'enable', text="", icon="PHYSICS" if pi.type != "COLLISION" else "MOD_PHYSICS")
+        if pi.type != "COLLISION":
+            col2 = row.column(align=True)
+            col2.enabled = physics_settings.enable_physics
+            col2.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
+    elif rig_settings.outfit_physics_support:
         for m in obj.modifiers:
             mtype = m.type
             if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
@@ -84,7 +100,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
 
     if not collapse:
         for c in obj.children:
-            draw_outfit_piece(layout, c, arm, rig_settings, settings, otype, level + 1)
+            draw_outfit_piece(layout, c, arm, rig_settings, physics_settings, settings, otype, level + 1)
 
 
 class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
@@ -123,6 +139,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
 
         layout = self.layout
 
@@ -162,7 +179,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                                                               rig_settings.outfit_custom_properties_icons)
 
                     for obj in sorted(items, key=lambda x: x.name):
-                        draw_outfit_piece(box, obj, arm, rig_settings, settings, 0, 0)
+                        draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 0, 0)
 
                 else:
                     box.label(text="This Collection seems empty", icon="ERROR")
@@ -179,7 +196,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 box.separator()
                 box.label(text="Locked objects:", icon="LOCKED")
                 for obj in locked_objects:
-                    draw_outfit_piece(box, obj, arm, rig_settings, settings, 1, 0)
+                    draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 1, 0)
 
             # Extras
             if rig_settings.extras_collection is not None:
@@ -193,7 +210,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
                     if ui_collapse_prop(box, rig_settings, 'extras_collapse', "Extras", icon="", align=False):
                         for obj in sorted(eitems, key=lambda x: x.name):
-                            draw_outfit_piece(box, obj, arm, rig_settings, settings, 2, 0)
+                            draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 2, 0)
 
             # Outfit global properties
             if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:

@@ -456,7 +456,7 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
         for section in [x for x in morphs_settings.sections if x.morphs and not x.is_internal]:
             box = layout.box()
             if ui_collapse_prop(box, section, 'collapse', section.name, icon=section.icon):
-                for morph in section.morphs:
+                for morph in [x for x in section.morphs if morph_filter(x, rig_settings, morphs_settings)]:
                     cp_source = get_cp_source(morph.custom_property_source, rig_settings)
                     if cp_source and morph.custom_property and hasattr(cp_source, f'["{bpy.utils.escape_identifier(morph.path)}"]'):
                         box.prop(cp_source, f'["{bpy.utils.escape_identifier(morph.path)}"]', text=morph.name)
