@@ -1,5 +1,5 @@
 # Function to add a option to the object, if not already there
-def mustardui_add_morph(collection, item, custom_property=True, custom_property_source="ARMATURE"):
+def mustardui_add_morph(collection, item, custom_property=True, custom_property_source="ARMATURE_OBJ"):
     for el in collection:
         if el.path == item[1] and el.custom_property == custom_property:
             return
