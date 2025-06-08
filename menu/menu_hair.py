@@ -49,6 +49,15 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         # Hair
+        hair_gloabal_properties = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None]
+        if len(hair_gloabal_properties) > 0:
+            box = layout.box()
+            row = box.row(align=True)
+            row.label(text="Global settings", icon="MODIFIER")
+
+            mustardui_custom_properties_print(arm, settings, hair_gloabal_properties, box,
+                                          rig_settings.hair_custom_properties_icons)
+
         if rig_settings.hair_collection is not None:
 
             hair_num = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])

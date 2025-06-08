@@ -19,6 +19,7 @@ class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
             op.section = sec.name
             op.outfit = ""
             op.outfit_piece = ""
+            op.hair_global = False
             op.hair = ""
 
 
@@ -41,6 +42,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
             op.section = ""
             op.outfit = context.mustardui_propertyoutfitmenu_sel.name
             op.outfit_piece = ""
+            op.hair_global = False
             op.hair = ""
 
         items = context.mustardui_propertyoutfitmenu_sel.all_objects if rig_settings.outfit_config_subcollections else context.mustardui_propertyoutfitmenu_sel.objects
@@ -52,6 +54,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
             op.section = ""
             op.outfit = context.mustardui_propertyoutfitmenu_sel.name
             op.outfit_piece = obj.name
+            op.hair_global = False
             op.hair = ""
 
 
@@ -101,6 +104,15 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
 
         layout = self.layout
 
+        op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
+                             text="Add as Hair Global property",
+                             icon="TRIA_RIGHT")
+        op.section = ""
+        op.outfit = ""
+        op.outfit_piece = ""
+        op.hair_global = True
+        op.hair = ""
+
         for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
             op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
                                  icon="STRANDS",
@@ -109,6 +121,7 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
             op.section = ""
             op.outfit = ""
             op.outfit_piece = ""
+            op.hair_global = False
             op.hair = obj.name
 
 
