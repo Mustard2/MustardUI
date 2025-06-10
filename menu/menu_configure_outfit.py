@@ -38,7 +38,6 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "outfit_nude")
         col.prop(rig_settings, "outfit_physics_support", text="Physics Support")
         col.prop(rig_settings, "outfit_config_subcollections")
-        col.prop(rig_settings, "outfit_additional_options")
 
         if settings.advanced:
             col.separator()

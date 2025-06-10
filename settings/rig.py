@@ -539,9 +539,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                         "the Outfits",
                                                             update=outfits_global_options_update)
 
-    outfit_additional_options: bpy.props.BoolProperty(default=True,
-                                                      name="Custom properties",
-                                                      description="Enable custom properties for outfits")
     outfit_custom_properties_icons: bpy.props.BoolProperty(default=False,
                                                            name="Show Icons",
                                                            description="Enable properties icons in the outfit menu")
