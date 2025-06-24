@@ -84,7 +84,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
         custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
                                  (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden]
 
-    if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
+    if len(custom_properties_obj) > 0:
         row.prop(obj.MustardUI_OutfitSettings, "additional_options_show" if otype != 1 else "additional_options_show_lock", toggle=True, icon="PREFERENCES")
         check_show = obj.MustardUI_OutfitSettings.additional_options_show if otype != 1 else obj.MustardUI_OutfitSettings.additional_options_show_lock
         if check_show:
@@ -171,7 +171,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                                                  rig_settings.outfits_list] and x.outfit_piece is None and not x.hidden and (
                                                  not x.advanced if not settings.advanced else True)]
 
-                    if len(custom_properties) > 0 and rig_settings.outfit_additional_options:
+                    if len(custom_properties) > 0:
                         row.prop(rig_settings, "outfit_global_custom_properties_collapse", text="", toggle=True,
                                  icon="PREFERENCES")
                         if rig_settings.outfit_global_custom_properties_collapse:
