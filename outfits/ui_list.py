@@ -46,7 +46,10 @@ class MUSTARDUI_UL_Outfits_UIList(bpy.types.UIList):
     """UIList for outfits"""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        layout.prop(item.collection, 'name', text="", emboss=False, translate=False)
+        if item.collection:
+            layout.prop(item.collection, 'name', text="", emboss=False, translate=False)
+        else:
+            layout.label(text="Outfit not found!", icon="ERROR")
 
 
 def register():
