@@ -27,7 +27,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
         to_remove = []
         for i, cp in enumerate(outfit_cp):
-            if cp.outfit.name == uilist[index].collection.name:
+            if (not uilist[index].collection and not cp.outfit) or (uilist[index].collection and cp.outfit.name == uilist[index].collection.name):
                 mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
                 to_remove.append(i)
         for i in reversed(to_remove):

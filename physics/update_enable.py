@@ -204,6 +204,9 @@ def bone_influence_update(self, context):
 
     parent = self.object.parent
 
+    if not parent:
+        return
+
     if parent.type != "ARMATURE":
         return
 
