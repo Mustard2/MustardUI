@@ -342,7 +342,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         outfits_list = rig_settings.outfits_list
 
         for collection in [x.collection for x in rig_settings.outfits_collections if x.collection is not None]:
-
             items = {}
             for obj in (collection.all_objects if rig_settings.outfit_config_subcollections else collection.objects):
                 items[obj.name] = obj
@@ -357,7 +356,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             for _, obj in items.items():
 
                 if locked_collection and collection.name != outfits_list:
-
                     obj.hide_viewport = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                     obj.hide_render = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
 
@@ -367,7 +365,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                 not obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else obj.MustardUI_outfit_lock) if rig_settings.outfit_switch_armature_disable else True
 
                 elif collection.name == outfits_list:
-
                     obj.hide_viewport = obj.MustardUI_outfit_visibility
                     obj.hide_render = obj.MustardUI_outfit_visibility
 
@@ -375,19 +372,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         if modifier.type == "ARMATURE":
                             modifier.show_viewport = (
                                 not obj.MustardUI_outfit_visibility) if rig_settings.outfit_switch_armature_disable else True
-
                 else:
-
                     for modifier in obj.modifiers:
                         if modifier.type == "ARMATURE":
                             modifier.show_viewport = not rig_settings.outfit_switch_armature_disable
 
                 for modifier in rig_settings.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
-                        modifier.show_viewport = ((
-                                                          collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
-                        modifier.show_render = ((
-                                                        collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask)
+                        modifier.show_viewport = (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask
+                        modifier.show_render = (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask
 
         # Update armature layers visibility, checking if some are 'Outfit' layers
         rig_settings.update_armature_outfit_layers(context, arm.MustardUI_ArmatureSettings)
@@ -396,12 +389,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for cp in [x for x in arm.MustardUI_CustomPropertiesOutfit if
                    x.outfit_enable_on_switch or x.outfit_disable_on_switch]:
 
+            if not cp.outfit:
+                continue
+
             if cp.prop_name in arm.keys():
                 ui_data = arm.id_properties_ui(cp.prop_name)
                 ui_data_dict = ui_data.as_dict()
 
                 if cp.outfit_piece:
-
                     outfit_piece_enable = not cp.outfit_piece.hide_viewport
                     if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['max']

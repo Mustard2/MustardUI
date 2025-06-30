@@ -20,23 +20,22 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         col = uilist[index].collection
         bpy.ops.mustardui.remove_outfit()
 
-        # FIXME: check crash when using this on some outfits
-
         # Remove Objects
         items = {}
-        for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
-            items[obj.name] = obj
+        if col:
+            for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
+                items[obj.name] = obj
 
-        for _, obj in reversed(items.items()):
-            data = obj.data
-            obj_type = obj.type
-            bpy.data.objects.remove(obj)
-            if obj_type == "MESH":
-                bpy.data.meshes.remove(data)
-            elif obj_type == "ARMATURE":
-                bpy.data.armatures.remove(data)
+            for _, obj in reversed(items.items()):
+                data = obj.data
+                obj_type = obj.type
+                bpy.data.objects.remove(obj)
+                if obj_type == "MESH":
+                    bpy.data.meshes.remove(data)
+                elif obj_type == "ARMATURE":
+                    bpy.data.armatures.remove(data)
 
-        bpy.data.collections.remove(col)
+            bpy.data.collections.remove(col)
 
         self.report({'INFO'}, 'MustardUI - Outfit deleted.')
 

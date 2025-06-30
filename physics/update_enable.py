@@ -127,9 +127,9 @@ def enable_physics_update_single(self, context):
         for obj in rig_settings.model_armature_object.children:
             if obj == self.object:
                 continue
-            status = status and not obj.hide_viewport
-            set_cage_modifiers(self, obj.modifiers, status, obj, body)
-            set_modifiers(self, obj, status)
+            status_int = status and not obj.hide_viewport
+            set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
+            set_modifiers(self, obj, status_int)
 
         for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
@@ -203,6 +203,9 @@ def bone_influence_update(self, context):
         return
 
     parent = self.object.parent
+
+    if not parent:
+        return
 
     if parent.type != "ARMATURE":
         return
