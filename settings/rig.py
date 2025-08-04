@@ -662,6 +662,32 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                     min=0., max=1.,
                                                                     update=hair_particle_children_viewport_factor_update)
 
+    def hair_particle_hide_viewport_update(self, context):
+        hair_obj = context.scene.objects[self.hair_list]
+        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
+            mod.show_viewport = self.hair_particle_hide_viewport
+        hair_obj.hide_viewport = not self.hair_particle_hide_viewport
+
+    def hair_particle_hide_render_update(self, context):
+        hair_obj = context.scene.objects[self.hair_list]
+        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
+            mod.show_render = self.hair_particle_hide_render
+        hair_obj.hide_render = not self.hair_particle_hide_render
+
+    hair_particle_hide_viewport: bpy.props.BoolProperty(default=False,
+                                                        name="Hide Viewport",
+                                                        description="Hide the current Hair Particle and its Particle System modifiers",
+                                                        update=hair_particle_hide_viewport_update)
+
+    hair_particle_hide_render: bpy.props.BoolProperty(default=False,
+                                                        name="Hide Render",
+                                                        description="Hide the current Hair Particle and its Particle System modifiers",
+                                                        update=hair_particle_hide_render_update)
+
+    hair_particle_collapse: bpy.props.BoolProperty(default=False,
+                                                   name="",
+                                                   description="")
+
     # Hair Global Properties
     hair_enable_global_subsurface: bpy.props.BoolProperty(default=False,
                                                           name="Subdivision Surface modifiers",

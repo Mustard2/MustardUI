@@ -101,21 +101,40 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                                                  key=format_dynamic_name)
                     if rig_settings.particle_systems_enable and len(mod_particle_system) > 0:
                         row = box.row(align=True)
-                        row.prop(rig_settings, 'hair_particle_children_viewport_factor')
+                        row.prop(rig_settings, 'hair_particle_children_viewport_factor', text="Density (Viewport)")
+
+                        row.prop(rig_settings, 'hair_particle_hide_viewport',
+                                  icon="RESTRICT_VIEW_ON" if not rig_settings.hair_particle_hide_viewport else "RESTRICT_VIEW_OFF",
+                                  text="",
+                                  emboss=True)
+                        row.prop(rig_settings, 'hair_particle_hide_render',
+                                  icon="RESTRICT_RENDER_ON" if not rig_settings.hair_particle_hide_render else "RESTRICT_RENDER_OFF",
+                                  text="",
+                                  emboss=True)
+                        row.separator()
                         if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
                             status = any(x.particle_system.use_hair_dynamics for x in mod_particle_system)
                             op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS")
                             op.enable = not status
                             op.obj = obj.name
-                        box2 = box.box()
-                        for mod in mod_particle_system:
-                            row = box2.row(align=True)
-                            row.label(text=format_dynamic_name(mod), icon="PARTICLES")
-                            row2 = row.row(align=True)
-                            if "Dynamic" in mod.particle_system.name:
-                                row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
-                            row2.prop(mod, "show_viewport", text="")
-                            row2.prop(mod, "show_render", text="")
+                        row.separator()
+                        row.prop(rig_settings, 'hair_particle_collapse',
+                                 icon="PREFERENCES",
+                                 text="",
+                                 emboss=True)
+
+                        if rig_settings.hair_particle_collapse:
+                            box2 = box.box()
+                            for mod in mod_particle_system:
+                                row = box2.row(align=True)
+                                row.label(text=format_dynamic_name(mod), icon="PARTICLES")
+                                row2 = row.row(align=True)
+                                if "Dynamic" in mod.particle_system.name:
+                                    row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
+                                row2.prop(mod, "show_viewport", text="")
+                                row2.prop(mod, "show_render", text="")
+
+
                 except:
                     box = box.box()
                     box.label(text="An error occurred.", icon="ERROR")
