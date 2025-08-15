@@ -45,7 +45,7 @@ def enable_physics_update(self, context):
     rig_settings = arm.MustardUI_RigSettings
     body = rig_settings.model_body
 
-    for pi in [x for x in self.items]:
+    for pi in [x for x in self.items if x.object]:
         status = self.enable_physics and pi.enable
         for modifier in pi.object.modifiers:
             modifier.show_viewport = status
