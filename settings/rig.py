@@ -1,8 +1,7 @@
 import bpy
 from ..model_selection.active_object import *
-from ..settings.outfit import *
-from ..morphs.settings_morph import MustardUI_Morph
-from ..settings.section import *
+from ..outfits.definitions import *
+from ..sections.definitions import *
 from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
 
