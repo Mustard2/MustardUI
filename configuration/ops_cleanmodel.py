@@ -392,7 +392,19 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if rig_settings.extras_collection is not None and self.remove_unselected_extras:
 
             items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
-            for obj in [x for x in items if x.hide_viewport]:
+            objs = [x for x in items if x.hide_viewport]
+
+            # Clean custom properties
+            outfit_cp = arm.MustardUI_CustomPropertiesOutfit
+            to_remove = []
+            for i, cp in enumerate(outfit_cp):
+                if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
+                    mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
+                    to_remove.append(i)
+            for i in reversed(to_remove):
+                outfit_cp.remove(i)
+
+            for obj in objs:
                 data = obj.data
                 obj_type = obj.type
                 bpy.data.objects.remove(obj)
@@ -415,8 +427,19 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if rig_settings.hair_collection is not None and self.remove_unselected_hair:
 
             current_hair = rig_settings.hair_list
+            objs = [x for x in rig_settings.hair_collection.objects if not (current_hair in x.name)]
 
-            for obj in [x for x in rig_settings.hair_collection.objects if not (current_hair in x.name)]:
+            # Clean custom properties
+            hair_cp = arm.MustardUI_CustomPropertiesHair
+            to_remove = []
+            for i, cp in enumerate(hair_cp):
+                if cp.hair in objs:
+                    mustardui_clean_prop(arm, hair_cp, i, addon_prefs)
+                    to_remove.append(i)
+            for i in reversed(to_remove):
+                hair_cp.remove(i)
+
+            for obj in objs:
                 data = obj.data
                 obj_type = obj.type
                 bpy.data.objects.remove(obj)

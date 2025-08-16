@@ -198,45 +198,45 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 for obj in locked_objects:
                     draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 1, 0)
 
-            # Extras
-            if rig_settings.extras_collection is not None:
+        # Extras
+        if rig_settings.extras_collection is not None:
 
-                eitems = extract_items(rig_settings.extras_collection,
-                                       rig_settings.outfit_config_subcollections)
+            eitems = extract_items(rig_settings.extras_collection,
+                                   rig_settings.outfit_config_subcollections)
 
-                if len(eitems) > 0:
-
-                    box = layout.box()
-
-                    if ui_collapse_prop(box, rig_settings, 'extras_collapse', "Extras", icon="", align=False):
-                        for obj in sorted(eitems, key=lambda x: x.name):
-                            draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 2, 0)
-
-            # Outfit global properties
-            if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
+            if len(eitems) > 0:
 
                 box = layout.box()
-                row = box.row(align=True)
-                row.label(text="Global Properties", icon="MODIFIER")
-                row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_OFF").enable = True
-                row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_ON").enable = False
-                col = box.column(align=True)
-                if rig_settings.outfits_enable_global_subsurface:
-                    col.prop(rig_settings, "outfits_global_subsurface")
-                if rig_settings.outfits_enable_global_smoothcorrection:
-                    col.prop(rig_settings, "outfits_global_smoothcorrection")
-                if rig_settings.outfits_enable_global_shrinkwrap:
-                    col.prop(rig_settings, "outfits_global_shrinkwrap")
-                if rig_settings.outfits_enable_global_surfacedeform:
-                    col.prop(rig_settings, "outfits_global_surfacedeform")
-                if rig_settings.outfits_enable_global_mask:
-                    col.prop(rig_settings, "outfits_global_mask")
-                if rig_settings.outfits_enable_global_solidify:
-                    col.prop(rig_settings, "outfits_global_solidify")
-                if rig_settings.outfits_enable_global_triangulate:
-                    col.prop(rig_settings, "outfits_global_triangulate")
-                if rig_settings.outfits_enable_global_normalautosmooth:
-                    col.prop(rig_settings, "outfits_global_normalautosmooth")
+
+                if ui_collapse_prop(box, rig_settings, 'extras_collapse', "Extras", icon="", align=False):
+                    for obj in sorted(eitems, key=lambda x: x.name):
+                        draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 2, 0)
+
+        # Outfit global properties
+        if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
+
+            box = layout.box()
+            row = box.row(align=True)
+            row.label(text="Global Properties", icon="MODIFIER")
+            row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_OFF").enable = True
+            row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_ON").enable = False
+            col = box.column(align=True)
+            if rig_settings.outfits_enable_global_subsurface:
+                col.prop(rig_settings, "outfits_global_subsurface")
+            if rig_settings.outfits_enable_global_smoothcorrection:
+                col.prop(rig_settings, "outfits_global_smoothcorrection")
+            if rig_settings.outfits_enable_global_shrinkwrap:
+                col.prop(rig_settings, "outfits_global_shrinkwrap")
+            if rig_settings.outfits_enable_global_surfacedeform:
+                col.prop(rig_settings, "outfits_global_surfacedeform")
+            if rig_settings.outfits_enable_global_mask:
+                col.prop(rig_settings, "outfits_global_mask")
+            if rig_settings.outfits_enable_global_solidify:
+                col.prop(rig_settings, "outfits_global_solidify")
+            if rig_settings.outfits_enable_global_triangulate:
+                col.prop(rig_settings, "outfits_global_triangulate")
+            if rig_settings.outfits_enable_global_normalautosmooth:
+                col.prop(rig_settings, "outfits_global_normalautosmooth")
 
 
 def register():

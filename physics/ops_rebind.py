@@ -1,5 +1,6 @@
 import bpy
 from ..model_selection.active_object import *
+from .. import __package__ as base_package
 
 
 class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
@@ -17,6 +18,9 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
+        addon_prefs = context.preferences.addons[base_package].preferences
+
+        warnings = 0
 
         if len(physics_settings.items) < 1:
             return {'FINISHED'}
@@ -50,12 +54,23 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
                         target.hide_viewport = False
                         if m.is_bound:
                             with bpy.context.temp_override(object=ob):
-                                bpy.ops.object.surfacedeform_bind(modifier=m.name)
+                                try:
+                                    bpy.ops.object.surfacedeform_bind(modifier=m.name)
+                                except:
+                                    if addon_prefs.debug:
+                                        print(ob.name + " modifier: " + m.name + " could not be binded")
                             with bpy.context.temp_override(object=ob):
-                                bpy.ops.object.surfacedeform_bind(modifier=m.name)
+                                try:
+                                    bpy.ops.object.surfacedeform_bind(modifier=m.name)
+                                except:
+                                    pass
                         elif not m.is_bound and self.force:
                             with bpy.context.temp_override(object=ob):
-                                bpy.ops.object.surfacedeform_bind(modifier=m.name)
+                                try:
+                                    bpy.ops.object.surfacedeform_bind(modifier=m.name)
+                                except:
+                                    if addon_prefs.debug:
+                                        print(ob.name + " modifier: " + m.name + " could not be binded")
                         target.hide_viewport = hv
 
                 elif m.type == 'MESH_DEFORM':
@@ -67,12 +82,23 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
                         target.hide_viewport = False
                         if m.is_bound:
                             with bpy.context.temp_override(object=ob):
-                                bpy.ops.object.meshdeform_bind(modifier=m.name)
+                                try:
+                                    bpy.ops.object.meshdeform_bind(modifier=m.name)
+                                except:
+                                    if addon_prefs.debug:
+                                        print(ob.name + " modifier: " + m.name + " could not be binded")
                             with bpy.context.temp_override(object=ob):
-                                bpy.ops.object.meshdeform_bind(modifier=m.name)
+                                try:
+                                    bpy.ops.object.meshdeform_bind(modifier=m.name)
+                                except:
+                                    pass
                         elif not m.is_bound and self.force:
                             with bpy.context.temp_override(object=ob):
-                                bpy.ops.object.meshdeform_bind(modifier=m.name)
+                                try:
+                                    bpy.ops.object.meshdeform_bind(modifier=m.name)
+                                except:
+                                    if addon_prefs.debug:
+                                        print(ob.name + " modifier: " + m.name + " could not be binded")
                         target.hide_viewport = hv
 
                 elif m.type == 'CORRECTIVE_SMOOTH':
@@ -82,12 +108,23 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
                     m.show_viewport = True
                     if m.is_bind:
                         with bpy.context.temp_override(object=ob):
-                            bpy.ops.object.correctivesmooth_bind(modifier=m.name)
+                            try:
+                                bpy.ops.object.correctivesmooth_bind(modifier=m.name)
+                            except:
+                                if addon_prefs.debug:
+                                    print(ob.name + " modifier: " + m.name + " could not be binded")
                         with bpy.context.temp_override(object=ob):
-                            bpy.ops.object.correctivesmooth_bind(modifier=m.name)
+                            try:
+                                bpy.ops.object.correctivesmooth_bind(modifier=m.name)
+                            except:
+                                pass
                     elif not m.is_bound and self.force:
                         with bpy.context.temp_override(object=ob):
-                            bpy.ops.object.correctivesmooth_bind(modifier=m.name)
+                            try:
+                                bpy.ops.object.correctivesmooth_bind(modifier=m.name)
+                            except:
+                                if addon_prefs.debug:
+                                    print(ob.name + " modifier: " + m.name + " could not be binded")
                     m.show_viewport = hv
 
         self.report({'INFO'}, 'MustardUI - Cages successfully re-binded.')
