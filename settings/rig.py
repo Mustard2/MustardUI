@@ -1,8 +1,7 @@
 import bpy
 from ..model_selection.active_object import *
-from ..settings.outfit import *
-from ..morphs.settings_morph import MustardUI_Morph
-from ..settings.section import *
+from ..outfits.definitions import *
+from ..sections.definitions import *
 from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
 
@@ -355,27 +354,52 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
             for _, obj in items.items():
 
+                # Locked collections (at least one outfit piece is locked)
                 if locked_collection and collection.name != outfits_list:
                     obj.hide_viewport = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                     obj.hide_render = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
 
                     for modifier in obj.modifiers:
+                        check = not obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else obj.MustardUI_outfit_lock
                         if modifier.type == "ARMATURE":
-                            modifier.show_viewport = (
-                                not obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else obj.MustardUI_outfit_lock) if rig_settings.outfit_switch_armature_disable else True
+                            modifier.show_viewport = check if rig_settings.outfit_switch_armature_disable else True
+                        elif rig_settings.outfit_switch_modifiers_disable:
+                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
+                                modifier.show_viewport = check
 
+                # Current selected Outfit
                 elif collection.name == outfits_list:
                     obj.hide_viewport = obj.MustardUI_outfit_visibility
                     obj.hide_render = obj.MustardUI_outfit_visibility
 
                     for modifier in obj.modifiers:
+                        check = not obj.MustardUI_outfit_visibility
                         if modifier.type == "ARMATURE":
-                            modifier.show_viewport = (
-                                not obj.MustardUI_outfit_visibility) if rig_settings.outfit_switch_armature_disable else True
+                            modifier.show_viewport = check if rig_settings.outfit_switch_armature_disable else True
+                        elif rig_settings.outfit_switch_modifiers_disable:
+                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
+                                modifier.show_viewport = check
+
+                # All other outfits
                 else:
                     for modifier in obj.modifiers:
                         if modifier.type == "ARMATURE":
                             modifier.show_viewport = not rig_settings.outfit_switch_armature_disable
+                        elif rig_settings.outfit_switch_modifiers_disable:
+                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
+                                modifier.show_viewport = not rig_settings.outfits_global_smoothcorrection
+                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
+                                modifier.show_viewport = not rig_settings.outfits_global_shrinkwrap
+                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
+                                modifier.show_viewport = not rig_settings.outfits_global_subsurface
 
                 for modifier in rig_settings.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
@@ -564,6 +588,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                            description="Disable Armature modifiers of Outfits that "
                                                                        "are not visible to increase performance")
 
+    outfit_switch_modifiers_disable: bpy.props.BoolProperty(default=False,
+                                                            name="Disable Modifiers on Switch",
+                                                            description="Disable modifiers of Outfits that "
+                                                                        "are not visible to increase performance.\n"
+                                                                        "The properties enabled in Global "
+                                                                        "Properties are considered (Smooth Correction, "
+                                                                        "Subdivision Surface and Shirnkwrap only)")
+
     outfit_physics_support: bpy.props.BoolProperty(default=True,
                                                    name="Enable Outfit Physics support",
                                                    description="If enabled, a button near outfit pieces with Physics modifiers is added to enable/disable physics")
@@ -661,6 +693,32 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                                 "with respect to Render value",
                                                                     min=0., max=1.,
                                                                     update=hair_particle_children_viewport_factor_update)
+
+    def hair_particle_hide_viewport_update(self, context):
+        hair_obj = context.scene.objects[self.hair_list]
+        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
+            mod.show_viewport = self.hair_particle_hide_viewport
+        hair_obj.hide_viewport = not self.hair_particle_hide_viewport
+
+    def hair_particle_hide_render_update(self, context):
+        hair_obj = context.scene.objects[self.hair_list]
+        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
+            mod.show_render = self.hair_particle_hide_render
+        hair_obj.hide_render = not self.hair_particle_hide_render
+
+    hair_particle_hide_viewport: bpy.props.BoolProperty(default=False,
+                                                        name="Hide Viewport",
+                                                        description="Hide the current Hair Particle and its Particle System modifiers",
+                                                        update=hair_particle_hide_viewport_update)
+
+    hair_particle_hide_render: bpy.props.BoolProperty(default=False,
+                                                        name="Hide Render",
+                                                        description="Hide the current Hair Particle and its Particle System modifiers",
+                                                        update=hair_particle_hide_render_update)
+
+    hair_particle_collapse: bpy.props.BoolProperty(default=False,
+                                                   name="",
+                                                   description="")
 
     # Hair Global Properties
     hair_enable_global_subsurface: bpy.props.BoolProperty(default=False,

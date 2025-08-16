@@ -42,6 +42,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         if settings.advanced:
             col.separator()
             col.prop(rig_settings, "outfit_switch_armature_disable")
+            col.prop(rig_settings, "outfit_switch_modifiers_disable")
             col.prop(rig_settings, "outfits_update_tag_on_switch")
 
         if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:

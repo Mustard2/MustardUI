@@ -1,3 +1,4 @@
+from . import definitions
 from . import ops_add
 from . import ops_delete
 from . import ops_remove
@@ -9,6 +10,7 @@ from . import ui_list
 
 
 def register():
+    definitions.register()
     ops_add.register()
     ops_delete.register()
     ops_remove.register()
@@ -28,3 +30,4 @@ def unregister():
     ops_remove.unregister()
     ops_delete.unregister()
     ops_add.unregister()
+    definitions.unregister()
