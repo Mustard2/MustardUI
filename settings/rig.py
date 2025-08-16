@@ -354,27 +354,52 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
             for _, obj in items.items():
 
+                # Locked collections (at least one outfit piece is locked)
                 if locked_collection and collection.name != outfits_list:
                     obj.hide_viewport = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
                     obj.hide_render = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
 
                     for modifier in obj.modifiers:
+                        check = not obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else obj.MustardUI_outfit_lock
                         if modifier.type == "ARMATURE":
-                            modifier.show_viewport = (
-                                not obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else obj.MustardUI_outfit_lock) if rig_settings.outfit_switch_armature_disable else True
+                            modifier.show_viewport = check if rig_settings.outfit_switch_armature_disable else True
+                        elif rig_settings.outfit_switch_modifiers_disable:
+                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
+                                modifier.show_viewport = check
 
+                # Current selected Outfit
                 elif collection.name == outfits_list:
                     obj.hide_viewport = obj.MustardUI_outfit_visibility
                     obj.hide_render = obj.MustardUI_outfit_visibility
 
                     for modifier in obj.modifiers:
+                        check = not obj.MustardUI_outfit_visibility
                         if modifier.type == "ARMATURE":
-                            modifier.show_viewport = (
-                                not obj.MustardUI_outfit_visibility) if rig_settings.outfit_switch_armature_disable else True
+                            modifier.show_viewport = check if rig_settings.outfit_switch_armature_disable else True
+                        elif rig_settings.outfit_switch_modifiers_disable:
+                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
+                                modifier.show_viewport = check
+                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
+                                modifier.show_viewport = check
+
+                # All other outfits
                 else:
                     for modifier in obj.modifiers:
                         if modifier.type == "ARMATURE":
                             modifier.show_viewport = not rig_settings.outfit_switch_armature_disable
+                        elif rig_settings.outfit_switch_modifiers_disable:
+                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
+                                modifier.show_viewport = not rig_settings.outfits_global_smoothcorrection
+                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
+                                modifier.show_viewport = not rig_settings.outfits_global_shrinkwrap
+                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
+                                modifier.show_viewport = not rig_settings.outfits_global_subsurface
 
                 for modifier in rig_settings.model_body.modifiers:
                     if modifier.type == "MASK" and obj.name in modifier.name:
@@ -562,6 +587,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                            name="Disable Armature Modifiers on Switch",
                                                            description="Disable Armature modifiers of Outfits that "
                                                                        "are not visible to increase performance")
+
+    outfit_switch_modifiers_disable: bpy.props.BoolProperty(default=False,
+                                                            name="Disable Modifiers on Switch",
+                                                            description="Disable modifiers of Outfits that "
+                                                                        "are not visible to increase performance.\n"
+                                                                        "The properties enabled in Global "
+                                                                        "Properties are considered (Smooth Correction, "
+                                                                        "Subdivision Surface and Shirnkwrap only)")
 
     outfit_physics_support: bpy.props.BoolProperty(default=True,
                                                    name="Enable Outfit Physics support",

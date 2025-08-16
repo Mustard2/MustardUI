@@ -33,10 +33,17 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         object.MustardUI_outfit_visibility = context.scene.objects[self.obj].hide_viewport
 
         # Enable armature modifier
-        if rig_settings.outfit_switch_armature_disable:
+        if rig_settings.outfit_switch_armature_disable or rig_settings.outfit_switch_modifiers_disable:
             for modifier in object.modifiers:
-                if modifier.type == "ARMATURE":
+                if modifier.type == "ARMATURE" and rig_settings.outfit_switch_armature_disable:
                     modifier.show_viewport = not object.MustardUI_outfit_visibility
+                elif rig_settings.outfit_switch_modifiers_disable:
+                    if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection:
+                        modifier.show_viewport = not object.MustardUI_outfit_visibility if rig_settings.outfits_global_smoothcorrection else False
+                    elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap:
+                        modifier.show_viewport = not object.MustardUI_outfit_visibility if rig_settings.outfits_global_shrinkwrap else False
+                    elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface:
+                        modifier.show_viewport = not object.MustardUI_outfit_visibility if rig_settings.outfits_global_subsurface else False
 
         # Update values of custom properties
         outfit_cp = [x for x in outfit_cp if object == x.outfit_piece and (
