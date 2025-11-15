@@ -71,7 +71,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         armature = context.object
 
         if armature and armature.type == 'ARMATURE' and armature.mode == 'POSE':
-            selected_bones = [bone for bone in armature.pose.bones if bone.bone.select]
+            selected_bones = [bone for bone in armature.pose.bones if bone.select]
             return len(selected_bones) >= 2
 
         return False
@@ -83,7 +83,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         physics_settings = obj.MustardUI_PhysicsSettings
 
         armature = context.object
-        bones = [bone for bone in armature.pose.bones if bone.bone.select]
+        bones = [bone for bone in armature.pose.bones if bone.select]
 
         # Find disconnected bone chains
         bone_chains = find_bone_chains(bones)
