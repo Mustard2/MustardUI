@@ -57,11 +57,11 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
     if pi is not None:
         col2 = row.column(align=True)
         col2.enabled = physics_settings.enable_physics
-        col2.prop(pi, 'enable', text="", icon="PHYSICS" if pi.type != "COLLISION" else "MOD_PHYSICS")
+        col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_physics', text="", icon="PHYSICS" if pi.type != "COLLISION" else "MOD_PHYSICS")
         if pi.type != "COLLISION":
             col2 = row.column(align=True)
             col2.enabled = physics_settings.enable_physics
-            col2.prop(pi, 'collisions', text="", icon="MOD_PHYSICS")
+            col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_collisions', text="", icon="MOD_PHYSICS")
     elif rig_settings.outfit_physics_support:
         for m in obj.modifiers:
             mtype = m.type

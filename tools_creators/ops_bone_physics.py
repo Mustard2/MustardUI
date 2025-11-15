@@ -89,6 +89,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         bone_chains = find_bone_chains(bones)
 
         chain_objects =[]
+        chain_bone_constraints = []
 
         for chain_idx, chain in enumerate(bone_chains):
 
@@ -180,6 +181,8 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
                 if i - 1 < len(vertex_groups):
                     constraint.subtarget = vertex_groups[i + 1].name  # Set the vertex group from the second onwards
 
+                chain_bone_constraints.append(constraint)
+
             # Add Cloth modifier to the curve mesh
             cloth_modifier = curve_obj.modifiers.new(name="Cloth", type='CLOTH')
 
@@ -217,6 +220,10 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
                 bpy.ops.object.join()
 
             chain_objects = [parent_object]
+
+            # Fix missing target in bone constraints
+            for constraint in chain_bone_constraints:
+                constraint.target = chain_objects[0]
 
         for co in chain_objects:
 
