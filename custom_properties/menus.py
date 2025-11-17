@@ -17,6 +17,7 @@ class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
         for sec in rig_settings.body_custom_properties_sections:
             op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, text=sec.name, icon=sec.icon)
             op.section = sec.name
+            op.outfit_is_nude = False
             op.outfit = ""
             op.outfit_piece = ""
             op.hair_global = False
@@ -40,6 +41,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
                                  text="Add as Global Outfit property",
                                  icon="TRIA_RIGHT")
             op.section = ""
+            op.outfit_is_nude = False
             op.outfit = context.mustardui_propertyoutfitmenu_sel.name
             op.outfit_piece = ""
             op.hair_global = False
@@ -52,6 +54,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
                                  text=obj.name[
                                       len(context.mustardui_propertyoutfitmenu_sel.name + " - "):] if rig_settings.model_MustardUI_naming_convention else obj.name)
             op.section = ""
+            op.outfit_is_nude = False
             op.outfit = context.mustardui_propertyoutfitmenu_sel.name
             op.outfit_piece = obj.name
             op.hair_global = False
@@ -69,6 +72,17 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
+
+        if rig_settings.outfit_nude:
+            op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
+                                 text="Add as Nude property",
+                                 icon="TRIA_RIGHT")
+            op.section = ""
+            op.outfit_is_nude = True
+            op.outfit = ""
+            op.outfit_piece = ""
+            op.hair_global = False
+            op.hair = ""
 
         outfit_indices = []
         for i in range(0, len(rig_settings.outfits_collections)):
@@ -108,6 +122,7 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
                              text="Add as Hair Global property",
                              icon="TRIA_RIGHT")
         op.section = ""
+        op.outfit_is_nude = False
         op.outfit = ""
         op.outfit_piece = ""
         op.hair_global = True
@@ -119,6 +134,7 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
                                  text=obj.name[
                                       len(rig_settings.hair_collection.name):] if rig_settings.model_MustardUI_naming_convention else obj.name)
             op.section = ""
+            op.outfit_is_nude = False
             op.outfit = ""
             op.outfit_piece = ""
             op.hair_global = False

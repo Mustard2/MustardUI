@@ -413,27 +413,32 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for cp in [x for x in arm.MustardUI_CustomPropertiesOutfit if
                    x.outfit_enable_on_switch or x.outfit_disable_on_switch]:
 
-            if not cp.outfit:
+            if not rig_settings.outfit_nude and not cp.outfit:
                 continue
 
             if cp.prop_name in arm.keys():
                 ui_data = arm.id_properties_ui(cp.prop_name)
                 ui_data_dict = ui_data.as_dict()
 
-                if cp.outfit_piece:
-                    outfit_piece_enable = not cp.outfit_piece.hide_viewport
-                    if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
-                        arm[cp.prop_name] = ui_data_dict['max']
-                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                        if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                if cp.outfit:
+                    if cp.outfit_piece:
+                        outfit_piece_enable = not cp.outfit_piece.hide_viewport
+                        if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
                             arm[cp.prop_name] = ui_data_dict['max']
-                        else:
+                        elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
+                            if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                                arm[cp.prop_name] = ui_data_dict['max']
+                            else:
+                                arm[cp.prop_name] = ui_data_dict['default']
+                    else:
+                        if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
+                            arm[cp.prop_name] = ui_data_dict['max']
+                        elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
                             arm[cp.prop_name] = ui_data_dict['default']
-
-                else:
-                    if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
+                elif not cp.outfit and rig_settings.outfit_nude:  # Nude outfit
+                    if outfits_list == "Nude" and cp.outfit_enable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['max']
-                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
+                    elif not outfits_list == "Nude" and cp.outfit_disable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['default']
 
         # Force Physics recheck

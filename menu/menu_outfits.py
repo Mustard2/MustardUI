@@ -14,7 +14,6 @@ def extract_items(collection, subcollections):
 
 # Type: 0 - Standard, 1 - Locked Objects, 2 - Extras
 def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, otype=0, level=0):
-
     if otype < 0 or otype > 3:
         return
 
@@ -36,11 +35,11 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
 
     if rig_settings.model_MustardUI_naming_convention:
         if otype == 0:
-            coll_name = rig_settings.outfits_list+' - '
+            coll_name = rig_settings.outfits_list + ' - '
         elif otype == 1:
-            coll_name = rig_settings.model_name+' '
+            coll_name = rig_settings.model_name + ' '
         else:
-            coll_name = rig_settings.extras_collection.name+' - '
+            coll_name = rig_settings.extras_collection.name + ' - '
         row.operator("mustardui.object_visibility",
                      text=obj.name[len(coll_name):],
                      icon='OUTLINER_OB_' + obj.type, depress=not obj.hide_viewport).obj = obj.name
@@ -57,7 +56,8 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
     if pi is not None:
         col2 = row.column(align=True)
         col2.enabled = physics_settings.enable_physics
-        col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_physics', text="", icon="PHYSICS" if pi.type != "COLLISION" else "MOD_PHYSICS")
+        col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_physics', text="",
+                  icon="PHYSICS" if pi.type != "COLLISION" else "MOD_PHYSICS")
         if pi.type != "COLLISION":
             col2 = row.column(align=True)
             col2.enabled = physics_settings.enable_physics
@@ -66,7 +66,8 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
         for m in obj.modifiers:
             mtype = m.type
             if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
-                row.prop(obj.MustardUI_OutfitSettings, 'physics', text="", icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS")
+                row.prop(obj.MustardUI_OutfitSettings, 'physics', text="",
+                         icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS")
                 break
 
     # Outfit custom properties
@@ -78,14 +79,18 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
 
     if rig_settings.outfit_custom_properties_name_order:
         custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                        (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden],
+                                        (
+                                            x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden],
                                        key=lambda x: x.name)
     else:
         custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                 (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden]
+                                 (
+                                     x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden]
 
     if len(custom_properties_obj) > 0:
-        row.prop(obj.MustardUI_OutfitSettings, "additional_options_show" if otype != 1 else "additional_options_show_lock", toggle=True, icon="PREFERENCES")
+        row.prop(obj.MustardUI_OutfitSettings,
+                 "additional_options_show" if otype != 1 else "additional_options_show_lock", toggle=True,
+                 icon="PREFERENCES")
         check_show = obj.MustardUI_OutfitSettings.additional_options_show if otype != 1 else obj.MustardUI_OutfitSettings.additional_options_show_lock
         if check_show:
             row2 = col.row(align=True)
@@ -183,6 +188,25 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
                 else:
                     box.label(text="This Collection seems empty", icon="ERROR")
+
+            elif rig_settings.outfit_nude and rig_settings.outfits_list == "Nude":  # Outfit is nude below
+
+                if rig_settings.outfit_custom_properties_name_order:
+                    custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
+                                                x.outfit is None and x.outfit_piece is None and not x.hidden and (
+                                                    not x.advanced if not settings.advanced else True)],
+                                               key=lambda x: x.name)
+                else:
+                    custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if
+                                         x.outfit is None and x.outfit_piece is None and not x.hidden and (
+                                             not x.advanced if not settings.advanced else True)]
+
+                if len(custom_properties) > 0:
+                    row.prop(rig_settings, "outfit_global_custom_properties_collapse", text="", toggle=True,
+                             icon="PREFERENCES")
+                    if rig_settings.outfit_global_custom_properties_collapse:
+                        mustardui_custom_properties_print(arm, settings, custom_properties, box,
+                                                          rig_settings.outfit_custom_properties_icons)
 
             # Locked objects
             locked_objects = []
