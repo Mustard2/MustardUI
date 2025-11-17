@@ -1043,13 +1043,33 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         update=update_simplify)
 
     # ------------------------------------------------------------------------
+    #    Creator Tools
+    # ------------------------------------------------------------------------
+
+    creator_tools_face_rig_version: bpy.props.IntProperty(default=1)
+
+    # ------------------------------------------------------------------------
     #    Various properties
     # ------------------------------------------------------------------------
 
     # Version of the model
-    model_version: bpy.props.StringProperty(name="Model version",
-                                            description="Version of the model",
-                                            default="")
+    model_version: bpy.props.StringProperty()
+    model_version_vector: bpy.props.IntVectorProperty(name="Model version",
+                                                      size=3,
+                                                      min=0,
+                                                      default=(0, 0, 0),
+                                                      description="Version of the model")
+    model_version_type: bpy.props.EnumProperty(default="Standard",
+                                               items=[("Standard", "Standard", "Standard", "RADIOBUT_ON", 0),
+                                                      ("Beta", "Beta", "Beta", "RECORD_ON", 2),
+                                                      ("Alpha", "Alpha", "Alpha", "RECORD_ON", 1)],
+                                               name="Rig type")
+    model_minimum_blender_version: bpy.props.IntVectorProperty(name="Minimum Blender version",
+                                                               size=3,
+                                                               default=(0, 0, 0),
+                                                               min=0,
+                                                               max=10,
+                                                               description="Set this to add a warning if the model is opened in an older Blender version.\nLeave it 0,0,0 to disable this warning")
     model_version_date_enable: bpy.props.BoolProperty(name="Add Date to version",
                                                       description="Automatically add the date to the version when ending Configuration mode",
                                                       default=False)
@@ -1062,7 +1082,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     model_rig_type: bpy.props.EnumProperty(default="other",
                                            items=[("arp", "Auto-Rig Pro", "Auto-Rig Pro"),
-                                                  ("rigify", "Rigify", "Rigify"), ("mhx", "MHX", "MHX"),
+                                                  ("rigify", "Rigify", "Rigify"),
+                                                  ("mhx", "MHX", "MHX"),
                                                   ("other", "Other", "Other")],
                                            name="Rig type")
 
@@ -1077,6 +1098,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
     #    Deprecated stuffs (support for warnings/fixes/etc..)
     # ------------------------------------------------------------------------
+
+    # Old versioning
+    model_version: bpy.props.StringProperty(default="")
 
     # Diffeomorphic support
     # Keep this setting while the other Morphs implementation is considered deprecated

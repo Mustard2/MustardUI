@@ -4,13 +4,15 @@ from .. import __package__ as base_package
 import os
 import re
 
+face_rig_current_version = 2
+
 fctrl_bones = ['face_Controls_XYZ', 'r_Mouth_Corner', 'l_Mouth_Corner', 'Mouth_Press_Top', 'Lips_Funnel_R', 'r_Dimple',
-         'l_Dimple', 'r_Mouth_Down', 'r_Mouth_Up', 'Mouth', 'l_Mouth_Down', 'l_Mouth_Up', 'r_Squint', 'r_Eyelid',
-         'r_Blink', 'l_Squint', 'l_Eyelid', 'l_Blink', 'Eyes', 'r_Nose', 'l_Nose', 'Jaw', 'Jaw_In', 'Jaw_Out',
-         'Mouth_Close', 'r_Cheek', 'l_Cheek', 'r_Puff', 'l_Puff', 'r_Brow_Down', 'r_Brow_Up', 'l_Brow_Down',
-         'l_Brow_Up', 'Nostrils_Dilate', 'Mouth_Press_Bottom', 'Lips_Funnel_L', 'Mouth_Shrug_Upper',
-         'Mouth_Shrug_Lower', 'r_Eye', 'l_Eye', 'r_Eyebrow_Outer', 'l_Eyebrow_Outer', 'l_Eyebrow_Inner',
-         'r_Eyebrow_Inner']
+               'l_Dimple', 'r_Mouth_Down', 'r_Mouth_Up', 'Mouth', 'l_Mouth_Down', 'l_Mouth_Up', 'r_Squint', 'r_Eyelid',
+               'r_Blink', 'l_Squint', 'l_Eyelid', 'l_Blink', 'Eyes', 'r_Nose', 'l_Nose', 'Jaw', 'Jaw_In', 'Jaw_Out',
+               'Mouth_Close', 'r_Cheek', 'l_Cheek', 'r_Puff', 'l_Puff', 'r_Brow_Down', 'r_Brow_Up', 'l_Brow_Down',
+               'l_Brow_Up', 'Nostrils_Dilate', 'Mouth_Press_Bottom', 'Lips_Funnel_L', 'Mouth_Shrug_Upper',
+               'Mouth_Shrug_Lower', 'r_Eye', 'l_Eye', 'r_Eyebrow_Outer', 'l_Eyebrow_Outer', 'l_Eyebrow_Inner',
+               'r_Eyebrow_Inner', 'r_Eyebrow_Squeeze', 'l_Eyebrow_Squeeze']
 
 # Bone, Shape Key, Direction, Factor, MaxDirection, OverrideNumber
 data = [
@@ -27,6 +29,8 @@ data = [
     ("r_Mouth_Down", ["facs_bs_MouthLowerDownRight"], ["Z_DOWN"], 100, 0.01),
     ("l_Blink", ["facs_bs_EyeBlinkLeft"], ["Z_DOWN"], 100, 0.01),  # Bones needed
     ("r_Blink", ["facs_bs_EyeBlinkRight"], ["Z_DOWN"], 100, 0.01),  # Bones needed
+    ("l_Eyelid", ["facs_ctrl_EyeWideLeft"], ["Z_UP"], 100, 0.01),
+    ("r_Eyelid", ["facs_ctrl_EyeWideRight"], ["Z_UP"], 100, 0.01),
     ("l_Squint", ["facs_bs_EyeSquintLeft"], ["Z_UP"], 100, 0.01),
     ("r_Squint", ["facs_bs_EyeSquintRight"], ["Z_UP"], 100, 0.01),
     ("l_Eyebrow_Inner", ["facs_bs_BrowInnerUpLeft"], ["Z_UP"], 100, 0.01),
@@ -35,6 +39,8 @@ data = [
     ("r_Brow_Down", ["facs_BrowDownRight"], ["Z_DOWN"], 100, 0.01),
     ("l_Eyebrow_Outer", ["facs_BrowOuterUpLeft"], ["Z_UP"], 100, 0.01),
     ("r_Eyebrow_Outer", ["facs_BrowOuterUpRight"], ["Z_UP"], 100, 0.01),
+    ("l_Eyebrow_Squeeze", ["facs_bs_BrowSqueezeLeft"], ["Y_DOWN"], 200, 0.01),
+    ("r_Eyebrow_Squeeze", ["facs_bs_BrowSqueezeRight"], ["Y_DOWN"], 200, 0.01),
     ("Mouth_Shrug_Upper", ["facs_bs_MouthShrugUpperLeft", "facs_bs_MouthShrugUpperRight"], ["Z_UP"], 100, 0.01),
     ("Mouth_Shrug_Lower", ["facs_bs_MouthShrugLowerLeft", "facs_bs_MouthShrugLowerRight"], ["Z_UP"], 100, 0.01),
     ("l_Cheek", ["facs_bs_CheekSquintLeft"], ["Z_UP"], 100, 0.01),
@@ -344,7 +350,8 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
                         index = arm.collections.find("Face Controllers")
 
             if addon_prefs.debug:
-                self.report({'INFO'}, f"MustardUI - Controller successfully added to the model (controls added: " + str(ctrl_added) + ").")
+                self.report({'INFO'}, f"MustardUI - Controller successfully added to the model (controls added: " + str(
+                    ctrl_added) + ").")
             else:
                 self.report({'INFO'},
                             f"MustardUI - Controller successfully added to the model.")
@@ -399,7 +406,8 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
         model_armature = rig_settings.model_armature_object
 
         # Check if the face controller rig is already available
-        for b in [x[0] for x in data]:
+        # The "Squeeze" is a fix to allow old facial rigs to be removed (version 2)
+        for b in [x[0] for x in data if "Squeeze" not in x[0]]:
             if b not in model_armature.pose.bones:
                 return False
 
@@ -484,8 +492,11 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
                     arm.collections.remove(bcoll)
                     break
 
-        # Optionally, return to Object Mode
+        # Return to Object Mode
         bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Set the face rig version
+        rig_settings.creator_tools_face_rig_version = face_rig_current_version
 
         self.report({'INFO'}, "MustardUI - Controller successfully removed from the model.")
 
