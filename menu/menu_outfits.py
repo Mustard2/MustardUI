@@ -6,6 +6,7 @@ from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from .misc import *
 
+import re
 
 def extract_items(collection, subcollections):
     items = [x for x in (collection.all_objects if subcollections else collection.objects)]
@@ -40,8 +41,12 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
             coll_name = rig_settings.model_name + ' '
         else:
             coll_name = rig_settings.extras_collection.name + ' - '
+
+        nname = obj.name[len(re.sub(r"\.\d{3}", "", coll_name)):]
+        nname = re.sub(r"\.\d{3}", "", nname)
+
         row.operator("mustardui.object_visibility",
-                     text=obj.name[len(coll_name):],
+                     text=nname,
                      icon='OUTLINER_OB_' + obj.type, depress=not obj.hide_viewport).obj = obj.name
     else:
         row.operator("mustardui.object_visibility", text=obj.name, icon='OUTLINER_OB_' + obj.type,

@@ -5,6 +5,7 @@ from ..sections.definitions import *
 from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
 
+import re
 
 # Main class to store model settings
 class MustardUI_RigSettings(bpy.types.PropertyGroup):
@@ -302,6 +303,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     nname = el.collection.name[len(self.model_name + ' '):]
                 else:
                     nname = el.collection.name
+                nname = re.sub(r"\.\d{3}", "", nname)
                 items.append((el.collection.name, nname, el.collection.name))
 
         if self.outfit_nude:
