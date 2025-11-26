@@ -279,6 +279,10 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         # Disable shadows for viewport/render
         bpy.context.object.visible_camera = False
         bpy.context.object.visible_shadow = False
+        bpy.context.object.visible_diffuse = False
+        bpy.context.object.visible_glossy = False
+        bpy.context.object.visible_transmission = False
+        bpy.context.object.visible_volume_scatter = False
 
         self.report({'INFO'}, 'MustardUI - Collision Cage created.')
 

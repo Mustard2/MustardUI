@@ -14,6 +14,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     section: StringProperty(default="")
+    outfit_is_nude: BoolProperty(default=False)
     outfit: StringProperty(default="")
     outfit_piece: StringProperty(default="")
     hair: StringProperty(default="")
@@ -28,7 +29,12 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
-        if self.outfit != "":
+
+        if self.outfit_is_nude and self.outfit != "":
+            self.report({'ERROR'}, 'MustardUI - An error occurred while adding the property (cannot be Nude and Outfit at the same time).')
+            return {'FINISHED'}
+
+        if self.outfit != "" or self.outfit_is_nude:
             custom_props = obj.MustardUI_CustomPropertiesOutfit
         elif self.hair != "" or self.hair_global:
             custom_props = obj.MustardUI_CustomPropertiesHair
@@ -170,7 +176,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             cp.section = self.section
 
             # Assign type
-            if self.outfit != "":
+            if self.outfit != "" or self.outfit_is_nude:
                 cp.cp_type = "OUTFIT"
             elif self.hair != "" or self.hair_global:
                 cp.cp_type = "HAIR"

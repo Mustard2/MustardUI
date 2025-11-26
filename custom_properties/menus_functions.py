@@ -6,7 +6,6 @@ def mustardui_property_menuadd(self, context):
 
     if hasattr(context, 'button_prop') and res:
 
-        settings = bpy.context.scene.MustardUI_Settings
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -15,11 +14,11 @@ def mustardui_property_menuadd(self, context):
 
         op = layout.operator(MustardUI_Property_MenuAdd.bl_idname)
         op.section = ""
+        op.outfit_is_nude = False
         op.outfit = ""
         op.outfit_piece = ""
         op.hair = ""
 
-        sep = False
         for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
             for object in [x for x in items]:
@@ -27,6 +26,7 @@ def mustardui_property_menuadd(self, context):
                     op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
                                          text="Add to " + context.active_object.name, icon="MOD_CLOTH")
                     op.section = ""
+                    op.outfit_is_nude = False
                     op.outfit = collection.collection.name
                     op.outfit_piece = object.name
                     op.hair = ""
@@ -39,6 +39,7 @@ def mustardui_property_menuadd(self, context):
                         op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
                                              text="Add to " + context.active_object.name, icon="PLUS")
                         op.section = ""
+                        op.outfit_is_nude = False
                         op.outfit = rig_settings.extras_collection.name
                         op.outfit_piece = object.name
                         op.hair = ""
@@ -50,6 +51,7 @@ def mustardui_property_menuadd(self, context):
                         op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
                                              text="Add to " + context.active_object.name, icon="STRANDS")
                         op.section = ""
+                        op.outfit_is_nude = False
                         op.outfit = ""
                         op.outfit_piece = ""
                         op.hair = object.name

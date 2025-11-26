@@ -5,6 +5,7 @@ from ..sections.definitions import *
 from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
 
+import re
 
 # Main class to store model settings
 class MustardUI_RigSettings(bpy.types.PropertyGroup):
@@ -302,6 +303,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     nname = el.collection.name[len(self.model_name + ' '):]
                 else:
                     nname = el.collection.name
+                nname = re.sub(r"\.\d{3}", "", nname)
                 items.append((el.collection.name, nname, el.collection.name))
 
         if self.outfit_nude:
@@ -413,27 +415,32 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for cp in [x for x in arm.MustardUI_CustomPropertiesOutfit if
                    x.outfit_enable_on_switch or x.outfit_disable_on_switch]:
 
-            if not cp.outfit:
+            if not rig_settings.outfit_nude and not cp.outfit:
                 continue
 
             if cp.prop_name in arm.keys():
                 ui_data = arm.id_properties_ui(cp.prop_name)
                 ui_data_dict = ui_data.as_dict()
 
-                if cp.outfit_piece:
-                    outfit_piece_enable = not cp.outfit_piece.hide_viewport
-                    if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
-                        arm[cp.prop_name] = ui_data_dict['max']
-                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                        if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                if cp.outfit:
+                    if cp.outfit_piece:
+                        outfit_piece_enable = not cp.outfit_piece.hide_viewport
+                        if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
                             arm[cp.prop_name] = ui_data_dict['max']
-                        else:
+                        elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
+                            if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
+                                arm[cp.prop_name] = ui_data_dict['max']
+                            else:
+                                arm[cp.prop_name] = ui_data_dict['default']
+                    else:
+                        if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
+                            arm[cp.prop_name] = ui_data_dict['max']
+                        elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
                             arm[cp.prop_name] = ui_data_dict['default']
-
-                else:
-                    if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
+                elif not cp.outfit and rig_settings.outfit_nude:  # Nude outfit
+                    if outfits_list == "Nude" and cp.outfit_enable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['max']
-                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
+                    elif not outfits_list == "Nude" and cp.outfit_disable_on_switch:
                         arm[cp.prop_name] = ui_data_dict['default']
 
         # Force Physics recheck
@@ -1038,13 +1045,33 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         update=update_simplify)
 
     # ------------------------------------------------------------------------
+    #    Creator Tools
+    # ------------------------------------------------------------------------
+
+    creator_tools_face_rig_version: bpy.props.IntProperty(default=1)
+
+    # ------------------------------------------------------------------------
     #    Various properties
     # ------------------------------------------------------------------------
 
     # Version of the model
-    model_version: bpy.props.StringProperty(name="Model version",
-                                            description="Version of the model",
-                                            default="")
+    model_version: bpy.props.StringProperty()
+    model_version_vector: bpy.props.IntVectorProperty(name="Model version",
+                                                      size=3,
+                                                      min=0,
+                                                      default=(0, 0, 0),
+                                                      description="Version of the model")
+    model_version_type: bpy.props.EnumProperty(default="Standard",
+                                               items=[("Standard", "Standard", "Standard", "RADIOBUT_ON", 0),
+                                                      ("Beta", "Beta", "Beta", "RECORD_ON", 2),
+                                                      ("Alpha", "Alpha", "Alpha", "RECORD_ON", 1)],
+                                               name="Rig type")
+    model_minimum_blender_version: bpy.props.IntVectorProperty(name="Minimum Blender version",
+                                                               size=3,
+                                                               default=(0, 0, 0),
+                                                               min=0,
+                                                               max=10,
+                                                               description="Set this to add a warning if the model is opened in an older Blender version.\nLeave it 0,0,0 to disable this warning")
     model_version_date_enable: bpy.props.BoolProperty(name="Add Date to version",
                                                       description="Automatically add the date to the version when ending Configuration mode",
                                                       default=False)
@@ -1057,7 +1084,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     model_rig_type: bpy.props.EnumProperty(default="other",
                                            items=[("arp", "Auto-Rig Pro", "Auto-Rig Pro"),
-                                                  ("rigify", "Rigify", "Rigify"), ("mhx", "MHX", "MHX"),
+                                                  ("rigify", "Rigify", "Rigify"),
+                                                  ("mhx", "MHX", "MHX"),
                                                   ("other", "Other", "Other")],
                                            name="Rig type")
 
@@ -1072,6 +1100,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
     #    Deprecated stuffs (support for warnings/fixes/etc..)
     # ------------------------------------------------------------------------
+
+    # Old versioning
+    model_version: bpy.props.StringProperty(default="")
 
     # Diffeomorphic support
     # Keep this setting while the other Morphs implementation is considered deprecated

@@ -3,8 +3,14 @@ import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
 from ..misc.prop_utils import *
+from ..misc.ui_multiline import label_multiline
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
+
+
+def check_blender_version(rig_settings):
+    current_blender_version = bpy.app.version
+    return tuple(current_blender_version) < tuple(rig_settings.model_minimum_blender_version)
 
 
 class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
@@ -26,7 +32,8 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
             rig_settings = obj.MustardUI_RigSettings
 
-            return poll and (check_eevee_normals(context.scene, settings) or rig_settings.diffeomorphic_support)
+            return poll and (check_eevee_normals(context.scene, settings) or rig_settings.diffeomorphic_support or
+                             check_blender_version(rig_settings))
 
         return poll
 
@@ -66,6 +73,15 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             row.operator("mustardui.warnings_fix_old_morphs", icon="X", text="").ignore = True
 
             box.operator("mustardui.warnings_fix_old_morphs", icon="TRIA_DOWN_BAR").ignore = False
+
+        if check_blender_version(rig_settings):
+            box = layout.box()
+            col = box.column(align=True)
+            mbv = rig_settings.model_minimum_blender_version
+            col.label(text="Minimum Blender version: " + str(mbv[0]) + "." + str(mbv[1]) + "." + str(mbv[2]),
+                      icon="BLENDER")
+            col.label(text="The model might not work properly.", icon="BLANK1")
+            col.label(text="Update Blender to the latest version.", icon="BLANK1")
 
 
 def register():
