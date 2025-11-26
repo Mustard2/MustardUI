@@ -1,4 +1,5 @@
 import bpy
+from ..model_selection.active_object import *
 
 
 # Outfit information
@@ -26,6 +27,34 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
                                     name="Enable Physics",
                                     description="Enable Physics on the current Outfit piece",
                                     update=update_physics)
+
+    #Enable Physics based on current Physics Objects
+    def update_enable_pi_physics(self, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        physics_settings = arm.MustardUI_PhysicsSettings
+
+        for pi in [x for x in physics_settings.items if x is not None]:
+            if pi.outfit_object == self.id_data:
+                pi.enable = self.enable_pi_physics
+
+    enable_pi_physics: bpy.props.BoolProperty(default=False,
+                                    name="Enable Physics",
+                                    description="Enable Physics on the current Outfit piece",
+                                    update=update_enable_pi_physics)
+
+    # Enable Collisions based on current Physics Objects
+    def update_enable_pi_collisions(self, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        physics_settings = arm.MustardUI_PhysicsSettings
+
+        for pi in [x for x in physics_settings.items if x is not None]:
+            if pi.outfit_object == self.id_data:
+                pi.collisions = self.enable_pi_collisions
+
+    enable_pi_collisions: bpy.props.BoolProperty(default=False,
+                                              name="Enable Collisions",
+                                              description="Enable Collisions on the current Outfit piece",
+                                              update=update_enable_pi_collisions)
 
     # Variable to collapse children in Outfit pieces list
     collapse_children: bpy.props.BoolProperty(default=True, description="", name="")

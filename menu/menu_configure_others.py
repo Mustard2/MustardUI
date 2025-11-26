@@ -32,8 +32,15 @@ class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
 
         box = layout.box()
         box.label(text="Version", icon="INFO")
-        box.prop(rig_settings, "model_version", text="")
+        row = box.row(align=True)
+        row.prop(rig_settings, "model_version_vector", text="", expand=True)
+        box.prop(rig_settings, "model_version_type", text="")
         box.prop(rig_settings, "model_version_date_enable")
+
+        box = layout.box()
+        box.label(text="Minimum Blender Version", icon="BLENDER")
+        row = box.row(align=True)
+        row.prop(rig_settings, "model_minimum_blender_version", text="")
 
 
 def register():

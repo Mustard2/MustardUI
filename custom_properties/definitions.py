@@ -93,6 +93,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     outfit_piece: PointerProperty(name="Outfit Piece",
                                   type=bpy.types.Object,
                                   poll=outfit_switcher_poll_mesh)
+
     outfit_enable_on_switch: BoolProperty(default=False,
                                           name="Enable on Outfit Switch",
                                           description="Set the value of this property to the max value when you "
