@@ -7,17 +7,29 @@ from .. import __package__ as base_package
 from ..menu.menu_configure import row_scale
 
 
-def rename_morph(self, name):
+def rename_morph(self, name, protected_strings=None):
+    if protected_strings is None:
+        protected_strings = []
+
     if not self.custom_rename:
         return name
 
-    name = name.replace('_', ' ')
+    # 1. Protect substrings using safe non-letter placeholders
+    protected = {}
+    for i, s in enumerate(protected_strings):
+        placeholder = f"<<{i}>>"  # <-- no letters, no digits adjacent to letters
+        protected[placeholder] = s
+        name = name.replace(s, placeholder)
 
-    # Add a space before a capital letter if it's preceded by a lowercase letter or another capital letter
-    name = re.sub(r'(?<=[a-zA-Z])([A-Z])', r' \1', name)
+    # 2. Apply spacing rules (placeholders are safe)
+    name = re.sub(r'(?<=[a-z])([A-Z])', r' \1', name)  # lower → upper
+    name = re.sub(r'(?<=[A-Z])([A-Z][a-z])', r' \1', name)  # upper block → capital+lower
+    name = re.sub(r'(?<=[a-zA-Z])(\d)', r' \1', name)  # letter → number
+    name = re.sub(r"_+", " ", name)  # underscores → spaces
 
-    # Add a space before a number if it's preceded by a letter
-    name = re.sub(r'(?<=[a-zA-Z])(\d)', r' \1', name)
+    # 3. Restore protected substrings
+    for placeholder, original in protected.items():
+        name = name.replace(placeholder, original)
 
     return name
 
@@ -130,7 +142,8 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
                 # Custom Diffeomorphic emotions
                 emotions_custom = []
-                for string in [x for x in morphs_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
+                emotions_custom_strings = [x for x in morphs_settings.diffeomorphic_emotions_custom.split(',') if x != '']
+                for string in emotions_custom_strings:
                     for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                         if string in x:
                             emotions_custom.append(x)
@@ -140,7 +153,8 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                         [c if not c.isupper() else ' ' + c for c in emotion[len('eCTRL') + 1:]])
                     mustardui_add_morph(morphs_settings.sections[1].morphs, [name, emotion])
                 for emotion in emotions_custom:
-                    mustardui_add_morph(morphs_settings.sections[1].morphs, [emotion, emotion])
+                    mustardui_add_morph(morphs_settings.sections[1].morphs,
+                                        [rename_morph(self, emotion, emotions_custom_strings), emotion])
 
             # FACS Emotions Units
             sec = "Advanced Emotion Units" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotion Units"
@@ -171,9 +185,10 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
                 # For Genesis 9, add also custom emotions to the panel
                 emotions_custom = []
+                emotions_custom_strings = [x for x in morphs_settings.diffeomorphic_emotions_custom.split(',') if x != '']
                 if morphs_settings.type == "DIFFEO_GENESIS_9":
                     emotions_custom = []
-                    for string in [x for x in morphs_settings.diffeomorphic_emotions_custom.split(',') if x != '']:
+                    for string in emotions_custom_strings:
                         for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                             if string in x:
                                 emotions_custom.append(x)
@@ -184,30 +199,38 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     mustardui_add_morph(morphs_settings.sections[3].morphs, [name, emotion])
 
                 for emotion in emotions_custom:
-                    mustardui_add_morph(morphs_settings.sections[3].morphs, [emotion, emotion])
+                    mustardui_add_morph(morphs_settings.sections[3].morphs,
+                                        [rename_morph(self, emotion, emotions_custom_strings), emotion])
 
             # Body Morphs for Genesis 8
             mustardui_add_section(morphs_settings.sections, ["Body"], is_internal=True, diffeomorphic=4)
             if morphs_settings.diffeomorphic_body_morphs:
 
-                body_morphs_FBM = [x for x in rig_settings.model_armature_object.keys() if
-                                   'FBM' in x and sum(1 for c in x if c.isdigit()) < 1 and sum(
-                                       1 for c in x if c.isupper()) < 6]
-                body_morphs_bs = [x for x in rig_settings.model_armature_object.keys() if
-                                  'body_bs_' in x and sum(1 for c in x if c.isdigit()) < 1 and sum(
-                                      1 for c in x if c.isupper()) < 6]
-                body_morphs_CTRLB = [x for x in rig_settings.model_armature_object.keys() if
-                                     'CTRLBreasts' in x and 'pCTRLBreasts' not in x and sum(
-                                         1 for c in x if c.isupper()) < 10]
-                body_morphs_ctrl = [x for x in rig_settings.model_armature_object.keys() if
-                                    'body_ctrl_' in x and sum(1 for c in x if c.isdigit()) < 1 and sum(
-                                        1 for c in x if c.isupper()) < 6]
-                body_morphs_PBM = [x for x in rig_settings.model_armature_object.keys() if
-                                   'PBMBreasts' in x and sum(1 for c in x if c.isupper()) < 10]
+                body_morphs_FBM = [x for x in rig_settings.model_armature_object.keys()
+                                   if x.startswith('FBM')
+                                   and sum(1 for c in x if c.isdigit()) < 1
+                                   and sum(1 for c in x if c.isupper()) < 6]
+                body_morphs_bs = [x for x in rig_settings.model_armature_object.keys()
+                                  if x.startswith('body_bs_')
+                                  and sum(1 for c in x if c.isdigit()) < 1
+                                  and sum(1 for c in x if c.isupper()) < 6]
+                body_morphs_CTRLB = [x for x in rig_settings.model_armature_object.keys()
+                                     if 'CTRLBreasts' in x
+                                     and 'pCTRLBreasts' not in x
+                                     and sum(1 for c in x if c.isupper()) < 10]
+                body_morphs_ctrl = [x for x in rig_settings.model_armature_object.keys()
+                                    if x.startswith('body_ctrl_')
+                                    and sum(1 for c in x if c.isdigit()) < 1
+                                    and sum(1 for c in x if c.isupper()) < 6]
+                body_morphs_PBM = [x for x in rig_settings.model_armature_object.keys()
+                                   if 'PBMBreasts' in x
+                                   and sum(1 for c in x if c.isupper()) < 10]
 
                 # Custom Diffeomorphic emotions
                 body_morphs_custom = []
-                for string in [x for x in morphs_settings.diffeomorphic_body_morphs_custom.split(',') if x != '']:
+                body_morphs_custom_strings = [x for x in morphs_settings.diffeomorphic_body_morphs_custom.split(',')
+                                              if x != '']
+                for string in body_morphs_custom_strings:
                     for x in [x for x in rig_settings.model_armature_object.keys() if not "Adjust Custom" in x]:
                         if string in x:  # and sum(1 for c in x if c.isupper()) < 6:
                             body_morphs_custom.append(x)
@@ -229,9 +252,15 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     name = morph[len('PBM')] + ''.join([c if not c.isupper() else ' ' + c for c in morph[len('PBM') + 1:]])
                     mustardui_add_morph(morphs_settings.sections[4].morphs, [name, morph])
                 for morph in body_morphs_custom:
-                    mustardui_add_morph(morphs_settings.sections[4].morphs, [morph, morph])
+                    morph_name = morph
+                    if self.custom_rename:
+                        morph_name = re.sub(r"_body_bs_", " ", morph_name)
+                        morph_name = re.sub(r"_body_cbs_", " ", morph_name)
+                    morph_name = rename_morph(self, morph_name, body_morphs_custom_strings)
+                    mustardui_add_morph(morphs_settings.sections[4].morphs, [morph_name, morph])
 
-                morphs_settings.diffeomorphic_genesis_version = 8 if morphs_settings.type == "DIFFEO_GENESIS_8" else 9
+            # Set the Genesis version
+            morphs_settings.diffeomorphic_genesis_version = 8 if morphs_settings.type == "DIFFEO_GENESIS_8" else 9
 
         for i, section in enumerate(morphs_settings.sections):
 
@@ -248,13 +277,18 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     continue
                 custom_props = [x for x in cp_source.keys() if any(s in x for s in strings)]
                 for morph in custom_props:
-                    mustardui_add_morph(morphs_settings.sections[i].morphs, [rename_morph(self, morph), morph], custom_property=True, custom_property_source=custom_properties_source)
+                    mustardui_add_morph(morphs_settings.sections[i].morphs,
+                                        [rename_morph(self, morph), morph],
+                                        custom_property=True,
+                                        custom_property_source=custom_properties_source)
 
             if shape_keys:
                 sks = [x.name for x in rig_settings.model_body.data.shape_keys.key_blocks if
                        any(s in x.name for s in strings)]
                 for morph in sks:
-                    mustardui_add_morph(morphs_settings.sections[i].morphs, [rename_morph(self, morph), morph], custom_property=False)
+                    mustardui_add_morph(morphs_settings.sections[i].morphs,
+                                        [rename_morph(self, morph), morph],
+                                        custom_property=False)
 
         morphs_settings.diffeomorphic_genesis_version = -1 if morphs_settings.type == "GENERIC" else morphs_settings.diffeomorphic_genesis_version
 
@@ -265,7 +299,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
         for section in morphs_settings.sections:
             for morph in section.morphs:
                 if addon_prefs.debug:
-                    print(f"  {repr(morph.name)} in section: {repr(section.name)}")
+                    print(f"  {repr(morph.name)} in section: {repr(section.name)} (name: {repr(morph.path)})")
                 properties_number = properties_number + 1
 
         morphs_settings.morphs_number = properties_number
