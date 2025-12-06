@@ -64,6 +64,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             opdown = col2.operator('mustardui.outfits_switch', icon="TRIA_DOWN", text="")
             opdown.direction = "DOWN"
             col.separator()
+            col.operator("mustardui.rename_outfit", text="", icon="GREASEPENCIL").right_click_call = False
             col.operator("mustardui.remove_outfit", text="", icon="X")
             col.operator("mustardui.delete_outfit", text="", icon="TRASH")
 
