@@ -95,7 +95,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
             if self.pinned_bones >= len(chain):
                 self.report({'WARNING'},
-                            'MustardUI - The number of pinned bones can not be bigger than the number of available bones.' + str(bone_chains))
+                            'MustardUI - The number of pinned bones can not be bigger than the number of available bones.')
                 return {'FINISHED'}
 
             # Create a curve to represent the path through the bone tips

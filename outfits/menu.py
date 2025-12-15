@@ -1,6 +1,7 @@
 import bpy
 from .ops_add import MustardUI_AddOutfit
 from ..model_selection.active_object import *
+from ..outfits.ops_rename_outfit import MustardUI_RenameOutfit
 from .. import __package__ as base_package
 
 
@@ -17,14 +18,20 @@ def mustardui_collection_menu(self, context):
     rig_settings = arm.MustardUI_RigSettings
     addon_prefs = context.preferences.addons[base_package].preferences
 
+    layout = self.layout
+
     if res:
         if not context.collection in [x.collection for x in rig_settings.outfits_collections]:
-            self.layout.separator()
+            layout.separator()
             if addon_prefs.debug:
-                self.layout.operator(MustardUI_AddOutfit.bl_idname, text="Add Outfit: " + repr(context.collection.name),
+                layout.operator(MustardUI_AddOutfit.bl_idname, text="Add Outfit: " + repr(context.collection.name),
                                      icon="ADD")
             else:
-                self.layout.operator(MustardUI_AddOutfit.bl_idname, icon="ADD")
+                layout.operator(MustardUI_AddOutfit.bl_idname, icon="ADD")
+
+        col = layout.column()
+        col.operator_context = 'INVOKE_DEFAULT'
+        col.operator(MustardUI_RenameOutfit.bl_idname, icon="GREASEPENCIL").right_click_call = True
 
 
 def register():

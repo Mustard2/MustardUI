@@ -143,6 +143,9 @@ class MustardUI_Configuration(bpy.types.Operator):
             else:
                 rig_settings.model_version_date = ""
 
+            # Clean the model temporary settings
+            settings.rename_outfits_temp_class.clear()
+
             if warnings > 0:
                 if addon_prefs.debug:
                     print("\n\n")

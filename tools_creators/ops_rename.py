@@ -11,9 +11,8 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     name: StringProperty(default="",
-                         name="Delete Settings",
-                         description="All Settings of the UI will be removed.\nA clean Configuration is "
-                                     "necessary after using this option")
+                         name="New Name",
+                         description="")
 
     @classmethod
     def poll(cls, context):
@@ -49,6 +48,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
         if self.name == "":
             self.report({'WARNING'}, 'MustardUI - Renaming not performed: the name should be not null')
+            return {'FINISHED'}
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
@@ -105,7 +105,6 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        addon_prefs = context.preferences.addons[base_package].preferences
         return context.window_manager.invoke_props_dialog(self, width=250)
 
     def draw(self, context):

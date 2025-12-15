@@ -45,7 +45,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             box.label(text=version, icon=icon)
 
         # Left for old compatibility (Deprecated in MustardUI 2025.8)
-        elif rig_settings.model_version_vector == (0, 0, 0) and rig_settings.model_version != '':
+        elif tuple(rig_settings.model_version_vector) == (0, 0, 0) and rig_settings.model_version != '':
             box = layout.box()
             box.label(text="Model Version: ", icon="INFO")
             version = rig_settings.model_version
