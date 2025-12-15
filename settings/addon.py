@@ -2,6 +2,7 @@ import bpy
 from bpy.props import *
 from bpy.app.handlers import persistent
 from .. import __package__ as base_package
+from ..outfits.ops_rename_outfit import MustardUI_RenameOutfit_Class
 
 
 class MustardUI_Settings(bpy.types.PropertyGroup):
@@ -61,6 +62,11 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                                                     "useful to get better performance in Render Viewport mode. "
                                                     "Disable this for Cycles",
                                         update=update_material_normal)
+
+    # Tools (internal)
+    # Class to store temporary settings for outfit rename
+    rename_outfits_temp_class: CollectionProperty(
+            type=MustardUI_RenameOutfit_Class)
 
 
 # Handler to solve a missing UI when: developer mode is on, but the UI has been left in configuration mode
