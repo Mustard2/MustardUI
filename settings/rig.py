@@ -952,7 +952,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                items=[("Standard", "Standard", "Standard", "RADIOBUT_ON", 0),
                                                       ("Beta", "Beta", "Beta", "RECORD_ON", 2),
                                                       ("Alpha", "Alpha", "Alpha", "RECORD_ON", 1)],
-                                               name="Rig type")
+                                               name="Version Status")
+    model_changelog_link: StringProperty(name="Changelog Link",
+                                         default="",
+                                         description="Link to a changelog webpage")
     model_minimum_blender_version: bpy.props.IntVectorProperty(name="Minimum Blender version",
                                                                size=3,
                                                                default=(0, 0, 0),
