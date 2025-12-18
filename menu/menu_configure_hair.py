@@ -91,6 +91,10 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
                 box.label(text="No Hair Objects in the collection.", icon="ERROR")
 
         box = layout.box()
+        box.label(text="Hair Switcher Collection", icon="GHOST_DISABLED")
+        box.prop(rig_settings, "hair_switch_collection", text="")
+
+        box = layout.box()
         box.label(text="Other Hair", icon="OUTLINER_OB_CURVES")
         col = box.column()
         col.prop(rig_settings, "curves_hair_enable", text="Show Curves Hair")

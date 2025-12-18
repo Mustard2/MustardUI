@@ -93,7 +93,7 @@ class MustardUI_Configuration(bpy.types.Operator):
             if hasattr(obj, '[\"arp_updated\"]'):
                 rig_settings.model_rig_type = "arp"
                 rig_recognized += 1
-            elif hasattr(obj, '[\"rig_id\"]'):
+            elif hasattr(obj, '[\"rig_id\"]') and obj["rig_id"] != "":
                 rig_settings.model_rig_type = "rigify"
                 rig_recognized += 1
             elif hasattr(rig_settings.model_armature_object, '[\"MhxRig\"]'):
