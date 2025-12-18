@@ -515,13 +515,37 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Hair collection
     def poll_collection_hair(self, object):
+        collections = [x.collection for x in self.outfits_collections]
         if self.extras_collection is not None:
-            return not object in [x.collection for x in self.outfits_collections] and object != self.extras_collection
-        return not object in [x.collection for x in self.outfits_collections]
+            collections.append(self.extras_collection)
+        return object not in collections
 
     hair_collection: bpy.props.PointerProperty(name="Hair Collection",
+                                               description="Collection with the Hair Objects.\nBoth Mesh and Armature "
+                                                           "Objects are considered. If the Armature is available, only "
+                                                           "the children will be added as Hair, and an automatic "
+                                                           "switch will also be added for the bones of the "
+                                                           "parent Armature",
                                                type=bpy.types.Collection,
                                                poll=poll_collection_hair)
+
+    def poll_collection_hair_switch(self, object):
+        collections = [x.collection for x in self.outfits_collections]
+        if self.extras_collection is not None:
+            collections.append(self.extras_collection)
+        if self.hair_collection is not None:
+            collections.append(self.hair_collection)
+        return object not in collections
+
+    hair_switch_collection: bpy.props.PointerProperty(name="Hair Switch Collection",
+                                                      type=bpy.types.Collection,
+                                                      description="Collection of Objects which disable the Hair.\nThis "
+                                                                  "can be useful when an Outfit piece has a dedicated "
+                                                                  "Hair Object, e.g. an helmet or a hat.\nThe Objects "
+                                                                  "can be added to this collection as Linked objects, "
+                                                                  "so they can belong to both the specific Outfit and "
+                                                                  "this Collection",
+                                                      poll=poll_collection_hair_switch)
 
     # Function to create an array of tuples for hair objects in the Hair collection
     def hair_list_make(self, context):

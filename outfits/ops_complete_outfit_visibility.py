@@ -70,6 +70,15 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 set_bool(obj, "hide_viewport", not show_obj)
                 set_bool(obj, "hide_render", not show_obj)
 
+                # Check Hair Visibility against the Hair Switcher Collection
+                hair_collection = rig_settings.hair_collection
+                if (hair_collection is not None
+                        and obj.type == "MESH"
+                        and rig_settings.hair_switch_collection is not None
+                        and obj.name in rig_settings.hair_switch_collection.all_objects.keys()):
+                    set_bool(hair_collection, "hide_viewport", show_obj)
+                    set_bool(hair_collection, "hide_render", show_obj)
+
                 if show_obj:
                     any_object_visible = True
 
