@@ -1,17 +1,18 @@
 import bpy
 from ..model_selection.active_object import *
 from ..physics.update_enable import enable_physics_update
+from .helper_functions import outfits_update_armature_collections
+from ..misc.set_bool import set_bool
 
 
-# Operator to switch visibility of an object
 class MustardUI_OutfitVisibility(bpy.types.Operator):
-    """Chenge the visibility of the selected object"""
+    """Change the visibility of the selected object"""
     bl_idname = "mustardui.object_visibility"
     bl_label = "Object Visibility"
     bl_options = {'UNDO'}
 
     obj: bpy.props.StringProperty()
-    shift: bpy.props.BoolProperty()
+    shift: bpy.props.BoolProperty(default=False)
 
     def invoke(self, context, event):
         if not self.shift:
@@ -19,6 +20,12 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         return self.execute(context)
 
     def execute(self, context):
+        scene = context.scene
+        obj = scene.objects.get(self.obj)
+
+        if obj is None:
+            self.report({'WARNING'}, f'MustardUI - Object "{self.obj}" not found.')
+            return {'CANCELLED'}
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
@@ -26,81 +33,111 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
         outfit_cp = arm.MustardUI_CustomPropertiesOutfit
 
-        object = context.scene.objects[self.obj]
+        hair_collection = rig_settings.hair_collection
+        hair_switch_collection = rig_settings.hair_switch_collection
 
-        object.hide_viewport = not context.scene.objects[self.obj].hide_viewport
-        object.hide_render = context.scene.objects[self.obj].hide_viewport
-        object.MustardUI_outfit_visibility = context.scene.objects[self.obj].hide_viewport
+        # ------------------- PER-OBJECT UPDATES ------------------- #
+        def apply_visibility(o):
+            # Object visibility
+            visible = not o.hide_viewport
 
-        # Enable armature modifier
-        if rig_settings.outfit_switch_armature_disable or rig_settings.outfit_switch_modifiers_disable:
-            for modifier in object.modifiers:
-                if modifier.type == "ARMATURE" and rig_settings.outfit_switch_armature_disable:
-                    modifier.show_viewport = not object.MustardUI_outfit_visibility
-                elif rig_settings.outfit_switch_modifiers_disable:
-                    if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection:
-                        modifier.show_viewport = not object.MustardUI_outfit_visibility if rig_settings.outfits_global_smoothcorrection else False
-                    elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap:
-                        modifier.show_viewport = not object.MustardUI_outfit_visibility if rig_settings.outfits_global_shrinkwrap else False
-                    elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface:
-                        modifier.show_viewport = not object.MustardUI_outfit_visibility if rig_settings.outfits_global_subsurface else False
+            set_bool(o, "hide_viewport", visible)
+            set_bool(o, "hide_render", visible)
+            set_bool(o, "MustardUI_outfit_visibility", visible)
 
-        # Update values of custom properties
-        outfit_cp = [x for x in outfit_cp if object == x.outfit_piece and (
-                x.outfit_enable_on_switch or x.outfit_disable_on_switch)]
+            # Modifier visibility
+            if rig_settings.outfit_switch_armature_disable or rig_settings.outfit_switch_modifiers_disable:
+                for mod in o.modifiers:
+                    if mod.type == "ARMATURE" and rig_settings.outfit_switch_armature_disable:
+                        set_bool(mod, "show_viewport", not visible)
+                        continue
 
-        for cp in outfit_cp:
+                    if not rig_settings.outfit_switch_modifiers_disable:
+                        continue
 
-            ui_data = arm.id_properties_ui(cp.prop_name)
-            ui_data_dict = ui_data.as_dict()
+                    if mod.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection:
+                        desired = not visible if rig_settings.outfits_global_smoothcorrection else False
+                        set_bool(mod, "show_viewport", desired)
+                    elif mod.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap:
+                        desired = not visible if rig_settings.outfits_global_shrinkwrap else False
+                        set_bool(mod, "show_viewport", desired)
+                    elif mod.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface:
+                        desired = not visible if rig_settings.outfits_global_subsurface else False
+                        set_bool(mod, "show_viewport", desired)
 
-            if not cp.outfit_piece.hide_viewport and cp.outfit_enable_on_switch:
-                arm[cp.prop_name] = ui_data_dict['max']
-            elif cp.outfit_piece.hide_viewport and cp.outfit_disable_on_switch:
-                arm[cp.prop_name] = ui_data_dict['default']
+            # Hair visibility
+            if (hair_collection is not None
+                    and o.type == "MESH"
+                    and hair_switch_collection is not None
+                    and o.name in hair_switch_collection.all_objects.keys()):
+                hair_collection.hide_viewport = not visible
+                hair_collection.hide_render = not visible
 
-        arm.update_tag()
+            # Custom properties
+            ui_data_cache = {}
+            for cp in outfit_cp:
+                if cp.outfit_piece != o:
+                    continue
+                if not (cp.outfit_enable_on_switch or cp.outfit_disable_on_switch):
+                    continue
 
-        # Disable Extras collection if none is active to increase performance
-        if rig_settings.extras_collection is not None:
-            items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
-            rig_settings.extras_collection.hide_viewport = len([x for x in items if not x.hide_render]) == 0
-            rig_settings.extras_collection.hide_render = rig_settings.extras_collection.hide_viewport
+                prop = cp.prop_name
+                ui_data = ui_data_cache.get(prop)
+                if ui_data is None:
+                    ui_data = arm.id_properties_ui(prop).as_dict()
+                    ui_data_cache[prop] = ui_data
 
-        # Enable/disable masks on the body
-        if rig_settings.model_body:
-            for modifier in rig_settings.model_body.modifiers:
-                if modifier.type == "MASK" and self.obj in modifier.name and rig_settings.outfits_global_mask:
-                    modifier.show_viewport = not object.hide_viewport
-                    modifier.show_render = not object.hide_viewport
-        else:
-            self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
+                if visible and cp.outfit_enable_on_switch:
+                    if arm[prop] != ui_data['max']:
+                        arm[prop] = ui_data['max']
+                elif not visible and cp.outfit_disable_on_switch:
+                    if arm[prop] != ui_data['default']:
+                        arm[prop] = ui_data['default']
 
-        # Enable/disable armature layers
-        if armature_settings.outfits:
-            collections = arm.collections_all
-            outfit_armature_layers = [x for x in collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection is not None]
-            for bcoll in outfit_armature_layers:
-                bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
-                items = bcoll_settings.outfit_switcher_collection.all_objects if rig_settings.outfit_config_subcollections else bcoll_settings.outfit_switcher_collection.objects
-                for ob in [x for x in items]:
-                    if ob == bcoll_settings.outfit_switcher_object:
-                        bcoll.is_visible = not context.scene.objects[ob.name].hide_viewport and not bcoll_settings.outfit_switcher_collection.hide_viewport
+            # Body mask modifiers
+            body = rig_settings.model_body
+            if body:
+                for mod in body.modifiers:
+                    if mod.type == "MASK" and self.obj in mod.name and rig_settings.outfits_global_mask:
+                        set_bool(mod, "show_viewport", not o.hide_viewport)
+                        set_bool(mod, "show_render", not o.hide_viewport)
+            else:
+                self.report({'WARNING'}, 'MustardUI - Outfit Body has not been specified.')
 
-        if rig_settings.outfits_update_tag_on_switch:
-            for obju in context.scene.objects:
-                obju.update_tag()
+        # Apply to main object
+        apply_visibility(obj)
 
+        # Apply to children if shift is pressed
         if self.shift:
-            for c in object.children:
-                bpy.ops.mustardui.object_visibility(obj=c.name, shift=True)
+            for child in obj.children:
+                if child.hide_viewport != obj.hide_viewport:
+                    apply_visibility(child)
 
-        # Force Physics recheck
+        # ------------------- GLOBAL UPDATES ------------------- #
+        # Armature collections
+        if armature_settings.outfits:
+            outfits_update_armature_collections(rig_settings, arm)
+
+        # Physics update
         if physics_settings.enable_ui:
             enable_physics_update(physics_settings, context)
 
-        self.shift = False
+        # Update tags
+        if rig_settings.outfits_update_tag_on_switch:
+            arm.update_tag()
+            obj.update_tag()
+            for child in obj.children:
+                child.update_tag()
 
+        # Extras collection visibility
+        extras = rig_settings.extras_collection
+        if extras:
+            items = extras.all_objects if rig_settings.outfit_config_subcollections else extras.objects
+            hidden = all(x.hide_render for x in items)
+            set_bool(extras, "hide_viewport", hidden)
+            set_bool(extras, "hide_render", hidden)
+
+        self.shift = False
         return {'FINISHED'}
 
 

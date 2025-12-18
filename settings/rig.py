@@ -3,9 +3,11 @@ from ..model_selection.active_object import *
 from ..outfits.definitions import *
 from ..sections.definitions import *
 from ..physics.update_enable import enable_physics_update
+from ..misc.set_bool import set_bool
 from .. import __package__ as base_package
 
 import re
+
 
 # Main class to store model settings
 class MustardUI_RigSettings(bpy.types.PropertyGroup):
@@ -294,161 +296,32 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Function to create an array of tuples for Outfit enum collections
     def outfits_list_make(self, context):
         items = []
+        prefix_len = len(self.model_name + ' ') if self.model_MustardUI_naming_convention else 0
 
         for el in self.outfits_collections:
-            if el.collection is None:
+            coll = el.collection
+            if coll is None:
                 continue
-            if hasattr(el.collection, 'name'):
-                if self.model_MustardUI_naming_convention:
-                    nname = el.collection.name[len(self.model_name + ' '):]
-                else:
-                    nname = el.collection.name
-                nname = re.sub(r"\.\d{3}", "", nname)
-                items.append((el.collection.name, nname, el.collection.name))
+
+            # Strip prefix if naming convention is used
+            nname = coll.name[prefix_len:] if prefix_len else coll.name
+
+            # Remove trailing .### if present
+            if nname[-4:0:-1].isdigit() and nname[-4] == '.':
+                nname = nname[:-4]
+            else:
+                nname = re.sub(r"\.\d{3}$", "", nname)  # fallback regex for safety
+
+            items.append((coll.name, nname, coll.name))
 
         if self.outfit_nude:
-            items.insert(0, ("Nude", "Nude", "Nude"))
+            items = [("Nude", "Nude", "Nude")] + items
 
         return items
 
-    def update_armature_outfit_layers(self, context, armature_settings):
-
-        poll, arm = mustardui_active_object(context, config=0)
-        collections = arm.collections_all
-        bcolls = [x for x in collections if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
-                  and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection is not None]
-
-        for bcoll in bcolls:
-            bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
-            if bcoll_settings.outfit_switcher_object is None:
-                bcoll.is_visible = (armature_settings.outfits and
-                                    not bcoll_settings.outfit_switcher_collection.hide_viewport)
-            else:
-                items = (bcoll_settings.outfit_switcher_collection.all_objects
-                         if self.outfit_config_subcollections else bcoll_settings.outfit_switcher_collection.objects)
-                for obj in [x for x in items]:
-                    if obj == bcoll_settings.outfit_switcher_object:
-                        bcoll.is_visible = (armature_settings.outfits and
-                                            not context.scene.objects[obj.name].hide_viewport and
-                                            not bcoll_settings.outfit_switcher_collection.hide_viewport)
-
     # Function to update the visibility of the outfits/masks/armature layers when an outfit is changed
     def outfits_visibility_update(self, context):
-
-        poll, arm = mustardui_active_object(context, config=0)
-        rig_settings = arm.MustardUI_RigSettings
-        physics_settings = arm.MustardUI_PhysicsSettings
-
-        # Update the objects and masks visibility
-        outfits_list = rig_settings.outfits_list
-
-        for collection in [x.collection for x in rig_settings.outfits_collections if x.collection is not None]:
-            items = {}
-            for obj in (collection.all_objects if rig_settings.outfit_config_subcollections else collection.objects):
-                items[obj.name] = obj
-
-            locked_items = [items[x] for x in items if items[x].MustardUI_outfit_lock]
-
-            locked_collection = len(locked_items) > 0
-
-            collection.hide_viewport = not (collection.name == outfits_list or locked_collection)
-            collection.hide_render = not (collection.name == outfits_list or locked_collection)
-
-            for _, obj in items.items():
-
-                # Locked collections (at least one outfit piece is locked)
-                if locked_collection and collection.name != outfits_list:
-                    obj.hide_viewport = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
-                    obj.hide_render = obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else not obj.MustardUI_outfit_lock
-
-                    for modifier in obj.modifiers:
-                        check = not obj.MustardUI_outfit_visibility if obj.MustardUI_outfit_lock else obj.MustardUI_outfit_lock
-                        if modifier.type == "ARMATURE":
-                            modifier.show_viewport = check if rig_settings.outfit_switch_armature_disable else True
-                        elif rig_settings.outfit_switch_modifiers_disable:
-                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
-                                modifier.show_viewport = check
-                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
-                                modifier.show_viewport = check
-                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
-                                modifier.show_viewport = check
-
-                # Current selected Outfit
-                elif collection.name == outfits_list:
-                    obj.hide_viewport = obj.MustardUI_outfit_visibility
-                    obj.hide_render = obj.MustardUI_outfit_visibility
-
-                    for modifier in obj.modifiers:
-                        check = not obj.MustardUI_outfit_visibility
-                        if modifier.type == "ARMATURE":
-                            modifier.show_viewport = check if rig_settings.outfit_switch_armature_disable else True
-                        elif rig_settings.outfit_switch_modifiers_disable:
-                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
-                                modifier.show_viewport = check
-                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
-                                modifier.show_viewport = check
-                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
-                                modifier.show_viewport = check
-
-                # All other outfits
-                else:
-                    for modifier in obj.modifiers:
-                        if modifier.type == "ARMATURE":
-                            modifier.show_viewport = not rig_settings.outfit_switch_armature_disable
-                        elif rig_settings.outfit_switch_modifiers_disable:
-                            if modifier.type == "CORRECTIVE_SMOOTH" and rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection:
-                                modifier.show_viewport = not rig_settings.outfits_global_smoothcorrection
-                            elif modifier.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap:
-                                modifier.show_viewport = not rig_settings.outfits_global_shrinkwrap
-                            elif modifier.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface and rig_settings.outfits_global_subsurface:
-                                modifier.show_viewport = not rig_settings.outfits_global_subsurface
-
-                for modifier in rig_settings.model_body.modifiers:
-                    if modifier.type == "MASK" and obj.name in modifier.name:
-                        modifier.show_viewport = (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask
-                        modifier.show_render = (collection.name == outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and rig_settings.outfits_global_mask
-
-        # Update armature layers visibility, checking if some are 'Outfit' layers
-        rig_settings.update_armature_outfit_layers(context, arm.MustardUI_ArmatureSettings)
-
-        # Update custom properties with "On Switch" options
-        for cp in [x for x in arm.MustardUI_CustomPropertiesOutfit if
-                   x.outfit_enable_on_switch or x.outfit_disable_on_switch]:
-
-            if not rig_settings.outfit_nude and not cp.outfit:
-                continue
-
-            if cp.prop_name in arm.keys():
-                ui_data = arm.id_properties_ui(cp.prop_name)
-                ui_data_dict = ui_data.as_dict()
-
-                if cp.outfit:
-                    if cp.outfit_piece:
-                        outfit_piece_enable = not cp.outfit_piece.hide_viewport
-                        if cp.outfit.name == outfits_list and outfit_piece_enable and cp.outfit_enable_on_switch:
-                            arm[cp.prop_name] = ui_data_dict['max']
-                        elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                            if cp.outfit_piece.MustardUI_outfit_lock and outfit_piece_enable:
-                                arm[cp.prop_name] = ui_data_dict['max']
-                            else:
-                                arm[cp.prop_name] = ui_data_dict['default']
-                    else:
-                        if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
-                            arm[cp.prop_name] = ui_data_dict['max']
-                        elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                            arm[cp.prop_name] = ui_data_dict['default']
-                elif not cp.outfit and rig_settings.outfit_nude:  # Nude outfit
-                    if outfits_list == "Nude" and cp.outfit_enable_on_switch:
-                        arm[cp.prop_name] = ui_data_dict['max']
-                    elif not outfits_list == "Nude" and cp.outfit_disable_on_switch:
-                        arm[cp.prop_name] = ui_data_dict['default']
-
-        # Force Physics recheck
-        if physics_settings.enable_ui:
-            enable_physics_update(physics_settings, context)
-
-        if rig_settings.outfits_update_tag_on_switch:
-            arm.update_tag()
+        bpy.ops.mustardui.outfit_visibility()
 
     # Function to update the global outfit properties
     def outfits_global_options_subsurf_update(self, context):
@@ -465,42 +338,60 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         modifier.show_viewport = self.outfits_global_subsurface
 
     def outfits_global_options_update(self, context):
+        """Update global outfit options for all collections and their modifiers."""
 
-        collections = [x.collection for x in self.outfits_collections]
+        # Gather all collections (outfits + extras)
+        collections = [x.collection for x in self.outfits_collections if x.collection is not None]
         if self.extras_collection is not None:
             collections.append(self.extras_collection)
 
+        # Mapping: modifier type → (enabled_flag, value)
+        mod_settings = {
+            "CORRECTIVE_SMOOTH": (self.outfits_enable_global_smoothcorrection, self.outfits_global_smoothcorrection),
+            "MASK": (self.outfits_enable_global_mask, self.outfits_global_mask),
+            "SHRINKWRAP": (self.outfits_enable_global_shrinkwrap, self.outfits_global_shrinkwrap),
+            "SURFACE_DEFORM": (self.outfits_enable_global_surfacedeform, self.outfits_global_surfacedeform),
+            "SOLIDIFY": (self.outfits_enable_global_solidify, self.outfits_global_solidify),
+            "TRIANGULATE": (self.outfits_enable_global_triangulate, self.outfits_global_triangulate),
+        }
+
         for collection in collections:
             items = collection.all_objects if self.outfit_config_subcollections else collection.objects
+
             for obj in items:
-                MustardUI_RigSettings._set_normal_autosmooth(obj,
-                                                             self.outfits_global_normalautosmooth,
-                                                             self.outfits_enable_global_normalautosmooth)
+                # Update autosmooth
+                MustardUI_RigSettings._set_normal_autosmooth(
+                    obj,
+                    self.outfits_global_normalautosmooth,
+                    self.outfits_enable_global_normalautosmooth
+                )
 
-                for modifier in obj.modifiers:
-                    if modifier.type == "CORRECTIVE_SMOOTH" and self.outfits_enable_global_smoothcorrection:
-                        modifier.show_viewport = self.outfits_global_smoothcorrection
-                        modifier.show_render = self.outfits_global_smoothcorrection
-                    elif modifier.type == "MASK" and self.outfits_enable_global_mask:
-                        modifier.show_viewport = self.outfits_global_mask
-                        modifier.show_render = self.outfits_global_mask
-                    elif modifier.type == "SHRINKWRAP" and self.outfits_enable_global_shrinkwrap:
-                        modifier.show_viewport = self.outfits_global_shrinkwrap
-                        modifier.show_render = self.outfits_global_shrinkwrap
-                    elif modifier.type == "SURFACE_DEFORM" and self.outfits_enable_global_surfacedeform:
-                        modifier.show_viewport = self.outfits_global_surfacedeform
-                        modifier.show_render = self.outfits_global_surfacedeform
-                    elif modifier.type == "SOLIDIFY" and self.outfits_enable_global_solidify:
-                        modifier.show_viewport = self.outfits_global_solidify
-                        modifier.show_render = self.outfits_global_solidify
-                    elif modifier.type == "TRIANGULATE" and self.outfits_enable_global_triangulate:
-                        modifier.show_viewport = self.outfits_global_triangulate
-                        modifier.show_render = self.outfits_global_triangulate
+                # Update object modifiers
+                for mod in obj.modifiers:
+                    if mod.type not in mod_settings:
+                        continue
+                    enabled, value = mod_settings[mod.type]
+                    if not enabled:
+                        continue
+                    set_bool(mod, "show_viewport", value)
+                    set_bool(mod, "show_render", value)
 
-                for modifier in self.model_body.modifiers:
-                    if modifier.type == "MASK" and obj.name in modifier.name and self.outfits_enable_global_mask:
-                        modifier.show_viewport = ((collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
-                        modifier.show_render = ((collection.name == self.outfits_list or obj.MustardUI_outfit_lock) and not obj.hide_viewport and self.outfits_global_mask)
+                # Update body mask modifiers
+                if self.model_body is None:
+                    continue
+
+                for mod in self.model_body.modifiers:
+                    if mod.type != "MASK":
+                        continue
+                    if not self.outfits_enable_global_mask:
+                        continue
+                    if obj.name not in mod.name:
+                        continue
+                    visible = (collection.name == self.outfits_list or obj.MustardUI_outfit_lock) \
+                              and not obj.hide_viewport \
+                              and self.outfits_global_mask
+                    set_bool(mod, "show_viewport", visible)
+                    set_bool(mod, "show_render", visible)
 
     # List of the collections from which to extract the outfits
     outfits_collections: bpy.props.CollectionProperty(name="Outfits Collection List",
@@ -624,50 +515,58 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Hair collection
     def poll_collection_hair(self, object):
+        collections = [x.collection for x in self.outfits_collections]
         if self.extras_collection is not None:
-            return not object in [x.collection for x in self.outfits_collections] and object != self.extras_collection
-        return not object in [x.collection for x in self.outfits_collections]
+            collections.append(self.extras_collection)
+        return object not in collections
 
     hair_collection: bpy.props.PointerProperty(name="Hair Collection",
+                                               description="Collection with the Hair Objects.\nBoth Mesh and Armature "
+                                                           "Objects are considered. If the Armature is available, only "
+                                                           "the children will be added as Hair, and an automatic "
+                                                           "switch will also be added for the bones of the "
+                                                           "parent Armature",
                                                type=bpy.types.Collection,
                                                poll=poll_collection_hair)
 
+    def poll_collection_hair_switch(self, object):
+        collections = [x.collection for x in self.outfits_collections]
+        if self.extras_collection is not None:
+            collections.append(self.extras_collection)
+        if self.hair_collection is not None:
+            collections.append(self.hair_collection)
+        return object not in collections
+
+    hair_switch_collection: bpy.props.PointerProperty(name="Hair Switch Collection",
+                                                      type=bpy.types.Collection,
+                                                      description="Collection of Objects which disable the Hair.\nThis "
+                                                                  "can be useful when an Outfit piece has a dedicated "
+                                                                  "Hair Object, e.g. an helmet or a hat.\nThe Objects "
+                                                                  "can be added to this collection as Linked objects, "
+                                                                  "so they can belong to both the specific Outfit and "
+                                                                  "this Collection",
+                                                      poll=poll_collection_hair_switch)
+
     # Function to create an array of tuples for hair objects in the Hair collection
     def hair_list_make(self, context):
-
         items = []
 
         if self.hair_collection is None:
             return items
 
-        for el in self.hair_collection.objects:
-            if hasattr(el, 'name') and el.type == "MESH":
-                nname = el.name[len(self.model_name + ' '):] if self.model_MustardUI_naming_convention else el.name
-                items.append((el.name, nname, el.name))
+        prefix_len = len(self.model_name + ' ') if self.model_MustardUI_naming_convention else 0
+
+        for obj in self.hair_collection.objects:
+            if obj.type != "MESH":
+                continue
+            nname = obj.name[prefix_len:] if prefix_len else obj.name
+            items.append((obj.name, nname, obj.name))
 
         return sorted(items)
 
     # Function to update the requested hair
     def hair_list_update(self, context):
-
-        poll, arm = mustardui_active_object(context, config=0)
-
-        for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
-            obj.hide_viewport = not (self.hair_list in obj.name)
-            obj.hide_render = not (self.hair_list in obj.name)
-            for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE"]]:
-                if mod.type == "PARTICLE_SYSTEM":
-                    mod.show_viewport = self.hair_list in obj.name
-                    mod.show_render = self.hair_list in obj.name
-                else:
-                    mod.show_viewport = self.hair_list in obj.name if self.hair_switch_armature_disable else True
-
-        # Update armature layers visibility, checking if some are 'Outfit' layers
-        self.update_armature_outfit_layers(context, arm.MustardUI_ArmatureSettings)
-
-        if self.hair_update_tag_on_switch:
-            for obj in self.hair_collection.objects:
-                obj.update_tag()
+        bpy.ops.mustardui.hair_visibility()
 
     # Hair list
     hair_list: bpy.props.EnumProperty(name="Hair List",
@@ -765,23 +664,35 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         modifier.show_viewport = self.hair_global_subsurface
 
     def hair_global_options_update(self, context):
+        """Update global hair options for the collection and its modifiers."""
 
-        if self.hair_collection is not None:
-            for obj in self.hair_collection.objects:
-                MustardUI_RigSettings._set_normal_autosmooth(obj,
-                                                             self.hair_global_normalautosmooth,
-                                                             self.hair_enable_global_normalautosmooth)
+        if self.hair_collection is None:
+            return
 
-                for modifier in obj.modifiers:
-                    if modifier.type == "CORRECTIVE_SMOOTH" and self.hair_enable_global_smoothcorrection:
-                        modifier.show_viewport = self.hair_global_smoothcorrection
-                        modifier.show_render = self.hair_global_smoothcorrection
-                    elif modifier.type == "SOLIDIFY" and self.hair_enable_global_solidify:
-                        modifier.show_viewport = self.hair_global_solidify
-                        modifier.show_render = self.hair_global_solidify
-                    elif modifier.type == "PARTICLE_SYSTEM" and self.hair_enable_global_particles:
-                        modifier.show_viewport = self.hair_global_particles
-                        modifier.show_render = self.hair_global_particles
+        # Mapping of modifier type → (enabled_flag, value)
+        mod_settings = {
+            "CORRECTIVE_SMOOTH": (self.hair_enable_global_smoothcorrection, self.hair_global_smoothcorrection),
+            "SOLIDIFY": (self.hair_enable_global_solidify, self.hair_global_solidify),
+            "PARTICLE_SYSTEM": (self.hair_enable_global_particles, self.hair_global_particles),
+        }
+
+        for obj in self.hair_collection.objects:
+            # Update autosmooth if enabled
+            MustardUI_RigSettings._set_normal_autosmooth(
+                obj,
+                self.hair_global_normalautosmooth,
+                self.hair_enable_global_normalautosmooth
+            )
+
+            # Update relevant modifiers
+            for mod in obj.modifiers:
+                if mod.type not in mod_settings:
+                    continue
+                enabled, value = mod_settings[mod.type]
+                if not enabled:
+                    continue
+                set_bool(mod, "show_viewport", value)
+                set_bool(mod, "show_render", value)
 
     hair_global_subsurface: bpy.props.BoolProperty(default=True,
                                                    name="Subdivision Surface",
@@ -1065,7 +976,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                items=[("Standard", "Standard", "Standard", "RADIOBUT_ON", 0),
                                                       ("Beta", "Beta", "Beta", "RECORD_ON", 2),
                                                       ("Alpha", "Alpha", "Alpha", "RECORD_ON", 1)],
-                                               name="Rig type")
+                                               name="Version Status")
+    model_changelog_link: StringProperty(name="Changelog Link",
+                                         default="",
+                                         description="Link to a changelog webpage")
     model_minimum_blender_version: bpy.props.IntVectorProperty(name="Minimum Blender version",
                                                                size=3,
                                                                default=(0, 0, 0),

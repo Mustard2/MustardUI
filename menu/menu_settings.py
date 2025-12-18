@@ -43,6 +43,8 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             prop = rig_settings.bl_rna.properties["model_version_type"]
             icon = prop.enum_items[rig_settings.model_version_type].icon
             box.label(text=version, icon=icon)
+            if rig_settings.model_changelog_link != "":
+                box.operator('mustardui.openlink', text="Changelog", icon="URL").url = rig_settings.model_changelog_link
 
         # Left for old compatibility (Deprecated in MustardUI 2025.8)
         elif tuple(rig_settings.model_version_vector) == (0, 0, 0) and rig_settings.model_version != '':
