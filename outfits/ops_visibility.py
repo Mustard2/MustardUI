@@ -87,19 +87,18 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                     if ob == bcoll_settings.outfit_switcher_object:
                         bcoll.is_visible = not context.scene.objects[ob.name].hide_viewport and not bcoll_settings.outfit_switcher_collection.hide_viewport
 
-        if rig_settings.outfits_update_tag_on_switch:
-            for obju in context.scene.objects:
-                obju.update_tag()
-
         if self.shift:
-            for c in object.children:
+            for c in [x for x in object.children if x.hide_viewport != object.hide_viewport]:
                 bpy.ops.mustardui.object_visibility(obj=c.name, shift=True)
+        self.shift = False
 
         # Force Physics recheck
         if physics_settings.enable_ui:
             enable_physics_update(physics_settings, context)
 
-        self.shift = False
+        if rig_settings.outfits_update_tag_on_switch:
+            for obju in context.scene.objects:
+                obju.update_tag()
 
         return {'FINISHED'}
 
