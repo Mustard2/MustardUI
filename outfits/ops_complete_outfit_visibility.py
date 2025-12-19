@@ -91,7 +91,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                                 desired = True
                             # If the collection has locked objects but this obj is not the active one
                             elif locked_collection and not is_active:
-                                desired = obj.MustardUI_outfit_visibility if locked else False
+                                desired = not obj.MustardUI_outfit_visibility if locked else locked
                             # All other outfits
                             else:
                                 desired = False
