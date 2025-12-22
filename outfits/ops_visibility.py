@@ -87,10 +87,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                     ui_data = arm.id_properties_ui(prop).as_dict()
                     ui_data_cache[prop] = ui_data
 
-                if visible and cp.outfit_enable_on_switch:
+                if not visible and cp.outfit_enable_on_switch:
                     if arm[prop] != ui_data['max']:
                         arm[prop] = ui_data['max']
-                elif not visible and cp.outfit_disable_on_switch:
+                elif visible and cp.outfit_disable_on_switch:
                     if arm[prop] != ui_data['default']:
                         arm[prop] = ui_data['default']
 
