@@ -71,7 +71,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         armature = context.object
 
         if armature and armature.type == 'ARMATURE' and armature.mode == 'POSE':
-            if bpy.app.version < (5, 0, 0):
+            if bpy.app.version >= (5, 0, 0):
                 selected_bones = [bone for bone in armature.pose.bones if bone.select]
             else:
                 selected_bones = [bone for bone in armature.pose.bones if bone.bone.select]
