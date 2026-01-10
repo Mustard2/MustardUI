@@ -114,7 +114,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                         row.separator()
                         if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
                             status = any(x.particle_system.use_hair_dynamics for x in mod_particle_system)
-                            op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS")
+                            op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS", depress=status)
                             op.enable = not status
                             op.obj = obj.name
                         row.separator()
