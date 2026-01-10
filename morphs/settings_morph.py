@@ -28,7 +28,7 @@ class MustardUI_PresetMorph(bpy.types.PropertyGroup):
                                                    default="ARMATURE_OBJ")
 
     # Stored for presets usage
-    value: bpy.props.FloatProperty(name="Name")
+    value: bpy.props.FloatProperty()
 
 
 def register():

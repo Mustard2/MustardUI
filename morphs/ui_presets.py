@@ -88,12 +88,15 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
 
         preset = presets[self.preset_id]
 
+        errors = 0
+
         for preset_morph in preset.morphs:
             cp_source = get_cp_source(preset_morph.custom_property_source, rig_settings)
             val = preset_morph.value
             if cp_source and preset_morph.custom_property:
                 cp = cp_source.get(preset_morph.path)
                 if cp is None:
+                    errors += 1
                     continue
 
                 current_val = cp
@@ -106,8 +109,10 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
 
             elif preset_morph.shape_key and rig_settings.data and rig_settings.data.shape_keys:
                 kb = rig_settings.model_body.data.shape_keys.key_blocks.get(preset_morph.path)
-                if kb is not None:
-                    kb.value = val
+                if kb is None:
+                    errors += 1
+                    continue
+                kb.value = val
 
         # Update everything
         model_body = rig_settings.model_body
@@ -118,7 +123,10 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
         model_body.data.update_tag()
         model_body.data.update()
 
-        self.report({'INFO'}, f'MustardUI - Preset \'' + preset.name + '\' applied')
+        if errors == 0:
+            self.report({'INFO'}, f'MustardUI - Preset \'' + preset.name + '\' applied.')
+        else:
+            self.report({'WARNING'}, f'MustardUI - Preset \'' + preset.name + '\' applied with ' + str(errors) + ' missing entries.')
 
         return {'FINISHED'}
 
@@ -189,6 +197,8 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
             row = layout.row(align=True)
             row.operator("mustardui.morphs_preset_apply", text=preset.name).preset_id = pid
             row.operator("mustardui.morphs_preset_delete", text="", icon="X").preset_id = pid
+            row.separator()
+            row.operator("mustardui.morphs_preset_export", text="", icon="COPYDOWN").preset_id = pid
 
         if len(presets):
             layout.separator()
@@ -196,6 +206,9 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
         row = layout.row(align=True)
         row.prop(self, "new_preset_name", text="")
         row.operator("mustardui.morphs_preset_create", icon="PRESET_NEW", text="").new_preset_name = self.new_preset_name
+
+        row = layout.row(align=True)
+        row.operator("mustardui.morphs_preset_import", text="Import Preset", icon="PASTEDOWN")
 
 
 def register():

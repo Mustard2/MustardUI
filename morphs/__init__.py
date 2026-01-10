@@ -9,6 +9,7 @@ from . import ui_list_sections
 from . import ui_list_morphs
 from . import ui_list_morphs_menu
 from . import ui_presets
+from . import ops_presets_io
 
 
 def register():
@@ -23,9 +24,11 @@ def register():
     ui_list_morphs.register()
     ui_list_morphs_menu.register()
     ui_presets.register()
+    ops_presets_io.register()
 
 
 def unregister():
+    ops_presets_io.unregister()
     ui_presets.unregister()
     ui_list_morphs_menu.unregister()
     ui_list_morphs.unregister()
