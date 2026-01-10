@@ -109,6 +109,8 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
             row = layout.row()
             row.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK")
 
+        row.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
+
 
 class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
     bl_label = "Emotion Units"

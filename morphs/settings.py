@@ -1,6 +1,8 @@
 import bpy
 from .settings_morph import *
 from .settings_section import *
+from .settings_presets import *
+
 
 
 morphs_check_items = [("GENERIC", "Generic", "Generic"),
@@ -42,6 +44,8 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
     diffeomorphic_genesis_version: bpy.props.IntProperty(default=0)
 
     sections: bpy.props.CollectionProperty(type=MustardUI_Morph_Section)
+
+    presets: bpy.props.CollectionProperty(type=MustardUI_Morph_Preset)
 
 
 

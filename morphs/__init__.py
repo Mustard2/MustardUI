@@ -1,5 +1,6 @@
 from . import settings_morph
 from . import settings_section
+from . import settings_presets
 from . import settings
 from . import ops_checkmorphs
 from . import ops_defvalue
@@ -7,11 +8,13 @@ from . import ops_drivers
 from . import ui_list_sections
 from . import ui_list_morphs
 from . import ui_list_morphs_menu
+from . import ui_presets
 
 
 def register():
     settings_morph.register()
     settings_section.register()
+    settings_presets.register()
     settings.register()
     ops_checkmorphs.register()
     ops_defvalue.register()
@@ -19,9 +22,11 @@ def register():
     ui_list_sections.register()
     ui_list_morphs.register()
     ui_list_morphs_menu.register()
+    ui_presets.register()
 
 
 def unregister():
+    ui_presets.unregister()
     ui_list_morphs_menu.unregister()
     ui_list_morphs.unregister()
     ui_list_sections.unregister()
@@ -29,5 +34,6 @@ def unregister():
     ops_defvalue.unregister()
     ops_checkmorphs.unregister()
     settings.unregister()
+    settings_presets.unregister()
     settings_section.unregister()
     settings_morph.unregister()

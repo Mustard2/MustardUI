@@ -23,15 +23,21 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
         for section in morphs_settings.sections:
             for morph in section.morphs:
                 cp_source = get_cp_source(morph.custom_property_source, rig_settings)
-                if cp_source and morph.custom_property and hasattr(cp_source,
-                                                          f'["{bpy.utils.escape_identifier(morph.path)}"]'):
-                    val = cp_source[morph.path]
+                if cp_source and morph.custom_property and morph.path in cp_source:
+                    val = cp_source.get(morph.path)
+                    if val is None:
+                        continue
+
                     if isinstance(val, float):
                         cp_source[morph.path] = 0.
+                    if isinstance(val, int):
+                        cp_source[morph.path] = 0
                     elif isinstance(val, bool):
                         cp_source[morph.path] = True
                 elif morph.shape_key:
-                    rig_settings.data.shape_keys.key_blocks[morph.path].value = 0.
+                    kb = rig_settings.data.shape_keys.key_blocks.get(morph.path)
+                    if kb is not None:
+                        kb.value = 0.
 
         if arm:
             arm.update_tag()
