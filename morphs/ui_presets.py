@@ -115,13 +115,16 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
                 kb.value = val
 
         # Update everything
-        model_body = rig_settings.model_body
-
-        arm.update_tag()
-        rig_settings.model_armature_object.update_tag()
-        model_body.update_tag()
-        model_body.data.update_tag()
-        model_body.data.update()
+        if arm:
+            arm.update_tag()
+        if rig_settings.model_armature_object:
+            rig_settings.model_armature_object.update_tag()
+        if rig_settings.model_body:
+            rig_settings.model_body.update_tag()
+            if rig_settings.model_body.data:
+                rig_settings.model_body.data.update_tag()
+                rig_settings.model_body.data.update()
+        bpy.context.view_layer.update()
 
         if errors == 0:
             self.report({'INFO'}, f'MustardUI - Preset \'' + preset.name + '\' applied.')

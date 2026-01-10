@@ -39,6 +39,7 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                     if kb is not None:
                         kb.value = 0.
 
+        # Update everything
         if arm:
             arm.update_tag()
         if rig_settings.model_armature_object:
@@ -47,7 +48,7 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
             rig_settings.model_body.update_tag()
             if rig_settings.model_body.data:
                 rig_settings.model_body.data.update_tag()
-
+                rig_settings.model_body.data.update()
         bpy.context.view_layer.update()
 
         self.report({'INFO'}, 'MustardUI - Morphs values restored to default.')
