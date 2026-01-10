@@ -156,7 +156,7 @@ class MustardUI_Morphs_PresetDelete(bpy.types.Operator):
 
         presets.remove(self.preset_id)
 
-        self.report({'INFO'}, f'MustardUI - Preset \'' + preset_name + '\' applied')
+        self.report({'INFO'}, f'MustardUI - Preset \'' + preset_name + '\' deleted')
 
         return {'FINISHED'}
 
@@ -193,8 +193,11 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
 
         layout = self.layout
 
+        if len(presets):
+            box = layout.box()
+
         for pid, preset in enumerate(presets):
-            row = layout.row(align=True)
+            row = box.row(align=True)
             row.operator("mustardui.morphs_preset_apply", text=preset.name).preset_id = pid
             row.operator("mustardui.morphs_preset_delete", text="", icon="X").preset_id = pid
             row.separator()
@@ -205,8 +208,9 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
 
         row = layout.row(align=True)
         row.prop(self, "new_preset_name", text="")
-        row.operator("mustardui.morphs_preset_create", icon="PRESET_NEW", text="").new_preset_name = self.new_preset_name
+        row.operator("mustardui.morphs_preset_create", icon="ADD", text="").new_preset_name = self.new_preset_name
 
+        layout.separator()
         row = layout.row(align=True)
         row.operator("mustardui.morphs_preset_import", text="Import Preset", icon="PASTEDOWN")
 
