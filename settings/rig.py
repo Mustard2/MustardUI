@@ -487,7 +487,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                        "are not visible to increase performance")
 
     outfit_switch_modifiers_disable: bpy.props.BoolProperty(default=False,
-                                                            name="Disable Modifiers on Switch",
+                                                            name="Disable Heavy Modifiers on Switch",
                                                             description="Disable modifiers of Outfits that "
                                                                         "are not visible to increase performance.\n"
                                                                         "The properties enabled in Global "
