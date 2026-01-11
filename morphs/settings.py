@@ -47,6 +47,8 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
 
     presets: bpy.props.CollectionProperty(type=MustardUI_Morph_Preset)
 
+    morphs_optimized: bpy.props.BoolProperty(default=False)
+
 
 
     # DIFFEOMORPHIC support

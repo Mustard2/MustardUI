@@ -79,6 +79,8 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
+        #layout.operator("mustardui.morphs_optimize", depress=morphs_settings.morphs_optimized)
+
         # Diffeomorphic panel
         if morphs_settings.type != "GENERIC":
             layout.enabled = morphs_settings.diffeomorphic_enable
