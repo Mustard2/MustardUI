@@ -89,6 +89,8 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
             row2.prop(morphs_settings, 'diffeomorphic_filter_null', icon="FILTER", text="")
             row2.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK", text="")
             row2.prop(morphs_settings, 'diffeomorphic_enable_settings', icon="PREFERENCES", text="")
+            row2.separator()
+            row2.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
             if morphs_settings.diffeomorphic_enable_settings:
                 box = layout.box()
                 col = box.column(align=True)
@@ -108,8 +110,8 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
 
             row = layout.row()
             row.operator('mustardui.morphs_defaultvalues', icon="LOOP_BACK")
-
-        row.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
+            row.separator()
+            row.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
 
 
 class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
