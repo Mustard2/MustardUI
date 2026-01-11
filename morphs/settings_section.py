@@ -16,7 +16,8 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
     # Types for GENERIC type section
     string: bpy.props.StringProperty(default="",
                                      name="String",
-                                     description="String to search for adding Morphs.\nSeveral strings can be added if separated by commas.\nNote: spaces and order are considered")
+                                     description="String to search for adding Morphs.\nSeveral strings can be added "
+                                                 "if separated by commas.\nNote: spaces and order are considered")
     shape_keys: bpy.props.BoolProperty(default=False,
                                        name="Shape Keys",
                                        description="Search shape keys to be added as Morphs")
@@ -32,7 +33,7 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
     collapse: bpy.props.BoolProperty(name="", default=True)
 
     # Internal
-    # Prpperty for sections generated automatically that can not be modified
+    # Property for sections generated automatically that can not be modified
     is_internal: bpy.props.BoolProperty(default=False)
     # TYPE: 0: Emotion Units, 1: Emotions, 2: FACS Emotion Units, 3: FACS Emotions, 4: Body Morphs
     diffeomorphic_id: bpy.props.IntProperty(default=-1)
