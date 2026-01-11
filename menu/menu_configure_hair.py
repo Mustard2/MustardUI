@@ -39,12 +39,11 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
 
-                if settings.advanced:
-                    box = layout.box()
-                    box.label(text="General Settings", icon="MODIFIER")
-                    col = box.column(align=True)
-                    col.prop(rig_settings, "hair_switch_armature_disable")
-                    col.prop(rig_settings, "hair_update_tag_on_switch")
+                box = layout.box()
+                box.label(text="Optimization Settings", icon="FORCE_WIND")
+                col = box.column(align=True)
+                col.prop(rig_settings, "hair_switch_armature_disable")
+                col.prop(rig_settings, "hair_update_tag_on_switch")
 
                 # Global properties
                 box = layout.box()
