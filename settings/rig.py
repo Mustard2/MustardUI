@@ -494,9 +494,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                         "Properties are considered (Smooth Correction, "
                                                                         "Subdivision Surface and Shirnkwrap only)")
 
+    outfit_switch_shape_keys_disable: bpy.props.BoolProperty(default=False,
+                                                             name="Disable Shape Keys (and their drivers) on Switch",
+                                                             description="Disable the shape keys on the unused Outfits "
+                                                                         "(and their drivers) to increase performance")
+
     outfit_physics_support: bpy.props.BoolProperty(default=True,
                                                    name="Enable Outfit Physics support",
-                                                   description="If enabled, a button near outfit pieces with Physics modifiers is added to enable/disable physics")
+                                                   description="If enabled, a button near outfit pieces with Physics "
+                                                               "modifiers is added to enable/disable physics")
 
     # Extras
     def poll_collection_extras(self, object):
@@ -618,9 +624,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         update=hair_particle_hide_viewport_update)
 
     hair_particle_hide_render: bpy.props.BoolProperty(default=False,
-                                                        name="Hide Render",
-                                                        description="Hide the current Hair Particle and its Particle System modifiers",
-                                                        update=hair_particle_hide_render_update)
+                                                      name="Hide Render",
+                                                      description="Hide the current Hair Particle and its Particle System modifiers",
+                                                      update=hair_particle_hide_render_update)
 
     hair_particle_collapse: bpy.props.BoolProperty(default=False,
                                                    name="",
