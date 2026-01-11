@@ -34,6 +34,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         # Cache flags
         arm_disable = rig_settings.outfit_switch_armature_disable
         mods_disable = rig_settings.outfit_switch_modifiers_disable
+        sk_disable = rig_settings.outfit_switch_shape_keys_disable
 
         smooth = rig_settings.outfits_enable_global_smoothcorrection and rig_settings.outfits_global_smoothcorrection
         shrink = rig_settings.outfits_enable_global_shrinkwrap and rig_settings.outfits_global_shrinkwrap
@@ -81,6 +82,14 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
 
                 if show_obj:
                     any_object_visible = True
+
+                # Shape Keys and their drivers
+                if sk_disable and obj.type == "MESH" and obj.data and obj.data.shape_keys:
+                    for key in obj.data.shape_keys.key_blocks:
+                        set_bool(key, "mute", not show_obj)
+                    if obj.data.shape_keys.animation_data and obj.data.shape_keys.animation_data.drivers:
+                        for fcurve in obj.data.shape_keys.animation_data.drivers:
+                            set_bool(fcurve, "mute", not show_obj)
 
                 # Modifiers
                 if arm_disable or mods_disable:

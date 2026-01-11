@@ -1,6 +1,7 @@
 import bpy
 from ..model_selection.active_object import *
 from ..misc.mesh_intersection import check_mesh_intersection
+from ..misc.set_bool import set_bool
 
 
 def set_cage_modifiers(physics_item, iterator, s, obj, body):
@@ -59,6 +60,14 @@ def enable_physics_update(self, context):
             set_modifiers(pi, rig_settings.model_body, status)
         elif pi.type == "BONES_DRIVER":
             pi.bone_influence = status
+
+        # Shape Keys and their drivers
+        if pi.object.data and pi.object.data.shape_keys:
+            for key in pi.object.data.shape_keys.key_blocks:
+                set_bool(key, "mute", not status)
+            if pi.object.data.shape_keys.animation_data and pi.object.data.shape_keys.animation_data.drivers:
+                for fcurve in pi.object.data.shape_keys.animation_data.drivers:
+                    set_bool(fcurve, "mute", not status)
 
         if not status:
             pi.object.hide_viewport = True
@@ -120,6 +129,15 @@ def enable_physics_update_single(self, context):
             self.object.collision.use = status
             # Make the object visibile otherwise collisions might not work (Blender bug)
             self.object.hide_viewport = not status
+
+    # Shape Keys and their drivers
+    if self.object.data and self.object.data.shape_keys:
+        for key in self.object.data.shape_keys.key_blocks:
+            set_bool(key, "mute", not status)
+        if self.object.data.shape_keys.animation_data and self.object.data.shape_keys.animation_data.drivers:
+            for fcurve in self.object.data.shape_keys.animation_data.drivers:
+                set_bool(fcurve, "mute", not status)
+
     if self.type == "CAGE":
         set_cage_modifiers(self, rig_settings.model_body.modifiers, status, None, body)
         set_modifiers(self, rig_settings.model_body, status)
