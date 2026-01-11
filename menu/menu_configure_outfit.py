@@ -28,7 +28,6 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         layout = self.layout
         scene = context.scene
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
 
@@ -39,12 +38,13 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "outfit_physics_support", text="Physics Support")
         col.prop(rig_settings, "outfit_config_subcollections")
 
-        if settings.advanced:
-            col.separator()
-            col.prop(rig_settings, "outfit_switch_armature_disable")
-            col.prop(rig_settings, "outfit_switch_modifiers_disable")
-            col.prop(rig_settings, "outfit_switch_shape_keys_disable")
-            col.prop(rig_settings, "outfits_update_tag_on_switch")
+        box = layout.box()
+        box.label(text="Optimization Settings", icon="FORCE_WIND")
+        col = box.column(align=True)
+        col.prop(rig_settings, "outfit_switch_armature_disable")
+        col.prop(rig_settings, "outfit_switch_modifiers_disable")
+        col.prop(rig_settings, "outfit_switch_shape_keys_disable")
+        col.prop(rig_settings, "outfits_update_tag_on_switch")
 
         if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
             box = layout.box()
