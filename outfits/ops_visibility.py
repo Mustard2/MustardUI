@@ -46,7 +46,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             set_bool(o, "MustardUI_outfit_visibility", visible)
 
             # Shape Keys and their drivers
-            if rig_settings.outfit_switch_shape_keys_disable and obj.data and obj.data.shape_keys:
+            if rig_settings.outfit_switch_shape_keys_disable and obj.type == "MESH" and obj.data and obj.data.shape_keys:
                 for key in obj.data.shape_keys.key_blocks:
                     set_bool(key, "mute", visible)
                 if obj.data.shape_keys.animation_data and obj.data.shape_keys.animation_data.drivers:
