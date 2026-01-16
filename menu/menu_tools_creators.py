@@ -134,6 +134,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
+        row.operator('mustardui.tools_creators_link_shape_keys', icon="DRIVER_TRANSFORM")
+
+        row = layout.row(align=True)
         row.operator('mustardui.rename_model', icon="GREASEPENCIL")
 
 

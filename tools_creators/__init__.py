@@ -8,6 +8,7 @@ from . import ops_jiggle
 from . import ops_bone_physics
 from . import ops_face_controller
 from . import ops_rename
+from . import ops_link_shape_keys
 
 
 def register():
@@ -22,9 +23,11 @@ def register():
     ops_bone_physics.register()
     ops_face_controller.register()
     ops_rename.register()
+    ops_link_shape_keys.register()
 
 
 def unregister():
+    ops_link_shape_keys.unregister()
     ops_rename.unregister()
     ops_face_controller.unregister()
     ops_bone_physics.unregister()
