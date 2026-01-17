@@ -23,6 +23,7 @@ class MustardUI_Armature_ResetCollections(bpy.types.Operator):
 
         for coll in obj.collections_all:
             coll.is_visible = coll.MustardUI_ArmatureBoneCollection.is_in_UI and coll.MustardUI_ArmatureBoneCollection.default
+            coll.is_solo = False
 
         return {'FINISHED'}
 
