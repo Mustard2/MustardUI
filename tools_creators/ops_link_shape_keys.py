@@ -8,6 +8,11 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
     bl_description = "Link matching Shape Keys on selected objects to the active object using Drivers"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        selected_objs = context.selected_objects
+        return len(selected_objs) > 1
+
     def execute(self, context):
 
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -16,11 +21,16 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
         active_obj = context.active_object
         selected_objs = context.selected_objects
 
+        if len(selected_objs) < 2:
+            self.report({'ERROR'}, "MustardUI - Select at least two Objects")
+            return {'CANCELLED'}
+
         if not active_obj or not active_obj.data.shape_keys:
-            self.report({'ERROR'}, "Active object has no shape keys")
+            self.report({'ERROR'}, "MustardUI - Active object has no shape keys")
             return {'CANCELLED'}
 
         errors = 0
+        linked = 0
 
         active_keys = active_obj.data.shape_keys.key_blocks
 
@@ -60,14 +70,17 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
                         if debug:
                             print(f'MustardUI - Linked: Shape Key "{key.name}" in Object "{obj.name}"')
 
+                        linked += 1
+
                     except TypeError:
                         print(f'MustardUI - Can not link Shape Key "{key.name}" to Object "{obj.name}"')
                         errors += 1
 
         if errors == 0:
-            self.report({'INFO'}, f'MustardUI - Shape key linked to "{active_obj.name}".')
+            self.report({'INFO'}, f'MustardUI - {linked} Shape keys linked to "{active_obj.name}".')
         else:
-            self.report({'WARNING'}, f'MustardUI - Some shape keys could not be linked to "{active_obj.name}".')
+            self.report({'WARNING'}, f'MustardUI - {linked} Shape keys linked to "{active_obj.name}, '
+                                     f'but {errors} could not be linked.')
 
         return {'FINISHED'}
 
