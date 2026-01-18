@@ -73,6 +73,10 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        # Tool works only in Blender 5.0 or above
+        if bpy.app.version < (5, 0, 0):
+            return False
+
         selected_objs = [x for x in context.selected_objects if x.type == "MESH"]
         return len(selected_objs) > 1
 
