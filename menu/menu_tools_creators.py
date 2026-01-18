@@ -127,6 +127,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.operator('mustardui.tools_creators_link_shape_keys', icon="DRIVER_TRANSFORM")
 
+        row = layout.row(align=True)
+        row.operator('mustardui.tools_creators_transfer_vertex_groups', icon="GROUP_VERTEX")
+
 
 class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_ToolsCreators"
