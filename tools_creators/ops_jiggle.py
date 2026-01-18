@@ -197,7 +197,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                                           default=True)
     proxy_subdivisions: bpy.props.IntProperty(name='Cage Resolution',
                                               description='Resolution of the cage.\nThis is the number of subdivisions in the resulting cage',
-                                              default=1, subtype='NONE', min=1, max=4)
+                                              default=1, subtype='NONE', min=1, max=8)
     object_direction: bpy.props.EnumProperty(name="Pin Direction",
                                              description="Direction where to create the Pin group weights.\nThe direction in global coordinates is the direction in which the weights decreases",
                                              items=[("+X", "+X", "+X"), ("-X", "-X", "-X"), ("+Y", "+Y", "+Y"),
@@ -690,8 +690,6 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         layout.prop(self, 'parent_to_model')
 
     def invoke(self, context, event):
-        self.merge_proxies = True
-        self.proxy_subdivisions = 1
         return context.window_manager.invoke_props_dialog(self, width=300)
 
 
