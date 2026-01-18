@@ -6,7 +6,6 @@ from .. import __package__ as base_package
 from datetime import datetime
 
 
-
 class MustardUI_Configuration(bpy.types.Operator):
     """Configure MustardUI"""
     bl_idname = "mustardui.configuration"
@@ -136,9 +135,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                             print(
                                 'MustardUI - Configuration Warning - The hair_list property index seems to be '
                                 'corrupted. Try to remove the UI and re-add it')
-
-
-
 
             # Setting the model version date if requested
             if rig_settings.model_version_date_enable:
