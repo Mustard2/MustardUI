@@ -6,11 +6,11 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_link_shape_keys"
     bl_label = "Link Shape Keys to Active"
     bl_description = "Link matching Shape Keys on selected objects to the active object using Drivers"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        selected_objs = context.selected_objects
+        selected_objs = [x for x in context.selected_objects if x.type == "MESH"]
         return len(selected_objs) > 1
 
     def execute(self, context):
@@ -20,6 +20,10 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
 
         active_obj = context.active_object
         selected_objs = context.selected_objects
+
+        if not active_obj or active_obj.type != 'MESH':
+            self.report({'ERROR'}, "MustardUI - Active object must be a Mesh")
+            return {'CANCELLED'}
 
         if len(selected_objs) < 2:
             self.report({'ERROR'}, "MustardUI - Select at least two Objects")
@@ -36,6 +40,9 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
 
         for obj in selected_objs:
             if obj == active_obj:
+                continue
+
+            if obj.type != "MESH":
                 continue
 
             if not obj.data.shape_keys:

@@ -71,6 +71,11 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
     search_group: bpy.props.StringProperty(name="Vertex Group",
                                            description="Vertex Group to transfer from active to selected Objects")
 
+    @classmethod
+    def poll(cls, context):
+        selected_objs = [x for x in context.selected_objects if x.type == "MESH"]
+        return len(selected_objs) > 1
+
     def draw(self, context):
         scene = context.scene
         layout = self.layout
@@ -105,7 +110,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         targets = [o for o in context.selected_objects if o != source]
 
         if not source or source.type != 'MESH':
-            self.report({'ERROR'}, "MustardUI - Active object must be a mesh")
+            self.report({'ERROR'}, "MustardUI - Active Object must be a Mesh")
             return {'CANCELLED'}
 
         # Filter out invalid vertex groups from the list
@@ -117,7 +122,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
 
         items_to_transfer = len(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items) - len(items_not_valid)
         if items_to_transfer < 1:
-            self.report({'ERROR'}, "MustardUI - No vertex groups selected")
+            self.report({'ERROR'}, "MustardUI - No Vertex Groups to transfer")
             return {'CANCELLED'}
 
         for target in targets:
@@ -159,7 +164,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
 
         context.view_layer.objects.active = source
 
-        self.report({'INFO'}, "MustardUI - Vertex groups transferred")
+        self.report({'INFO'}, "MustardUI - Vertex Groups transferred")
 
         return {'FINISHED'}
 
