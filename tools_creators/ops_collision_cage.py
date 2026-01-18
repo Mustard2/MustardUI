@@ -31,7 +31,6 @@ the scope of MustardUI
 import bpy
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
-from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):

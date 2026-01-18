@@ -11,7 +11,7 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=-1)
         rig_settings = arm.MustardUI_RigSettings
 
         uilist = rig_settings.outfits_collections
