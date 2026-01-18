@@ -106,7 +106,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             body = rig_settings.model_body
             if body:
                 for mod in body.modifiers:
-                    if mod.type == "MASK" and self.obj in mod.name and rig_settings.outfits_global_mask:
+                    if mod.type == "MASK" and mod.name.endswith(self.obj) and rig_settings.outfits_global_mask:
                         set_bool(mod, "show_viewport", not o.hide_viewport)
                         set_bool(mod, "show_render", not o.hide_viewport)
             else:
