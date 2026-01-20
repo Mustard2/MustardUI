@@ -22,14 +22,17 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
 
         obj = rig_settings.model_body
         enable = not morphs_settings.morphs_optimized
-        sections = morphs_settings.sections
+        sections = [x for x in morphs_settings.sections if x.freezable]
 
-        # Shape Keys and their drivers
+        # Body: Shape Keys and their drivers
         if obj is not None and obj.data and obj.data.shape_keys:
 
             if obj.data.shape_keys.key_blocks:
                 key_block = obj.data.shape_keys.key_blocks
                 for section in sections:
+                    if enable:
+                        section.collapse = True
+
                     for morph in section.morphs:
                         if (morph.path not in key_block or
                                 "facs" in morph.path or

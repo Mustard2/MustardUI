@@ -29,6 +29,15 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
                                                      description="Object to look for Morphs",
                                                      name="Morphs Source")
 
+    freezable: bpy.props.BoolProperty(default=True,
+                                      name="Freezable",
+                                      description="If disabled, morphs in this section will not be disabled when "
+                                                  "using the Freeze Morphs option")
+    hidden: bpy.props.BoolProperty(default=False,
+                                   name="Hidden",
+                                   description="Hide the section for the UI.\nCan be useful to use the Morphs in the"
+                                               "list as just targets for the Freeze Morphs feature")
+
     # Collapse button
     collapse: bpy.props.BoolProperty(name="", default=True)
 

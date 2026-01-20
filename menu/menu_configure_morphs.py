@@ -29,7 +29,6 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         res, arm = mustardui_active_object(context, config=1)
-        rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 
         box = layout.box()
@@ -84,6 +83,10 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
             col2 = row.column()
             col2.enabled = section.custom_properties
             col2.prop(section, 'custom_properties_source', text="")
+
+            col.separator()
+            col.prop(section, 'hidden')
+            col.prop(section, 'freezable')
 
             col.separator()
             col.prop(section, 'icon')
