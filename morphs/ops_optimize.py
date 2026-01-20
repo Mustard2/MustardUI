@@ -26,36 +26,44 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
 
         # Body: Shape Keys and their drivers
         if obj is not None and obj.data and obj.data.shape_keys:
-
-            if obj.data.shape_keys.key_blocks:
+            has_key_blocks = True if obj.data.shape_keys.key_blocks else False
+            has_animation_data = True if obj.data.shape_keys.animation_data and obj.data.shape_keys.animation_data.drivers else False
+            key_block = None
+            if has_key_blocks:
                 key_block = obj.data.shape_keys.key_blocks
-                for section in sections:
-                    if enable:
-                        section.collapse = True
 
-                    for morph in section.morphs:
-                        if (morph.path not in key_block or
-                                "facs" in morph.path or
-                                "jcm" in morph.path or
-                                "body_cbs" in morph.path):
+            for section in sections:
+                # Collapse Frozen sections to avoid UI clutter
+                if enable:
+                    section.collapse = True
+
+                for morph in section.morphs:
+
+                    # Skip Diffeomorphic emotion units and correctives
+                    if "facs" in morph.path or "jcm" in morph.path or "body_cbs" in morph.path:
+                        continue
+
+                    # Shape Keys
+                    if has_key_blocks:
+                        if morph.path not in key_block:
                             continue
                         if abs(key_block[morph.path].value) < 0.001:
                             set_bool(key_block[morph.path], "mute", enable)
 
-            if obj.data.shape_keys.animation_data and obj.data.shape_keys.animation_data.drivers:
-                for section in sections:
-                    for morph in section.morphs:
+                    # Drivers
+                    if has_animation_data:
                         for fcurve in obj.data.shape_keys.animation_data.drivers:
-                            if (not fcurve.data_path == f'key_blocks["{morph.path}"].value' or
-                                    "facs" in morph.path or
-                                    "jcm" in morph.path or
-                                    "body_cbs" in morph.path):
+                            if not fcurve.data_path == f'key_blocks["{morph.path}"].value':
                                 continue
-                            set_bool(fcurve, "mute", enable)
+                            if (has_key_blocks and abs(key_block[morph.path].value) < 0.001) or (not has_key_blocks):
+                                set_bool(fcurve, "mute", enable)
 
         morphs_settings.morphs_optimized = enable
 
-        self.report({'INFO'}, 'MustardUI - Morphs optimized.')
+        if enable:
+            self.report({'INFO'}, 'MustardUI - Morphs optimized.')
+        else:
+            self.report({'INFO'}, 'MustardUI - Morphs optimization disabled.')
 
         return {'FINISHED'}
 
