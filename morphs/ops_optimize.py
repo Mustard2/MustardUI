@@ -5,7 +5,7 @@ from ..misc.set_bool import set_bool
 
 
 class MustardUI_Morphs_Optimize(bpy.types.Operator):
-    """Enable/disable morph optimization"""
+    """Enable/disable Morph Optimization.\nWhen enabled, the shape keys and drivers of the Morphs with null values are disabled to increase performance. When Morphs are frozen, they can not be changed."""
     bl_idname = "mustardui.morphs_optimize"
     bl_label = "Morph Optimize"
 
