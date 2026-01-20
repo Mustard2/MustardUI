@@ -28,6 +28,7 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
         if obj is not None and obj.data and obj.data.shape_keys:
             has_key_blocks = True if obj.data.shape_keys.key_blocks else False
             has_animation_data = True if obj.data.shape_keys.animation_data and obj.data.shape_keys.animation_data.drivers else False
+
             key_block = None
             if has_key_blocks:
                 key_block = obj.data.shape_keys.key_blocks
