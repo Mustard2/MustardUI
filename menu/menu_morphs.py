@@ -103,23 +103,26 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 row.enabled = not morphs_settings.diffeomorphic_enable_facs
                 row.prop(morphs_settings, 'diffeomorphic_enable_facs_bones')
 
-            layout.operator("mustardui.morphs_optimize",
-                            text="Morphs Freeze",
-                            depress=morphs_settings.morphs_optimized,
-                            icon="FREEZE")
+            if morphs_settings.enable_freeze_morphs:
+                layout.operator("mustardui.morphs_optimize",
+                                text="Morphs Freeze",
+                                depress=morphs_settings.morphs_optimized,
+                                icon="FREEZE")
         # Generic panel
         else:
             sections = [x for x in morphs_settings.sections if x.morphs and not x.hidden]
 
             row = layout.row()
-            row.operator("mustardui.morphs_optimize",
-                         text="Morphs Freeze",
-                         depress=morphs_settings.morphs_optimized,
-                         icon="FREEZE")
+            if morphs_settings.enable_freeze_morphs:
+                row.operator("mustardui.morphs_optimize",
+                             text="Morphs Freeze",
+                             depress=morphs_settings.morphs_optimized,
+                             icon="FREEZE")
 
             if len(sections):
                 row2 = row.row(align=True)
-                row2.operator('mustardui.morphs_defaultvalues', text="", icon="LOOP_BACK")
+                row2.operator('mustardui.morphs_defaultvalues', text=""
+                    if morphs_settings.enable_freeze_morphs else "Restore Default Values", icon="LOOP_BACK")
                 row2.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
 
             sections = [x for x in morphs_settings.sections if x.morphs and not x.hidden]

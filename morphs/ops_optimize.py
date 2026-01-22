@@ -13,7 +13,7 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui
+        return res and morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
 
     def execute(self, context):
         poll, arm = mustardui_active_object(context, config=0)

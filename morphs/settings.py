@@ -3,8 +3,6 @@ from .settings_morph import *
 from .settings_section import *
 from .settings_presets import *
 
-
-
 morphs_check_items = [("GENERIC", "Generic", "Generic"),
                       ("DIFFEO_GENESIS_8", "Diffeomorphic Genesis 8", "Diffeomorphic Genesis 8"),
                       ("DIFFEO_GENESIS_9", "Diffeomorphic Genesis 9", "Diffeomorphic Genesis 9")]
@@ -12,7 +10,6 @@ morphs_check_items = [("GENERIC", "Generic", "Generic"),
 
 # Function to update global collection properties
 def diffeomorphic_enable_update(self, context):
-
     if self.diffeomorphic_enable:
         bpy.ops.mustardui.morphs_enabledrivers()
     else:
@@ -30,12 +27,19 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
 
     type: bpy.props.EnumProperty(items=morphs_check_items,
                                  default="DIFFEO_GENESIS_8",
-                                 description="Type of Morphs to add.\nIf Morphs are already available, this setting can not be changed. Clear the Morphs before changing this setting",
+                                 description="Type of Morphs to add.\nIf Morphs are already available, this setting "
+                                             "can not be changed. Clear the Morphs before changing this setting",
                                  name="Morphs Type")
 
     show_type_icon: bpy.props.BoolProperty(default=False,
                                            name="Show Type Icon",
                                            description="Show Morph type icon in the UI")
+
+    enable_freeze_morphs: bpy.props.BoolProperty(default=False,
+                                                 name="Enable Freeze Morphs",
+                                                 description="If this option is enabled, the Freeze Morphs operator "
+                                                             "will be shown in the Morphs panel.\nThis operator "
+                                                             "disables the Morphs not in use to increase performance")
 
     # INTERNAL
 
@@ -48,8 +52,6 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
     presets: bpy.props.CollectionProperty(type=MustardUI_Morph_Preset)
 
     morphs_optimized: bpy.props.BoolProperty(default=False)
-
-
 
     # DIFFEOMORPHIC support
 
