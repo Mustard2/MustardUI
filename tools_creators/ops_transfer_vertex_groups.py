@@ -87,7 +87,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         # UIList showing selected vertex groups
         row = layout.row()
         row.template_list(
-            "MustardUI_ToolsCreators_UIList_TransferVertexGroups",
+            "MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups",
             "",
             scene,
             "MustardUI_ToolsCreators_TransferVertexGroups_Items",
