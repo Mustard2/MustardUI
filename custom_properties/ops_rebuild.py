@@ -82,14 +82,13 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
                 if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
                     try:
-                        default_bool = int(evaluate_path(custom_prop.rna, custom_prop.path))
+                        default_bool = bool(evaluate_path(custom_prop.rna, custom_prop.path))
                     except:
                         print(
                             "MustardUI - Can not find the property " + mustardui_cp_path(custom_prop.rna, custom_prop.path))
                         default_bool = True
-                    rna_idprop_ui_create(obj, prop_name, default=default_bool,
-                                         min=0,
-                                         max=1,
+                    rna_idprop_ui_create(obj, prop_name,
+                                         default=True,
                                          description=custom_prop.description,
                                          overridable=True)
 
