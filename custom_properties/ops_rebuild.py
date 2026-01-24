@@ -88,7 +88,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             "MustardUI - Can not find the property " + mustardui_cp_path(custom_prop.rna, custom_prop.path))
                         default_bool = True
                     rna_idprop_ui_create(obj, prop_name,
-                                         default=True,
+                                         default=default_bool,
                                          description=custom_prop.description,
                                          overridable=True)
 
