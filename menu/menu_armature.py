@@ -135,6 +135,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         layout.separator()
         layout.operator('mustardui.armature_reset_bcoll', icon="LOOP_BACK", text="Reset Layers Visibility")
         layout.operator('mustardui.armature_clearpose', icon="OUTLINER_OB_ARMATURE", text="Reset Pose")
+        layout.operator('mustardui.armature_transfer_animation', icon="RENDER_ANIMATION")
 
 
 def register():
