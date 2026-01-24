@@ -188,6 +188,10 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                             mustardui_custom_properties_print(arm, settings, custom_properties, box,
                                                               rig_settings.outfit_custom_properties_icons)
 
+                    if settings.advanced:
+                        row.separator()
+                        row.operator("mustardui.delete_outfit", text="", icon="TRASH")
+
                     for obj in sorted(items, key=lambda x: x.name):
                         draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 0, 0)
 
