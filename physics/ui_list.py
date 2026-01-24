@@ -61,8 +61,10 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
                 for mod in item.object.modifiers:
                     if mod.type in ["CLOTH"]:
                         found_cloth = True
+                        break
                     elif mod.type in ["SOFT_BODY"]:
                         found_soft = True
+                        break
 
                 if not found_soft and not found_cloth:
                     row.prop(self, "warning", icon="ERROR", text="", icon_only=True, emboss=False)
