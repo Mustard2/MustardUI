@@ -29,23 +29,22 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         res, arm = mustardui_active_object(context, config=1)
-        rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 
         box = layout.box()
         box.label(text="General", icon="MODIFIER")
-        row = box.row()
-        row.prop(morphs_settings, "enable_ui", text="Enable Morph Panel")
+        col = box.column(align=True)
+        col.prop(morphs_settings, "enable_ui", text="Enable Morph Panel")
+        col.prop(morphs_settings, "enable_freeze_morphs")
 
+        box = layout.box()
+        box.label(text="Morphs Type", icon="ASSET_MANAGER")
         row = box.row(align=True)
         row.enabled = morphs_settings.enable_ui and not morphs_settings.sections
-        row.label(text="Type:")
-        row.scale_x = 5
         row.prop(morphs_settings, "type", text="")
-
-        row = box.row(align=True)
-        row.operator('mustardui.morphs_check', text="Search and Add Morphs", icon="ADD")
-        row.operator('mustardui.morphs_clear', text="", icon="X")
+        if morphs_settings.sections:
+            row = box.row(align=True)
+            row.label(text="Clear Morphs to change Type", icon="ERROR")
 
         if not morphs_settings.sections and morphs_settings.type == "GENERIC":
             box = layout.box()
@@ -86,6 +85,13 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
             col2.prop(section, 'custom_properties_source', text="")
 
             col.separator()
+            col.prop(section, 'hidden')
+
+            row = col.row()
+            row.enabled = morphs_settings.enable_freeze_morphs
+            row.prop(section, 'freezable')
+
+            col.separator()
             col.prop(section, 'icon')
 
             if (arm.mustardui_morphs_section_uilist_index > -1 and
@@ -109,13 +115,19 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                     col.enabled = not section.is_internal
                     col.prop(morphs_settings, 'show_type_icon')
 
-            if morphs_settings.type != "GENERIC":
-                box = layout.box()
-                box.enabled = morphs_settings.enable_ui
-                row = box.row(align=True)
-                row.label(text="Disable Exceptions")
-                row.scale_x = row_scale
-                row.prop(morphs_settings, "diffeomorphic_disable_exceptions", text="")
+        box = layout.box()
+        box.label(text="Add Morphs", icon="PLUS")
+        col = box.column(align=True)
+        col.operator('mustardui.morphs_check', text="Search and Add Morphs", icon="ADD")
+        col.operator('mustardui.morphs_clear', text="Clear Morphs", icon="X")
+
+        if morphs_settings.type != "GENERIC":
+            box = layout.box()
+            box.enabled = morphs_settings.enable_ui
+            row = box.row(align=True)
+            row.label(text="Disable Exceptions")
+            row.scale_x = row_scale
+            row.prop(morphs_settings, "diffeomorphic_disable_exceptions", text="")
 
 
 def register():

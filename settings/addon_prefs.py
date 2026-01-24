@@ -24,9 +24,9 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     # Debug mode
     debug: BoolProperty(default=False,
                         name="Debug Mode",
-                        description="Unlock Debug Mode.\nMore messaged will be generated in the "
+                        description="Unlock Debug Mode.\nMore messages are generated in the "
                                     "console.\nEnable it only if you encounter problems, as it might "
-                                    "degrade general Blender performance")
+                                    "degrade general performance")
 
     # Experimental features
     experimental: BoolProperty(default=False,

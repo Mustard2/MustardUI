@@ -25,6 +25,7 @@ class MustardUI_Armature_ResetCollections(bpy.types.Operator):
                 coll.MustardUI_ArmatureBoneCollection.is_in_UI
                 and coll.MustardUI_ArmatureBoneCollection.default
             )
+            coll.is_solo = False
 
         return {"FINISHED"}
 

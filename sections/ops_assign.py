@@ -55,8 +55,9 @@ class MustardUI_Body_AssignToSection(bpy.types.Operator):
         layout = self.layout
 
         box = layout.box()
+        col = box.column(align=True)
         for prop in sorted(custom_props, key=lambda x: x.name):
-            row = box.row(align=False)
+            row = col.row(align=False)
             row.prop(prop, 'add_section', text="")
             row.label(text=prop.name, icon="SHAPEKEY_DATA" if prop.type in [0, 1] else "MATERIAL")
 

@@ -132,6 +132,8 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                         [c if not c.isupper() else ' ' + c for c in emotion[len('eCTRL') + 1:]])
                     mustardui_add_morph(morphs_settings.sections[0].morphs, [name, emotion])
 
+                morphs_settings.sections[0].freezable = False
+
             # Emotions
             mustardui_add_section(morphs_settings.sections, ["Emotions"], is_internal=True, diffeomorphic=1)
             if morphs_settings.diffeomorphic_emotions and morphs_settings.type == "DIFFEO_GENESIS_8":
@@ -175,6 +177,8 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                         [c if not c.isupper() else ' ' + c for c in emotion[emotion.rfind('_', 0, 12) + 2:]])
                     name = name.removesuffix('_div2')
                     mustardui_add_morph(morphs_settings.sections[2].morphs, [name, emotion])
+
+                morphs_settings.sections[2].freezable = False
 
             # FACS Emotions
             sec = "Advanced Emotions" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotions"

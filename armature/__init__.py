@@ -1,4 +1,11 @@
-from . import definitions, ops_clearpose, ops_reset, ops_smartcheck, ui_list
+from . import (
+    definitions,
+    ops_clearpose,
+    ops_reset,
+    ops_smartcheck,
+    ops_transfer_animation,
+    ui_list,
+)
 
 
 def register():
@@ -6,11 +13,13 @@ def register():
     ops_smartcheck.register()
     ops_clearpose.register()
     ops_reset.register()
+    ops_transfer_animation.register()
     ui_list.register()
 
 
 def unregister():
     ui_list.unregister()
+    ops_transfer_animation.unregister()
     ops_reset.unregister()
     ops_clearpose.unregister()
     ops_smartcheck.unregister()
