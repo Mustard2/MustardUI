@@ -187,7 +187,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
 
 def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Item)
-    bpy.utils.register_class(MustardUI_ToolsCreators_UIList_TransferVertexGroups)
+    bpy.utils.register_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Add)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Remove)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups)
@@ -206,5 +206,5 @@ def unregister():
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Remove)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Add)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_UIList_TransferVertexGroups)
+    bpy.utils.unregister_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Item)
