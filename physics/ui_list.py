@@ -46,10 +46,15 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
 class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
     """UIList for Physics Items"""
 
+    warning: bpy.props.BoolProperty(name="Warning",
+                                    description="The Physics Item seems not to have any Physics modifier active")
+
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.object:
             layout.prop(item.object, 'name', text="", emboss=False, translate=False)
-            layout.label(text="", icon=mustardui_physics_item_type_dict[item.type])
+            row = layout.row(align=True)
+
+            # Show a Warning if no Physics modifier is found on the Physics Item
             if item.type == "CAGE":
                 found_cloth = False
                 found_soft = False
@@ -59,9 +64,8 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
                     elif mod.type in ["SOFT_BODY"]:
                         found_soft = True
 
-                row = layout.row(align=True)
-                row.label(text="", icon="MOD_CLOTH" if found_cloth else "BLANK1")
-                row.label(text="", icon="MOD_SOFT" if found_soft else "BLANK1")
+                if not found_soft and not found_cloth:
+                    row.prop(self, "warning", icon="ERROR", text="", icon_only=True, emboss=False)
             elif item.type == "COLLISION":
                 found = False
                 for mod in item.object.modifiers:
@@ -69,13 +73,11 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
                         found = True
                         break
 
-                row = layout.row(align=True)
-                row.label(text="", icon="BLANK1")
-                row.label(text="", icon="MOD_PHYSICS" if found else "BLANK1")
-            else:
-                row = layout.row(align=True)
-                row.label(text="", icon="BLANK1")
-                row.label(text="", icon="BLANK1")
+                if not found:
+                    row.prop(self, "warning", icon="ERROR", text="", icon_only=True, emboss=False)
+
+            row.label(text="", icon=mustardui_physics_item_type_dict[item.type])
+            row.label(text="", icon="MOD_CLOTH" if item.outfit_enable and item.outfit_collection else "BLANK1")
         else:
             layout.label(text="Object not found!", icon="ERROR")
 
