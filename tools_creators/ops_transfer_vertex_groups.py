@@ -5,7 +5,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Item(bpy.types.PropertyGroup)
     group_name: bpy.props.StringProperty(name="Vertex Group")
 
 
-class MustardUI_ToolsCreators_UIList_TransferVertexGroups(bpy.types.UIList):
+class MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row()
