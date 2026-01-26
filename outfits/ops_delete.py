@@ -24,13 +24,6 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         else:
             col = bpy.data.collections[rig_settings.outfits_list]
 
-            # Find the id to remove the Outfit from the outfit list
-            outfit_id = -1
-            for id, outfit in enumerate(rig_settings.outfits_collections):
-                if col == outfit.collection:
-                    outfit_id = id
-                    break
-
         bpy.ops.mustardui.remove_outfit(is_config=self.is_config)
 
         if not col:
