@@ -1,13 +1,24 @@
 import bpy
 from .. import __package__ as base_package
 from bpy.props import *
-from ..custom_properties.misc import mustardui_clean_prop
+from ..custom_properties.misc import mustardui_clean_prop, mustardui_reassign_default
 from ..model_selection.active_object import *
 from ..morphs.misc import isDazFcurve
 
 
-def remove_cps(arm, uilist, addon_prefs):
+def remove_cps(arm, uilist, addon_prefs, rig_settings):
     to_remove = []
+
+    # Firstly set the custom property to their default value
+    for i, cp in enumerate(uilist):
+        mustardui_reassign_default(arm, uilist, i, addon_prefs)
+
+    # Update everything
+    if rig_settings.model_armature_object:
+        rig_settings.model_armature_object.update_tag()
+    bpy.context.view_layer.update()
+
+    # And then delete data
     for i, cp in enumerate(uilist):
         mustardui_clean_prop(arm, uilist, i, addon_prefs)
         to_remove.append(i)
@@ -401,7 +412,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     i += 1
 
                 context.scene.mustardui_outfits_uilist_index = i
-                bpy.ops.mustardui.delete_outfit()
+                bpy.ops.mustardui.delete_outfit(is_config=True)
                 outfits_deleted = outfits_deleted + 1
 
             rig_settings.outfits_list = current_outfit
@@ -524,13 +535,13 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         # Remove custom properties
         if self.remove_body_cp:
-            body_cp_removed = remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs)
+            body_cp_removed = remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs, rig_settings)
             print("  Body Custom Properties deleted: " + str(body_cp_removed))
         if self.remove_outfit_cp:
-            outfit_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs)
+            outfit_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs, rig_settings)
             print("  Outfit Custom Properties deleted: " + str(outfit_cp_removed))
         if self.remove_hair_cp:
-            hair_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs)
+            hair_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs, rig_settings)
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed))
 
         # Final messages

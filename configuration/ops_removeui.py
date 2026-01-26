@@ -92,9 +92,9 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         for i in reversed(range(len(rig_settings.outfits_collections))):
             context.scene.mustardui_outfits_uilist_index = i
             if self.delete_objects:
-                bpy.ops.mustardui.delete_outfit()
+                bpy.ops.mustardui.delete_outfit(is_config=True)
             elif self.delete_settings:
-                bpy.ops.mustardui.remove_outfit()
+                bpy.ops.mustardui.remove_outfit(is_config=True)
 
         if self.delete_objects:
             if rig_settings.hair_collection is not None:
