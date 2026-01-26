@@ -66,8 +66,8 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             opdown.direction = "DOWN"
             col.separator()
             col.operator("mustardui.rename_outfit", text="", icon="GREASEPENCIL").right_click_call = False
-            col.operator("mustardui.remove_outfit", text="", icon="X")
-            col.operator("mustardui.delete_outfit", text="", icon="TRASH")
+            col.operator("mustardui.remove_outfit", text="", icon="X").is_config = True
+            col.operator("mustardui.delete_outfit", text="", icon="TRASH").is_config = True
 
             # Outfit properties
             box = layout.box()

@@ -64,8 +64,8 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     # Outfits support
     outfit_enable: bpy.props.BoolProperty(default=False,
                                           name="Outfit Physics",
-                                          description="Assign this Physics Item to an outfit.\n The outfit will be "
-                                                      "shown near the Outfit piece instead of the Physics Items list")
+                                          description="Assign this Physics Item to an outfit.\nThe outfit will be "
+                                                      "shown also near the Outfit piece")
 
     outfit_collection: bpy.props.PointerProperty(name="Outfit/Hair",
                                                  description="Outfit/Hair collection",

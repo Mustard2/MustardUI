@@ -5,7 +5,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Item(bpy.types.PropertyGroup)
     group_name: bpy.props.StringProperty(name="Vertex Group")
 
 
-class MustardUI_ToolsCreators_UIList_TransferVertexGroups(bpy.types.UIList):
+class MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row()
@@ -87,7 +87,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         # UIList showing selected vertex groups
         row = layout.row()
         row.template_list(
-            "MustardUI_ToolsCreators_UIList_TransferVertexGroups",
+            "MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups",
             "",
             scene,
             "MustardUI_ToolsCreators_TransferVertexGroups_Items",
@@ -187,7 +187,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
 
 def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Item)
-    bpy.utils.register_class(MustardUI_ToolsCreators_UIList_TransferVertexGroups)
+    bpy.utils.register_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Add)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Remove)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups)
@@ -206,5 +206,5 @@ def unregister():
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Remove)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Add)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_UIList_TransferVertexGroups)
+    bpy.utils.unregister_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Item)

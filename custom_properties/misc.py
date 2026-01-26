@@ -76,6 +76,21 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
     return
 
 
+def mustardui_reassign_default(obj, uilist, index, addon_prefs):
+    # Assign default before removing the associated drivers
+    try:
+        prop = uilist[index]
+        if prop.type == "FLOAT" and prop.force_type == "None":
+            obj[prop.prop_name] = prop.default_float
+        elif prop.type == "INT" or (prop.type == "FLOAT" and prop.force_type == "Int"):
+            obj[prop.prop_name] = prop.default_int
+    except:
+        if addon_prefs.debug:
+            print('MustardUI - Could not reassign default value. Skipping for this custom property')
+
+    return
+
+
 def mustardui_clean_prop(obj, uilist, index, addon_prefs):
     # Delete custom property and drivers
     try:
@@ -83,7 +98,7 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
         ui_data.clear()
     except:
         if addon_prefs.debug:
-            print('MustardUI - Could not clear UI properties. Skipping for this custom property')
+            print('MustardUI - Could not clean UI property. Skipping for this custom property')
 
     # Delete custom property
     try:
@@ -108,6 +123,28 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
         print("MustardUI - Could not delete driver with path: " + uilist[index].rna)
 
     return
+
+
+def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_settings):
+    to_remove = []
+
+    # Firstly set the custom property to their default value
+    for i, cp in enumerate(uilist):
+        mustardui_reassign_default(arm, uilist, i, addon_prefs)
+
+    # Update everything
+    if rig_settings.model_armature_object:
+        rig_settings.model_armature_object.update_tag()
+    bpy.context.view_layer.update()
+
+    # And then delete data
+    for i, cp in enumerate(uilist):
+        mustardui_clean_prop(arm, uilist, i, addon_prefs)
+        to_remove.append(i)
+    for i in reversed(to_remove):
+        uilist.remove(i)
+
+    return len(to_remove)
 
 
 def mustardui_cp_path(rna, path):
