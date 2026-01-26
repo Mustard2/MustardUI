@@ -9,35 +9,53 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
     bl_label = "Delete Outfit"
     bl_options = {'UNDO'}
 
+    is_config: bpy.props.BoolProperty(default=True)
+
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=-1)
         rig_settings = arm.MustardUI_RigSettings
 
-        uilist = rig_settings.outfits_collections
-        index = context.scene.mustardui_outfits_uilist_index
+        if self.is_config:
+            uilist = rig_settings.outfits_collections
+            index = context.scene.mustardui_outfits_uilist_index
 
-        col = uilist[index].collection
-        bpy.ops.mustardui.remove_outfit()
+            col = uilist[index].collection
+        else:
+            col = bpy.data.collections[rig_settings.outfits_list]
+
+        bpy.ops.mustardui.remove_outfit(is_config=self.is_config)
+
+        if not col:
+            self.report({'WARNING'}, 'MustardUI - The Outfit collection to remove was not found.')
+            return {'FINISHED'}
+
+        outfit_name = col.name
 
         # Remove Objects
         items = {}
-        if col:
-            for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
-                items[obj.name] = obj
+        for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
+            items[obj.name] = obj
 
-            for _, obj in reversed(items.items()):
-                data = obj.data
-                obj_type = obj.type
-                bpy.data.objects.remove(obj)
-                if obj_type == "MESH":
-                    bpy.data.meshes.remove(data)
-                elif obj_type == "ARMATURE":
-                    bpy.data.armatures.remove(data)
+        for _, obj in reversed(items.items()):
+            data = obj.data
+            obj_type = obj.type
+            bpy.data.objects.remove(obj)
+            if obj_type == "MESH":
+                bpy.data.meshes.remove(data)
+            elif obj_type == "ARMATURE":
+                bpy.data.armatures.remove(data)
 
-            bpy.data.collections.remove(col)
+        bpy.data.collections.remove(col)
 
-        self.report({'INFO'}, 'MustardUI - Outfit deleted.')
+        # Revert Mask settings
+        if rig_settings.model_body:
+            for mod in rig_settings.model_body.modifiers:
+                if mod.type == "MASK" and outfit_name in mod.name:
+                    mod.show_viewport = False
+                    mod.show_render = False
+
+        self.report({'INFO'}, f"MustardUI - Outfit '{outfit_name}' deleted.")
 
         return {'FINISHED'}
 
