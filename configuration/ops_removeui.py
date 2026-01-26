@@ -1,6 +1,6 @@
 import bpy
 from bpy.props import *
-from ..custom_properties.misc import mustardui_clean_prop
+from ..custom_properties.misc import mustardui_delete_all_custom_properties
 from ..model_selection.active_object import *
 from .. import __package__ as base_package
 
@@ -22,17 +22,6 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                                              name="Delete Bones Custom Shapes",
                                              description="Bones Custom Shapes are deleted with the Armature. Disable "
                                                          "this if some shapes are shared between different Armatures")
-
-    def remove_cps(self, arm, uilist, addon_prefs):
-
-        to_remove = []
-        for i, cp in enumerate(uilist):
-            mustardui_clean_prop(arm, uilist, i, addon_prefs)
-            to_remove.append(i)
-        for i in reversed(to_remove):
-            uilist.remove(i)
-
-        return len(to_remove)
 
     def remove_data_col(self, context, col, remove_subcoll=False):
 
@@ -105,9 +94,9 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         # Remove settings
         if self.delete_settings or self.delete_objects:
             # Remove custom properties
-            body_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs)
-            outfit_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs)
-            hair_cp_removed = self.remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs)
+            mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomProperties, addon_prefs, rig_settings)
+            mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs, rig_settings)
+            mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs, rig_settings)
 
             # Clear all settings
             self.remove_property(arm, 'MustardUI_ToolsSettings')
@@ -130,7 +119,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                 csb = []
                 for bone in arm_obj.pose.bones:
                     if bone.custom_shape is not None:
-                        if not bone.custom_shape in csb:
+                        if bone.custom_shape not in csb:
                             csb.append(bone.custom_shape)
                 self.remove_data_list(context, csb)
 

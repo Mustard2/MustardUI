@@ -125,5 +125,27 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
     return
 
 
+def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_settings):
+    to_remove = []
+
+    # Firstly set the custom property to their default value
+    for i, cp in enumerate(uilist):
+        mustardui_reassign_default(arm, uilist, i, addon_prefs)
+
+    # Update everything
+    if rig_settings.model_armature_object:
+        rig_settings.model_armature_object.update_tag()
+    bpy.context.view_layer.update()
+
+    # And then delete data
+    for i, cp in enumerate(uilist):
+        mustardui_clean_prop(arm, uilist, i, addon_prefs)
+        to_remove.append(i)
+    for i in reversed(to_remove):
+        uilist.remove(i)
+
+    return len(to_remove)
+
+
 def mustardui_cp_path(rna, path):
     return rna + "." + path if not all(["[" in path, "]" in path]) else rna + path
