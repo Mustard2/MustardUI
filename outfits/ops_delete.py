@@ -2,6 +2,25 @@ import bpy
 from ..model_selection.active_object import *
 from .ops_remove import *
 
+def cleanup_dangling_drivers(rig_settings):
+    if rig_settings.model_body:
+        if not rig_settings.model_body.data.shape_keys or not rig_settings.model_body.data.shape_keys.animation_data:
+            return 0
+
+        drivers = rig_settings.model_body.data.shape_keys.animation_data.drivers
+        drivers_to_remove = set()
+
+        for drv in drivers:
+            if not drv.driver.is_valid:
+                drivers_to_remove.add(drv)
+                break
+
+        for drv in drivers_to_remove:
+            drivers.remove(drv)
+
+        return len(drivers_to_remove)
+
+    return 0
 
 class MustardUI_DeleteOutfit(bpy.types.Operator):
     """Delete the selected Outfit from the Scene.\nThe collection and its objects are deleted"""
@@ -56,6 +75,12 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
                     mod.show_render = False
 
         self.report({'INFO'}, f"MustardUI - Outfit '{outfit_name}' deleted.")
+
+        '''
+        After the removal of drivers, some go in invalid state, we should handle those too after all drivers have
+        been removed!
+        '''
+        cleanup_dangling_drivers(rig_settings)
 
         return {'FINISHED'}
 
