@@ -122,6 +122,34 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
     except:
         print("MustardUI - Could not delete driver with path: " + uilist[index].rna)
 
+
+    '''
+    Delete Drivers Associated with the outfit's CP
+
+    For the current custom prop, we get the rna and go through the shapekeys with drivers, if we get
+    a match that a shape key is driven by this cp path, we remove it!
+    '''
+
+    if not obj.MustardUI_RigSettings.model_body.data.shape_keys or not obj.MustardUI_RigSettings.model_body.data.shape_keys.animation_data:
+        return
+
+    drivers = obj.MustardUI_RigSettings.model_body.data.shape_keys.animation_data.drivers
+
+    if drivers:
+        # set here, because list adds duplicates and causes error removing an already removed driver
+        drivers_to_remove = set()
+
+        for drv in drivers:
+            for var in drv.driver.variables:
+                for target in var.targets:
+                    if target.data_path == uilist[index].rna.partition('.key_blocks')[2]:
+                        drivers_to_remove.add(drv)
+                        break
+
+        for drv in drivers_to_remove:
+            drivers.remove(drv)
+
+
     return
 
 
