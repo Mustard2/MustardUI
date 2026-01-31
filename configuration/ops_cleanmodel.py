@@ -15,6 +15,27 @@ def remove_diffeomorphic_data_result(obj, attr):
     except:
         return 0
 
+def resync_drivers(rig_settings):
+    """
+    The purpose of this function is to reevaluate drivers, because after the operations, some drivers are valid, but
+    they need manual click on the driver id (reset) as they are considered invalid!
+    """
+    if rig_settings.model_body.data.shape_keys and rig_settings.model_body.data.shape_keys.animation_data:
+        drivers = rig_settings.model_body.data.shape_keys.animation_data.drivers
+
+        for drv in drivers:
+            for var in drv.driver.variables:
+                for target in var.targets:
+                    current_id = target.id
+                    current_data_path = target.data_path
+
+                    if current_id:
+                        target.id = None
+                        target.data_path = ""
+
+                        target.id = current_id
+                        target.data_path = current_data_path
+
 
 class MustardUI_CleanModel(bpy.types.Operator):
     """Clean the model to get better performance, at the cost of deleting some features/shape keys/morphs/outfits"""
@@ -194,8 +215,6 @@ class MustardUI_CleanModel(bpy.types.Operator):
                                                          "DazExpressions", props_removed)
             props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
                                                          "DazBody", props_removed)
-            props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
-                                                         "DazCustom", props_removed)
             props_removed = self.remove_props_from_group(rig_settings.model_armature_object,
                                                          "DazCustom", props_removed)
             props_removed = self.remove_props_from_cat_group(rig_settings.model_armature_object,
@@ -553,6 +572,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
                                                                      addon_prefs, rig_settings)
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed))
 
+        resync_drivers(rig_settings)
+
         # Final messages
         operations = (null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed
                       + diffeomorphic_data_deleted + outfits_deleted + extras_deleted + hair_deleted
@@ -563,6 +584,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             rig_settings.model_cleaned = True
         else:
             self.report({'WARNING'}, "MustardUI - No operation was needed with current cleaning settings.")
+
 
         return {'FINISHED'}
 
