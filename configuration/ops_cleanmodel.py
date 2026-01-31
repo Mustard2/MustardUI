@@ -572,6 +572,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
                                                                      addon_prefs, rig_settings)
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed))
 
+        resync_drivers(rig_settings)
+
         # Final messages
         operations = (null_drivers_removed + morphs_props_removed + morphs_drivers_removed + morphs_shapekeys_removed
                       + diffeomorphic_data_deleted + outfits_deleted + extras_deleted + hair_deleted
@@ -583,7 +585,6 @@ class MustardUI_CleanModel(bpy.types.Operator):
         else:
             self.report({'WARNING'}, "MustardUI - No operation was needed with current cleaning settings.")
 
-        resync_drivers(rig_settings)
 
         return {'FINISHED'}
 
