@@ -147,7 +147,10 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
                         break
 
         for drv in drivers_to_remove:
-            drivers.remove(drv)
+            try:
+                drivers.remove(drv)
+            except:
+                print("MustardUI - Could not delete driver with path: " + drv.data_path)
 
 
     return
