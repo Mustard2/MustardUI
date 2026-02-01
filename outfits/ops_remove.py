@@ -46,10 +46,10 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
         to_remove = []
 
-        # FIXME: Even this is disabled things works as expected, and I think this should not be used,
-        # because there is no way you can predict the default value for everything, and reverting it
-        # to that 'default' value may cause things to reset, ie: the thing we try to fix!!!
-
+        """
+        if this is enabled, it resets custom properties to the default values which we try to fix.
+        see: https://github.com/Mustard2/MustardUI/issues/285
+        """
         # Firstly set the custom property to their default value
         # for i, cp in enumerate(outfit_cp):
         #     if (not uilist[index].collection and not cp.outfit) or (uilist[index].collection and cp.outfit.name == uilist[index].collection.name):
