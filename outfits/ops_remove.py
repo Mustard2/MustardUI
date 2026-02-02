@@ -1,6 +1,6 @@
 import bpy
 from ..custom_properties.misc import mustardui_clean_prop, mustardui_reassign_default
-from ..model_selection.active_object import *
+from ..model_selection.active_object import mustardui_active_object
 from .. import __package__ as base_package
 
 

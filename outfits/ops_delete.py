@@ -1,5 +1,5 @@
 import bpy
-from ..model_selection.active_object import *
+from ..model_selection.active_object import mustardui_active_object
 from .ops_remove import *
 
 
