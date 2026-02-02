@@ -1,10 +1,10 @@
 import bpy
 from .. import __package__ as base_package
-from bpy.props import *
+from bpy.props import BoolProperty
 from ..custom_properties.misc import (mustardui_clean_prop,
                                       mustardui_reassign_default,
                                       mustardui_delete_all_custom_properties)
-from ..model_selection.active_object import *
+from ..model_selection.active_object import mustardui_active_object
 from ..morphs.misc import isDazFcurve
 
 
@@ -69,7 +69,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if props:
                 idx = []
                 for n, prop in enumerate(props):
-                    if not ("pJCM" in prop.name) or self.remove_morphs_jcms:
+                    if "pJCM" not in prop.name or self.remove_morphs_jcms:
                         idx.append(n)
                         props_removed.append(prop.name)
 
@@ -89,7 +89,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     for n, prop in enumerate(props):
                         if "name" in prop:
                             prop_name = prop['name']
-                            if not "pJCM" in prop_name or self.remove_morphs_jcms:
+                            if "pJCM" not in prop_name or self.remove_morphs_jcms:
                                 idx.append(n)
                                 props_removed.append(prop_name)
                         else:
@@ -104,8 +104,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         check_eCTRL = "eCTRL" in string_cmp
         check_eJCM = "eJCM" in string_cmp
-        check_pJCM = not ("pJCM" in string_cmp) or self.remove_morphs_jcms
-        check_facs = not ("facs" in string_cmp) or self.remove_morphs_facs
+        check_pJCM = "pJCM" not in string_cmp or self.remove_morphs_jcms
+        check_facs = "facs" not in string_cmp or self.remove_morphs_facs
 
         return (string == string_cmp or check_eCTRL or check_eJCM) and check_pJCM and check_facs
 
@@ -174,7 +174,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if addon_prefs.debug:
                 print("  Null drivers removed: " + str(null_drivers_removed))
 
-        # Check diffeomorphic custom morphs existance and delete all of them (except JCMs)
+        # Check diffeomorphic custom morphs existence and delete all of them (except JCMs)
         if self.remove_morphs:
 
             props_removed = []
@@ -242,7 +242,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     objects.append(obj)
 
             # Add Children to Objects
-            for c in [x for x in rig_settings.model_armature_object.children if x != rig_settings.model_body and not (x in objects)]:
+            for c in [x for x in rig_settings.model_armature_object.children if x != rig_settings.model_body and x not in objects]:
                 objects.append(c)
 
             # Remove shape keys and their drivers
@@ -474,7 +474,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if rig_settings.hair_collection is not None and self.remove_unselected_hair:
 
             current_hair = rig_settings.hair_list
-            objs = [x for x in rig_settings.hair_collection.objects if not (current_hair in x.name)]
+            objs = [x for x in rig_settings.hair_collection.objects if current_hair not in x.name]
 
             # Remove dangling Physics Items first
             items_to_remove = []
