@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/3dcc25cc-8ead-43e5-9b5a-ea207de6c999" width="200" />
+  <img src="https://github.com/user-attachments/assets/3582fbf3-1414-4e71-b977-533fabe4de48" width="200" />
 </p>
+
+
 
 # MustardUI
 
