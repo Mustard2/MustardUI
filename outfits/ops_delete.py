@@ -1,18 +1,19 @@
 import bpy
+
 from ..model_selection.active_object import mustardui_active_object
 from .ops_remove import *
 
 
 class MustardUI_DeleteOutfit(bpy.types.Operator):
     """Delete the selected Outfit from the Scene.\nThe collection and its objects are deleted"""
+
     bl_idname = "mustardui.delete_outfit"
     bl_label = "Delete Outfit"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     is_config: bpy.props.BoolProperty(default=True)
 
     def execute(self, context):
-
         res, arm = mustardui_active_object(context, config=-1)
         rig_settings = arm.MustardUI_RigSettings
 
@@ -27,14 +28,21 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         bpy.ops.mustardui.remove_outfit(is_config=self.is_config)
 
         if not col:
-            self.report({'WARNING'}, 'MustardUI - The Outfit collection to remove was not found.')
-            return {'FINISHED'}
+            self.report(
+                {"WARNING"},
+                "MustardUI - The Outfit collection to remove was not found.",
+            )
+            return {"FINISHED"}
 
         outfit_name = col.name
 
         # Remove Objects
         items = {}
-        for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
+        for obj in (
+            col.all_objects
+            if rig_settings.outfit_config_subcollections
+            else col.objects
+        ):
             items[obj.name] = obj
 
         for _, obj in reversed(items.items()):
@@ -55,9 +63,9 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
                     mod.show_viewport = False
                     mod.show_render = False
 
-        self.report({'INFO'}, f"MustardUI - Outfit '{outfit_name}' deleted.")
+        self.report({"INFO"}, f"MustardUI - Outfit '{outfit_name}' deleted.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
