@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/370088e0-38ef-49d1-bb29-e743eb0a7f4b" width="200" />
+  <img src="https://github.com/user-attachments/assets/3dcc25cc-8ead-43e5-9b5a-ea207de6c999" width="200" />
 </p>
 
 # MustardUI
