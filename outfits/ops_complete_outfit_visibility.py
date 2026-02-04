@@ -122,7 +122,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 if body:
                     mask_visible = (is_active or locked) and show_obj and mask
                     for mod in body.modifiers:
-                        if mod.type in ["MASK", "VERTEX_WEIGHT_MIX"] and obj.name in mod.name:
+                        if mod.type in ["MASK", "VERTEX_WEIGHT_MIX"] and mod.name.endswith(obj.name):
                             set_bool(mod, "show_viewport", mask_visible)
                             set_bool(mod, "show_render", mask_visible)
 
