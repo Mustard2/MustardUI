@@ -150,7 +150,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
 
         # Outfits
         if len(rig_settings.outfits_list) > 1 and simplify_settings.simplify_outfit_global:
-            if rig_settings.simplify_subdiv and rig_settings.outfits_enable_global_subsurface and simplify_settings.simplify_enable:
+            if simplify_settings.simplify_subdiv and rig_settings.outfits_enable_global_subsurface and simplify_settings.simplify_enable:
                 rig_settings.outfits_global_subsurface = not simplify_settings.simplify_enable
             if rig_settings.outfits_enable_global_mask:
                 rig_settings.outfits_global_mask = not simplify_settings.simplify_enable
