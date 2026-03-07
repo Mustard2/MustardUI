@@ -43,7 +43,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         simplify_settings = context.scene.MustardUI_SimplifySettings
 
         layout = self.layout
-        layout.enabled = not rig_settings.simplify_enable
+        layout.enabled = not simplify_settings.simplify_enable
 
         box = layout.box()
         box.label(text="General", icon="OPTIONS")
