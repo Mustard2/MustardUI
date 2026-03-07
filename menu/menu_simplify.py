@@ -52,7 +52,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         row.prop(simplify_settings, "simplify_blender")
         row.scale_x = 0.5
         col2 = row.column()
-        col2.enabled = rig_settings.simplify_blender
+        col2.enabled = simplify_settings.simplify_blender
         col2.prop(context.scene.render, "simplify_subdivision", text="Max Subdiv")
         if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
             col.prop(simplify_settings, "simplify_subdiv")
