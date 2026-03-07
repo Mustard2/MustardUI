@@ -162,7 +162,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 rig_settings.outfits_global_solidify = not simplify_settings.simplify_enable
             if rig_settings.outfits_enable_global_triangulate:
                 rig_settings.outfits_global_triangulate = not simplify_settings.simplify_enable
-            if rig_settings.simplify_normals_autosmooth and rig_settings.outfits_enable_global_normalautosmooth:
+            if simplify_settings.simplify_normals_autosmooth and rig_settings.outfits_enable_global_normalautosmooth:
                 rig_settings.outfits_global_normalautosmooth = not simplify_settings.simplify_enable
         if rig_settings.outfit_nude and simplify_settings.simplify_outfit_switch_nude and simplify_settings.simplify_enable:
             rig_settings.outfits_list = "Nude"
@@ -178,13 +178,13 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
             rig_settings.hair_collection.hide_viewport = simplify_settings.simplify_enable if simplify_settings.simplify_hair else False
 
             if simplify_settings.simplify_hair_global:
-                if rig_settings.simplify_subdiv and rig_settings.hair_enable_global_subsurface and simplify_settings.simplify_enable:
+                if simplify_settings.simplify_subdiv and rig_settings.hair_enable_global_subsurface and simplify_settings.simplify_enable:
                     rig_settings.hair_global_subsurface = not simplify_settings.simplify_enable
                 if rig_settings.hair_enable_global_smoothcorrection:
                     rig_settings.hair_global_smoothcorrection = not simplify_settings.simplify_enable
                 if rig_settings.hair_enable_global_solidify:
                     rig_settings.hair_global_solidify = not simplify_settings.simplify_enable
-                if rig_settings.simplify_normals_autosmooth and rig_settings.hair_enable_global_normalautosmooth:
+                if simplify_settings.simplify_normals_autosmooth and rig_settings.hair_enable_global_normalautosmooth:
                     rig_settings.hair_global_normalautosmooth = not simplify_settings.simplify_enable
 
         # Particle Systems
