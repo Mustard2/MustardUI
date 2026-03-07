@@ -67,6 +67,9 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
                                                          name="",
                                                          description="Show additional properties for the selected object")
 
+    # Simplify status
+    simplify_status: bpy.props.BoolProperty()
+
 
 def register():
     bpy.utils.register_class(MustardUI_Outfit)
