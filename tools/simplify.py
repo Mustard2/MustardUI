@@ -167,11 +167,18 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
         if rig_settings.outfit_nude and simplify_settings.simplify_outfit_switch_nude and simplify_settings.simplify_enable:
             rig_settings.outfits_list = "Nude"
 
-        if rig_settings.extras_collection and simplify_settings.simplify_extras and simplify_settings.simplify_enable:
+        if rig_settings.extras_collection and simplify_settings.simplify_extras:
             items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
             for obj in items:
-                if obj.MustardUI_outfit_visibility != simplify_settings.simplify_enable:
-                    bpy.ops.mustardui.object_visibility(obj=obj.name)
+                if simplify_settings.simplify_enable:
+                    status = obj.MustardUI_outfit_visibility != simplify_settings.simplify_enable
+                    if status:
+                        bpy.ops.mustardui.object_visibility(obj=obj.name)
+                    obj.MustardUI_OutfitSettings.simplify_status = status
+                elif not simplify_settings.simplify_enable and obj.MustardUI_OutfitSettings.simplify_status:
+                    if obj.MustardUI_outfit_visibility != simplify_settings.simplify_enable:
+                        bpy.ops.mustardui.object_visibility(obj=obj.name)
+                    obj.MustardUI_OutfitSettings.simplify_status = False
 
         # Hair
         if rig_settings.hair_collection:
