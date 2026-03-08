@@ -8,6 +8,19 @@ from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
 
+float_subtype_items = (
+    ("NONE", "Plain Data", ""),
+    ("PIXEL", "Pixel", ""),
+    ("PERCENTAGE", "Percentage", ""),
+    ("FACTOR", "Factor", ""),
+    ("ANGLE", "Angle", ""),
+    ("TIME", "Time", ""),
+    ("DISTANCE", "Distance", ""),
+    ("POWER", "Power", ""),
+    ("TEMPERATURE", "Temperature", "")
+)
+
+
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings"""
     bl_idname = "mustardui.property_settings"
@@ -36,6 +49,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                         ("OUTFIT", "Outfit", ""),
                                         ("HAIR", "Hair", ""))
                                  )
+    subtype: bpy.props.EnumProperty(default="NONE",
+                                    items=float_subtype_items
+                                    )
 
     max_int: bpy.props.IntProperty(name="Maximum value")
     min_int: bpy.props.IntProperty(name="Minimum value")
@@ -121,7 +137,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                      max=self.max_float if prop_subtype != "COLOR" else 1.,
                                      description=self.description,
                                      overridable=True,
-                                     subtype=custom_prop.subtype if prop_subtype != "FACTOR" else None)
+                                     subtype=self.subtype)
 
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
@@ -139,6 +155,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                                      + str(self.default_color[2]) + ","
                                                      + str(self.default_color[3])
                                                      + ")")
+                custom_prop.subtype = self.subtype
             elif prop_type == "BOOLEAN" or self.force_type == "Bool":
                 ui_data.clear()
                 del obj[prop_name]
@@ -249,6 +266,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 else:
                     self.default_float = ui_data_dict['default']
 
+                self.subtype = ui_data_dict['subtype']
+
         return context.window_manager.invoke_props_dialog(self, width=700 if addon_prefs.debug else 450)
 
     def draw(self, context):
@@ -341,6 +360,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     row2 = row.row(align=True)
                     row2.prop(self, "min_float", text="")
                     row2.prop(self, "max_float", text="")
+
+                    row = box.row()
+                    row.label(text="Subtype:")
+                    row.scale_x = scale
+                    row.prop(self, "subtype", text="")
 
             if custom_prop.subtype == "COLOR":
                 row = box.row()
