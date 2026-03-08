@@ -138,12 +138,30 @@ class MustardUI_Configuration(bpy.types.Operator):
 
             # Setting the model version date if requested
             if rig_settings.model_version_date_enable:
-                date = datetime.today().strftime('%d/%m/%Y')
-                rig_settings.model_version_date = date
+                # Get date from vector or today
+                vec = rig_settings.model_version_date_vector
+                
+                try:
+                    if vec[0] == 0 and vec[1] == 0 and vec[2] == 0:
+                        dt = datetime.today()
+                    else:
+                        # Vector is (Year, Month, Day)
+                        dt = datetime(vec[0], vec[1], vec[2])
+                except ValueError:
+                    # In case of invalid date (e.g. Month 13), fallback to today
+                    dt = datetime.today()
+                    print("MustardUI - Invalid date entered, falling back to today.")
+
+                if rig_settings.model_version_date_format == "MDY":
+                    date_str = dt.strftime('%B %d, %Y')
+                elif rig_settings.model_version_date_format == "MDY2":
+                    date_str = dt.strftime('%m/%d/%Y')
+                else:
+                    date_str = dt.strftime('%d/%m/%Y')
+                
+                rig_settings.model_version_date = date_str
             else:
                 rig_settings.model_version_date = ""
-
-            # Clean the model temporary settings
             settings.rename_outfits_temp_class.clear()
 
             if warnings > 0:
