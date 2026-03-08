@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
-from.settings_item import mustardui_physics_item_type_dict
+from .settings_item import mustardui_physics_item_type_dict
 
 
 class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
@@ -14,10 +14,10 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
-        return res and arm.mustardui_physics_items_outfits_uilist_index > -1 and physics_settings.items[arm.mustardui_physics_items_uilist_index].object is not None
+        return res and arm.mustardui_physics_items_outfits_uilist_index > -1 and len(physics_settings.items) > 0 and \
+            physics_settings.items[arm.mustardui_physics_items_uilist_index].object is not None
 
     def execute(self, context):
-
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
 
