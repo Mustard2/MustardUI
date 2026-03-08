@@ -54,17 +54,6 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         row.prop(simplify_settings, "simplify_revert_settings")
 
 
-        # General Settings
-        box = layout.box()
-        box.label(text="General", icon="OUTLINER_OB_ARMATURE")
-        col = box.column(align=True)
-        row = col.row()
-
-        if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
-            col.prop(simplify_settings, "simplify_subdiv")
-        col.prop(simplify_settings, "simplify_normals_optimize")
-
-
         # Blender Simplify
         box = layout.box()
         box.label(text="Blender Simplify", icon="BLENDER")
@@ -77,6 +66,17 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col2.prop(context.scene.render, "simplify_subdivision", text="Max Subdiv")
         if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
             col.prop(simplify_settings, "simplify_subdiv")
+
+
+        # General Settings
+        box = layout.box()
+        box.label(text="General", icon="OUTLINER_OB_ARMATURE")
+        col = box.column(align=True)
+        row = col.row()
+
+        if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
+            col.prop(simplify_settings, "simplify_subdiv")
+        col.prop(simplify_settings, "simplify_normals_optimize")
 
 
         # Morphs
@@ -113,7 +113,6 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col.prop(simplify_settings, "simplify_hair")
         col.prop(simplify_settings, "simplify_hair_global")
         col.prop(simplify_settings, "simplify_particles")
-
 
 
         # Physics
