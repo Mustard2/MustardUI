@@ -100,10 +100,10 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
                     continue
 
                 current_val = cp
-                if isinstance(current_val, int):
-                    cp_source[preset_morph.path] = int(val)
-                elif isinstance(current_val, bool):
+                if isinstance(current_val, bool):
                     cp_source[preset_morph.path] = True if abs(float(val)) > 0.001 else False
+                elif isinstance(current_val, int) and not isinstance(current_val, bool):
+                    cp_source[preset_morph.path] = int(val)
                 else:
                     cp_source[preset_morph.path] = val
 
