@@ -45,8 +45,29 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = not simplify_settings.simplify_enable
 
+
+        # Simplify Settings
         box = layout.box()
-        box.label(text="General", icon="OPTIONS")
+        box.label(text="Settings", icon="MODIFIER")
+        col = box.column(align=True)
+        row = col.row()
+        row.prop(simplify_settings, "simplify_revert_settings")
+
+
+        # General Settings
+        box = layout.box()
+        box.label(text="General", icon="OUTLINER_OB_ARMATURE")
+        col = box.column(align=True)
+        row = col.row()
+
+        if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
+            col.prop(simplify_settings, "simplify_subdiv")
+        col.prop(simplify_settings, "simplify_normals_optimize")
+
+
+        # Blender Simplify
+        box = layout.box()
+        box.label(text="Blender Simplify", icon="BLENDER")
         col = box.column(align=True)
         row = col.row()
         row.prop(simplify_settings, "simplify_blender")
@@ -56,35 +77,55 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col2.prop(context.scene.render, "simplify_subdivision", text="Max Subdiv")
         if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
             col.prop(simplify_settings, "simplify_subdiv")
-        if rig_settings.outfits_enable_global_normalautosmooth or rig_settings.body_enable_norm_autosmooth:
-            col.prop(simplify_settings, "simplify_normals_autosmooth")
-        col.prop(simplify_settings, "simplify_normals_optimize")
 
+
+        # Morphs
+        if morphs_settings.enable_ui and ("DIFFEO_GENESIS" in morphs_settings.type or morphs_settings.enable_freeze_morphs):
+            box = layout.box()
+            box.label(text="Morphs", icon="SHAPEKEY_DATA")
+            col = box.column(align=True)
+            if "DIFFEO_GENESIS" in morphs_settings.type:
+                col.prop(simplify_settings, "simplify_morphs")
+            if morphs_settings.enable_freeze_morphs:
+                row = col.column()
+                row.enabled = not simplify_settings.simplify_morphs if "DIFFEO_GENESIS" in morphs_settings.type else True
+                row.prop(simplify_settings, "simplify_morphs_freeze")
+
+
+        # Outfits
         box = layout.box()
-        box.label(text="Objects", icon="OUTLINER_OB_ARMATURE")
+        box.label(text="Outfits", icon="MOD_CLOTH")
         col = box.column(align=True)
-        if morphs_settings.enable_ui:
-            col.prop(simplify_settings, "simplify_diffeomorphic")
+
+        col.prop(simplify_settings, "simplify_armature_child")
+
         if rig_settings.outfit_nude:
             col.prop(simplify_settings, "simplify_outfit_switch_nude")
-        col.prop(simplify_settings, "simplify_outfit_global")
         col.prop(simplify_settings, "simplify_extras")
-        col.prop(simplify_settings, "simplify_armature_child")
-        col.separator()
+        col.prop(simplify_settings, "simplify_outfit_global")
+
+
+        # Hair
+        box = layout.box()
+        box.label(text="Hair", icon="OUTLINER_OB_CURVES")
+        col = box.column(align=True)
+
         col.prop(simplify_settings, "simplify_hair")
         col.prop(simplify_settings, "simplify_hair_global")
         col.prop(simplify_settings, "simplify_particles")
 
-        if len(physics_settings.items) > 0:
-            col.separator()
-            col.prop(simplify_settings, "simplify_physics")
 
-        if settings.advanced:
+
+        # Physics
+        if settings.advanced or len(physics_settings.items) > 0:
             box = layout.box()
-            box.label(text="Global Disable", icon="WORLD")
+            box.label(text="Physics", icon="PHYSICS")
             col = box.column(align=True)
-            col.prop(simplify_settings, "simplify_force_no_physics")
-            col.prop(simplify_settings, "simplify_force_no_particles")
+            if len(physics_settings.items) > 0:
+                col.prop(simplify_settings, "simplify_physics")
+            if settings.advanced:
+                col.prop(simplify_settings, "simplify_force_no_physics")
+                col.prop(simplify_settings, "simplify_force_no_particles")
 
 
 def register():
