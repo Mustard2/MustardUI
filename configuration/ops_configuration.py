@@ -146,7 +146,11 @@ class MustardUI_Configuration(bpy.types.Operator):
                         dt = datetime.today()
                     else:
                         # Vector is (Year, Month, Day)
-                        dt = datetime(vec[0], vec[1], vec[2])
+                        # Converting depending on the date format used
+                        if rig_settings.model_version_date_format in ["MDY", "MDY2"]:
+                            dt = datetime(vec[1], vec[2], vec[0])
+                        else:
+                            dt = datetime(vec[2], vec[1], vec[0])
                 except ValueError:
                     # In case of invalid date (e.g. Month 13), fallback to today
                     dt = datetime.today()
@@ -162,6 +166,8 @@ class MustardUI_Configuration(bpy.types.Operator):
                 rig_settings.model_version_date = date_str
             else:
                 rig_settings.model_version_date = ""
+
+            # Clean the model temporary settings
             settings.rename_outfits_temp_class.clear()
 
             if warnings > 0:

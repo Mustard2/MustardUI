@@ -778,14 +778,20 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                default=(0, 0, 0),
                                                                min=0,
                                                                max=10,
-                                                               description="Set this to add a warning if the model is opened in an older Blender version.\nLeave it 0,0,0 to disable this warning")
+                                                               description="Set this to add a warning if the model is "
+                                                                           "opened in an older Blender "
+                                                                           "version.\nLeave it 0,0,0 to disable this "
+                                                                           "warning")
     model_version_date_enable: bpy.props.BoolProperty(name="Add Date to version",
-                                                      description="Automatically add the date to the version when ending Configuration mode.\nIf the Date field is empty, today's date will be used",
+                                                      description="Automatically add the date to the version when "
+                                                                  "ending Configuration mode.\nIf the Date field is "
+                                                                  "empty, today's date will be used",
                                                       default=False)
     model_version_date_format: bpy.props.EnumProperty(name="Date Format",
                                                       items=[("DMY", "DD/MM/YYYY", "Day/Month/Year (e.g. 13/04/2023)"),
                                                              ("MDY2", "MM/DD/YYYY", "Month/Day/Year (e.g. 04/13/2023)"),
-                                                             ("MDY", "Month DD, YYYY", "Month Day, Year (e.g. April 13, 2023)")],
+                                                             ("MDY", "Month DD, YYYY", "Month Day, Year (e.g. April "
+                                                                                       "13, 2023)")],
                                                       description="Format of the date to be used for the version",
                                                       default="DMY")
     model_version_date: bpy.props.StringProperty(name="Date",
@@ -793,13 +799,21 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                  description="Date of the version")
     model_version_date_vector: bpy.props.IntVectorProperty(name="Date",
                                                            size=3,
+                                                           min=1, max=3000,
                                                            default=(0, 0, 0),
-                                                           description="Date of the version (Year, Month, Day).\nLeave 0,0,0 to use today's date")
+                                                           description="Date of the version: (Day, Month, Year) if "
+                                                                       "using DD/MM/YYYY, (Month, Day, Year) in the "
+                                                                       "other two cases.\nLeave 0,0,0 to use today's "
+                                                                       "date")
 
     # Object and Collection MustardUI naming convention
     model_MustardUI_naming_convention: bpy.props.BoolProperty(default=True,
                                                               name="MustardUI Naming Convention",
-                                                              description="Use the MustardUI naming convention for collections and objects.\nIf this is true, the collections and the objects listed as outfits will be stripped of unnecessary parts in the name")
+                                                              description="Use the MustardUI naming convention for "
+                                                                          "collections and objects.\nIf this is true, "
+                                                                          "the collections and the objects listed as "
+                                                                          "outfits will be stripped of unnecessary "
+                                                                          "parts in the name")
 
     model_rig_type: bpy.props.EnumProperty(default="other",
                                            items=[("arp", "Auto-Rig Pro", "Auto-Rig Pro"),

@@ -32,15 +32,20 @@ class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
 
         box = layout.box()
         box.label(text="Version", icon="INFO")
+
         row = box.row(align=True)
         row.prop(rig_settings, "model_version_vector", text="", expand=True)
         box.prop(rig_settings, "model_version_type", text="")
         box.prop(rig_settings, "model_version_date_enable")
+
         col = box.column()
-        col.enabled=rig_settings.model_version_date_enable
+        col.enabled = rig_settings.model_version_date_enable
         col.prop(rig_settings, "model_version_date_format", text="Format")
-        col.prop(rig_settings, "model_version_date_vector", text="Date")
+        row = box.row(align=True)
+        row.prop(rig_settings, "model_version_date_vector", text="Date", expand=True)
+
         box.separator()
+
         box.label(text="Changelog Link", icon="URL")
         box.prop(rig_settings, "model_changelog_link", text="")
 
