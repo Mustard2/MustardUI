@@ -97,9 +97,10 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                                          default=custom_prop.default_float if custom_prop.array_length == 0 else ast.literal_eval(custom_prop.default_array),
                                          min=custom_prop.min_float if custom_prop.subtype != "COLOR" else 0.,
                                          max=custom_prop.max_float if custom_prop.subtype != "COLOR" else 1.,
+                                         step=custom_prop.step_float,
                                          description=custom_prop.description,
                                          overridable=True,
-                                         subtype=custom_prop.subtype if custom_prop.subtype != "FACTOR" else None)
+                                         subtype=custom_prop.subtype)
 
                 elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
                     rna_idprop_ui_create(obj, prop_name,
