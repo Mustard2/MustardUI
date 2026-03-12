@@ -45,6 +45,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
                                  ("Int", "Int", "Int"),
                                  ("Bool", "Bool", "Bool"))
                              )
+    step_float: bpy.props.FloatProperty(name="Step")
 
     # Properties stored to rebuild custom properties in case of troubles
     description: StringProperty()

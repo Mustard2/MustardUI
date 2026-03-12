@@ -30,11 +30,12 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
+        simplify_settings = context.scene.MustardUI_SimplifySettings
 
         box = layout.box()
         box.label(text="Enable Tools", icon="MODIFIER")
         col = box.column(align=True)
-        col.prop(rig_settings, 'simplify_main_enable')
+        col.prop(simplify_settings, 'simplify_main_enable')
         col.prop(tools_settings, 'autobreath_enable')
         col.prop(tools_settings, 'autoeyelid_enable')
 
