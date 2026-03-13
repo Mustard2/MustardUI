@@ -271,7 +271,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 else:
                     self.default_float = ui_data_dict['default']
 
-                self.subtype = ui_data_dict['subtype']
+                if custom_prop.array_length == 0:
+                    self.subtype = ui_data_dict['subtype']
                 self.step_float = ui_data_dict['step']
 
         return context.window_manager.invoke_props_dialog(self, width=700 if addon_prefs.debug else 450)
@@ -367,10 +368,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     row2.prop(self, "min_float", text="")
                     row2.prop(self, "max_float", text="")
 
-                    row = box.row()
-                    row.label(text="Subtype:")
-                    row.scale_x = scale
-                    row.prop(self, "subtype", text="")
+                    if custom_prop.array_length == 0:
+                        row = box.row()
+                        row.label(text="Subtype:")
+                        row.scale_x = scale
+                        row.prop(self, "subtype", text="")
 
                     row = box.row()
                     row.label(text="Step:")
