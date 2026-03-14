@@ -1,8 +1,10 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
+
+# from ..settings.rig import *
 from ..warnings.ops_fix_old_UI import check_old_UI
-from ..settings.rig import *
+from . import MainPanel
 
 
 class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
