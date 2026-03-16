@@ -851,6 +851,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     diffeomorphic_body_morphs: bpy.props.BoolProperty(default=False)
     diffeomorphic_body_morphs_custom: bpy.props.StringProperty(default="")
 
+    # Old Simplify enabler
+    simplify_main_enable: bpy.props.BoolProperty(default=False)
+
     # END OF MustardUI_RigSettings class
 
 
