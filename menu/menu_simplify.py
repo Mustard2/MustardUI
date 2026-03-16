@@ -21,14 +21,15 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         if arm is None:
             return False
 
-        simplify_settings = context.scene.MustardUI_SimplifySettings
+        simplify_settings = arm.MustardUI_SimplifySettings
         if hasattr(simplify_settings, "simplify_main_enable"):
             return res and simplify_settings.simplify_main_enable
         else:
             return False
 
     def draw_header(self, context):
-        simplify_settings = context.scene.MustardUI_SimplifySettings
+        poll, arm = mustardui_active_object(context, config=0)
+        simplify_settings = arm.MustardUI_SimplifySettings
         self.layout.prop(simplify_settings, "simplify_enable", text="", toggle=False)
 
     def draw(self, context):
@@ -39,8 +40,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
         physics_settings = obj.MustardUI_PhysicsSettings
-
-        simplify_settings = context.scene.MustardUI_SimplifySettings
+        simplify_settings = obj.MustardUI_SimplifySettings
 
         layout = self.layout
         layout.enabled = not simplify_settings.simplify_enable
