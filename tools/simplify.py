@@ -245,13 +245,16 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     rig_settings.hair_global_normalautosmooth = not simplify_settings.simplify_enable
 
         # When Simplify is turned off, restore saved state
-        if not simplify_settings.simplify_enable and "mustardui_pre_simplify" in arm and simplify_settings.simplify_revert_settings:
-            for key, value in arm["mustardui_pre_simplify"].items():
-                setattr(rig_settings, key, value)
-            for key, value in scene["mustardui_pre_simplify"].items():
-                setattr(settings, key, value)
-            del arm["mustardui_pre_simplify"]
-            del scene["mustardui_pre_simplify"]
+        if not simplify_settings.simplify_enable and simplify_settings.simplify_revert_settings:
+            if "mustardui_pre_simplify" in arm:
+                for key, value in arm["mustardui_pre_simplify"].items():
+                    setattr(rig_settings, key, value)
+                del arm["mustardui_pre_simplify"]
+
+            if "mustardui_pre_simplify" in scene:
+                for key, value in scene["mustardui_pre_simplify"].items():
+                    setattr(settings, key, value)
+                del scene["mustardui_pre_simplify"]
 
         # Particle Systems
         if simplify_settings.simplify_particles and simplify_settings.simplify_enable:
