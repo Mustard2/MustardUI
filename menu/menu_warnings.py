@@ -3,9 +3,9 @@ import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
 from ..misc.prop_utils import *
-from ..misc.ui_multiline import label_multiline
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
+from ..warnings.ops_update_ui import is_ui_update
 
 
 def check_blender_version(rig_settings):
@@ -32,8 +32,10 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
             rig_settings = obj.MustardUI_RigSettings
 
-            return poll and (check_eevee_normals(context.scene, settings) or rig_settings.diffeomorphic_support or
-                             check_blender_version(rig_settings))
+            return poll and (check_eevee_normals(context.scene, settings) or
+                             not is_ui_update(rig_settings) or
+                             check_blender_version(rig_settings)
+                             )
 
         return poll
 
@@ -65,15 +67,17 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             col.label(text="Eevee Optimed Normals are active with Cycles!", icon="NORMALS_FACE")
             box.operator("mustardui.warnings_fix_eevee_normals", icon="NORMALS_FACE")
 
-        if rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0:
+        # Check if the model is up-to-date
+        if not is_ui_update(rig_settings):
             box = layout.box()
 
             row = box.row(align=True)
-            row.label(text="Morphs are outdated.", icon="SHAPEKEY_DATA")
-            row.operator("mustardui.warnings_fix_old_morphs", icon="X", text="").ignore = True
+            row.label(text="UI is outdated.", icon="SHAPEKEY_DATA")
+            row.operator("mustardui.update_ui", icon="X", text="").ignore = True
 
-            box.operator("mustardui.warnings_fix_old_morphs", icon="TRIA_DOWN_BAR").ignore = False
+            box.operator("mustardui.update_ui", icon="TRIA_DOWN_BAR").ignore = False
 
+        # Emit warning if the model is used on a different Blender version than requested by the model creator
         if check_blender_version(rig_settings):
             box = layout.box()
             col = box.column(align=True)

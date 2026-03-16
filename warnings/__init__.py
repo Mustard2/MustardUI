@@ -1,15 +1,15 @@
 from . import ops_fix_old_UI
 from . import ops_fix_eevee_normals
-from . import ops_fix_old_morphs
+from . import ops_update_ui
 
 
 def register():
     ops_fix_old_UI.register()
     ops_fix_eevee_normals.register()
-    ops_fix_old_morphs.register()
+    ops_update_ui.register()
 
 
 def unregister():
-    ops_fix_old_morphs.unregister()
+    ops_update_ui.unregister()
     ops_fix_eevee_normals.unregister()
     ops_fix_old_UI.unregister()
