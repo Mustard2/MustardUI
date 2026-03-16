@@ -28,7 +28,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
-        simplify_settings = context.scene.MustardUI_SimplifySettings
+        simplify_settings = obj.MustardUI_SimplifySettings
 
         diffeomorphic_status = rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0
         simplify_status = rig_settings.simplify_main_enable

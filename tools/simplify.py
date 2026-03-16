@@ -124,7 +124,10 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
-        simplify_settings = context.scene.MustardUI_SimplifySettings
+        simplify_settings = arm.MustardUI_SimplifySettings
+
+        if arm is None:
+            return False
 
         return res and simplify_settings.simplify_main_enable
 
@@ -133,14 +136,13 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
         scene = context.scene
 
         settings = scene.MustardUI_Settings
-        simplify_settings = scene.MustardUI_SimplifySettings
-
-        poll, arm = mustardui_active_object(context, config=0)
         addon_prefs = context.preferences.addons[base_package].preferences
 
+        poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
-        physics_settings = arm.MustardUI_PhysicsSettings if arm else None
-        morphs_settings = arm.MustardUI_MorphsSettings if arm else None
+        physics_settings = arm.MustardUI_PhysicsSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
+        simplify_settings = arm.MustardUI_SimplifySettings
 
         # Cache settings
         if simplify_settings.simplify_revert_settings:
@@ -164,14 +166,14 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     "hair_global_solidify": rig_settings.hair_global_solidify,
                     "hair_global_normalautosmooth": rig_settings.hair_global_normalautosmooth
                 }
-            if "mustardui_pre_simplify" not in arm:
+            if "mustardui_pre_simplify" not in scene:
                 scene["mustardui_pre_simplify"] = {
                     "material_normal_nodes": settings.material_normal_nodes
                 }
         else:
             if "mustardui_pre_simplify" in arm:
                 del arm["mustardui_pre_simplify"]
-            if "mustardui_pre_simplify" in arm:
+            if "mustardui_pre_simplify" in scene:
                 del scene["mustardui_pre_simplify"]
 
         # Blender Simplify
@@ -243,13 +245,16 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     rig_settings.hair_global_normalautosmooth = not simplify_settings.simplify_enable
 
         # When Simplify is turned off, restore saved state
-        if not simplify_settings.simplify_enable and "mustardui_pre_simplify" in arm and simplify_settings.simplify_revert_settings:
-            for key, value in arm["mustardui_pre_simplify"].items():
-                setattr(rig_settings, key, value)
-            for key, value in scene["mustardui_pre_simplify"].items():
-                setattr(settings, key, value)
-            del arm["mustardui_pre_simplify"]
-            del scene["mustardui_pre_simplify"]
+        if not simplify_settings.simplify_enable and simplify_settings.simplify_revert_settings:
+            if "mustardui_pre_simplify" in arm:
+                for key, value in arm["mustardui_pre_simplify"].items():
+                    setattr(rig_settings, key, value)
+                del arm["mustardui_pre_simplify"]
+
+            if "mustardui_pre_simplify" in scene:
+                for key, value in scene["mustardui_pre_simplify"].items():
+                    setattr(settings, key, value)
+                del scene["mustardui_pre_simplify"]
 
         # Particle Systems
         if simplify_settings.simplify_particles and simplify_settings.simplify_enable:
@@ -335,10 +340,10 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
 def register():
     bpy.utils.register_class(MustardUI_SimplifySettings)
     bpy.utils.register_class(MUSTARDUI_OT_UpdateSimplify)
-    bpy.types.Scene.MustardUI_SimplifySettings = bpy.props.PointerProperty(type=MustardUI_SimplifySettings)
+    bpy.types.Armature.MustardUI_SimplifySettings = bpy.props.PointerProperty(type=MustardUI_SimplifySettings)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_SimplifySettings)
     bpy.utils.unregister_class(MUSTARDUI_OT_UpdateSimplify)
-    del bpy.types.Scene.MustardUI_SimplifySettings
+    del bpy.types.Armature.MustardUI_SimplifySettings

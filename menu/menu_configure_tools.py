@@ -30,7 +30,7 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
-        simplify_settings = context.scene.MustardUI_SimplifySettings
+        simplify_settings = arm.MustardUI_SimplifySettings
 
         box = layout.box()
         box.label(text="Enable Tools", icon="MODIFIER")
