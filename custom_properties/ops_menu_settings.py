@@ -81,6 +81,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                                           "section might break the custom property.\nChange the "
                                                           "values only if you know what you are doing!")
 
+    is_driver_corrupted = False
+
     @classmethod
     def poll(cls, context):
         res, obj = mustardui_active_object(context, config=1)
@@ -275,6 +277,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     self.subtype = ui_data_dict['subtype']
                 self.step_float = ui_data_dict['step']
 
+        # Check if the custom property driver is available
+        self.is_driver_corrupted = evaluate_path(custom_prop.rna, custom_prop.path) is not None
+
         return context.window_manager.invoke_props_dialog(self, width=700 if addon_prefs.debug else 450)
 
     def draw(self, context):
@@ -432,8 +437,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     op.path = lp.path
                     op.type = self.type
 
-        if addon_prefs.debug:
-
+        if addon_prefs.debug or self.is_driver_corrupted:
             row = layout.row()
             row.label(text="Paths", icon="DECORATE_DRIVER")
             row.prop(self, "change_rna", text="", icon="GREASEPENCIL")
@@ -453,6 +457,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row.prop(custom_prop, "path", text="")
             else:
                 row.label(text=mustardui_cp_path(custom_prop.rna, custom_prop.path), icon="RNA")
+
+            if self.is_driver_corrupted:
+                row = box.row()
+                row.alert = True
+                row.label(text="Path seems corrupted/non-existent. Please check their definition.", icon="ERROR")
 
         if self.change_rna or self.change_rna_linked:
             layout.box().label(text="Rebuild properties after modifying path values to apply the changes!",

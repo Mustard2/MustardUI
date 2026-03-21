@@ -383,7 +383,6 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 physics_settings.items.remove(pi_id)
 
             for col in to_remove:
-
                 # Find the index of the collection to remove
                 i = 0
                 for v in rig_settings.outfits_collections:
