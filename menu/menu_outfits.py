@@ -192,6 +192,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         row.separator()
                         op = row.operator("mustardui.delete_outfit", text="", icon="TRASH")
                         op.is_config = False
+                        op.delete_cp = True
 
                     for obj in sorted(items, key=lambda x: x.name):
                         draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 0, 0)

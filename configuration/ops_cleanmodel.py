@@ -39,6 +39,10 @@ class MustardUI_CleanModel(bpy.types.Operator):
     remove_unselected_hair: BoolProperty(default=False,
                                          name="Delete Unselected Hair",
                                          description="Remove all the Hair that are not currently in use")
+    remove_dangling_cp: BoolProperty(default=True,
+                                     name="Remove Outfit/Hair Dangling Custom Properties",
+                                     description="After removing the Outfit or Hair, the associated custom properties "
+                                                 "are deleted by default.\nUncheck this to keep the custom properties")
 
     remove_nulldrivers: BoolProperty(default=False,
                                      name="Remove Null Drivers",
@@ -382,6 +386,30 @@ class MustardUI_CleanModel(bpy.types.Operator):
             for pi_id in reversed(items_to_remove):
                 physics_settings.items.remove(pi_id)
 
+            # Clean Custom Properties
+            outfit_cp = arm.MustardUI_CustomPropertiesOutfit
+
+            # Firstly set the custom property to their default value
+            for i, cp in enumerate(outfit_cp):
+                if cp.outfit in to_remove:
+                    mustardui_reassign_default(arm, outfit_cp, i, addon_prefs)
+
+            # Update everything
+            if rig_settings.model_armature_object:
+                rig_settings.model_armature_object.update_tag()
+            bpy.context.view_layer.update()
+
+            # And then delete data
+            if self.remove_dangling_cp:
+                to_remove_cp = []
+                for i, cp in enumerate(outfit_cp):
+                    if cp.outfit in to_remove:
+                        mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
+                        to_remove_cp.append(i)
+                for i in reversed(to_remove_cp):
+                    outfit_cp.remove(i)
+
+            # Delete the Collections/Objects
             for col in to_remove:
                 # Find the index of the collection to remove
                 i = 0
@@ -391,7 +419,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     i += 1
 
                 context.scene.mustardui_outfits_uilist_index = i
-                bpy.ops.mustardui.delete_outfit(is_config=True)
+                bpy.ops.mustardui.delete_outfit(is_config=True, delete_cp=self.remove_dangling_cp)
                 outfits_deleted = outfits_deleted + 1
 
             rig_settings.outfits_list = current_outfit
@@ -440,13 +468,14 @@ class MustardUI_CleanModel(bpy.types.Operator):
             bpy.context.view_layer.update()
 
             # And then delete data
-            to_remove = []
-            for i, cp in enumerate(outfit_cp):
-                if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
-                    mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
-                    to_remove.append(i)
-            for i in reversed(to_remove):
-                outfit_cp.remove(i)
+            if self.remove_dangling_cp:
+                to_remove = []
+                for i, cp in enumerate(outfit_cp):
+                    if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
+                        mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
+                        to_remove.append(i)
+                for i in reversed(to_remove):
+                    outfit_cp.remove(i)
 
             # Delete the Objects
             for obj in objs:
@@ -510,13 +539,14 @@ class MustardUI_CleanModel(bpy.types.Operator):
             bpy.context.view_layer.update()
 
             # And then delete data
-            to_remove = []
-            for i, cp in enumerate(hair_cp):
-                if cp.hair in objs:
-                    mustardui_clean_prop(arm, hair_cp, i, addon_prefs)
-                    to_remove.append(i)
-            for i in reversed(to_remove):
-                hair_cp.remove(i)
+            if self.remove_dangling_cp:
+                to_remove = []
+                for i, cp in enumerate(hair_cp):
+                    if cp.hair in objs:
+                        mustardui_clean_prop(arm, hair_cp, i, addon_prefs)
+                        to_remove.append(i)
+                for i in reversed(to_remove):
+                    hair_cp.remove(i)
 
             for obj in objs:
                 data = obj.data
@@ -583,19 +613,30 @@ class MustardUI_CleanModel(bpy.types.Operator):
         col.label(text="Do not use while producing, but before starting a project with the model.", icon="DOT")
         col.label(text="This is a highly destructive operation! Use it at your own risk!", icon="ERROR")
 
+        # Body/Outfits/Extras
         box = layout.box()
-        box.label(text="General", icon="MODIFIER")
+        box.label(text="Outfits and Hair", icon="MOD_CLOTH")
         col = box.column(align=True)
-        col.prop(self, "remove_unselected_outfits")
-        if rig_settings.extras_collection is not None:
-            col.prop(self, "remove_unselected_extras")
-        if rig_settings.hair_collection is not None:
-            col.prop(self, "remove_unselected_hair")
-        col.prop(self, "remove_nulldrivers")
 
+        row = col.row()
+        row.enabled = len(rig_settings.outfits_collections) > 0
+        row.prop(self, "remove_unselected_outfits")
+        row = col.row()
+        row.enabled = rig_settings.extras_collection is not None
+        row.prop(self, "remove_unselected_extras")
+        row = col.row()
+        row.enabled = rig_settings.hair_collection is not None
+        row.prop(self, "remove_unselected_hair")
+        row = col.row()
+        row.enabled = (len(rig_settings.outfits_collections) > 0 or rig_settings.extras_collection is not None
+                       or rig_settings.hair_collection is not None)
+        row.prop(self, "remove_dangling_cp")
+
+        # Custom Properties
         box = layout.box()
         box.label(text="Custom Properties", icon="PROPERTIES")
         col = box.column(align=True)
+
         col.prop(self, "remove_body_cp")
         col.prop(self, "remove_outfit_cp")
         col.prop(self, "remove_hair_cp")
@@ -633,6 +674,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 col2.label(text="Use this option when you are not planning to use Diffeomorphic for this model anymore.",
                           icon="BLANK1")
                 col2.label(text="On the contrary, Morphs and face controls are NOT removed.", icon="BLANK1")
+
+        # Other
+        box = layout.box()
+        box.label(text="Others", icon="MODIFIER")
+        box.prop(self, "remove_nulldrivers")
 
 
 def register():
