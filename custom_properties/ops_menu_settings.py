@@ -461,7 +461,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             if self.is_driver_corrupted:
                 row = box.row()
                 row.alert = True
-                row.label(text="Path seems corrupted/non-existent. Please check their definition.", icon="ERROR")
+                row.label(text="Path seems corrupted/non-existent. Please check its definition.", icon="ERROR")
                 row.operator('mustardui.openlink', text="", icon="QUESTION").url = \
                     "https://github.com/Mustard2/MustardUI/wiki/Troubleshooting#custom-properties-error"
 
