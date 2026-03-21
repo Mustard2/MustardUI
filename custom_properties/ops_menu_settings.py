@@ -278,7 +278,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 self.step_float = ui_data_dict['step']
 
         # Check if the custom property driver is available
-        self.is_driver_corrupted = evaluate_path(custom_prop.rna, custom_prop.path) is not None
+        self.is_driver_corrupted = evaluate_path(custom_prop.rna, custom_prop.path) is None
 
         return context.window_manager.invoke_props_dialog(self, width=700 if addon_prefs.debug else 450)
 

@@ -2,7 +2,7 @@ import bpy
 import ast
 
 
-def evaluate_rna(rna_path):
+def evaluate_rna(rna_path, verbose = False):
 
     # Ensure the path starts with 'bpy.'
     #if not rna_path.startswith("bpy."):
@@ -27,14 +27,16 @@ def evaluate_rna(rna_path):
             try:
                 current_element = current_element[key]
             except (KeyError, TypeError, AttributeError):
-                print(f"Key '{key}' not found in {current_element}.")
+                if verbose:
+                    print(f"Key '{key}' not found in {current_element}.")
                 return None
         else:
             # Attribute access
             if hasattr(current_element, part):
                 current_element = getattr(current_element, part)
             else:
-                print(f"Attribute '{part}' not found in {current_element}.")
+                if verbose:
+                    print(f"Attribute '{part}' not found in {current_element}.")
                 return None
 
     return current_element
