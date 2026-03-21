@@ -462,6 +462,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row = box.row()
                 row.alert = True
                 row.label(text="Path seems corrupted/non-existent. Please check their definition.", icon="ERROR")
+                row.operator('mustardui.openlink', text="", icon="QUESTION").url = \
+                    "https://github.com/Mustard2/MustardUI/wiki/Troubleshooting#custom-properties-error"
 
         if self.change_rna or self.change_rna_linked:
             layout.box().label(text="Rebuild properties after modifying path values to apply the changes!",
