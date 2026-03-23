@@ -27,7 +27,7 @@ class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
 
         arm.update_tag()
 
-        self.report({'INFO'}, 'MustardUI - Physics item removed.')
+        self.report({'INFO'}, 'MustardUI - Physics Item removed.')
 
         return {'FINISHED'}
 

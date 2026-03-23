@@ -6,6 +6,7 @@ from . import ops_setup
 from . import ops_mirror
 from . import ops_add
 from . import ops_remove
+from . import ops_delete
 from . import ops_rebind
 from . import ui_list
 from . import ui_list_outfits
@@ -22,6 +23,7 @@ def register():
     ops_mirror.register()
     ops_add.register()
     ops_remove.register()
+    ops_delete.register()
     ops_rebind.register()
     ui_list.register()
     ui_list_outfits.register()
@@ -35,6 +37,7 @@ def unregister():
     ui_list_outfits.unregister()
     ui_list.unregister()
     ops_rebind.unregister()
+    ops_delete.unregister()
     ops_remove.unregister()
     ops_add.unregister()
     ops_mirror.unregister()
