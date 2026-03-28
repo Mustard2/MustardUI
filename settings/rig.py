@@ -577,8 +577,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                      "visible to increase performance")
 
     def hair_particle_children_viewport_factor_update(self, context):
-
-        for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
+        for obj in [x for x in self.hair_collection.objects if x.type == "MESH"]:
             for p in [x.settings for x in obj.particle_systems]:
                 if p.type == "HAIR":
                     p.child_percent = max(1, int(p.rendered_child_count * self.hair_particle_children_viewport_factor))

@@ -3,6 +3,7 @@ from . import MainPanel
 from .misc import mustardui_custom_properties_print
 from ..model_selection.active_object import *
 from ..misc.outfits import outfit_extract_items_from_collection
+from ..misc.ui_collapse import ui_collapse_prop
 from ..configuration.naming_convention import strip_naming_convention
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
@@ -26,6 +27,7 @@ def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
                                            rig_settings.hair_extras_collection.name,
                                            rig_settings.model_MustardUI_naming_convention),
               icon='OUTLINER_OB_' + obj.type)
+
     row.prop(obj, "hide_viewport", text="", emboss=False)
     row.prop(obj, "hide_render", text="", emboss=False)
 
@@ -170,45 +172,6 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                         if obj.MustardUI_OutfitSettings.additional_options_show:
                             mustardui_custom_properties_print(arm, settings, custom_properties_obj, layout,
                                                               rig_settings.hair_custom_properties_icons)
-
-                    mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
-                                                 key=format_dynamic_name)
-                    if len(mod_particle_system) > 0:
-                        row = layout.row(align=True)
-                        row.prop(rig_settings, 'hair_particle_children_viewport_factor', text="Density (Viewport)")
-
-                        row.prop(rig_settings, 'hair_particle_hide_viewport',
-                                 icon="RESTRICT_VIEW_ON" if not rig_settings.hair_particle_hide_viewport else "RESTRICT_VIEW_OFF",
-                                 text="",
-                                 emboss=True)
-                        row.prop(rig_settings, 'hair_particle_hide_render',
-                                 icon="RESTRICT_RENDER_ON" if not rig_settings.hair_particle_hide_render else "RESTRICT_RENDER_OFF",
-                                 text="",
-                                 emboss=True)
-                        row.separator()
-                        if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
-                            status = any(x.particle_system.use_hair_dynamics for x in mod_particle_system)
-                            op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS",
-                                              depress=status)
-                            op.enable = not status
-                            op.obj = obj.name
-                        row.separator()
-                        row.prop(rig_settings, 'hair_particle_collapse',
-                                 icon="PREFERENCES",
-                                 text="",
-                                 emboss=True)
-
-                        if rig_settings.hair_particle_collapse:
-                            box2 = layout.box()
-                            for mod in mod_particle_system:
-                                row = box2.row(align=True)
-                                row.label(text=format_dynamic_name(mod), icon="PARTICLES")
-                                row2 = row.row(align=True)
-                                if "Dynamic" in mod.particle_system.name:
-                                    row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
-                                row2.prop(mod, "show_viewport", text="")
-                                row2.prop(mod, "show_render", text="")
-
                 except:
                     box = layout.box()
                     box.label(text="An error occurred.", icon="ERROR")
@@ -216,6 +179,94 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     if addon_prefs.developer:
                         box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
                         box.operator('mustardui.configuration', text="Enter Configuration Mode", icon="PREFERENCES")
+
+
+class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
+    bl_label = ""
+    bl_parent_id = "PANEL_PT_MustardUI_Hair"
+    bl_options = {"HEADER_LAYOUT_EXPAND"}
+
+    @classmethod
+    def poll(cls, context):
+
+        if check_old_UI():
+            return False
+
+        res, arm = mustardui_active_object(context, config=0)
+
+        if arm is None:
+            return False
+
+        rig_settings = arm.MustardUI_RigSettings
+
+        obj = context.scene.objects[rig_settings.hair_list]
+        mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
+                                     key=format_dynamic_name)
+
+        return res if obj is not None and len(mod_particle_system) > 0 else False
+
+    def draw_header(self, context):
+        res, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+
+        layout = self.layout
+        layout.label(text="Particle Settings")
+
+        obj = context.scene.objects[rig_settings.hair_list]
+
+        mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
+                                     key=format_dynamic_name)
+
+        row = layout.row(align=True)
+        if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
+            status = any(x.particle_system.use_hair_dynamics for x in mod_particle_system)
+            op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS",
+                              depress=status)
+            op.enable = not status
+            op.obj = obj.name
+
+        row = layout.row(align=True)
+        row.prop(rig_settings, 'hair_particle_hide_viewport',
+                 icon="RESTRICT_VIEW_ON" if not rig_settings.hair_particle_hide_viewport else "RESTRICT_VIEW_OFF",
+                 text="",
+                 emboss=True)
+        row.prop(rig_settings, 'hair_particle_hide_render',
+                 icon="RESTRICT_RENDER_ON" if not rig_settings.hair_particle_hide_render else "RESTRICT_RENDER_OFF",
+                 text="",
+                 emboss=True)
+
+    def draw(self, context):
+        res, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+
+        layout = self.layout
+
+        obj = context.scene.objects[rig_settings.hair_list]
+
+        mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
+                                     key=format_dynamic_name)
+
+        row = layout.row(align=True)
+        row.prop(rig_settings, 'hair_particle_children_viewport_factor', text="Density (Viewport)")
+
+        if ui_collapse_prop(layout,
+                            rig_settings,
+                            'hair_particle_collapse',
+                            "Systems",
+                            icon="",
+                            align=True,
+                            use_layout=False,
+                            emboss=False,
+                            invert_checkbox=False):
+            box = layout.box()
+            for mod in mod_particle_system:
+                row = box.row(align=True)
+                row.label(text=format_dynamic_name(mod), icon="PARTICLES")
+                row2 = row.row(align=True)
+                if "Dynamic" in mod.particle_system.name:
+                    row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
+                row2.prop(mod, "show_viewport", text="")
+                row2.prop(mod, "show_render", text="")
 
 
 class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
@@ -262,21 +313,33 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
 
         settings = bpy.context.scene.MustardUI_Settings
 
-        have_custom_props = False
+        have_custom_props = sum(1 for x in arm.MustardUI_CustomPropertiesHair if x.hair is not None)
+
+        box_already_allocated = False
+        col = None
         if hair_extras_collection is not None:
             eitems = outfit_extract_items_from_collection(hair_extras_collection,
                                                           True)
+            if len(eitems) > 0:
+                box = layout.box()
+                col = box.column()
+                box_already_allocated = True
 
             for obj in eitems:
-                draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings)
+                row = col.row(align=True)
+                if not draw_hair_piece(row, obj, arm, rig_settings, physics_settings, settings):
+                    row.label(text="", icon="BLANK1")
 
         # Particle systems
         if rig_settings.particle_systems_enable:
             mod_particle_system = sorted([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"],
                                          key=lambda x: x.particle_system.name)
+            if len(mod_particle_system) > 0 and not box_already_allocated:
+                box = layout.box()
+                col = box.column()
 
             for mod in mod_particle_system:
-                row = layout.row()
+                row = col.row()
                 row.label(text=mod.particle_system.name, icon="PARTICLES")
                 row2 = row.row(align=True)
                 row2.prop(mod, "show_viewport", text="", emboss=False)
@@ -368,6 +431,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Hair_ParticleSettings)
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair_GlobalProperties)
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair_Extras)
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair_Optimize)
@@ -377,4 +441,5 @@ def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_Optimize)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_Extras)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_GlobalProperties)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_ParticleSettings)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair)
