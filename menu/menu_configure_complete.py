@@ -24,6 +24,7 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         settings = bpy.context.scene.MustardUI_Settings
+        addon_prefs = context.preferences.addons[base_package].preferences
         res, arm = mustardui_active_object(context, config=1)
 
         # Configuration button
@@ -31,6 +32,9 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
         col.prop(settings, "advanced")
         if not arm.MustardUI_created:
             col.prop(settings, "viewport_model_selection_after_configuration")
+        if settings.advanced and addon_prefs.debug:
+            col.separator()
+            col.prop(settings, "configuration_force_ui_update")
         layout.operator('mustardui.configuration', text="End the configuration")
 
 

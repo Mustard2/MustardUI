@@ -50,7 +50,6 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
 
     # Material normals mute
     def update_material_normal(self, context):
-
         bpy.ops.mustardui.material_normalmap_nodes(custom=self.material_normal_nodes)
 
         return
@@ -63,10 +62,15 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                                                     "Disable this for Cycles",
                                         update=update_material_normal)
 
+    # Force UI Update on Configuration
+    configuration_force_ui_update: BoolProperty(default=False,
+                                                name="Force UI Update",
+                                                description="Enable to force UI Update when ending the Confguration")
+
     # Tools (internal)
     # Class to store temporary settings for outfit rename
     rename_outfits_temp_class: CollectionProperty(
-            type=MustardUI_RenameOutfit_Class)
+        type=MustardUI_RenameOutfit_Class)
 
 
 # Handler to solve a missing UI when: developer mode is on, but the UI has been left in configuration mode
