@@ -10,6 +10,7 @@ def is_ui_update(rig_settings):
             or rig_settings.simplify_main_enable
             # Check if the Hair curves were enabled (behaviour was different)
             or (rig_settings.hair_collection is not None and
+                any(x.type == "CURVES" for x in rig_settings.hair_collection.objects) and
                 rig_settings.curves_hair_enable)
             # Check for Hair convention
             or (rig_settings.hair_collection is not None and
@@ -28,12 +29,12 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=-1)
         rig_settings = obj.MustardUI_RigSettings
         return (poll and not is_ui_update(rig_settings)) if obj is not None else False
 
     def execute(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=-1)
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
         simplify_settings = obj.MustardUI_SimplifySettings
@@ -41,6 +42,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
         diffeomorphic_status = rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0
         simplify_status = rig_settings.simplify_main_enable
         curves_hair_status = (rig_settings.hair_collection is not None and
+                              any(x.type == "CURVES" for x in rig_settings.hair_collection.objects) and
                               rig_settings.curves_hair_enable)
         hair_convention_status = (rig_settings.hair_collection is not None and
                 rig_settings.model_MustardUI_naming_convention and

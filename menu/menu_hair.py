@@ -232,6 +232,9 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
 
         rig_settings = arm.MustardUI_RigSettings
 
+        if rig_settings.hair_list == "":
+            return False
+
         obj = context.scene.objects[rig_settings.hair_list]
         mod_particle_system = sorted([x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
                                      key=format_dynamic_name)

@@ -14,7 +14,7 @@ def mustardui_active_object(context, config=0):
 
         obj = context.active_object
 
-        if obj.type == "ARMATURE":
+        if obj.data is not None and obj.type == "ARMATURE":
             if config == 1:
                 return not obj.data.MustardUI_enable, obj.data
             elif config == 0:

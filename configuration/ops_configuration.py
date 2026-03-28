@@ -2,6 +2,7 @@ import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
 from ..physics.update_enable import enable_physics_update
+from ..warnings.ops_update_ui import is_ui_update
 from .. import __package__ as base_package
 from datetime import datetime
 from .. import bl_info
@@ -29,6 +30,15 @@ class MustardUI_Configuration(bpy.types.Operator):
 
             if addon_prefs.debug:
                 print("\n\nMustardUI - Configuration Logs")
+
+            if addon_prefs.debug:
+                print("\n\nMustardUI - Update UI")
+            if not is_ui_update(rig_settings):
+                try:
+                    bpy.ops.mustardui.update_ui(ignore=False)
+                except:
+                    print("\n\nMustardUI - Skipping UI Update")
+                    pass
 
             # Various checks
             if rig_settings.model_body is None:
