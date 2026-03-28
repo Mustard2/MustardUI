@@ -17,8 +17,11 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
 
         name = item.object.name
         name = name if not rig_settings.model_MustardUI_naming_convention else name[len(rig_settings.model_name)+1:]
-        layout.prop(item, 'enable', text="")
-        layout.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
+
+        row = layout.row(align=True)
+        row.prop(item, 'enable', text="")
+        row.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
+
         row = layout.row(align=True)
         if item.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
             if item.type == "CAGE":
@@ -26,7 +29,8 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
             row.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
         else:
             row.label(text="", icon="BLANK1")
-        row.prop(item.object, 'hide_viewport', text="")
+
+        row.prop(item.object, 'hide_viewport', text="", emboss=False)
 
 
 def register():

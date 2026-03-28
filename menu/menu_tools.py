@@ -33,15 +33,15 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
         res, arm = mustardui_active_object(context, config=0)
-        if arm:
-            if hasattr(arm.MustardUI_ToolsSettings, "autobreath_enable"):
-                return res and arm.MustardUI_ToolsSettings.autobreath_enable
-            else:
-                return False
-        else:
-            return res
+
+        if not arm:
+            return False
+
+        if hasattr(arm.MustardUI_ToolsSettings, "autobreath_enable"):
+            return res and arm.MustardUI_ToolsSettings.autobreath_enable
+
+        return False
 
     def draw(self, context):
 
@@ -50,19 +50,18 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        box = layout.box()
-        column = box.column(align=True)
+        column = layout.column(align=True)
         column.label(text="Select one bone:", icon="BONE_DATA")
         column.label(text="  - Unlocked transformation are animated")
         column.label(text="  - Rest value should be 1")
         column.label(text="  - Max value should be 2")
-        column = box.column(align=True)
+        column = layout.column(align=True)
         column.prop(tools_settings, "autobreath_frequency")
         column.prop(tools_settings, "autobreath_amplitude")
         column.prop(tools_settings, "autobreath_random")
         column.prop(tools_settings, "autobreath_sampling")
 
-        layout.operator('mustardui.tools_autobreath')
+        layout.operator('mustardui.tools_autobreath', icon="FORCE_WIND")
 
 
 class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
@@ -73,15 +72,15 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
         res, arm = mustardui_active_object(context, config=0)
-        if arm:
-            if hasattr(arm.MustardUI_ToolsSettings, "autoeyelid_enable"):
-                return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
-            else:
-                return False
-        else:
-            return res
+
+        if not arm:
+            return False
+
+        if hasattr(arm.MustardUI_ToolsSettings, "autoeyelid_enable"):
+            return res and arm.MustardUI_ToolsSettings.autoeyelid_enable
+
+        return False
 
     def draw(self, context):
 
@@ -90,14 +89,11 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        box = layout.box()
-        column = box.column(align=True)
-        column.label(text="Auto Blink settings", icon="HIDE_OFF")
-        column = box.column(align=True)
+        column = layout.column(align=True)
         column.prop(tools_settings, "autoeyelid_blink_length")
         column.prop(tools_settings, "autoeyelid_blink_rate_per_minute")
 
-        layout.operator('mustardui.tools_autoeyelid')
+        layout.operator('mustardui.tools_autoeyelid', icon="HIDE_OFF")
 
 
 def register():

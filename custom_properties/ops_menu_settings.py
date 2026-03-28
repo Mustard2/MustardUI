@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
-from ..misc.icons_list import mustardui_icon_list
+from ..misc.icons import mustardui_icon_list
 from ..model_selection.active_object import *
 from .misc import *
 from ..misc.prop_utils import *

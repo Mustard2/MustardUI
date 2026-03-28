@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
-from ..misc.icons_list import mustardui_icon_list
+from ..misc.icons import mustardui_icon_list
 from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh
 
 

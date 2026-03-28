@@ -84,7 +84,6 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             col.prop(rig_settings, "outfits_enable_global_mask")
             col.prop(rig_settings, "outfits_enable_global_solidify")
             col.prop(rig_settings, "outfits_enable_global_triangulate")
-            col.prop(rig_settings, "outfits_enable_global_normalautosmooth")
 
             # Custom properties
             box = layout.box()
@@ -124,7 +123,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         box = layout.box()
 
         # Extras list
-        box.label(text="Extras", icon="PLUS")
+        box.label(text="Extras", icon="ADD")
         box.prop(rig_settings, "extras_collection", text="")
 
 

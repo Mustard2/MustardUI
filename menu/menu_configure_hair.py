@@ -53,7 +53,6 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
                 col.prop(rig_settings, "hair_enable_global_smoothcorrection")
                 col.prop(rig_settings, "hair_enable_global_solidify")
                 col.prop(rig_settings, "hair_enable_global_particles")
-                col.prop(rig_settings, "hair_enable_global_normalautosmooth")
 
                 # Custom properties
                 box = layout.box()
@@ -90,14 +89,13 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
                 box.label(text="No Hair Objects in the collection.", icon="ERROR")
 
         box = layout.box()
-        box.label(text="Hair Switcher Collection", icon="GHOST_DISABLED")
-        box.prop(rig_settings, "hair_switch_collection", text="")
+        box.label(text="Extras", icon="ADD")
+        box.prop(rig_settings, "hair_extras_collection", text="")
+        box.prop(rig_settings, "particle_systems_enable", text="Add Particle Systems as Extras")
 
         box = layout.box()
-        box.label(text="Other Hair", icon="OUTLINER_OB_CURVES")
-        col = box.column()
-        col.prop(rig_settings, "curves_hair_enable", text="Show Curves Hair")
-        col.prop(rig_settings, "particle_systems_enable", text="Show Particle Systems")
+        box.label(text="Switcher Collection", icon="GHOST_DISABLED")
+        box.prop(rig_settings, "hair_switch_collection", text="")
 
 
 def register():

@@ -4,6 +4,7 @@ from ..outfits.definitions import *
 from ..sections.definitions import *
 from ..physics.update_enable import enable_physics_update
 from ..misc.set_bool import set_bool
+from ..misc.icons import get_hair_icon
 from .. import __package__ as base_package
 
 import re
@@ -43,6 +44,11 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                      type=bpy.types.Object,
                                                      poll=poll_armature)
 
+    model_mustardui_version: bpy.props.IntVectorProperty(name="",
+                                                         size=3,
+                                                         min=0,
+                                                         default=(0, 0, 0))
+
     # ------------------------------------------------------------------------
     #    Body properties
     # ------------------------------------------------------------------------
@@ -61,24 +67,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for modifier in [x for x in self.model_body.modifiers if x.type == "CORRECTIVE_SMOOTH"]:
             modifier.show_viewport = self.body_smooth_corr
             modifier.show_render = self.body_smooth_corr
-
-    # Helper function for Auto-smooth function
-    @staticmethod
-    def _set_normal_autosmooth(target_object, autosmooth_value, autosmooth_enabled):
-        if target_object.type == "MESH" and autosmooth_enabled:
-            for modifier in [x for x in target_object.modifiers if x.type == "NODES"]:
-                if modifier.node_group is None:
-                    continue
-
-                if modifier.node_group.name != "Smooth by Angle":
-                    continue
-
-                modifier.show_viewport = autosmooth_value
-                modifier.show_render = autosmooth_value
-
-    # Update function for Auto-smooth function
-    def update_norm_autosmooth(self, context):
-        MustardUI_RigSettings._set_normal_autosmooth(self.model_body, self.body_norm_autosmooth, True)
 
     # Update function for Smooth Correction modifiers
     def update_solidify(self, context):
@@ -135,19 +123,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                    name="Smooth Correction modifiers",
                                                    description="Creates a switcher on the UI to enable/disable all "
                                                                "modifiers of this type on the Body")
-
-    # Normal auto smooth
-    body_norm_autosmooth: bpy.props.BoolProperty(default=True,
-                                                 name="Normals Auto Smooth",
-                                                 description="Enable/disable the Auto-smooth for body normals. "
-                                                             "\nDisable it to increase the performance in viewport, "
-                                                             "and re-enable it before rendering",
-                                                 update=update_norm_autosmooth)
-
-    body_enable_norm_autosmooth: bpy.props.BoolProperty(default=False,
-                                                        name="Normals Auto Smooth property",
-                                                        description="Creates a switcher on the UI to enable/disable "
-                                                                    "all modifiers of this type on the Body")
 
     # Solidify
     body_solidify: bpy.props.BoolProperty(default=True,
@@ -283,12 +258,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                           "on the Body",
                                                               name="Triangulate modifiers")
 
-    outfits_enable_global_normalautosmooth: bpy.props.BoolProperty(default=False,
-                                                                   description="Creates a switcher on the UI to "
-                                                                               "enable/disable all modifiers of this "
-                                                                               "type on the Body",
-                                                                   name="Normals Auto Smooth properties")
-
     outfits_max_hierarchy_level: bpy.props.IntProperty(default=3)
 
     # OUTFITS FUNCTIONS AND DATA
@@ -359,13 +328,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             items = collection.all_objects if self.outfit_config_subcollections else collection.objects
 
             for obj in items:
-                # Update autosmooth
-                MustardUI_RigSettings._set_normal_autosmooth(
-                    obj,
-                    self.outfits_global_normalautosmooth,
-                    self.outfits_enable_global_normalautosmooth
-                )
-
                 # Update object modifiers
                 for mod in obj.modifiers:
                     if mod.type not in mod_settings:
@@ -450,12 +412,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                    "Outfits",
                                                        update=outfits_global_options_update)
 
-    outfits_global_normalautosmooth: bpy.props.BoolProperty(default=True,
-                                                            name="Normals Auto Smooth",
-                                                            description="Enable/disable the Auto Smooth modifiers on "
-                                                                        "the Outfits",
-                                                            update=outfits_global_options_update)
-
     outfit_custom_properties_icons: bpy.props.BoolProperty(default=False,
                                                            name="Show Icons",
                                                            description="Enable properties icons in the outfit menu")
@@ -513,7 +469,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     extras_collection: bpy.props.PointerProperty(name="Extras Collection",
                                                  type=bpy.types.Collection,
                                                  poll=poll_collection_extras)
-    extras_collapse: bpy.props.BoolProperty(default=False, name="")
 
     # ------------------------------------------------------------------------
     #    Hair properties
@@ -541,6 +496,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             collections.append(self.extras_collection)
         if self.hair_collection is not None:
             collections.append(self.hair_collection)
+        if self.hair_extras_collection is not None:
+            collections.append(self.hair_extras_collection)
         return object not in collections
 
     hair_switch_collection: bpy.props.PointerProperty(name="Hair Switch Collection",
@@ -553,20 +510,47 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                   "this Collection",
                                                       poll=poll_collection_hair_switch)
 
+    def poll_collection_hair_extras(self, object):
+        collections = [x.collection for x in self.outfits_collections]
+        if self.extras_collection is not None:
+            collections.append(self.extras_collection)
+        if self.hair_collection is not None:
+            collections.append(self.hair_collection)
+        if self.hair_switch_collection is not None:
+            collections.append(self.hair_switch_collection)
+        return object not in collections
+
+    hair_extras_collection: bpy.props.PointerProperty(name="Hair Extras Collection",
+                                                      type=bpy.types.Collection,
+                                                      description="Collection of Objects which are of Hair type but "
+                                                                  "can be enabled in addition to the main Hair ("
+                                                                  "similar to Outfit Extras).",
+                                                      poll=poll_collection_hair_extras)
+
     # Function to create an array of tuples for hair objects in the Hair collection
     def hair_list_make(self, context):
-        items = []
+        if not self.hair_collection:
+            return []
 
-        if self.hair_collection is None:
-            return items
+        objects = self.hair_collection.objects
 
-        prefix_len = len(self.model_name + ' ') if self.model_MustardUI_naming_convention else 0
+        prefix = f"{self.hair_collection.name} - " if self.model_MustardUI_naming_convention else ""
+        prefix_len = len(prefix)
 
-        for obj in self.hair_collection.objects:
-            if obj.type != "MESH":
-                continue
-            nname = obj.name[prefix_len:] if prefix_len else obj.name
-            items.append((obj.name, nname, obj.name))
+        def display_name(obj_name):
+            return obj_name[prefix_len:] if prefix else obj_name
+
+        items = [
+            (
+                obj.name,
+                display_name(obj.name),
+                obj.name,
+                get_hair_icon(obj),
+                i,
+            )
+            for i, obj in enumerate(objects)
+            if obj.type in {"MESH", "CURVES"}
+        ]
 
         return sorted(items)
 
@@ -620,12 +604,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     hair_particle_hide_viewport: bpy.props.BoolProperty(default=False,
                                                         name="Hide Viewport",
-                                                        description="Hide the current Hair Particle and its Particle System modifiers",
+                                                        description="Hide the current Hair Particle and its Particle "
+                                                                    "System modifiers",
                                                         update=hair_particle_hide_viewport_update)
 
     hair_particle_hide_render: bpy.props.BoolProperty(default=False,
                                                       name="Hide Render",
-                                                      description="Hide the current Hair Particle and its Particle System modifiers",
+                                                      description="Hide the current Hair Particle and its Particle "
+                                                                  "System modifiers",
                                                       update=hair_particle_hide_render_update)
 
     hair_particle_collapse: bpy.props.BoolProperty(default=False,
@@ -654,12 +640,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                      "all modifiers of this type on the Body",
                                                          name="Particle Hair modifiers")
 
-    hair_enable_global_normalautosmooth: bpy.props.BoolProperty(default=False,
-                                                                description="Creates a switcher on the UI to "
-                                                                            "enable/disable all modifiers of this "
-                                                                            "type on the Body",
-                                                                name="Normals Auto Smooth properties")
-
     # Function to update the global hair properties
     def hair_global_options_subsurf_update(self, context):
 
@@ -683,13 +663,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         }
 
         for obj in self.hair_collection.objects:
-            # Update autosmooth if enabled
-            MustardUI_RigSettings._set_normal_autosmooth(
-                obj,
-                self.hair_global_normalautosmooth,
-                self.hair_enable_global_normalautosmooth
-            )
-
             # Update relevant modifiers
             for mod in obj.modifiers:
                 if mod.type not in mod_settings:
@@ -722,12 +695,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                   description="Enable/disable the Particle Hair modifiers on the Hair",
                                                   update=hair_global_options_update)
 
-    hair_global_normalautosmooth: bpy.props.BoolProperty(default=True,
-                                                         name="Normals Auto Smooth",
-                                                         description="Enable/disable the Auto Smooth modifiers on the "
-                                                                     "Hair",
-                                                         update=hair_global_options_update)
-
     hair_update_tag_on_switch: bpy.props.BoolProperty(default=True,
                                                       name="Update Drivers on Switch",
                                                       description="Update the drivers when switching Outfit "
@@ -735,15 +702,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                   "slow when using the Outfit piece visibility "
                                                                   "buttons in the UI")
 
-    # Curves Hair enable
-    curves_hair_enable: bpy.props.BoolProperty(default=True,
-                                               name="Curves Hair",
-                                               description="Show Curves Hair in the UI.\nIf enabled, Curves Hair in "
-                                                           "the hair collection are automatically be added to the UI")
-
     # Particle system enable
     particle_systems_enable: bpy.props.BoolProperty(default=True,
-                                                    name="Particle Systems",
+                                                    name="Particle Systems as Extras",
                                                     description="Show Particle Systems in the UI.\nIf enabled, "
                                                                 "particle systems on the body mesh are automatically "
                                                                 "be added to the UI")
@@ -836,6 +797,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Old versioning
     model_version: bpy.props.StringProperty(default="")
+
+    # Old hair curves support
+    curves_hair_enable: bpy.props.BoolProperty(default=False)
 
     # Diffeomorphic support
     # Keep this setting while the other Morphs implementation is considered deprecated

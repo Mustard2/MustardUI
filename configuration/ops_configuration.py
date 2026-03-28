@@ -4,6 +4,7 @@ from ..model_selection.active_object import *
 from ..physics.update_enable import enable_physics_update
 from .. import __package__ as base_package
 from datetime import datetime
+from .. import bl_info
 
 
 class MustardUI_Configuration(bpy.types.Operator):
@@ -166,6 +167,9 @@ class MustardUI_Configuration(bpy.types.Operator):
                 rig_settings.model_version_date = date_str
             else:
                 rig_settings.model_version_date = ""
+
+            # Set the version with which the model has been saved
+            rig_settings.model_mustardui_version = bl_info["version"]
 
             # Clean the model temporary settings
             settings.rename_outfits_temp_class.clear()
