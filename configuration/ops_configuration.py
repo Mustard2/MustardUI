@@ -126,7 +126,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                             'corrupted. Try to remove the UI and re-add it')
 
             if rig_settings.hair_collection is not None and rig_settings.hair_list == "":
-                if len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"]) > 0:
+                if len([x for x in rig_settings.hair_collection.objects if x.type in ["MESH", "CURVES"]]) > 0:
                     try:
                         rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
                         print('MustardUI - Configuration Warning - Fixed hair_list index')

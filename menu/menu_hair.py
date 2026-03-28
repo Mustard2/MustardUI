@@ -363,14 +363,8 @@ class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         hair_global_properties_avail = sum(1 for x in arm.MustardUI_CustomPropertiesHair if x.hair is None)
-
-        global_settings_avail = (rig_settings.hair_enable_global_subsurface or
-                                 rig_settings.hair_enable_global_smoothcorrection or
-                                 rig_settings.hair_enable_global_solidify or
-                                 rig_settings.hair_enable_global_particles)
         if rig_settings.hair_collection is not None:
-            hair_num = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])
-            return res if (global_settings_avail and hair_num) or hair_global_properties_avail else False
+            return res if hair_global_properties_avail else False
 
         return False
 

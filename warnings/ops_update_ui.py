@@ -131,6 +131,9 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                         # Replace the name with the new convention
                         obj.name = f"{hair_collection.name} - " + obj.name
 
+                # Fix the list index
+                rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
+
                 rig_settings.model_mustardui_version = bl_info["version"]
             except:
                 errors += 1
