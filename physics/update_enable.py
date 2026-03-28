@@ -29,9 +29,9 @@ def influence_cage_modifiers(physics_item, iterator, influence):
                 mod.show_render = influence > 0.001
 
 
-def set_modifiers(physics_item, obj, status):
+def set_modifiers(physics_item, obj, status, mtype=""):
     for modifier in obj.modifiers:
-        if physics_item.object.name in modifier.name:
+        if physics_item.object.name in modifier.name and (mtype == "" or modifier.type == mtype):
             modifier.show_viewport = status
             modifier.show_render = status
 
@@ -177,6 +177,53 @@ def enable_physics_update_single(self, context):
         self.collapse_cloth = True
         self.collapse_softbody = True
         self.collapse_collisions = True
+
+    self.smooth_corrective = status
+
+    return
+
+
+def enable_physics_update_single_smooth_corrective(self, context):
+
+    res, arm = mustardui_active_object(context, config=0)
+
+    if arm is None or not res or not self.object:
+        return
+
+    rig_settings = arm.MustardUI_RigSettings
+    physics_settings = arm.MustardUI_PhysicsSettings
+
+    body = rig_settings.model_body
+
+    status = physics_settings.enable_physics and self.enable and self.smooth_corrective
+    for modifier in [x for x in self.object.modifiers if x.type == 'CORRECTIVE_SMOOTH']:
+        modifier.show_viewport = status
+        modifier.show_render = status
+
+    if self.type == "CAGE":
+        set_modifiers(self, rig_settings.model_body, status, 'CORRECTIVE_SMOOTH')
+
+        for obj in rig_settings.model_armature_object.children:
+            if obj == self.object:
+                continue
+            status_int = status and not obj.hide_viewport and self.smooth_corrective
+            set_modifiers(self, obj, status_int, 'CORRECTIVE_SMOOTH')
+
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
+            items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
+            for obj in [x for x in items if x.type == "MESH"]:
+                status_int = status and not coll.collection.hide_viewport and not obj.hide_viewport and self.smooth_corrective
+                set_modifiers(self, obj, status_int, 'CORRECTIVE_SMOOTH')
+
+        if rig_settings.extras_collection is not None:
+            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+                status_int = status and not rig_settings.extras_collection.hide_viewport and not obj.hide_viewport and self.smooth_corrective
+                set_modifiers(self, obj, status_int, 'CORRECTIVE_SMOOTH')
+
+        if rig_settings.hair_collection is not None:
+            for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+                status_int = status and not rig_settings.hair_collection.hide_viewport and not obj.hide_viewport and self.smooth_corrective
+                set_modifiers(self, obj, status_int, 'CORRECTIVE_SMOOTH')
 
     return
 

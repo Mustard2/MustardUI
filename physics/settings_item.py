@@ -95,6 +95,11 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
                                             description="Influence of this item on bones constraints",
                                             update=bone_influence_update)
 
+    smooth_corrective: bpy.props.BoolProperty(default=False,
+                                              name="Smooth Corrective",
+                                              description="Enable/disable Smooth Corrective modifiers",
+                                              update=enable_physics_update_single_smooth_corrective)
+
     # UI Collapse
 
     # Cloth

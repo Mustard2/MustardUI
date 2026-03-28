@@ -195,17 +195,19 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
             if pi.type in ["CAGE", "SINGLE_ITEM"]:
                 for mod in pi.object.modifiers:
                     if mod.type in ["CLOTH"]:
+                        box = layout.box()
                         col = box.column()
                         col.enabled = pi.enable
                         cloth_panel(col, pi, mod)
-
                     if mod.type in ["SOFT_BODY"]:
+                        box = layout.box()
                         col = box.column()
                         col.enabled = pi.enable
                         soft_panel(col, pi, mod)
             elif pi.type == "COLLISION":
                 for mod in pi.object.modifiers:
                     if mod.type in ["COLLISION"]:
+                        box = layout.box()
                         col = box.column()
                         col.enabled = pi.enable
                         collision_panel(col, pi, mod)
