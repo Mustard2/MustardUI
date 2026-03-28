@@ -23,6 +23,7 @@ from . import tools_creators
 from . import custom_properties
 from . import sections
 from . import outfits
+from . import hair
 from . import physics
 from . import morphs
 from . import configuration
@@ -33,6 +34,7 @@ from . import viewport_panel
 
 def register():
     outfits.register()
+    hair.register()
     sections.register()
     settings.register()
     misc.register()
@@ -66,4 +68,5 @@ def unregister():
     misc.unregister()
     settings.unregister()
     sections.unregister()
+    hair.unregister()
     outfits.unregister()

@@ -16,6 +16,14 @@ def format_dynamic_name(x):
         "Dynamic", "").lstrip().rstrip()
 
 
+def hair_extras_list_make(rig_settings):
+    objects = rig_settings.hair_extras_collection.objects
+    return [
+        obj for obj in objects if obj.type in {"MESH", "CURVES"}
+    ]
+
+
+
 def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
     if obj in [x.object for x in physics_settings.items]:
         return
@@ -23,13 +31,14 @@ def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
     col = layout.column()
     row = col.row(align=True)
 
-    row.label(text=strip_naming_convention(obj.name,
-                                           rig_settings.hair_extras_collection.name,
-                                           rig_settings.model_MustardUI_naming_convention),
-              icon='OUTLINER_OB_' + obj.type)
-
-    row.prop(obj, "hide_viewport", text="", emboss=False)
-    row.prop(obj, "hide_render", text="", emboss=False)
+    op = row.operator('mustardui.hair_visibility_extras',
+                      text=strip_naming_convention(obj.name,
+                                                   rig_settings.hair_extras_collection.name,
+                                                   rig_settings.model_MustardUI_naming_convention),
+                      icon='OUTLINER_OB_' + obj.type,
+                      depress=not obj.hide_viewport
+                      )
+    op.obj_name = obj.name
 
     # Physics
     pi = None
@@ -337,16 +346,17 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
 
         settings = bpy.context.scene.MustardUI_Settings
 
-        have_custom_props = sum(1 for x in arm.MustardUI_CustomPropertiesHair if x.hair is not None)
-
         box_already_allocated = False
         col = None
+        have_custom_props = False
         if hair_extras_collection is not None:
-            eitems = outfit_extract_items_from_collection(hair_extras_collection,
-                                                          True)
+
+            have_custom_props = sum(1 for x in arm.MustardUI_CustomPropertiesHair if
+                                    x.hair is not None and x.hair.name in hair_extras_collection.objects)
+
+            eitems = hair_extras_list_make(rig_settings)
             if len(eitems) > 0:
-                box = layout.box()
-                col = box.column()
+                col = layout.column()
                 box_already_allocated = True
 
             for obj in eitems:
@@ -359,17 +369,17 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
             mod_particle_system = sorted([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"],
                                          key=lambda x: x.particle_system.name)
             if len(mod_particle_system) > 0 and not box_already_allocated:
-                box = layout.box()
-                col = box.column()
+                col = layout.column()
 
             for mod in mod_particle_system:
                 row = col.row()
-                row.label(text=mod.particle_system.name, icon="PARTICLES")
-                row2 = row.row(align=True)
-                row2.prop(mod, "show_viewport", text="", emboss=False)
-                row2.prop(mod, "show_render", text="", emboss=False)
-                if have_custom_props:
-                    row2.label(text="", icon="BLANK1")
+                op = row.operator('mustardui.hair_visibility_extras_particle_system',
+                                  text=mod.particle_system.name,
+                                  icon='PARTICLES',
+                                  depress=mod.show_viewport
+                                  )
+                op.obj_name = rig_settings.model_body.name
+                op.particle_system = mod.particle_system.name
 
 
 class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):
@@ -444,7 +454,6 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
             col.prop(rig_settings, "hair_global_solidify")
         if rig_settings.hair_enable_global_particles:
             col.prop(rig_settings, "hair_global_particles")
-
 
 
 def register():
