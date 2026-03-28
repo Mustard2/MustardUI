@@ -65,7 +65,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     # Force UI Update on Configuration
     configuration_force_ui_update: BoolProperty(default=False,
                                                 name="Force UI Update",
-                                                description="Enable to force UI Update when ending the Confguration")
+                                                description="Enable to force UI Update when ending the Configuration")
 
     # Tools (internal)
     # Class to store temporary settings for outfit rename
