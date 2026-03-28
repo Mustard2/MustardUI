@@ -14,14 +14,14 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
 
     # Show the bone collection in the UI only if Advanced is enabled
     advanced: BoolProperty(default=False,
-                                     name="Advanced",
-                                     description="Enable Advanced layer.\nIf enabled, this layer will be shown in the "
-                                                 "UI only if Advanced settings is enabled in the UI settings")
+                           name="Advanced",
+                           description="Enable Advanced layer.\nIf enabled, this layer will be shown in the "
+                                       "UI only if Advanced settings is enabled in the UI settings")
 
     # Default bone collections are enabled when Reset is used
     default: BoolProperty(default=False,
-                           name="Default",
-                           description="Default bone collections are enabled when Reset is used")
+                          name="Default",
+                          description="Default bone collections are enabled when Reset is used")
 
     # Icon
     icon: EnumProperty(name="Icon",
@@ -61,7 +61,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
 
     # Children
     # Button to show children of the bone
-    show_children: BoolProperty(default=False, name = "")
+    show_children: BoolProperty(default=False, name="")
 
 
 # Global Armature settings
@@ -122,6 +122,12 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                                    description="Show two buttons (left and right) on the UI for selected bone "
                                                "collections.\nName the collections with the same name plus .R and .L "
                                                "to see them in the UI as two near buttons")
+
+    # IK/FK panel
+    ik_fk_panel: bpy.props.BoolProperty(default=False,
+                                        name="IK/FK Panel",
+                                        description="An an IK/FK panel depending on the Armature type of the rig.\n"
+                                                    "Available features depend on the type of the rig")
 
 
 def register():

@@ -34,6 +34,7 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="General Settings", icon="MODIFIER")
         box.prop(armature_settings, 'mirror')
+        box.prop(armature_settings, 'ik_fk_panel')
 
         box = layout.box()
         row = box.row()
