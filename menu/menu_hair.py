@@ -132,6 +132,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         layout = self.layout
@@ -156,10 +157,33 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 row.prop(rig_settings.hair_collection, "hide_viewport", text="")
                 row.prop(rig_settings.hair_collection, "hide_render", text="")
 
-            if hair_num > 0:
+            try:
+                obj = context.scene.objects[rig_settings.hair_list]
 
-                try:
-                    obj = context.scene.objects[rig_settings.hair_list]
+                # Physics
+                pi = None
+                for pii in [x for x in physics_settings.items]:
+                    if pii.outfit_object == obj:
+                        pi = pii
+                        break
+                if pi is not None:
+                    col2 = row.column(align=True)
+                    col2.enabled = physics_settings.enable_physics
+                    col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_physics', text="",
+                              icon="PHYSICS" if pi.type != "COLLISION" else "MOD_PHYSICS")
+                    if pi.type != "COLLISION":
+                        col2 = row.column(align=True)
+                        col2.enabled = physics_settings.enable_physics
+                        col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_collisions', text="", icon="MOD_PHYSICS")
+                elif rig_settings.outfit_physics_support:
+                    for m in obj.modifiers:
+                        mtype = m.type
+                        if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
+                            row.prop(obj.MustardUI_OutfitSettings, 'physics', text="",
+                                     icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS")
+                            break
+
+                if hair_num > 0:
 
                     if rig_settings.hair_custom_properties_name_order:
                         custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj],
@@ -172,13 +196,13 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                         if obj.MustardUI_OutfitSettings.additional_options_show:
                             mustardui_custom_properties_print(arm, settings, custom_properties_obj, layout,
                                                               rig_settings.hair_custom_properties_icons)
-                except:
-                    box = layout.box()
-                    box.label(text="An error occurred.", icon="ERROR")
-                    box.label(text="The UI Hair data seems corrupted.", icon="BLANK1")
-                    if addon_prefs.developer:
-                        box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
-                        box.operator('mustardui.configuration', text="Enter Configuration Mode", icon="PREFERENCES")
+            except:
+                box = layout.box()
+                box.label(text="An error occurred.", icon="ERROR")
+                box.label(text="The UI Hair data seems corrupted.", icon="BLANK1")
+                if addon_prefs.developer:
+                    box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
+                    box.operator('mustardui.configuration', text="Enter Configuration Mode", icon="PREFERENCES")
 
 
 class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
