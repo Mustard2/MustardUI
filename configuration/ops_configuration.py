@@ -35,8 +35,8 @@ class MustardUI_Configuration(bpy.types.Operator):
                 print("\n\nMustardUI - Update UI")
             if not is_ui_update(rig_settings) and settings.configuration_force_ui_update:
                 try:
-                    bpy.ops.mustardui.update_ui(ignore=False)
                     rig_settings.model_mustardui_version[0] = 0
+                    bpy.ops.mustardui.update_ui(ignore=False)
                 except:
                     print("\n\nMustardUI - Skipping UI Update")
                     pass
