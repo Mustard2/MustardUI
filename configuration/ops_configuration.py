@@ -31,16 +31,6 @@ class MustardUI_Configuration(bpy.types.Operator):
             if addon_prefs.debug:
                 print("\n\nMustardUI - Configuration Logs")
 
-            if addon_prefs.debug:
-                print("\n\nMustardUI - Update UI")
-            if not is_ui_update(rig_settings) and settings.configuration_force_ui_update:
-                try:
-                    rig_settings.model_mustardui_version[0] = 0
-                    bpy.ops.mustardui.update_ui(ignore=False)
-                except:
-                    print("\n\nMustardUI - Skipping UI Update")
-                    pass
-
             # Various checks
             if rig_settings.model_body is None:
                 self.report({'ERROR'}, 'MustardUI - A body mesh should be selected.')
@@ -184,7 +174,6 @@ class MustardUI_Configuration(bpy.types.Operator):
 
             # Clean the model temporary settings
             settings.rename_outfits_temp_class.clear()
-            settings.configuration_force_ui_update = False
 
             if warnings > 0:
                 if addon_prefs.debug:

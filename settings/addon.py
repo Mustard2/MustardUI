@@ -62,11 +62,6 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
                                                     "Disable this for Cycles",
                                         update=update_material_normal)
 
-    # Force UI Update on Configuration
-    configuration_force_ui_update: BoolProperty(default=False,
-                                                name="Force UI Update",
-                                                description="Enable to force UI Update when ending the Configuration")
-
     # Tools (internal)
     # Class to store temporary settings for outfit rename
     rename_outfits_temp_class: CollectionProperty(

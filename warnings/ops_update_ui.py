@@ -26,12 +26,12 @@ class MustardUI_UpdateUI(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     ignore: bpy.props.BoolProperty(default=False)
+    force: bpy.props.BoolProperty(default=False)
 
     @classmethod
     def poll(cls, context):
         poll, obj = mustardui_active_object(context, config=-1)
-        rig_settings = obj.MustardUI_RigSettings
-        return (poll and not is_ui_update(rig_settings)) if obj is not None else False
+        return poll if obj is not None else False
 
     def execute(self, context):
         poll, obj = mustardui_active_object(context, config=-1)
@@ -39,14 +39,27 @@ class MustardUI_UpdateUI(bpy.types.Operator):
         morphs_settings = obj.MustardUI_MorphsSettings
         simplify_settings = obj.MustardUI_SimplifySettings
 
+        if self.force:
+            # Check if hair convention is satisfied, if not retrigger update
+            if rig_settings.hair_collection is not None:
+                hair_collection = rig_settings.hair_collection
+                for obj in [x for x in hair_collection.objects if x is not None]:
+                    if not obj.name.startswith(f"{hair_collection.name} - "):
+                        rig_settings.model_mustardui_version = (0, 0, 0)
+                        break
+
+        if is_ui_update(rig_settings):
+            self.report({'INFO'}, 'MustardUI - The UI is already up-to-date.')
+            return {'CANCELLED'}
+
         diffeomorphic_status = rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0
         simplify_status = rig_settings.simplify_main_enable
         curves_hair_status = (rig_settings.hair_collection is not None and
                               any(x.type == "CURVES" for x in rig_settings.hair_collection.objects) and
                               rig_settings.curves_hair_enable)
         hair_convention_status = (rig_settings.hair_collection is not None and
-                rig_settings.model_MustardUI_naming_convention and
-                tuple(rig_settings.model_mustardui_version) < (2026, 4, 0))
+                                  rig_settings.model_MustardUI_naming_convention and
+                                  tuple(rig_settings.model_mustardui_version) < (2026, 4, 0))
 
         errors = 0
 
@@ -124,7 +137,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 hair_collection = rig_settings.hair_collection
 
                 # Rename the Objects in the Hair collection
-                for obj in hair_collection.objects:
+                for obj in [x for x in hair_collection.objects if x is not None]:
                     if not obj.name.startswith(f"{hair_collection.name} - "):
                         # Remove any old convention
                         obj.name = obj.name.replace(f"{rig_settings.model_name} Hair ", "")
