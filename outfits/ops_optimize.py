@@ -20,7 +20,6 @@ class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
         rig_settings.outfits_global_mask = self.enable
         rig_settings.outfits_global_solidify = self.enable
         rig_settings.outfits_global_triangulate = self.enable
-        rig_settings.outfits_global_normalautosmooth = self.enable
 
         return {'FINISHED'}
 

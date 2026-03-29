@@ -2,7 +2,7 @@ import bpy
 from bpy.props import *
 
 from ..model_selection.active_object import mustardui_active_object
-from ..misc.icons_list import mustardui_icon_list
+from ..misc.icons import mustardui_icon_list
 
 
 # Section for body properties

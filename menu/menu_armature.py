@@ -5,6 +5,7 @@ from ..model_selection.active_object import *
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from ..misc.mirror import check_mirror
+from ..armature.external.diffeomorphic.diffeomorphic_ikfk_panel import diffeomorphic_ikfk_panel, diffeomorphic_ikfk_panel_poll
 
 
 def draw_armature_button(bcoll, bcoll_settings, bcolls, armature_settings, layout, is_solo_enabled):
@@ -138,9 +139,48 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         layout.operator('mustardui.armature_transfer_animation', icon="RENDER_ANIMATION")
 
 
+class PANEL_PT_MustardUI_Armature_IKFK(MainPanel, bpy.types.Panel):
+    bl_label = "IK/FK"
+    bl_parent_id = "PANEL_PT_MustardUI_Armature"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        if check_old_UI():
+            return False
+
+        res, arm = mustardui_active_object(context, config=0)
+        if not res:
+            return False
+
+        rig_settings = arm.MustardUI_RigSettings
+        armature_settings = arm.MustardUI_ArmatureSettings
+
+        if not armature_settings.ik_fk_panel:
+            return False
+
+        if rig_settings.model_rig_type == "mhx":
+            return diffeomorphic_ikfk_panel_poll(context)
+
+        return False
+
+    def draw(self, context):
+        res, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+        rig = arm.MustardUI_RigSettings.model_armature_object
+
+        layout = self.layout
+
+        if rig_settings.model_rig_type == "mhx":
+            layout.enabled = rig == context.object
+            diffeomorphic_ikfk_panel(layout, context)
+
+
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Armature)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Armature_IKFK)
 
 
 def unregister():
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Armature_IKFK)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Armature)

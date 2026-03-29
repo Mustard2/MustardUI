@@ -24,6 +24,7 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         settings = bpy.context.scene.MustardUI_Settings
+        addon_prefs = context.preferences.addons[base_package].preferences
         res, arm = mustardui_active_object(context, config=1)
 
         # Configuration button

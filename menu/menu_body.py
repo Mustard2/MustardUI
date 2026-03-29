@@ -80,7 +80,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             prop_to_show = (rig_settings.body_enable_subdiv
                             or rig_settings.body_enable_smoothcorr
                             or rig_settings.body_enable_solidify
-                            or rig_settings.body_enable_norm_autosmooth
                             or rig_settings.body_enable_material_normal_nodes
                             or rig_settings.body_enable_preserve_volume
                             or rig_settings.body_enable_geometry_nodes)
@@ -116,16 +115,12 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             if (rig_settings.body_enable_preserve_volume
                 or rig_settings.body_enable_geometry_nodes
                 or rig_settings.body_enable_solidify
-                or rig_settings.body_enable_smoothcorr
-                or rig_settings.body_enable_norm_autosmooth):
+                or rig_settings.body_enable_smoothcorr):
 
                 col = box.column(align=True)
 
                 if rig_settings.body_enable_preserve_volume:
                     col.prop(rig_settings, "body_preserve_volume")
-
-                if rig_settings.body_enable_norm_autosmooth:
-                    col.prop(rig_settings, "body_norm_autosmooth")
 
                 if rig_settings.body_enable_smoothcorr:
                     col.prop(rig_settings, "body_smooth_corr")

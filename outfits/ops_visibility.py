@@ -75,7 +75,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
             # Hair visibility
             if (hair_collection is not None
-                    and o.type == "MESH"
+                    and o.type in ["MESH", "ARMATURE"]
                     and hair_switch_collection is not None
                     and o.name in hair_switch_collection.all_objects.keys()):
                 hair_collection.hide_viewport = not visible

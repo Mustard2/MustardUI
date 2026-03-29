@@ -4,6 +4,7 @@ from . import ops_clearpose
 from . import ops_reset
 from . import ops_transfer_animation
 from . import ui_list
+from . import external
 
 
 def register():
@@ -13,9 +14,11 @@ def register():
     ops_reset.register()
     ops_transfer_animation.register()
     ui_list.register()
+    external.register()
 
 
 def unregister():
+    external.unregister()
     ui_list.unregister()
     ops_transfer_animation.unregister()
     ops_reset.unregister()

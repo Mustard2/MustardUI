@@ -1,6 +1,6 @@
 import bpy
 from bpy.props import *
-from ..misc.icons_list import *
+from ..misc.icons import *
 
 
 class MustardUI_LinkedProperty(bpy.types.PropertyGroup):
@@ -68,9 +68,19 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     # Outfits
     # Poll function for the selection of mesh only in pointer properties
-    def poll_mesh(self, object):
+    def poll_mesh(self, obj):
         rig_settings = self.id_data.MustardUI_RigSettings
-        return object.type == 'MESH' and object in [x for x in rig_settings.hair_collection.objects]
+
+        if obj.type != 'MESH':
+            return False
+
+        hc = rig_settings.hair_collection
+        hec = rig_settings.hair_extras_collection
+
+        return (
+                (hc and obj in hc.objects) or
+                (hec and obj in hec.objects)
+        )
 
     # Poll function for the selection of mesh belonging to an outfit in pointer properties
     def outfit_switcher_poll_collection(self, object):
@@ -79,14 +89,18 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
                           x.collection is not None] or object == rig_settings.extras_collection
 
     # Poll function for the selection of mesh belonging to an outfit in pointer properties
-    def outfit_switcher_poll_mesh(self, object):
-        rig_settings = self.id_data.MustardUI_RigSettings
-        if self.outfit is not None:
-            items = self.outfit.all_objects if rig_settings.outfit_config_subcollections else self.outfit.objects
-            if object in [x for x in items]:
-                return object.type == 'MESH'
+    def outfit_switcher_poll_mesh(self, obj):
+        if not self.outfit:
+            return False
 
-        return False
+        rig_settings = self.id_data.MustardUI_RigSettings
+        items = (
+            self.outfit.all_objects
+            if rig_settings.outfit_config_subcollections
+            else self.outfit.objects
+        )
+
+        return obj.type == 'MESH' and obj in items
 
     outfit: PointerProperty(name="Outfit Collection",
                             type=bpy.types.Collection,

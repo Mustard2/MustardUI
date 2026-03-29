@@ -10,6 +10,7 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     is_config: bpy.props.BoolProperty(default=True)
+    delete_cp: bpy.props.BoolProperty(default=True)
 
     def execute(self, context):
 
@@ -24,7 +25,7 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         else:
             col = bpy.data.collections[rig_settings.outfits_list]
 
-        bpy.ops.mustardui.remove_outfit(is_config=self.is_config)
+        bpy.ops.mustardui.remove_outfit(is_config=self.is_config, delete_cp=self.delete_cp)
 
         if not col:
             self.report({'WARNING'}, 'MustardUI - The Outfit collection to remove was not found.')

@@ -45,11 +45,6 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         description="Disable Subdivision Surface modifiers when Simplify is enabled"
     )
 
-    simplify_normals_autosmooth: bpy.props.BoolProperty(
-        name="Affect Normals Auto-Smooth",
-        default=True
-    )
-
     simplify_outfit_switch_nude: bpy.props.BoolProperty(
         name="Switch to Nude",
         default=False
@@ -150,7 +145,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 arm["mustardui_pre_simplify"] = {
                     "body_subdiv_view": rig_settings.body_subdiv_view,
                     "body_smooth_corr": rig_settings.body_smooth_corr,
-                    "body_norm_autosmooth": rig_settings.body_norm_autosmooth,
                     "body_geometry_nodes": rig_settings.body_geometry_nodes,
                     "body_solidify": rig_settings.body_solidify,
                     "outfits_global_subsurface": rig_settings.outfits_global_subsurface,
@@ -159,12 +153,10 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     "outfits_global_shrinkwrap": rig_settings.outfits_global_shrinkwrap,
                     "outfits_global_solidify": rig_settings.outfits_global_solidify,
                     "outfits_global_triangulate": rig_settings.outfits_global_triangulate,
-                    "outfits_global_normalautosmooth": rig_settings.outfits_global_normalautosmooth,
                     "outfits_list": rig_settings.outfits_list,
                     "hair_global_subsurface": rig_settings.hair_global_subsurface,
                     "hair_global_smoothcorrection": rig_settings.hair_global_smoothcorrection,
-                    "hair_global_solidify": rig_settings.hair_global_solidify,
-                    "hair_global_normalautosmooth": rig_settings.hair_global_normalautosmooth
+                    "hair_global_solidify": rig_settings.hair_global_solidify
                 }
             if "mustardui_pre_simplify" not in scene:
                 scene["mustardui_pre_simplify"] = {
@@ -190,8 +182,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 rig_settings.body_subdiv_view = not simplify_settings.simplify_enable
             if rig_settings.body_enable_smoothcorr:
                 rig_settings.body_smooth_corr = not simplify_settings.simplify_enable
-            if rig_settings.body_enable_norm_autosmooth:
-                rig_settings.body_norm_autosmooth = not simplify_settings.simplify_enable
             if rig_settings.body_enable_geometry_nodes:
                 rig_settings.body_geometry_nodes = not simplify_settings.simplify_enable
             if rig_settings.body_enable_solidify:
@@ -211,8 +201,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 rig_settings.outfits_global_solidify = not simplify_settings.simplify_enable
             if rig_settings.outfits_enable_global_triangulate:
                 rig_settings.outfits_global_triangulate = not simplify_settings.simplify_enable
-            if simplify_settings.simplify_normals_autosmooth and rig_settings.outfits_enable_global_normalautosmooth:
-                rig_settings.outfits_global_normalautosmooth = not simplify_settings.simplify_enable
         if rig_settings.outfit_nude and simplify_settings.simplify_outfit_switch_nude and simplify_settings.simplify_enable:
             rig_settings.outfits_list = "Nude"
 
@@ -241,8 +229,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     rig_settings.hair_global_smoothcorrection = not simplify_settings.simplify_enable
                 if rig_settings.hair_enable_global_solidify:
                     rig_settings.hair_global_solidify = not simplify_settings.simplify_enable
-                if simplify_settings.simplify_normals_autosmooth and rig_settings.hair_enable_global_normalautosmooth:
-                    rig_settings.hair_global_normalautosmooth = not simplify_settings.simplify_enable
 
         # When Simplify is turned off, restore saved state
         if not simplify_settings.simplify_enable and simplify_settings.simplify_revert_settings:

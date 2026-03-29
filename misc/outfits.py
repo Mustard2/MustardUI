@@ -1,6 +1,11 @@
 import bpy
 
 
+def outfit_extract_items_from_collection(collection, subcollections):
+    items = [x for x in (collection.all_objects if subcollections else collection.objects)]
+    return [x for x in items if x.parent is None or x.parent not in items]
+
+
 def outfit_poll_collection(self, object):
     rig_settings = self.id_data.MustardUI_RigSettings
     collections = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]

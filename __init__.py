@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Easy-to-use UI for human characters.",
     "author": "Mustard",
-    "version": (2026, 3, 3),
+    "version": (2026, 4, 0),
     "blender": (4, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
@@ -23,6 +23,7 @@ from . import tools_creators
 from . import custom_properties
 from . import sections
 from . import outfits
+from . import hair
 from . import physics
 from . import morphs
 from . import configuration
@@ -33,6 +34,7 @@ from . import viewport_panel
 
 def register():
     outfits.register()
+    hair.register()
     sections.register()
     settings.register()
     misc.register()
@@ -66,4 +68,5 @@ def unregister():
     misc.unregister()
     settings.unregister()
     sections.unregister()
+    hair.unregister()
     outfits.unregister()

@@ -2,6 +2,8 @@ from bpy.props import *
 from ..model_selection.active_object import *
 from .ops_props import MustardUI_Property_MenuAdd
 from .ops_link import MustardUI_Property_MenuLink
+from ..configuration.naming_convention import strip_naming_convention, strip_naming_convention_collection
+from ..misc.icons import get_hair_icon
 
 
 class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
@@ -51,8 +53,10 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
         for obj in items:
             op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
                                  icon="DOT",
-                                 text=obj.name[
-                                      len(context.mustardui_propertyoutfitmenu_sel.name + " - "):] if rig_settings.model_MustardUI_naming_convention else obj.name)
+                                 text=strip_naming_convention(obj.name,
+                                                              context.mustardui_propertyoutfitmenu_sel.name,
+                                                              rig_settings.model_MustardUI_naming_convention)
+                                 )
             op.section = ""
             op.outfit_is_nude = False
             op.outfit = context.mustardui_propertyoutfitmenu_sel.name
@@ -94,17 +98,20 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
                                        rig_settings.outfits_collections[i].collection)
             layout.menu(OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu.bl_idname,
                         icon="MOD_CLOTH",
-                        text=rig_settings.outfits_collections[i].collection.name[
-                             len(rig_settings.model_name):] if rig_settings.model_MustardUI_naming_convention else
-                        rig_settings.outfits_collections[i].collection.name)
+                        text=strip_naming_convention_collection(rig_settings.outfits_collections[i].collection.name,
+                                                                rig_settings.model_name,
+                                                                rig_settings.model_MustardUI_naming_convention)
+                        )
         if rig_settings.extras_collection is not None:
             items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
             if len(items) > 0:
                 layout.context_pointer_set("mustardui_propertyoutfitmenu_sel", rig_settings.extras_collection)
                 layout.menu(OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu.bl_idname,
                             icon="PLUS",
-                            text=rig_settings.extras_collection.name[
-                                 len(rig_settings.model_name):] if rig_settings.model_MustardUI_naming_convention else rig_settings.extras_collection.name)
+                            text=strip_naming_convention_collection(rig_settings.extras_collection.name,
+                                                                    rig_settings.model_name,
+                                                                    rig_settings.model_MustardUI_naming_convention)
+                            )
 
 
 # Operators to create the list of outfits when right-clicking on a property
@@ -128,17 +135,42 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
         op.hair_global = True
         op.hair = ""
 
-        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+        types = ["MESH", "CURVES"]
+
+        hcoll = rig_settings.hair_collection
+        for obj in [x for x in hcoll.objects if x.type in types]:
             op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
-                                 icon="STRANDS",
-                                 text=obj.name[
-                                      len(rig_settings.hair_collection.name):] if rig_settings.model_MustardUI_naming_convention else obj.name)
+                                 icon=get_hair_icon(obj),
+                                 text=strip_naming_convention(obj.name,
+                                                              hcoll.name,
+                                                              rig_settings.model_MustardUI_naming_convention)
+                                 )
             op.section = ""
             op.outfit_is_nude = False
             op.outfit = ""
             op.outfit_piece = ""
             op.hair_global = False
             op.hair = obj.name
+
+        if rig_settings.hair_extras_collection is not None:
+            hcoll = rig_settings.hair_extras_collection
+
+            layout.separator()
+            layout.label(text="Extras", icon="PLUS")
+
+            for obj in [x for x in hcoll.objects if x.type in types]:
+                op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
+                                     icon=get_hair_icon(obj),
+                                     text=strip_naming_convention(obj.name,
+                                                                  hcoll.name,
+                                                                  rig_settings.model_MustardUI_naming_convention)
+                                     )
+                op.section = ""
+                op.outfit_is_nude = False
+                op.outfit = ""
+                op.outfit_piece = ""
+                op.hair_global = False
+                op.hair = obj.name
 
 
 # Operator to create the list of sections when right-clicking on the property -> Link to property
@@ -180,8 +212,9 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             outfit_name = prop.outfit.name[
                           len(rig_settings.model_name + " "):] if rig_settings.model_MustardUI_naming_convention else prop.outfit.name
             if prop.outfit_piece is not None:
-                outfit_piece_name = prop.outfit_piece.name[
-                                    len(prop.outfit.name + " - "):] if rig_settings.model_MustardUI_naming_convention else prop.outfit.name
+                outfit_piece_name = strip_naming_convention(prop.outfit_piece.name,
+                                                            prop.outfit.name,
+                                                            rig_settings.model_MustardUI_naming_convention)
                 outfit_name = outfit_name + " - " + outfit_piece_name
             op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=outfit_name + " - " + prop.name,
                                  icon=prop.icon)
@@ -196,8 +229,9 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             layout.separator()
             layout.label(text="Extras", icon="PLUS")
         for prop in sorted(extras_props, key=lambda x: x.name):
-            outfit_name = prop.outfit_piece.name[
-                          len(rig_settings.extras_collection.name + " - "):] if rig_settings.model_MustardUI_naming_convention else prop.outfit_piece.name
+            outfit_name = strip_naming_convention(prop.outfit_piece.name,
+                                                  rig_settings.extras_collection.name,
+                                                  rig_settings.model_MustardUI_naming_convention)
             op = layout.operator(MustardUI_Property_MenuLink.bl_idname,
                                  text=outfit_name + " - " + prop.name,
                                  icon=prop.icon)
@@ -212,8 +246,9 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             layout.label(text="Hair", icon="STRANDS")
         for prop in sorted(hair_props, key=lambda x: x.name):
             if prop.hair is not None:
-                hair_name = prop.hair.name[
-                            len(rig_settings.hair_collection.name + " "):] if rig_settings.model_MustardUI_naming_convention else prop.hair.name
+                hair_name = strip_naming_convention(prop.hair.name,
+                                                    rig_settings.hair_collection.name,
+                                                    rig_settings.model_MustardUI_naming_convention)
                 op = layout.operator(MustardUI_Property_MenuLink.bl_idname,
                                      text=hair_name + " - " + prop.name,
                                      icon=prop.icon)
