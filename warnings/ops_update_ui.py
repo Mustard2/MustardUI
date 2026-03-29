@@ -10,7 +10,6 @@ def is_ui_update(rig_settings):
             or rig_settings.simplify_main_enable
             # Check if the Hair curves were enabled (behaviour was different)
             or (rig_settings.hair_collection is not None and
-                any(x.type == "CURVES" for x in rig_settings.hair_collection.objects) and
                 rig_settings.curves_hair_enable)
             # Check for Hair convention
             or (rig_settings.hair_collection is not None and
@@ -55,7 +54,6 @@ class MustardUI_UpdateUI(bpy.types.Operator):
         diffeomorphic_status = rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0
         simplify_status = rig_settings.simplify_main_enable
         curves_hair_status = (rig_settings.hair_collection is not None and
-                              any(x.type == "CURVES" for x in rig_settings.hair_collection.objects) and
                               rig_settings.curves_hair_enable)
         hair_convention_status = (rig_settings.hair_collection is not None and
                                   rig_settings.model_MustardUI_naming_convention and
@@ -111,25 +109,28 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
         # Check if the Hair curves were used
         if curves_hair_status and rig_settings.hair_collection is not None:
-            try:
-                hair_collection = rig_settings.hair_collection
-
-                # Create a new Extras collection if necessary
-                extras_collection = rig_settings.hair_extras_collection
-                if extras_collection is None:
+            if any(x.type == "CURVES" for x in rig_settings.hair_collection.objects):
+                try:
                     hair_collection = rig_settings.hair_collection
-                    extras_collection = bpy.data.collections.new(f"{hair_collection.name} Extras")
-                    hair_collection.children.link(extras_collection)
-                rig_settings.hair_extras_collection = extras_collection
 
-                # Move the curves Objects inside the Extras collection
-                for obj in list(hair_collection.objects):
-                    if obj.type == 'CURVES':
-                        hair_collection.objects.unlink(obj)
-                        extras_collection.objects.link(obj)
+                    # Create a new Extras collection if necessary
+                    extras_collection = rig_settings.hair_extras_collection
+                    if extras_collection is None:
+                        hair_collection = rig_settings.hair_collection
+                        extras_collection = bpy.data.collections.new(f"{hair_collection.name} Extras")
+                        hair_collection.children.link(extras_collection)
+                    rig_settings.hair_extras_collection = extras_collection
+
+                    # Move the curves Objects inside the Extras collection
+                    for obj in list(hair_collection.objects):
+                        if obj.type == 'CURVES':
+                            hair_collection.objects.unlink(obj)
+                            extras_collection.objects.link(obj)
+                    rig_settings.curves_hair_enable = False
+                except:
+                    errors += 1
+            else:
                 rig_settings.curves_hair_enable = False
-            except:
-                errors += 1
 
         # Check Hair naming convention
         if hair_convention_status and rig_settings.hair_collection is not None:
