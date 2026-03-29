@@ -79,7 +79,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
             row = box.row(align=True)
             row.alert = True
-            op = row.operator("mustardui.update_ui", icon="TRIA_DOWN_BAR").ignore = False
+            op = row.operator("mustardui.update_ui", icon="TRIA_DOWN_BAR")
             op.force = False
             op.ignore = False
 
