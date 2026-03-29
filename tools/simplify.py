@@ -18,97 +18,113 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         name="Simplify Options",
         default=False,
         description="Enable Simplify options to increase viewport performance",
-        update=update_simplify
+        update=update_simplify,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_revert_settings: bpy.props.BoolProperty(
         name="Revert Settings on Disable",
         default=True,
-        description="Revert Settings to pre-Simplify status after disabling Simplify"
+        description="Revert Settings to pre-Simplify status after disabling Simplify",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_blender: bpy.props.BoolProperty(
         name="Blender Simplify",
         default=False,
-        description="Enable Blender Simplify when Simplify is enabled"
+        description="Enable Blender Simplify when Simplify is enabled",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_normals_optimize: bpy.props.BoolProperty(
         name="Affect Eevee Normals Optimization",
         default=False,
-        description="Optimize Eevee normals when Simplify is enabled"
+        description="Optimize Eevee normals when Simplify is enabled",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_subdiv: bpy.props.BoolProperty(
         name="Affect Subdivision (Viewport)",
         default=True,
-        description="Disable Subdivision Surface modifiers when Simplify is enabled"
+        description="Disable Subdivision Surface modifiers when Simplify is enabled",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_outfit_switch_nude: bpy.props.BoolProperty(
         name="Switch to Nude",
-        default=False
+        default=False,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_outfit_global: bpy.props.BoolProperty(
         name="Disable Outfit Global Properties",
-        default=True
+        default=True,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_extras: bpy.props.BoolProperty(
         name="Hide Extras",
-        default=True
+        default=True,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_hair: bpy.props.BoolProperty(
         name="Hide Hair (Viewport)",
-        default=True
+        default=True,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_particles: bpy.props.BoolProperty(
         name="Disable Particles",
         default=True,
-        description="Disable particle system modifiers when Simplify is enabled"
+        description="Disable particle system modifiers when Simplify is enabled",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_hair_global: bpy.props.BoolProperty(
         name="Disable Hair Global Properties",
-        default=True
+        default=True,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_armature_child: bpy.props.BoolProperty(
         name="Hide Armature Children (Viewport)",
         default=True,
-        description="Disables all objects parented to the Armature, except the Body"
+        description="Disables all objects parented to the Armature, except the Body",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_morphs: bpy.props.BoolProperty(
         name="Disable Morphs",
-        default=True
+        default=True,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_morphs_freeze: bpy.props.BoolProperty(
         name="Freeze Morphs",
-        default=True
+        default=True,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_physics: bpy.props.BoolProperty(
         name="Disable Physics",
-        default=False
+        default=False,
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_force_no_physics: bpy.props.BoolProperty(
         name="Globally Disable Physics",
         default=False,
-        description="Disable all physics modifiers on all scene objects"
+        description="Disable all physics modifiers on all scene objects",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
 
     simplify_force_no_particles: bpy.props.BoolProperty(
         name="Globally Disable Particles",
         default=False,
-        description="Disable all particle system modifiers on all scene objects"
+        description="Disable all particle system modifiers on all scene objects",
+        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
     )
-
 
 
 class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):

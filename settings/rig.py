@@ -81,14 +81,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                          "\nThis won't affect the viewport or the viewport rendering "
                                                          "preview. \nNote that, depending on the complexity of the "
                                                          "model, enabling this can greatly affect rendering times",
-                                             update=update_subdiv)
+                                             update=update_subdiv,
+                                             options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                             )
     body_subdiv_rend_lv: bpy.props.IntProperty(default=2,
                                                min=0, max=4,
                                                name="Level",
                                                description="Set the Subdivision Surface level during rendering. "
                                                            "\nNote that, depending on the complexity of the model, "
                                                            "increasing this can greatly affect rendering times",
-                                               update=update_subdiv)
+                                               update=update_subdiv,
+                                               options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                               )
     body_subdiv_view: bpy.props.BoolProperty(default=False,
                                              name="Subdivision Surface (Viewport)",
                                              description="Enable/disable the Subdivision Surface in the viewport. "
@@ -96,7 +100,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                          "use this only for previews and do NOT enable it during "
                                                          "posing. \nNote that it might require a lot of time to "
                                                          "activate, and Blender will freeze during this",
-                                             update=update_subdiv)
+                                             update=update_subdiv,
+                                             options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                             )
     body_subdiv_view_lv: bpy.props.IntProperty(default=1,
                                                min=0, max=4,
                                                name="Level",
@@ -106,7 +112,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                            "Moreover, each time you change this value with "
                                                            "Subdivision Surface (Viewport) enabled, Blender will "
                                                            "freeze while applying the modification",
-                                               update=update_subdiv)
+                                               update=update_subdiv,
+                                               options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                               )
     body_enable_subdiv: bpy.props.BoolProperty(default=True,
                                                name="Subdivision Surface modifiers",
                                                description="Creates a switcher on the UI to enable/disable all "
@@ -118,7 +126,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                              description="Enable/disable the Smooth Correction modifiers. \nDisable "
                                                          "it to increase the performance in viewport, and re-enable "
                                                          "it before rendering",
-                                             update=update_smooth_corr)
+                                             update=update_smooth_corr,
+                                             options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                             )
     body_enable_smoothcorr: bpy.props.BoolProperty(default=False,
                                                    name="Smooth Correction modifiers",
                                                    description="Creates a switcher on the UI to enable/disable all "
@@ -128,7 +138,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     body_solidify: bpy.props.BoolProperty(default=True,
                                           name="Solidify",
                                           description="Enable/disable the Solidify modifiers on the Body",
-                                          update=update_solidify)
+                                          update=update_solidify,
+                                          options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                          )
     body_enable_solidify: bpy.props.BoolProperty(default=False,
                                                  name="Solidify modifiers",
                                                  description="Creates a switcher on the UI to enable/disable all "
@@ -157,7 +169,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                  description="Enable/disable the Preserve volume.\nThis will switch "
                                                              "on/off Preserve Volume for all Armature modifiers of "
                                                              "the model (body and outfits)",
-                                                 update=update_volume_preserve)
+                                                 update=update_volume_preserve,
+                                                 options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                 )
 
     body_enable_preserve_volume: bpy.props.BoolProperty(default=False,
                                                         name="Volume Preserve property",
@@ -172,7 +186,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                           "with more efficient ones, which can be "
                                                                           "useful to get better performance in Render "
                                                                           "Viewport mode",
-                                                              name="Eevee Optimized Normals tool")
+                                                              name="Eevee Optimized Normals tool",
+                                                              options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                              )
 
     # Custom properties
     body_custom_properties_icons: bpy.props.BoolProperty(default=False,
@@ -194,7 +210,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     body_geometry_nodes: bpy.props.BoolProperty(default=False,
                                                 name="Geometry Nodes",
                                                 description="Enable/disable all Geometry Nodes on the Body",
-                                                update=update_geometry_nodes)
+                                                update=update_geometry_nodes,
+                                                options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                )
 
     body_enable_geometry_nodes: bpy.props.BoolProperty(default=False,
                                                        name="Geometry Nodes modifiers",
@@ -362,7 +380,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Outfit properties
     outfits_list: bpy.props.EnumProperty(name="Outfits List",
                                          items=outfits_list_make,
-                                         update=outfits_visibility_update)
+                                         update=outfits_visibility_update,
+                                         options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                         )
 
     # Nude outfit enable
     outfit_nude: bpy.props.BoolProperty(default=True,
@@ -376,41 +396,55 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                       name="Subdivision Surface",
                                                       description="Enable/disable subdivision surface modifiers ("
                                                                   "Viewport) on the Outfits",
-                                                      update=outfits_global_options_subsurf_update)
+                                                      update=outfits_global_options_subsurf_update,
+                                                      options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                      )
 
     outfits_global_smoothcorrection: bpy.props.BoolProperty(default=False,
                                                             name="Smooth Correction",
                                                             description="Enable/disable the Smooth Correction "
                                                                         "modifiers on the Outfits",
-                                                            update=outfits_global_options_update)
+                                                            update=outfits_global_options_update,
+                                                            options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                            )
 
     outfits_global_shrinkwrap: bpy.props.BoolProperty(default=True,
                                                       name="Shrinkwrap",
                                                       description="Enable/disable the Shrinkwrap modifiers on the "
                                                                   "Outfits",
-                                                      update=outfits_global_options_update)
+                                                      update=outfits_global_options_update,
+                                                      options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                      )
 
     outfits_global_surfacedeform: bpy.props.BoolProperty(default=True,
                                                          name="Surface Deform",
                                                          description="Enable/disable the Surface Deform modifiers on "
                                                                      "the Outfits",
-                                                         update=outfits_global_options_update)
+                                                         update=outfits_global_options_update,
+                                                         options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                         )
 
     outfits_global_mask: bpy.props.BoolProperty(default=True,
                                                 name="Mask",
                                                 description="Enable/disable the Mask modifiers on the Outfits",
-                                                update=outfits_global_options_update)
+                                                update=outfits_global_options_update,
+                                                options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                )
 
     outfits_global_solidify: bpy.props.BoolProperty(default=True,
                                                     name="Solidify",
                                                     description="Enable/disable the Solidify modifiers on the Outfits",
-                                                    update=outfits_global_options_update)
+                                                    update=outfits_global_options_update,
+                                                    options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                    )
 
     outfits_global_triangulate: bpy.props.BoolProperty(default=True,
                                                        name="Triangulate",
                                                        description="Enable/disable the Triangulate modifiers on the "
                                                                    "Outfits",
-                                                       update=outfits_global_options_update)
+                                                       update=outfits_global_options_update,
+                                                       options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                       )
 
     outfit_custom_properties_icons: bpy.props.BoolProperty(default=False,
                                                            name="Show Icons",
@@ -561,7 +595,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Hair list
     hair_list: bpy.props.EnumProperty(name="Hair List",
                                       items=hair_list_make,
-                                      update=hair_list_update)
+                                      update=hair_list_update,
+                                      options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                      )
 
     hair_custom_properties_icons: bpy.props.BoolProperty(default=False,
                                                          name="Show Icons",
@@ -587,7 +623,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                     description="Factor of children shown in Viewport "
                                                                                 "with respect to Render value",
                                                                     min=0., max=1.,
-                                                                    update=hair_particle_children_viewport_factor_update)
+                                                                    update=hair_particle_children_viewport_factor_update,
+                                                                    options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                                    )
 
     def hair_particle_hide_viewport_update(self, context):
         hair_obj = context.scene.objects[self.hair_list]
@@ -605,13 +643,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                         name="Hide Viewport",
                                                         description="Hide the current Hair Particle and its Particle "
                                                                     "System modifiers",
-                                                        update=hair_particle_hide_viewport_update)
+                                                        update=hair_particle_hide_viewport_update,
+                                                        options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                        )
 
     hair_particle_hide_render: bpy.props.BoolProperty(default=False,
                                                       name="Hide Render",
                                                       description="Hide the current Hair Particle and its Particle "
                                                                   "System modifiers",
-                                                      update=hair_particle_hide_render_update)
+                                                      update=hair_particle_hide_render_update,
+                                                      options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                      )
 
     hair_particle_collapse: bpy.props.BoolProperty(default=False,
                                                    name="",
@@ -676,23 +718,31 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                    name="Subdivision Surface",
                                                    description="Enable/disable subdivision surface modifiers ("
                                                                "Viewport) on the Hair",
-                                                   update=hair_global_options_subsurf_update)
+                                                   update=hair_global_options_subsurf_update,
+                                                   options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                   )
 
     hair_global_smoothcorrection: bpy.props.BoolProperty(default=True,
                                                          name="Smooth Correction",
                                                          description="Enable/disable the Smooth Correction modifiers "
                                                                      "on the Hair",
-                                                         update=hair_global_options_update)
+                                                         update=hair_global_options_update,
+                                                         options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                         )
 
     hair_global_solidify: bpy.props.BoolProperty(default=True,
                                                  name="Solidify",
                                                  description="Enable/disable the Solidify modifiers on the Hair",
-                                                 update=hair_global_options_update)
+                                                 update=hair_global_options_update,
+                                                 options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                 )
 
     hair_global_particles: bpy.props.BoolProperty(default=True,
                                                   name="Particle Hair",
                                                   description="Enable/disable the Particle Hair modifiers on the Hair",
-                                                  update=hair_global_options_update)
+                                                  update=hair_global_options_update,
+                                                  options={'LIBRARY_EDITABLE'}, override={'LIBRARY_OVERRIDABLE'}
+                                                  )
 
     hair_update_tag_on_switch: bpy.props.BoolProperty(default=True,
                                                       name="Update Drivers on Switch",
@@ -828,7 +878,10 @@ def register():
     bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(default=False,
                                                                     name="",
                                                                     description="Lock/unlock the outfit",
-                                                                    update=MustardUI_RigSettings.outfits_visibility_update)
+                                                                    update=MustardUI_RigSettings.outfits_visibility_update,
+                                                                    options={'LIBRARY_EDITABLE'},
+                                                                    override={'LIBRARY_OVERRIDABLE'}
+                                                                    )
 
 
 def unregister():
