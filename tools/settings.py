@@ -66,6 +66,73 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
                                      description="The name of the morph should be the name of the custom property in "
                                                  "the Armature object, and not the name of the morph shown in the UI")
 
+    # ------------------------------------------------------------------------
+    #    Lips Shrinkwrap
+    # ------------------------------------------------------------------------
+
+    bone_shrinkwrap_enable: bpy.props.BoolProperty(name="Lips Shrinkwrap",
+                                                   default=False)
+
+    bone_shrinkwrap_target: bpy.props.PointerProperty(
+        name="Shrinkwrap Target",
+        type=bpy.types.Object,
+        description="Object used for shrinkwrap"
+    )
+
+    bone_shrinkwrap_target_friction: bpy.props.PointerProperty(
+        name="Friction Target",
+        type=bpy.types.Object,
+        description="Optional separate object for friction"
+    )
+
+    bone_shrinkwrap_target_friction_subtarget: bpy.props.StringProperty(
+        name="Friction Subtarget",
+        description="Bone/vertex group for friction target",
+        default=""
+    )
+
+    bone_shrinkwrap_enable: bpy.props.BoolProperty(
+        name="Enable Lips Shrinkwrap",
+        description="Toggle shrinkwrap effect (non-destructive)",
+        default=False
+    )
+
+    bone_shrinkwrap_enable_friction: bpy.props.BoolProperty(
+        name="Enable Friction",
+        description="Enable lip sticking/friction",
+        default=False
+    )
+
+    bone_shrinkwrap_distance: bpy.props.FloatProperty(
+        name="Distance",
+        description="Shrinkwrap distance",
+        default=0.005,
+        min=0.0
+    )
+
+    bone_shrinkwrap_corner_correction: bpy.props.FloatProperty(
+        name="Corner Correction",
+        description="Multiplier for corner bones",
+        default=1.0,
+        min=0.0,
+        max=2.0
+    )
+
+    bone_shrinkwrap_friction_influence: bpy.props.FloatProperty(
+        name="Friction Influence",
+        description="How strongly lips stick to target",
+        default=0.1,
+        min=0.0,
+        max=1.0
+    )
+
+    # Internal
+    bone_shrinkwrap_constraint_tag: bpy.props.StringProperty(
+        name="Constraint Tag",
+        default="MUSTARDUI_LIPS",
+        description="Internal tag for constraint manager"
+    )
+
 
 def register():
     bpy.utils.register_class(MustardUI_ToolsSettings)

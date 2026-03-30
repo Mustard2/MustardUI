@@ -38,6 +38,7 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         col.prop(simplify_settings, 'simplify_main_enable')
         col.prop(tools_settings, 'autobreath_enable')
         col.prop(tools_settings, 'autoeyelid_enable')
+        col.prop(tools_settings, 'bone_shrinkwrap_enable')
 
         if tools_settings.autoeyelid_enable:
             box = layout.box()
