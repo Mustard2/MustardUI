@@ -73,9 +73,6 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
             row = box.row(align=True)
             row.label(text="UI is outdated.", icon="SHAPEKEY_DATA")
-            op = row.operator("mustardui.update_ui", icon="X", text="")
-            op.force = False
-            op.ignore = True
 
             row = box.row(align=True)
             row.alert = True
