@@ -73,7 +73,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             # Check for body additional properties
             bpy.ops.mustardui.property_smartcheck()
 
-        # Search for oufit collections
+        # Search for outfit collections
         if self.smartcheck_outfits:
             if addon_prefs.debug:
                 print('\nMustardUI - Smart Check - Searching for outfits\n')
@@ -124,16 +124,16 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         if addon_prefs.debug:
             print('\nMustardUI - Smart Check - Searching for extras.')
 
-        if rig_settings.extras_hair_collection is None:
-            extras_hair_collections = [x for x in bpy.data.collections if
-                                       (rig_settings.model_name in x.name) and
-                                       ('Extras' in x.name) and
-                                       ('Hair' in x.name)]
-            if len(extras_hair_collections) == 1:
-                rig_settings.extras_hair_collection = extras_hair_collections[0]
-                print('\nMustardUI - Smart Check - ' + extras_hair_collections[0].name + 'set as Hair Extras '
-                                                                                         'collection')
-            elif len(extras_hair_collections) == 0:
+        if rig_settings.hair_extras_collection is None:
+            hair_extras_collection = [x for x in bpy.data.collections if
+                                      (rig_settings.model_name in x.name) and
+                                      ('Extras' in x.name) and
+                                      ('Hair' in x.name)]
+            if len(hair_extras_collection) == 1:
+                rig_settings.extras_hair_collection = hair_extras_collection[0]
+                print('\nMustardUI - Smart Check - ' + hair_extras_collection[0].name + 'set as Hair Extras '
+                                                                                        'collection')
+            elif len(hair_extras_collection) == 0:
                 print(
                     '\nMustardUI - Smart Check - Can not find any Hair Extras collection compatible with MustardUI '
                     'naming convention.')
@@ -145,7 +145,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             print('\nMustardUI - Smart Check - Hair Extras collection already defined. Skipping this part.')
 
         if self.smartcheck_armature:
-            bpy.ops.mustardui.armature_smartcheck(reset_current_collections = self.reset_current_collections)
+            bpy.ops.mustardui.armature_smartcheck(reset_current_collections=self.reset_current_collections)
 
         if self.smartcheck_settings:
             if addon_prefs.debug:
