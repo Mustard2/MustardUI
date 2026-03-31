@@ -161,8 +161,6 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             if hair_num > 1:
                 row = layout.row(align=True)
                 row.prop(rig_settings, "hair_list", text="")
-                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                row.prop(rig_settings.hair_collection, "hide_render", text="")
 
             elif hair_num > 0 and rig_settings.hair_collection.objects[0] is not None:
                 obj = rig_settings.hair_collection.objects[0]
