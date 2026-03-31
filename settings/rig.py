@@ -585,6 +585,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                          description="Disable Armature modifiers of Hair that are not "
                                                                      "visible to increase performance")
 
+    # Property to enable/disable hair to increase viewport performance
+    def hair_show_update(self, context):
+        bpy.ops.mustardui.hair_disable_viewport(enable=not self.hair_show)
+
+    hair_show: bpy.props.BoolProperty(default=True,
+                                      name="",
+                                      description="Show Hair",
+                                      update=hair_show_update)
+
     def hair_particle_children_viewport_factor_update(self, context):
         for obj in [x for x in self.hair_collection.objects if x.type == "MESH"]:
             for p in [x.settings for x in obj.particle_systems]:

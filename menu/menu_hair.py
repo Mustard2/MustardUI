@@ -136,6 +136,14 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                        curves_hair or
                        hair_global_properties_avail) else False
 
+    def draw_header(self, context):
+
+        poll, obj = mustardui_active_object(context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
+
+        layout = self.layout
+        layout.prop(rig_settings, "hair_show", text="", toggle=False)
+
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
 
@@ -145,6 +153,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         addon_prefs = context.preferences.addons[base_package].preferences
 
         layout = self.layout
+        layout.enabled = rig_settings.hair_show
 
         if rig_settings.hair_collection is not None:
 
@@ -246,6 +255,8 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
+        layout.enabled = rig_settings.hair_show
+
         layout.label(text="Particle Settings")
 
         obj = context.scene.objects[rig_settings.hair_list]
@@ -276,6 +287,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
+        layout.enabled = rig_settings.hair_show
 
         obj = context.scene.objects[rig_settings.hair_list]
 
@@ -346,6 +358,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
         hair_extras_collection = rig_settings.hair_extras_collection
 
         layout = self.layout
+        layout.enabled = rig_settings.hair_show
 
         settings = bpy.context.scene.MustardUI_Settings
 
@@ -412,6 +425,7 @@ class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
+        layout.enabled = rig_settings.hair_show
 
         hair_global_properties = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None]
         mustardui_custom_properties_print(arm, settings, hair_global_properties, layout,
@@ -419,7 +433,7 @@ class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):
 
 
 class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
-    bl_label = "Optimize"
+    bl_label = ""
     bl_parent_id = "PANEL_PT_MustardUI_Hair"
     bl_options = {"HEADER_LAYOUT_EXPAND"}
 
@@ -442,11 +456,26 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
 
         return False
 
+    def draw_header(self, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+
+        layout = self.layout
+
+        row = layout.row(align=True)
+        row.label(text="Optimize")
+
+        row2 = row.row(align=True)
+        row2.enabled = rig_settings.hair_show
+        row2.operator('mustardui.hair_switchglobal', text="", icon="RESTRICT_VIEW_OFF").enable = True
+        row2.operator('mustardui.hair_switchglobal', text="", icon="RESTRICT_VIEW_ON").enable = False
+
     def draw(self, context):
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
+        layout.enabled = rig_settings.hair_show
 
         col = layout.column(align=True)
         if rig_settings.hair_enable_global_subsurface:
