@@ -352,12 +352,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
 
         box_already_allocated = False
         col = None
-        have_custom_props = False
         if hair_extras_collection is not None:
-
-            have_custom_props = sum(1 for x in arm.MustardUI_CustomPropertiesHair if
-                                    x.hair is not None and x.hair.name in hair_extras_collection.objects)
-
             eitems = hair_extras_list_make(rig_settings)
             if len(eitems) > 0:
                 col = layout.column()
