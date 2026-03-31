@@ -23,7 +23,6 @@ def hair_extras_list_make(rig_settings):
     ]
 
 
-
 def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
     if obj in [x.object for x in physics_settings.items]:
         return
