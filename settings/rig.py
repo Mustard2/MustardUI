@@ -262,6 +262,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # OUTFITS FUNCTIONS AND DATA
 
+    # Property to enable/disable outfits to increase viewport performance
+    def outfits_show_update(self, context):
+        bpy.ops.mustardui.outfit_disable_viewport(enable=not self.outfits_show)
+
+    outfits_show: bpy.props.BoolProperty(default=True,
+                                         name="",
+                                         description="Show Outfits",
+                                         update=outfits_show_update)
+
     # Function to create an array of tuples for Outfit enum collections
     def outfits_list_make(self, context):
         items = []

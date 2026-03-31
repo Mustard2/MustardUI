@@ -140,6 +140,14 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
         return res
 
+    def draw_header(self, context):
+
+        poll, obj = mustardui_active_object(context, config=0)
+        rig_settings = obj.MustardUI_RigSettings
+
+        layout = self.layout
+        layout.prop(rig_settings, "outfits_show", text="", toggle=False)
+
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
@@ -154,6 +162,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         layout = self.layout
+        layout.enabled = rig_settings.outfits_show
 
         row = layout.row(align=True)
         row.prop(rig_settings, "outfits_list", text="")
@@ -261,6 +270,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         layout = self.layout
+        layout.enabled = rig_settings.outfits_show
 
         eitems = outfit_extract_items_from_collection(rig_settings.extras_collection,
                                                       rig_settings.outfit_config_subcollections)
@@ -295,10 +305,18 @@ class PANEL_PT_MustardUI_Outfits_Optimize(MainPanel, bpy.types.Panel):
         return res and gloabal_properties_avail
 
     def draw_header(self, context):
-        row = self.layout.row(align=True)
+        poll, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+
+        layout = self.layout
+
+        row = layout.row(align=True)
         row.label(text="Optimize")
-        row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_OFF").enable = True
-        row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_ON").enable = False
+
+        row2 = row.row(align=True)
+        row2.enabled = rig_settings.outfits_show
+        row2.operator('mustardui.outfits_switchglobal', text="", icon="RESTRICT_VIEW_OFF").enable = True
+        row2.operator('mustardui.outfits_switchglobal', text="", icon="RESTRICT_VIEW_ON").enable = False
 
     def draw(self, context):
 
@@ -306,6 +324,8 @@ class PANEL_PT_MustardUI_Outfits_Optimize(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
+        layout.enabled = rig_settings.outfits_show
+
         col = layout.column(align=True)
 
         if rig_settings.outfits_enable_global_subsurface:
