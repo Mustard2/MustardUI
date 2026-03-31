@@ -257,7 +257,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = rig_settings.hair_show
 
-        layout.label(text="Particle Settings")
+        layout.label(text="Particles Settings")
 
         obj = context.scene.objects[rig_settings.hair_list]
 

@@ -17,13 +17,15 @@ def draw_section(context, layout, obj, settings, rig_settings, custom_props, sec
         custom_properties_section = [x for x in custom_props if
                                      x.section == section.name and not x.hidden and (
                                          not x.advanced if not settings.advanced else True)]
+
     if len(custom_properties_section) > 0 and (
             not section.advanced or (section.advanced and settings.advanced)) and draw_sub:
-        box = layout.box()
-        row = box.row(align=False)
+        box = layout
+
+        row = layout.row(align=False)
         if section.collapsable:
             row.prop(section, "collapsed",
-                     icon="TRIA_DOWN" if not section.collapsed else "TRIA_RIGHT",
+                     icon="DOWNARROW_HLT" if not section.collapsed else "RIGHTARROW",
                      icon_only=True,
                      emboss=False)
         if section.icon != "" and section.icon != "NONE":
@@ -31,6 +33,7 @@ def draw_section(context, layout, obj, settings, rig_settings, custom_props, sec
         else:
             row.label(text=section.name)
         if not section.collapsed:
+            box = layout.box()
             if section.description != "":
                 box2 = box.box()
                 label_multiline(context=context, text=section.description, parent=box2,
