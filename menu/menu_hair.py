@@ -297,24 +297,15 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(rig_settings, 'hair_particle_children_viewport_factor', text="Density (Viewport)")
 
-        if ui_collapse_prop(layout,
-                            rig_settings,
-                            'hair_particle_collapse',
-                            "Systems",
-                            icon="",
-                            align=True,
-                            use_layout=False,
-                            emboss=False,
-                            invert_checkbox=False):
-            box = layout.box()
-            for mod in mod_particle_system:
-                row = box.row(align=True)
-                row.label(text=format_dynamic_name(mod), icon="PARTICLES")
-                row2 = row.row(align=True)
-                if "Dynamic" in mod.particle_system.name:
-                    row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
-                row2.prop(mod, "show_viewport", text="")
-                row2.prop(mod, "show_render", text="")
+        col = layout.column()
+        for mod in mod_particle_system:
+            row = col.row(align=True)
+            row.label(text=format_dynamic_name(mod), icon="PARTICLES")
+            row2 = row.row(align=True)
+            if "Dynamic" in mod.particle_system.name:
+                row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
+            row2.prop(mod, "show_viewport", text="")
+            row2.prop(mod, "show_render", text="")
 
 
 class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):

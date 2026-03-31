@@ -631,10 +631,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                                                                   "System modifiers",
                                                       update=hair_particle_hide_render_update)
 
-    hair_particle_collapse: bpy.props.BoolProperty(default=False,
-                                                   name="",
-                                                   description="")
-
     # Hair Global Properties
     hair_enable_global_subsurface: bpy.props.BoolProperty(default=False,
                                                           name="Subdivision Surface modifiers",
