@@ -2,8 +2,6 @@ import bpy
 from . import MainPanel
 from .misc import mustardui_custom_properties_print
 from ..model_selection.active_object import *
-from ..misc.outfits import outfit_extract_items_from_collection
-from ..misc.ui_collapse import ui_collapse_prop
 from ..configuration.naming_convention import strip_naming_convention
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
