@@ -28,12 +28,12 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
 
         # Main Settings
         box = layout.box()
-        col = box.column(align=True)
-        col.prop(settings, "advanced")
+        box.prop(settings, "advanced")
 
         if tuple(rig_settings.model_version_vector) > (0, 0, 0):
+            layout.separator()
+            layout.label(text="Model Version", icon="INFO")
             box = layout.box()
-            box.label(text="Model Version: ", icon="INFO")
             version = rig_settings.model_version_vector
             version = str(version[0]) + "." + str(version[1]) + "." + str(version[2])
             if rig_settings.model_version_type != "Standard":
@@ -48,8 +48,9 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
 
         # Left for old compatibility (Deprecated in MustardUI 2025.8)
         elif tuple(rig_settings.model_version_vector) == (0, 0, 0) and rig_settings.model_version != '':
+            layout.separator()
+            layout.label(text="Model Version", icon="INFO")
             box = layout.box()
-            box.label(text="Model Version: ", icon="INFO")
             version = rig_settings.model_version
             if rig_settings.model_version_date_enable and rig_settings.model_version_date != "":
                 version = version + ' - ' + rig_settings.model_version_date
