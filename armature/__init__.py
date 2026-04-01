@@ -1,7 +1,4 @@
-from . import definitions
-from . import ops_smartcheck
-from . import ops_reset
-from . import ui_list
+from . import definitions, ops_reset, ops_smartcheck, ui_list
 
 
 def register():
