@@ -1,0 +1,6 @@
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F are defaults; I adds import sorting (isort)
+select = ["E", "F", "I"]
