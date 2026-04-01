@@ -70,8 +70,11 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     #    Lips Shrinkwrap
     # ------------------------------------------------------------------------
 
-    bone_shrinkwrap_enable: bpy.props.BoolProperty(name="Lips Shrinkwrap",
-                                                   default=False)
+    bone_shrinkwrap_enable: bpy.props.BoolProperty(
+        name="Lips Shrinkwrap",
+        description="Enable the Shrinkwrap tool",
+        default=False
+    )
 
     bone_shrinkwrap_target: bpy.props.PointerProperty(
         name="Shrinkwrap Target",
@@ -89,12 +92,6 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Friction Subtarget",
         description="Bone/vertex group for friction target",
         default=""
-    )
-
-    bone_shrinkwrap_enable: bpy.props.BoolProperty(
-        name="Enable Lips Shrinkwrap",
-        description="Toggle shrinkwrap effect (non-destructive)",
-        default=False
     )
 
     bone_shrinkwrap_enable_friction: bpy.props.BoolProperty(
