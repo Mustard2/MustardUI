@@ -93,7 +93,7 @@ class MustardUI_Configuration(bpy.types.Operator):
             if hasattr(obj, '[\"arp_updated\"]'):
                 rig_settings.model_rig_type = "arp"
                 rig_recognized += 1
-            elif hasattr(obj, '[\"rig_id\"]'):
+            elif hasattr(obj, '[\"rig_id\"]') and obj["rig_id"] != "":
                 rig_settings.model_rig_type = "rigify"
                 rig_recognized += 1
             elif hasattr(rig_settings.model_armature_object, '[\"MhxRig\"]'):
@@ -138,10 +138,37 @@ class MustardUI_Configuration(bpy.types.Operator):
 
             # Setting the model version date if requested
             if rig_settings.model_version_date_enable:
-                date = datetime.today().strftime('%d/%m/%Y')
-                rig_settings.model_version_date = date
+                # Get date from vector or today
+                vec = rig_settings.model_version_date_vector
+                
+                try:
+                    if vec[0] == 0 and vec[1] == 0 and vec[2] == 0:
+                        dt = datetime.today()
+                    else:
+                        # Vector is (Year, Month, Day)
+                        # Converting depending on the date format used
+                        if rig_settings.model_version_date_format in ["MDY", "MDY2"]:
+                            dt = datetime(vec[1], vec[2], vec[0])
+                        else:
+                            dt = datetime(vec[2], vec[1], vec[0])
+                except ValueError:
+                    # In case of invalid date (e.g. Month 13), fallback to today
+                    dt = datetime.today()
+                    print("MustardUI - Invalid date entered, falling back to today.")
+
+                if rig_settings.model_version_date_format == "MDY":
+                    date_str = dt.strftime('%B %d, %Y')
+                elif rig_settings.model_version_date_format == "MDY2":
+                    date_str = dt.strftime('%m/%d/%Y')
+                else:
+                    date_str = dt.strftime('%d/%m/%Y')
+                
+                rig_settings.model_version_date = date_str
             else:
                 rig_settings.model_version_date = ""
+
+            # Clean the model temporary settings
+            settings.rename_outfits_temp_class.clear()
 
             if warnings > 0:
                 if addon_prefs.debug:

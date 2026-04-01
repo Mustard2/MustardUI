@@ -2,6 +2,7 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty
 
 from ..misc.icons_list import mustardui_icon_list
+from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh
 from ..model_selection.active_object import mustardui_active_object
 
 
@@ -89,7 +90,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
         "you want the layer to be shown only for a "
         "specific outfit piece/hair object",
         type=bpy.types.Collection,
-        poll=outfit_switcher_poll_collection,
+        poll=outfit_poll_collection,
     )
 
     outfit_switcher_object: bpy.props.PointerProperty(
@@ -97,7 +98,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
         description="When switching to this specific outfit piece/hair "
         "object, the layer will be shown/hidden",
         type=bpy.types.Object,
-        poll=outfit_switcher_poll_mesh,
+        poll=outfit_poll_mesh,
     )
 
     # Children

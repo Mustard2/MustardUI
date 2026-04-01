@@ -75,6 +75,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
             box = box.box()
             box.label(text="No property added yet", icon="ERROR")
 
+        # Sections
         box = layout.box()
         box.label(text="Sections", icon="LINENUMBERS_OFF")
         box.prop(rig_settings, "body_enable_geometry_nodes_support")

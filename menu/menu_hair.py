@@ -30,11 +30,12 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
             rig_settings = arm.MustardUI_RigSettings
 
             # Check if one of these should be shown in the UI
+            hair_global_properties_avail = len([x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None])
             hair_avail = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"]) > 0 if rig_settings.hair_collection is not None else False
             particle_avail = len([x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"]) > 0 and rig_settings.particle_systems_enable if rig_settings.model_body is not None else False
             curved_hair = len([x for x in rig_settings.hair_collection.objects if x.type == "CURVES"]) > 0 if rig_settings.hair_collection is not None else False
 
-            return res if (hair_avail or particle_avail or curved_hair) else False
+            return res if (hair_avail or particle_avail or curved_hair or hair_global_properties_avail) else False
 
         return res
 
@@ -49,6 +50,15 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         # Hair
+        hair_global_properties = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None]
+        if len(hair_global_properties) > 0:
+            box = layout.box()
+            row = box.row(align=True)
+            row.label(text="Global settings", icon="MODIFIER")
+
+            mustardui_custom_properties_print(arm, settings, hair_global_properties, box,
+                                          rig_settings.hair_custom_properties_icons)
+
         if rig_settings.hair_collection is not None:
 
             hair_num = len([x for x in rig_settings.hair_collection.objects if x.type == "MESH"])
@@ -81,7 +91,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                                                        key=lambda x: x.name)
                     else:
                         custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj]
-                    if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
+                    if len(custom_properties_obj) > 0:
                         row.prop(obj.MustardUI_OutfitSettings, "additional_options_show", toggle=True, icon="PREFERENCES")
                         if obj.MustardUI_OutfitSettings.additional_options_show:
                             mustardui_custom_properties_print(arm, settings, custom_properties_obj, box,
@@ -91,21 +101,40 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                                                  key=format_dynamic_name)
                     if rig_settings.particle_systems_enable and len(mod_particle_system) > 0:
                         row = box.row(align=True)
-                        row.prop(rig_settings, 'hair_particle_children_viewport_factor')
+                        row.prop(rig_settings, 'hair_particle_children_viewport_factor', text="Density (Viewport)")
+
+                        row.prop(rig_settings, 'hair_particle_hide_viewport',
+                                  icon="RESTRICT_VIEW_ON" if not rig_settings.hair_particle_hide_viewport else "RESTRICT_VIEW_OFF",
+                                  text="",
+                                  emboss=True)
+                        row.prop(rig_settings, 'hair_particle_hide_render',
+                                  icon="RESTRICT_RENDER_ON" if not rig_settings.hair_particle_hide_render else "RESTRICT_RENDER_OFF",
+                                  text="",
+                                  emboss=True)
+                        row.separator()
                         if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
                             status = any(x.particle_system.use_hair_dynamics for x in mod_particle_system)
-                            op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS")
+                            op = row.operator('mustardui.physics_particlehair_switch', text="", icon="PHYSICS", depress=status)
                             op.enable = not status
                             op.obj = obj.name
-                        box2 = box.box()
-                        for mod in mod_particle_system:
-                            row = box2.row(align=True)
-                            row.label(text=format_dynamic_name(mod), icon="PARTICLES")
-                            row2 = row.row(align=True)
-                            if "Dynamic" in mod.particle_system.name:
-                                row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
-                            row2.prop(mod, "show_viewport", text="")
-                            row2.prop(mod, "show_render", text="")
+                        row.separator()
+                        row.prop(rig_settings, 'hair_particle_collapse',
+                                 icon="PREFERENCES",
+                                 text="",
+                                 emboss=True)
+
+                        if rig_settings.hair_particle_collapse:
+                            box2 = box.box()
+                            for mod in mod_particle_system:
+                                row = box2.row(align=True)
+                                row.label(text=format_dynamic_name(mod), icon="PARTICLES")
+                                row2 = row.row(align=True)
+                                if "Dynamic" in mod.particle_system.name:
+                                    row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
+                                row2.prop(mod, "show_viewport", text="")
+                                row2.prop(mod, "show_render", text="")
+
+
                 except:
                     box = box.box()
                     box.label(text="An error occurred.", icon="ERROR")

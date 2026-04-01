@@ -1,20 +1,11 @@
 import bpy
 from .. import __package__ as base_package
 from bpy.props import *
-from ..custom_properties.misc import mustardui_clean_prop
+from ..custom_properties.misc import (mustardui_clean_prop,
+                                      mustardui_reassign_default,
+                                      mustardui_delete_all_custom_properties)
 from ..model_selection.active_object import *
 from ..morphs.misc import isDazFcurve
-
-
-def remove_cps(arm, uilist, addon_prefs):
-    to_remove = []
-    for i, cp in enumerate(uilist):
-        mustardui_clean_prop(arm, uilist, i, addon_prefs)
-        to_remove.append(i)
-    for i in reversed(to_remove):
-        uilist.remove(i)
-
-    return len(to_remove)
 
 
 def remove_diffeomorphic_data_result(obj, attr):
@@ -137,6 +128,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         options = self.remove_nulldrivers or self.remove_morphs or self.remove_diffeomorphic_data or self.remove_unselected_outfits or self.remove_unselected_extras or self.remove_unselected_hair or self.remove_body_cp or self.remove_outfit_cp or self.remove_hair_cp
@@ -315,16 +308,16 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             # Remove diffeomorphic support from the UI to avoid errors in the UI, or restore it if FACS are asked
             if not self.remove_morphs_facs:
-                rig_settings.diffeomorphic_morphs_list.clear()
-                rig_settings.diffeomorphic_body_morphs = False
-                rig_settings.diffeomorphic_emotions = False
-                rig_settings.diffeomorphic_emotions_units = False
+                morphs_settings.sections.clear()
+                morphs_settings.diffeomorphic_body_morphs = False
+                morphs_settings.diffeomorphic_emotions = False
+                morphs_settings.diffeomorphic_emotions_units = False
                 bpy.ops.mustardui.configuration()
                 bpy.ops.mustardui.morphs_check()
                 bpy.ops.mustardui.configuration()
             else:
-                rig_settings.diffeomorphic_morphs_list.clear()
-                rig_settings.diffeomorphic_support = False
+                morphs_settings.sections.clear()
+                morphs_settings.enable_ui = False
 
             if addon_prefs.debug:
                 print("  Morph properties removed: " + str(morphs_props_removed))
@@ -369,6 +362,26 @@ class MustardUI_CleanModel(bpy.types.Operator):
             to_remove = [x.collection for x in [y for y in rig_settings.outfits_collections if y.collection is not None and y not in self.locked_outfits_collections(rig_settings)]
                          if x.collection.name != current_outfit]
 
+            # Remove dangling Physics Items first
+            items_to_remove = []
+            for pi_id, item in enumerate(physics_settings.items):
+                if item.outfit_enable and item.outfit_collection in to_remove and item.object is not None:
+                    pi_obj = item.object
+                    obj_name = pi_obj.name
+                    try:
+                        data = pi_obj.data
+                        bpy.data.objects.remove(pi_obj)
+                        bpy.data.meshes.remove(data)
+                        if addon_prefs.debug:
+                            print("  Physics item deleted: " + obj_name)
+                    except:
+                        if addon_prefs.debug:
+                            print("  Physics item not deleted (error occurred): " + obj_name)
+                        continue
+                    items_to_remove.append(pi_id)
+            for pi_id in reversed(items_to_remove):
+                physics_settings.items.remove(pi_id)
+
             for col in to_remove:
 
                 # Find the index of the collection to remove
@@ -379,7 +392,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     i += 1
 
                 context.scene.mustardui_outfits_uilist_index = i
-                bpy.ops.mustardui.delete_outfit()
+                bpy.ops.mustardui.delete_outfit(is_config=True)
                 outfits_deleted = outfits_deleted + 1
 
             rig_settings.outfits_list = current_outfit
@@ -391,7 +404,53 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if rig_settings.extras_collection is not None and self.remove_unselected_extras:
 
             items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
-            for obj in [x for x in items if x.hide_viewport]:
+            objs = [x for x in items if x.hide_viewport]
+
+            # Remove dangling Physics Items first
+            items_to_remove = []
+            for pi_id, item in enumerate(physics_settings.items):
+                if (item.outfit_enable and item.outfit_collection == rig_settings.extras_collection
+                        and item.outfit_object in objs and item.object is not None):
+                    pi_obj = item.object
+                    obj_name = pi_obj.name
+                    try:
+                        data = pi_obj.data
+                        bpy.data.objects.remove(pi_obj)
+                        bpy.data.meshes.remove(data)
+                        if addon_prefs.debug:
+                            print("  Physics item deleted: " + obj_name)
+                    except:
+                        if addon_prefs.debug:
+                            print("  Physics item not deleted (error occurred): " + obj_name)
+                        continue
+                    items_to_remove.append(pi_id)
+            for pi_id in reversed(items_to_remove):
+                physics_settings.items.remove(pi_id)
+
+            # Clean Custom Properties
+            outfit_cp = arm.MustardUI_CustomPropertiesOutfit
+
+            # Firstly set the custom property to their default value
+            for i, cp in enumerate(outfit_cp):
+                if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
+                    mustardui_reassign_default(arm, outfit_cp, i, addon_prefs)
+
+            # Update everything
+            if rig_settings.model_armature_object:
+                rig_settings.model_armature_object.update_tag()
+            bpy.context.view_layer.update()
+
+            # And then delete data
+            to_remove = []
+            for i, cp in enumerate(outfit_cp):
+                if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
+                    mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
+                    to_remove.append(i)
+            for i in reversed(to_remove):
+                outfit_cp.remove(i)
+
+            # Delete the Objects
+            for obj in objs:
                 data = obj.data
                 obj_type = obj.type
                 bpy.data.objects.remove(obj)
@@ -401,6 +460,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     bpy.data.armatures.remove(data)
                 extras_deleted = extras_deleted + 1
 
+            # Delete the collection if now empty
             items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
             if len(items) < 1:
                 bpy.data.collections.remove(rig_settings.extras_collection)
@@ -414,8 +474,52 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if rig_settings.hair_collection is not None and self.remove_unselected_hair:
 
             current_hair = rig_settings.hair_list
+            objs = [x for x in rig_settings.hair_collection.objects if not (current_hair in x.name)]
 
-            for obj in [x for x in rig_settings.hair_collection.objects if not (current_hair in x.name)]:
+            # Remove dangling Physics Items first
+            items_to_remove = []
+            for pi_id, item in enumerate(physics_settings.items):
+                if (item.outfit_enable and item.outfit_collection == rig_settings.hair_collection
+                        and item.outfit_object in objs and item.object is not None):
+                    pi_obj = item.object
+                    obj_name = pi_obj.name
+                    try:
+                        data = pi_obj.data
+                        bpy.data.objects.remove(pi_obj)
+                        bpy.data.meshes.remove(data)
+                        if addon_prefs.debug:
+                            print("  Physics item deleted: " + obj_name)
+                    except:
+                        if addon_prefs.debug:
+                            print("  Physics item not deleted (error occurred): " + obj_name)
+                        continue
+                    items_to_remove.append(pi_id)
+            for pi_id in reversed(items_to_remove):
+                physics_settings.items.remove(pi_id)
+
+            # Clean custom properties
+            hair_cp = arm.MustardUI_CustomPropertiesHair
+
+            # Firstly set the custom property to their default value
+            for i, cp in enumerate(hair_cp):
+                if cp.hair in objs:
+                    mustardui_reassign_default(arm, hair_cp, i, addon_prefs)
+
+            # Update everything
+            if rig_settings.model_armature_object:
+                rig_settings.model_armature_object.update_tag()
+            bpy.context.view_layer.update()
+
+            # And then delete data
+            to_remove = []
+            for i, cp in enumerate(hair_cp):
+                if cp.hair in objs:
+                    mustardui_clean_prop(arm, hair_cp, i, addon_prefs)
+                    to_remove.append(i)
+            for i in reversed(to_remove):
+                hair_cp.remove(i)
+
+            for obj in objs:
                 data = obj.data
                 obj_type = obj.type
                 bpy.data.objects.remove(obj)
@@ -430,15 +534,23 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if addon_prefs.debug:
                 print("  Hair deleted: " + str(hair_deleted))
 
+        # Reset the Physics Items index
+        index = arm.mustardui_physics_items_uilist_index
+        index = min(max(0, index - 1), len(physics_settings.items) - 1)
+        arm.mustardui_physics_items_uilist_index = index
+
         # Remove custom properties
         if self.remove_body_cp:
-            body_cp_removed = remove_cps(arm, arm.MustardUI_CustomProperties, addon_prefs)
+            body_cp_removed = mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomProperties,
+                                                                     addon_prefs, rig_settings)
             print("  Body Custom Properties deleted: " + str(body_cp_removed))
         if self.remove_outfit_cp:
-            outfit_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs)
+            outfit_cp_removed = mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomPropertiesOutfit,
+                                                                       addon_prefs, rig_settings)
             print("  Outfit Custom Properties deleted: " + str(outfit_cp_removed))
         if self.remove_hair_cp:
-            hair_cp_removed = remove_cps(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs)
+            hair_cp_removed = mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomPropertiesHair,
+                                                                     addon_prefs, rig_settings)
             print("  Hair Custom Properties deleted: " + str(hair_cp_removed))
 
         # Final messages
@@ -454,8 +566,6 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         return {'FINISHED'}
 
-
-
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=500)
 
@@ -463,6 +573,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
+        morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
 
@@ -490,7 +601,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         col.prop(self, "remove_outfit_cp")
         col.prop(self, "remove_hair_cp")
 
-        if rig_settings.diffeomorphic_support:
+        if morphs_settings.enable_ui:
 
             if not hasattr(rig_settings.model_armature_object, "DazMorphCats"):
                 box = layout.box()

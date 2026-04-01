@@ -7,6 +7,18 @@ from .misc import *
 from ..misc.prop_utils import *
 from .. import __package__ as base_package
 
+float_subtype_items = (
+    ("NONE", "Plain Data", ""),
+    ("PIXEL", "Pixel", ""),
+    ("PERCENTAGE", "Percentage", ""),
+    ("FACTOR", "Factor", ""),
+    ("ANGLE", "Angle", ""),
+    ("TIME", "Time", ""),
+    ("DISTANCE", "Distance", ""),
+    ("POWER", "Power", ""),
+    ("TEMPERATURE", "Temperature", "")
+)
+
 
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings"""
@@ -36,6 +48,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                         ("OUTFIT", "Outfit", ""),
                                         ("HAIR", "Hair", ""))
                                  )
+    subtype: bpy.props.EnumProperty(default="NONE",
+                                    items=float_subtype_items
+                                    )
+
+    step_float: bpy.props.FloatProperty(name="Step")
 
     max_int: bpy.props.IntProperty(name="Maximum value")
     min_int: bpy.props.IntProperty(name="Minimum value")
@@ -102,17 +119,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         if custom_prop.is_animatable:
 
             prop_name = custom_prop.prop_name
-            prop_array = custom_prop.array_length > 0
             prop_subtype = custom_prop.subtype
 
             ui_data = obj.id_properties_ui(prop_name)
-            ui_data_dict = ui_data.as_dict()
 
             if prop_type == "FLOAT":
                 custom_prop.force_type = self.force_type
 
             if prop_type == "FLOAT" and self.force_type == "None":
-
                 ui_data.clear()
                 del obj[prop_name]
 
@@ -121,21 +135,34 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                                          self.default_array) if prop_subtype != "COLOR" else self.default_color,
                                      min=self.min_float if prop_subtype != "COLOR" else 0.,
                                      max=self.max_float if prop_subtype != "COLOR" else 1.,
+                                     step=self.step_float,
                                      description=self.description,
                                      overridable=True,
-                                     subtype=custom_prop.subtype if prop_subtype != "FACTOR" else None)
+                                     subtype=self.subtype if custom_prop.array_length == 0 else
+                                     (custom_prop.subtype if prop_subtype != "FACTOR" else None)
+                                     )
 
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
                 custom_prop.max_float = self.max_float
+
                 if custom_prop.array_length == 0:
                     custom_prop.default_float = self.default_float
                     obj[prop_name] = float(obj[prop_name])
+                    custom_prop.subtype = self.subtype
                 else:
-                    custom_prop.default_array = self.default_array if prop_subtype != "COLOR" else str(
-                        ui_data.as_dict()['default'])
-            elif prop_type == "BOOLEAN" or self.force_type == "Bool":
+                    if prop_subtype != "COLOR":
+                        custom_prop.default_array = self.default_array
+                    else:
+                        custom_prop.default_array = ("("
+                                                     + str(self.default_color[0]) + ","
+                                                     + str(self.default_color[1]) + ","
+                                                     + str(self.default_color[2]) + ","
+                                                     + str(self.default_color[3])
+                                                     + ")")
+                custom_prop.step_float = self.step_float
 
+            elif prop_type == "BOOLEAN" or self.force_type == "Bool":
                 ui_data.clear()
                 del obj[prop_name]
 
@@ -152,7 +179,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     custom_prop.default_array = self.default_array
 
             elif prop_type == "INT" or self.force_type == "Int":
-
                 ui_data.clear()
                 del obj[prop_name]
 
@@ -238,9 +264,16 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     if custom_prop.subtype != "COLOR":
                         self.default_array = str(ui_data_dict['default'])
                     else:
-                        self.default_color = ui_data_dict['default']
+                        try:
+                            self.default_color = ui_data_dict['default']
+                        except:
+                            self.default_color = [0., 0., 0., 1.]
                 else:
                     self.default_float = ui_data_dict['default']
+
+                if custom_prop.array_length == 0:
+                    self.subtype = ui_data_dict['subtype']
+                self.step_float = ui_data_dict['step']
 
         return context.window_manager.invoke_props_dialog(self, width=700 if addon_prefs.debug else 450)
 
@@ -329,11 +362,22 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
                 if self.force_type == "None":
                     row = box.row()
-                    row.label(text="Min / Max")
+                    row.label(text="Min / Max:")
                     row.scale_x = scale
                     row2 = row.row(align=True)
                     row2.prop(self, "min_float", text="")
                     row2.prop(self, "max_float", text="")
+
+                    if custom_prop.array_length == 0:
+                        row = box.row()
+                        row.label(text="Subtype:")
+                        row.scale_x = scale
+                        row.prop(self, "subtype", text="")
+
+                    row = box.row()
+                    row.label(text="Step:")
+                    row.scale_x = scale
+                    row.prop(self, "step_float", text="")
 
             if custom_prop.subtype == "COLOR":
                 row = box.row()

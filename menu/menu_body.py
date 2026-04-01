@@ -2,25 +2,9 @@ import bpy
 from . import MainPanel
 from ..model_selection.active_object import *
 from ..misc.prop_utils import *
+from ..misc.ui_multiline import label_multiline
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
-import textwrap
-
-
-def _label_multiline(context, text, parent, icon):
-    chars = int(context.region.width / 7)  # 7 pix on 1 character
-    wrapper = textwrap.TextWrapper(width=chars)
-    text_lines = wrapper.wrap(text=text)
-    if icon in ["", "NONE"]:
-        for i, text_line in enumerate(text_lines):
-            parent.label(text=text_line)
-    else:
-
-        for i, text_line in enumerate(text_lines):
-            if not i:
-                parent.label(text=text_line, icon=icon)
-            else:
-                parent.label(text=text_line, icon="BLANK1")
 
 
 def draw_section(context, layout, obj, settings, rig_settings, custom_props, section, draw_sub = True):
@@ -49,7 +33,7 @@ def draw_section(context, layout, obj, settings, rig_settings, custom_props, sec
         if not section.collapsed:
             if section.description != "":
                 box2 = box.box()
-                _label_multiline(context=context, text=section.description, parent=box2,
+                label_multiline(context=context, text=section.description, parent=box2,
                                  icon=section.description_icon)
             for prop in custom_properties_section:
                 row = box.row()

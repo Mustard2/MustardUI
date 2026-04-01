@@ -6,19 +6,22 @@ from ..warnings.ops_fix_old_UI import check_old_UI
 from ..settings.rig import *
 from .misc import *
 
+import re
 
 def extract_items(collection, subcollections):
     items = [x for x in (collection.all_objects if subcollections else collection.objects)]
     return [x for x in items if x.parent is None or x.parent not in items]
 
 
-# Type: 0 - Standrd, 1 - Locked Objects, 2 - Extras
-def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0):
-
+# Type: 0 - Standard, 1 - Locked Objects, 2 - Extras
+def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, otype=0, level=0):
     if otype < 0 or otype > 3:
         return
 
     if level > rig_settings.outfits_max_hierarchy_level:
+        return
+
+    if obj in [x.object for x in physics_settings.items]:
         return
 
     col = layout.column(align=True)
@@ -33,24 +36,43 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
 
     if rig_settings.model_MustardUI_naming_convention:
         if otype == 0:
-            coll_name = rig_settings.outfits_list+' - '
+            coll_name = rig_settings.outfits_list + ' - '
         elif otype == 1:
-            coll_name = rig_settings.model_name+' '
+            coll_name = rig_settings.model_name + ' '
         else:
-            coll_name = rig_settings.extras_collection.name+' - '
+            coll_name = rig_settings.extras_collection.name + ' - '
+
+        nname = obj.name[len(re.sub(r"\.\d{3}", "", coll_name)):]
+        nname = re.sub(r"\.\d{3}", "", nname)
+
         row.operator("mustardui.object_visibility",
-                     text=obj.name[len(coll_name):],
+                     text=nname,
                      icon='OUTLINER_OB_' + obj.type, depress=not obj.hide_viewport).obj = obj.name
     else:
         row.operator("mustardui.object_visibility", text=obj.name, icon='OUTLINER_OB_' + obj.type,
                      depress=not obj.hide_viewport).obj = obj.name
 
     # Physics
-    if rig_settings.outfit_physics_support:
+    pi = None
+    for pii in [x for x in physics_settings.items]:
+        if pii.outfit_object == obj:
+            pi = pii
+            break
+    if pi is not None:
+        col2 = row.column(align=True)
+        col2.enabled = physics_settings.enable_physics
+        col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_physics', text="",
+                  icon="PHYSICS" if pi.type != "COLLISION" else "MOD_PHYSICS")
+        if pi.type != "COLLISION":
+            col2 = row.column(align=True)
+            col2.enabled = physics_settings.enable_physics
+            col2.prop(obj.MustardUI_OutfitSettings, 'enable_pi_collisions', text="", icon="MOD_PHYSICS")
+    elif rig_settings.outfit_physics_support:
         for m in obj.modifiers:
             mtype = m.type
             if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
-                row.prop(obj.MustardUI_OutfitSettings, 'physics', text="", icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS")
+                row.prop(obj.MustardUI_OutfitSettings, 'physics', text="",
+                         icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS")
                 break
 
     # Outfit custom properties
@@ -62,14 +84,18 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
 
     if rig_settings.outfit_custom_properties_name_order:
         custom_properties_obj = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                        (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden],
+                                        (
+                                            x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden],
                                        key=lambda x: x.name)
     else:
         custom_properties_obj = [x for x in arm.MustardUI_CustomPropertiesOutfit if
-                                 (x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden]
+                                 (
+                                     x.outfit == co_coll if otype != 1 else True) and x.outfit_piece == obj and not x.hidden]
 
-    if len(custom_properties_obj) > 0 and rig_settings.outfit_additional_options:
-        row.prop(obj.MustardUI_OutfitSettings, "additional_options_show" if otype != 1 else "additional_options_show_lock", toggle=True, icon="PREFERENCES")
+    if len(custom_properties_obj) > 0:
+        row.prop(obj.MustardUI_OutfitSettings,
+                 "additional_options_show" if otype != 1 else "additional_options_show_lock", toggle=True,
+                 icon="PREFERENCES")
         check_show = obj.MustardUI_OutfitSettings.additional_options_show if otype != 1 else obj.MustardUI_OutfitSettings.additional_options_show_lock
         if check_show:
             row2 = col.row(align=True)
@@ -84,7 +110,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, settings, otype=0, level=0
 
     if not collapse:
         for c in obj.children:
-            draw_outfit_piece(layout, c, arm, rig_settings, settings, otype, level + 1)
+            draw_outfit_piece(layout, c, arm, rig_settings, physics_settings, settings, otype, level + 1)
 
 
 class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
@@ -123,6 +149,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
 
         layout = self.layout
 
@@ -154,18 +181,42 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                                                  rig_settings.outfits_list] and x.outfit_piece is None and not x.hidden and (
                                                  not x.advanced if not settings.advanced else True)]
 
-                    if len(custom_properties) > 0 and rig_settings.outfit_additional_options:
+                    if len(custom_properties) > 0:
                         row.prop(rig_settings, "outfit_global_custom_properties_collapse", text="", toggle=True,
                                  icon="PREFERENCES")
                         if rig_settings.outfit_global_custom_properties_collapse:
                             mustardui_custom_properties_print(arm, settings, custom_properties, box,
                                                               rig_settings.outfit_custom_properties_icons)
 
+                    if settings.advanced:
+                        row.separator()
+                        op = row.operator("mustardui.delete_outfit", text="", icon="TRASH")
+                        op.is_config = False
+
                     for obj in sorted(items, key=lambda x: x.name):
-                        draw_outfit_piece(box, obj, arm, rig_settings, settings, 0, 0)
+                        draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 0, 0)
 
                 else:
                     box.label(text="This Collection seems empty", icon="ERROR")
+
+            elif rig_settings.outfit_nude and rig_settings.outfits_list == "Nude":  # Outfit is nude below
+
+                if rig_settings.outfit_custom_properties_name_order:
+                    custom_properties = sorted([x for x in arm.MustardUI_CustomPropertiesOutfit if
+                                                x.outfit is None and x.outfit_piece is None and not x.hidden and (
+                                                    not x.advanced if not settings.advanced else True)],
+                                               key=lambda x: x.name)
+                else:
+                    custom_properties = [x for x in arm.MustardUI_CustomPropertiesOutfit if
+                                         x.outfit is None and x.outfit_piece is None and not x.hidden and (
+                                             not x.advanced if not settings.advanced else True)]
+
+                if len(custom_properties) > 0:
+                    row.prop(rig_settings, "outfit_global_custom_properties_collapse", text="", toggle=True,
+                             icon="PREFERENCES")
+                    if rig_settings.outfit_global_custom_properties_collapse:
+                        mustardui_custom_properties_print(arm, settings, custom_properties, box,
+                                                          rig_settings.outfit_custom_properties_icons)
 
             # Locked objects
             locked_objects = []
@@ -179,47 +230,47 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                 box.separator()
                 box.label(text="Locked objects:", icon="LOCKED")
                 for obj in locked_objects:
-                    draw_outfit_piece(box, obj, arm, rig_settings, settings, 1, 0)
+                    draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 1, 0)
 
-            # Extras
-            if rig_settings.extras_collection is not None:
+        # Extras
+        if rig_settings.extras_collection is not None:
 
-                eitems = extract_items(rig_settings.extras_collection,
-                                       rig_settings.outfit_config_subcollections)
+            eitems = extract_items(rig_settings.extras_collection,
+                                   rig_settings.outfit_config_subcollections)
 
-                if len(eitems) > 0:
-
-                    box = layout.box()
-
-                    if ui_collapse_prop(box, rig_settings, 'extras_collapse', "Extras", icon="", align=False):
-                        for obj in sorted(eitems, key=lambda x: x.name):
-                            draw_outfit_piece(box, obj, arm, rig_settings, settings, 2, 0)
-
-            # Outfit global properties
-            if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
+            if len(eitems) > 0:
 
                 box = layout.box()
-                row = box.row(align=True)
-                row.label(text="Global Properties", icon="MODIFIER")
-                row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_OFF").enable = True
-                row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_ON").enable = False
-                col = box.column(align=True)
-                if rig_settings.outfits_enable_global_subsurface:
-                    col.prop(rig_settings, "outfits_global_subsurface")
-                if rig_settings.outfits_enable_global_smoothcorrection:
-                    col.prop(rig_settings, "outfits_global_smoothcorrection")
-                if rig_settings.outfits_enable_global_shrinkwrap:
-                    col.prop(rig_settings, "outfits_global_shrinkwrap")
-                if rig_settings.outfits_enable_global_surfacedeform:
-                    col.prop(rig_settings, "outfits_global_surfacedeform")
-                if rig_settings.outfits_enable_global_mask:
-                    col.prop(rig_settings, "outfits_global_mask")
-                if rig_settings.outfits_enable_global_solidify:
-                    col.prop(rig_settings, "outfits_global_solidify")
-                if rig_settings.outfits_enable_global_triangulate:
-                    col.prop(rig_settings, "outfits_global_triangulate")
-                if rig_settings.outfits_enable_global_normalautosmooth:
-                    col.prop(rig_settings, "outfits_global_normalautosmooth")
+
+                if ui_collapse_prop(box, rig_settings, 'extras_collapse', "Extras", icon="", align=False):
+                    for obj in sorted(eitems, key=lambda x: x.name):
+                        draw_outfit_piece(box, obj, arm, rig_settings, physics_settings, settings, 2, 0)
+
+        # Outfit global properties
+        if rig_settings.outfits_enable_global_subsurface or rig_settings.outfits_enable_global_smoothcorrection or rig_settings.outfits_enable_global_shrinkwrap or rig_settings.outfits_enable_global_surfacedeform or rig_settings.outfits_enable_global_mask or rig_settings.outfits_enable_global_solidify or rig_settings.outfits_enable_global_triangulate or rig_settings.outfits_enable_global_normalautosmooth:
+
+            box = layout.box()
+            row = box.row(align=True)
+            row.label(text="Global Properties", icon="MODIFIER")
+            row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_OFF").enable = True
+            row.operator('mustardui.switchglobal_outfits', text="", icon="RESTRICT_VIEW_ON").enable = False
+            col = box.column(align=True)
+            if rig_settings.outfits_enable_global_subsurface:
+                col.prop(rig_settings, "outfits_global_subsurface")
+            if rig_settings.outfits_enable_global_smoothcorrection:
+                col.prop(rig_settings, "outfits_global_smoothcorrection")
+            if rig_settings.outfits_enable_global_shrinkwrap:
+                col.prop(rig_settings, "outfits_global_shrinkwrap")
+            if rig_settings.outfits_enable_global_surfacedeform:
+                col.prop(rig_settings, "outfits_global_surfacedeform")
+            if rig_settings.outfits_enable_global_mask:
+                col.prop(rig_settings, "outfits_global_mask")
+            if rig_settings.outfits_enable_global_solidify:
+                col.prop(rig_settings, "outfits_global_solidify")
+            if rig_settings.outfits_enable_global_triangulate:
+                col.prop(rig_settings, "outfits_global_triangulate")
+            if rig_settings.outfits_enable_global_normalautosmooth:
+                col.prop(rig_settings, "outfits_global_normalautosmooth")
 
 
 def register():

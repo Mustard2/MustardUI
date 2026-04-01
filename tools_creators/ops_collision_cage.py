@@ -31,7 +31,6 @@ the scope of MustardUI
 import bpy
 from rna_prop_ui import rna_idprop_ui_create
 from ..model_selection.active_object import *
-from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
@@ -279,6 +278,10 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         # Disable shadows for viewport/render
         bpy.context.object.visible_camera = False
         bpy.context.object.visible_shadow = False
+        bpy.context.object.visible_diffuse = False
+        bpy.context.object.visible_glossy = False
+        bpy.context.object.visible_transmission = False
+        bpy.context.object.visible_volume_scatter = False
 
         self.report({'INFO'}, 'MustardUI - Collision Cage created.')
 
