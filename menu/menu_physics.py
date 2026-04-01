@@ -61,7 +61,7 @@ def cloth_panel(layout, pi, mod):
     row = layout.row(align=True)
     collisions = mod.collision_settings
     row.prop(pi, 'collapse_cloth_collisions',
-             icon="TRIA_DOWN" if not pi.collapse_cloth_collisions else "TRIA_RIGHT", icon_only=True,
+             icon="DOWNARROW_HLT" if not pi.collapse_cloth_collisions else "RIGHTARROW", icon_only=True,
              emboss=False)
     row.prop(collisions, 'use_collision', text="")
     row.label(text="Collisions")
@@ -77,7 +77,7 @@ def cloth_panel(layout, pi, mod):
     row = layout.row(align=True)
     collisions = mod.collision_settings
     row.prop(pi, 'collapse_cloth_self_collisions',
-             icon="TRIA_DOWN" if not pi.collapse_cloth_self_collisions else "TRIA_RIGHT", icon_only=True,
+             icon="DOWNARROW_HLT" if not pi.collapse_cloth_self_collisions else "RIGHTARROW", icon_only=True,
              emboss=False)
     row.prop(collisions, 'use_self_collision', text="")
     row.label(text="Self Collisions")
@@ -221,6 +221,8 @@ class PANEL_PT_MustardUI_Physics_ItemSettings(MainPanel, bpy.types.Panel):
                 if check_mirror(pi.object.name, on, left=True) or check_mirror(pi.object.name, on, left=False):
                     layout.enabled = pi.enable
             layout.operator("mustardui.physics_mirror", text="", icon="MOD_MIRROR").obj_name = pi.object.name
+
+        layout.operator("mustardui.physics_presets_ui", text="", icon="PRESET")
 
     def draw(self, context):
 

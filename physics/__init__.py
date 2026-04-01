@@ -11,11 +11,14 @@ from . import ops_rebind
 from . import ui_list
 from . import ui_list_outfits
 from . import ui_list_menu
-from . import ops_hair_particles
+from . import settings_presets
+from . import ops_presets_io
+from . import ui_presets
 
 
 def register():
     settings_item.register()
+    settings_presets.register()
     settings.register()
     ops_cache.register()
     menu.register()
@@ -28,11 +31,13 @@ def register():
     ui_list.register()
     ui_list_outfits.register()
     ui_list_menu.register()
-    ops_hair_particles.register()
+    ops_presets_io.register()
+    ui_presets.register()
 
 
 def unregister():
-    ops_hair_particles.unregister()
+    ui_presets.unregister()
+    ops_presets_io.unregister()
     ui_list_menu.unregister()
     ui_list_outfits.unregister()
     ui_list.unregister()
@@ -45,4 +50,5 @@ def unregister():
     menu.unregister()
     ops_cache.unregister()
     settings.unregister()
+    settings_presets.unregister()
     settings_item.unregister()
