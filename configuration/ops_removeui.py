@@ -1,27 +1,36 @@
 import bpy
-from bpy.props import *
-from ..custom_properties.misc import mustardui_delete_all_custom_properties
-from ..model_selection.active_object import *
+from bpy.props import BoolProperty
+
 from .. import __package__ as base_package
+from ..custom_properties.misc import mustardui_delete_all_custom_properties
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_RemoveUI(bpy.types.Operator):
     """Remove and clean the model and the UI"""
+
     bl_idname = "mustardui.remove"
     bl_label = "Remove UI and Model"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
-    delete_settings: BoolProperty(default=False,
-                                  name="Delete Settings",
-                                  description="All Settings of the UI will be removed.\nA clean Configuration is "
-                                              "necessary after using this option")
-    delete_objects: BoolProperty(default=False,
-                                 name="Delete Objects",
-                                 description="All Objects are deleted from the file, including the main Armature")
-    delete_bones_custom_shapes: BoolProperty(default=True,
-                                             name="Delete Bones Custom Shapes",
-                                             description="Bones Custom Shapes are deleted with the Armature. Disable "
-                                                         "this if some shapes are shared between different Armatures")
+    delete_settings: BoolProperty(
+        default=False,
+        name="Delete Settings",
+        description="All Settings of the UI will be removed.\nA clean Configuration is "
+        "necessary after using this option",
+    )
+    delete_objects: BoolProperty(
+        default=False,
+        name="Delete Objects",
+        description="All Objects are deleted from the file, including "
+        "the main Armature",
+    )
+    delete_bones_custom_shapes: BoolProperty(
+        default=True,
+        name="Delete Bones Custom Shapes",
+        description="Bones Custom Shapes are deleted with the Armature. Disable "
+        "this if some shapes are shared between different Armatures",
+    )
 
     def remove_data_col(self, context, col, remove_subcoll=False):
 
@@ -56,13 +65,12 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         try:
             del obj[name]
-        except:
+        except Exception:
             pass
 
     @classmethod
     def poll(cls, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=0)
 
         if arm is not None:
@@ -89,28 +97,37 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             if rig_settings.hair_collection is not None:
                 self.remove_data_col(context, rig_settings.hair_collection)
             if rig_settings.extras_collection is not None:
-                self.remove_data_col(context, rig_settings.extras_collection, rig_settings.outfit_config_subcollections)
+                self.remove_data_col(
+                    context,
+                    rig_settings.extras_collection,
+                    rig_settings.outfit_config_subcollections,
+                )
 
         # Remove settings
         if self.delete_settings or self.delete_objects:
             # Remove custom properties
-            mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomProperties, addon_prefs, rig_settings)
-            mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs, rig_settings)
-            mustardui_delete_all_custom_properties(arm, arm.MustardUI_CustomPropertiesHair, addon_prefs, rig_settings)
+            mustardui_delete_all_custom_properties(
+                arm, arm.MustardUI_CustomProperties, addon_prefs, rig_settings
+            )
+            mustardui_delete_all_custom_properties(
+                arm, arm.MustardUI_CustomPropertiesOutfit, addon_prefs, rig_settings
+            )
+            mustardui_delete_all_custom_properties(
+                arm, arm.MustardUI_CustomPropertiesHair, addon_prefs, rig_settings
+            )
 
             # Clear all settings
-            self.remove_property(arm, 'MustardUI_ToolsSettings')
-            self.remove_property(arm, 'MustardUI_MorphsSettings')
-            self.remove_property(arm, 'MustardUI_PhysicsSettings')
-            self.remove_property(arm, 'MustardUI_ArmatureSettings')
-            self.remove_property(arm, 'MustardUI_CustomProperties')
-            self.remove_property(arm, 'MustardUI_CustomPropertiesHair')
-            self.remove_property(arm, 'MustardUI_CustomPropertiesOutfit')
-            self.remove_property(arm, 'MustardUI_RigSettings')
+            self.remove_property(arm, "MustardUI_ToolsSettings")
+            self.remove_property(arm, "MustardUI_MorphsSettings")
+            self.remove_property(arm, "MustardUI_PhysicsSettings")
+            self.remove_property(arm, "MustardUI_ArmatureSettings")
+            self.remove_property(arm, "MustardUI_CustomProperties")
+            self.remove_property(arm, "MustardUI_CustomPropertiesHair")
+            self.remove_property(arm, "MustardUI_CustomPropertiesOutfit")
+            self.remove_property(arm, "MustardUI_RigSettings")
 
         # Remove Armature and its children objects
         if self.delete_objects:
-
             # Remove Armature Children
             self.remove_data_list(context, arm_obj.children)
 
@@ -127,21 +144,26 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             self.remove_data_list(context, [arm_obj])
 
         else:
-
             arm.MustardUI_enable = not arm.MustardUI_enable
             arm.MustardUI_created = False
 
         settings.viewport_model_selection = True
 
-        self.report({'INFO'}, 'MustardUI - MustardUI deletion complete. Switched to Viewport Model Selection')
+        self.report(
+            {"INFO"},
+            "MustardUI - MustardUI deletion complete. Switched to Viewport "
+            "Model Selection",
+        )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        return context.window_manager.invoke_props_dialog(self, width=550 if addon_prefs.debug else 450)
+        return context.window_manager.invoke_props_dialog(
+            self, width=550 if addon_prefs.debug else 450
+        )
 
     def draw(self, context):
 
@@ -150,8 +172,15 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         box = layout.box()
         col = box.column(align=True)
         col.label(text="Notes:")
-        col.label(text="Read the descriptions of all buttons (keep the mouse on the buttons).", icon="DOT")
-        col.label(text="This is a highly destructive operation! Use it at your own risk!", icon="ERROR")
+        col.label(
+            text="Read the descriptions of all buttons "
+            "(keep the mouse on the buttons).",
+            icon="DOT",
+        )
+        col.label(
+            text="This is a highly destructive operation! Use it at your own risk!",
+            icon="ERROR",
+        )
 
         box = layout.box()
         col = box.column(align=True)
