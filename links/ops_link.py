@@ -1,25 +1,26 @@
-import bpy
 import webbrowser
 
+import bpy
 
 # ------------------------------------------------------------------------
 #    Link (thanks to Mets3D)
 # ------------------------------------------------------------------------
 
+
 class MustardUI_LinkButton(bpy.types.Operator):
     """Open links in a web browser"""
+
     bl_idname = "mustardui.openlink"
     bl_label = "Open Link"
-    bl_options = {'REGISTER'}
+    bl_options = {"REGISTER"}
 
-    url: bpy.props.StringProperty(name='URL',
-                                  description="URL",
-                                  default="http://blender.org/"
-                                  )
+    url: bpy.props.StringProperty(
+        name="URL", description="URL", default="http://blender.org/"
+    )
 
     def execute(self, context):
         webbrowser.open_new(self.url)  # opens in default browser
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
