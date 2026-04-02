@@ -311,7 +311,7 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
                         force=self.force
                         )
 
-        self.report({'INFO'}, 'MustardUI - Cages successfully re-binded.')
+        self.report({'INFO'}, f'MustardUI - Cage "{self.cage_name}" successfully re-binded.')
 
         return {'FINISHED'}
 
