@@ -41,3 +41,7 @@ There are two supported ways to install the add-on:
 ## Note for Developers/Users
 
 Feel free to open new Issues, both for bugs and new features proposals. Also, all comments are very welcome!
+
+## Credits
+
+- [Diffeomorphic and MHX developers](https://diffeomorphic.blogspot.com/)
