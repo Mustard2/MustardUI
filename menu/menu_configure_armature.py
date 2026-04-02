@@ -30,11 +30,15 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         armature_settings = arm.MustardUI_ArmatureSettings
+        rig_settings = arm.MustardUI_RigSettings
 
         box = layout.box()
         box.label(text="General Settings", icon="MODIFIER")
         box.prop(armature_settings, 'mirror')
-        box.prop(armature_settings, 'ik_fk_panel')
+
+        row = box.row()
+        row.enabled = rig_settings.model_rig_type == "mhx"
+        row.prop(armature_settings, 'ik_fk_panel')
 
         box = layout.box()
         row = box.row()
@@ -60,25 +64,11 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         )
 
         col = row.column(align=True)
-        if settings.advanced:
-            col.operator("armature.collection_add", icon='ADD', text="")
-            col.operator("armature.collection_remove", icon='REMOVE', text="")
         if active_bcoll:
             col.separator()
             col.operator("armature.collection_move", icon='TRIA_UP', text="").direction = 'UP'
             col.operator("armature.collection_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
             col.separator()
-
-        if settings.advanced:
-            row = box.row()
-
-            sub = row.row(align=True)
-            sub.operator("armature.collection_assign", text="Assign")
-            sub.operator("armature.collection_unassign", text="Remove")
-
-            sub = row.row(align=True)
-            sub.operator("armature.collection_select", text="Select")
-            sub.operator("armature.collection_deselect", text="Deselect")
 
         if arm.collections.active_index > -1:
 
