@@ -126,6 +126,8 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
         if rig_settings.hair_collection is not None:
             for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
                 objects.append(obj)
+        for item in [x for x in physics_settings.items if x.type == "COLLISION" and x.object is not None]:
+            objects.append(item.object)
 
         # Gather cages to check as targets of modifiers
         cages = []
@@ -294,6 +296,8 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
         if rig_settings.hair_collection is not None:
             for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
                 objects.append(obj)
+        for item in [x for x in physics_settings.items if x.type == "COLLISION" and x.object is not None]:
+            objects.append(item.object)
 
         # Fetch the cage to check as targets of modifiers
         cages = []
