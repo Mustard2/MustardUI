@@ -1,45 +1,44 @@
+from . import menu_select_model, menu_warnings  # noqa: I001
+
+# Configure panel
+from . import menu_configure, menu_development
+
+# Sub-panels
+from . import (
+    menu_armature,
+    menu_body,
+    menu_configure_armature,
+    menu_configure_body,
+    menu_configure_complete,
+    menu_configure_debug,
+    menu_configure_hair,
+    menu_configure_links,
+    menu_configure_morphs,
+    menu_configure_others,
+    menu_configure_outfit,
+    menu_configure_physics,
+    menu_configure_tools,
+    menu_hair,
+    menu_links,
+    menu_morphs,
+    menu_outfits,
+    menu_physics,
+    menu_settings,
+    menu_simplify,
+    menu_tools,
+    menu_tools_creators,
+)
+
+
 class MainPanel:
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "MustardUI"
 
 
-from . import menu_select_model
-from . import menu_warnings
-
-
-# Configure panel
-from . import menu_configure
-from . import menu_developement
-# Sub-panels
-from . import menu_configure_body
-from . import menu_configure_outfit
-from . import menu_configure_hair
-from . import menu_configure_armature
-from . import menu_configure_physics
-from . import menu_configure_tools
-from . import menu_configure_morphs
-from . import menu_configure_links
-from . import menu_configure_others
-from . import menu_configure_debug
-from . import menu_configure_complete
-
-from . import menu_tools_creators
-from . import menu_body
-from . import menu_morphs
-from . import menu_outfits
-from . import menu_hair
-from . import menu_armature
-from . import menu_simplify
-from . import menu_physics
-from . import menu_tools
-from . import menu_settings
-from . import menu_links
-
-
 def register():
     menu_select_model.register()
-    menu_developement.register()
+    menu_development.register()
     menu_warnings.register()
     menu_configure.register()
     menu_configure_body.register()
@@ -91,5 +90,5 @@ def unregister():
     menu_configure_body.unregister()
     menu_configure.unregister()
     menu_warnings.unregister()
-    menu_developement.unregister()
+    menu_development.unregister()
     menu_select_model.unregister()

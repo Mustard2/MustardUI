@@ -1,8 +1,9 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..warnings.ops_fix_old_UI import check_old_UI
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
+from ..warnings.ops_fix_old_UI import check_old_UI
+from . import MainPanel
 
 
 class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
@@ -30,7 +31,6 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         res, arm = mustardui_active_object(context, config=1)
-        addon_prefs = context.preferences.addons[base_package].preferences
         physics_settings = arm.MustardUI_PhysicsSettings
 
         box = layout.box()
@@ -44,16 +44,24 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         index = arm.mustardui_physics_items_uilist_index
 
         if len(physics_settings.items):
-
             row = box.row()
-            row.template_list("MUSTARDUI_UL_PhysicsItems_UIList", "The_List", physics_settings,
-                              "items", arm,
-                              "mustardui_physics_items_uilist_index")
+            row.template_list(
+                "MUSTARDUI_UL_PhysicsItems_UIList",
+                "The_List",
+                physics_settings,
+                "items",
+                arm,
+                "mustardui_physics_items_uilist_index",
+            )
             col = row.column()
             col2 = col.column(align=True)
-            opup = col2.operator('mustardui.physics_items_switch', icon="TRIA_UP", text="")
+            opup = col2.operator(
+                "mustardui.physics_items_switch", icon="TRIA_UP", text=""
+            )
             opup.direction = "UP"
-            opdown = col2.operator('mustardui.physics_items_switch', icon="TRIA_DOWN", text="")
+            opdown = col2.operator(
+                "mustardui.physics_items_switch", icon="TRIA_DOWN", text=""
+            )
             opdown.direction = "DOWN"
             col.separator()
             col.operator("mustardui.physics_item_remove", text="", icon="X")
@@ -63,32 +71,47 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
 
                 col = box.column()
                 row = col.row()
-                row.prop(pi, 'type')
+                row.prop(pi, "type")
 
                 col = box.column(align=True)
-                col.prop(pi, 'outfit_enable')
+                col.prop(pi, "outfit_enable")
                 if pi.outfit_enable:
-                    col.prop(pi, 'outfit_collection', text="Collection")
+                    col.prop(pi, "outfit_collection", text="Collection")
                     if pi.outfit_collection is not None:
-                        col.prop(pi, 'outfit_object', text="Object")
+                        col.prop(pi, "outfit_object", text="Object")
 
-            if settings.advanced and index > -1 and len(
-                    physics_settings.items[arm.mustardui_physics_items_uilist_index].intersecting_objects) > 0:
+            if (
+                settings.advanced
+                and index > -1
+                and len(
+                    physics_settings.items[
+                        arm.mustardui_physics_items_uilist_index
+                    ].intersecting_objects
+                )
+                > 0
+            ):
                 box = layout.box()
                 box.label(text="Outfits Affected by Physics Item", icon="XRAY")
 
                 row = box.row()
-                row.template_list("MUSTARDUI_UL_PhysicsItems_Outfits_UIList", "The_List",
-                                  physics_settings.items[arm.mustardui_physics_items_uilist_index],
-                                  "intersecting_objects", arm,
-                                  "mustardui_physics_items_outfits_uilist_index")
+                row.template_list(
+                    "MUSTARDUI_UL_PhysicsItems_Outfits_UIList",
+                    "The_List",
+                    physics_settings.items[arm.mustardui_physics_items_uilist_index],
+                    "intersecting_objects",
+                    arm,
+                    "mustardui_physics_items_outfits_uilist_index",
+                )
                 col = row.column()
-                col.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = True
+                col.operator(
+                    "mustardui.physics_setup_intersecting_objects", icon="XRAY", text=""
+                ).unique = True
                 col.separator()
-                col.operator("mustardui.physics_intersecting_object_remove", text="", icon="X")
+                col.operator(
+                    "mustardui.physics_intersecting_object_remove", text="", icon="X"
+                )
 
         else:
-
             col = box.column()
             col.label(text="No Physics Item found", icon="ERROR")
             col.label(text="Right-click on Objects in Outliner to add", icon="BLANK1")
@@ -96,10 +119,12 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Outfits Support", icon="MOD_CLOTH")
         row = box.row(align=True)
-        row.operator('mustardui.physics_setup', icon="PHYSICS")
+        row.operator("mustardui.physics_setup", icon="PHYSICS")
         if settings.advanced:
-            row.operator('mustardui.physics_setup_intersecting_objects', icon="XRAY", text="").unique = False
-        row.operator('mustardui.physics_setup_clear', icon="X", text="")
+            row.operator(
+                "mustardui.physics_setup_intersecting_objects", icon="XRAY", text=""
+            ).unique = False
+        row.operator("mustardui.physics_setup_clear", icon="X", text="")
 
 
 def register():

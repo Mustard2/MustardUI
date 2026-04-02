@@ -1,8 +1,8 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from ..settings.rig import *
+from . import MainPanel
 
 
 class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
@@ -18,7 +18,10 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=0)
         if arm is not None:
-            return res and (arm.MustardUI_ToolsSettings.autobreath_enable or arm.MustardUI_ToolsSettings.autoeyelid_enable)
+            return res and (
+                arm.MustardUI_ToolsSettings.autobreath_enable
+                or arm.MustardUI_ToolsSettings.autoeyelid_enable
+            )
         return res
 
     def draw(self, context):
@@ -27,7 +30,7 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Tools"
-    bl_idname = "PANEL_PT_MustarUI_Tools_AutoBreath"
+    bl_idname = "PANEL_PT_MustardUI_Tools_AutoBreath"
     bl_label = "Auto Breath"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -62,12 +65,12 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
         column.prop(tools_settings, "autobreath_random")
         column.prop(tools_settings, "autobreath_sampling")
 
-        layout.operator('mustardui.tools_autobreath')
+        layout.operator("mustardui.tools_autobreath")
 
 
 class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Tools"
-    bl_idname = "PANEL_PT_MustarUI_Tools_AutoEyelid"
+    bl_idname = "PANEL_PT_MustardUI_Tools_AutoEyelid"
     bl_label = "Auto Blink"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -97,7 +100,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
         column.prop(tools_settings, "autoeyelid_blink_length")
         column.prop(tools_settings, "autoeyelid_blink_rate_per_minute")
 
-        layout.operator('mustardui.tools_autoeyelid')
+        layout.operator("mustardui.tools_autoeyelid")
 
 
 def register():

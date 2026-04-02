@@ -1,8 +1,8 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from ..settings.rig import *
+from . import MainPanel
 
 
 class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
@@ -45,14 +45,12 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = not simplify_settings.simplify_enable
 
-
         # Simplify Settings
         box = layout.box()
         box.label(text="Settings", icon="MODIFIER")
         col = box.column(align=True)
         row = col.row()
         row.prop(simplify_settings, "simplify_revert_settings")
-
 
         # Blender Simplify
         box = layout.box()
@@ -64,9 +62,11 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col2 = row.column()
         col2.enabled = simplify_settings.simplify_blender
         col2.prop(context.scene.render, "simplify_subdivision", text="Max Subdiv")
-        if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
+        if (
+            rig_settings.outfits_enable_global_subsurface
+            or rig_settings.body_enable_subdiv
+        ):
             col.prop(simplify_settings, "simplify_subdiv")
-
 
         # General Settings
         box = layout.box()
@@ -74,13 +74,18 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col = box.column(align=True)
         row = col.row()
 
-        if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
+        if (
+            rig_settings.outfits_enable_global_subsurface
+            or rig_settings.body_enable_subdiv
+        ):
             col.prop(simplify_settings, "simplify_subdiv")
         col.prop(simplify_settings, "simplify_normals_optimize")
 
-
         # Morphs
-        if morphs_settings.enable_ui and ("DIFFEO_GENESIS" in morphs_settings.type or morphs_settings.enable_freeze_morphs):
+        if morphs_settings.enable_ui and (
+            "DIFFEO_GENESIS" in morphs_settings.type
+            or morphs_settings.enable_freeze_morphs
+        ):
             box = layout.box()
             box.label(text="Morphs", icon="SHAPEKEY_DATA")
             col = box.column(align=True)
@@ -88,9 +93,12 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
                 col.prop(simplify_settings, "simplify_morphs")
             if morphs_settings.enable_freeze_morphs:
                 row = col.column()
-                row.enabled = not simplify_settings.simplify_morphs if "DIFFEO_GENESIS" in morphs_settings.type else True
+                row.enabled = (
+                    not simplify_settings.simplify_morphs
+                    if "DIFFEO_GENESIS" in morphs_settings.type
+                    else True
+                )
                 row.prop(simplify_settings, "simplify_morphs_freeze")
-
 
         # Outfits
         box = layout.box()
@@ -104,7 +112,6 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col.prop(simplify_settings, "simplify_extras")
         col.prop(simplify_settings, "simplify_outfit_global")
 
-
         # Hair
         box = layout.box()
         box.label(text="Hair", icon="OUTLINER_OB_CURVES")
@@ -113,7 +120,6 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col.prop(simplify_settings, "simplify_hair")
         col.prop(simplify_settings, "simplify_hair_global")
         col.prop(simplify_settings, "simplify_particles")
-
 
         # Physics
         if settings.advanced or len(physics_settings.items) > 0:
