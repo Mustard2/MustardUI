@@ -1,11 +1,17 @@
-from .menus import *
+from ..model_selection.active_object import mustardui_active_object
+from .menus import (
+    MUSTARDUI_MT_Property_LinkMenu,
+    MustardUI_Property_MenuAdd,
+    OUTLINER_MT_MustardUI_PropertyHairMenu,
+    OUTLINER_MT_MustardUI_PropertyOutfitMenu,
+    OUTLINER_MT_MustardUI_PropertySectionMenu,
+)
 
 
 def mustardui_property_menuadd(self, context):
     res, obj = mustardui_active_object(context, config=1)
 
-    if hasattr(context, 'button_prop') and res:
-
+    if hasattr(context, "button_prop") and res:
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -19,12 +25,21 @@ def mustardui_property_menuadd(self, context):
         op.outfit_piece = ""
         op.hair = ""
 
-        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
-            items = collection.collection.all_objects if rig_settings.outfit_config_subcollections else collection.collection.objects
+        for collection in [
+            x for x in rig_settings.outfits_collections if x.collection is not None
+        ]:
+            items = (
+                collection.collection.all_objects
+                if rig_settings.outfit_config_subcollections
+                else collection.collection.objects
+            )
             for object in [x for x in items]:
                 if object == context.active_object:
-                    op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
-                                         text="Add to " + context.active_object.name, icon="MOD_CLOTH")
+                    op = layout.operator(
+                        MustardUI_Property_MenuAdd.bl_idname,
+                        text="Add to " + context.active_object.name,
+                        icon="MOD_CLOTH",
+                    )
                     op.section = ""
                     op.outfit_is_nude = False
                     op.outfit = collection.collection.name
@@ -32,12 +47,19 @@ def mustardui_property_menuadd(self, context):
                     op.hair = ""
                     break
         if rig_settings.extras_collection is not None:
-            items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
+            items = (
+                rig_settings.extras_collection.all_objects
+                if rig_settings.outfit_config_subcollections
+                else rig_settings.extras_collection.objects
+            )
             if len(items) > 0:
                 for object in [x for x in items]:
                     if object == context.active_object:
-                        op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
-                                             text="Add to " + context.active_object.name, icon="PLUS")
+                        op = layout.operator(
+                            MustardUI_Property_MenuAdd.bl_idname,
+                            text="Add to " + context.active_object.name,
+                            icon="PLUS",
+                        )
                         op.section = ""
                         op.outfit_is_nude = False
                         op.outfit = rig_settings.extras_collection.name
@@ -46,10 +68,15 @@ def mustardui_property_menuadd(self, context):
                         break
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
-                for object in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+                for object in [
+                    x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+                ]:
                     if object == context.active_object:
-                        op = layout.operator(MustardUI_Property_MenuAdd.bl_idname,
-                                             text="Add to " + context.active_object.name, icon="STRANDS")
+                        op = layout.operator(
+                            MustardUI_Property_MenuAdd.bl_idname,
+                            text="Add to " + context.active_object.name,
+                            icon="STRANDS",
+                        )
                         op.section = ""
                         op.outfit_is_nude = False
                         op.outfit = ""
@@ -61,16 +88,29 @@ def mustardui_property_menuadd(self, context):
 
         if len(rig_settings.body_custom_properties_sections) > 0:
             layout.menu(OUTLINER_MT_MustardUI_PropertySectionMenu.bl_idname)
-        if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
-            layout.menu(OUTLINER_MT_MustardUI_PropertyOutfitMenu.bl_idname, icon="MOD_CLOTH")
+        if (
+            len(
+                [
+                    x
+                    for x in rig_settings.outfits_collections
+                    if x.collection is not None
+                ]
+            )
+            > 0
+        ):
+            layout.menu(
+                OUTLINER_MT_MustardUI_PropertyOutfitMenu.bl_idname, icon="MOD_CLOTH"
+            )
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
-                layout.menu(OUTLINER_MT_MustardUI_PropertyHairMenu.bl_idname, icon="STRANDS")
+                layout.menu(
+                    OUTLINER_MT_MustardUI_PropertyHairMenu.bl_idname, icon="STRANDS"
+                )
 
 
 def mustardui_property_link(self, context):
     res, obj = mustardui_active_object(context, config=1)
 
-    if hasattr(context, 'button_prop') and res:
+    if hasattr(context, "button_prop") and res:
         layout = self.layout
-        self.layout.menu(MUSTARDUI_MT_Property_LinkMenu.bl_idname, icon="LINKED")
+        layout.menu(MUSTARDUI_MT_Property_LinkMenu.bl_idname, icon="LINKED")

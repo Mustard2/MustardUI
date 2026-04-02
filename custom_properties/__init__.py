@@ -1,11 +1,13 @@
-from . import definitions
-from . import ops_props
-from . import ops_link
-from . import menus
-from . import ui_list
-from . import ops_menu_settings
-from . import ops_rebuild
-from . import ops_smartcheck
+from . import (
+    definitions,
+    menus,
+    ops_link,
+    ops_menu_settings,
+    ops_props,
+    ops_rebuild,
+    ops_smartcheck,
+    ui_list,
+)
 
 
 def register():

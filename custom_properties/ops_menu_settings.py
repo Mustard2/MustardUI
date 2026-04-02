@@ -1,11 +1,12 @@
+import ast
+
 import bpy
-from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
-from ..misc.icons_list import mustardui_icon_list
-from ..model_selection.active_object import *
-from .misc import *
-from ..misc.prop_utils import *
+
 from .. import __package__ as base_package
+from ..misc.icons_list import mustardui_icon_list
+from ..model_selection.active_object import mustardui_active_object
+from .misc import mustardui_choose_cp, mustardui_cp_path
 
 float_subtype_items = (
     ("NONE", "Plain Data", ""),
@@ -16,41 +17,41 @@ float_subtype_items = (
     ("TIME", "Time", ""),
     ("DISTANCE", "Distance", ""),
     ("POWER", "Power", ""),
-    ("TEMPERATURE", "Temperature", "")
+    ("TEMPERATURE", "Temperature", ""),
 )
 
 
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings"""
+
     bl_idname = "mustardui.property_settings"
     bl_label = "Property Settings"
     bl_icon = "PREFERENCES"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
-    name: bpy.props.StringProperty(name='Name',
-                                   description="Name of the property")
-    icon: bpy.props.EnumProperty(name='Icon',
-                                 description="Icon of the property",
-                                 items=mustardui_icon_list)
-    description: bpy.props.StringProperty(name='Description',
-                                          description="Description of the property")
-    force_type: bpy.props.EnumProperty(name="Force Property Type",
-                                       default="None",
-                                       description="Force the type of the property to be boolean or integer. If None, "
-                                                   "the original type is preserved",
-                                       items=(
-                                           ("None", "None", "None"),
-                                           ("Int", "Int", "Int"),
-                                           ("Bool", "Bool", "Bool"))
-                                       )
-    type: bpy.props.EnumProperty(default="BODY",
-                                 items=(("BODY", "Body", ""),
-                                        ("OUTFIT", "Outfit", ""),
-                                        ("HAIR", "Hair", ""))
-                                 )
-    subtype: bpy.props.EnumProperty(default="NONE",
-                                    items=float_subtype_items
-                                    )
+    name: bpy.props.StringProperty(name="Name", description="Name of the property")
+    icon: bpy.props.EnumProperty(
+        name="Icon", description="Icon of the property", items=mustardui_icon_list
+    )
+    description: bpy.props.StringProperty(
+        name="Description", description="Description of the property"
+    )
+    force_type: bpy.props.EnumProperty(
+        name="Force Property Type",
+        default="None",
+        description="Force the type of the property to be boolean or integer. If None, "
+        "the original type is preserved",
+        items=(
+            ("None", "None", "None"),
+            ("Int", "Int", "Int"),
+            ("Bool", "Bool", "Bool"),
+        ),
+    )
+    type: bpy.props.EnumProperty(
+        default="BODY",
+        items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
+    )
+    subtype: bpy.props.EnumProperty(default="NONE", items=float_subtype_items)
 
     step_float: bpy.props.FloatProperty(name="Step")
 
@@ -63,23 +64,30 @@ class MustardUI_Property_Settings(bpy.types.Operator):
     default_float: bpy.props.FloatProperty(name="Default value")
     default_array: bpy.props.StringProperty(name="Default array value")
 
-    default_color: bpy.props.FloatVectorProperty(name="Default color value",
-                                                 size=4,
-                                                 subtype="COLOR",
-                                                 min=0., max=1.,
-                                                 default=[0., 0., 0., 1.])
+    default_color: bpy.props.FloatVectorProperty(
+        name="Default color value",
+        size=4,
+        subtype="COLOR",
+        min=0.0,
+        max=1.0,
+        default=[0.0, 0.0, 0.0, 1.0],
+    )
 
     # UI Buttons
-    change_rna: bpy.props.BoolProperty(name='Change Path',
-                                       default=False,
-                                       description="Change path values.\nCareless change of values in this section "
-                                                   "might break the custom property.\nChange the values only if you "
-                                                   "know what you are doing!")
-    change_rna_linked: bpy.props.BoolProperty(name='Change Path',
-                                              default=False,
-                                              description="Change path values.\nCareless change of values in this "
-                                                          "section might break the custom property.\nChange the "
-                                                          "values only if you know what you are doing!")
+    change_rna: bpy.props.BoolProperty(
+        name="Change Path",
+        default=False,
+        description="Change path values.\nCareless change of values in this section "
+        "might break the custom property.\nChange the values only if you "
+        "know what you are doing!",
+    )
+    change_rna_linked: bpy.props.BoolProperty(
+        name="Change Path",
+        default=False,
+        description="Change path values.\nCareless change of values in this "
+        "section might break the custom property.\nChange the "
+        "values only if you know what you are doing!",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -93,31 +101,40 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         custom_prop = custom_props[index]
 
         if self.name == "":
-            self.report({'ERROR'}, 'MustardUI - Can not rename a property with an empty name.')
-            return {'FINISHED'}
+            self.report(
+                {"ERROR"}, "MustardUI - Can not rename a property with an empty name."
+            )
+            return {"FINISHED"}
 
         prop_type = custom_prop.type
         if prop_type == "FLOAT" and (
-                isinstance(self.max_float, int) or isinstance(self.min_float, int) or isinstance(self.default_float,
-                                                                                                 int)):
-            self.report({'ERROR'}, 'MustardUI - Can not change type of the custom property.')
-            return {'FINISHED'}
+            isinstance(self.max_float, int)
+            or isinstance(self.min_float, int)
+            or isinstance(self.default_float, int)
+        ):
+            self.report(
+                {"ERROR"}, "MustardUI - Can not change type of the custom property."
+            )
+            return {"FINISHED"}
 
         if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR":
             try:
                 ast.literal_eval(self.default_array)
-            except:
-                self.report({'ERROR'}, 'MustardUI - Can not use this default vector.')
-                return {'FINISHED'}
+            except Exception:
+                self.report({"ERROR"}, "MustardUI - Can not use this default vector.")
+                return {"FINISHED"}
             if len(ast.literal_eval(self.default_array)) != custom_prop.array_length:
-                self.report({'ERROR'}, 'MustardUI - Can not change default with different vector dimension.')
-                return {'FINISHED'}
+                self.report(
+                    {"ERROR"},
+                    "MustardUI - Can not change default with different "
+                    "vector dimension.",
+                )
+                return {"FINISHED"}
 
         custom_prop.name = self.name
         custom_prop.icon = self.icon
 
         if custom_prop.is_animatable:
-
             prop_name = custom_prop.prop_name
             prop_subtype = custom_prop.subtype
 
@@ -130,17 +147,23 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 ui_data.clear()
                 del obj[prop_name]
 
-                rna_idprop_ui_create(obj, prop_name,
-                                     default=self.default_float if custom_prop.array_length == 0 else ast.literal_eval(
-                                         self.default_array) if prop_subtype != "COLOR" else self.default_color,
-                                     min=self.min_float if prop_subtype != "COLOR" else 0.,
-                                     max=self.max_float if prop_subtype != "COLOR" else 1.,
-                                     step=self.step_float,
-                                     description=self.description,
-                                     overridable=True,
-                                     subtype=self.subtype if custom_prop.array_length == 0 else
-                                     (custom_prop.subtype if prop_subtype != "FACTOR" else None)
-                                     )
+                rna_idprop_ui_create(
+                    obj,
+                    prop_name,
+                    default=self.default_float
+                    if custom_prop.array_length == 0
+                    else ast.literal_eval(self.default_array)
+                    if prop_subtype != "COLOR"
+                    else self.default_color,
+                    min=self.min_float if prop_subtype != "COLOR" else 0.0,
+                    max=self.max_float if prop_subtype != "COLOR" else 1.0,
+                    step=self.step_float,
+                    description=self.description,
+                    overridable=True,
+                    subtype=self.subtype
+                    if custom_prop.array_length == 0
+                    else (custom_prop.subtype if prop_subtype != "FACTOR" else None),
+                )
 
                 custom_prop.description = self.description
                 custom_prop.min_float = self.min_float
@@ -154,23 +177,32 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     if prop_subtype != "COLOR":
                         custom_prop.default_array = self.default_array
                     else:
-                        custom_prop.default_array = ("("
-                                                     + str(self.default_color[0]) + ","
-                                                     + str(self.default_color[1]) + ","
-                                                     + str(self.default_color[2]) + ","
-                                                     + str(self.default_color[3])
-                                                     + ")")
+                        custom_prop.default_array = (
+                            "("
+                            + str(self.default_color[0])
+                            + ","
+                            + str(self.default_color[1])
+                            + ","
+                            + str(self.default_color[2])
+                            + ","
+                            + str(self.default_color[3])
+                            + ")"
+                        )
                 custom_prop.step_float = self.step_float
 
             elif prop_type == "BOOLEAN" or self.force_type == "Bool":
                 ui_data.clear()
                 del obj[prop_name]
 
-                rna_idprop_ui_create(obj, prop_name,
-                                     default=self.default_bool if custom_prop.array_length == 0 else ast.literal_eval(
-                                         self.default_array),
-                                     description=self.description,
-                                     overridable=True)
+                rna_idprop_ui_create(
+                    obj,
+                    prop_name,
+                    default=self.default_bool
+                    if custom_prop.array_length == 0
+                    else ast.literal_eval(self.default_array),
+                    description=self.description,
+                    overridable=True,
+                )
 
                 custom_prop.description = self.description
                 if custom_prop.array_length == 0:
@@ -182,14 +214,18 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 ui_data.clear()
                 del obj[prop_name]
 
-                rna_idprop_ui_create(obj, prop_name,
-                                     default=self.default_int if custom_prop.array_length == 0 else ast.literal_eval(
-                                         self.default_array),
-                                     min=self.min_int,
-                                     max=self.max_int,
-                                     description=self.description,
-                                     overridable=True,
-                                     subtype=custom_prop.subtype if prop_subtype != "FACTOR" else None)
+                rna_idprop_ui_create(
+                    obj,
+                    prop_name,
+                    default=self.default_int
+                    if custom_prop.array_length == 0
+                    else ast.literal_eval(self.default_array),
+                    min=self.min_int,
+                    max=self.max_int,
+                    description=self.description,
+                    overridable=True,
+                    subtype=custom_prop.subtype if prop_subtype != "FACTOR" else None,
+                )
 
                 custom_prop.description = self.description
                 custom_prop.min_int = self.min_int
@@ -205,7 +241,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         obj.update_tag()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
 
@@ -214,7 +250,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         addon_prefs = context.preferences.addons[base_package].preferences
 
         if len(custom_props) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         custom_prop = custom_props[index]
 
@@ -227,55 +263,57 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         self.change_rna_linked = False
 
         if custom_prop.is_animatable:
-
             prop_type = custom_prop.type
             self.force_type = custom_prop.force_type
 
             try:
                 ui_data = obj.id_properties_ui(custom_prop.prop_name)
                 ui_data_dict = ui_data.as_dict()
-            except:
-                self.report({'ERROR'},
-                            'MustardUI - An error occurred while retrieving UI data. Try to rebuild properties to '
-                            'solve this')
-                return {'FINISHED'}
+            except Exception:
+                self.report(
+                    {"ERROR"},
+                    "MustardUI - An error occurred while retrieving UI data. "
+                    "Try to rebuild properties to solve this",
+                )
+                return {"FINISHED"}
 
             if prop_type == "INT" or self.force_type == "Int":
-                self.max_int = ui_data_dict['max']
-                self.min_int = ui_data_dict['min']
+                self.max_int = ui_data_dict["max"]
+                self.min_int = ui_data_dict["min"]
                 if custom_prop.array_length == 0:
-                    self.default_int = ui_data_dict['default']
+                    self.default_int = ui_data_dict["default"]
                 else:
-                    self.default_array = str(ui_data_dict['default'])
+                    self.default_array = str(ui_data_dict["default"])
 
             if prop_type == "BOOLEAN" or self.force_type == "Bool":
-
                 if custom_prop.array_length == 0:
-                    self.default_bool = ui_data_dict['default']
+                    self.default_bool = ui_data_dict["default"]
                 else:
-                    self.default_array = str(ui_data_dict['default'])
+                    self.default_array = str(ui_data_dict["default"])
 
             elif prop_type == "FLOAT" and self.force_type == "None":
-                self.max_float = ui_data_dict['max']
-                self.min_float = ui_data_dict['min']
+                self.max_float = ui_data_dict["max"]
+                self.min_float = ui_data_dict["min"]
                 if self.min_float == self.max_float:
                     self.max_float += 1
                 if custom_prop.array_length > 0:
                     if custom_prop.subtype != "COLOR":
-                        self.default_array = str(ui_data_dict['default'])
+                        self.default_array = str(ui_data_dict["default"])
                     else:
                         try:
-                            self.default_color = ui_data_dict['default']
-                        except:
-                            self.default_color = [0., 0., 0., 1.]
+                            self.default_color = ui_data_dict["default"]
+                        except Exception:
+                            self.default_color = [0.0, 0.0, 0.0, 1.0]
                 else:
-                    self.default_float = ui_data_dict['default']
+                    self.default_float = ui_data_dict["default"]
 
                 if custom_prop.array_length == 0:
-                    self.subtype = ui_data_dict['subtype']
-                self.step_float = ui_data_dict['step']
+                    self.subtype = ui_data_dict["subtype"]
+                self.step_float = ui_data_dict["step"]
 
-        return context.window_manager.invoke_props_dialog(self, width=700 if addon_prefs.debug else 450)
+        return context.window_manager.invoke_props_dialog(
+            self, width=700 if addon_prefs.debug else 450
+        )
 
     def draw(self, context):
 
@@ -333,7 +371,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.prop(custom_prop, "hair", text="")
 
         if custom_prop.is_animatable:
-
             box = layout.box()
 
             row = box.row()
@@ -342,7 +379,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.prop(self, "description", text="")
 
             if prop_type == "FLOAT" and custom_prop.subtype != "COLOR":
-
                 if custom_prop.array_length == 0:
                     row = box.row()
                     row.label(text="Force type:")
@@ -386,11 +422,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row.prop(self, "default_color", text="")
 
             if prop_type == "INT" or self.force_type == "Int":
-
                 row = box.row()
                 row.label(text="Default:")
                 row.scale_x = scale
-                row.prop(self, "default_int" if custom_prop.array_length == 0 else "default_array", text="")
+                row.prop(
+                    self,
+                    "default_int" if custom_prop.array_length == 0 else "default_array",
+                    text="",
+                )
 
                 row = box.row()
                 row.label(text="Min / Max")
@@ -400,13 +439,17 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row2.prop(self, "max_int", text="")
 
             elif prop_type == "BOOLEAN" or self.force_type == "Bool":
-
                 row = box.row()
                 row.label(text="Default:")
-                row.prop(self, "default_bool" if custom_prop.array_length == 0 else "default_array", text="")
+                row.prop(
+                    self,
+                    "default_bool"
+                    if custom_prop.array_length == 0
+                    else "default_array",
+                    text="",
+                )
 
             if len(custom_prop.linked_properties) > 0:
-
                 row = layout.row()
                 row.label(text="Linked Properties", icon="LINK_BLEND")
                 if addon_prefs.debug:
@@ -415,7 +458,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 box = layout.box()
 
                 for lp in custom_prop.linked_properties:
-
                     row = box.row()
                     if self.change_rna_linked:
                         row.scale_x = 6
@@ -427,13 +469,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                         row.scale_x = 1
                     else:
                         row.label(text=mustardui_cp_path(lp.rna, lp.path), icon="RNA")
-                    op = row.operator('mustardui.property_removelinked', text="", icon="X")
+                    op = row.operator(
+                        "mustardui.property_removelinked", text="", icon="X"
+                    )
                     op.rna = lp.rna
                     op.path = lp.path
                     op.type = self.type
 
         if addon_prefs.debug:
-
             row = layout.row()
             row.label(text="Paths", icon="DECORATE_DRIVER")
             row.prop(self, "change_rna", text="", icon="GREASEPENCIL")
@@ -452,11 +495,17 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row.scale_x = 1.5
                 row.prop(custom_prop, "path", text="")
             else:
-                row.label(text=mustardui_cp_path(custom_prop.rna, custom_prop.path), icon="RNA")
+                row.label(
+                    text=mustardui_cp_path(custom_prop.rna, custom_prop.path),
+                    icon="RNA",
+                )
 
         if self.change_rna or self.change_rna_linked:
-            layout.box().label(text="Rebuild properties after modifying path values to apply the changes!",
-                               icon="ERROR")
+            layout.box().label(
+                text="Rebuild properties after modifying path values to apply "
+                "the changes!",
+                icon="ERROR",
+            )
 
 
 def register():
