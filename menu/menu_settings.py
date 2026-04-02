@@ -1,8 +1,8 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from .. import __package__ as base_package
+from .menu_panel import MainPanel
 
 
 class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
@@ -38,21 +38,32 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             version = str(version[0]) + "." + str(version[1]) + "." + str(version[2])
             if rig_settings.model_version_type != "Standard":
                 version = version + " " + rig_settings.model_version_type
-            if rig_settings.model_version_date_enable and rig_settings.model_version_date != "":
-                version = version + ' - ' + rig_settings.model_version_date
+            if (
+                rig_settings.model_version_date_enable
+                and rig_settings.model_version_date != ""
+            ):
+                version = version + " - " + rig_settings.model_version_date
             prop = rig_settings.bl_rna.properties["model_version_type"]
             icon = prop.enum_items[rig_settings.model_version_type].icon
             box.label(text=version, icon=icon)
             if rig_settings.model_changelog_link != "":
-                box.operator('mustardui.openlink', text="Changelog", icon="URL").url = rig_settings.model_changelog_link
+                box.operator(
+                    "mustardui.openlink", text="Changelog", icon="URL"
+                ).url = rig_settings.model_changelog_link
 
         # Left for old compatibility (Deprecated in MustardUI 2025.8)
-        elif tuple(rig_settings.model_version_vector) == (0, 0, 0) and rig_settings.model_version != '':
+        elif (
+            tuple(rig_settings.model_version_vector) == (0, 0, 0)
+            and rig_settings.model_version != ""
+        ):
             box = layout.box()
             box.label(text="Model Version: ", icon="INFO")
             version = rig_settings.model_version
-            if rig_settings.model_version_date_enable and rig_settings.model_version_date != "":
-                version = version + ' - ' + rig_settings.model_version_date
+            if (
+                rig_settings.model_version_date_enable
+                and rig_settings.model_version_date != ""
+            ):
+                version = version + " - " + rig_settings.model_version_date
             box.label(text=version, icon="BLANK1")
 
 

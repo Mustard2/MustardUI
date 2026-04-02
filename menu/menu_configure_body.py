@@ -1,9 +1,10 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..warnings.ops_fix_old_UI import check_old_UI
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
+from ..warnings.ops_fix_old_UI import check_old_UI
 from .menu_configure import row_scale
+from .menu_panel import MainPanel
 
 
 class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
@@ -48,28 +49,38 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         box = layout.box()
         row = box.row()
         row.label(text="Custom properties", icon="PRESET_NEW")
-        row.operator('mustardui.property_smartcheck', text="", icon="SHADERFX")
+        row.operator("mustardui.property_smartcheck", text="", icon="SHADERFX")
 
         if len(arm.MustardUI_CustomProperties) > 0:
             row = box.row()
-            row.template_list("MUSTARDUI_UL_Property_UIList", "The_List", arm,
-                              "MustardUI_CustomProperties", scene, "mustardui_property_uilist_index")
+            row.template_list(
+                "MUSTARDUI_UL_Property_UIList",
+                "The_List",
+                arm,
+                "MustardUI_CustomProperties",
+                scene,
+                "mustardui_property_uilist_index",
+            )
             col = row.column()
-            col.operator('mustardui.property_settings', icon="PREFERENCES", text="").type = "BODY"
+            col.operator(
+                "mustardui.property_settings", icon="PREFERENCES", text=""
+            ).type = "BODY"
             col.separator()
             col2 = col.column(align=True)
-            opup = col2.operator('mustardui.property_switch', icon="TRIA_UP", text="")
+            opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
             opup.type = "BODY"
-            opdown = col2.operator('mustardui.property_switch', icon="TRIA_DOWN", text="")
+            opdown = col2.operator(
+                "mustardui.property_switch", icon="TRIA_DOWN", text=""
+            )
             opdown.direction = "DOWN"
             opdown.type = "BODY"
             col.separator()
-            col.operator('mustardui.property_remove', icon="X", text="").type = "BODY"
+            col.operator("mustardui.property_remove", icon="X", text="").type = "BODY"
 
             col = box.column(align=True)
-            col.prop(rig_settings, 'body_custom_properties_icons')
-            col.prop(rig_settings, 'body_custom_properties_name_order')
+            col.prop(rig_settings, "body_custom_properties_icons")
+            col.prop(rig_settings, "body_custom_properties_name_order")
 
         else:
             box = box.box()
@@ -81,25 +92,37 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         box.prop(rig_settings, "body_enable_geometry_nodes_support")
         if len(arm.MustardUI_CustomProperties) > 0:
             row = box.row()
-            row.template_list("MUSTARDUI_UL_Section_UIList", "The_List", rig_settings,
-                              "body_custom_properties_sections", scene,
-                              "mustardui_section_uilist_index")
+            row.template_list(
+                "MUSTARDUI_UL_Section_UIList",
+                "The_List",
+                rig_settings,
+                "body_custom_properties_sections",
+                scene,
+                "mustardui_section_uilist_index",
+            )
             col = row.column()
             col2 = col.column(align=True)
-            col2.operator('mustardui.body_assign_to_section', text="", icon="PRESET")
+            col2.operator("mustardui.body_assign_to_section", text="", icon="PRESET")
             col.separator()
             col2 = col.column(align=True)
-            col2.operator('mustardui.section_add', text="", icon="ADD")
-            col2.operator('mustardui.body_deletesection', text="", icon="REMOVE")
+            col2.operator("mustardui.section_add", text="", icon="ADD")
+            col2.operator("mustardui.body_deletesection", text="", icon="REMOVE")
             col.separator()
             col2 = col.column(align=True)
-            opup = col2.operator('mustardui.section_switch', icon="TRIA_UP", text="")
+            opup = col2.operator("mustardui.section_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
-            opdown = col2.operator('mustardui.section_switch', icon="TRIA_DOWN", text="")
+            opdown = col2.operator(
+                "mustardui.section_switch", icon="TRIA_DOWN", text=""
+            )
             opdown.direction = "DOWN"
 
-            if scene.mustardui_section_uilist_index > -1 and len(rig_settings.body_custom_properties_sections) > 0:
-                sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
+            if (
+                scene.mustardui_section_uilist_index > -1
+                and len(rig_settings.body_custom_properties_sections) > 0
+            ):
+                sec = rig_settings.body_custom_properties_sections[
+                    scene.mustardui_section_uilist_index
+                ]
 
                 row = box.row()
                 row.label(text="Icon")

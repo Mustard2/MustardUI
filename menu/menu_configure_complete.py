@@ -1,8 +1,9 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..warnings.ops_fix_old_UI import check_old_UI
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
+from ..warnings.ops_fix_old_UI import check_old_UI
+from .menu_panel import MainPanel
 
 
 class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
@@ -31,7 +32,7 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
         col.prop(settings, "advanced")
         if not arm.MustardUI_created:
             col.prop(settings, "viewport_model_selection_after_configuration")
-        layout.operator('mustardui.configuration', text="End the configuration")
+        layout.operator("mustardui.configuration", text="End the configuration")
 
 
 def register():
