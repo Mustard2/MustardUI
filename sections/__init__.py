@@ -1,6 +1,4 @@
-from . import definitions
-from . import ops_assign
-from . import ui_list
+from . import definitions, ops_assign, ui_list
 
 
 def register():

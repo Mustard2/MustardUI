@@ -26,5 +26,5 @@ mustardui_icon_list = [
     ("GHOST_ENABLED", "Ghost", "Ghost", "GHOST_ENABLED", 20),
     ("CAMERA_STEREO", "Glasses", "Glasses", "CAMERA_STEREO", 21),
     ("SOLO_ON", "Star", "Star", "SOLO_ON", 22),
-    ("ERROR", "Error", "Error", "ERROR", 23)
+    ("ERROR", "Error", "Error", "ERROR", 23),
 ]

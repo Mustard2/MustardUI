@@ -1,20 +1,21 @@
-import bpy
-from ..model_selection.active_object import *
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from bpy.props import *
-from bpy.utils import register_class
 import json
-from .. import __package__ as base_package
+
+import bpy
+from bpy.props import StringProperty
+from bpy_extras.io_utils import ExportHelper, ImportHelper
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
     """Export Morph Presets to JSON"""
+
     bl_idname = "mustardui.morphs_preset_export"
     bl_label = "Export Morph Presets"
-    bl_options = {'PRESET', 'UNDO'}
+    bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
 
     preset_id: bpy.props.IntProperty(default=-1)
 
@@ -47,8 +48,8 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
         morphs_settings = arm.MustardUI_MorphsSettings
 
         if len(morphs_settings.presets) < 1 or self.preset_id < 0:
-            self.report({'WARNING'}, "No morph presets to export.")
-            return {'FINISHED'}
+            self.report({"WARNING"}, "No morph presets to export.")
+            return {"FINISHED"}
 
         presets = morphs_settings.presets
         preset = presets[self.preset_id]
@@ -56,22 +57,26 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
         data = []
         preset_data = {"name": preset.name, "morphs": []}
         for morph in preset.morphs:
-            preset_data["morphs"].append({
-                "name": morph.name,
-                "path": morph.path,
-                "shape_key": morph.shape_key,
-                "custom_property": morph.custom_property,
-                "custom_property_source": morph.custom_property_source,
-                "value": morph.value
-            })
+            preset_data["morphs"].append(
+                {
+                    "name": morph.name,
+                    "path": morph.path,
+                    "shape_key": morph.shape_key,
+                    "custom_property": morph.custom_property,
+                    "custom_property_source": morph.custom_property_source,
+                    "value": morph.value,
+                }
+            )
         data.append(preset_data)
 
-        with open(self.filepath, 'w', encoding='utf-8') as f:
+        with open(self.filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-        self.report({'INFO'}, f"Morph presets exported: {len(morphs_settings.presets)} presets.")
+        self.report(
+            {"INFO"}, f"Morph presets exported: {len(morphs_settings.presets)} presets."
+        )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def draw(self, context):
         pass
@@ -79,12 +84,13 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
 
 class MustardUI_Morphs_PresetImport(bpy.types.Operator, ImportHelper):
     """Import Morph Presets from JSON"""
+
     bl_idname = "mustardui.morphs_preset_import"
     bl_label = "Import Morph Presets"
-    bl_options = {'PRESET', 'UNDO'}
+    bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
 
     @classmethod
     def poll(cls, context):
@@ -120,19 +126,21 @@ class MustardUI_Morphs_PresetImport(bpy.types.Operator, ImportHelper):
                         morph.path = morph_json.get("path", "")
                         morph.shape_key = morph_json.get("shape_key", False)
                         morph.custom_property = morph_json.get("custom_property", True)
-                        morph.custom_property_source = morph_json.get("custom_property_source", "ARMATURE_OBJ")
+                        morph.custom_property_source = morph_json.get(
+                            "custom_property_source", "ARMATURE_OBJ"
+                        )
                         morph.value = morph_json.get("value", 0.0)
                     n_import += 1
 
         except Exception as e:
-            self.report({'ERROR'}, f"Failed to import morph presets: {e}")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, f"Failed to import morph presets: {e}")
+            return {"CANCELLED"}
 
         arm.update_tag()
 
-        self.report({'INFO'}, f"Preset imported.")
+        self.report({"INFO"}, "Preset imported.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

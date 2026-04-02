@@ -1,6 +1,7 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+from bpy.props import IntProperty
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
@@ -9,8 +10,12 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
     bl_idname = "mustardui.outfits_switch"
     bl_label = "Move Outfit"
 
-    direction: bpy.props.EnumProperty(items=(('UP', 'Up', ""),
-                                             ('DOWN', 'Down', ""),))
+    direction: bpy.props.EnumProperty(
+        items=(
+            ("UP", "Up", ""),
+            ("DOWN", "Down", ""),
+        )
+    )
 
     @classmethod
     def poll(cls, context):
@@ -18,10 +23,10 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
         return obj is not None
 
     def move_index(self, uilist, index):
-        """ Move index of an item render queue while clamping it. """
+        """Move index of an item render queue while clamping it."""
 
         list_length = len(uilist) - 1  # (index starts at 0)
-        new_index = index + (-1 if self.direction == 'UP' else 1)
+        new_index = index + (-1 if self.direction == "UP" else 1)
 
         return max(0, min(new_index, list_length))
 
@@ -32,22 +37,24 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
         index = context.scene.mustardui_outfits_uilist_index
 
         if len(uilist) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == 'UP' else 1)
+        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         context.scene.mustardui_outfits_uilist_index = index
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MUSTARDUI_UL_Outfits_UIList(bpy.types.UIList):
     """UIList for outfits"""
 
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(
+        self, context, layout, data, item, icon, active_data, active_propname, index
+    ):
         if item.collection:
-            layout.prop(item.collection, 'name', text="", emboss=False, translate=False)
+            layout.prop(item.collection, "name", text="", emboss=False, translate=False)
         else:
             layout.label(text="Outfit not found!", icon="ERROR")
 

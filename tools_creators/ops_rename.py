@@ -1,18 +1,19 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
-from .. import __package__ as base_package
+from bpy.props import StringProperty
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
-    """Rename the model. This also changes the name of objects, collections and physics items associated to the model.\nThe renaming tool only works if MustardUI Naming Convention is active"""
+    """Rename the model. This also changes the name of objects, collections and physics
+    items associated to the model.
+    The renaming tool only works if MustardUI Naming Convention is active"""
+
     bl_idname = "mustardui.rename_model"
     bl_label = "Rename Model"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
-    name: StringProperty(default="",
-                         name="New Name",
-                         description="")
+    name: StringProperty(default="", name="New Name", description="")
 
     @classmethod
     def poll(cls, context):
@@ -21,7 +22,11 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
 
         if arm is not None:
-            return res and rig_settings.model_name != "" and rig_settings.model_MustardUI_naming_convention
+            return (
+                res
+                and rig_settings.model_name != ""
+                and rig_settings.model_MustardUI_naming_convention
+            )
         return False
 
     def change_modifiers_name(self, obj, old_name):
@@ -47,8 +52,11 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
     def execute(self, context):
 
         if self.name == "":
-            self.report({'WARNING'}, 'MustardUI - Renaming not performed: the name should be not null')
-            return {'FINISHED'}
+            self.report(
+                {"WARNING"},
+                "MustardUI - Renaming not performed: the name should be not null",
+            )
+            return {"FINISHED"}
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
@@ -57,10 +65,14 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
         old_name = rig_settings.model_name
 
         # Armature
-        rig_settings.model_armature_object.name = rig_settings.model_armature_object.name.replace(old_name, self.name)
+        rig_settings.model_armature_object.name = (
+            rig_settings.model_armature_object.name.replace(old_name, self.name)
+        )
 
         # Body and children of the armature
-        for obj in [x for x in rig_settings.model_armature_object.children if x is not None]:
+        for obj in [
+            x for x in rig_settings.model_armature_object.children if x is not None
+        ]:
             if old_name in obj.name:
                 obj.name = obj.name.replace(old_name, self.name)
             self.change_modifiers_name(obj, old_name)
@@ -73,7 +85,11 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             self.change_modifiers_name(pi.object, old_name)
 
         # Outfits
-        for coll in [x.collection for x in rig_settings.outfits_collections if x.collection is not None]:
+        for coll in [
+            x.collection
+            for x in rig_settings.outfits_collections
+            if x.collection is not None
+        ]:
             items = coll.all_objects
             for obj in [x for x in items if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
@@ -83,26 +99,38 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
         # Extras
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.all_objects if x is not None]:
+            for obj in [
+                x for x in rig_settings.extras_collection.all_objects if x is not None
+            ]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
                 self.change_materials_name(obj, old_name)
-            rig_settings.extras_collection.name = rig_settings.extras_collection.name.replace(old_name, self.name)
+            rig_settings.extras_collection.name = (
+                rig_settings.extras_collection.name.replace(old_name, self.name)
+            )
 
         # Hair
         if rig_settings.hair_collection is not None:
-            for obj in [x for x in rig_settings.hair_collection.all_objects if x is not None]:
+            for obj in [
+                x for x in rig_settings.hair_collection.all_objects if x is not None
+            ]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
                 self.change_materials_name(obj, old_name)
-            rig_settings.hair_collection.name = rig_settings.hair_collection.name.replace(old_name, self.name)
+            rig_settings.hair_collection.name = (
+                rig_settings.hair_collection.name.replace(old_name, self.name)
+            )
 
         # Finally change the model name
         rig_settings.model_name = self.name
 
-        self.report({'INFO'}, f'MustardUI - Model renamed from {repr(old_name)} to {repr(rig_settings.model_name)}')
+        self.report(
+            {"INFO"},
+            f"MustardUI - Model renamed from {repr(old_name)} to "
+            f"{repr(rig_settings.model_name)}",
+        )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=250)

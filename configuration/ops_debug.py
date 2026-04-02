@@ -1,29 +1,47 @@
-import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
 import os
 
+import bpy
 
-def tab(n=1):
-    return "\t" * n
-
-
-def new_line(n=1):
-    return "\n" * n
+from ..model_selection.active_object import mustardui_active_object
 
 
-def bar(l=15):
-    return "-" * l + new_line()
+def tab(tabs=1):
+    return "\t" * tabs
+
+
+def new_line(lines=1):
+    return "\n" * lines
+
+
+def bar(dashes=15):
+    return "-" * dashes + new_line()
 
 
 def addon_status(status, addon_name, tabs=2):
     if status == 2:
-        return addon_name + " status:" + tab(tabs) + "Correctly installed and enabled" + new_line()
+        return (
+            addon_name
+            + " status:"
+            + tab(tabs)
+            + "Correctly installed and enabled"
+            + new_line()
+        )
     elif status == 1:
-        return addon_name + " status:" + tab(tabs) + "Installed but not enabled" + new_line()
+        return (
+            addon_name
+            + " status:"
+            + tab(tabs)
+            + "Installed but not enabled"
+            + new_line()
+        )
     else:
-        return addon_name + " status:" + tab(
-            tabs) + "Not correctly installed or wrong add-on folder name" + new_line()
+        return (
+            addon_name
+            + " status:"
+            + tab(tabs)
+            + "Not correctly installed or wrong add-on folder name"
+            + new_line()
+        )
 
 
 def header(name):
@@ -31,10 +49,12 @@ def header(name):
 
 
 class MustardUI_Debug_Log(bpy.types.Operator):
-    """Create a file with information to debug errors.\nThis tool will only write on a .txt file and will NOT change any model or Blender setting"""
+    """Create a file with information to debug errors.\nThis tool will only write
+    on a .txt file and will NOT change any model or Blender setting"""
+
     bl_idname = "mustardui.debug_log"
     bl_label = "Generate Log File"
-    bl_options = {'REGISTER'}
+    bl_options = {"REGISTER"}
 
     @classmethod
     def poll(cls, context):
@@ -61,18 +81,22 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         log += "Blender version:" + tab(tabs_num - 1) + bpy.app.version_string
         log += new_line()
 
-        if bpy.context.preferences.addons['cycles']:
-
-            device_type = bpy.context.preferences.addons['cycles'].preferences.compute_device_type
+        if bpy.context.preferences.addons["cycles"]:
+            device_type = bpy.context.preferences.addons[
+                "cycles"
+            ].preferences.compute_device_type
 
             log += "Device type:" + tab(tabs_num) + device_type
             log += new_line()
 
             log += "Devices"
             log += new_line()
-            for device in [x for x in bpy.context.preferences.addons['cycles'].preferences.devices if
-                           (x.type == device_type or x.type == "CPU")]:
-                log += tab() + '- '
+            for device in [
+                x
+                for x in bpy.context.preferences.addons["cycles"].preferences.devices
+                if (x.type == device_type or x.type == "CPU")
+            ]:
+                log += tab() + "- "
                 if device.use:
                     log += "[active] "
                 log += device.name
@@ -85,7 +109,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
 
         log += "Model name:" + tab(tabs_num) + rig_settings.model_name
         log += new_line()
-        if rig_settings.model_version != '':
+        if rig_settings.model_version != "":
             log += "Model version:" + tab(tabs_num) + rig_settings.model_version
             log += new_line()
         log += new_line()
@@ -123,47 +147,79 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         log += header("Viewport")
 
         if rig_settings.simplify_main_enable:
-            log += "Simplify status:" + tab(tabs_num - 1) + (
-                "Enabled" if rig_settings.simplify_enable else "Disabled")
+            log += (
+                "Simplify status:"
+                + tab(tabs_num - 1)
+                + ("Enabled" if rig_settings.simplify_enable else "Disabled")
+            )
             log += new_line()
 
-        log += "Custom normals:" + tab(tabs_num - 1) + (
-            "Disabled" if not settings.material_normal_nodes else "Enabled")
+        log += (
+            "Custom normals:"
+            + tab(tabs_num - 1)
+            + ("Disabled" if not settings.material_normal_nodes else "Enabled")
+        )
         log += new_line()
 
         if morphs_settings.enable_ui:
-            log += "Morphs:" + tab(tabs_num + 1) + ("Enabled" if morphs_settings.diffeomorphic_enable else "Disabled")
+            log += (
+                "Morphs:"
+                + tab(tabs_num + 1)
+                + ("Enabled" if morphs_settings.diffeomorphic_enable else "Disabled")
+            )
             log += new_line()
 
         if len(physics_settings.items) > 0:
-            log += "Physics:" + tab(tabs_num) + ("Enabled" if physics_settings.enable_physics else "Disabled")
+            log += (
+                "Physics:"
+                + tab(tabs_num)
+                + ("Enabled" if physics_settings.enable_physics else "Disabled")
+            )
             log += new_line()
             log += "- Physics items:" + tab(tabs_num) + str(len(physics_settings.items))
             log += new_line()
 
         if rig_settings.hair_collection is not None:
-            log += "Hair status:" + tab(tabs_num) + (
-                "Hidden" if rig_settings.hair_collection.hide_viewport else "Shown")
+            log += (
+                "Hair status:"
+                + tab(tabs_num)
+                + ("Hidden" if rig_settings.hair_collection.hide_viewport else "Shown")
+            )
             log += new_line()
         if rig_settings.extras_collection is not None:
-            log += "Extras status:" + tab(tabs_num) + (
-                "Hidden" if rig_settings.extras_collection.hide_viewport else "Shown")
+            log += (
+                "Extras status:"
+                + tab(tabs_num)
+                + (
+                    "Hidden"
+                    if rig_settings.extras_collection.hide_viewport
+                    else "Shown"
+                )
+            )
             log += new_line()
 
         log += new_line()
 
         # Write to file
         try:
-            abs_path = os.path.join(bpy.path.abspath("//"), 'mustardui_log.txt')
-            log_file = open(abs_path, 'w')
+            abs_path = os.path.join(bpy.path.abspath("//"), "mustardui_log.txt")
+            log_file = open(abs_path, "w")
             log_file.write(log)
             log_file.close()
 
-            self.report({'INFO'}, "MustardUI - A log file 'mustardui_log.txt' has been created in the model folder.")
-        except:
-            self.report({'WARNING'}, "MustardUI - Cannot create a log file. Try to run Blender with admin privilegies.")
+            self.report(
+                {"INFO"},
+                "MustardUI - A log file 'mustardui_log.txt' has been created in "
+                "the model folder.",
+            )
+        except Exception:
+            self.report(
+                {"WARNING"},
+                "MustardUI - Cannot create a log file. Try to run Blender with "
+                "admin privileges.",
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

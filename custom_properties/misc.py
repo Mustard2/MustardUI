@@ -1,10 +1,11 @@
 import bpy
-from ..misc.prop_utils import *
+
+from ..misc.prop_utils import evaluate_rna
 
 
 # Function to check keys of custom properties (only for debug)
 def dump(obj, text):
-    print('-' * 40, text, '-' * 40)
+    print("-" * 40, text, "-" * 40)
     for attr in dir(obj):
         if hasattr(obj, attr):
             print("obj.%s = %s" % (attr, getattr(obj, attr)))
@@ -32,9 +33,15 @@ def mustardui_choose_cp(obj, type, scene):
     if type == "BODY":
         return obj.MustardUI_CustomProperties, scene.mustardui_property_uilist_index
     elif type == "OUTFIT":
-        return obj.MustardUI_CustomPropertiesOutfit, scene.mustardui_property_uilist_outfits_index
+        return (
+            obj.MustardUI_CustomPropertiesOutfit,
+            scene.mustardui_property_uilist_outfits_index,
+        )
     else:
-        return obj.MustardUI_CustomPropertiesHair, scene.mustardui_property_uilist_hair_index
+        return (
+            obj.MustardUI_CustomPropertiesHair,
+            scene.mustardui_property_uilist_hair_index,
+        )
 
 
 def mustardui_update_index_cp(type, scene, index):
@@ -56,7 +63,7 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
         driver = driver.driver
         driver.type = "AVERAGE"
         var = driver.variables.new()
-        var.name = 'mustardui_var'
+        var.name = "mustardui_var"
         var.targets[0].id_type = "ARMATURE"
         var.targets[0].id = obj
         var.targets[0].data_path = f'["{prop_name}"]'
@@ -68,7 +75,7 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
             driver[i].type = "AVERAGE"
 
             var = driver[i].variables.new()
-            var.name = 'mustardui_var'
+            var.name = "mustardui_var"
             var.targets[0].id_type = "ARMATURE"
             var.targets[0].id = obj
             var.targets[0].data_path = f'["{prop_name}"][{str(i)}]'
@@ -84,9 +91,12 @@ def mustardui_reassign_default(obj, uilist, index, addon_prefs):
             obj[prop.prop_name] = prop.default_float
         elif prop.type == "INT" or (prop.type == "FLOAT" and prop.force_type == "Int"):
             obj[prop.prop_name] = prop.default_int
-    except:
+    except Exception:
         if addon_prefs.debug:
-            print('MustardUI - Could not reassign default value. Skipping for this custom property')
+            print(
+                "MustardUI - Could not reassign default value. Skipping for this "
+                "custom property"
+            )
 
     return
 
@@ -96,30 +106,35 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
     try:
         ui_data = obj.id_properties_ui(uilist[index].prop_name)
         ui_data.clear()
-    except:
+    except Exception:
         if addon_prefs.debug:
-            print('MustardUI - Could not clean UI property. Skipping for this custom property')
+            print(
+                "MustardUI - Could not clean UI property. Skipping for this "
+                "custom property"
+            )
 
     # Delete custom property
     try:
         del obj[uilist[index].prop_name]
-    except:
+    except Exception:
         if addon_prefs.debug:
-            print('MustardUI - Properties not found. Skipping custom properties deletion')
+            print(
+                "MustardUI - Properties not found. Skipping custom properties deletion"
+            )
 
     # Remove linked properties drivers
     for lp in uilist[index].linked_properties:
         try:
             driver_object = evaluate_rna(lp.rna)
             driver_object.driver_remove(lp.path)
-        except:
+        except Exception:
             print("MustardUI - Could not delete driver with path: " + lp.rna)
 
     # Remove driver
     try:
         driver_object = evaluate_rna(uilist[index].rna)
         driver_object.driver_remove(uilist[index].path)
-    except:
+    except Exception:
         print("MustardUI - Could not delete driver with path: " + uilist[index].rna)
 
     return

@@ -1,6 +1,7 @@
 import bpy
-from ..model_selection.active_object import *
-from .settings_item import MustardUI_PhysicsItem, mustardui_physics_item_type_dict
+
+from ..model_selection.active_object import mustardui_active_object
+from .settings_item import MustardUI_PhysicsItem
 from .update_enable import enable_physics_update
 
 
@@ -27,7 +28,9 @@ def update_frame(self, context):
         context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
 
     # Update all objects linked to physics items
-    for pi in [x for x in self.items if x.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]]:
+    for pi in [
+        x for x in self.items if x.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]
+    ]:
         obj = pi.object
         update_modifiers(self, obj)
 
@@ -38,17 +41,27 @@ def update_frame(self, context):
     rig_settings = arm.MustardUI_RigSettings
 
     if rig_settings.outfit_physics_support:
-        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
-            items = coll.collection.all_objects if rig_settings.outfit_config_subcollections else coll.collection.objects
+        for coll in [
+            x for x in rig_settings.outfits_collections if x.collection is not None
+        ]:
+            items = (
+                coll.collection.all_objects
+                if rig_settings.outfit_config_subcollections
+                else coll.collection.objects
+            )
             for obj in [x for x in items if x.type == "MESH"]:
                 update_modifiers(self, obj)
 
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            for obj in [
+                x for x in rig_settings.extras_collection.objects if x.type == "MESH"
+            ]:
                 update_modifiers(self, obj)
 
     if rig_settings.hair_collection is not None:
-        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+        for obj in [
+            x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+        ]:
             update_modifiers(self, obj)
 
     return
@@ -58,33 +71,47 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
     # CONFIGURATION
 
     # Enable Physics Panel
-    enable_ui: bpy.props.BoolProperty(default=False,
-                                      name="Enable Physics",
-                                      description="Enable Physics panel and tools in the UI")
+    enable_ui: bpy.props.BoolProperty(
+        default=False,
+        name="Enable Physics",
+        description="Enable Physics panel and tools in the UI",
+    )
 
     # Mirror
-    mirror: bpy.props.BoolProperty(default=False,
-                                   name="Mirror",
-                                   description="If two Cage Objects with .r/.l or .R/.L are available in the Physics "
-                                               "Items list, show only one panel which updates both in the UI")
+    mirror: bpy.props.BoolProperty(
+        default=False,
+        name="Mirror",
+        description="If two Cage Objects with .r/.l or .R/.L are available in "
+        "the Physics Items list, show only one panel which updates both in the UI",
+    )
 
     # UI
 
     # Switcher for Physics
-    enable_physics: bpy.props.BoolProperty(default=False,
-                                           name="",
-                                           description="Enable Physics for the current model",
-                                           update=enable_physics_update)
+    enable_physics: bpy.props.BoolProperty(
+        default=False,
+        name="",
+        description="Enable Physics for the current model",
+        update=enable_physics_update,
+    )
 
     # Bake settings
-    frame_start: bpy.props.IntProperty(default=1, min=0, max=1048574,
-                                       description="Frame on which the simulation start",
-                                       name="Start",
-                                       update=update_frame)
-    frame_end: bpy.props.IntProperty(default=250, min=0, max=1048574,
-                                     description="Frame on which the simulation stops",
-                                     name="End",
-                                     update=update_frame)
+    frame_start: bpy.props.IntProperty(
+        default=1,
+        min=0,
+        max=1048574,
+        description="Frame on which the simulation start",
+        name="Start",
+        update=update_frame,
+    )
+    frame_end: bpy.props.IntProperty(
+        default=250,
+        min=0,
+        max=1048574,
+        description="Frame on which the simulation stops",
+        name="End",
+        update=update_frame,
+    )
 
     # INTERNAL
 
@@ -94,7 +121,9 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
 
 def register():
     bpy.utils.register_class(MustardUI_PhysicsSettings)
-    bpy.types.Armature.MustardUI_PhysicsSettings = bpy.props.PointerProperty(type=MustardUI_PhysicsSettings)
+    bpy.types.Armature.MustardUI_PhysicsSettings = bpy.props.PointerProperty(
+        type=MustardUI_PhysicsSettings
+    )
 
 
 def unregister():

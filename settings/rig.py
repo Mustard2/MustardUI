@@ -1,12 +1,11 @@
-import bpy
-from ..model_selection.active_object import *
-from ..outfits.definitions import *
-from ..sections.definitions import *
-from ..physics.update_enable import enable_physics_update
-from ..misc.set_bool import set_bool
-from .. import __package__ as base_package
-
 import re
+
+import bpy
+from bpy.props import StringProperty
+
+from ..misc.set_bool import set_bool
+from ..outfits.definitions import MustardUI_Outfit
+from ..sections.definitions import MustardUI_SectionItem
 
 
 # Main class to store model settings
@@ -16,32 +15,36 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
 
     # Model name
-    model_name: bpy.props.StringProperty(default="",
-                                         name="Model name",
-                                         description="Model name")
+    model_name: bpy.props.StringProperty(
+        default="", name="Model name", description="Model name"
+    )
 
     # Body object
     # Poll function for the selection of mesh only in pointer properties
     def poll_mesh(self, object):
-        return object.type == 'MESH'
+        return object.type == "MESH"
 
-    model_body: bpy.props.PointerProperty(name="Model Body",
-                                          description="Select the mesh that will be considered the body",
-                                          type=bpy.types.Object,
-                                          poll=poll_mesh)
+    model_body: bpy.props.PointerProperty(
+        name="Model Body",
+        description="Select the mesh that will be considered the body",
+        type=bpy.types.Object,
+        poll=poll_mesh,
+    )
 
     # Armature object
     # Poll function for the selection of armatures for the armature object
     def poll_armature(self, object):
-        if object.type == 'ARMATURE':
+        if object.type == "ARMATURE":
             return object.data == self.id_data
         return False
 
-    model_armature_object: bpy.props.PointerProperty(name="Model Armature Object",
-                                                     description="Mesh that will be considered the body.\nSet or "
-                                                                 "change this Object if you know what you are doing",
-                                                     type=bpy.types.Object,
-                                                     poll=poll_armature)
+    model_armature_object: bpy.props.PointerProperty(
+        name="Model Armature Object",
+        description="Mesh that will be considered the body.\nSet or "
+        "change this Object if you know what you are doing",
+        type=bpy.types.Object,
+        poll=poll_armature,
+    )
 
     # ------------------------------------------------------------------------
     #    Body properties
@@ -58,7 +61,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Smooth Correction modifiers
     def update_smooth_corr(self, context):
-        for modifier in [x for x in self.model_body.modifiers if x.type == "CORRECTIVE_SMOOTH"]:
+        for modifier in [
+            x for x in self.model_body.modifiers if x.type == "CORRECTIVE_SMOOTH"
+        ]:
             modifier.show_viewport = self.body_smooth_corr
             modifier.show_render = self.body_smooth_corr
 
@@ -78,7 +83,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Auto-smooth function
     def update_norm_autosmooth(self, context):
-        MustardUI_RigSettings._set_normal_autosmooth(self.model_body, self.body_norm_autosmooth, True)
+        MustardUI_RigSettings._set_normal_autosmooth(
+            self.model_body, self.body_norm_autosmooth, True
+        )
 
     # Update function for Smooth Correction modifiers
     def update_solidify(self, context):
@@ -87,77 +94,101 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             modifier.show_render = self.body_solidify
 
     # Subdivision surface
-    body_subdiv_rend: bpy.props.BoolProperty(default=True,
-                                             name="Subdivision Surface (Render)",
-                                             description="Enable/disable the Subdivision Surface during rendering. "
-                                                         "\nThis won't affect the viewport or the viewport rendering "
-                                                         "preview. \nNote that, depending on the complexity of the "
-                                                         "model, enabling this can greatly affect rendering times",
-                                             update=update_subdiv)
-    body_subdiv_rend_lv: bpy.props.IntProperty(default=2,
-                                               min=0, max=4,
-                                               name="Level",
-                                               description="Set the Subdivision Surface level during rendering. "
-                                                           "\nNote that, depending on the complexity of the model, "
-                                                           "increasing this can greatly affect rendering times",
-                                               update=update_subdiv)
-    body_subdiv_view: bpy.props.BoolProperty(default=False,
-                                             name="Subdivision Surface (Viewport)",
-                                             description="Enable/disable the Subdivision Surface in the viewport. "
-                                                         "\nSince it's really computationally expensive, "
-                                                         "use this only for previews and do NOT enable it during "
-                                                         "posing. \nNote that it might require a lot of time to "
-                                                         "activate, and Blender will freeze during this",
-                                             update=update_subdiv)
-    body_subdiv_view_lv: bpy.props.IntProperty(default=1,
-                                               min=0, max=4,
-                                               name="Level",
-                                               description="Set the Subdivision Surface level in viewport. \nNote "
-                                                           "that, depending on the complexity of the model, "
-                                                           "increasing this can greatly affect viewport performances. "
-                                                           "Moreover, each time you change this value with "
-                                                           "Subdivision Surface (Viewport) enabled, Blender will "
-                                                           "freeze while applying the modification",
-                                               update=update_subdiv)
-    body_enable_subdiv: bpy.props.BoolProperty(default=True,
-                                               name="Subdivision Surface modifiers",
-                                               description="Creates a switcher on the UI to enable/disable all "
-                                                           "modifiers of this type on the Body")
+    body_subdiv_rend: bpy.props.BoolProperty(
+        default=True,
+        name="Subdivision Surface (Render)",
+        description="Enable/disable the Subdivision Surface during rendering. "
+        "\nThis won't affect the viewport or the viewport rendering "
+        "preview. \nNote that, depending on the complexity of the "
+        "model, enabling this can greatly affect rendering times",
+        update=update_subdiv,
+    )
+    body_subdiv_rend_lv: bpy.props.IntProperty(
+        default=2,
+        min=0,
+        max=4,
+        name="Level",
+        description="Set the Subdivision Surface level during rendering. "
+        "\nNote that, depending on the complexity of the model, "
+        "increasing this can greatly affect rendering times",
+        update=update_subdiv,
+    )
+    body_subdiv_view: bpy.props.BoolProperty(
+        default=False,
+        name="Subdivision Surface (Viewport)",
+        description="Enable/disable the Subdivision Surface in the viewport. "
+        "\nSince it's really computationally expensive, "
+        "use this only for previews and do NOT enable it during "
+        "posing. \nNote that it might require a lot of time to "
+        "activate, and Blender will freeze during this",
+        update=update_subdiv,
+    )
+    body_subdiv_view_lv: bpy.props.IntProperty(
+        default=1,
+        min=0,
+        max=4,
+        name="Level",
+        description="Set the Subdivision Surface level in viewport. \nNote "
+        "that, depending on the complexity of the model, "
+        "increasing this can greatly affect viewport performances. "
+        "Moreover, each time you change this value with "
+        "Subdivision Surface (Viewport) enabled, Blender will "
+        "freeze while applying the modification",
+        update=update_subdiv,
+    )
+    body_enable_subdiv: bpy.props.BoolProperty(
+        default=True,
+        name="Subdivision Surface modifiers",
+        description="Creates a switcher on the UI to enable/disable all "
+        "modifiers of this type on the Body",
+    )
 
     # Smooth correction
-    body_smooth_corr: bpy.props.BoolProperty(default=True,
-                                             name="Smooth Correction",
-                                             description="Enable/disable the Smooth Correction modifiers. \nDisable "
-                                                         "it to increase the performance in viewport, and re-enable "
-                                                         "it before rendering",
-                                             update=update_smooth_corr)
-    body_enable_smoothcorr: bpy.props.BoolProperty(default=False,
-                                                   name="Smooth Correction modifiers",
-                                                   description="Creates a switcher on the UI to enable/disable all "
-                                                               "modifiers of this type on the Body")
+    body_smooth_corr: bpy.props.BoolProperty(
+        default=True,
+        name="Smooth Correction",
+        description="Enable/disable the Smooth Correction modifiers. \nDisable "
+        "it to increase the performance in viewport, and re-enable "
+        "it before rendering",
+        update=update_smooth_corr,
+    )
+    body_enable_smoothcorr: bpy.props.BoolProperty(
+        default=False,
+        name="Smooth Correction modifiers",
+        description="Creates a switcher on the UI to enable/disable all "
+        "modifiers of this type on the Body",
+    )
 
     # Normal auto smooth
-    body_norm_autosmooth: bpy.props.BoolProperty(default=True,
-                                                 name="Normals Auto Smooth",
-                                                 description="Enable/disable the Auto-smooth for body normals. "
-                                                             "\nDisable it to increase the performance in viewport, "
-                                                             "and re-enable it before rendering",
-                                                 update=update_norm_autosmooth)
+    body_norm_autosmooth: bpy.props.BoolProperty(
+        default=True,
+        name="Normals Auto Smooth",
+        description="Enable/disable the Auto-smooth for body normals. "
+        "\nDisable it to increase the performance in viewport, "
+        "and re-enable it before rendering",
+        update=update_norm_autosmooth,
+    )
 
-    body_enable_norm_autosmooth: bpy.props.BoolProperty(default=False,
-                                                        name="Normals Auto Smooth property",
-                                                        description="Creates a switcher on the UI to enable/disable "
-                                                                    "all modifiers of this type on the Body")
+    body_enable_norm_autosmooth: bpy.props.BoolProperty(
+        default=False,
+        name="Normals Auto Smooth property",
+        description="Creates a switcher on the UI to enable/disable "
+        "all modifiers of this type on the Body",
+    )
 
     # Solidify
-    body_solidify: bpy.props.BoolProperty(default=True,
-                                          name="Solidify",
-                                          description="Enable/disable the Solidify modifiers on the Body",
-                                          update=update_solidify)
-    body_enable_solidify: bpy.props.BoolProperty(default=False,
-                                                 name="Solidify modifiers",
-                                                 description="Creates a switcher on the UI to enable/disable all "
-                                                             "modifiers of this type on the Body")
+    body_solidify: bpy.props.BoolProperty(
+        default=True,
+        name="Solidify",
+        description="Enable/disable the Solidify modifiers on the Body",
+        update=update_solidify,
+    )
+    body_enable_solidify: bpy.props.BoolProperty(
+        default=False,
+        name="Solidify modifiers",
+        description="Creates a switcher on the UI to enable/disable all "
+        "modifiers of this type on the Body",
+    )
 
     # Volume Preserve
     def update_volume_preserve(self, context):
@@ -170,45 +201,59 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             collections.append(self.extras_collection)
 
         for collection in collections:
-            items = collection.all_objects if self.outfit_config_subcollections else collection.objects
+            items = (
+                collection.all_objects
+                if self.outfit_config_subcollections
+                else collection.objects
+            )
             for obj in items:
                 for modifier in obj.modifiers:
                     if modifier.type == "ARMATURE":
                         modifier.use_deform_preserve_volume = self.body_preserve_volume
 
     # Armature volume preserve
-    body_preserve_volume: bpy.props.BoolProperty(default=True,
-                                                 name="Volume Preserve",
-                                                 description="Enable/disable the Preserve volume.\nThis will switch "
-                                                             "on/off Preserve Volume for all Armature modifiers of "
-                                                             "the model (body and outfits)",
-                                                 update=update_volume_preserve)
+    body_preserve_volume: bpy.props.BoolProperty(
+        default=True,
+        name="Volume Preserve",
+        description="Enable/disable the Preserve volume.\nThis will switch "
+        "on/off Preserve Volume for all Armature modifiers of "
+        "the model (body and outfits)",
+        update=update_volume_preserve,
+    )
 
-    body_enable_preserve_volume: bpy.props.BoolProperty(default=False,
-                                                        name="Volume Preserve property",
-                                                        description="Creates a switcher on the UI to enable/disable "
-                                                                    "the Preserve Volume option on the Armature "
-                                                                    "modifier")
+    body_enable_preserve_volume: bpy.props.BoolProperty(
+        default=False,
+        name="Volume Preserve property",
+        description="Creates a switcher on the UI to enable/disable "
+        "the Preserve Volume option on the Armature "
+        "modifier",
+    )
 
     # Material normals tool
-    body_enable_material_normal_nodes: bpy.props.BoolProperty(default=True,
-                                                              description="Enable the Eevee Optimized Normals "
-                                                                          "tool.\nThis tool substitutes normal nodes "
-                                                                          "with more efficient ones, which can be "
-                                                                          "useful to get better performance in Render "
-                                                                          "Viewport mode",
-                                                              name="Eevee Optimized Normals tool")
+    body_enable_material_normal_nodes: bpy.props.BoolProperty(
+        default=True,
+        description="Enable the Eevee Optimized Normals "
+        "tool.\nThis tool substitutes normal nodes "
+        "with more efficient ones, which can be "
+        "useful to get better performance in Render "
+        "Viewport mode",
+        name="Eevee Optimized Normals tool",
+    )
 
     # Custom properties
-    body_custom_properties_icons: bpy.props.BoolProperty(default=False,
-                                                         name="Show Icons",
-                                                         description="Enable properties icons in the menu.\nNote: "
-                                                                     "this can clash with the section icons, "
-                                                                     "making the menu difficult to read")
-    body_custom_properties_name_order: bpy.props.BoolProperty(default=False,
-                                                              name="Order by name",
-                                                              description="Order the custom properties by name "
-                                                                          "instead of by appareance in the list")
+    body_custom_properties_icons: bpy.props.BoolProperty(
+        default=False,
+        name="Show Icons",
+        description="Enable properties icons in the menu.\nNote: "
+        "this can clash with the section icons, "
+        "making the menu difficult to read",
+    )
+    body_custom_properties_name_order: bpy.props.BoolProperty(
+        default=False,
+        name="Order by name",
+        description="Order the custom properties by name "
+        "instead of by appearance in the list",
+    )
 
     # Geometry Nodes
     def update_geometry_nodes(self, context):
@@ -216,78 +261,102 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             modifier.show_viewport = self.body_geometry_nodes
             modifier.show_render = self.body_geometry_nodes
 
-    body_geometry_nodes: bpy.props.BoolProperty(default=False,
-                                                name="Geometry Nodes",
-                                                description="Enable/disable all Geometry Nodes on the Body",
-                                                update=update_geometry_nodes)
+    body_geometry_nodes: bpy.props.BoolProperty(
+        default=False,
+        name="Geometry Nodes",
+        description="Enable/disable all Geometry Nodes on the Body",
+        update=update_geometry_nodes,
+    )
 
-    body_enable_geometry_nodes: bpy.props.BoolProperty(default=False,
-                                                       name="Geometry Nodes modifiers",
-                                                       description="Creates a switcher on the UI to enable/disable "
-                                                                   "all modifiers of this type on the Body")
+    body_enable_geometry_nodes: bpy.props.BoolProperty(
+        default=False,
+        name="Geometry Nodes modifiers",
+        description="Creates a switcher on the UI to enable/disable "
+        "all modifiers of this type on the Body",
+    )
 
     # Geometry Nodes support
-    body_enable_geometry_nodes_support: bpy.props.BoolProperty(default=False,
-                                                               name="Add Geometry Nodes",
-                                                               description="Add Geometry Nodes to the UI as "
-                                                                           "Sections.\nThe properties displayed are "
-                                                                           "the attributes of the Geometry Node")
+    body_enable_geometry_nodes_support: bpy.props.BoolProperty(
+        default=False,
+        name="Add Geometry Nodes",
+        description="Add Geometry Nodes to the UI as "
+        "Sections.\nThe properties displayed are "
+        "the attributes of the Geometry Node",
+    )
 
     # List of the sections for body custom properties
-    body_custom_properties_sections: bpy.props.CollectionProperty(type=MustardUI_SectionItem)
+    body_custom_properties_sections: bpy.props.CollectionProperty(
+        type=MustardUI_SectionItem
+    )
 
     # ------------------------------------------------------------------------
     #    Outfit properties
     # ------------------------------------------------------------------------
 
     # Global outfit properties
-    outfits_enable_global_subsurface: bpy.props.BoolProperty(default=True,
-                                                             name="Subdivision Surface modifiers",
-                                                             description="Creates a switcher on the UI to "
-                                                                         "enable/disable all modifiers of this type "
-                                                                         "on the Body.\nThis tool will enable/disable "
-                                                                         "modifiers only for Viewport")
+    outfits_enable_global_subsurface: bpy.props.BoolProperty(
+        default=True,
+        name="Subdivision Surface modifiers",
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this type "
+        "on the Body.\nThis tool will enable/disable "
+        "modifiers only for Viewport",
+    )
 
-    outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(default=False,
-                                                                   description="Creates a switcher on the UI to "
-                                                                               "enable/disable all modifiers of this "
-                                                                               "type on the Body",
-                                                                   name="Smooth Correction modifiers")
+    outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this "
+        "type on the Body",
+        name="Smooth Correction modifiers",
+    )
 
-    outfits_enable_global_surfacedeform: bpy.props.BoolProperty(default=False,
-                                                                description="Creates a switcher on the UI to "
-                                                                            "enable/disable all modifiers of this "
-                                                                            "type on the Body",
-                                                                name="Surface Deform modifiers")
+    outfits_enable_global_surfacedeform: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this "
+        "type on the Body",
+        name="Surface Deform modifiers",
+    )
 
-    outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(default=False,
-                                                             description="Creates a switcher on the UI to "
-                                                                         "enable/disable all modifiers of this type "
-                                                                         "on the Body",
-                                                             name="Shrinkwrap modifiers")
+    outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this type "
+        "on the Body",
+        name="Shrinkwrap modifiers",
+    )
 
-    outfits_enable_global_mask: bpy.props.BoolProperty(default=True,
-                                                       description="Creates a switcher on the UI to enable/disable "
-                                                                   "all modifiers of this type on the Body",
-                                                       name="Mask modifiers")
+    outfits_enable_global_mask: bpy.props.BoolProperty(
+        default=True,
+        description="Creates a switcher on the UI to enable/disable "
+        "all modifiers of this type on the Body",
+        name="Mask modifiers",
+    )
 
-    outfits_enable_global_solidify: bpy.props.BoolProperty(default=False,
-                                                           description="Creates a switcher on the UI to "
-                                                                       "enable/disable all modifiers of this type on "
-                                                                       "the Body",
-                                                           name="Solidify modifiers")
+    outfits_enable_global_solidify: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this type on "
+        "the Body",
+        name="Solidify modifiers",
+    )
 
-    outfits_enable_global_triangulate: bpy.props.BoolProperty(default=False,
-                                                              description="Creates a switcher on the UI to "
-                                                                          "enable/disable all modifiers of this type "
-                                                                          "on the Body",
-                                                              name="Triangulate modifiers")
+    outfits_enable_global_triangulate: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this type "
+        "on the Body",
+        name="Triangulate modifiers",
+    )
 
-    outfits_enable_global_normalautosmooth: bpy.props.BoolProperty(default=False,
-                                                                   description="Creates a switcher on the UI to "
-                                                                               "enable/disable all modifiers of this "
-                                                                               "type on the Body",
-                                                                   name="Normals Auto Smooth properties")
+    outfits_enable_global_normalautosmooth: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this "
+        "type on the Body",
+        name="Normals Auto Smooth properties",
+    )
 
     outfits_max_hierarchy_level: bpy.props.IntProperty(default=3)
 
@@ -296,7 +365,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Function to create an array of tuples for Outfit enum collections
     def outfits_list_make(self, context):
         items = []
-        prefix_len = len(self.model_name + ' ') if self.model_MustardUI_naming_convention else 0
+        prefix_len = (
+            len(self.model_name + " ") if self.model_MustardUI_naming_convention else 0
+        )
 
         for el in self.outfits_collections:
             coll = el.collection
@@ -307,7 +378,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             nname = coll.name[prefix_len:] if prefix_len else coll.name
 
             # Remove trailing .### if present
-            if nname[-4:0:-1].isdigit() and nname[-4] == '.':
+            if nname[-4:0:-1].isdigit() and nname[-4] == ".":
                 nname = nname[:-4]
             else:
                 nname = re.sub(r"\.\d{3}$", "", nname)  # fallback regex for safety
@@ -319,7 +390,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         return items
 
-    # Function to update the visibility of the outfits/masks/armature layers when an outfit is changed
+    # Function to update the visibility of the outfits/masks/armature layers when
+    # an outfit is changed
     def outfits_visibility_update(self, context):
         bpy.ops.mustardui.outfit_visibility()
 
@@ -331,39 +403,67 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             collections.append(self.extras_collection)
 
         for collection in collections:
-            items = collection.all_objects if self.outfit_config_subcollections else collection.objects
+            items = (
+                collection.all_objects
+                if self.outfit_config_subcollections
+                else collection.objects
+            )
             for obj in items:
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
+                    if (
+                        modifier.type == "SUBSURF"
+                        and self.outfits_enable_global_subsurface
+                    ):
                         modifier.show_viewport = self.outfits_global_subsurface
 
     def outfits_global_options_update(self, context):
         """Update global outfit options for all collections and their modifiers."""
 
         # Gather all collections (outfits + extras)
-        collections = [x.collection for x in self.outfits_collections if x.collection is not None]
+        collections = [
+            x.collection for x in self.outfits_collections if x.collection is not None
+        ]
         if self.extras_collection is not None:
             collections.append(self.extras_collection)
 
         # Mapping: modifier type → (enabled_flag, value)
         mod_settings = {
-            "CORRECTIVE_SMOOTH": (self.outfits_enable_global_smoothcorrection, self.outfits_global_smoothcorrection),
+            "CORRECTIVE_SMOOTH": (
+                self.outfits_enable_global_smoothcorrection,
+                self.outfits_global_smoothcorrection,
+            ),
             "MASK": (self.outfits_enable_global_mask, self.outfits_global_mask),
-            "SHRINKWRAP": (self.outfits_enable_global_shrinkwrap, self.outfits_global_shrinkwrap),
-            "SURFACE_DEFORM": (self.outfits_enable_global_surfacedeform, self.outfits_global_surfacedeform),
-            "SOLIDIFY": (self.outfits_enable_global_solidify, self.outfits_global_solidify),
-            "TRIANGULATE": (self.outfits_enable_global_triangulate, self.outfits_global_triangulate),
+            "SHRINKWRAP": (
+                self.outfits_enable_global_shrinkwrap,
+                self.outfits_global_shrinkwrap,
+            ),
+            "SURFACE_DEFORM": (
+                self.outfits_enable_global_surfacedeform,
+                self.outfits_global_surfacedeform,
+            ),
+            "SOLIDIFY": (
+                self.outfits_enable_global_solidify,
+                self.outfits_global_solidify,
+            ),
+            "TRIANGULATE": (
+                self.outfits_enable_global_triangulate,
+                self.outfits_global_triangulate,
+            ),
         }
 
         for collection in collections:
-            items = collection.all_objects if self.outfit_config_subcollections else collection.objects
+            items = (
+                collection.all_objects
+                if self.outfit_config_subcollections
+                else collection.objects
+            )
 
             for obj in items:
                 # Update autosmooth
                 MustardUI_RigSettings._set_normal_autosmooth(
                     obj,
                     self.outfits_global_normalautosmooth,
-                    self.outfits_enable_global_normalautosmooth
+                    self.outfits_enable_global_normalautosmooth,
                 )
 
                 # Update object modifiers
@@ -387,132 +487,171 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                         continue
                     if obj.name not in mod.name:
                         continue
-                    visible = (collection.name == self.outfits_list or obj.MustardUI_outfit_lock) \
-                              and not obj.hide_viewport \
-                              and self.outfits_global_mask
+                    visible = (
+                        (
+                            collection.name == self.outfits_list
+                            or obj.MustardUI_outfit_lock
+                        )
+                        and not obj.hide_viewport
+                        and self.outfits_global_mask
+                    )
                     set_bool(mod, "show_viewport", visible)
                     set_bool(mod, "show_render", visible)
 
     # List of the collections from which to extract the outfits
-    outfits_collections: bpy.props.CollectionProperty(name="Outfits Collection List",
-                                                      type=MustardUI_Outfit)
+    outfits_collections: bpy.props.CollectionProperty(
+        name="Outfits Collection List", type=MustardUI_Outfit
+    )
 
     # Outfit properties
-    outfits_list: bpy.props.EnumProperty(name="Outfits List",
-                                         items=outfits_list_make,
-                                         update=outfits_visibility_update)
+    outfits_list: bpy.props.EnumProperty(
+        name="Outfits List", items=outfits_list_make, update=outfits_visibility_update
+    )
 
     # Nude outfit enable
-    outfit_nude: bpy.props.BoolProperty(default=True,
-                                        name="Nude outfit",
-                                        description="Enable Nude \'outfit\' choice.\nThis will turn on/off the Nude "
-                                                    "\'outfit\' in the Outfits list, which can be useful for SFW "
-                                                    "models")
+    outfit_nude: bpy.props.BoolProperty(
+        default=True,
+        name="Nude outfit",
+        description="Enable Nude 'outfit' choice.\nThis will turn on/off the Nude "
+        "'outfit' in the Outfits list, which can be useful for SFW "
+        "models",
+    )
 
     # Global outfit properties
-    outfits_global_subsurface: bpy.props.BoolProperty(default=True,
-                                                      name="Subdivision Surface",
-                                                      description="Enable/disable subdivision surface modifiers ("
-                                                                  "Viewport) on the Outfits",
-                                                      update=outfits_global_options_subsurf_update)
+    outfits_global_subsurface: bpy.props.BoolProperty(
+        default=True,
+        name="Subdivision Surface",
+        description="Enable/disable subdivision surface modifiers ("
+        "Viewport) on the Outfits",
+        update=outfits_global_options_subsurf_update,
+    )
 
-    outfits_global_smoothcorrection: bpy.props.BoolProperty(default=False,
-                                                            name="Smooth Correction",
-                                                            description="Enable/disable the Smooth Correction "
-                                                                        "modifiers on the Outfits",
-                                                            update=outfits_global_options_update)
+    outfits_global_smoothcorrection: bpy.props.BoolProperty(
+        default=False,
+        name="Smooth Correction",
+        description="Enable/disable the Smooth Correction modifiers on the Outfits",
+        update=outfits_global_options_update,
+    )
 
-    outfits_global_shrinkwrap: bpy.props.BoolProperty(default=True,
-                                                      name="Shrinkwrap",
-                                                      description="Enable/disable the Shrinkwrap modifiers on the "
-                                                                  "Outfits",
-                                                      update=outfits_global_options_update)
+    outfits_global_shrinkwrap: bpy.props.BoolProperty(
+        default=True,
+        name="Shrinkwrap",
+        description="Enable/disable the Shrinkwrap modifiers on the Outfits",
+        update=outfits_global_options_update,
+    )
 
-    outfits_global_surfacedeform: bpy.props.BoolProperty(default=True,
-                                                         name="Surface Deform",
-                                                         description="Enable/disable the Surface Deform modifiers on "
-                                                                     "the Outfits",
-                                                         update=outfits_global_options_update)
+    outfits_global_surfacedeform: bpy.props.BoolProperty(
+        default=True,
+        name="Surface Deform",
+        description="Enable/disable the Surface Deform modifiers on the Outfits",
+        update=outfits_global_options_update,
+    )
 
-    outfits_global_mask: bpy.props.BoolProperty(default=True,
-                                                name="Mask",
-                                                description="Enable/disable the Mask modifiers on the Outfits",
-                                                update=outfits_global_options_update)
+    outfits_global_mask: bpy.props.BoolProperty(
+        default=True,
+        name="Mask",
+        description="Enable/disable the Mask modifiers on the Outfits",
+        update=outfits_global_options_update,
+    )
 
-    outfits_global_solidify: bpy.props.BoolProperty(default=True,
-                                                    name="Solidify",
-                                                    description="Enable/disable the Solidify modifiers on the Outfits",
-                                                    update=outfits_global_options_update)
+    outfits_global_solidify: bpy.props.BoolProperty(
+        default=True,
+        name="Solidify",
+        description="Enable/disable the Solidify modifiers on the Outfits",
+        update=outfits_global_options_update,
+    )
 
-    outfits_global_triangulate: bpy.props.BoolProperty(default=True,
-                                                       name="Triangulate",
-                                                       description="Enable/disable the Triangulate modifiers on the "
-                                                                   "Outfits",
-                                                       update=outfits_global_options_update)
+    outfits_global_triangulate: bpy.props.BoolProperty(
+        default=True,
+        name="Triangulate",
+        description="Enable/disable the Triangulate modifiers on the Outfits",
+        update=outfits_global_options_update,
+    )
 
-    outfits_global_normalautosmooth: bpy.props.BoolProperty(default=True,
-                                                            name="Normals Auto Smooth",
-                                                            description="Enable/disable the Auto Smooth modifiers on "
-                                                                        "the Outfits",
-                                                            update=outfits_global_options_update)
+    outfits_global_normalautosmooth: bpy.props.BoolProperty(
+        default=True,
+        name="Normals Auto Smooth",
+        description="Enable/disable the Auto Smooth modifiers on the Outfits",
+        update=outfits_global_options_update,
+    )
 
-    outfit_custom_properties_icons: bpy.props.BoolProperty(default=False,
-                                                           name="Show Icons",
-                                                           description="Enable properties icons in the outfit menu")
-    outfit_custom_properties_name_order: bpy.props.BoolProperty(default=False,
-                                                                name="Order by name",
-                                                                description="Order the custom properties by name "
-                                                                            "instead of by appareance in the list")
+    outfit_custom_properties_icons: bpy.props.BoolProperty(
+        default=False,
+        name="Show Icons",
+        description="Enable properties icons in the outfit menu",
+    )
+    outfit_custom_properties_name_order: bpy.props.BoolProperty(
+        default=False,
+        name="Order by name",
+        description="Order the custom properties by name "
+        "instead of by appearance in the list",
+    )
 
-    outfit_global_custom_properties_collapse: bpy.props.BoolProperty(default=False,
-                                                                     name="",
-                                                                     description="Show additional properties for the "
-                                                                                 "selected object")
+    outfit_global_custom_properties_collapse: bpy.props.BoolProperty(
+        default=False,
+        name="",
+        description="Show additional properties for the selected object",
+    )
 
-    outfit_config_subcollections: bpy.props.BoolProperty(default=False,
-                                                         name="Add Objects in Sub-collections",
-                                                         description="Add also Objects that are in sub-collections "
-                                                                     "with respect to the main Outfit collection added")
+    outfit_config_subcollections: bpy.props.BoolProperty(
+        default=False,
+        name="Add Objects in Sub-collections",
+        description="Add also Objects that are in sub-collections "
+        "with respect to the main Outfit collection added",
+    )
 
-    outfits_update_tag_on_switch: bpy.props.BoolProperty(default=True,
-                                                         name="Update Drivers on Switch",
-                                                         description="Update the drivers when switching Outfit "
-                                                                     "parts.\nDisable this option if Blender hangs or "
-                                                                     "is slow when using the Outfit piece visibility "
-                                                                     "buttons in the UI")
+    outfits_update_tag_on_switch: bpy.props.BoolProperty(
+        default=True,
+        name="Update Drivers on Switch",
+        description="Update the drivers when switching Outfit "
+        "parts.\nDisable this option if Blender hangs or "
+        "is slow when using the Outfit piece visibility "
+        "buttons in the UI",
+    )
 
-    outfit_switch_armature_disable: bpy.props.BoolProperty(default=True,
-                                                           name="Disable Armature Modifiers on Switch",
-                                                           description="Disable Armature modifiers of Outfits that "
-                                                                       "are not visible to increase performance")
+    outfit_switch_armature_disable: bpy.props.BoolProperty(
+        default=True,
+        name="Disable Armature Modifiers on Switch",
+        description="Disable Armature modifiers of Outfits that "
+        "are not visible to increase performance",
+    )
 
-    outfit_switch_modifiers_disable: bpy.props.BoolProperty(default=False,
-                                                            name="Disable Heavy Modifiers on Switch",
-                                                            description="Disable modifiers of Outfits that "
-                                                                        "are not visible to increase performance.\n"
-                                                                        "The properties enabled in Global "
-                                                                        "Properties are considered (Smooth Correction, "
-                                                                        "Subdivision Surface and Shirnkwrap only)")
+    outfit_switch_modifiers_disable: bpy.props.BoolProperty(
+        default=False,
+        name="Disable Heavy Modifiers on Switch",
+        description="Disable modifiers of Outfits that "
+        "are not visible to increase performance.\n"
+        "The properties enabled in Global "
+        "Properties are considered (Smooth Correction, "
+        "Subdivision Surface and Shrinkwrap only)",
+    )
 
-    outfit_switch_shape_keys_disable: bpy.props.BoolProperty(default=False,
-                                                             name="Disable Shape Keys (and their drivers) on Switch",
-                                                             description="Disable the shape keys on the unused Outfits "
-                                                                         "(and their drivers) to increase performance")
+    outfit_switch_shape_keys_disable: bpy.props.BoolProperty(
+        default=False,
+        name="Disable Shape Keys (and their drivers) on Switch",
+        description="Disable the shape keys on the unused Outfits "
+        "(and their drivers) to increase performance",
+    )
 
-    outfit_physics_support: bpy.props.BoolProperty(default=True,
-                                                   name="Enable Outfit Physics support",
-                                                   description="If enabled, a button near outfit pieces with Physics "
-                                                               "modifiers is added to enable/disable physics")
+    outfit_physics_support: bpy.props.BoolProperty(
+        default=True,
+        name="Enable Outfit Physics support",
+        description="If enabled, a button near outfit pieces with Physics "
+        "modifiers is added to enable/disable physics",
+    )
 
     # Extras
     def poll_collection_extras(self, object):
         if self.hair_collection is not None:
-            return not object in [x.collection for x in self.outfits_collections] and object != self.hair_collection
-        return not object in [x.collection for x in self.outfits_collections]
+            return (
+                object not in [x.collection for x in self.outfits_collections]
+                and object != self.hair_collection
+            )
+        return object not in [x.collection for x in self.outfits_collections]
 
-    extras_collection: bpy.props.PointerProperty(name="Extras Collection",
-                                                 type=bpy.types.Collection,
-                                                 poll=poll_collection_extras)
+    extras_collection: bpy.props.PointerProperty(
+        name="Extras Collection", type=bpy.types.Collection, poll=poll_collection_extras
+    )
     extras_collapse: bpy.props.BoolProperty(default=False, name="")
 
     # ------------------------------------------------------------------------
@@ -526,14 +665,16 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             collections.append(self.extras_collection)
         return object not in collections
 
-    hair_collection: bpy.props.PointerProperty(name="Hair Collection",
-                                               description="Collection with the Hair Objects.\nBoth Mesh and Armature "
-                                                           "Objects are considered. If the Armature is available, only "
-                                                           "the children will be added as Hair, and an automatic "
-                                                           "switch will also be added for the bones of the "
-                                                           "parent Armature",
-                                               type=bpy.types.Collection,
-                                               poll=poll_collection_hair)
+    hair_collection: bpy.props.PointerProperty(
+        name="Hair Collection",
+        description="Collection with the Hair Objects.\nBoth Mesh and Armature "
+        "Objects are considered. If the Armature is available, only "
+        "the children will be added as Hair, and an automatic "
+        "switch will also be added for the bones of the "
+        "parent Armature",
+        type=bpy.types.Collection,
+        poll=poll_collection_hair,
+    )
 
     def poll_collection_hair_switch(self, object):
         collections = [x.collection for x in self.outfits_collections]
@@ -543,15 +684,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             collections.append(self.hair_collection)
         return object not in collections
 
-    hair_switch_collection: bpy.props.PointerProperty(name="Hair Switch Collection",
-                                                      type=bpy.types.Collection,
-                                                      description="Collection of Objects which disable the Hair.\nThis "
-                                                                  "can be useful when an Outfit piece has a dedicated "
-                                                                  "Hair Object, e.g. an helmet or a hat.\nThe Objects "
-                                                                  "can be added to this collection as Linked objects, "
-                                                                  "so they can belong to both the specific Outfit and "
-                                                                  "this Collection",
-                                                      poll=poll_collection_hair_switch)
+    hair_switch_collection: bpy.props.PointerProperty(
+        name="Hair Switch Collection",
+        type=bpy.types.Collection,
+        description="Collection of Objects which disable the Hair.\nThis "
+        "can be useful when an Outfit piece has a dedicated "
+        "Hair Object, e.g. an helmet or a hat.\nThe Objects "
+        "can be added to this collection as Linked objects, "
+        "so they can belong to both the specific Outfit and "
+        "this Collection",
+        poll=poll_collection_hair_switch,
+    )
 
     # Function to create an array of tuples for hair objects in the Hair collection
     def hair_list_make(self, context):
@@ -560,7 +703,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         if self.hair_collection is None:
             return items
 
-        prefix_len = len(self.model_name + ' ') if self.model_MustardUI_naming_convention else 0
+        prefix_len = (
+            len(self.model_name + " ") if self.model_MustardUI_naming_convention else 0
+        )
 
         for obj in self.hair_collection.objects:
             if obj.type != "MESH":
@@ -575,90 +720,121 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         bpy.ops.mustardui.hair_visibility()
 
     # Hair list
-    hair_list: bpy.props.EnumProperty(name="Hair List",
-                                      items=hair_list_make,
-                                      update=hair_list_update)
+    hair_list: bpy.props.EnumProperty(
+        name="Hair List", items=hair_list_make, update=hair_list_update
+    )
 
-    hair_custom_properties_icons: bpy.props.BoolProperty(default=False,
-                                                         name="Show Icons",
-                                                         description="Enable properties icons in the menu")
-    hair_custom_properties_name_order: bpy.props.BoolProperty(default=False,
-                                                              name="Order by name",
-                                                              description="Order the custom properties by name "
-                                                                          "instead of by appareance in the list")
+    hair_custom_properties_icons: bpy.props.BoolProperty(
+        default=False,
+        name="Show Icons",
+        description="Enable properties icons in the menu",
+    )
+    hair_custom_properties_name_order: bpy.props.BoolProperty(
+        default=False,
+        name="Order by name",
+        description="Order the custom properties by name "
+        "instead of by appearance in the list",
+    )
 
-    hair_switch_armature_disable: bpy.props.BoolProperty(default=True,
-                                                         name="Disable Armature Modifiers on Switch",
-                                                         description="Disable Armature modifiers of Hair that are not "
-                                                                     "visible to increase performance")
+    hair_switch_armature_disable: bpy.props.BoolProperty(
+        default=True,
+        name="Disable Armature Modifiers on Switch",
+        description="Disable Armature modifiers of Hair that are not "
+        "visible to increase performance",
+    )
 
     def hair_particle_children_viewport_factor_update(self, context):
 
         for obj in [x for x in self.hair_collection.objects if x.type != "CURVES"]:
             for p in [x.settings for x in obj.particle_systems]:
                 if p.type == "HAIR":
-                    p.child_percent = max(1, int(p.rendered_child_count * self.hair_particle_children_viewport_factor))
+                    p.child_percent = max(
+                        1,
+                        int(
+                            p.rendered_child_count
+                            * self.hair_particle_children_viewport_factor
+                        ),
+                    )
 
-    hair_particle_children_viewport_factor: bpy.props.FloatProperty(default=0.1,
-                                                                    name="Children Viewport Factor",
-                                                                    description="Factor of children shown in Viewport "
-                                                                                "with respect to Render value",
-                                                                    min=0., max=1.,
-                                                                    update=hair_particle_children_viewport_factor_update)
+    hair_particle_children_viewport_factor: bpy.props.FloatProperty(
+        default=0.1,
+        name="Children Viewport Factor",
+        description="Factor of children shown in Viewport with respect to Render value",
+        min=0.0,
+        max=1.0,
+        update=hair_particle_children_viewport_factor_update,
+    )
 
     def hair_particle_hide_viewport_update(self, context):
         hair_obj = context.scene.objects[self.hair_list]
-        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
+        for mod in [
+            x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]
+        ]:
             mod.show_viewport = self.hair_particle_hide_viewport
         hair_obj.hide_viewport = not self.hair_particle_hide_viewport
 
     def hair_particle_hide_render_update(self, context):
         hair_obj = context.scene.objects[self.hair_list]
-        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
+        for mod in [
+            x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]
+        ]:
             mod.show_render = self.hair_particle_hide_render
         hair_obj.hide_render = not self.hair_particle_hide_render
 
-    hair_particle_hide_viewport: bpy.props.BoolProperty(default=False,
-                                                        name="Hide Viewport",
-                                                        description="Hide the current Hair Particle and its Particle System modifiers",
-                                                        update=hair_particle_hide_viewport_update)
+    hair_particle_hide_viewport: bpy.props.BoolProperty(
+        default=False,
+        name="Hide Viewport",
+        description="Hide the current Hair Particle and its Particle System modifiers",
+        update=hair_particle_hide_viewport_update,
+    )
 
-    hair_particle_hide_render: bpy.props.BoolProperty(default=False,
-                                                      name="Hide Render",
-                                                      description="Hide the current Hair Particle and its Particle System modifiers",
-                                                      update=hair_particle_hide_render_update)
+    hair_particle_hide_render: bpy.props.BoolProperty(
+        default=False,
+        name="Hide Render",
+        description="Hide the current Hair Particle and its Particle System modifiers",
+        update=hair_particle_hide_render_update,
+    )
 
-    hair_particle_collapse: bpy.props.BoolProperty(default=False,
-                                                   name="",
-                                                   description="")
+    hair_particle_collapse: bpy.props.BoolProperty(
+        default=False, name="", description=""
+    )
 
     # Hair Global Properties
-    hair_enable_global_subsurface: bpy.props.BoolProperty(default=False,
-                                                          name="Subdivision Surface modifiers",
-                                                          description="This tool will enable/disable modifiers only "
-                                                                      "for Viewport")
+    hair_enable_global_subsurface: bpy.props.BoolProperty(
+        default=False,
+        name="Subdivision Surface modifiers",
+        description="This tool will enable/disable modifiers only for Viewport",
+    )
 
-    hair_enable_global_smoothcorrection: bpy.props.BoolProperty(default=False,
-                                                                description="Creates a switcher on the UI to "
-                                                                            "enable/disable all modifiers of this "
-                                                                            "type on the Body",
-                                                                name="Smooth Correction modifiers")
+    hair_enable_global_smoothcorrection: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this "
+        "type on the Body",
+        name="Smooth Correction modifiers",
+    )
 
-    hair_enable_global_solidify: bpy.props.BoolProperty(default=False,
-                                                        description="Creates a switcher on the UI to enable/disable "
-                                                                    "all modifiers of this type on the Body",
-                                                        name="Solidify modifiers")
+    hair_enable_global_solidify: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to enable/disable "
+        "all modifiers of this type on the Body",
+        name="Solidify modifiers",
+    )
 
-    hair_enable_global_particles: bpy.props.BoolProperty(default=False,
-                                                         description="Creates a switcher on the UI to enable/disable "
-                                                                     "all modifiers of this type on the Body",
-                                                         name="Particle Hair modifiers")
+    hair_enable_global_particles: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to enable/disable "
+        "all modifiers of this type on the Body",
+        name="Particle Hair modifiers",
+    )
 
-    hair_enable_global_normalautosmooth: bpy.props.BoolProperty(default=False,
-                                                                description="Creates a switcher on the UI to "
-                                                                            "enable/disable all modifiers of this "
-                                                                            "type on the Body",
-                                                                name="Normals Auto Smooth properties")
+    hair_enable_global_normalautosmooth: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to "
+        "enable/disable all modifiers of this "
+        "type on the Body",
+        name="Normals Auto Smooth properties",
+    )
 
     # Function to update the global hair properties
     def hair_global_options_subsurf_update(self, context):
@@ -666,7 +842,10 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         if self.hair_collection is not None:
             for obj in self.hair_collection.objects:
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
+                    if (
+                        modifier.type == "SUBSURF"
+                        and self.hair_enable_global_subsurface
+                    ):
                         modifier.show_viewport = self.hair_global_subsurface
 
     def hair_global_options_update(self, context):
@@ -677,9 +856,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         # Mapping of modifier type → (enabled_flag, value)
         mod_settings = {
-            "CORRECTIVE_SMOOTH": (self.hair_enable_global_smoothcorrection, self.hair_global_smoothcorrection),
+            "CORRECTIVE_SMOOTH": (
+                self.hair_enable_global_smoothcorrection,
+                self.hair_global_smoothcorrection,
+            ),
             "SOLIDIFY": (self.hair_enable_global_solidify, self.hair_global_solidify),
-            "PARTICLE_SYSTEM": (self.hair_enable_global_particles, self.hair_global_particles),
+            "PARTICLE_SYSTEM": (
+                self.hair_enable_global_particles,
+                self.hair_global_particles,
+            ),
         }
 
         for obj in self.hair_collection.objects:
@@ -687,7 +872,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             MustardUI_RigSettings._set_normal_autosmooth(
                 obj,
                 self.hair_global_normalautosmooth,
-                self.hair_enable_global_normalautosmooth
+                self.hair_enable_global_normalautosmooth,
             )
 
             # Update relevant modifiers
@@ -700,53 +885,67 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 set_bool(mod, "show_viewport", value)
                 set_bool(mod, "show_render", value)
 
-    hair_global_subsurface: bpy.props.BoolProperty(default=True,
-                                                   name="Subdivision Surface",
-                                                   description="Enable/disable subdivision surface modifiers ("
-                                                               "Viewport) on the Hair",
-                                                   update=hair_global_options_subsurf_update)
+    hair_global_subsurface: bpy.props.BoolProperty(
+        default=True,
+        name="Subdivision Surface",
+        description="Enable/disable subdivision surface modifiers ("
+        "Viewport) on the Hair",
+        update=hair_global_options_subsurf_update,
+    )
 
-    hair_global_smoothcorrection: bpy.props.BoolProperty(default=True,
-                                                         name="Smooth Correction",
-                                                         description="Enable/disable the Smooth Correction modifiers "
-                                                                     "on the Hair",
-                                                         update=hair_global_options_update)
+    hair_global_smoothcorrection: bpy.props.BoolProperty(
+        default=True,
+        name="Smooth Correction",
+        description="Enable/disable the Smooth Correction modifiers on the Hair",
+        update=hair_global_options_update,
+    )
 
-    hair_global_solidify: bpy.props.BoolProperty(default=True,
-                                                 name="Solidify",
-                                                 description="Enable/disable the Solidify modifiers on the Hair",
-                                                 update=hair_global_options_update)
+    hair_global_solidify: bpy.props.BoolProperty(
+        default=True,
+        name="Solidify",
+        description="Enable/disable the Solidify modifiers on the Hair",
+        update=hair_global_options_update,
+    )
 
-    hair_global_particles: bpy.props.BoolProperty(default=True,
-                                                  name="Particle Hair",
-                                                  description="Enable/disable the Particle Hair modifiers on the Hair",
-                                                  update=hair_global_options_update)
+    hair_global_particles: bpy.props.BoolProperty(
+        default=True,
+        name="Particle Hair",
+        description="Enable/disable the Particle Hair modifiers on the Hair",
+        update=hair_global_options_update,
+    )
 
-    hair_global_normalautosmooth: bpy.props.BoolProperty(default=True,
-                                                         name="Normals Auto Smooth",
-                                                         description="Enable/disable the Auto Smooth modifiers on the "
-                                                                     "Hair",
-                                                         update=hair_global_options_update)
+    hair_global_normalautosmooth: bpy.props.BoolProperty(
+        default=True,
+        name="Normals Auto Smooth",
+        description="Enable/disable the Auto Smooth modifiers on the Hair",
+        update=hair_global_options_update,
+    )
 
-    hair_update_tag_on_switch: bpy.props.BoolProperty(default=True,
-                                                      name="Update Drivers on Switch",
-                                                      description="Update the drivers when switching Outfit "
-                                                                  "parts.\nDisable this option if Blender hangs or is "
-                                                                  "slow when using the Outfit piece visibility "
-                                                                  "buttons in the UI")
+    hair_update_tag_on_switch: bpy.props.BoolProperty(
+        default=True,
+        name="Update Drivers on Switch",
+        description="Update the drivers when switching Outfit "
+        "parts.\nDisable this option if Blender hangs or is "
+        "slow when using the Outfit piece visibility "
+        "buttons in the UI",
+    )
 
     # Curves Hair enable
-    curves_hair_enable: bpy.props.BoolProperty(default=True,
-                                               name="Curves Hair",
-                                               description="Show Curves Hair in the UI.\nIf enabled, Curves Hair in "
-                                                           "the hair collection are automatically be added to the UI")
+    curves_hair_enable: bpy.props.BoolProperty(
+        default=True,
+        name="Curves Hair",
+        description="Show Curves Hair in the UI.\nIf enabled, Curves Hair in "
+        "the hair collection are automatically be added to the UI",
+    )
 
     # Particle system enable
-    particle_systems_enable: bpy.props.BoolProperty(default=True,
-                                                    name="Particle Systems",
-                                                    description="Show Particle Systems in the UI.\nIf enabled, "
-                                                                "particle systems on the body mesh are automatically "
-                                                                "be added to the UI")
+    particle_systems_enable: bpy.props.BoolProperty(
+        default=True,
+        name="Particle Systems",
+        description="Show Particle Systems in the UI.\nIf enabled, "
+        "particle systems on the body mesh are automatically "
+        "be added to the UI",
+    )
 
     # ------------------------------------------------------------------------
     #    Creator Tools
@@ -760,75 +959,99 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Version of the model
     model_version: bpy.props.StringProperty()
-    model_version_vector: bpy.props.IntVectorProperty(name="Model version",
-                                                      size=3,
-                                                      min=0,
-                                                      default=(0, 0, 0),
-                                                      description="Version of the model")
-    model_version_type: bpy.props.EnumProperty(default="Standard",
-                                               items=[("Standard", "Standard", "Standard", "RADIOBUT_ON", 0),
-                                                      ("Beta", "Beta", "Beta", "RECORD_ON", 2),
-                                                      ("Alpha", "Alpha", "Alpha", "RECORD_ON", 1)],
-                                               name="Version Status")
-    model_changelog_link: StringProperty(name="Changelog Link",
-                                         default="",
-                                         description="Link to a changelog webpage")
-    model_minimum_blender_version: bpy.props.IntVectorProperty(name="Minimum Blender version",
-                                                               size=3,
-                                                               default=(0, 0, 0),
-                                                               min=0,
-                                                               max=10,
-                                                               description="Set this to add a warning if the model is "
-                                                                           "opened in an older Blender "
-                                                                           "version.\nLeave it 0,0,0 to disable this "
-                                                                           "warning")
-    model_version_date_enable: bpy.props.BoolProperty(name="Add Date to version",
-                                                      description="Automatically add the date to the version when "
-                                                                  "ending Configuration mode.\nIf the Date field is "
-                                                                  "empty, today's date will be used",
-                                                      default=False)
-    model_version_date_format: bpy.props.EnumProperty(name="Date Format",
-                                                      items=[("DMY", "DD/MM/YYYY", "Day/Month/Year (e.g. 13/04/2023)"),
-                                                             ("MDY2", "MM/DD/YYYY", "Month/Day/Year (e.g. 04/13/2023)"),
-                                                             ("MDY", "Month DD, YYYY", "Month Day, Year (e.g. April "
-                                                                                       "13, 2023)")],
-                                                      description="Format of the date to be used for the version",
-                                                      default="DMY")
-    model_version_date: bpy.props.StringProperty(name="Date",
-                                                 default="",
-                                                 description="Date of the version")
-    model_version_date_vector: bpy.props.IntVectorProperty(name="Date",
-                                                           size=3,
-                                                           min=1, max=3000,
-                                                           default=(0, 0, 0),
-                                                           description="Date of the version: (Day, Month, Year) if "
-                                                                       "using DD/MM/YYYY, (Month, Day, Year) in the "
-                                                                       "other two cases.\nLeave 0,0,0 to use today's "
-                                                                       "date")
+    model_version_vector: bpy.props.IntVectorProperty(
+        name="Model version",
+        size=3,
+        min=0,
+        default=(0, 0, 0),
+        description="Version of the model",
+    )
+    model_version_type: bpy.props.EnumProperty(
+        default="Standard",
+        items=[
+            ("Standard", "Standard", "Standard", "RADIOBUT_ON", 0),
+            ("Beta", "Beta", "Beta", "RECORD_ON", 2),
+            ("Alpha", "Alpha", "Alpha", "RECORD_ON", 1),
+        ],
+        name="Version Status",
+    )
+    model_changelog_link: StringProperty(
+        name="Changelog Link", default="", description="Link to a changelog webpage"
+    )
+    model_minimum_blender_version: bpy.props.IntVectorProperty(
+        name="Minimum Blender version",
+        size=3,
+        default=(0, 0, 0),
+        min=0,
+        max=10,
+        description="Set this to add a warning if the model is "
+        "opened in an older Blender "
+        "version.\nLeave it 0,0,0 to disable this "
+        "warning",
+    )
+    model_version_date_enable: bpy.props.BoolProperty(
+        name="Add Date to version",
+        description="Automatically add the date to the version when "
+        "ending Configuration mode.\nIf the Date field is "
+        "empty, today's date will be used",
+        default=False,
+    )
+    model_version_date_format: bpy.props.EnumProperty(
+        name="Date Format",
+        items=[
+            ("DMY", "DD/MM/YYYY", "Day/Month/Year (e.g. 13/04/2023)"),
+            ("MDY2", "MM/DD/YYYY", "Month/Day/Year (e.g. 04/13/2023)"),
+            ("MDY", "Month DD, YYYY", "Month Day, Year (e.g. April 13, 2023)"),
+        ],
+        description="Format of the date to be used for the version",
+        default="DMY",
+    )
+    model_version_date: bpy.props.StringProperty(
+        name="Date", default="", description="Date of the version"
+    )
+    model_version_date_vector: bpy.props.IntVectorProperty(
+        name="Date",
+        size=3,
+        min=1,
+        max=3000,
+        default=(0, 0, 0),
+        description="Date of the version: (Day, Month, Year) if "
+        "using DD/MM/YYYY, (Month, Day, Year) in the "
+        "other two cases.\nLeave 0,0,0 to use today's "
+        "date",
+    )
 
     # Object and Collection MustardUI naming convention
-    model_MustardUI_naming_convention: bpy.props.BoolProperty(default=True,
-                                                              name="MustardUI Naming Convention",
-                                                              description="Use the MustardUI naming convention for "
-                                                                          "collections and objects.\nIf this is true, "
-                                                                          "the collections and the objects listed as "
-                                                                          "outfits will be stripped of unnecessary "
-                                                                          "parts in the name")
+    model_MustardUI_naming_convention: bpy.props.BoolProperty(
+        default=True,
+        name="MustardUI Naming Convention",
+        description="Use the MustardUI naming convention for "
+        "collections and objects.\nIf this is true, "
+        "the collections and the objects listed as "
+        "outfits will be stripped of unnecessary "
+        "parts in the name",
+    )
 
-    model_rig_type: bpy.props.EnumProperty(default="other",
-                                           items=[("arp", "Auto-Rig Pro", "Auto-Rig Pro"),
-                                                  ("rigify", "Rigify", "Rigify"),
-                                                  ("mhx", "MHX", "MHX"),
-                                                  ("other", "Other", "Other")],
-                                           name="Rig type")
+    model_rig_type: bpy.props.EnumProperty(
+        default="other",
+        items=[
+            ("arp", "Auto-Rig Pro", "Auto-Rig Pro"),
+            ("rigify", "Rigify", "Rigify"),
+            ("mhx", "MHX", "MHX"),
+            ("other", "Other", "Other"),
+        ],
+        name="Rig type",
+    )
 
     model_cleaned: bpy.props.BoolProperty(default=False)
 
     # Links
     # Enable link section
-    links_enable: bpy.props.BoolProperty(default=True,
-                                         description="Create a Link panel in the UI to show custom links",
-                                         name="Show Links")
+    links_enable: bpy.props.BoolProperty(
+        default=True,
+        description="Create a Link panel in the UI to show custom links",
+        name="Show Links",
+    )
 
     # ------------------------------------------------------------------------
     #    Deprecated stuffs (support for warnings/fixes/etc..)
@@ -839,7 +1062,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Diffeomorphic support
     # Keep this setting while the other Morphs implementation is considered deprecated
-    # At the moment this is used to check if there was an old morphs version and try to readd the morphs
+    # At the moment this is used to check if there was an old morphs version and
+    # try to readd the morphs
     diffeomorphic_support: bpy.props.BoolProperty(default=False)
     diffeomorphic_morphs_number: bpy.props.IntProperty(default=0)
     # Also keeping the settings to attempt a quick fix
@@ -859,13 +1083,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
 def register():
     bpy.utils.register_class(MustardUI_RigSettings)
-    bpy.types.Armature.MustardUI_RigSettings = bpy.props.PointerProperty(type=MustardUI_RigSettings)
+    bpy.types.Armature.MustardUI_RigSettings = bpy.props.PointerProperty(
+        type=MustardUI_RigSettings
+    )
 
     # Redefinition for lock functionality
-    bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(default=False,
-                                                                    name="",
-                                                                    description="Lock/unlock the outfit",
-                                                                    update=MustardUI_RigSettings.outfits_visibility_update)
+    bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(
+        default=False,
+        name="",
+        description="Lock/unlock the outfit",
+        update=MustardUI_RigSettings.outfits_visibility_update,
+    )
 
 
 def unregister():

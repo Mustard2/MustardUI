@@ -1,16 +1,18 @@
-from . import settings_item
-from . import settings
-from . import ops_cache
-from . import menu
-from . import ops_setup
-from . import ops_mirror
-from . import ops_add
-from . import ops_remove
-from . import ops_rebind
-from . import ui_list
-from . import ui_list_outfits
-from . import ui_list_menu
-from . import ops_hair_particles
+from . import (
+    menu,
+    ops_add,
+    ops_cache,
+    ops_hair_particles,
+    ops_mirror,
+    ops_rebind,
+    ops_remove,
+    ops_setup,
+    settings,
+    settings_item,
+    ui_list,
+    ui_list_menu,
+    ui_list_outfits,
+)
 
 
 def register():

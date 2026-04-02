@@ -1,5 +1,3 @@
-import bpy
-
 def outfits_update_armature_collections(rig_settings, arm):
     """Update visibility of armature bone collections like the outfit operator"""
 
@@ -22,8 +20,8 @@ def outfits_update_armature_collections(rig_settings, arm):
         for ob in items:
             if ob == bcoll_settings.outfit_switcher_object:
                 visible = (
-                        not ob.hide_viewport
-                        and not bcoll_settings.outfit_switcher_collection.hide_viewport
+                    not ob.hide_viewport
+                    and not bcoll_settings.outfit_switcher_collection.hide_viewport
                 )
                 break
 

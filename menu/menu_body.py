@@ -1,31 +1,49 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..misc.prop_utils import *
+
+from ..misc.prop_utils import evaluate_rna
 from ..misc.ui_multiline import label_multiline
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from ..settings.rig import *
+from . import MainPanel
 
 
-def draw_section(context, layout, obj, settings, rig_settings, custom_props, section, draw_sub = True):
+def draw_section(
+    context, layout, obj, settings, rig_settings, custom_props, section, draw_sub=True
+):
     if rig_settings.body_custom_properties_name_order:
-        custom_properties_section = sorted([x for x in custom_props if
-                                            x.section == section.name and not x.hidden and (
-                                                not x.advanced if not settings.advanced else True)],
-                                           key=lambda x: x.name)
+        custom_properties_section = sorted(
+            [
+                x
+                for x in custom_props
+                if x.section == section.name
+                and not x.hidden
+                and (not x.advanced if not settings.advanced else True)
+            ],
+            key=lambda x: x.name,
+        )
     else:
-        custom_properties_section = [x for x in custom_props if
-                                     x.section == section.name and not x.hidden and (
-                                         not x.advanced if not settings.advanced else True)]
-    if len(custom_properties_section) > 0 and (
-            not section.advanced or (section.advanced and settings.advanced)) and draw_sub:
+        custom_properties_section = [
+            x
+            for x in custom_props
+            if x.section == section.name
+            and not x.hidden
+            and (not x.advanced if not settings.advanced else True)
+        ]
+    if (
+        len(custom_properties_section) > 0
+        and (not section.advanced or (section.advanced and settings.advanced))
+        and draw_sub
+    ):
         box = layout.box()
         row = box.row(align=False)
         if section.collapsable:
-            row.prop(section, "collapsed",
-                     icon="TRIA_DOWN" if not section.collapsed else "TRIA_RIGHT",
-                     icon_only=True,
-                     emboss=False)
+            row.prop(
+                section,
+                "collapsed",
+                icon="TRIA_DOWN" if not section.collapsed else "TRIA_RIGHT",
+                icon_only=True,
+                emboss=False,
+            )
         if section.icon != "" and section.icon != "NONE":
             row.label(text=section.name, icon=section.icon)
         else:
@@ -33,26 +51,44 @@ def draw_section(context, layout, obj, settings, rig_settings, custom_props, sec
         if not section.collapsed:
             if section.description != "":
                 box2 = box.box()
-                label_multiline(context=context, text=section.description, parent=box2,
-                                 icon=section.description_icon)
+                label_multiline(
+                    context=context,
+                    text=section.description,
+                    parent=box2,
+                    icon=section.description_icon,
+                )
             for prop in custom_properties_section:
                 row = box.row()
                 if rig_settings.body_custom_properties_icons:
-                    row.label(text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT")
+                    row.label(
+                        text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT"
+                    )
                 else:
                     row.label(text=prop.name)
                 if not prop.is_animatable:
                     try:
                         row.prop(evaluate_rna(prop.rna), prop.path, text="")
-                    except:
-                        row.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="",
-                                 icon_only=True, emboss=False)
+                    except Exception:
+                        row.prop(
+                            settings,
+                            "custom_properties_error_nonanimatable",
+                            icon="ERROR",
+                            text="",
+                            icon_only=True,
+                            emboss=False,
+                        )
                 else:
                     if prop.prop_name in obj.keys():
                         row.prop(obj, f'["{prop.prop_name}"]', text="")
                     else:
-                        row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
-                                 emboss=False)
+                        row.prop(
+                            settings,
+                            "custom_properties_error",
+                            icon="ERROR",
+                            text="",
+                            icon_only=True,
+                            emboss=False,
+                        )
 
         return box, not section.collapsed
 
@@ -77,20 +113,37 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             custom_props = arm.MustardUI_CustomProperties
 
             # Check if there is any property to show
-            prop_to_show = (rig_settings.body_enable_subdiv
-                            or rig_settings.body_enable_smoothcorr
-                            or rig_settings.body_enable_solidify
-                            or rig_settings.body_enable_norm_autosmooth
-                            or rig_settings.body_enable_material_normal_nodes
-                            or rig_settings.body_enable_preserve_volume
-                            or rig_settings.body_enable_geometry_nodes)
+            prop_to_show = (
+                rig_settings.body_enable_subdiv
+                or rig_settings.body_enable_smoothcorr
+                or rig_settings.body_enable_solidify
+                or rig_settings.body_enable_norm_autosmooth
+                or rig_settings.body_enable_material_normal_nodes
+                or rig_settings.body_enable_preserve_volume
+                or rig_settings.body_enable_geometry_nodes
+            )
 
-            # Check if geometry nodes support is active and there are geometry nodes on the body object
+            # Check if geometry nodes support is active and there are geometry nodes
+            # on the body object
             geometry_nodes_support = False
-            if rig_settings.model_body is not None and rig_settings.body_enable_geometry_nodes_support:
-                geometry_nodes_support = len([x for x in rig_settings.model_body.modifiers if x.type == "NODES"]) > 0
+            if (
+                rig_settings.model_body is not None
+                and rig_settings.body_enable_geometry_nodes_support
+            ):
+                geometry_nodes_support = (
+                    len(
+                        [
+                            x
+                            for x in rig_settings.model_body.modifiers
+                            if x.type == "NODES"
+                        ]
+                    )
+                    > 0
+                )
 
-            return res and (prop_to_show or len(custom_props) > 0 or geometry_nodes_support)
+            return res and (
+                prop_to_show or len(custom_props) > 0 or geometry_nodes_support
+            )
 
         return False
 
@@ -104,21 +157,23 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        if (rig_settings.body_enable_smoothcorr
+        if (
+            rig_settings.body_enable_smoothcorr
             or rig_settings.body_enable_solidify
             or rig_settings.body_enable_material_normal_nodes
             or rig_settings.body_enable_preserve_volume
-            or rig_settings.body_enable_geometry_nodes):
-
+            or rig_settings.body_enable_geometry_nodes
+        ):
             box = layout.box()
             box.label(text="Global settings", icon="OUTLINER_OB_ARMATURE")
 
-            if (rig_settings.body_enable_preserve_volume
+            if (
+                rig_settings.body_enable_preserve_volume
                 or rig_settings.body_enable_geometry_nodes
                 or rig_settings.body_enable_solidify
                 or rig_settings.body_enable_smoothcorr
-                or rig_settings.body_enable_norm_autosmooth):
-
+                or rig_settings.body_enable_norm_autosmooth
+            ):
                 col = box.column(align=True)
 
                 if rig_settings.body_enable_preserve_volume:
@@ -141,7 +196,10 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
                 row = col.row(align=True)
                 row.scale_x = 0.94
-                if context.scene.render.engine == "CYCLES" and settings.material_normal_nodes:
+                if (
+                    context.scene.render.engine == "CYCLES"
+                    and settings.material_normal_nodes
+                ):
                     row.alert = True
                 row.prop(settings, "material_normal_nodes", text="")
                 row.label(text="Eevee Optimized Normals")
@@ -164,41 +222,61 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             row.prop(rig_settings, "body_subdiv_rend_lv")
 
         if len(custom_props) > 0:
-
             unsorted_props = [x for x in custom_props if x.section == ""]
             if len(unsorted_props) > 0:
                 box = layout.box()
                 box.label(text="Un-sorted properties", icon="LIBRARY_DATA_BROKEN")
-                for prop in [x for x in custom_props if
-                             x.section == "" and not x.hidden and (not x.advanced if not settings.advanced else True)]:
+                for prop in [
+                    x
+                    for x in custom_props
+                    if x.section == ""
+                    and not x.hidden
+                    and (not x.advanced if not settings.advanced else True)
+                ]:
                     row = box.row()
                     if rig_settings.body_custom_properties_icons:
-                        row.label(text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT")
+                        row.label(
+                            text=prop.name,
+                            icon=prop.icon if prop.icon != "NONE" else "DOT",
+                        )
                     else:
                         row.label(text=prop.name)
                     if not prop.is_animatable:
                         try:
                             row.prop(evaluate_rna(prop.rna), prop.path, text="")
-                        except:
-                            row.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="",
-                                     icon_only=True, emboss=False)
+                        except Exception:
+                            row.prop(
+                                settings,
+                                "custom_properties_error_nonanimatable",
+                                icon="ERROR",
+                                text="",
+                                icon_only=True,
+                                emboss=False,
+                            )
                     else:
                         if prop.prop_name in obj.keys():
                             row.prop(obj, f'["{prop.prop_name}"]', text="")
                         else:
-                            row.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True,
-                                     emboss=False)
+                            row.prop(
+                                settings,
+                                "custom_properties_error",
+                                icon="ERROR",
+                                text="",
+                                icon_only=True,
+                                emboss=False,
+                            )
 
             sec_num = len(rig_settings.body_custom_properties_sections)
             id = 0
             for section in rig_settings.body_custom_properties_sections:
-
                 # Subsections are drawn inside standard sections
                 if section.is_subsection:
                     continue
 
                 # Draw main section
-                sublayout, subcollapse = draw_section(context, layout, obj, settings, rig_settings, custom_props, section)
+                sublayout, subcollapse = draw_section(
+                    context, layout, obj, settings, rig_settings, custom_props, section
+                )
 
                 # Draw subsections if available
                 id = id + 1
@@ -207,7 +285,16 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
                 subsec = rig_settings.body_custom_properties_sections[id]
                 while subsec.is_subsection:
-                    draw_section(context, sublayout, obj, settings, rig_settings, custom_props, subsec, subcollapse)
+                    draw_section(
+                        context,
+                        sublayout,
+                        obj,
+                        settings,
+                        rig_settings,
+                        custom_props,
+                        subsec,
+                        subcollapse,
+                    )
                     id = id + 1
                     if id >= sec_num:
                         break
@@ -225,17 +312,24 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 if len(gndi.keys()):
                     box = layout.box()
                     row = box.row()
-                    row.prop(m.node_group, "MustardUI_collapse",
-                             icon="TRIA_DOWN" if not m.node_group.MustardUI_collapse else "TRIA_RIGHT",
-                             icon_only=True,
-                             emboss=False)
+                    row.prop(
+                        m.node_group,
+                        "MustardUI_collapse",
+                        icon="TRIA_DOWN"
+                        if not m.node_group.MustardUI_collapse
+                        else "TRIA_RIGHT",
+                        icon_only=True,
+                        emboss=False,
+                    )
                     row.label(text=m.node_group.name)
                     row.label(icon="GEOMETRY_NODES")
                     row2 = row.row(align=True)
                     row2.prop(m, "show_viewport", text="")
                     row2.prop(m, "show_render", text="")
                     if not m.node_group.MustardUI_collapse:
-                        for i in [x for x in gndi.items() if hasattr(gndi[x[0]], 'identifier')]:
+                        for i in [
+                            x for x in gndi.items() if hasattr(gndi[x[0]], "identifier")
+                        ]:
                             if i[1].identifier in m.keys():
                                 box.prop(m, f'["{i[1].identifier}"]', text=i[0])
 
