@@ -1,10 +1,13 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+from bpy.props import IntProperty
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
-    """Enable/disable all modifiers/model_selection that might impact on viewport performance"""
+    """Enable/disable all modifiers/model_selection that might impact on
+    viewport performance"""
+
     bl_idname = "mustardui.switchglobal_outfits"
     bl_label = "Outfits Property Switch"
 
@@ -22,7 +25,7 @@ class MustardUI_GlobalOutfitPropSwitch(bpy.types.Operator):
         rig_settings.outfits_global_triangulate = self.enable
         rig_settings.outfits_global_normalautosmooth = self.enable
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

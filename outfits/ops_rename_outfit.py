@@ -1,7 +1,7 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
-from .. import __package__ as base_package
+from bpy.props import BoolProperty, StringProperty
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 def remove_common_prefix_suffix(strings):
@@ -27,25 +27,23 @@ def remove_common_prefix_suffix(strings):
     # -------- Remove prefix + suffix --------
     cleaned = []
     for s in strings:
-        core = s[len(prefix):]
+        core = s[len(prefix) :]
         if suffix:
-            core = core[:-len(suffix)]
+            core = core[: -len(suffix)]
         cleaned.append(core)
 
     return cleaned
 
 
 class MustardUI_RenameOutfit_Class(bpy.types.PropertyGroup):
-    name: bpy.props.StringProperty(name="Name",
-                                   default="")
-    object: bpy.props.PointerProperty(name="Object",
-                                      type=bpy.types.Object)
+    name: bpy.props.StringProperty(name="Name", default="")
+    object: bpy.props.PointerProperty(name="Object", type=bpy.types.Object)
 
 
 class MustardUI_RenameOutfit_Update(bpy.types.Operator):
     bl_idname = "mustardui.rename_outfit_update"
     bl_label = "Update Names"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     name: StringProperty()
     smart_rename: BoolProperty()
@@ -72,29 +70,32 @@ class MustardUI_RenameOutfit_Update(bpy.types.Operator):
         for i, pp in enumerate(rename_outfits_class):
             pp.name = strings[i]
 
-        if rig_settings.model_MustardUI_naming_convention and rig_settings.model_name != "":
+        if (
+            rig_settings.model_MustardUI_naming_convention
+            and rig_settings.model_name != ""
+        ):
             for pp in rename_outfits_class:
-                pp.name = rig_settings.model_name + ' ' + name + ' - ' + pp.name
+                pp.name = rig_settings.model_name + " " + name + " - " + pp.name
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_RenameOutfit(bpy.types.Operator):
-    """Rename the outfit. This also changes the name of outfit pieces.\nThe renaming tool only works if MustardUI Naming Convention is active"""
+    """Rename the outfit. This also changes the name of outfit pieces.
+    The renaming tool only works if MustardUI Naming Convention is active"""
+
     bl_idname = "mustardui.rename_outfit"
     bl_label = "Rename Outfit"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
-    bl_space_type = 'OUTLINER'
-    bl_region_type = 'WINDOW'
+    bl_space_type = "OUTLINER"
+    bl_region_type = "WINDOW"
 
     # UI Settings
-    name: StringProperty(default="",
-                         name="Outfit Name",
-                         description="")
-    smart_rename: BoolProperty(default=True,
-                               name="Smart Rename",
-                               description="Attempt to rename the Objects")
+    name: StringProperty(default="", name="Outfit Name", description="")
+    smart_rename: BoolProperty(
+        default=True, name="Smart Rename", description="Attempt to rename the Objects"
+    )
     # Internal
     right_click_call: BoolProperty(default=True)
 
@@ -122,7 +123,7 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
             uilist = rig_settings.outfits_collections
             index = context.scene.mustardui_outfits_uilist_index
             if len(uilist) <= index:
-                return {'FINISHED'}
+                return {"FINISHED"}
             outfit_coll = uilist[index].collection
 
         # Rename Outfit pieces
@@ -130,13 +131,15 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
             pp.object.name = pp.name
 
         # Rename Collection
-        outfit_coll.name = rig_settings.model_name + ' ' + self.name
+        outfit_coll.name = rig_settings.model_name + " " + self.name
 
         rename_outfits_class.clear()
 
-        self.report({'INFO'}, f'MustardUI - Collection Objects renamed with MustardUI convention')
+        self.report(
+            {"INFO"}, "MustardUI - Collection Objects renamed with MustardUI convention"
+        )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
 
@@ -153,11 +156,11 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
             uilist = rig_settings.outfits_collections
             index = context.scene.mustardui_outfits_uilist_index
             if len(uilist) <= index:
-                return {'FINISHED'}
+                return {"FINISHED"}
             outfit_coll = uilist[index].collection
 
         if outfit_coll is None:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         for obj in outfit_coll.all_objects:
             add_item = rename_outfits_class.add()
@@ -178,16 +181,18 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
         box = layout.box()
         row = box.row(align=True)
         row.label(text="Outfit Name", icon="MOD_CLOTH")
-        row.prop(self, 'name', text="")
+        row.prop(self, "name", text="")
 
         row.separator()
         row = layout.row(align=True)
-        op = row.operator('mustardui.rename_outfit_update',
-                          text="Update Objects with Outfit Name",
-                          icon="LOOP_FORWARDS")
+        op = row.operator(
+            "mustardui.rename_outfit_update",
+            text="Update Objects with Outfit Name",
+            icon="LOOP_FORWARDS",
+        )
         op.name = self.name
         op.smart_rename = self.smart_rename
-        row.prop(self, 'smart_rename', text="", icon="SHADERFX")
+        row.prop(self, "smart_rename", text="", icon="SHADERFX")
 
         layout.separator()
 
@@ -200,7 +205,7 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
         for pp in rename_outfits_class:
             row = box.row()
             row.label(text=pp.object.name, icon="OUTLINER_OB_" + pp.object.type)
-            row.prop(pp, 'name', text='')
+            row.prop(pp, "name", text="")
 
 
 def register():
