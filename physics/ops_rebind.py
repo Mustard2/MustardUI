@@ -1,17 +1,22 @@
 import bpy
-from ..model_selection.active_object import *
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
-    """Rebind cages to the model meshes (Body, Outfits, Hair).\nDepending on the number of Physics Items, Blender might freeze for a while"""
+    """Rebind cages to the model meshes (Body, Outfits, Hair).
+    Depending on the number of Physics Items, Blender might freeze for a while"""
+
     bl_idname = "mustardui.physics_rebind"
     bl_label = "Rebind Physics"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
-    force: bpy.props.BoolProperty(default=False,
-                                  name="Force re-binding",
-                                  description="Force re-binding of cages that are not bound")
+    force: bpy.props.BoolProperty(
+        default=False,
+        name="Force re-binding",
+        description="Force re-binding of cages that are not bound",
+    )
 
     def execute(self, context):
 
@@ -20,32 +25,40 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        warnings = 0
-
         if len(physics_settings.items) < 1:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         # Gather items to re-bind cages on
         objects = [rig_settings.model_body]
-        outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
+        outfit_colls = [
+            x.collection for x in rig_settings.outfits_collections if x.collection
+        ]
         for c in outfit_colls:
             for obj in [x for x in c.objects if x.type == "MESH"]:
                 objects.append(obj)
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            for obj in [
+                x for x in rig_settings.extras_collection.objects if x.type == "MESH"
+            ]:
                 objects.append(obj)
         if rig_settings.hair_collection is not None:
-            for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
+            for obj in [
+                x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+            ]:
                 objects.append(obj)
 
         # Gather cages to check as targets of modifiers
         cages = []
-        for item in [x for x in physics_settings.items if x.type == "CAGE" and x.object is not None]:
+        for item in [
+            x
+            for x in physics_settings.items
+            if x.type == "CAGE" and x.object is not None
+        ]:
             cages.append(item.object)
 
         for ob in objects:
             for m in ob.modifiers:
-                if m.type == 'SURFACE_DEFORM':
+                if m.type == "SURFACE_DEFORM":
                     target = m.target
                     if target is None:
                         continue
@@ -56,24 +69,34 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
                             with bpy.context.temp_override(object=ob):
                                 try:
                                     bpy.ops.object.surfacedeform_bind(modifier=m.name)
-                                except:
+                                except Exception:
                                     if addon_prefs.debug:
-                                        print(ob.name + " modifier: " + m.name + " could not be binded")
+                                        print(
+                                            ob.name
+                                            + " modifier: "
+                                            + m.name
+                                            + " could not be bound"
+                                        )
                             with bpy.context.temp_override(object=ob):
                                 try:
                                     bpy.ops.object.surfacedeform_bind(modifier=m.name)
-                                except:
+                                except Exception:
                                     pass
                         elif not m.is_bound and self.force:
                             with bpy.context.temp_override(object=ob):
                                 try:
                                     bpy.ops.object.surfacedeform_bind(modifier=m.name)
-                                except:
+                                except Exception:
                                     if addon_prefs.debug:
-                                        print(ob.name + " modifier: " + m.name + " could not be binded")
+                                        print(
+                                            ob.name
+                                            + " modifier: "
+                                            + m.name
+                                            + " could not be bound"
+                                        )
                         target.hide_viewport = hv
 
-                elif m.type == 'MESH_DEFORM':
+                elif m.type == "MESH_DEFORM":
                     target = m.object
                     if target is None:
                         continue
@@ -84,24 +107,34 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
                             with bpy.context.temp_override(object=ob):
                                 try:
                                     bpy.ops.object.meshdeform_bind(modifier=m.name)
-                                except:
+                                except Exception:
                                     if addon_prefs.debug:
-                                        print(ob.name + " modifier: " + m.name + " could not be binded")
+                                        print(
+                                            ob.name
+                                            + " modifier: "
+                                            + m.name
+                                            + " could not be bound"
+                                        )
                             with bpy.context.temp_override(object=ob):
                                 try:
                                     bpy.ops.object.meshdeform_bind(modifier=m.name)
-                                except:
+                                except Exception:
                                     pass
                         elif not m.is_bound and self.force:
                             with bpy.context.temp_override(object=ob):
                                 try:
                                     bpy.ops.object.meshdeform_bind(modifier=m.name)
-                                except:
+                                except Exception:
                                     if addon_prefs.debug:
-                                        print(ob.name + " modifier: " + m.name + " could not be binded")
+                                        print(
+                                            ob.name
+                                            + " modifier: "
+                                            + m.name
+                                            + " could not be bound"
+                                        )
                         target.hide_viewport = hv
 
-                elif m.type == 'CORRECTIVE_SMOOTH':
+                elif m.type == "CORRECTIVE_SMOOTH":
                     if m.rest_source != "BIND":
                         continue
                     hv = m.show_viewport
@@ -110,26 +143,36 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
                         with bpy.context.temp_override(object=ob):
                             try:
                                 bpy.ops.object.correctivesmooth_bind(modifier=m.name)
-                            except:
+                            except Exception:
                                 if addon_prefs.debug:
-                                    print(ob.name + " modifier: " + m.name + " could not be binded")
+                                    print(
+                                        ob.name
+                                        + " modifier: "
+                                        + m.name
+                                        + " could not be bound"
+                                    )
                         with bpy.context.temp_override(object=ob):
                             try:
                                 bpy.ops.object.correctivesmooth_bind(modifier=m.name)
-                            except:
+                            except Exception:
                                 pass
                     elif not m.is_bound and self.force:
                         with bpy.context.temp_override(object=ob):
                             try:
                                 bpy.ops.object.correctivesmooth_bind(modifier=m.name)
-                            except:
+                            except Exception:
                                 if addon_prefs.debug:
-                                    print(ob.name + " modifier: " + m.name + " could not be binded")
+                                    print(
+                                        ob.name
+                                        + " modifier: "
+                                        + m.name
+                                        + " could not be bound"
+                                    )
                     m.show_viewport = hv
 
-        self.report({'INFO'}, 'MustardUI - Cages successfully re-binded.')
+        self.report({"INFO"}, "MustardUI - Cages successfully re-bound.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
