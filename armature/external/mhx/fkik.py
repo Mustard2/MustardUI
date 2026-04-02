@@ -5,8 +5,8 @@
 import bpy
 from bpy.props import *
 from mathutils import *
-from .diffeomorphic_utils import *
-from .diffeomorphic_layers import *
+from .utils import *
+from .layers import *
 
 
 #------------------------------------------------------------------

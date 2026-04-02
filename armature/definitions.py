@@ -124,10 +124,11 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                                                "to see them in the UI as two near buttons")
 
     # IK/FK panel
-    ik_fk_panel: bpy.props.BoolProperty(default=False,
-                                        name="IK/FK Panel",
-                                        description="An an IK/FK panel depending on the Armature type of the rig.\n"
-                                                    "Available features depend on the type of the rig")
+    rig_specific_panel: bpy.props.BoolProperty(default=False,
+                                               name="Rig External Panel",
+                                               description="Add a panel with all the properties of the specific "
+                                                           "Armature type of the rig.\nAvailable features depend on the"
+                                                           " type of the rig.\nSupported rigs: MHX")
 
 
 def register():

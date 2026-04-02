@@ -1,9 +1,9 @@
-from . import diffeomorphic
+from . import mhx
 
 
 def register():
-    diffeomorphic.register()
+    mhx.register()
 
 
 def unregister():
-    diffeomorphic.unregister()
+    mhx.unregister()
