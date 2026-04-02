@@ -1,7 +1,4 @@
-from . import addon_prefs
-from . import addon
-from . import rig
-from . import geometry_nodes
+from . import addon, addon_prefs, geometry_nodes, rig
 
 
 def register():
