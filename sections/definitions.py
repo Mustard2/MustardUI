@@ -1,8 +1,8 @@
 import bpy
-from bpy.props import *
+from bpy.props import BoolProperty, EnumProperty, StringProperty
 
-from ..model_selection.active_object import mustardui_active_object
 from ..misc.icons_list import mustardui_icon_list
+from ..model_selection.active_object import mustardui_active_object
 
 
 # Section for body properties
@@ -24,36 +24,40 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
 
         self.old_name = self.name
 
-    name: StringProperty(name="Section name",
-                         update=name_update)
+    name: StringProperty(name="Section name", update=name_update)
 
     # Section icon
-    icon: EnumProperty(name='Section Icon',
-                       items=mustardui_icon_list)
+    icon: EnumProperty(name="Section Icon", items=mustardui_icon_list)
 
     # Advanced settings
-    advanced: BoolProperty(default=False,
-                           name="Advanced",
-                           description="The section will be shown only when Advances Settings is enabled")
+    advanced: BoolProperty(
+        default=False,
+        name="Advanced",
+        description="The section will be shown only when Advances Settings is enabled",
+    )
 
     # Collapsable
-    collapsable: BoolProperty(default=True,
-                              name="Collapsable",
-                              description="Add a collapse icon to the section.\nNote that this might give bad UI "
-                                          "results if combined with an icon")
-    collapsed: BoolProperty(name="",
-                            default=False)
+    collapsable: BoolProperty(
+        default=True,
+        name="Collapsable",
+        description="Add a collapse icon to the section.\nNote that this might give "
+        "bad UI results if combined with an icon",
+    )
+    collapsed: BoolProperty(name="", default=False)
 
     # Description
     description: StringProperty(name="Description")
 
-    description_icon: EnumProperty(name='Description Icon',
-                                   items=mustardui_icon_list)
+    description_icon: EnumProperty(name="Description Icon", items=mustardui_icon_list)
 
     # Subsection
-    is_subsection: BoolProperty(name="Sub-section",
-                                description="Consider this Section as a sub-section of the first section above not flagged as sub-section.\nSubsections are shown in the parent section",
-                                default=False)
+    is_subsection: BoolProperty(
+        name="Sub-section",
+        description="Consider this Section as a sub-section of the first section "
+        "above not flagged as sub-section.\nSubsections are shown in "
+        "the parent section",
+        default=False,
+    )
 
 
 def register():
