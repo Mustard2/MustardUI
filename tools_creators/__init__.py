@@ -1,19 +1,24 @@
 import bpy
-from . import ops_transformations
-from . import ops_hair_cage_add_cloth
-from . import ops_hair_cage
-from . import ops_collision_cage
-from . import ops_spline_ik
-from . import ops_jiggle
-from . import ops_bone_physics
-from . import ops_face_controller
-from . import ops_rename
-from . import ops_link_shape_keys
-from . import ops_transfer_vertex_groups
+
+from . import (
+    ops_bone_physics,
+    ops_collision_cage,
+    ops_face_controller,
+    ops_hair_cage,
+    ops_hair_cage_add_cloth,
+    ops_jiggle,
+    ops_link_shape_keys,
+    ops_rename,
+    ops_spline_ik,
+    ops_transfer_vertex_groups,
+    ops_transformations,
+)
 
 
 def register():
-    bpy.types.Object.MustardUI_tools_creators_is_created = bpy.props.BoolProperty(default=False)
+    bpy.types.Object.MustardUI_tools_creators_is_created = bpy.props.BoolProperty(
+        default=False
+    )
 
     ops_transformations.register()
     ops_hair_cage_add_cloth.register()
