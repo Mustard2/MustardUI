@@ -1,11 +1,14 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+
 from ..misc.set_bool import set_bool
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Morphs_Optimize(bpy.types.Operator):
-    """Enable/disable Morph Optimization.\nWhen enabled, the shape keys and drivers of the Morphs with null values are disabled to increase performance. When Morphs are frozen, they can not be changed."""
+    """Enable/disable Morph Optimization.\nWhen enabled, the shape keys and drivers of
+    the Morphs with null values are disabled to increase performance. When Morphs are
+    frozen, they can not be changed."""
+
     bl_idname = "mustardui.morphs_optimize"
     bl_label = "Morph Optimize"
 
@@ -13,7 +16,9 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
+        return (
+            res and morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
+        )
 
     def execute(self, context):
         poll, arm = mustardui_active_object(context, config=0)
@@ -27,7 +32,12 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
         # Body: Shape Keys and their drivers
         if obj is not None and obj.data and obj.data.shape_keys:
             has_key_blocks = True if obj.data.shape_keys.key_blocks else False
-            has_animation_data = True if obj.data.shape_keys.animation_data and obj.data.shape_keys.animation_data.drivers else False
+            has_animation_data = (
+                True
+                if obj.data.shape_keys.animation_data
+                and obj.data.shape_keys.animation_data.drivers
+                else False
+            )
 
             key_block = None
             if has_key_blocks:
@@ -39,9 +49,12 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
                     section.collapse = True
 
                 for morph in section.morphs:
-
                     # Skip Diffeomorphic emotion units and correctives
-                    if "facs" in morph.path or "jcm" in morph.path or "body_cbs" in morph.path:
+                    if (
+                        "facs" in morph.path
+                        or "jcm" in morph.path
+                        or "body_cbs" in morph.path
+                    ):
                         continue
 
                     # Shape Keys
@@ -54,19 +67,25 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
                     # Drivers
                     if has_animation_data:
                         for fcurve in obj.data.shape_keys.animation_data.drivers:
-                            if not fcurve.data_path == f'key_blocks["{morph.path}"].value':
+                            if (
+                                not fcurve.data_path
+                                == f'key_blocks["{morph.path}"].value'
+                            ):
                                 continue
-                            if (has_key_blocks and abs(key_block[morph.path].value) < 0.001) or (not has_key_blocks):
+                            if (
+                                has_key_blocks
+                                and abs(key_block[morph.path].value) < 0.001
+                            ) or (not has_key_blocks):
                                 set_bool(fcurve, "mute", enable)
 
         morphs_settings.morphs_optimized = enable
 
         if enable:
-            self.report({'INFO'}, 'MustardUI - Morphs optimized.')
+            self.report({"INFO"}, "MustardUI - Morphs optimized.")
         else:
-            self.report({'INFO'}, 'MustardUI - Morphs optimization disabled.')
+            self.report({"INFO"}, "MustardUI - Morphs optimization disabled.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

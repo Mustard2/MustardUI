@@ -1,16 +1,18 @@
-from . import settings_morph
-from . import settings_section
-from . import settings_presets
-from . import settings
-from . import ops_checkmorphs
-from . import ops_defvalue
-from . import ops_drivers
-from . import ops_optimize
-from . import ui_list_sections
-from . import ui_list_morphs
-from . import ui_list_morphs_menu
-from . import ui_presets
-from . import ops_presets_io
+from . import (
+    ops_checkmorphs,
+    ops_defvalue,
+    ops_drivers,
+    ops_optimize,
+    ops_presets_io,
+    settings,
+    settings_morph,
+    settings_presets,
+    settings_section,
+    ui_list_morphs,
+    ui_list_morphs_menu,
+    ui_list_sections,
+    ui_presets,
+)
 
 
 def register():
