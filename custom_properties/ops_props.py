@@ -1,25 +1,17 @@
 import bpy
-from bpy.props import BoolProperty, StringProperty
+from bpy.props import *
 from rna_prop_ui import rna_idprop_ui_create
-
+from ..model_selection.active_object import *
+from .misc import *
+from ..misc.prop_utils import *
 from .. import __package__ as base_package
-from ..misc.prop_utils import evaluate_path
-from ..model_selection.active_object import mustardui_active_object
-from .misc import (
-    mustardui_add_driver,
-    mustardui_check_cp,
-    mustardui_choose_cp,
-    mustardui_clean_prop,
-    mustardui_update_index_cp,
-)
 
 
 class MustardUI_Property_MenuAdd(bpy.types.Operator):
     """Add the property to the menu"""
-
     bl_idname = "mustardui.property_menuadd"
     bl_label = "Add to MustardUI (Un-sorted)"
-    bl_options = {"UNDO"}
+    bl_options = {'UNDO'}
 
     section: StringProperty(default="")
     outfit_is_nude: BoolProperty(default=False)
@@ -39,12 +31,8 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
 
         if self.outfit_is_nude and self.outfit != "":
-            self.report(
-                {"ERROR"},
-                "MustardUI - An error occurred while adding the property "
-                "(cannot be Nude and Outfit at the same time).",
-            )
-            return {"FINISHED"}
+            self.report({'ERROR'}, 'MustardUI - An error occurred while adding the property (cannot be Nude and Outfit at the same time).')
+            return {'FINISHED'}
 
         if self.outfit != "" or self.outfit_is_nude:
             custom_props = obj.MustardUI_CustomPropertiesOutfit
@@ -53,12 +41,9 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         else:
             custom_props = obj.MustardUI_CustomProperties
 
-        if not hasattr(context, "button_prop"):
-            self.report(
-                {"ERROR"},
-                "MustardUI - Can not create custom property from this property.",
-            )
-            return {"FINISHED"}
+        if not hasattr(context, 'button_prop'):
+            self.report({'ERROR'}, 'MustardUI - Can not create custom property from this property.')
+            return {'FINISHED'}
 
         prop = context.button_prop
 
@@ -67,42 +52,42 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         # Copy the path of the selected property
         try:
             bpy.ops.ui.copy_data_path_button(full_path=True)
-        except Exception:
-            self.report({"ERROR"}, "MustardUI - Invalid selection.")
-            return {"FINISHED"}
+        except:
+            self.report({'ERROR'}, 'MustardUI - Invalid selection.')
+            return {'FINISHED'}
 
         # Adjust the property path to be exported
         clipboard = context.window_manager.clipboard
-        blender_custom_property = "][" in clipboard
+        blender_custom_property = '][' in clipboard
         if not blender_custom_property:
-            rna, path = clipboard.rsplit(".", 1)
+            rna, path = clipboard.rsplit('.', 1)
         else:
             path = clipboard
             rna = ""
 
         if blender_custom_property:
-            path, rem = path.rsplit("[", 1)
+            path, rem = path.rsplit('[', 1)
             rna = path
-            path = "[" + rem
-        elif "[" in path:
-            path, rem = path.rsplit("[", 1)
+            path = '[' + rem
+        elif '[' in path:
+            path, rem = path.rsplit('[', 1)
 
         # Check if the property was already added
         if not mustardui_check_cp(obj, rna, path):
-            self.report({"ERROR"}, "MustardUI - This property was already added.")
-            return {"FINISHED"}
+            self.report({'ERROR'}, 'MustardUI - This property was already added.')
+            return {'FINISHED'}
 
         # Try to find a better name than default_value for material nodes
         if "node_tree.nodes" in rna:
             rna_node = rna.rsplit(".", 1)
 
-            # Check for .type existence
+            # Check for .type existance
             try:
                 if evaluate_path(rna_node[0], "type") in ["VALUE", "RGB"]:
                     prop_name_ui = evaluate_path(rna_node[0], "name")
                 else:
                     prop_name_ui = evaluate_path(rna, "name")
-            except Exception:
+            except:
                 prop_name_ui = prop.name
 
         # Try to find a better name than default_value for shape keys
@@ -120,94 +105,63 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             prop_name_ui = prop_name
 
         if prop.is_animatable or blender_custom_property:
+
             add_string_num = 1
             while prop_name in obj.keys():
                 add_string_num += 1
-                prop_name = prop_name_ui + " " + str(add_string_num)
+                prop_name = prop_name_ui + ' ' + str(add_string_num)
 
             if prop.type == "ENUM":
                 pass
 
             # Change custom properties settings
             elif prop.type == "BOOLEAN" and prop.array_length < 1:
-                rna_idprop_ui_create(
-                    obj,
-                    prop_name,
-                    default=evaluate_path(rna, path),
-                    description=prop.description,
-                    overridable=True,
-                )
+                rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
+                                     description=prop.description,
+                                     overridable=True)
 
-            elif (
-                hasattr(prop, "hard_min")
-                and hasattr(prop, "hard_max")
-                and hasattr(prop, "default")
-                and hasattr(prop, "description")
-                and hasattr(prop, "subtype")
-            ):
-                description = (
-                    prop.description
-                    if ("node_tree.nodes" not in rna and "shape_keys" not in rna)
-                    else ""
-                )
+            elif (hasattr(prop, 'hard_min') and hasattr(prop, 'hard_max') and hasattr(prop, 'default')
+                  and hasattr(prop, 'description') and hasattr(prop, 'subtype')):
+                description = prop.description if (not "node_tree.nodes" in rna and not "shape_keys" in rna) else ""
                 try:
-                    rna_idprop_ui_create(
-                        obj,
-                        prop_name,
-                        default=evaluate_path(rna, path),
-                        min=prop.hard_min if prop.subtype != "COLOR" else 0.0,
-                        max=prop.hard_max if prop.subtype != "COLOR" else 1.0,
-                        description=description,
-                        overridable=True,
-                        subtype=prop.subtype if prop.subtype != "FACTOR" else None,
-                    )
-                except Exception:
-                    def_array = (
-                        (0.0, 0.0, 0.0, 0.0)
-                        if prop.array_length == 4
-                        else (0.0, 0.0, 0.0)
-                        if prop.array_length == 3
-                        else (0.0, 0.0)
-                    )
-                    rna_idprop_ui_create(
-                        obj,
-                        prop_name,
-                        default=def_array,
-                        min=prop.hard_min if prop.subtype != "COLOR" else 0.0,
-                        max=prop.hard_max if prop.subtype != "COLOR" else 1.0,
-                        description=description,
-                        overridable=True,
-                        subtype=prop.subtype if prop.subtype != "FACTOR" else None,
-                    )
-            elif hasattr(prop, "description"):
-                rna_idprop_ui_create(
-                    obj,
-                    prop_name,
-                    default=evaluate_path(rna, path),
-                    description=prop.description,
-                )
+                    rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
+                                         min=prop.hard_min if prop.subtype != "COLOR" else 0.,
+                                         max=prop.hard_max if prop.subtype != "COLOR" else 1.,
+                                         description=description,
+                                         overridable=True,
+                                         subtype=prop.subtype if prop.subtype != "FACTOR" else None)
+                except:
+                    def_array = (0., 0., 0., 0.) if prop.array_length == 4 else (0., 0., 0.) if prop.array_length == 3 else (0., 0.)
+                    rna_idprop_ui_create(obj, prop_name, default=def_array,
+                                         min=prop.hard_min if prop.subtype != "COLOR" else 0.,
+                                         max=prop.hard_max if prop.subtype != "COLOR" else 1.,
+                                         description=description,
+                                         overridable=True,
+                                         subtype=prop.subtype if prop.subtype != "FACTOR" else None)
+            elif hasattr(prop, 'description'):
+                rna_idprop_ui_create(obj, prop_name, default=evaluate_path(rna, path),
+                                     description=prop.description)
 
         # Add driver
         force_non_animatable = False
         try:
-            if (
-                prop.is_animatable or blender_custom_property
-            ) and not prop.type == "ENUM":
+            if (prop.is_animatable or blender_custom_property) and not prop.type == "ENUM":
                 mustardui_add_driver(obj, rna, path, prop, prop_name)
             else:
                 force_non_animatable = True
-        except Exception:
+        except:
             force_non_animatable = True
 
         # Add property to the collection of properties
-        if (rna, path) not in [(x.rna, x.path) for x in custom_props]:
+        if not (rna, path) in [(x.rna, x.path) for x in custom_props]:
+
             cp = custom_props.add()
             cp.rna = rna
             cp.path = path
             cp.name = prop_name_ui
             cp.prop_name = prop_name
             cp.type = prop.type
-            if hasattr(prop, "array_length"):
+            if hasattr(prop, 'array_length'):
                 cp.array_length = prop.array_length
             cp.subtype = prop.subtype
 
@@ -217,9 +171,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             elif "key_blocks" in rna:
                 cp.icon = "SHAPEKEY_DATA"
 
-            cp.is_animatable = (
-                prop.is_animatable if not force_non_animatable else False
-            ) or blender_custom_property
+            cp.is_animatable = (prop.is_animatable if not force_non_animatable else False) or blender_custom_property
 
             cp.section = self.section
 
@@ -240,56 +192,55 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 cp.hair = context.scene.objects[self.hair]
 
             if cp.is_animatable:
+
                 ui_data_dict = obj.id_properties_ui(prop_name).as_dict()
 
-                if hasattr(prop, "description"):
-                    cp.description = ui_data_dict["description"]
-                if hasattr(prop, "default"):
+                if hasattr(prop, 'description'):
+                    cp.description = ui_data_dict['description']
+                if hasattr(prop, 'default'):
                     if prop.array_length == 0:
                         if prop.type == "FLOAT":
                             cp.default_float = prop.default
                         elif prop.type == "INT" or prop.type == "BOOLEAN":
                             cp.default_int = prop.default
                     else:
-                        cp.default_array = str(ui_data_dict["default"])
+                        cp.default_array = str(ui_data_dict['default'])
 
-                if hasattr(prop, "hard_min") and prop.type != "BOOLEAN":
+                if hasattr(prop, 'hard_min') and prop.type != "BOOLEAN":
                     if prop.type == "FLOAT":
                         cp.min_float = prop.hard_min
                     elif prop.type == "INT":
                         cp.min_int = prop.hard_min
-                if hasattr(prop, "hard_max") and prop.type != "BOOLEAN":
+                if hasattr(prop, 'hard_max') and prop.type != "BOOLEAN":
                     if prop.type == "FLOAT":
                         cp.max_float = prop.hard_max
                     elif prop.type == "INT":
                         cp.max_int = prop.hard_max
         else:
-            self.report(
-                {"ERROR"},
-                "MustardUI - An error occurred while adding the property to the "
-                "custom properties list.",
-            )
-            return {"FINISHED"}
+            self.report({'ERROR'},
+                        'MustardUI - An error occurred while adding the property to the custom properties list.')
+            return {'FINISHED'}
 
         # Update the drivers
         obj.update_tag()
 
-        self.report({"INFO"}, "MustardUI - Property added.")
+        self.report({'INFO'}, 'MustardUI - Property added.')
 
-        return {"FINISHED"}
+        return {'FINISHED'}
 
 
 class MustardUI_Property_Remove(bpy.types.Operator):
     """Remove the selected property from the list"""
-
     bl_idname = "mustardui.property_remove"
     bl_label = "Remove Property"
-    bl_options = {"UNDO"}
+    bl_options = {'UNDO'}
 
-    type: bpy.props.EnumProperty(
-        default="BODY",
-        items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
-    )
+    type: bpy.props.EnumProperty(default="BODY",
+                                 items=(
+                                     ("BODY", "Body", ""),
+                                     ("OUTFIT", "Outfit", ""),
+                                     ("HAIR", "Hair", ""))
+                                 )
 
     @classmethod
     def poll(cls, context):
@@ -303,7 +254,7 @@ class MustardUI_Property_Remove(bpy.types.Operator):
         addon_prefs = context.preferences.addons[base_package].preferences
 
         if len(uilist) <= index:
-            return {"FINISHED"}
+            return {'FINISHED'}
 
         # Remove custom property and driver
         mustardui_clean_prop(obj, uilist, index, addon_prefs)
@@ -314,7 +265,7 @@ class MustardUI_Property_Remove(bpy.types.Operator):
 
         obj.update_tag()
 
-        return {"FINISHED"}
+        return {'FINISHED'}
 
 
 class MustardUI_Property_Switch(bpy.types.Operator):
@@ -323,16 +274,14 @@ class MustardUI_Property_Switch(bpy.types.Operator):
     bl_idname = "mustardui.property_switch"
     bl_label = "Move property"
 
-    type: bpy.props.EnumProperty(
-        default="BODY",
-        items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
-    )
-    direction: bpy.props.EnumProperty(
-        items=(
-            ("UP", "Up", ""),
-            ("DOWN", "Down", ""),
-        )
-    )
+    type: bpy.props.EnumProperty(default="BODY",
+                                 items=(
+                                     ("BODY", "Body", ""),
+                                     ("OUTFIT", "Outfit", ""),
+                                     ("HAIR", "Hair", ""))
+                                 )
+    direction: bpy.props.EnumProperty(items=(('UP', 'Up', ""),
+                                             ('DOWN', 'Down', ""),))
 
     @classmethod
     def poll(cls, context):
@@ -340,26 +289,27 @@ class MustardUI_Property_Switch(bpy.types.Operator):
         return obj is not None
 
     def move_index(self, uilist, index):
-        """Move index of an item render queue while clamping it."""
+        """ Move index of an item render queue while clamping it. """
 
         list_length = len(uilist) - 1  # (index starts at 0)
-        new_index = index + (-1 if self.direction == "UP" else 1)
+        new_index = index + (-1 if self.direction == 'UP' else 1)
 
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
+        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         if len(uilist) <= index:
-            return {"FINISHED"}
+            return {'FINISHED'}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
+        neighbour = index + (-1 if self.direction == 'UP' else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         mustardui_update_index_cp(self.type, context.scene, index)
 
-        return {"FINISHED"}
+        return {'FINISHED'}
 
 
 def register():

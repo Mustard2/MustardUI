@@ -1,31 +1,23 @@
 import bpy
-from bpy.props import IntProperty
-
+from bpy.props import *
+from ..model_selection.active_object import *
+from .misc import *
+from ..misc.prop_utils import *
 from .. import __package__ as base_package
-from ..misc.prop_utils import evaluate_path
-from ..model_selection.active_object import mustardui_active_object
 
 
 class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
     """UIList for custom properties"""
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
         res, obj = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Make sure your code supports all 3 layout types
-        if self.layout_type in {"DEFAULT", "COMPACT"}:
-            layout.prop(
-                item,
-                "name",
-                text="",
-                icon=item.icon if item.icon != "NONE" else "DOT",
-                emboss=False,
-                translate=False,
-            )
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
+                        translate=False)
             layout.scale_x = 1.0
 
             row = layout.row(align=True)
@@ -42,7 +34,7 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
                     else:
                         evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
-                except Exception:
+                except:
                     row.label(text="", icon="ERROR")
 
                 if item.hidden:
@@ -60,53 +52,37 @@ class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
             else:
                 row.label(text="", icon="BLANK1")
 
-        elif self.layout_type in {"GRID"}:
-            layout.alignment = "CENTER"
-            layout.prop(
-                item,
-                "name",
-                text="",
-                icon=item.icon if item.icon != "NONE" else "DOT",
-                emboss=False,
-                translate=False,
-            )
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
+                        translate=False)
 
 
 class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
     """UIList for outfits custom properties"""
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Make sure your code supports all 3 layout types
-        if self.layout_type in {"DEFAULT", "COMPACT"}:
-            layout.prop(
-                item,
-                "name",
-                text="",
-                icon=item.icon if item.icon != "NONE" else "DOT",
-                emboss=False,
-                translate=False,
-            )
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
+                        translate=False)
             layout.scale_x = 1.0
 
             row = layout.row(align=True)
 
             if item.outfit is not None and item.outfit_piece is None:
                 if rig_settings.model_MustardUI_naming_convention:
-                    row.label(text=item.outfit.name[len(rig_settings.model_name) + 1 :])
+                    row.label(text=item.outfit.name[len(rig_settings.model_name) + 1:])
                 else:
                     row.label(text=item.outfit.name)
             elif item.outfit is not None and item.outfit_piece is not None:
                 if rig_settings.model_MustardUI_naming_convention:
-                    row.label(
-                        text=item.outfit_piece.name[len(rig_settings.model_name) + 1 :]
-                    )
+                    row.label(text=item.outfit_piece.name[len(rig_settings.model_name) + 1:])
                 else:
                     row.label(text=item.outfit_piece.name)
 
@@ -122,7 +98,7 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
                     else:
                         evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
-                except Exception:
+                except:
                     row.label(text="", icon="ERROR")
 
                 if item.hidden:
@@ -135,54 +111,32 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
             else:
                 row.label(text="", icon="BLANK1")
 
-        elif self.layout_type in {"GRID"}:
-            layout.alignment = "CENTER"
-            layout.prop(
-                item,
-                "name",
-                text="",
-                icon=item.icon if item.icon != "NONE" else "DOT",
-                emboss=False,
-                translate=False,
-            )
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
+                        translate=False)
 
 
 class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
     """UIList for hair custom properties"""
 
-    def draw_item(
-        self,
-        context,
-        layout,
-        _data,
-        item,
-        _icon,
-        _active_data,
-        _active_propname,
-        _index,
-    ):
+    def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Make sure your code supports all 3 layout types
-        if self.layout_type in {"DEFAULT", "COMPACT"}:
-            layout.prop(
-                item,
-                "name",
-                text="",
-                icon=item.icon if item.icon != "NONE" else "DOT",
-                emboss=False,
-                translate=False,
-            )
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
+                        translate=False)
             layout.scale_x = 1.0
 
             row = layout.row(align=True)
 
             if item.hair is not None:
                 if rig_settings.model_MustardUI_naming_convention:
-                    row.label(text=item.hair.name[len(rig_settings.model_name) + 1 :])
+                    row.label(text=item.hair.name[len(rig_settings.model_name) + 1:])
                 else:
                     row.label(text=item.hair.name)
 
@@ -198,7 +152,7 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
                     else:
                         evaluate_path(item.rna, item.path)
                     row.label(text="", icon="BLANK1")
-                except Exception:
+                except:
                     row.label(text="", icon="ERROR")
 
                 if item.hidden:
@@ -211,22 +165,16 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
             else:
                 row.label(text="", icon="BLANK1")
 
-        elif self.layout_type in {"GRID"}:
-            layout.alignment = "CENTER"
-            layout.prop(
-                item,
-                "name",
-                text="",
-                icon=item.icon if item.icon != "NONE" else "DOT",
-                emboss=False,
-                translate=False,
-            )
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
+                        translate=False)
 
 
 menus = (
     MUSTARDUI_UL_Property_UIList,
     MUSTARDUI_UL_Property_UIListOutfits,
-    MUSTARDUI_UL_Property_UIListHair,
+    MUSTARDUI_UL_Property_UIListHair
 )
 
 
@@ -235,12 +183,8 @@ def register():
         bpy.utils.register_class(m)
 
     bpy.types.Scene.mustardui_property_uilist_index = IntProperty(name="", default=0)
-    bpy.types.Scene.mustardui_property_uilist_outfits_index = IntProperty(
-        name="", default=0
-    )
-    bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(
-        name="", default=0
-    )
+    bpy.types.Scene.mustardui_property_uilist_outfits_index = IntProperty(name="", default=0)
+    bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(name="", default=0)
 
 
 def unregister():
