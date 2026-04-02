@@ -157,8 +157,8 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         layout.enabled = physics_settings.enable_physics
 
         layout.template_list("MUSTARDUI_UL_PhysicsItems_UIList_Menu", "The_List", physics_settings,
-                          "items", obj,
-                          "mustardui_physics_items_uilist_index")
+                             "items", obj,
+                             "mustardui_physics_items_uilist_index")
 
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
@@ -172,7 +172,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
             row.prop(pi, 'cage_influence')
 
         layout.separator()
-        layout.operator("mustardui.physics_rebind", text="Re-bind Cages", icon="FILE_REFRESH")
+        layout.operator("mustardui.physics_rebind", text="Re-bind All Cages", icon="FILE_REFRESH")
 
 
 class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):

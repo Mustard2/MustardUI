@@ -196,6 +196,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
                 if settings.advanced:
                     row.separator()
+                    if physics_settings.enable_ui:
+                        op = row.operator("mustardui.physics_rebind_outfit", text="", icon="FILE_REFRESH")
+                        op.outfit = rig_settings.outfits_list
                     op = row.operator("mustardui.delete_outfit", text="", icon="TRASH")
                     op.is_config = False
                     op.delete_cp = True

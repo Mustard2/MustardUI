@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
-from.settings_item import mustardui_physics_item_type_dict
+from .settings_item import mustardui_physics_item_type_dict
 
 
 class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
@@ -11,6 +11,8 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
         if not item.object:
             layout.label(text="Object not found!", icon="ERROR")
             return
+
+        settings = bpy.context.scene.MustardUI_Settings
 
         res, obj = mustardui_active_object(bpy.context, config=0)
         rig_settings = obj.MustardUI_RigSettings
@@ -35,6 +37,10 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
             row2.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
 
         row.prop(item.object, 'hide_viewport', text="", emboss=False)
+
+        if settings.advanced and item.object is not None:
+            op = row.operator('mustardui.physics_rebind_single_cage', text="", icon="FILE_REFRESH")
+            op.cage_name = item.object.name
 
 
 def register():
