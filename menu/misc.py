@@ -1,9 +1,8 @@
-from ..misc.prop_utils import evaluate_rna
+import bpy
+from ..misc.prop_utils import *
 
 
-def mustardui_custom_properties_print(
-    arm, settings, custom_properties, box, icons_show
-):
+def mustardui_custom_properties_print(arm, settings, custom_properties, box, icons_show):
     box2 = box.box()
     for prop in [x for x in custom_properties if not x.hidden]:
         row2 = box2.row(align=True)
@@ -14,26 +13,13 @@ def mustardui_custom_properties_print(
         if not prop.is_animatable:
             try:
                 row2.prop(evaluate_rna(prop.rna), prop.path, text="")
-            except Exception:
-                row2.prop(
-                    settings,
-                    "custom_properties_error_nonanimatable",
-                    icon="ERROR",
-                    text="",
-                    icon_only=True,
-                    emboss=False,
-                )
+            except:
+                row2.prop(settings, 'custom_properties_error_nonanimatable', icon="ERROR", text="", icon_only=True,
+                          emboss=False)
         else:
             if prop.prop_name in arm.keys():
                 row2.prop(arm, f'["{prop.prop_name}"]', text="")
             else:
-                row2.prop(
-                    settings,
-                    "custom_properties_error",
-                    icon="ERROR",
-                    text="",
-                    icon_only=True,
-                    emboss=False,
-                )
+                row2.prop(settings, 'custom_properties_error', icon="ERROR", text="", icon_only=True, emboss=False)
 
     return

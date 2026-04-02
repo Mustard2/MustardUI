@@ -1,9 +1,8 @@
 import bpy
-
-from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
 from . import MainPanel
+from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
+from .. import __package__ as base_package
 
 
 class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
@@ -29,6 +28,7 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
         layout = self.layout
         scene = context.scene
 
+        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
 
@@ -38,6 +38,7 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
 
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
+
                 box = layout.box()
                 box.label(text="Optimization Settings", icon="FORCE_WIND")
                 col = box.column(align=True)
@@ -61,38 +62,25 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
 
                 if len(arm.MustardUI_CustomPropertiesHair) > 0:
                     row = box.row()
-                    row.template_list(
-                        "MUSTARDUI_UL_Property_UIListHair",
-                        "The_List",
-                        arm,
-                        "MustardUI_CustomPropertiesHair",
-                        scene,
-                        "mustardui_property_uilist_hair_index",
-                    )
+                    row.template_list("MUSTARDUI_UL_Property_UIListHair", "The_List", arm,
+                                      "MustardUI_CustomPropertiesHair", scene,
+                                      "mustardui_property_uilist_hair_index")
                     col = row.column()
-                    col.operator(
-                        "mustardui.property_settings", icon="PREFERENCES", text=""
-                    ).type = "HAIR"
+                    col.operator('mustardui.property_settings', icon="PREFERENCES", text="").type = "HAIR"
                     col.separator()
                     col2 = col.column(align=True)
-                    opup = col2.operator(
-                        "mustardui.property_switch", icon="TRIA_UP", text=""
-                    )
+                    opup = col2.operator('mustardui.property_switch', icon="TRIA_UP", text="")
                     opup.direction = "UP"
                     opup.type = "HAIR"
-                    opdown = col2.operator(
-                        "mustardui.property_switch", icon="TRIA_DOWN", text=""
-                    )
+                    opdown = col2.operator('mustardui.property_switch', icon="TRIA_DOWN", text="")
                     opdown.direction = "DOWN"
                     opdown.type = "HAIR"
                     col.separator()
-                    col.operator(
-                        "mustardui.property_remove", icon="X", text=""
-                    ).type = "HAIR"
+                    col.operator('mustardui.property_remove', icon="X", text="").type = "HAIR"
 
                     col = box.column(align=True)
-                    col.prop(rig_settings, "hair_custom_properties_icons")
-                    col.prop(rig_settings, "hair_custom_properties_name_order")
+                    col.prop(rig_settings, 'hair_custom_properties_icons')
+                    col.prop(rig_settings, 'hair_custom_properties_name_order')
 
                 else:
                     box = box.box()

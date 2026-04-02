@@ -1,9 +1,8 @@
 import bpy
-
-from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
 from . import MainPanel
+from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
+from .. import __package__ as base_package
 from .menu_configure import row_scale
 
 
@@ -49,108 +48,78 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
 
         if not morphs_settings.sections and morphs_settings.type == "GENERIC":
             box = layout.box()
-            box.label(
-                text="Sections and Morphs",
-                icon="SHAPEKEY_DATA"
-                if morphs_settings.type != "GENERIC"
-                else "LINENUMBERS_OFF",
-            )
-            box.operator(
-                "mustardui.morphs_section_add", text="Add a Section", icon="ADD"
-            )
+            box.label(text="Sections and Morphs",
+                      icon="SHAPEKEY_DATA" if morphs_settings.type != "GENERIC" else "LINENUMBERS_OFF")
+            box.operator("mustardui.morphs_section_add", text="Add a Section", icon="ADD")
 
         if morphs_settings.sections:
             box = layout.box()
             box.enabled = morphs_settings.enable_ui
             box.label(text="Sections", icon="LINENUMBERS_OFF")
             row = box.row()
-            row.template_list(
-                "MUSTARDUI_UL_Morphs_Section_UIList",
-                "The_List",
-                morphs_settings,
-                "sections",
-                arm,
-                "mustardui_morphs_section_uilist_index",
-            )
+            row.template_list("MUSTARDUI_UL_Morphs_Section_UIList", "The_List", morphs_settings,
+                              "sections", arm,
+                              "mustardui_morphs_section_uilist_index")
             col = row.column()
             col2 = col.column(align=True)
             col2.operator("mustardui.morphs_section_add", text="", icon="ADD")
             col2.operator("mustardui.morphs_section_remove", text="", icon="X")
             col.separator()
             col2 = col.column(align=True)
-            col2.operator(
-                "mustardui.morphs_section_items_switch", icon="TRIA_UP", text=""
-            ).direction = "UP"
-            col2.operator(
-                "mustardui.morphs_section_items_switch", icon="TRIA_DOWN", text=""
-            ).direction = "DOWN"
+            col2.operator('mustardui.morphs_section_items_switch', icon="TRIA_UP", text="").direction = "UP"
+            col2.operator('mustardui.morphs_section_items_switch', icon="TRIA_DOWN", text="").direction = "DOWN"
 
-            section = morphs_settings.sections[
-                arm.mustardui_morphs_section_uilist_index
-            ]
+            section = morphs_settings.sections[arm.mustardui_morphs_section_uilist_index]
 
             col = box.column(align=True)
             col.enabled = not section.is_internal
-            col.prop(section, "string")
+            col.prop(section, 'string')
 
             col.separator()
-            col.prop(section, "shape_keys")
+            col.prop(section, 'shape_keys')
 
             row = col.row()
-            row.prop(section, "custom_properties")
+            row.prop(section, 'custom_properties')
             col2 = row.column()
             col2.enabled = section.custom_properties
-            col2.prop(section, "custom_properties_source", text="")
+            col2.prop(section, 'custom_properties_source', text="")
 
             col.separator()
-            col.prop(section, "hidden")
+            col.prop(section, 'hidden')
 
             row = col.row()
             row.enabled = morphs_settings.enable_freeze_morphs
-            row.prop(section, "freezable")
+            row.prop(section, 'freezable')
 
             col.separator()
-            col.prop(section, "icon")
+            col.prop(section, 'icon')
 
-            if (
-                arm.mustardui_morphs_section_uilist_index > -1
-                and morphs_settings.sections[
-                    arm.mustardui_morphs_section_uilist_index
-                ].morphs
-            ):
+            if (arm.mustardui_morphs_section_uilist_index > -1 and
+                    morphs_settings.sections[arm.mustardui_morphs_section_uilist_index].morphs):
                 box = layout.box()
                 box.label(text="Morphs", icon="SHAPEKEY_DATA")
 
                 row = box.row()
-                row.template_list(
-                    "MUSTARDUI_UL_Morphs_UIList",
-                    "The_List",
-                    morphs_settings.sections[arm.mustardui_morphs_section_uilist_index],
-                    "morphs",
-                    arm,
-                    "mustardui_morphs_uilist_index",
-                )
+                row.template_list("MUSTARDUI_UL_Morphs_UIList", "The_List",
+                                  morphs_settings.sections[arm.mustardui_morphs_section_uilist_index], "morphs",
+                                  arm, "mustardui_morphs_uilist_index")
                 col = row.column()
                 col2 = col.column(align=True)
-                col2.operator(
-                    "mustardui.morphs_items_switch", icon="TRIA_UP", text=""
-                ).direction = "UP"
-                col2.operator(
-                    "mustardui.morphs_items_switch", icon="TRIA_DOWN", text=""
-                ).direction = "DOWN"
+                col2.operator('mustardui.morphs_items_switch', icon="TRIA_UP", text="").direction = "UP"
+                col2.operator('mustardui.morphs_items_switch', icon="TRIA_DOWN", text="").direction = "DOWN"
                 col.separator()
                 col.operator("mustardui.morphs_remove", text="", icon="X")
 
                 if morphs_settings.type == "GENERIC":
                     col = box.column(align=True)
                     col.enabled = not section.is_internal
-                    col.prop(morphs_settings, "show_type_icon")
+                    col.prop(morphs_settings, 'show_type_icon')
 
         box = layout.box()
         box.label(text="Add Morphs", icon="PLUS")
         col = box.column(align=True)
-        col.operator("mustardui.morphs_check", text="Search and Add Morphs", icon="ADD")
-        col.operator("mustardui.morphs_clear", text="Clear Morphs", icon="X")
+        col.operator('mustardui.morphs_check', text="Search and Add Morphs", icon="ADD")
+        col.operator('mustardui.morphs_clear', text="Clear Morphs", icon="X")
 
         if morphs_settings.type != "GENERIC":
             box = layout.box()

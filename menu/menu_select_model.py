@@ -1,8 +1,8 @@
 import bpy
-
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
 from . import MainPanel
+from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
+from ..settings.rig import *
 
 
 class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
@@ -22,42 +22,25 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=0)
         settings = bpy.context.scene.MustardUI_Settings
 
-        self.layout.label(
-            text="(Viewport)" if settings.viewport_model_selection else "(Direct)"
-        )
+        self.layout.label(text="(Viewport)" if settings.viewport_model_selection else "(Direct)")
 
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
 
         layout = self.layout
 
-        layout.operator(
-            "mustardui.viewportmodelselection",
-            text="Viewport Model Selection",
-            icon="VIEW3D",
-            depress=settings.viewport_model_selection,
-        )
+        layout.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon="VIEW3D",
+                        depress=settings.viewport_model_selection)
         layout.separator()
 
         for armature in [x for x in bpy.data.armatures if x.MustardUI_created]:
             row = layout.row(align=True)
             row.enabled = not settings.viewport_model_selection
-            row.operator(
-                "mustardui.switchmodel",
-                text=armature.MustardUI_RigSettings.model_name,
-                depress=armature == settings.panel_model_selection_armature,
-                icon="ERROR"
-                if armature.MustardUI_RigSettings.model_armature_object.name
-                not in bpy.context.scene.objects
-                else "BLANK1",
-            ).model_to_switch = armature.name
-            if (
-                armature.MustardUI_RigSettings.model_armature_object.name
-                not in bpy.context.scene.objects
-            ):
-                row.operator(
-                    "mustardui.remove_armature", text="", icon="X"
-                ).armature = armature.name
+            row.operator('mustardui.switchmodel', text=armature.MustardUI_RigSettings.model_name,
+                         depress=armature == settings.panel_model_selection_armature,
+                         icon="ERROR" if not armature.MustardUI_RigSettings.model_armature_object.name in bpy.context.scene.objects else "BLANK1").model_to_switch = armature.name
+            if not (armature.MustardUI_RigSettings.model_armature_object.name in bpy.context.scene.objects):
+                row.operator('mustardui.remove_armature', text="", icon="X").armature = armature.name
 
 
 def register():

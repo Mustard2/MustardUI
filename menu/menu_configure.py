@@ -1,9 +1,9 @@
 import bpy
-
-from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
 from . import MainPanel
+from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
+from .. import __package__ as base_package
+
 
 row_scale = 1.2
 
@@ -12,9 +12,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_InitPanel"
     bl_label = "UI Configuration"
 
-    url_MustardUI_ConfigGuide = (
-        "https://github.com/Mustard2/MustardUI/wiki/Developer-Guide"
-    )
+    url_MustardUI_ConfigGuide = "https://github.com/Mustard2/MustardUI/wiki/Developer-Guide"
 
     @classmethod
     def poll(cls, context):
@@ -35,10 +33,8 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         # General Settings
         row = layout.row(align=False)
         row.label(text=arm.name, icon="OUTLINER_DATA_ARMATURE")
-        row.operator("mustardui.configuration_smartcheck", icon="SHADERFX", text="")
-        row.operator(
-            "mustardui.openlink", text="", icon="QUESTION"
-        ).url = self.url_MustardUI_ConfigGuide
+        row.operator('mustardui.configuration_smartcheck', icon="SHADERFX", text="")
+        row.operator('mustardui.openlink', text="", icon="QUESTION").url = self.url_MustardUI_ConfigGuide
 
         box = layout.box()
         box.prop(rig_settings, "model_name", text="Name")

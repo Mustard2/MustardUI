@@ -1,9 +1,8 @@
 import bpy
-
-from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
 from . import MainPanel
+from ..model_selection.active_object import *
+from ..warnings.ops_fix_old_UI import check_old_UI
+from .. import __package__ as base_package
 
 
 class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
@@ -47,16 +46,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "outfit_switch_shape_keys_disable")
         col.prop(rig_settings, "outfits_update_tag_on_switch")
 
-        if (
-            len(
-                [
-                    x
-                    for x in rig_settings.outfits_collections
-                    if x.collection is not None
-                ]
-            )
-            > 0
-        ):
+        if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
             box = layout.box()
             row = box.row()
             row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
@@ -65,30 +55,19 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             # Outfits list panel
             box = box.box()
             row = box.row()
-            row.template_list(
-                "MUSTARDUI_UL_Outfits_UIList",
-                "The_List",
-                rig_settings,
-                "outfits_collections",
-                scene,
-                "mustardui_outfits_uilist_index",
-            )
+            row.template_list("MUSTARDUI_UL_Outfits_UIList", "The_List", rig_settings,
+                              "outfits_collections", scene,
+                              "mustardui_outfits_uilist_index")
             col = row.column()
             col2 = col.column(align=True)
-            opup = col2.operator("mustardui.outfits_switch", icon="TRIA_UP", text="")
+            opup = col2.operator('mustardui.outfits_switch', icon="TRIA_UP", text="")
             opup.direction = "UP"
-            opdown = col2.operator(
-                "mustardui.outfits_switch", icon="TRIA_DOWN", text=""
-            )
+            opdown = col2.operator('mustardui.outfits_switch', icon="TRIA_DOWN", text="")
             opdown.direction = "DOWN"
             col.separator()
-            col.operator(
-                "mustardui.rename_outfit", text="", icon="GREASEPENCIL"
-            ).right_click_call = False
+            col.operator("mustardui.rename_outfit", text="", icon="GREASEPENCIL").right_click_call = False
             col.operator("mustardui.remove_outfit", text="", icon="X").is_config = True
-            col.operator(
-                "mustardui.delete_outfit", text="", icon="TRASH"
-            ).is_config = True
+            col.operator("mustardui.delete_outfit", text="", icon="TRASH").is_config = True
 
             # Outfit properties
             box = layout.box()
@@ -110,38 +89,25 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
 
             if len(arm.MustardUI_CustomPropertiesOutfit) > 0:
                 row = box.row()
-                row.template_list(
-                    "MUSTARDUI_UL_Property_UIListOutfits",
-                    "The_List",
-                    arm,
-                    "MustardUI_CustomPropertiesOutfit",
-                    scene,
-                    "mustardui_property_uilist_outfits_index",
-                )
+                row.template_list("MUSTARDUI_UL_Property_UIListOutfits", "The_List", arm,
+                                  "MustardUI_CustomPropertiesOutfit", scene,
+                                  "mustardui_property_uilist_outfits_index")
                 col = row.column()
-                col.operator(
-                    "mustardui.property_settings", icon="PREFERENCES", text=""
-                ).type = "OUTFIT"
+                col.operator('mustardui.property_settings', icon="PREFERENCES", text="").type = "OUTFIT"
                 col.separator()
                 col2 = col.column(align=True)
-                opup = col2.operator(
-                    "mustardui.property_switch", icon="TRIA_UP", text=""
-                )
+                opup = col2.operator('mustardui.property_switch', icon="TRIA_UP", text="")
                 opup.direction = "UP"
                 opup.type = "OUTFIT"
-                opdown = col2.operator(
-                    "mustardui.property_switch", icon="TRIA_DOWN", text=""
-                )
+                opdown = col2.operator('mustardui.property_switch', icon="TRIA_DOWN", text="")
                 opdown.direction = "DOWN"
                 opdown.type = "OUTFIT"
                 col.separator()
-                col.operator(
-                    "mustardui.property_remove", icon="X", text=""
-                ).type = "OUTFIT"
+                col.operator('mustardui.property_remove', icon="X", text="").type = "OUTFIT"
 
                 col = box.column(align=True)
-                col.prop(rig_settings, "outfit_custom_properties_icons")
-                col.prop(rig_settings, "outfit_custom_properties_name_order")
+                col.prop(rig_settings, 'outfit_custom_properties_icons')
+                col.prop(rig_settings, 'outfit_custom_properties_name_order')
 
             else:
                 box = box.box()
