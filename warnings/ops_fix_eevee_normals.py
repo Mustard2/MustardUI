@@ -1,6 +1,5 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+from bpy.props import BoolProperty
 
 
 def check_eevee_normals(scene, settings):
@@ -8,10 +7,12 @@ def check_eevee_normals(scene, settings):
 
 
 class MustardUI_Warnings_FixEeveeNormals(bpy.types.Operator):
-    """Eevee Optimized Normals can lead to graphic artifacts in Cycles, and should be disabled"""
+    """EEVEE Optimized Normals can lead to graphic artifacts in Cycles,
+    and should be disabled"""
+
     bl_idname = "mustardui.warnings_fix_eevee_normals"
-    bl_label = "Turn off Eevee Optimized Normals"
-    bl_options = {'UNDO'}
+    bl_label = "Turn off EEVEE Optimized Normals"
+    bl_options = {"UNDO"}
 
     enable: BoolProperty(default=True)
 
@@ -25,9 +26,9 @@ class MustardUI_Warnings_FixEeveeNormals(bpy.types.Operator):
 
         settings.material_normal_nodes = False
 
-        self.report({'INFO'}, 'MustardUI - Disabled Eevee Optimized Normals.')
+        self.report({"INFO"}, "MustardUI - Disabled EEVEE Optimized Normals.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

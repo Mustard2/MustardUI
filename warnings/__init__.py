@@ -1,6 +1,4 @@
-from . import ops_fix_old_UI
-from . import ops_fix_eevee_normals
-from . import ops_update_ui
+from . import ops_fix_eevee_normals, ops_fix_old_UI, ops_update_ui
 
 
 def register():
