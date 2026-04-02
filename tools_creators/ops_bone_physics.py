@@ -246,6 +246,10 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             # Disable shadows for viewport/render
             co.visible_camera = False
             co.visible_shadow = False
+            co.visible_diffuse = False
+            co.visible_glossy = False
+            co.visible_transmission = False
+            co.visible_volume_scatter = False
 
             # Set the armature as the parent
             bpy.context.view_layer.objects.active = armature

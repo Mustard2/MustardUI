@@ -670,6 +670,10 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         for obj in bpy.context.selected_objects:
             obj.visible_camera = False
             obj.visible_shadow = False
+            obj.visible_diffuse = False
+            obj.visible_glossy = False
+            obj.visible_transmission = False
+            obj.visible_volume_scatter = False
 
         self.report({'INFO'}, 'MustardUI - Jiggle Cage created.')
 
