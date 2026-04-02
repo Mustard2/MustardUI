@@ -20,15 +20,21 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
 
         row = layout.row(align=True)
         row.prop(item, 'enable', text="")
-        row.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
+
+        row2 = row.row()
+        row2.enabled = item.enable
+        row2.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
 
         row = layout.row(align=True)
+
+        row2 = row.row(align=True)
+        row2.enabled = item.enable
         if item.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
             if item.type == "CAGE":
-                row.prop(item, 'smooth_corrective', text="", icon="MOD_SMOOTH")
-            row.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
+                row2.prop(item, 'smooth_corrective', text="", icon="MOD_SMOOTH")
+            row2.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
         else:
-            row.label(text="", icon="BLANK1")
+            row2.label(text="", icon="BLANK1")
 
         row.prop(item.object, 'hide_viewport', text="", emboss=False)
 

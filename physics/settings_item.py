@@ -95,7 +95,7 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
                                             description="Influence of this item on bones constraints",
                                             update=bone_influence_update)
 
-    smooth_corrective: bpy.props.BoolProperty(default=False,
+    smooth_corrective: bpy.props.BoolProperty(default=True,
                                               name="Smooth Corrective",
                                               description="Enable/disable Smooth Corrective modifiers",
                                               update=enable_physics_update_single_smooth_corrective)
@@ -116,6 +116,9 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
 
     # Intersecting Objects for Outfits
     intersecting_objects: bpy.props.CollectionProperty(type=MustardUI_PhysicsItem_Intersecting)
+
+    # Internal
+    visibility_pre_disable: bpy.props.BoolProperty(default=True)
 
 
 def register():

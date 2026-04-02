@@ -69,8 +69,16 @@ def enable_physics_update(self, context):
                 for fcurve in pi.object.data.shape_keys.animation_data.drivers:
                     set_bool(fcurve, "mute", not status)
 
-        if not status:
-            pi.object.hide_viewport = True
+        if pi.type != "COLLISION":
+            if status:
+                pi.object.hide_viewport = pi.visibility_pre_disable
+            else:
+                pi.visibility_pre_disable = pi.object.hide_viewport
+                pi.object.hide_viewport = True
+        else:
+            if not status:
+                pi.object.hide_viewport = True
+
         if not self.enable_physics:
             pi.collapse_cloth = True
             pi.collapse_softbody = True
@@ -183,15 +191,20 @@ def enable_physics_update_single(self, context):
     elif self.type == "BONES_DRIVER":
         self.bone_influence = status
 
-    if not status:
-        self.object.hide_viewport = True
+    if self.type != "COLLISION":
+        if status:
+            self.object.hide_viewport = self.visibility_pre_disable
+        else:
+            self.visibility_pre_disable = self.object.hide_viewport
+            self.object.hide_viewport = True
+    else:
+        if not status:
+            self.object.hide_viewport = True
 
     if not self.enable:
         self.collapse_cloth = True
         self.collapse_softbody = True
         self.collapse_collisions = True
-
-    self.smooth_corrective = status
 
     return
 
@@ -214,7 +227,7 @@ def enable_physics_update_single_smooth_corrective(self, context):
         modifier.show_render = status
 
     if self.type == "CAGE":
-        set_modifiers(self, rig_settings.model_body, status, 'CORRECTIVE_SMOOTH')
+        set_modifiers(self, body, status, 'CORRECTIVE_SMOOTH')
 
         for obj in rig_settings.model_armature_object.children:
             if obj == self.object:
