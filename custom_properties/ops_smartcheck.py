@@ -86,8 +86,8 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         self, obj, rna, path, name, type, custom_props, sections_to_recover
     ):
 
-        # Check if the property was already added. If yes, link it to the
-        # one already added
+        # Check if the property was already added. If yes, link it to
+        # the one already added
         for cp in custom_props:
             if cp.rna == rna and cp.path == path:
                 if cp.prop_name in obj.keys():

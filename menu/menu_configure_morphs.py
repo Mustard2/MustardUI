@@ -3,8 +3,8 @@ import bpy
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from . import MainPanel
 from .menu_configure import row_scale
+from .menu_panel import MainPanel
 
 
 class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):

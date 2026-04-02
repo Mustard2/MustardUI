@@ -1,14 +1,9 @@
 import bpy
 from bpy.props import EnumProperty, StringProperty
 
+from ..misc.prop_utils import evaluate_path, evaluate_rna
 from ..model_selection.active_object import mustardui_active_object
-from .misc import (
-    evaluate_path,
-    evaluate_rna,
-    mustardui_add_driver,
-    mustardui_check_cp,
-    mustardui_choose_cp,
-)
+from .misc import mustardui_add_driver, mustardui_check_cp, mustardui_choose_cp
 
 
 class MustardUI_Property_MenuLink(bpy.types.Operator):
@@ -211,8 +206,8 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         if not driver_removed:
             self.report(
                 {"WARNING"},
-                "MustardUI - The linked property was removed from the UI, but "
-                "the associated driver was not found: you might need to "
+                "MustardUI - The linked property was removed from the UI, but the "
+                "associated driver was not found: you might need to "
                 "remove it manually.",
             )
 

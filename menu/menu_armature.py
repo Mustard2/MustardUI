@@ -3,7 +3,7 @@ import bpy
 from ..misc.mirror import check_mirror
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from . import MainPanel
+from .menu_panel import MainPanel
 
 
 def draw_armature_button(

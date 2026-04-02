@@ -1,5 +1,8 @@
 import bpy
-from bpy.props import BoolProperty, StringProperty
+from bpy.props import (
+    BoolProperty,
+    StringProperty,
+)
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
@@ -41,8 +44,8 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         if self.outfit_is_nude and self.outfit != "":
             self.report(
                 {"ERROR"},
-                "MustardUI - An error occurred while adding the property "
-                "(cannot be Nude and Outfit at the same time).",
+                "MustardUI - An error occurred while adding the property (cannot be "
+                "Nude and Outfit at the same time).",
             )
             return {"FINISHED"}
 

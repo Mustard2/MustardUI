@@ -1,11 +1,11 @@
 from ..model_selection.active_object import mustardui_active_object
 from .menus import (
     MUSTARDUI_MT_Property_LinkMenu,
+    MustardUI_Property_MenuAdd,
     OUTLINER_MT_MustardUI_PropertyHairMenu,
     OUTLINER_MT_MustardUI_PropertyOutfitMenu,
     OUTLINER_MT_MustardUI_PropertySectionMenu,
 )
-from .ops_props import MustardUI_Property_MenuAdd
 
 
 def mustardui_property_menuadd(self, context):

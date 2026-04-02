@@ -272,8 +272,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             except Exception:
                 self.report(
                     {"ERROR"},
-                    "MustardUI - An error occurred while retrieving UI data. Try to "
-                    "rebuild properties to solve this",
+                    "MustardUI - An error occurred while retrieving UI data. "
+                    "Try to rebuild properties to solve this",
                 )
                 return {"FINISHED"}
 

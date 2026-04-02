@@ -1,13 +1,10 @@
-from . import menu_select_model, menu_warnings  # noqa: I001
-
-# Configure panel
-from . import menu_configure, menu_development
-
-# Sub-panels
 from . import (
     menu_armature,
     menu_body,
+    # Configure panel
+    menu_configure,
     menu_configure_armature,
+    # Sub-panels
     menu_configure_body,
     menu_configure_complete,
     menu_configure_debug,
@@ -18,22 +15,19 @@ from . import (
     menu_configure_outfit,
     menu_configure_physics,
     menu_configure_tools,
+    menu_development,
     menu_hair,
     menu_links,
     menu_morphs,
     menu_outfits,
     menu_physics,
+    menu_select_model,
     menu_settings,
     menu_simplify,
     menu_tools,
     menu_tools_creators,
+    menu_warnings,
 )
-
-
-class MainPanel:
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "MustardUI"
 
 
 def register():

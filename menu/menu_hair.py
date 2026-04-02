@@ -3,7 +3,7 @@ import bpy
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from . import MainPanel
+from .menu_panel import MainPanel
 from .misc import mustardui_custom_properties_print
 
 

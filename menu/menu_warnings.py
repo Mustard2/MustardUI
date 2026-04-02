@@ -4,7 +4,7 @@ from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..warnings.ops_update_ui import is_ui_update
-from . import MainPanel
+from .menu_panel import MainPanel
 
 
 def check_blender_version(rig_settings):
@@ -67,7 +67,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             box = layout.box()
             col = box.column(align=True)
             col.label(
-                text="Eevee Optimised Normals are active with Cycles!",
+                text="EEVEE Optimised Normals are active with Cycles!",
                 icon="NORMALS_FACE",
             )
             box.operator("mustardui.warnings_fix_eevee_normals", icon="NORMALS_FACE")

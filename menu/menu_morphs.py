@@ -4,7 +4,7 @@ from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
 from ..morphs.misc import get_cp_source, get_section_by_diffeomorphic_id
 from ..warnings.ops_fix_old_UI import check_old_UI
-from . import MainPanel
+from .menu_panel import MainPanel
 
 
 def morph_filter(morph, rig_settings, morphs_settings):

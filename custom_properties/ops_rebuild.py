@@ -4,13 +4,9 @@ import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
-from ..misc.prop_utils import (
-    evaluate_path,
-    evaluate_rna,
-    mustardui_clean_prop,
-    mustardui_cp_path,
-)
+from ..misc.prop_utils import evaluate_path, evaluate_rna
 from ..model_selection.active_object import mustardui_active_object
+from .misc import mustardui_clean_prop, mustardui_cp_path
 
 
 class MustardUI_Property_Rebuild(bpy.types.Operator):

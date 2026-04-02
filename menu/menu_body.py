@@ -4,7 +4,7 @@ from ..misc.prop_utils import evaluate_rna
 from ..misc.ui_multiline import label_multiline
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from . import MainPanel
+from .menu_panel import MainPanel
 
 
 def draw_section(
@@ -123,8 +123,8 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 or rig_settings.body_enable_geometry_nodes
             )
 
-            # Check if geometry nodes support is active and there are geometry nodes
-            # on the body object
+            # Check if geometry nodes support is active and there are
+            # geometry nodes on the body object
             geometry_nodes_support = False
             if (
                 rig_settings.model_body is not None

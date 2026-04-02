@@ -41,8 +41,8 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     )
     hidden: BoolProperty(
         name="Hidden",
-        description="The property is hidden from the UI.\nThis can be useful if "
-        "the property is just a proxy for some model_selection "
+        description="The property is hidden from the UI.\nThis can be useful if the "
+        "property is just a proxy for some model_selection "
         "(e.g. for On Switch actions)",
     )
 
@@ -94,8 +94,8 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
             x for x in rig_settings.hair_collection.objects
         ]
 
-    # Poll function for the selection of mesh belonging to an outfit in
-    # pointer properties
+    # Poll function for the selection of mesh belonging to an outfit
+    # in pointer properties
     def outfit_switcher_poll_collection(self, object):
         rig_settings = self.id_data.MustardUI_RigSettings
         return (
@@ -108,8 +108,8 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
             or object == rig_settings.extras_collection
         )
 
-    # Poll function for the selection of mesh belonging to an outfit in
-    # pointer properties
+    # Poll function for the selection of mesh belonging to an outfit
+    # in pointer properties
     def outfit_switcher_poll_mesh(self, object):
         rig_settings = self.id_data.MustardUI_RigSettings
         if self.outfit is not None:

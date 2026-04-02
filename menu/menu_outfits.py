@@ -5,7 +5,7 @@ import bpy
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from . import MainPanel
+from .menu_panel import MainPanel
 from .misc import mustardui_custom_properties_print
 
 

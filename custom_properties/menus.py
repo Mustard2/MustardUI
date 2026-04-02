@@ -181,8 +181,8 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
             op.hair = obj.name
 
 
-# Operator to create the list of sections when right-clicking on the
-#   property -> Link to property
+# Operator to create the list of sections when right-clicking on
+# the property -> Link to property
 class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
     bl_idname = "MUSTARDUI_MT_Property_LinkMenu"
     bl_label = "Link to Property"
