@@ -1,4 +1,3 @@
-import bpy
 from . import ops_viewport_panel
 
 

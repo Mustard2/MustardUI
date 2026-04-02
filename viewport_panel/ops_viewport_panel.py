@@ -1,6 +1,7 @@
 import bpy
+
 from .. import __package__ as base_package
-from ..model_selection.active_object import *
+from ..model_selection.active_object import mustardui_active_object
 
 
 class VIEW3D_MT_PIE_MustardUI_ViewportPieMenu(bpy.types.Menu):
@@ -11,11 +12,17 @@ class VIEW3D_MT_PIE_MustardUI_ViewportPieMenu(bpy.types.Menu):
         layout = self.layout
         pie = layout.menu_pie()
 
-        pie.operator('mustardui.viewportmodelselection', text="Viewport Model Selection", icon="VIEW3D")
-        pie.operator('wm.call_panel', icon="ARMATURE_DATA",
-                     text="Armature Collections").name = "PANEL_PT_MustardUI_Armature"
-        pie.operator('wm.call_panel', icon="PHYSICS",
-                     text="Physics").name = "PANEL_PT_MustardUI_Physics"
+        pie.operator(
+            "mustardui.viewportmodelselection",
+            text="Viewport Model Selection",
+            icon="VIEW3D",
+        )
+        pie.operator(
+            "wm.call_panel", icon="ARMATURE_DATA", text="Armature Collections"
+        ).name = "PANEL_PT_MustardUI_Armature"
+        pie.operator(
+            "wm.call_panel", icon="PHYSICS", text="Physics"
+        ).name = "PANEL_PT_MustardUI_Physics"
 
 
 # Operator for key press detection and calling the pie menu
@@ -31,7 +38,7 @@ class MustardUI_ViewportPieMenu_KeymapOperator(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.wm.call_menu_pie(name="VIEW3D_MT_PIE_MustardUI_ViewportPieMenu")
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 # Register classes and keymap
@@ -42,15 +49,19 @@ def register():
     # Set up the keymap to listen for the 'F' key press in 3D View
     try:
         wm = bpy.context.window_manager
-        keymap = wm.keyconfigs.active.keymaps['3D View']
-        keymap_item = keymap.keymap_items.new(MustardUI_ViewportPieMenu_KeymapOperator.bl_idname,
-                                              type='M',
-                                              alt=True,
-                                              shift=True,
-                                              value='PRESS')
-    except:
-        print("MustardUI - An error occurred when registering keymaps. Please reset settings to Factory, "
-              "restart Blender and retry")
+        keymap = wm.keyconfigs.active.keymaps["3D View"]
+        keymap.keymap_items.new(
+            MustardUI_ViewportPieMenu_KeymapOperator.bl_idname,
+            type="M",
+            alt=True,
+            shift=True,
+            value="PRESS",
+        )
+    except Exception:
+        print(
+            "MustardUI - An error occurred when registering keymaps. Please reset "
+            "settings to Factory, restart Blender and retry"
+        )
 
 
 # Unregister everything
@@ -58,14 +69,15 @@ def unregister():
     try:
         # Remove keymap item
         wm = bpy.context.window_manager
-        keymap = wm.keyconfigs.active.keymaps['3D View']
+        keymap = wm.keyconfigs.active.keymaps["3D View"]
         for item in keymap.keymap_items:
             if item.idname == MustardUI_ViewportPieMenu_KeymapOperator.bl_idname:
                 keymap.keymap_items.remove(item)
-    except:
+    except Exception:
         print(
-            "MustardUI - An error occurred when removing keymaps. Please reset settings to Factory, restart Blender "
-            "and retry")
+            "MustardUI - An error occurred when removing keymaps. Please reset "
+            "settings to Factory, restart Blender and retry"
+        )
 
     bpy.utils.unregister_class(MustardUI_ViewportPieMenu_KeymapOperator)
     bpy.utils.unregister_class(VIEW3D_MT_PIE_MustardUI_ViewportPieMenu)
