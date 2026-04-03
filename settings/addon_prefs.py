@@ -50,18 +50,19 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         #row = col.row()
         #row.prop(self, "experimental")
 
-        if self.debug:
-            layout.separator()
-            layout.operator('mustardui.debug_log', text="Create Log file", icon="FILE_TEXT")
-            layout.operator('mustardui.fix_missing_ui', icon="MOD_BUILD")
-            layout.separator()
-
         row = layout.row(align=True)
         row.operator('mustardui.openlink', text="GitHub", icon="URL").url = self.url_MustardUI
         row.operator('mustardui.openlink', text="User Guide",
                      icon="URL").url = self.url_MustardUI_Tutorial
         row.operator('mustardui.openlink', text="Report Bug",
                      icon="URL").url = self.url_MustardUI_ReportBug
+
+        if self.debug:
+            box = layout.box()
+            box.label(text="Debug", icon="QUESTION_LARGE")
+            col = box.column(align=True)
+            col.operator('mustardui.fix_missing_ui', icon="GHOST_ENABLED")
+            col.operator('mustardui.debug_log', text="Create Log file", icon="FILE_TEXT")
 
 
 def register():
