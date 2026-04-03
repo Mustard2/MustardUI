@@ -73,9 +73,12 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
             row = box.row(align=True)
             row.label(text="UI is outdated.", icon="SHAPEKEY_DATA")
-            row.operator("mustardui.update_ui", icon="X", text="").ignore = True
 
-            box.operator("mustardui.update_ui", icon="TRIA_DOWN_BAR").ignore = False
+            row = box.row(align=True)
+            row.alert = True
+            op = row.operator("mustardui.update_ui", icon="TRIA_DOWN_BAR")
+            op.force = False
+            op.ignore = False
 
         # Emit warning if the model is used on a different Blender version than requested by the model creator
         if check_blender_version(rig_settings):

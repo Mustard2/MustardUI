@@ -45,11 +45,6 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         description="Disable Subdivision Surface modifiers when Simplify is enabled"
     )
 
-    simplify_normals_autosmooth: bpy.props.BoolProperty(
-        name="Affect Normals Auto-Smooth",
-        default=True
-    )
-
     simplify_outfit_switch_nude: bpy.props.BoolProperty(
         name="Switch to Nude",
         default=False
@@ -115,6 +110,63 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
     )
 
 
+def simplify_outfits(rig_settings, enable, simplify_outfit_global=True, simplify_subdiv=True, switch_nude=True):
+    if len(rig_settings.outfits_list) < 1:
+        return
+
+    # Disable Outfits Global properties
+    if simplify_outfit_global:
+        if simplify_subdiv and rig_settings.outfits_enable_global_subsurface and enable:
+            rig_settings.outfits_global_subsurface = not enable
+        if rig_settings.outfits_enable_global_mask:
+            rig_settings.outfits_global_mask = not enable
+        if rig_settings.outfits_enable_global_smoothcorrection:
+            rig_settings.outfits_global_smoothcorrection = not enable
+        if rig_settings.outfits_enable_global_shrinkwrap:
+            rig_settings.outfits_global_shrinkwrap = not enable
+        if rig_settings.outfits_enable_global_solidify:
+            rig_settings.outfits_global_solidify = not enable
+        if rig_settings.outfits_enable_global_triangulate:
+            rig_settings.outfits_global_triangulate = not enable
+
+    # Switch to Nude
+    if rig_settings.outfit_nude and switch_nude and enable:
+        rig_settings.outfits_list = "Nude"
+
+
+def simplify_extras(rig_settings, enable):
+    if rig_settings.extras_collection is None:
+        return
+
+    items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
+    for obj in items:
+        if enable:
+            status = obj.MustardUI_outfit_visibility != enable
+            if status:
+                bpy.ops.mustardui.object_visibility(obj=obj.name)
+            obj.MustardUI_OutfitSettings.simplify_status = status
+        elif not enable and obj.MustardUI_OutfitSettings.simplify_status:
+            if obj.MustardUI_outfit_visibility != enable:
+                bpy.ops.mustardui.object_visibility(obj=obj.name)
+            obj.MustardUI_OutfitSettings.simplify_status = False
+
+
+def simplify_hair(rig_settings, enable, simplify_hair_coll=True, simplify_hair_global=True, simplify_subdiv=True):
+    if rig_settings.hair_collection is None:
+        return
+
+    rig_settings.hair_collection.hide_viewport = enable if simplify_hair_coll else False
+
+    if simplify_hair_global:
+        if simplify_subdiv and rig_settings.hair_enable_global_subsurface and enable:
+            rig_settings.hair_global_subsurface = not enable
+        if rig_settings.hair_enable_global_smoothcorrection:
+            rig_settings.hair_global_smoothcorrection = not enable
+        if rig_settings.hair_enable_global_solidify:
+            rig_settings.hair_global_solidify = not enable
+        if rig_settings.hair_enable_global_particles:
+            rig_settings.hair_global_particles = not enable
+
 
 class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
     bl_idname = "mustardui.update_simplify"
@@ -150,7 +202,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 arm["mustardui_pre_simplify"] = {
                     "body_subdiv_view": rig_settings.body_subdiv_view,
                     "body_smooth_corr": rig_settings.body_smooth_corr,
-                    "body_norm_autosmooth": rig_settings.body_norm_autosmooth,
                     "body_geometry_nodes": rig_settings.body_geometry_nodes,
                     "body_solidify": rig_settings.body_solidify,
                     "outfits_global_subsurface": rig_settings.outfits_global_subsurface,
@@ -159,12 +210,11 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     "outfits_global_shrinkwrap": rig_settings.outfits_global_shrinkwrap,
                     "outfits_global_solidify": rig_settings.outfits_global_solidify,
                     "outfits_global_triangulate": rig_settings.outfits_global_triangulate,
-                    "outfits_global_normalautosmooth": rig_settings.outfits_global_normalautosmooth,
                     "outfits_list": rig_settings.outfits_list,
                     "hair_global_subsurface": rig_settings.hair_global_subsurface,
                     "hair_global_smoothcorrection": rig_settings.hair_global_smoothcorrection,
                     "hair_global_solidify": rig_settings.hair_global_solidify,
-                    "hair_global_normalautosmooth": rig_settings.hair_global_normalautosmooth
+                    "hair_global_particles": rig_settings.hair_global_particles
                 }
             if "mustardui_pre_simplify" not in scene:
                 scene["mustardui_pre_simplify"] = {
@@ -190,59 +240,29 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 rig_settings.body_subdiv_view = not simplify_settings.simplify_enable
             if rig_settings.body_enable_smoothcorr:
                 rig_settings.body_smooth_corr = not simplify_settings.simplify_enable
-            if rig_settings.body_enable_norm_autosmooth:
-                rig_settings.body_norm_autosmooth = not simplify_settings.simplify_enable
             if rig_settings.body_enable_geometry_nodes:
                 rig_settings.body_geometry_nodes = not simplify_settings.simplify_enable
             if rig_settings.body_enable_solidify:
                 rig_settings.body_solidify = not simplify_settings.simplify_enable
 
         # Outfits
-        if len(rig_settings.outfits_list) > 1 and simplify_settings.simplify_outfit_global:
-            if simplify_settings.simplify_subdiv and rig_settings.outfits_enable_global_subsurface and simplify_settings.simplify_enable:
-                rig_settings.outfits_global_subsurface = not simplify_settings.simplify_enable
-            if rig_settings.outfits_enable_global_mask:
-                rig_settings.outfits_global_mask = not simplify_settings.simplify_enable
-            if rig_settings.outfits_enable_global_smoothcorrection:
-                rig_settings.outfits_global_smoothcorrection = not simplify_settings.simplify_enable
-            if rig_settings.outfits_enable_global_shrinkwrap:
-                rig_settings.outfits_global_shrinkwrap = not simplify_settings.simplify_enable
-            if rig_settings.outfits_enable_global_solidify:
-                rig_settings.outfits_global_solidify = not simplify_settings.simplify_enable
-            if rig_settings.outfits_enable_global_triangulate:
-                rig_settings.outfits_global_triangulate = not simplify_settings.simplify_enable
-            if simplify_settings.simplify_normals_autosmooth and rig_settings.outfits_enable_global_normalautosmooth:
-                rig_settings.outfits_global_normalautosmooth = not simplify_settings.simplify_enable
-        if rig_settings.outfit_nude and simplify_settings.simplify_outfit_switch_nude and simplify_settings.simplify_enable:
-            rig_settings.outfits_list = "Nude"
+        simplify_outfits(rig_settings,
+                         simplify_settings.simplify_enable,
+                         simplify_settings.simplify_outfit_global,
+                         simplify_settings.simplify_subdiv,
+                         simplify_settings.simplify_outfit_switch_nude)
 
         # Extras
-        if rig_settings.extras_collection and simplify_settings.simplify_extras:
-            items = rig_settings.extras_collection.all_objects if rig_settings.outfit_config_subcollections else rig_settings.extras_collection.objects
-            for obj in items:
-                if simplify_settings.simplify_enable:
-                    status = obj.MustardUI_outfit_visibility != simplify_settings.simplify_enable
-                    if status:
-                        bpy.ops.mustardui.object_visibility(obj=obj.name)
-                    obj.MustardUI_OutfitSettings.simplify_status = status
-                elif not simplify_settings.simplify_enable and obj.MustardUI_OutfitSettings.simplify_status:
-                    if obj.MustardUI_outfit_visibility != simplify_settings.simplify_enable:
-                        bpy.ops.mustardui.object_visibility(obj=obj.name)
-                    obj.MustardUI_OutfitSettings.simplify_status = False
+        if simplify_settings.simplify_extras:
+            simplify_extras(rig_settings,
+                            simplify_settings.simplify_enable)
 
         # Hair
-        if rig_settings.hair_collection:
-            rig_settings.hair_collection.hide_viewport = simplify_settings.simplify_enable if simplify_settings.simplify_hair else False
-
-            if simplify_settings.simplify_hair_global:
-                if simplify_settings.simplify_subdiv and rig_settings.hair_enable_global_subsurface and simplify_settings.simplify_enable:
-                    rig_settings.hair_global_subsurface = not simplify_settings.simplify_enable
-                if rig_settings.hair_enable_global_smoothcorrection:
-                    rig_settings.hair_global_smoothcorrection = not simplify_settings.simplify_enable
-                if rig_settings.hair_enable_global_solidify:
-                    rig_settings.hair_global_solidify = not simplify_settings.simplify_enable
-                if simplify_settings.simplify_normals_autosmooth and rig_settings.hair_enable_global_normalautosmooth:
-                    rig_settings.hair_global_normalautosmooth = not simplify_settings.simplify_enable
+        simplify_hair(rig_settings,
+                      simplify_settings.simplify_enable,
+                      simplify_settings.simplify_hair,
+                      simplify_settings.simplify_hair_global,
+                      simplify_settings.simplify_subdiv)
 
         # When Simplify is turned off, restore saved state
         if not simplify_settings.simplify_enable and simplify_settings.simplify_revert_settings:

@@ -73,7 +73,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             # Check for body additional properties
             bpy.ops.mustardui.property_smartcheck()
 
-        # Search for oufit collections
+        # Search for outfit collections
         if self.smartcheck_outfits:
             if addon_prefs.debug:
                 print('\nMustardUI - Smart Check - Searching for outfits\n')
@@ -99,7 +99,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         else:
             print('\nMustardUI - Smart Check - Hair collection already defined. Skipping this part.')
 
-        # Search for extras
+        # Search for Extras
         if addon_prefs.debug:
             print('\nMustardUI - Smart Check - Searching for extras.')
 
@@ -120,8 +120,32 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         else:
             print('\nMustardUI - Smart Check - Extras collection already defined. Skipping this part.')
 
+        # Search for Hair Extras
+        if addon_prefs.debug:
+            print('\nMustardUI - Smart Check - Searching for extras.')
+
+        if rig_settings.hair_extras_collection is None:
+            hair_extras_collection = [x for x in bpy.data.collections if
+                                      (rig_settings.model_name in x.name) and
+                                      ('Extras' in x.name) and
+                                      ('Hair' in x.name)]
+            if len(hair_extras_collection) == 1:
+                rig_settings.extras_hair_collection = hair_extras_collection[0]
+                print('\nMustardUI - Smart Check - ' + hair_extras_collection[0].name + 'set as Hair Extras '
+                                                                                        'collection')
+            elif len(hair_extras_collection) == 0:
+                print(
+                    '\nMustardUI - Smart Check - Can not find any Hair Extras collection compatible with MustardUI '
+                    'naming convention.')
+            else:
+                print(
+                    '\nMustardUI - Smart Check - More than 1 collection has been found. No collection has been set as '
+                    'the Hair Extras one to avoid un-wanted behaviour.')
+        else:
+            print('\nMustardUI - Smart Check - Hair Extras collection already defined. Skipping this part.')
+
         if self.smartcheck_armature:
-            bpy.ops.mustardui.armature_smartcheck(reset_current_collections = self.reset_current_collections)
+            bpy.ops.mustardui.armature_smartcheck(reset_current_collections=self.reset_current_collections)
 
         if self.smartcheck_settings:
             if addon_prefs.debug:
@@ -132,7 +156,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 rig_settings.body_enable_subdiv = False
                 rig_settings.body_enable_smoothcorr = False
                 rig_settings.body_enable_solidify = False
-                rig_settings.body_enable_norm_autosmooth = False
 
                 for m in rig_settings.model_body.modifiers:
                     if m.type == "SUBSURF":
@@ -141,12 +164,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                         rig_settings.body_enable_smoothcorr = True
                     elif m.type == "SOLIDIFY":
                         rig_settings.body_enable_solidify = True
-                    elif m.type == "NODES":
-                        if m.node_group is None:
-                            continue
-                        if m.node_group.name != "Smooth by Angle":
-                            continue
-                        rig_settings.body_enable_norm_autosmooth = True
             else:
                 if addon_prefs.debug:
                     print('\nMustardUI - Smart Check - Could not check Body Global Properties.')
@@ -168,7 +185,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             rig_settings.outfits_enable_global_mask = False
             rig_settings.outfits_enable_global_solidify = False
             rig_settings.outfits_enable_global_triangulate = False
-            rig_settings.outfits_enable_global_normalautosmooth = False
 
             for obj in [x for x in objects if x is not None]:
                 for m in obj.modifiers:
@@ -186,12 +202,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                         rig_settings.outfits_enable_global_solidify = True
                     elif m.type == "TRIANGULATE":
                         rig_settings.outfits_enable_global_triangulate = True
-                    elif m.type == "NODES":
-                        if m.node_group is None:
-                            continue
-                        if m.node_group.name != "Smooth by Angle":
-                            continue
-                        rig_settings.outfits_enable_global_normalautosmooth = True
 
             # Hair
             if rig_settings.hair_collection is not None:
@@ -203,7 +213,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 rig_settings.hair_enable_global_smoothcorrection = False
                 rig_settings.hair_enable_global_solidify = False
                 rig_settings.hair_enable_global_particles = False
-                rig_settings.hair_enable_global_normalautosmooth = False
 
                 for obj in [x for x in objects if x is not None]:
                     for m in obj.modifiers:
@@ -215,12 +224,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                             rig_settings.hair_enable_global_solidify = True
                         elif m.type == "PARTICLE_SYSTEM":
                             rig_settings.hair_enable_global_particles = True
-                        elif m.type == "NODES":
-                            if m.node_group is None:
-                                continue
-                            if m.node_group.name != "Smooth by Angle":
-                                continue
-                            rig_settings.hair_enable_global_normalautosmooth = True
 
         # End of debug messages
         if addon_prefs.debug:

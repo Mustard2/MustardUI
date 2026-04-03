@@ -46,10 +46,10 @@ class MustardUI_Morphs_Section_Remove(bpy.types.Operator):
         uilist = morphs_settings.sections
         index = arm.mustardui_morphs_section_uilist_index
 
-        if len(uilist) <= index:
+        if len(uilist) <= index or index < 0:
             return False
 
-        if uilist[arm.mustardui_morphs_section_uilist_index].is_internal:
+        if uilist[index].is_internal:
             return False
 
         return res
@@ -98,10 +98,10 @@ class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
         uilist = morphs_settings.sections
         index = arm.mustardui_morphs_section_uilist_index
 
-        if len(uilist) <= index:
+        if len(uilist) <= index or index < 0:
             return False
 
-        if uilist[arm.mustardui_morphs_section_uilist_index].is_internal:
+        if uilist[index].is_internal:
             return False
 
         return res

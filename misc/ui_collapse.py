@@ -10,7 +10,7 @@ def ui_collapse_prop(layout, settings, prop_str, label, icon="", align=True, use
     else:
         row = layout.row(align=align)
     row.prop(settings, prop_str,
-             icon="TRIA_DOWN" if not prop else "TRIA_RIGHT", icon_only=True,
+             icon="DOWNARROW_HLT" if not prop else "RIGHTARROW", icon_only=True,
              emboss=emboss, invert_checkbox=invert_checkbox)
 
     if label != "":

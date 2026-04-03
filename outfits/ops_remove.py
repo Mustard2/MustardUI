@@ -11,6 +11,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     is_config: bpy.props.BoolProperty(default=True)
+    delete_cp: bpy.props.BoolProperty(default=True)
 
     def execute(self, context):
 
@@ -57,13 +58,14 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
         bpy.context.view_layer.update()
 
         # And then delete data
-        for i, cp in enumerate(outfit_cp):
-            if (not uilist[index].collection and not cp.outfit) or (
-                    uilist[index].collection and cp.outfit.name == uilist[index].collection.name):
-                mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
-                to_remove.append(i)
-        for i in reversed(to_remove):
-            outfit_cp.remove(i)
+        if self.delete_cp:
+            for i, cp in enumerate(outfit_cp):
+                if (not uilist[index].collection and not cp.outfit) or (
+                        uilist[index].collection and cp.outfit.name == uilist[index].collection.name):
+                    mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
+                    to_remove.append(i)
+            for i in reversed(to_remove):
+                outfit_cp.remove(i)
 
         # Remove the collection from the Outfits Collections
         uilist.remove(index)

@@ -1,6 +1,8 @@
 import bpy
+
 from ..model_selection.active_object import *
-from .settings_item import MustardUI_PhysicsItem, mustardui_physics_item_type_dict
+from .settings_item import MustardUI_PhysicsItem
+from .settings_presets import MustardUI_Physics_Preset
 from .update_enable import enable_physics_update
 
 
@@ -90,6 +92,8 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
 
     # Physics Items
     items: bpy.props.CollectionProperty(type=MustardUI_PhysicsItem)
+
+    presets: bpy.props.CollectionProperty(type=MustardUI_Physics_Preset)
 
 
 def register():

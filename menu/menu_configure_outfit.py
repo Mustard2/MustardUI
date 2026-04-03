@@ -66,8 +66,12 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             opdown.direction = "DOWN"
             col.separator()
             col.operator("mustardui.rename_outfit", text="", icon="GREASEPENCIL").right_click_call = False
-            col.operator("mustardui.remove_outfit", text="", icon="X").is_config = True
-            col.operator("mustardui.delete_outfit", text="", icon="TRASH").is_config = True
+            op = col.operator("mustardui.remove_outfit", text="", icon="X")
+            op.is_config = True
+            op.delete_cp = True
+            op = col.operator("mustardui.delete_outfit", text="", icon="TRASH")
+            op.is_config = True
+            op.delete_cp = True
 
             # Outfit properties
             box = layout.box()
@@ -80,7 +84,6 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             col.prop(rig_settings, "outfits_enable_global_mask")
             col.prop(rig_settings, "outfits_enable_global_solidify")
             col.prop(rig_settings, "outfits_enable_global_triangulate")
-            col.prop(rig_settings, "outfits_enable_global_normalautosmooth")
 
             # Custom properties
             box = layout.box()
@@ -120,7 +123,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         box = layout.box()
 
         # Extras list
-        box.label(text="Extras", icon="PLUS")
+        box.label(text="Extras", icon="ADD")
         box.prop(rig_settings, "extras_collection", text="")
 
 

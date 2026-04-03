@@ -42,6 +42,8 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         mask = rig_settings.outfits_global_mask
 
         # Collections, objects, modifiers, masks
+        hair_switcher_set = False
+
         for col_entry in rig_settings.outfits_collections:
 
             col = col_entry.collection
@@ -74,11 +76,13 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 # Check Hair Visibility against the Hair Switcher Collection
                 hair_collection = rig_settings.hair_collection
                 if (hair_collection is not None
-                        and obj.type == "MESH"
+                        and obj.type in ["MESH", "ARMATURE"]
                         and rig_settings.hair_switch_collection is not None
                         and obj.name in rig_settings.hair_switch_collection.all_objects.keys()):
-                    set_bool(hair_collection, "hide_viewport", show_obj)
-                    set_bool(hair_collection, "hide_render", show_obj)
+                    if show_obj:
+                        hair_switcher_set = True
+                    set_bool(hair_collection, "hide_viewport", show_obj or hair_switcher_set)
+                    set_bool(hair_collection, "hide_render", show_obj or hair_switcher_set)
 
                 if show_obj:
                     any_object_visible = True

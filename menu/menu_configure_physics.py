@@ -57,6 +57,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             opdown.direction = "DOWN"
             col.separator()
             col.operator("mustardui.physics_item_remove", text="", icon="X")
+            col.operator("mustardui.physics_item_delete", text="", icon="TRASH")
 
             if index > -1:
                 pi = physics_settings.items[index]

@@ -70,11 +70,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
         to_remove = []
 
+        # Rebuilding custom properties and their linked properties drivers
         for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
-
-            # Rebuilding custom properties and their linked properties drivers
             try:
-
                 prop_name = custom_prop.prop_name
 
                 if prop_name in obj.keys():

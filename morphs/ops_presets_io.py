@@ -38,7 +38,7 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
             # Safe filename: replace spaces or invalid characters
             safe_model_name = model_name.replace(" ", "_")
             safe_preset_name = preset_name.replace(" ", "_")
-            self.filepath = f"{safe_model_name}_{safe_preset_name}.json"
+            self.filepath = f"MustardUI_MorphsPreset_{safe_model_name}_{safe_preset_name}.json"
 
         return super().invoke(context, event)
 

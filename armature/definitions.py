@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
-from ..misc.icons_list import mustardui_icon_list
+from ..misc.icons import mustardui_icon_list
 from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh
 
 
@@ -14,14 +14,14 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
 
     # Show the bone collection in the UI only if Advanced is enabled
     advanced: BoolProperty(default=False,
-                                     name="Advanced",
-                                     description="Enable Advanced layer.\nIf enabled, this layer will be shown in the "
-                                                 "UI only if Advanced settings is enabled in the UI settings")
+                           name="Advanced",
+                           description="Enable Advanced layer.\nIf enabled, this layer will be shown in the "
+                                       "UI only if Advanced settings is enabled in the UI settings")
 
     # Default bone collections are enabled when Reset is used
     default: BoolProperty(default=False,
-                           name="Default",
-                           description="Default bone collections are enabled when Reset is used")
+                          name="Default",
+                          description="Default bone collections are enabled when Reset is used")
 
     # Icon
     icon: EnumProperty(name="Icon",
@@ -61,7 +61,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
 
     # Children
     # Button to show children of the bone
-    show_children: BoolProperty(default=False, name = "")
+    show_children: BoolProperty(default=False, name="")
 
 
 # Global Armature settings
@@ -122,6 +122,13 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                                    description="Show two buttons (left and right) on the UI for selected bone "
                                                "collections.\nName the collections with the same name plus .R and .L "
                                                "to see them in the UI as two near buttons")
+
+    # IK/FK panel
+    rig_specific_panel: bpy.props.BoolProperty(default=False,
+                                               name="Rig External Panel",
+                                               description="Add a panel with all the properties of the specific "
+                                                           "Armature type of the rig.\nAvailable features depend on the"
+                                                           " type of the rig.\nSupported rigs: MHX")
 
 
 def register():

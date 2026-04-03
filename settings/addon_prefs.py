@@ -46,15 +46,9 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
-        col.separator()
-        row = col.row()
-        row.prop(self, "experimental")
-
-        if self.debug:
-            layout.separator()
-            layout.operator('mustardui.debug_log', text="Create Log file", icon="FILE_TEXT")
-            layout.operator('mustardui.fix_missing_ui', icon="MOD_BUILD")
-            layout.separator()
+        #col.separator()
+        #row = col.row()
+        #row.prop(self, "experimental")
 
         row = layout.row(align=True)
         row.operator('mustardui.openlink', text="GitHub", icon="URL").url = self.url_MustardUI
@@ -62,6 +56,13 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                      icon="URL").url = self.url_MustardUI_Tutorial
         row.operator('mustardui.openlink', text="Report Bug",
                      icon="URL").url = self.url_MustardUI_ReportBug
+
+        if self.debug:
+            box = layout.box()
+            box.label(text="Debug", icon="QUESTION_LARGE")
+            col = box.column(align=True)
+            col.operator('mustardui.fix_missing_ui', icon="GHOST_ENABLED")
+            col.operator('mustardui.debug_log', text="Create Log file", icon="FILE_TEXT")
 
 
 def register():

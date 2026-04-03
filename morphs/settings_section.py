@@ -1,6 +1,6 @@
 import bpy
 from .settings_morph import *
-from ..misc.icons_list import mustardui_icon_list
+from ..misc.icons import mustardui_icon_list
 
 
 class MustardUI_Morph_Section(bpy.types.PropertyGroup):

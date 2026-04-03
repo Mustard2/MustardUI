@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
 from ..model_selection.active_object import *
-from.settings_item import mustardui_physics_item_type_dict
+from .settings_item import mustardui_physics_item_type_dict
 
 
 class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
@@ -12,20 +12,35 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
             layout.label(text="Object not found!", icon="ERROR")
             return
 
+        settings = bpy.context.scene.MustardUI_Settings
+
         res, obj = mustardui_active_object(bpy.context, config=0)
         rig_settings = obj.MustardUI_RigSettings
 
         name = item.object.name
         name = name if not rig_settings.model_MustardUI_naming_convention else name[len(rig_settings.model_name)+1:]
-        layout.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
+
         row = layout.row(align=True)
+        row.prop(item, 'enable', text="")
+
+        row2 = row.row()
+        row2.enabled = item.enable
+        row2.label(text=name, icon=mustardui_physics_item_type_dict[item.type])
+
+        row = layout.row(align=True)
+
+        row2 = row.row(align=True)
+        row2.enabled = item.enable
         if item.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
-            row.prop(item, 'enable', text="", icon="PHYSICS")
-            row.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
-        else:
-            row.label(text="", icon="BLANK1")
-            row.prop(item, 'enable', text="", icon="MOD_PHYSICS")
-        row.prop(item.object, 'hide_viewport', text="")
+            if item.type == "CAGE":
+                row2.prop(item, 'smooth_corrective', text="", icon="MOD_SMOOTH")
+            row2.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
+
+        row.prop(item.object, 'hide_viewport', text="", emboss=False)
+
+        if settings.advanced and item.object is not None:
+            op = row.operator('mustardui.physics_rebind_single_cage', text="", icon="FILE_REFRESH")
+            op.cage_name = item.object.name
 
 
 def register():
