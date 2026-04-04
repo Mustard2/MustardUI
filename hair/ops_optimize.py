@@ -1,11 +1,13 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+from bpy.props import IntProperty
+
+from ..model_selection.active_object import mustardui_active_object
 from ..tools.simplify import simplify_hair
 
 
 class MustardUI_Hair_SwitchGlobal(bpy.types.Operator):
-    """Enable/disable all modifiers/model_selection that might impact on viewport performance"""
+    """Enable/disable all modifiers/model_selection that might impact on viewport performance"""  # noqa: E501
+
     bl_idname = "mustardui.hair_switchglobal"
     bl_label = "Hair Property Switch"
 
@@ -29,11 +31,12 @@ class MustardUI_Hair_SwitchGlobal(bpy.types.Operator):
         if rig_settings.hair_enable_global_particles:
             rig_settings.hair_global_particles = self.enable
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Hair_DisableViewport(bpy.types.Operator):
     """Enable/disable Outfits to increase Viewport performance"""
+
     bl_idname = "mustardui.hair_disable_viewport"
     bl_label = "hair Disable Viewport"
 
@@ -50,11 +53,15 @@ class MustardUI_Hair_DisableViewport(bpy.types.Operator):
 
         if self.enable:
             if "mustardui_hair_show" not in arm:
+                hair_global_subsurface = rig_settings.hair_global_subsurface
+                hair_global_smoothcorrection = rig_settings.hair_global_smoothcorrection
+                hair_global_solidify = rig_settings.hair_global_solidify
+                hair_global_particles = rig_settings.hair_global_particles
                 arm["mustardui_hair_show"] = {
-                    "hair_global_subsurface": rig_settings.hair_global_subsurface,
-                    "hair_global_smoothcorrection": rig_settings.hair_global_smoothcorrection,
-                    "hair_global_solidify": rig_settings.hair_global_solidify,
-                    "hair_global_particles": rig_settings.hair_global_particles
+                    "hair_global_subsurface": hair_global_subsurface,
+                    "hair_global_smoothcorrection": hair_global_smoothcorrection,
+                    "hair_global_solidify": hair_global_solidify,
+                    "hair_global_particles": hair_global_particles,
                 }
 
         simplify_hair(rig_settings, self.enable)
@@ -65,7 +72,7 @@ class MustardUI_Hair_DisableViewport(bpy.types.Operator):
                     setattr(rig_settings, key, value)
                 del arm["mustardui_hair_show"]
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
