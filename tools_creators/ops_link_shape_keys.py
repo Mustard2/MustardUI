@@ -1,12 +1,13 @@
 import bpy
+
 from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_link_shape_keys"
     bl_label = "Link Shape Keys to Active"
-    bl_description = "Link matching Shape Keys on selected objects to the active object using Drivers"
-    bl_options = {'UNDO'}
+    bl_description = "Link matching Shape Keys on selected objects to the active object using Drivers"  # noqa: E501
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -21,17 +22,17 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
         active_obj = context.active_object
         selected_objs = context.selected_objects
 
-        if not active_obj or active_obj.type != 'MESH':
-            self.report({'ERROR'}, "MustardUI - Active object must be a Mesh")
-            return {'CANCELLED'}
+        if not active_obj or active_obj.type != "MESH":
+            self.report({"ERROR"}, "MustardUI - Active object must be a Mesh")
+            return {"CANCELLED"}
 
         if len(selected_objs) < 2:
-            self.report({'ERROR'}, "MustardUI - Select at least two Objects")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "MustardUI - Select at least two Objects")
+            return {"CANCELLED"}
 
         if not active_obj or not active_obj.data.shape_keys:
-            self.report({'ERROR'}, "MustardUI - Active object has no shape keys")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "MustardUI - Active object has no shape keys")
+            return {"CANCELLED"}
 
         errors = 0
         linked = 0
@@ -60,11 +61,11 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
 
                     try:
                         driver = key.driver_add("value").driver
-                        driver.type = 'SCRIPTED'
+                        driver.type = "SCRIPTED"
 
                         var = driver.variables.new()
                         var.name = "val"
-                        var.type = 'SINGLE_PROP'
+                        var.type = "SINGLE_PROP"
 
                         target = var.targets[0]
                         target.id = active_obj
@@ -75,21 +76,33 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
                         driver.expression = "val"
 
                         if debug:
-                            print(f'MustardUI - Linked: Shape Key "{key.name}" in Object "{obj.name}"')
+                            print(
+                                f'MustardUI - Linked: Shape Key "{key.name}" in Object '
+                                f'"{obj.name}"'
+                            )
 
                         linked += 1
 
                     except TypeError:
-                        print(f'MustardUI - Can not link Shape Key "{key.name}" to Object "{obj.name}"')
+                        print(
+                            f'MustardUI - Can not link Shape Key "{key.name}" to '
+                            f'Object "{obj.name}"'
+                        )
                         errors += 1
 
         if errors == 0:
-            self.report({'INFO'}, f'MustardUI - {linked} Shape keys linked to "{active_obj.name}".')
+            self.report(
+                {"INFO"},
+                f'MustardUI - {linked} Shape keys linked to "{active_obj.name}".',
+            )
         else:
-            self.report({'WARNING'}, f'MustardUI - {linked} Shape keys linked to "{active_obj.name}, '
-                                     f'but {errors} could not be linked.')
+            self.report(
+                {"WARNING"},
+                f'MustardUI - {linked} Shape keys linked to "{active_obj.name}, '
+                f"but {errors} could not be linked.",
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
