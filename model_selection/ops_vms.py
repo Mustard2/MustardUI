@@ -1,30 +1,35 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+from bpy.props import StringProperty
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_ViewportModelSelection(bpy.types.Operator):
-    """Turn on/off Viewport Model Selection.\nWhen active, the model associated to the selected Armature is shown in the UI.\nWhen disabled, the model can be selected from the Model Selection panel."""
+    """Turn on/off Viewport Model Selection.\nWhen active, the model associated to the selected Armature is shown in the UI.\nWhen disabled, the model can be selected from the Model Selection panel."""  # noqa: E501
+
     bl_idname = "mustardui.viewportmodelselection"
     bl_label = "Viewport Model Selection"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     config: bpy.props.BoolProperty(default=0)
 
     def execute(self, context):
         settings = bpy.context.scene.MustardUI_Settings
 
-        poll, settings.panel_model_selection_armature = mustardui_active_object(context, self.config)
+        poll, settings.panel_model_selection_armature = mustardui_active_object(
+            context, self.config
+        )
         settings.viewport_model_selection = not settings.viewport_model_selection
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_SwitchModel(bpy.types.Operator):
     """Switch to the selected model"""
+
     bl_idname = "mustardui.switchmodel"
     bl_label = "Switch Model"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     model_to_switch: StringProperty()
 
@@ -40,20 +45,39 @@ class MustardUI_SwitchModel(bpy.types.Operator):
         settings = bpy.context.scene.MustardUI_Settings
 
         # Check if you are trying to switch to the same model already in use
-        if bpy.data.armatures[self.model_to_switch] == settings.panel_model_selection_armature:
-            self.report({'WARNING'}, 'MustardUI - Already using ' + bpy.data.armatures[
-                self.model_to_switch].MustardUI_RigSettings.model_name + ' model.')
-            return {'FINISHED'}
+        if (
+            bpy.data.armatures[self.model_to_switch]
+            == settings.panel_model_selection_armature
+        ):
+            self.report(
+                {"WARNING"},
+                "MustardUI - Already using "
+                + bpy.data.armatures[
+                    self.model_to_switch
+                ].MustardUI_RigSettings.model_name
+                + " model.",
+            )
+            return {"FINISHED"}
 
         # Change the model if it is not None
         if bpy.data.armatures[self.model_to_switch] is not None:
-            settings.panel_model_selection_armature = bpy.data.armatures[self.model_to_switch]
-            self.report({'INFO'}, 'MustardUI - Switched to ' + bpy.data.armatures[
-                self.model_to_switch].MustardUI_RigSettings.model_name + '.')
+            settings.panel_model_selection_armature = bpy.data.armatures[
+                self.model_to_switch
+            ]
+            self.report(
+                {"INFO"},
+                "MustardUI - Switched to "
+                + bpy.data.armatures[
+                    self.model_to_switch
+                ].MustardUI_RigSettings.model_name
+                + ".",
+            )
         else:
-            self.report({'ERROR'}, 'MustardUI - Error occurred while switching the model.')
+            self.report(
+                {"ERROR"}, "MustardUI - Error occurred while switching the model."
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
