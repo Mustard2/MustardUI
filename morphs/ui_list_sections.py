@@ -1,13 +1,15 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+from bpy.props import IntProperty
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Morphs_Section_Add(bpy.types.Operator):
     """Add a section to the list"""
+
     bl_idname = "mustardui.morphs_section_add"
     bl_label = "Add Morphs Section"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -26,14 +28,15 @@ class MustardUI_Morphs_Section_Add(bpy.types.Operator):
 
         obj.update_tag()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Morphs_Section_Remove(bpy.types.Operator):
-    """Remove the selected Morph Section from the UI.\nThis do NOT delete any data, it just prevents the Morphs from being shown in the UI"""
+    """Remove the selected Morph Section from the UI.\nThis do NOT delete any data, it just prevents the Morphs from being shown in the UI"""  # noqa: E501
+
     bl_idname = "mustardui.morphs_section_remove"
     bl_label = "Remove Morphs"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -63,7 +66,7 @@ class MustardUI_Morphs_Section_Remove(bpy.types.Operator):
         index = arm.mustardui_morphs_section_uilist_index
 
         if len(uilist) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
@@ -73,9 +76,9 @@ class MustardUI_Morphs_Section_Remove(bpy.types.Operator):
 
         arm.update_tag()
 
-        self.report({'INFO'}, 'MustardUI - Morphs removed.')
+        self.report({"INFO"}, "MustardUI - Morphs removed.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
@@ -84,8 +87,12 @@ class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
     bl_idname = "mustardui.morphs_section_items_switch"
     bl_label = "Move Section"
 
-    direction: bpy.props.EnumProperty(items=(('UP', 'Up', ""),
-                                             ('DOWN', 'Down', ""),))
+    direction: bpy.props.EnumProperty(
+        items=(
+            ("UP", "Up", ""),
+            ("DOWN", "Down", ""),
+        )
+    )
 
     @classmethod
     def poll(cls, context):
@@ -107,10 +114,10 @@ class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
         return res
 
     def move_index(self, uilist, index):
-        """ Move index of an item render queue while clamping it. """
+        """Move index of an item render queue while clamping it."""
 
         list_length = len(uilist) - 1  # (index starts at 0)
-        new_index = index + (-1 if self.direction == 'UP' else 1)
+        new_index = index + (-1 if self.direction == "UP" else 1)
 
         return max(0, min(new_index, list_length))
 
@@ -121,18 +128,18 @@ class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
         index = obj.mustardui_morphs_section_uilist_index
 
         if len(uilist) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == 'UP' else 1)
+        neighbour = index + (-1 if self.direction == "UP" else 1)
 
         if len(uilist) <= neighbour or uilist[neighbour].is_internal:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         obj.mustardui_morphs_section_uilist_index = index
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MUSTARDUI_UL_Morphs_Section_UIList(bpy.types.UIList):
@@ -142,17 +149,23 @@ class MUSTARDUI_UL_Morphs_Section_UIList(bpy.types.UIList):
         res, obj = mustardui_active_object(context, config=1)
         return res if obj is not None else False
 
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(
+        self, context, layout, data, item, icon, active_data, active_propname, index
+    ):
         res, obj = mustardui_active_object(context, config=1)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         if item:
             row = layout.row()
-            row.prop(item, 'name', text="", emboss=False, translate=False)
+            row.prop(item, "name", text="", emboss=False, translate=False)
             row2 = row.row(align=True)
             if morphs_settings.type == "GENERIC":
-                row2.label(text="", icon="SHAPEKEY_DATA" if item.shape_keys else "BLANK1")
-                row2.label(text="", icon="OBJECT_DATA" if item.custom_properties else "BLANK1")
+                row2.label(
+                    text="", icon="SHAPEKEY_DATA" if item.shape_keys else "BLANK1"
+                )
+                row2.label(
+                    text="", icon="OBJECT_DATA" if item.custom_properties else "BLANK1"
+                )
             row2.label(text=str(len(item.morphs)))
 
 
@@ -162,7 +175,9 @@ def register():
     bpy.utils.register_class(MustardUI_Morphs_Section_Add)
     bpy.utils.register_class(MustardUI_Morphs_Section_Remove)
 
-    bpy.types.Armature.mustardui_morphs_section_uilist_index = IntProperty(name="", default=0)
+    bpy.types.Armature.mustardui_morphs_section_uilist_index = IntProperty(
+        name="", default=0
+    )
 
 
 def unregister():
