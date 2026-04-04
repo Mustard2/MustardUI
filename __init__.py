@@ -1,6 +1,25 @@
 # MustardUI addon
 # GitHub page: https://github.com/Mustard2/MustardUI
 
+from . import (
+    armature,
+    configuration,
+    custom_properties,
+    hair,
+    links,
+    menu,
+    misc,
+    model_selection,
+    morphs,
+    outfits,
+    physics,
+    sections,
+    settings,
+    tools,
+    tools_creators,
+    warnings,
+)
+
 # Add-on information
 bl_info = {
     "name": "MustardUI",
@@ -12,23 +31,6 @@ bl_info = {
     "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
     "category": "User Interface",
 }
-
-from . import settings
-from . import misc
-from . import model_selection
-from . import warnings
-from . import armature
-from . import tools
-from . import tools_creators
-from . import custom_properties
-from . import sections
-from . import outfits
-from . import hair
-from . import physics
-from . import morphs
-from . import configuration
-from . import links
-from . import menu
 
 
 def register():
