@@ -115,6 +115,14 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         max=2.0
     )
 
+    bone_shrinkwrap_rotation_correction: bpy.props.BoolProperty(
+        name="Rotation Correction",
+        description="When enabled, rotations are corrected with axis alignment.\nMight improve the behaviour of the "
+                    "shrinkwrap over lateral movements, but introduce artifacts in the movement in some rigs or when "
+                    "the shrinkwrap object is not touching the bones directly",
+        default=False,
+    )
+
     bone_shrinkwrap_friction_influence: bpy.props.FloatProperty(
         name="Friction Influence",
         description="How strongly lips stick to target",
