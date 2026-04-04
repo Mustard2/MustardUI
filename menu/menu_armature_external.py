@@ -1,9 +1,9 @@
 import bpy
 
-from . import MainPanel
-from ..settings.rig import *
 from ..armature.external.mhx import panel as menu_mhx_panel
 from ..armature.external.mhx_defs import panel_poll
+from ..model_selection.active_object import mustardui_active_object
+from .menu_panel import MainPanel
 
 
 class PANEL_PT_MustardUI_Armature_External(MainPanel, bpy.types.Panel):

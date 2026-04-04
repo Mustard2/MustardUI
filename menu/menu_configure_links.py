@@ -1,8 +1,9 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..warnings.ops_fix_old_UI import check_old_UI
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
+from ..warnings.ops_fix_old_UI import check_old_UI
+from .menu_panel import MainPanel
 
 
 class PANEL_PT_MustardUI_InitPanel_Links(MainPanel, bpy.types.Panel):
@@ -34,7 +35,7 @@ class PANEL_PT_MustardUI_InitPanel_Links(MainPanel, bpy.types.Panel):
         box = layout.box()
 
         box.label(text="General Settings", icon="MODIFIER")
-        box.prop(rig_settings, 'links_enable')
+        box.prop(rig_settings, "links_enable")
 
         # Outfits list panel
         box = layout.box()
@@ -43,18 +44,23 @@ class PANEL_PT_MustardUI_InitPanel_Links(MainPanel, bpy.types.Panel):
         row.operator("mustardui.link_import", text="", icon="COPYDOWN")
         row.operator("mustardui.link_export", text="", icon="PASTEDOWN")
         row = box.row()
-        row.template_list("MUSTARDUI_UL_Links_UIList", "The_List", arm,
-                          "MustardUI_Links", scene,
-                          "mustardui_links_uilist_index")
+        row.template_list(
+            "MUSTARDUI_UL_Links_UIList",
+            "The_List",
+            arm,
+            "MustardUI_Links",
+            scene,
+            "mustardui_links_uilist_index",
+        )
         col = row.column()
         col2 = col.column(align=True)
         col2.operator("mustardui.link_add", text="", icon="ADD")
         col2.operator("mustardui.link_remove", text="", icon="REMOVE")
         col.separator()
         col2 = col.column(align=True)
-        opup = col2.operator('mustardui.link_switch', icon="TRIA_UP", text="")
+        opup = col2.operator("mustardui.link_switch", icon="TRIA_UP", text="")
         opup.direction = "UP"
-        opdown = col2.operator('mustardui.link_switch', icon="TRIA_DOWN", text="")
+        opdown = col2.operator("mustardui.link_switch", icon="TRIA_DOWN", text="")
         opdown.direction = "DOWN"
 
 

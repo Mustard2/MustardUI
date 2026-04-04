@@ -1,8 +1,8 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from ..settings.rig import *
+from .menu_panel import MainPanel
 
 
 class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
@@ -18,9 +18,11 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=0)
         if arm is not None:
-            return res and (arm.MustardUI_ToolsSettings.autobreath_enable or
-                            arm.MustardUI_ToolsSettings.autoeyelid_enable or
-                            arm.MustardUI_ToolsSettings.bone_shrinkwrap_enable)
+            return res and (
+                arm.MustardUI_ToolsSettings.autobreath_enable
+                or arm.MustardUI_ToolsSettings.autoeyelid_enable
+                or arm.MustardUI_ToolsSettings.bone_shrinkwrap_enable
+            )
         return res
 
     def draw(self, context):
@@ -29,7 +31,7 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Tools"
-    bl_idname = "PANEL_PT_MustarUI_Tools_AutoBreath"
+    bl_idname = "PANEL_PT_MustardUI_Tools_AutoBreath"
     bl_label = "Auto Breath"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -63,12 +65,12 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
         column.prop(tools_settings, "autobreath_random")
         column.prop(tools_settings, "autobreath_sampling")
 
-        layout.operator('mustardui.tools_autobreath', icon="FORCE_WIND")
+        layout.operator("mustardui.tools_autobreath", icon="FORCE_WIND")
 
 
 class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Tools"
-    bl_idname = "PANEL_PT_MustarUI_Tools_AutoEyelid"
+    bl_idname = "PANEL_PT_MustardUI_Tools_AutoEyelid"
     bl_label = "Auto Blink"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -95,7 +97,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
         column.prop(tools_settings, "autoeyelid_blink_length")
         column.prop(tools_settings, "autoeyelid_blink_rate_per_minute")
 
-        layout.operator('mustardui.tools_autoeyelid', icon="HIDE_OFF")
+        layout.operator("mustardui.tools_autoeyelid", icon="HIDE_OFF")
 
 
 class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
@@ -156,7 +158,7 @@ class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
                     "bone_shrinkwrap_target_friction_subtarget",
                     target,
                     "vertex_groups",
-                    text="Vertex Group"
+                    text="Vertex Group",
                 )
 
             elif target.type == "ARMATURE":
@@ -165,14 +167,14 @@ class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
                     "bone_shrinkwrap_target_friction_subtarget",
                     target.pose,
                     "bones",
-                    text="Bone"
+                    text="Bone",
                 )
 
         layout.separator()
 
         row = layout.row(align=True)
-        row.operator('mustardui.constraints_apply', icon="MOD_SHRINKWRAP", text="Apply")
-        row.operator('mustardui.constraints_clear', icon="X", text="")
+        row.operator("mustardui.constraints_apply", icon="MOD_SHRINKWRAP", text="Apply")
+        row.operator("mustardui.constraints_clear", icon="X", text="")
 
 
 def register():
