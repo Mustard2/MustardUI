@@ -136,6 +136,7 @@ class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
         col2 = col.column(align=True)
         col2.prop(tools_settings, "bone_shrinkwrap_distance")
         col2.prop(tools_settings, "bone_shrinkwrap_corner_correction")
+        col2.prop(tools_settings, "bone_shrinkwrap_rotation_correction")
 
         col.separator()
 
