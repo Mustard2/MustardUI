@@ -1,28 +1,35 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+
 from .. import bl_info
+from ..model_selection.active_object import mustardui_active_object
 
 
 def is_ui_update(rig_settings):
     return not (
-            (rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0)
-            or rig_settings.simplify_main_enable
-            # Check if the Hair curves were enabled (behaviour was different)
-            or (rig_settings.hair_collection is not None and
-                rig_settings.curves_hair_enable)
-            # Check for Hair convention
-            or (rig_settings.hair_collection is not None and
-                rig_settings.model_MustardUI_naming_convention and
-                tuple(rig_settings.model_mustardui_version) < (2026, 4, 0))
+        (
+            rig_settings.diffeomorphic_support
+            and rig_settings.diffeomorphic_morphs_number > 0
+        )
+        or rig_settings.simplify_main_enable
+        # Check if the Hair curves were enabled (behaviour was different)
+        or (
+            rig_settings.hair_collection is not None and rig_settings.curves_hair_enable
+        )
+        # Check for Hair convention
+        or (
+            rig_settings.hair_collection is not None
+            and rig_settings.model_MustardUI_naming_convention
+            and tuple(rig_settings.model_mustardui_version) < (2026, 4, 0)
+        )
     )
 
 
 class MustardUI_UpdateUI(bpy.types.Operator):
     """Update the UI to the latest feature version"""
+
     bl_idname = "mustardui.update_ui"
     bl_label = "Update UI"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     ignore: bpy.props.BoolProperty(default=False)
     force: bpy.props.BoolProperty(default=False)
@@ -48,16 +55,22 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                         break
 
         if is_ui_update(rig_settings):
-            self.report({'INFO'}, 'MustardUI - The UI is already up-to-date.')
-            return {'CANCELLED'}
+            self.report({"INFO"}, "MustardUI - The UI is already up-to-date.")
+            return {"CANCELLED"}
 
-        diffeomorphic_status = rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0
+        diffeomorphic_status = (
+            rig_settings.diffeomorphic_support
+            and rig_settings.diffeomorphic_morphs_number > 0
+        )
         simplify_status = rig_settings.simplify_main_enable
-        curves_hair_status = (rig_settings.hair_collection is not None and
-                              rig_settings.curves_hair_enable)
-        hair_convention_status = (rig_settings.hair_collection is not None and
-                                  rig_settings.model_MustardUI_naming_convention and
-                                  tuple(rig_settings.model_mustardui_version) < (2026, 4, 0))
+        curves_hair_status = (
+            rig_settings.hair_collection is not None and rig_settings.curves_hair_enable
+        )
+        hair_convention_status = (
+            rig_settings.hair_collection is not None
+            and rig_settings.model_MustardUI_naming_convention
+            and tuple(rig_settings.model_mustardui_version) < (2026, 4, 0)
+        )
 
         errors = 0
 
@@ -66,7 +79,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             rig_settings.simplify_main_enable = False
             rig_settings.curves_hair_enable = False
             rig_settings.model_mustardui_version = bl_info["version"]
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         # Check Morphs from previous versions
         if diffeomorphic_status:
@@ -75,13 +88,27 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 morphs_settings.enable_ui = True
 
                 # Retrieve settings from the old Morphs implementation
-                morphs_settings.diffeomorphic_emotions = rig_settings.diffeomorphic_emotions
-                morphs_settings.diffeomorphic_emotions_custom = rig_settings.diffeomorphic_emotions_custom
-                morphs_settings.diffeomorphic_facs_emotions = rig_settings.diffeomorphic_facs_emotions
-                morphs_settings.diffeomorphic_emotions_units = rig_settings.diffeomorphic_emotions_units
-                morphs_settings.diffeomorphic_facs_emotions_units = rig_settings.diffeomorphic_facs_emotions_units
-                morphs_settings.diffeomorphic_body_morphs = rig_settings.diffeomorphic_body_morphs
-                morphs_settings.diffeomorphic_body_morphs_custom = rig_settings.diffeomorphic_body_morphs_custom
+                morphs_settings.diffeomorphic_emotions = (
+                    rig_settings.diffeomorphic_emotions
+                )
+                morphs_settings.diffeomorphic_emotions_custom = (
+                    rig_settings.diffeomorphic_emotions_custom
+                )
+                morphs_settings.diffeomorphic_facs_emotions = (
+                    rig_settings.diffeomorphic_facs_emotions
+                )
+                morphs_settings.diffeomorphic_emotions_units = (
+                    rig_settings.diffeomorphic_emotions_units
+                )
+                morphs_settings.diffeomorphic_facs_emotions_units = (
+                    rig_settings.diffeomorphic_facs_emotions_units
+                )
+                morphs_settings.diffeomorphic_body_morphs = (
+                    rig_settings.diffeomorphic_body_morphs
+                )
+                morphs_settings.diffeomorphic_body_morphs_custom = (
+                    rig_settings.diffeomorphic_body_morphs_custom
+                )
 
                 # To use the morphs_check operator we need to be in Configuration mode
                 bpy.ops.mustardui.configuration()
@@ -92,7 +119,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
                 # Flag the error as solved
                 rig_settings.diffeomorphic_support = False
-            except:
+            except Exception:
                 # Disable the Morphs panel if an error occurs
                 morphs_settings.enable_ui = False
 
@@ -117,17 +144,19 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                     extras_collection = rig_settings.hair_extras_collection
                     if extras_collection is None:
                         hair_collection = rig_settings.hair_collection
-                        extras_collection = bpy.data.collections.new(f"{hair_collection.name} Extras")
+                        extras_collection = bpy.data.collections.new(
+                            f"{hair_collection.name} Extras"
+                        )
                         hair_collection.children.link(extras_collection)
                     rig_settings.hair_extras_collection = extras_collection
 
                     # Move the curves Objects inside the Extras collection
                     for obj in list(hair_collection.objects):
-                        if obj.type == 'CURVES':
+                        if obj.type == "CURVES":
                             hair_collection.objects.unlink(obj)
                             extras_collection.objects.link(obj)
                     rig_settings.curves_hair_enable = False
-                except:
+                except Exception:
                     errors += 1
             else:
                 rig_settings.curves_hair_enable = False
@@ -141,7 +170,9 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 for obj in [x for x in hair_collection.objects if x is not None]:
                     if not obj.name.startswith(f"{hair_collection.name} - "):
                         # Remove any old convention
-                        obj.name = obj.name.replace(f"{rig_settings.model_name} Hair ", "")
+                        obj.name = obj.name.replace(
+                            f"{rig_settings.model_name} Hair ", ""
+                        )
                         obj.name = obj.name.replace(f"{rig_settings.model_name} ", "")
 
                         # Replace the name with the new convention
@@ -151,15 +182,17 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
 
                 rig_settings.model_mustardui_version = bl_info["version"]
-            except:
+            except Exception:
                 errors += 1
 
         if errors:
-            self.report({'ERROR'}, 'MustardUI - An error occurred while updating the model.')
-            return {'FINISHED'}
+            self.report(
+                {"ERROR"}, "MustardUI - An error occurred while updating the model."
+            )
+            return {"FINISHED"}
 
-        self.report({'INFO'}, 'MustardUI - UI updated.')
-        return {'FINISHED'}
+        self.report({"INFO"}, "MustardUI - UI updated.")
+        return {"FINISHED"}
 
 
 def register():
