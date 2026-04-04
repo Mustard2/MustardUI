@@ -1,9 +1,11 @@
 import bpy
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Physics_SyncFrames(bpy.types.Operator):
     """Synchronise the physics bake frames with the scene ones"""
+
     bl_idname = "mustardui.physics_bake_syncframes"
     bl_label = "Synchronise frames with scene"
 
@@ -20,11 +22,12 @@ class MustardUI_Physics_SyncFrames(bpy.types.Operator):
         physics_settings.frame_start = context.scene.frame_start
         physics_settings.frame_end = context.scene.frame_end
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Physics_BakeAll(bpy.types.Operator):
     """Bake All Physics"""
+
     bl_idname = "mustardui.physics_bake_all"
     bl_label = "Bake All"
 
@@ -43,9 +46,9 @@ class MustardUI_Physics_BakeAll(bpy.types.Operator):
         physics_settings.frame_start = physics_settings.frame_start
         physics_settings.frame_end = physics_settings.frame_end
 
-        bpy.ops.ptcache.bake_all('INVOKE_DEFAULT', bake=self.bake)
+        bpy.ops.ptcache.bake_all("INVOKE_DEFAULT", bake=self.bake)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

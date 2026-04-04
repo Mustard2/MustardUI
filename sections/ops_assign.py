@@ -1,13 +1,14 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Body_AssignToSection(bpy.types.Operator):
     """Assign properties to the selected section"""
+
     bl_idname = "mustardui.body_assign_to_section"
     bl_label = "Assign Properties"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -29,9 +30,11 @@ class MustardUI_Body_AssignToSection(bpy.types.Operator):
             if prop.add_section:
                 prop.section = uilist[index].name
             else:
-                prop.section = "" if prop.section == uilist[index].name else prop.section
+                prop.section = (
+                    "" if prop.section == uilist[index].name else prop.section
+                )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
 
@@ -58,8 +61,11 @@ class MustardUI_Body_AssignToSection(bpy.types.Operator):
         col = box.column(align=True)
         for prop in sorted(custom_props, key=lambda x: x.name):
             row = col.row(align=False)
-            row.prop(prop, 'add_section', text="")
-            row.label(text=prop.name, icon="SHAPEKEY_DATA" if prop.type in [0, 1] else "MATERIAL")
+            row.prop(prop, "add_section", text="")
+            row.label(
+                text=prop.name,
+                icon="SHAPEKEY_DATA" if prop.type in [0, 1] else "MATERIAL",
+            )
 
 
 def register():

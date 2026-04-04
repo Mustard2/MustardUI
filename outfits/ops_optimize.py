@@ -1,11 +1,13 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
-from ..tools.simplify import simplify_outfits, simplify_extras
+from bpy.props import IntProperty
+
+from ..model_selection.active_object import mustardui_active_object
+from ..tools.simplify import simplify_extras, simplify_outfits
 
 
 class MustardUI_Outfits_SwitchGlobal(bpy.types.Operator):
-    """Enable/disable all modifiers/model_selection that might impact on viewport performance"""
+    """Enable/disable all modifiers/model_selection that might impact on viewport performance"""  # noqa: E501
+
     bl_idname = "mustardui.outfits_switchglobal"
     bl_label = "Outfits Property Switch"
 
@@ -33,11 +35,12 @@ class MustardUI_Outfits_SwitchGlobal(bpy.types.Operator):
         if rig_settings.outfits_enable_global_triangulate:
             rig_settings.outfits_global_triangulate = self.enable
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Outfit_DisableViewport(bpy.types.Operator):
     """Enable/disable Outfits to increase Viewport performance"""
+
     bl_idname = "mustardui.outfit_disable_viewport"
     bl_label = "Outfits Disable Viewport"
 
@@ -54,14 +57,23 @@ class MustardUI_Outfit_DisableViewport(bpy.types.Operator):
 
         if self.enable:
             if "mustardui_outfit_show" not in arm:
+                outfits_global_subsurface = rig_settings.outfits_global_subsurface
+                outfits_global_mask = rig_settings.outfits_global_mask
+                outfits_global_smoothcorrection = (
+                    rig_settings.outfits_global_smoothcorrection
+                )
+                outfits_global_shrinkwrap = rig_settings.outfits_global_shrinkwrap
+                outfits_global_solidify = rig_settings.outfits_global_solidify
+                outfits_global_triangulate = rig_settings.outfits_global_triangulate
+                outfits_list = rig_settings.outfits_list
                 arm["mustardui_outfit_show"] = {
-                    "outfits_global_subsurface": rig_settings.outfits_global_subsurface,
-                    "outfits_global_mask": rig_settings.outfits_global_mask,
-                    "outfits_global_smoothcorrection": rig_settings.outfits_global_smoothcorrection,
-                    "outfits_global_shrinkwrap": rig_settings.outfits_global_shrinkwrap,
-                    "outfits_global_solidify": rig_settings.outfits_global_solidify,
-                    "outfits_global_triangulate": rig_settings.outfits_global_triangulate,
-                    "outfits_list": rig_settings.outfits_list
+                    "outfits_global_subsurface": outfits_global_subsurface,
+                    "outfits_global_mask": outfits_global_mask,
+                    "outfits_global_smoothcorrection": outfits_global_smoothcorrection,
+                    "outfits_global_shrinkwrap": outfits_global_shrinkwrap,
+                    "outfits_global_solidify": outfits_global_solidify,
+                    "outfits_global_triangulate": outfits_global_triangulate,
+                    "outfits_list": outfits_list,
                 }
 
         simplify_outfits(rig_settings, self.enable)
@@ -73,7 +85,7 @@ class MustardUI_Outfit_DisableViewport(bpy.types.Operator):
                     setattr(rig_settings, key, value)
                 del arm["mustardui_outfit_show"]
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

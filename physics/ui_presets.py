@@ -1,7 +1,9 @@
-import bpy
 import json
+
+import bpy
 from mathutils import Vector
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 def make_json_serializable(value):
@@ -24,9 +26,10 @@ def make_json_serializable(value):
 
 class MustardUI_Physics_PresetCreate(bpy.types.Operator):
     """Create Morph preset"""
+
     bl_idname = "mustardui.physics_preset_create"
     bl_label = "Morph Preset Create"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     new_preset_name: bpy.props.StringProperty()
 
@@ -38,7 +41,10 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
         if arm is None:
             return False
 
-        if arm.mustardui_physics_items_uilist_index < 0 or len(physics_settings.items) < 1:
+        if (
+            arm.mustardui_physics_items_uilist_index < 0
+            or len(physics_settings.items) < 1
+        ):
             return False
 
         obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object
@@ -53,8 +59,8 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
     def execute(self, context):
 
         if self.new_preset_name == "":
-            self.report({'ERROR'}, f'MustardUI - Invalid preset name')
-            return {'FINISHED'}
+            self.report({"ERROR"}, "MustardUI - Invalid preset name")
+            return {"FINISHED"}
 
         res, arm = mustardui_active_object(context, config=0)
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -63,8 +69,8 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
 
         preset_names = [x.name for x in presets]
         if self.new_preset_name in preset_names:
-            self.report({'ERROR'}, f'MustardUI - Preset name already used')
-            return {'FINISHED'}
+            self.report({"ERROR"}, "MustardUI - Preset name already used")
+            return {"FINISHED"}
 
         new_preset = presets.add()
         new_preset.name = self.new_preset_name
@@ -74,25 +80,26 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
         if obj.modifiers is None:
             return
 
-        cloth = next((m for m in obj.modifiers if m.type == 'CLOTH'), None)
-        soft_body = next((m for m in obj.modifiers if m.type == 'SOFT_BODY'), None)
-        collision = next((m for m in obj.modifiers if m.type == 'COLLISION'), None)
+        cloth = next((m for m in obj.modifiers if m.type == "CLOTH"), None)
+        soft_body = next((m for m in obj.modifiers if m.type == "SOFT_BODY"), None)
+        collision = next((m for m in obj.modifiers if m.type == "COLLISION"), None)
 
         if cloth is None and soft_body is None and collision is None:
-            self.report({'WARNING'}, "No data to save in the preset.")
-            return {'FINISHED'}
+            self.report({"WARNING"}, "No data to save in the preset.")
+            return {"FINISHED"}
 
         data = []
 
-        preset_data = {"name": new_preset.name,
-                       "cloth": {},
-                       "cloth_collision": {},
-                       "object_collision": {},
-                       "soft_body": {},
-                       "has_cloth": cloth is not None,
-                       "has_collision": obj.collision is not None and collision is not None,
-                       "has_soft_body": obj.soft_body is not None
-                       }
+        preset_data = {
+            "name": new_preset.name,
+            "cloth": {},
+            "cloth_collision": {},
+            "object_collision": {},
+            "soft_body": {},
+            "has_cloth": cloth is not None,
+            "has_collision": obj.collision is not None and collision is not None,
+            "has_soft_body": obj.soft_body is not None,
+        }
 
         new_preset.has_cloth = cloth is not None
         new_preset.has_soft_body = obj.soft_body is not None
@@ -109,14 +116,16 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
                 try:
                     value = getattr(cloth.settings, identifier)
 
-                    if hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+                    if hasattr(value, "__iter__") and not isinstance(
+                        value, (str, bytes)
+                    ):
                         value = list(value)
 
                     preset_data["cloth"][identifier] = value
-                except:
+                except Exception:
                     pass
 
-        # Cloth Collisions
+            # Cloth Collisions
             if cloth.collision_settings:
                 for prop in cloth.collision_settings.bl_rna.properties:
                     if prop.is_readonly:
@@ -127,11 +136,13 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
                     try:
                         value = getattr(cloth.collision_settings, identifier)
 
-                        if hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+                        if hasattr(value, "__iter__") and not isinstance(
+                            value, (str, bytes)
+                        ):
                             value = list(value)
 
                         preset_data["cloth_collision"][identifier] = value
-                    except:
+                    except Exception:
                         pass
 
         # Collisions
@@ -145,11 +156,13 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
                 try:
                     value = getattr(obj.collision, identifier)
 
-                    if hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+                    if hasattr(value, "__iter__") and not isinstance(
+                        value, (str, bytes)
+                    ):
                         value = list(value)
 
                     preset_data["object_collision"][identifier] = value
-                except:
+                except Exception:
                     pass
 
         # Soft Body
@@ -163,27 +176,26 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
                 try:
                     value = getattr(soft_body.settings, identifier)
 
-                    if hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+                    if hasattr(value, "__iter__") and not isinstance(
+                        value, (str, bytes)
+                    ):
                         value = list(value)
 
                     preset_data["soft_body"][identifier] = value
-                except:
+                except Exception:
                     pass
 
         data.append(preset_data)
 
         # Write Json in the preset as a string
         json_string = json.dumps(
-            data,
-            ensure_ascii=False,
-            indent=4,
-            default=make_json_serializable
+            data, ensure_ascii=False, indent=4, default=make_json_serializable
         )
         new_preset.data = json_string
 
-        self.report({'INFO'}, f'MustardUI - Preset \'' + new_preset.name + '\' created')
+        self.report({"INFO"}, "MustardUI - Preset '" + new_preset.name + "' created")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def restore_value(current_value, loaded_value):
@@ -215,9 +227,10 @@ def apply_settings(target, data, errors):
 
 class MustardUI_Physics_PresetApply(bpy.types.Operator):
     """Apply Physics preset"""
+
     bl_idname = "mustardui.physics_preset_apply"
     bl_label = "Apply Physics Preset"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     preset_id: bpy.props.IntProperty(default=-1)
     force_modifiers_creation: bpy.props.BoolProperty(default=False)
@@ -237,9 +250,7 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
         if len(physics_settings.items) == 0:
             return False
 
-        obj = physics_settings.items[
-            arm.mustardui_physics_items_uilist_index
-        ].object
+        obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object
 
         return obj and obj.type == "MESH"
 
@@ -249,9 +260,7 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         presets = physics_settings.presets
-        obj = physics_settings.items[
-            arm.mustardui_physics_items_uilist_index
-        ].object
+        obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object
 
         errors = 0
 
@@ -261,49 +270,37 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
 
         # Force creation of modifiers
         if self.force_modifiers_creation:
-            cloth = next((m for m in obj.modifiers if m.type == 'CLOTH'), None)
-            soft_body = next((m for m in obj.modifiers if m.type == 'SOFT_BODY'), None)
+            cloth = next((m for m in obj.modifiers if m.type == "CLOTH"), None)
+            soft_body = next((m for m in obj.modifiers if m.type == "SOFT_BODY"), None)
 
             if not cloth and preset.get("cloth"):
-                obj.modifiers.new(name="Cloth", type='CLOTH')
+                obj.modifiers.new(name="Cloth", type="CLOTH")
 
             if preset.get("object_collision") and not obj.collision:
-                obj.modifiers.new(name="Collision", type='COLLISION')
+                obj.modifiers.new(name="Collision", type="COLLISION")
 
             if preset.get("soft_body") and not soft_body:
-                obj.modifiers.new(name="Softbody", type='SOFT_BODY')
+                obj.modifiers.new(name="Softbody", type="SOFT_BODY")
 
-        cloth = next((m for m in obj.modifiers if m.type == 'CLOTH'), None)
-        soft_body = next((m for m in obj.modifiers if m.type == 'SOFT_BODY'), None)
-        collision = next((m for m in obj.modifiers if m.type == 'COLLISION'), None)
+        cloth = next((m for m in obj.modifiers if m.type == "CLOTH"), None)
+        soft_body = next((m for m in obj.modifiers if m.type == "SOFT_BODY"), None)
+        collision = next((m for m in obj.modifiers if m.type == "COLLISION"), None)
 
         if cloth:
-            errors = apply_settings(
-                cloth.settings,
-                preset.get("cloth"),
-                errors
-            )
+            errors = apply_settings(cloth.settings, preset.get("cloth"), errors)
 
             if cloth.collision_settings:
                 errors = apply_settings(
-                    cloth.collision_settings,
-                    preset.get("cloth_collision"),
-                    errors
+                    cloth.collision_settings, preset.get("cloth_collision"), errors
                 )
 
         if obj.collision and collision is not None:
             errors = apply_settings(
-                obj.collision,
-                preset.get("object_collision"),
-                errors
+                obj.collision, preset.get("object_collision"), errors
             )
 
         if soft_body:
-            errors = apply_settings(
-                soft_body.settings,
-                preset.get("soft_body"),
-                errors
-            )
+            errors = apply_settings(soft_body.settings, preset.get("soft_body"), errors)
 
         # Update Objects
         if arm:
@@ -319,18 +316,22 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
         context.view_layer.update()
 
         if errors == 0:
-            self.report({'INFO'}, f"MustardUI - Preset '{preset_name}' applied.")
+            self.report({"INFO"}, f"MustardUI - Preset '{preset_name}' applied.")
         else:
-            self.report({'WARNING'}, f"MustardUI - Preset '{preset_name}' applied with {errors} issues.")
+            self.report(
+                {"WARNING"},
+                f"MustardUI - Preset '{preset_name}' applied with {errors} issues.",
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Physics_PresetDelete(bpy.types.Operator):
     """Delete Morph preset"""
+
     bl_idname = "mustardui.physics_preset_delete"
     bl_label = "Morph Preset Create"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     preset_id: bpy.props.IntProperty(default=-1)
 
@@ -351,28 +352,29 @@ class MustardUI_Physics_PresetDelete(bpy.types.Operator):
 
         presets.remove(self.preset_id)
 
-        self.report({'INFO'}, f'MustardUI - Preset \'' + preset_name + '\' deleted')
+        self.report({"INFO"}, "MustardUI - Preset '" + preset_name + "' deleted")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Physics_PresetsUI(bpy.types.Operator):
     """Presets UI for Morphs"""
+
     bl_idname = "mustardui.physics_presets_ui"
     bl_label = "Morph Presets"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
-    bl_space_type = 'OUTLINER'
-    bl_region_type = 'WINDOW'
+    bl_space_type = "OUTLINER"
+    bl_region_type = "WINDOW"
 
-    new_preset_name: bpy.props.StringProperty(
-        name="New Preset Name",
-        default="Preset")
+    new_preset_name: bpy.props.StringProperty(name="New Preset Name", default="Preset")
 
-    force_modifiers_creation: bpy.props.BoolProperty(default=False,
-                                                     name="Create missing Modifiers",
-                                                     description="Modifiers are created if missing on the Physics Item"
-                                                                 "to accommodate the data written in the modifier")
+    force_modifiers_creation: bpy.props.BoolProperty(
+        default=False,
+        name="Create missing Modifiers",
+        description="Modifiers are created if missing on the Physics Item"
+        "to accommodate the data written in the modifier",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -380,7 +382,7 @@ class MustardUI_Physics_PresetsUI(bpy.types.Operator):
         return res if arm is not None else False
 
     def execute(self, context):
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=250)
@@ -406,21 +408,31 @@ class MustardUI_Physics_PresetsUI(bpy.types.Operator):
                 row2.label(text="", icon="MOD_SOFT")
             if preset.has_collision:
                 row2.label(text="", icon="MOD_PHYSICS")
-            row2.operator("mustardui.physics_preset_apply", text=preset.name).preset_id = pid
-            row.operator("mustardui.physics_preset_delete", text="", icon="X").preset_id = pid
+            row2.operator(
+                "mustardui.physics_preset_apply", text=preset.name
+            ).preset_id = pid
+            row.operator(
+                "mustardui.physics_preset_delete", text="", icon="X"
+            ).preset_id = pid
             row.separator()
-            row.operator("mustardui.physics_preset_export", text="", icon="COPYDOWN").preset_id = pid
+            row.operator(
+                "mustardui.physics_preset_export", text="", icon="COPYDOWN"
+            ).preset_id = pid
 
         if len(presets):
             layout.separator()
 
         row = layout.row(align=True)
         row.prop(self, "new_preset_name", text="")
-        row.operator("mustardui.physics_preset_create", icon="ADD", text="").new_preset_name = self.new_preset_name
+        row.operator(
+            "mustardui.physics_preset_create", icon="ADD", text=""
+        ).new_preset_name = self.new_preset_name
 
         layout.separator()
         row = layout.row(align=True)
-        row.operator("mustardui.physics_preset_import", text="Import Preset", icon="PASTEDOWN")
+        row.operator(
+            "mustardui.physics_preset_import", text="Import Preset", icon="PASTEDOWN"
+        )
 
 
 def register():

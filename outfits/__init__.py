@@ -1,14 +1,16 @@
-from . import definitions
-from . import ops_add
-from . import ops_delete
-from . import ops_remove
-from . import ops_optimize
-from . import ops_smartcheck
-from . import ops_visibility
-from . import ops_complete_outfit_visibility
-from . import ops_rename_outfit
-from . import menu
-from . import ui_list
+from . import (
+    definitions,
+    menu,
+    ops_add,
+    ops_complete_outfit_visibility,
+    ops_delete,
+    ops_optimize,
+    ops_remove,
+    ops_rename_outfit,
+    ops_smartcheck,
+    ops_visibility,
+    ui_list,
+)
 
 
 def register():

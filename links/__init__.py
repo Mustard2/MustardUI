@@ -1,7 +1,4 @@
-from . import ops_link
-from . import ops_preset
-from . import ui_list
-from . import definitions
+from . import definitions, ops_link, ops_preset, ui_list
 
 
 def register():

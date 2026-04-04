@@ -1,6 +1,4 @@
-from . import ops_hair_visibility
-from . import ops_optimize
-from . import ops_hair_particles
+from . import ops_hair_particles, ops_hair_visibility, ops_optimize
 
 
 def register():

@@ -1,16 +1,17 @@
 import bpy
 
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..misc.prop_utils import *
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
+from ..warnings.ops_fix_old_UI import check_old_UI
 from ..warnings.ops_update_ui import is_ui_update
+from . import MainPanel
 
 
 def check_blender_version(rig_settings):
     current_blender_version = bpy.app.version
-    return tuple(current_blender_version) < tuple(rig_settings.model_minimum_blender_version)
+    return tuple(current_blender_version) < tuple(
+        rig_settings.model_minimum_blender_version
+    )
 
 
 class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
@@ -32,10 +33,11 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
             rig_settings = obj.MustardUI_RigSettings
 
-            return poll and (check_eevee_normals(context.scene, settings) or
-                             not is_ui_update(rig_settings) or
-                             check_blender_version(rig_settings)
-                             )
+            return poll and (
+                check_eevee_normals(context.scene, settings)
+                or not is_ui_update(rig_settings)
+                or check_blender_version(rig_settings)
+            )
 
         return poll
 
@@ -64,7 +66,10 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         if check_eevee_normals(context.scene, settings):
             box = layout.box()
             col = box.column(align=True)
-            col.label(text="Eevee Optimed Normals are active with Cycles!", icon="NORMALS_FACE")
+            col.label(
+                text="EEVEE Optimised Normals are active with Cycles!",
+                icon="NORMALS_FACE",
+            )
             box.operator("mustardui.warnings_fix_eevee_normals", icon="NORMALS_FACE")
 
         # Check if the model is up-to-date
@@ -80,13 +85,21 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             op.force = False
             op.ignore = False
 
-        # Emit warning if the model is used on a different Blender version than requested by the model creator
+        # Emit warning if the model is used on a different Blender version than
+        # requested by the model creator
         if check_blender_version(rig_settings):
             box = layout.box()
             col = box.column(align=True)
             mbv = rig_settings.model_minimum_blender_version
-            col.label(text="Minimum Blender version: " + str(mbv[0]) + "." + str(mbv[1]) + "." + str(mbv[2]),
-                      icon="BLENDER")
+            col.label(
+                text="Minimum Blender version: "
+                + str(mbv[0])
+                + "."
+                + str(mbv[1])
+                + "."
+                + str(mbv[2]),
+                icon="BLENDER",
+            )
             col.label(text="The model might not work properly.", icon="BLANK1")
             col.label(text="Update Blender to the latest version.", icon="BLANK1")
 

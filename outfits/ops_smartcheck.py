@@ -1,13 +1,15 @@
 import bpy
-from ..model_selection.active_object import *
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
     """Search for Outfits"""
+
     bl_idname = "mustardui.outfits_smartcheck"
     bl_label = "Outfit Smart Search."
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -16,7 +18,11 @@ class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
 
         if arm is not None:
             rig_settings = arm.MustardUI_RigSettings
-            return rig_settings.model_MustardUI_naming_convention and rig_settings.model_body is not None and rig_settings.model_name != ""
+            return (
+                rig_settings.model_MustardUI_naming_convention
+                and rig_settings.model_body is not None
+                and rig_settings.model_name != ""
+            )
         else:
             return False
 
@@ -26,18 +32,23 @@ class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        # Search for oufit collections
+        # Search for outfit collections
         if addon_prefs.debug:
-            print('\nMustardUI - Smart Check - Searching for outfits\n')
+            print("\nMustardUI - Smart Check - Searching for outfits\n")
 
-        outfits_collections = [x for x in bpy.data.collections if
-                               (rig_settings.model_name in x.name) and ('Hair' not in x.name) and
-                               ('Extras' not in x.name) and ('Physics' not in x.name) and
-                               ('Collision' not in x.name) and
-                               (rig_settings.model_name != x.name) and ('_' not in x.name)]
+        outfits_collections = [
+            x
+            for x in bpy.data.collections
+            if (rig_settings.model_name in x.name)
+            and ("Hair" not in x.name)
+            and ("Extras" not in x.name)
+            and ("Physics" not in x.name)
+            and ("Collision" not in x.name)
+            and (rig_settings.model_name != x.name)
+            and ("_" not in x.name)
+        ]
 
         for collection in outfits_collections:
-
             add_collection = True
             for el in rig_settings.outfits_collections:
                 if el.collection == collection:
@@ -45,13 +56,18 @@ class MustardUI_Outfit_SmartCheck(bpy.types.Operator):
                     break
 
             if addon_prefs.debug:
-                print('MustardUI - Smart Check - ' + collection.name + ' added: ' + str(add_collection))
+                print(
+                    "MustardUI - Smart Check - "
+                    + collection.name
+                    + " added: "
+                    + str(add_collection)
+                )
 
             if add_collection:
                 add_item = rig_settings.outfits_collections.add()
                 add_item.collection = collection
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

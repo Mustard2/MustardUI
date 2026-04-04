@@ -13,22 +13,24 @@ bl_info = {
     "category": "User Interface",
 }
 
-from . import settings
-from . import misc
-from . import model_selection
-from . import warnings
-from . import armature
-from . import tools
-from . import tools_creators
-from . import custom_properties
-from . import sections
-from . import outfits
-from . import hair
-from . import physics
-from . import morphs
-from . import configuration
-from . import links
-from . import menu
+from . import (  # noqa: E402
+    armature,
+    configuration,
+    custom_properties,
+    hair,
+    links,
+    menu,
+    misc,
+    model_selection,
+    morphs,
+    outfits,
+    physics,
+    sections,
+    settings,
+    tools,
+    tools_creators,
+    warnings,
+)
 
 
 def register():

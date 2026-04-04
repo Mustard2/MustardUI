@@ -1,12 +1,14 @@
 import bpy
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
     """Remove the selected Physics Item from the UI"""
+
     bl_idname = "mustardui.physics_item_remove"
     bl_label = "Remove Physics Item"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     def execute(self, context):
 
@@ -17,7 +19,7 @@ class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
         index = arm.mustardui_physics_items_uilist_index
 
         if len(uilist) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
@@ -27,9 +29,9 @@ class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
 
         arm.update_tag()
 
-        self.report({'INFO'}, 'MustardUI - Physics Item removed.')
+        self.report({"INFO"}, "MustardUI - Physics Item removed.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
