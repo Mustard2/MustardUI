@@ -1,10 +1,12 @@
-from . import definitions
-from . import ops_smartcheck
-from . import ops_clearpose
-from . import ops_reset
-from . import ops_transfer_animation
-from . import ui_list
-from . import external
+from . import (
+    definitions,
+    external,
+    ops_clearpose,
+    ops_reset,
+    ops_smartcheck,
+    ops_transfer_animation,
+    ui_list,
+)
 
 
 def register():

@@ -1,6 +1,4 @@
-import bpy
-
-from ...model_selection.active_object import *
+from ...model_selection.active_object import mustardui_active_object
 from ...warnings.ops_fix_old_UI import check_old_UI
 
 # MHX porting guide
