@@ -1,4 +1,10 @@
-from . import (
+class MainPanel:
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "MustardUI"
+
+
+from . import (  # noqa: E402
     menu_armature,
     menu_armature_external,
     menu_body,

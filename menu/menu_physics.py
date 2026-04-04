@@ -4,7 +4,7 @@ from ..misc.mirror import check_mirror
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from .menu_panel import MainPanel
+from . import MainPanel
 
 
 def cloth_panel(layout, pi, mod):

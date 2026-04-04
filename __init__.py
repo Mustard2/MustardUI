@@ -1,7 +1,19 @@
 # MustardUI addon
 # GitHub page: https://github.com/Mustard2/MustardUI
 
-from . import (
+# Add-on information
+bl_info = {
+    "name": "MustardUI",
+    "description": "Easy-to-use UI for human characters.",
+    "author": "Mustard",
+    "version": (2026, 4, 0),
+    "blender": (4, 2, 0),
+    "warning": "",
+    "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
+    "category": "User Interface",
+}
+
+from . import (  # noqa: E402
     armature,
     configuration,
     custom_properties,
@@ -19,18 +31,6 @@ from . import (
     tools_creators,
     warnings,
 )
-
-# Add-on information
-bl_info = {
-    "name": "MustardUI",
-    "description": "Easy-to-use UI for human characters.",
-    "author": "Mustard",
-    "version": (2026, 4, 0),
-    "blender": (4, 2, 0),
-    "warning": "",
-    "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
-    "category": "User Interface",
-}
 
 
 def register():

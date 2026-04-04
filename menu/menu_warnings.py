@@ -4,7 +4,7 @@ from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
 from ..warnings.ops_fix_old_UI import check_old_UI
 from ..warnings.ops_update_ui import is_ui_update
-from .menu_panel import MainPanel
+from . import MainPanel
 
 
 def check_blender_version(rig_settings):
