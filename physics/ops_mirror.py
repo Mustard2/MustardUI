@@ -1,6 +1,7 @@
 import bpy
-from ..model_selection.active_object import *
+
 from ..misc.mirror import check_mirror
+from ..model_selection.active_object import mustardui_active_object
 
 
 def mirror_cloth(obj, obj_mirror) -> bool:
@@ -53,7 +54,9 @@ def mirror_cloth(obj, obj_mirror) -> bool:
     cloth_mirror.internal_tension_stiffness = cloth.internal_tension_stiffness
     cloth_mirror.internal_compression_stiffness = cloth.internal_compression_stiffness
     cloth_mirror.internal_tension_stiffness_max = cloth.internal_tension_stiffness_max
-    cloth_mirror.internal_compression_stiffness_max = cloth.internal_compression_stiffness_max
+    cloth_mirror.internal_compression_stiffness_max = (
+        cloth.internal_compression_stiffness_max
+    )
 
     cloth_mirror.use_pressure = cloth.use_pressure
     cloth_mirror.uniform_pressure_force = cloth.uniform_pressure_force
@@ -77,7 +80,7 @@ def mirror_cloth(obj, obj_mirror) -> bool:
     collisions_mirror.impulse_clamp = collisions.impulse_clamp
     try:
         collisions_mirror.collection = collisions.collection
-    except:
+    except Exception:
         pass
 
     collisions_mirror.use_self_collision = collisions.use_self_collision
@@ -122,9 +125,10 @@ def mirror_soft_body(obj, obj_mirror) -> bool:
 
 class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
     """Mirror the settings of this Physics Item"""
+
     bl_idname = "mustardui.physics_mirror"
     bl_label = "Mirror Physics Item"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     obj_name: bpy.props.StringProperty(default="")
 
@@ -143,11 +147,15 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
 
         obj_mirror = None
         for on in [x for x in physics_settings.items if x.object != obj]:
-            if check_mirror(self.obj_name, on.object.name, left=True) or check_mirror(self.obj_name, on.object.name, left=False):
+            if check_mirror(self.obj_name, on.object.name, left=True) or check_mirror(
+                self.obj_name, on.object.name, left=False
+            ):
                 obj_mirror = on.object
                 break
         if obj_mirror is None:
-            self.report({'WARNING'}, 'MustardUI - No Object as target for mirror found.')
+            self.report(
+                {"WARNING"}, "MustardUI - No Object as target for mirror found."
+            )
 
         # Cloth Settings
         cloth = mirror_cloth(obj, obj_mirror)
@@ -158,11 +166,13 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
         arm.update_tag()
 
         if cloth or soft_body:
-            self.report({'INFO'}, 'MustardUI - Physics Item settings mirrored.')
+            self.report({"INFO"}, "MustardUI - Physics Item settings mirrored.")
         else:
-            self.report({'WARNING'}, 'MustardUI - An error occurred while mirroring settings.')
+            self.report(
+                {"WARNING"}, "MustardUI - An error occurred while mirroring settings."
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
