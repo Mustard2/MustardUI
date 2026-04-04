@@ -2,17 +2,18 @@ import bpy
 
 
 class MustardUI_FixMissingUI(bpy.types.Operator):
-    """Fix Missing UI in case Viewport Model selection was off and the Armature selection has been corrupted"""
+    """Fix Missing UI in case Viewport Model selection was off and the Armature selection has been corrupted"""  # noqa: E501
+
     bl_idname = "mustardui.fix_missing_ui"
     bl_label = "Fix Missing UI"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     def execute(self, context):
 
         settings = context.scene.MustardUI_Settings
         settings.viewport_model_selection = True
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
