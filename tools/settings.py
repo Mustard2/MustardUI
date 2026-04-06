@@ -18,7 +18,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         default=False,
         name="Auto Breath",
         description="Enable the Auto Breath tool.\nThis tool will allow a quick "
-                    "creation of a breathing animation",
+        "creation of a breathing animation",
     )
 
     autobreath_frequency: FloatProperty(
@@ -61,7 +61,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         default=False,
         name="Auto Blink",
         description="Enable the Auto Blink tool.\nThis tool will allow a quick "
-                    "creation of eyelid blinking animation",
+        "creation of eyelid blinking animation",
     )
 
     autoeyelid_driver_type: EnumProperty(
@@ -79,7 +79,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         max=20.0,
         name="Blink Length Factor",
         description="Increasing this value, you will proportionally increase the "
-                    "length of the blink from the common values of 0.1-0.25 ms",
+        "length of the blink from the common values of 0.1-0.25 ms",
     )
 
     autoeyelid_blink_rate_per_minute: IntProperty(
@@ -88,8 +88,8 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         max=104,
         name="Blink Chance",
         description="Number of blinks per minute.\nNote that some "
-                    "randomization is included in the tool, therefore the "
-                    "final realization number might be different",
+        "randomization is included in the tool, therefore the "
+        "final realization number might be different",
     )
 
     autoeyelid_eyeL_shapekey: StringProperty(
@@ -102,8 +102,8 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     autoeyelid_morph: StringProperty(
         name="Morph",
         description="The name of the morph should be the name of the custom property "
-                    "in the Armature object, and not the name of the morph shown in the"
-                    " UI",
+        "in the Armature object, and not the name of the morph shown in the"
+        " UI",
     )
 
     # ------------------------------------------------------------------------
@@ -153,9 +153,9 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     bone_shrinkwrap_rotation_correction: bpy.props.BoolProperty(
         name="Rotation Correction",
         description="When enabled, rotations are corrected with axis alignment.\nMight"
-                    " improve the behaviour of the shrinkwrap over lateral movements, "
-                    "but introduce artifacts in the movement in some rigs or when the "
-                    "shrinkwrap object is not touching the bones directly",
+        " improve the behaviour of the shrinkwrap over lateral movements, "
+        "but introduce artifacts in the movement in some rigs or when the "
+        "shrinkwrap object is not touching the bones directly",
         default=False,
     )
 

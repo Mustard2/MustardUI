@@ -6,14 +6,20 @@ from ..model_selection.active_object import mustardui_active_object
 # UNIVERSAL LIP DETECTION
 # =========================================================
 
+
 def detect_lip_map(armature):
     names = {b.name for b in armature.data.bones}
 
     # New MHX
     new_mhx = [
-        'lipuppermiddle', 'lipupper.L', 'lipupper.R',
-        'lipcorner.L', 'liplower.L', 'liplowermiddle',
-        'liplower.R', 'lipcorner.R'
+        "lipuppermiddle",
+        "lipupper.L",
+        "lipupper.R",
+        "lipcorner.L",
+        "liplower.L",
+        "liplowermiddle",
+        "liplower.R",
+        "lipcorner.R",
     ]
 
     if all(b in names for b in new_mhx):
@@ -21,7 +27,7 @@ def detect_lip_map(armature):
             "corners": ["lipcorner.L", "lipcorner.R"],
             "lower": ["liplower.L", "liplowermiddle", "liplower.R"],
             "upper": ["lipuppermiddle", "lipupper.L", "lipupper.R"],
-            "all": new_mhx
+            "all": new_mhx,
         }
 
     # Old MHX
@@ -35,20 +41,14 @@ def detect_lip_map(armature):
     for prefix, L, R in old_mhx_variants:
         test = f"{prefix}Corner.{L}"
         if test in names:
-            def n(x): return f"{prefix}{x}"
+
+            def n(x):
+                return f"{prefix}{x}"
 
             return {
                 "corners": [n(f"Corner.{L}"), n(f"Corner.{R}")],
-                "lower": [
-                    n(f"LowerOuter.{L}"),
-                    n("LowerMiddle"),
-                    n(f"LowerOuter.{R}")
-                ],
-                "upper": [
-                    n("UpperMiddle"),
-                    n(f"UpperOuter.{L}"),
-                    n(f"UpperOuter.{R}")
-                ],
+                "lower": [n(f"LowerOuter.{L}"), n("LowerMiddle"), n(f"LowerOuter.{R}")],
+                "upper": [n("UpperMiddle"), n(f"UpperOuter.{L}"), n(f"UpperOuter.{R}")],
                 "all": [
                     n(f"Corner.{L}"),
                     n(f"LowerOuter.{L}"),
@@ -62,7 +62,7 @@ def detect_lip_map(armature):
                     n(f"UpperInner.{L}"),
                     n(f"UpperInner.{R}"),
                     n(f"UpperOuter.{R}"),
-                ]
+                ],
             }
 
     # ARP
@@ -70,22 +70,22 @@ def detect_lip_map(armature):
     if arp_test in names:
         return {
             "corners": ["c_lips_smile.r", "c_lips_smile.l"],
-            "lower": [
-                "c_lips_bot.r",
-                "c_lips_bot.x",
-                "c_lips_bot.l"
-            ],
-            "upper": [
-                "c_lips_top.x",
-                "c_lips_top.r",
-                "c_lips_top.l"
-            ],
+            "lower": ["c_lips_bot.r", "c_lips_bot.x", "c_lips_bot.l"],
+            "upper": ["c_lips_top.x", "c_lips_top.r", "c_lips_top.l"],
             "all": [
-                'c_lips_smile.r', 'c_lips_top.r', 'c_lips_top_01.r', 'c_lips_top.x',
-                'c_lips_top.l', 'c_lips_top_01.l', 'c_lips_smile.l',
-                'c_lips_bot.r', 'c_lips_bot_01.r', 'c_lips_bot.x',
-                'c_lips_bot.l', 'c_lips_bot_01.l'
-            ]
+                "c_lips_smile.r",
+                "c_lips_top.r",
+                "c_lips_top_01.r",
+                "c_lips_top.x",
+                "c_lips_top.l",
+                "c_lips_top_01.l",
+                "c_lips_smile.l",
+                "c_lips_bot.r",
+                "c_lips_bot_01.r",
+                "c_lips_bot.x",
+                "c_lips_bot.l",
+                "c_lips_bot_01.l",
+            ],
         }
 
     return None
@@ -149,7 +149,7 @@ def apply_lips_shrinkwrap(props, armature):
             continue
 
         # Shrinkwrap
-        c = cm.ensure(pbone, "shrinkwrap", 'SHRINKWRAP')
+        c = cm.ensure(pbone, "shrinkwrap", "SHRINKWRAP")
 
         c.target = props.bone_shrinkwrap_target
         c.wrap_mode = "OUTSIDE"
@@ -164,15 +164,15 @@ def apply_lips_shrinkwrap(props, armature):
         if props.bone_shrinkwrap_rotation_correction:
             if name in uppers:
                 c.use_track_normal = True
-                c.track_axis = 'TRACK_NEGATIVE_Z'
+                c.track_axis = "TRACK_NEGATIVE_Z"
             elif name in lowers:
                 c.use_track_normal = True
-                c.track_axis = 'TRACK_Z'
+                c.track_axis = "TRACK_Z"
         else:
             c.use_track_normal = False
 
         # Friction
-        cf = cm.ensure(pbone, "friction", 'CHILD_OF')
+        cf = cm.ensure(pbone, "friction", "CHILD_OF")
 
         cf.target = (
             props.bone_shrinkwrap_target_friction or props.bone_shrinkwrap_target
