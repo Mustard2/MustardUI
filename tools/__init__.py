@@ -1,9 +1,11 @@
-from . import settings
-from . import eevee_normals
-from . import auto_eyelid
-from . import auto_breath
-from . import bone_shrinkwrap
-from . import simplify
+from . import (
+    auto_breath,
+    auto_eyelid,
+    bone_shrinkwrap,
+    eevee_normals,
+    settings,
+    simplify,
+)
 
 
 def register():

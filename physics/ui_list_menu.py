@@ -1,13 +1,15 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 from .settings_item import mustardui_physics_item_type_dict
 
 
 class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
     """UIList for Physics Items"""
 
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(
+        self, context, layout, data, item, icon, active_data, active_propname, index
+    ):
         if not item.object:
             layout.label(text="Object not found!", icon="ERROR")
             return
@@ -18,10 +20,14 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
         rig_settings = obj.MustardUI_RigSettings
 
         name = item.object.name
-        name = name if not rig_settings.model_MustardUI_naming_convention else name[len(rig_settings.model_name)+1:]
+        name = (
+            name
+            if not rig_settings.model_MustardUI_naming_convention
+            else name[len(rig_settings.model_name) + 1 :]
+        )
 
         row = layout.row(align=True)
-        row.prop(item, 'enable', text="")
+        row.prop(item, "enable", text="")
 
         row2 = row.row()
         row2.enabled = item.enable
@@ -33,13 +39,15 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
         row2.enabled = item.enable
         if item.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
             if item.type == "CAGE":
-                row2.prop(item, 'smooth_corrective', text="", icon="MOD_SMOOTH")
-            row2.prop(item, 'collisions', text="", icon="MOD_PHYSICS")
+                row2.prop(item, "smooth_corrective", text="", icon="MOD_SMOOTH")
+            row2.prop(item, "collisions", text="", icon="MOD_PHYSICS")
 
-        row.prop(item.object, 'hide_viewport', text="", emboss=False)
+        row.prop(item.object, "hide_viewport", text="", emboss=False)
 
         if settings.advanced and item.object is not None:
-            op = row.operator('mustardui.physics_rebind_single_cage', text="", icon="FILE_REFRESH")
+            op = row.operator(
+                "mustardui.physics_rebind_single_cage", text="", icon="FILE_REFRESH"
+            )
             op.cage_name = item.object.name
 
 

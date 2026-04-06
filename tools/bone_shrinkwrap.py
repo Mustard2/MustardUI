@@ -1,6 +1,6 @@
 import bpy
-from ..model_selection.active_object import *
 
+from ..model_selection.active_object import mustardui_active_object
 
 RIG_MAP = {
     "arp": {
@@ -8,17 +8,23 @@ RIG_MAP = {
         "bones": {
             "corner": ["c_lips_smile.r", "c_lips_smile.l"],
             "all": [
-                'c_lips_smile.r', 'c_lips_top.r', 'c_lips_top_01.r', 'c_lips_top.x',
-                'c_lips_top.l', 'c_lips_top_01.l', 'c_lips_smile.l',
-                'c_lips_bot.r', 'c_lips_bot_01.r', 'c_lips_bot.x',
-                'c_lips_bot.l', 'c_lips_bot_01.l'
-            ]
-        }
+                "c_lips_smile.r",
+                "c_lips_top.r",
+                "c_lips_top_01.r",
+                "c_lips_top.x",
+                "c_lips_top.l",
+                "c_lips_top_01.l",
+                "c_lips_smile.l",
+                "c_lips_bot.r",
+                "c_lips_bot_01.r",
+                "c_lips_bot.x",
+                "c_lips_bot.l",
+                "c_lips_bot_01.l",
+            ],
+        },
     },
-
     "mhx": {
         "type": "mhx",
-
         # Naming patterns instead of hardcoded lists
         "pattern": {
             "corner": "Corner.{side}",
@@ -29,21 +35,20 @@ RIG_MAP = {
             "upper_outer": "UpperOuter.{side}",
             "upper_inner": "UpperInner.{side}",
         },
-
         # Supported naming variants
         "variants": [
             {"prefix": "Lip", "corner": "LipCorner.l", "sides": ("l", "r")},
             {"prefix": "Lip", "corner": "LipCorner.L", "sides": ("L", "R")},
             {"prefix": "lip", "corner": "lipCorner.l", "sides": ("l", "r")},
             {"prefix": "lip", "corner": "lipCorner.L", "sides": ("L", "R")},
-        ]
-    }
+        ],
+    },
 }
 
 
 def build_mhx_bones(variant, pattern):
     prefix = variant["prefix"]
-    l, r = variant["sides"]
+    left, right = variant["sides"]
 
     def n(key, side=None):
         name = pattern[key]
@@ -52,18 +57,18 @@ def build_mhx_bones(variant, pattern):
         return f"{prefix}{name}"
 
     return [
-        n("corner", l),
-        n("lower_outer", l),
-        n("lower_inner", l),
+        n("corner", left),
+        n("lower_outer", left),
+        n("lower_inner", left),
         n("lower_mid"),
-        n("lower_inner", r),
-        n("lower_outer", r),
-        n("corner", r),
+        n("lower_inner", right),
+        n("lower_outer", right),
+        n("corner", right),
         n("upper_mid"),
-        n("upper_outer", l),
-        n("upper_inner", l),
-        n("upper_inner", r),
-        n("upper_outer", r),
+        n("upper_outer", left),
+        n("upper_inner", left),
+        n("upper_inner", right),
+        n("upper_outer", right),
     ]
 
 
@@ -99,11 +104,11 @@ def get_corner_bones(rig_type, armature):
             return []
 
         prefix = variant["prefix"]
-        l, r = variant["sides"]
+        left, right = variant["sides"]
 
         return [
-            f"{prefix}Corner.{l}",
-            f"{prefix}Corner.{r}",
+            f"{prefix}Corner.{left}",
+            f"{prefix}Corner.{right}",
         ]
 
     return []
@@ -183,10 +188,10 @@ def apply_lips_shrinkwrap(props, armature, rig_type):
         # -------------------------
         # SHRINKWRAP
         # -------------------------
-        c = cm.ensure(pbone, "shrinkwrap", 'SHRINKWRAP')
+        c = cm.ensure(pbone, "shrinkwrap", "SHRINKWRAP")
 
         c.target = props.bone_shrinkwrap_target
-        c.wrap_mode = 'OUTSIDE'
+        c.wrap_mode = "OUTSIDE"
 
         dist = props.bone_shrinkwrap_distance
         if name in corners:
@@ -200,11 +205,10 @@ def apply_lips_shrinkwrap(props, armature, rig_type):
         # -------------------------
         # FRICTION
         # -------------------------
-        cf = cm.ensure(pbone, "friction", 'CHILD_OF')
+        cf = cm.ensure(pbone, "friction", "CHILD_OF")
 
         cf.target = (
-            props.bone_shrinkwrap_target_friction
-            or props.bone_shrinkwrap_target
+            props.bone_shrinkwrap_target_friction or props.bone_shrinkwrap_target
         )
 
         if props.bone_shrinkwrap_target_friction_subtarget:
@@ -223,9 +227,10 @@ def apply_lips_shrinkwrap(props, armature, rig_type):
 
 class MUSTARDUI_OT_constraint_apply(bpy.types.Operator):
     """Add Bone Shrinkwrap on the lips"""
+
     bl_idname = "mustardui.constraints_apply"
     bl_label = "Apply Constraint System"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -247,22 +252,23 @@ class MUSTARDUI_OT_constraint_apply(bpy.types.Operator):
         armature = rig_settings.model_armature_object
 
         if not armature:
-            self.report({'ERROR'}, "No armature set")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "No armature set")
+            return {"CANCELLED"}
 
         rig_type = rig_settings.model_rig_type
 
         # Plug modules here
         apply_lips_shrinkwrap(tools_settings, armature, rig_type)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MUSTARDUI_OT_constraints_clear(bpy.types.Operator):
     """Clear Bone Shrinkwrap on the lips, removing all constraints and settings"""
+
     bl_idname = "mustardui.constraints_clear"
     bl_label = "Clear Managed Constraints"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -280,7 +286,7 @@ class MUSTARDUI_OT_constraints_clear(bpy.types.Operator):
         for pb in armature.pose.bones:
             cm.remove_all_tagged(pb)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

@@ -1,7 +1,6 @@
-import math
-
 import bpy
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 def check_bones_connections(selected_bones):
@@ -33,7 +32,11 @@ def find_bone_chains(selected_bones):
         chain = []
         current_bone = bone
 
-        while current_bone and current_bone not in visited and current_bone in selected_bones:
+        while (
+            current_bone
+            and current_bone not in visited
+            and current_bone in selected_bones
+        ):
             chain.append(current_bone)
             visited.add(current_bone)
             if len(current_bone.children) == 1:
@@ -51,16 +54,37 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
     bl_description = "Add physics to a set of selected bones in Pose Mode"
     bl_options = {"REGISTER", "UNDO"}
 
-    curve_width: bpy.props.FloatProperty(default=0.01, name="Curve Width",
-                                         description="Width of the curve used for physics.\nIncrease this value if the item driven by the curve is larger")
-    curve_tilt: bpy.props.FloatProperty(default=0, name="Curve Tilt", subtype="ANGLE",
-                                        description="Tilt of the curve mesh.\nIn some cases, a value of 90 degrees might improve results")
-    pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones",
-                                        description="Number of bones to be pinned in the Physics.\nPinned bones will not move, but are included to generate the curve", min=0)
-    add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
-                                         description='Add the Collision item to Physics Panel', default=True)
-    merge_chains: bpy.props.BoolProperty(name='Merge Chains',
-                                         description='If several disconnected chains are selected, the results will be merged in one single Object', default=True)
+    curve_width: bpy.props.FloatProperty(
+        default=0.01,
+        name="Curve Width",
+        description="Width of the curve used for physics.\nIncrease this value if the "
+        "item driven by the curve is larger",
+    )
+    curve_tilt: bpy.props.FloatProperty(
+        default=0,
+        name="Curve Tilt",
+        subtype="ANGLE",
+        description="Tilt of the curve mesh.\nIn some cases, a value of 90 degrees "
+        "might improve results",
+    )
+    pinned_bones: bpy.props.IntProperty(
+        default=1,
+        name="Pinned Bones",
+        description="Number of bones to be pinned in the Physics.\nPinned bones will "
+        "not move, but are included to generate the curve",
+        min=0,
+    )
+    add_to_panel: bpy.props.BoolProperty(
+        name="Add to Physics Panel",
+        description="Add the Collision item to Physics Panel",
+        default=True,
+    )
+    merge_chains: bpy.props.BoolProperty(
+        name="Merge Chains",
+        description="If several disconnected chains are selected, the results will be "
+        "merged in one single Object",
+        default=True,
+    )
 
     @classmethod
     def poll(cls, context):
@@ -70,11 +94,13 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
         armature = context.object
 
-        if armature and armature.type == 'ARMATURE' and armature.mode == 'POSE':
+        if armature and armature.type == "ARMATURE" and armature.mode == "POSE":
             if bpy.app.version >= (5, 0, 0):
                 selected_bones = [bone for bone in armature.pose.bones if bone.select]
             else:
-                selected_bones = [bone for bone in armature.pose.bones if bone.bone.select]
+                selected_bones = [
+                    bone for bone in armature.pose.bones if bone.bone.select
+                ]
             return len(selected_bones) >= 2
 
         return False
@@ -94,42 +120,54 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         # Find disconnected bone chains
         bone_chains = find_bone_chains(bones)
 
-        chain_objects =[]
+        chain_objects = []
         chain_bone_constraints = []
 
         for chain_idx, chain in enumerate(bone_chains):
-
             if self.pinned_bones >= len(chain):
-                self.report({'WARNING'},
-                            'MustardUI - The number of pinned bones can not be bigger than the number of available bones.')
-                return {'FINISHED'}
+                self.report(
+                    {"WARNING"},
+                    "MustardUI - The number of pinned bones can not be bigger than the "
+                    "number of available bones.",
+                )
+                return {"FINISHED"}
 
             # Create a curve to represent the path through the bone tips
-            curve_data = bpy.data.curves.new('MustardUI Bone Physics', type='CURVE')
-            curve_data.dimensions = '3D'
-            spline = curve_data.splines.new(type='POLY')
+            curve_data = bpy.data.curves.new("MustardUI Bone Physics", type="CURVE")
+            curve_data.dimensions = "3D"
+            spline = curve_data.splines.new(type="POLY")
 
             # Set the curve points to the bone head/tails
             spline.points.add(count=len(chain))
-            spline.points[0].co = (armature.matrix_world @ chain[0].head).to_tuple() + (1,)
+            spline.points[0].co = (armature.matrix_world @ chain[0].head).to_tuple() + (
+                1,
+            )
             spline.points[0].tilt = self.curve_tilt
             for i, bone in enumerate(chain):
                 i += 1
                 if i == len(chain):
-                    spline.points[i].co = (armature.matrix_world @ bone.tail).to_tuple() + (1,)
+                    spline.points[i].co = (
+                        armature.matrix_world @ bone.tail
+                    ).to_tuple() + (1,)
                     spline.points[i].tilt = self.curve_tilt
                 else:
-                    spline.points[i].co = (armature.matrix_world @ bone.tail).to_tuple() + (1,)
+                    spline.points[i].co = (
+                        armature.matrix_world @ bone.tail
+                    ).to_tuple() + (1,)
                     spline.points[i].tilt = self.curve_tilt
 
             # Extrude to solidify the curve
             curve_data.extrude = self.curve_width
 
-            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.mode_set(mode="OBJECT")
 
             # Create a new object for the curve and link it to the scene
             if rig_settings.model_name != "" and armature.name != "":
-                bp_name = f"{rig_settings.model_name} {armature.name.replace(rig_settings.model_name, '')} Bone Physics"
+                bp_name = (
+                    f"{rig_settings.model_name} "
+                    f"{armature.name.replace(rig_settings.model_name, '')} "
+                    f"Bone Physics"
+                )
             else:
                 bp_name = "Bone Physics"
             curve_obj = bpy.data.objects.new(bp_name, curve_data)
@@ -137,13 +175,13 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             curve_obj.MustardUI_tools_creators_is_created = True
 
             # Select only the new mesh
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             armature.select_set(False)
             curve_obj.select_set(True)
             bpy.context.view_layer.objects.active = curve_obj
 
             # Convert the curve to a mesh
-            bpy.ops.object.convert(target='MESH')  # Convert the curve to a mesh
+            bpy.ops.object.convert(target="MESH")  # Convert the curve to a mesh
 
             # Create vertex groups and assign weights for each vertex
             curve_obj.vertex_groups.clear()  # Clear any existing vertex groups
@@ -155,7 +193,6 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             idx_vg = 0
             vertex_groups = []
             for idx, vertex in enumerate(curve_obj.data.vertices):
-
                 if vertex.index % 2:
                     continue
 
@@ -165,43 +202,55 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
                 vertex_groups.append(vertex_group)  # Store the created vertex group
 
                 # Assign the weight of 1 to the current vertex in this group
-                vertex_group.add([vertex.index], 1.0, 'REPLACE')  # Assign weight 1 to the current vertex
-                vertex_group.add([vertex.index + 1], 1.0, 'REPLACE')  # Assign weight 1 to the current vertex
+                vertex_group.add(
+                    [vertex.index], 1.0, "REPLACE"
+                )  # Assign weight 1 to the current vertex
+                vertex_group.add(
+                    [vertex.index + 1], 1.0, "REPLACE"
+                )  # Assign weight 1 to the current vertex
 
                 if idx_vg < self.pinned_bones + 1:
-                    pin_vertex_group.add([vertex.index], 1.0, 'REPLACE')  # Assign weight 1 to the current vertex
-                    pin_vertex_group.add([vertex.index + 1], 1.0, 'REPLACE')  # Assign weight 1 to the current vertex
+                    pin_vertex_group.add(
+                        [vertex.index], 1.0, "REPLACE"
+                    )  # Assign weight 1 to the current vertex
+                    pin_vertex_group.add(
+                        [vertex.index + 1], 1.0, "REPLACE"
+                    )  # Assign weight 1 to the current vertex
 
                 idx_vg += 1
 
             # Add a Damped Track modifier to each bone (except the first)
             for i, bone in enumerate(chain):
-
                 # Add Damped Track constraint to the bone
-                constraint = bone.constraints.new(type='DAMPED_TRACK')
+                constraint = bone.constraints.new(type="DAMPED_TRACK")
                 constraint.name = curve_obj.name
                 constraint.target = curve_obj  # The curve object as the target
-                constraint.track_axis = 'TRACK_Y'  # Track the Y axis (you can change this if needed)
+                constraint.track_axis = (
+                    "TRACK_Y"  # Track the Y axis (you can change this if needed)
+                )
 
-                # Assign the corresponding vertex group to each bone's constraint (starting from the second group)
+                # Assign the corresponding vertex group to each bone's constraint
+                # (starting from the second group)
                 if i - 1 < len(vertex_groups):
-                    constraint.subtarget = vertex_groups[i + 1].name  # Set the vertex group from the second onwards
+                    constraint.subtarget = vertex_groups[
+                        i + 1
+                    ].name  # Set the vertex group from the second onwards
 
                 chain_bone_constraints.append(constraint)
 
             # Add Cloth modifier to the curve mesh
-            cloth_modifier = curve_obj.modifiers.new(name="Cloth", type='CLOTH')
+            cloth_modifier = curve_obj.modifiers.new(name="Cloth", type="CLOTH")
 
             # Set the vertex group for pinning
             cloth_modifier.settings.vertex_group_mass = "Pin"
-            cloth_modifier.settings.pin_stiffness = 1.
+            cloth_modifier.settings.pin_stiffness = 1.0
 
             # Configure cloth modifier
             cloth_modifier.settings.quality = 5
             cloth_modifier.settings.mass = 0.15
-            cloth_modifier.settings.tension_stiffness = 5.
-            cloth_modifier.settings.compression_stiffness = 5.
-            cloth_modifier.settings.shear_stiffness = 5.
+            cloth_modifier.settings.tension_stiffness = 5.0
+            cloth_modifier.settings.compression_stiffness = 5.0
+            cloth_modifier.settings.shear_stiffness = 5.0
             cloth_modifier.settings.bending_stiffness = 0.05
             cloth_modifier.settings.tension_damping = 0.05
             cloth_modifier.settings.compression_damping = 0.05
@@ -214,11 +263,10 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             chain_objects.append(bpy.context.object)
 
         if self.merge_chains:
-
             parent_object = chain_objects[0]
 
             for oc in chain_objects[1:]:
-                bpy.ops.object.select_all(action='DESELECT')
+                bpy.ops.object.select_all(action="DESELECT")
                 parent_object.select_set(True)
                 oc.select_set(True)
 
@@ -232,8 +280,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
                 constraint.target = chain_objects[0]
 
         for co in chain_objects:
-
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             co.select_set(True)
             bpy.context.view_layer.objects.active = co
 
@@ -241,7 +288,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             if self.add_to_panel:
                 add_item = physics_settings.items.add()
                 add_item.object = co
-                add_item.type = 'BONES_DRIVER'
+                add_item.type = "BONES_DRIVER"
 
             # Disable shadows for viewport/render
             co.visible_camera = False
@@ -253,9 +300,9 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
             # Set the armature as the parent
             bpy.context.view_layer.objects.active = armature
-            bpy.ops.object.parent_set(type='ARMATURE')
+            bpy.ops.object.parent_set(type="ARMATURE")
 
-        self.report({'INFO'}, 'MustardUI - Bone Physics added.')
+        self.report({"INFO"}, "MustardUI - Bone Physics added.")
 
         return {"FINISHED"}
 
@@ -264,15 +311,15 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         settings = context.scene.MustardUI_Settings
 
         layout = self.layout
-        layout.prop(self, 'pinned_bones', emboss=True)
-        layout.prop(self, 'merge_chains', emboss=True)
+        layout.prop(self, "pinned_bones", emboss=True)
+        layout.prop(self, "merge_chains", emboss=True)
         if settings.advanced:
-            layout.prop(self, 'curve_width', emboss=True)
-            layout.prop(self, 'curve_tilt', emboss=True)
+            layout.prop(self, "curve_width", emboss=True)
+            layout.prop(self, "curve_tilt", emboss=True)
 
         layout.separator()
 
-        layout.prop(self, 'add_to_panel', emboss=True)
+        layout.prop(self, "add_to_panel", emboss=True)
 
     def invoke(self, context, event):
         self.pinned_bones = 1
@@ -286,10 +333,15 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
     bl_description = "Clean the bone physics of the selected mesh"
     bl_options = {"REGISTER", "UNDO"}
 
-    curve_width: bpy.props.FloatProperty(default=0.01, name="Curve Width", description="")
+    curve_width: bpy.props.FloatProperty(
+        default=0.01, name="Curve Width", description=""
+    )
     pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones", description="")
-    add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
-                                         description='Add the Collision item to Physics Panel', default=True)
+    add_to_panel: bpy.props.BoolProperty(
+        name="Add to Physics Panel",
+        description="Add the Collision item to Physics Panel",
+        default=True,
+    )
 
     @classmethod
     def poll(cls, context):
@@ -299,7 +351,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
 
         obj = context.object
 
-        if obj and obj.type == 'MESH' and obj.mode == 'OBJECT':
+        if obj and obj.type == "MESH" and obj.mode == "OBJECT":
             return obj.MustardUI_tools_creators_is_created
 
         return False
@@ -313,14 +365,18 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
 
         # Remove all Damped Track constraints from the bones of the armature
         armature = curve_obj.parent  # Assuming the armature is the active object
-        if armature.type != 'ARMATURE':
-            self.report({'WARNING'}, 'MustardUI - Removal was not possible: the mesh is not parented to any Armature.')
+        if armature.type != "ARMATURE":
+            self.report(
+                {"WARNING"},
+                "MustardUI - Removal was not possible: the mesh is not parented to "
+                "any Armature.",
+            )
             return {"FINISHED"}
 
         # Loop through all pose bones and remove the specific Damped Track constraints
         for bone in armature.pose.bones:
             for constraint in bone.constraints:
-                if constraint.type == 'DAMPED_TRACK' and constraint.target == curve_obj:
+                if constraint.type == "DAMPED_TRACK" and constraint.target == curve_obj:
                     bone.constraints.remove(constraint)
 
         # Remove the item from the list if available
@@ -332,7 +388,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
         if curve_obj and curve_obj.name in bpy.data.objects:
             bpy.data.objects.remove(curve_obj, do_unlink=True)
 
-        self.report({'INFO'}, 'MustardUI - Bone Physics removed.')
+        self.report({"INFO"}, "MustardUI - Bone Physics removed.")
 
         return {"FINISHED"}
 

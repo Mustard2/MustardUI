@@ -1,21 +1,23 @@
 import bpy
-from ..model_selection.active_object import *
-from mathutils import Vector, Matrix
+from mathutils import Matrix, Vector
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Armature_ClearPose(bpy.types.Operator):
     """Revert the position of all the bones to the Rest position"""
+
     bl_idname = "mustardui.armature_clearpose"
     bl_label = "Clear Pose"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     def setWorldMatrix(self, ob, wmat):
         Zero = Vector((0, 0, 0))
         One = Vector((1, 1, 1))
         if ob.parent:
-            if ob.parent_type in ['OBJECT', 'VERTEX', 'VERTEX_3']:
+            if ob.parent_type in ["OBJECT", "VERTEX", "VERTEX_3"]:
                 ob.matrix_parent_inverse = ob.parent.matrix_world.inverted()
-            elif ob.parent_type == 'BONE':
+            elif ob.parent_type == "BONE":
                 pb = ob.parent.pose.bones[ob.parent_bone]
                 ob.matrix_parent_inverse = pb.matrix.inverted()
         ob.matrix_world = wmat
@@ -44,15 +46,17 @@ class MustardUI_Armature_ClearPose(bpy.types.Operator):
             self.setWorldMatrix(rig_settings.model_armature_object, unit)
             for pb in rig_settings.model_armature_object.pose.bones:
                 pb.matrix_basis = unit
-        except:
+        except Exception:
             warnings = warnings + 1
 
         if warnings < 1:
-            self.report({'INFO'}, 'MustardUI - Pose cleared successfully')
+            self.report({"INFO"}, "MustardUI - Pose cleared successfully")
         else:
-            self.report({'ERROR'}, 'MustardUI - An error occurred while clearing the pose')
+            self.report(
+                {"ERROR"}, "MustardUI - An error occurred while clearing the pose"
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

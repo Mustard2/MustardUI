@@ -27,18 +27,18 @@ the scope of MustardUI
 - Fixed several bugs
 """
 
-
-import bpy
 import bmesh
+import bpy
 from mathutils import Vector
-from ..model_selection.active_object import *
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_create_jiggle_preset"
     bl_label = "Jiggle Preset"
-    bl_description = "Adds cloth jiggle physics with Wildeer settings to mesh. Uses active vtx group as 'Pin Group' in object mode. If in edit mode then it creates a new vtx group from selection and uses it instead. Applies to active and selected"
+    bl_description = "Adds cloth jiggle physics with Wildeer settings to mesh. Uses active vtx group as 'Pin Group' in object mode. If in edit mode then it creates a new vtx group from selection and uses it instead. Applies to active and selected"  # noqa: E501
     bl_options = {"REGISTER", "UNDO", "INTERNAL"}
 
     @classmethod
@@ -49,14 +49,16 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
     def execute(self, context):
 
         # Set the playback sync mode to 'NONE' (Play Every Frame)
-        bpy.context.scene.sync_mode = 'NONE'
+        bpy.context.scene.sync_mode = "NONE"
 
         # Remove cloth modifiers
         for obj in bpy.context.selected_objects:
             # Ensure the object is a mesh
-            if obj.type == 'MESH':
+            if obj.type == "MESH":
                 # List to hold the names of the cloth modifiers to be removed
-                cloth_modifiers = [mod.name for mod in obj.modifiers if mod.type == 'CLOTH']
+                cloth_modifiers = [
+                    mod.name for mod in obj.modifiers if mod.type == "CLOTH"
+                ]
                 # Remove each cloth modifier
                 for mod_name in cloth_modifiers:
                     obj.modifiers.remove(obj.modifiers[mod_name])
@@ -67,7 +69,7 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
         # Function to handle vertex group creation and assignment in Edit Mode
         def create_vertex_group(obj, base_name="ClothPinGroup"):
             # Switch to Object Mode temporarily to update the vertex group
-            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.mode_set(mode="OBJECT")
 
             # Create a unique vertex group name
             i = 1
@@ -83,10 +85,10 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
             selected_verts = [v.index for v in obj.data.vertices if v.select]
 
             # Add selected vertices to the vertex group with weight 1.0
-            vertex_group.add(selected_verts, 1.0, 'ADD')
+            vertex_group.add(selected_verts, 1.0, "ADD")
 
             # Return to Edit Mode
-            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.object.mode_set(mode="EDIT")
 
             return new_name
 
@@ -97,12 +99,12 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
             # Add or get the existing Cloth modifier
             cloth_modifier = obj.modifiers.get("Cloth")
             if not cloth_modifier:
-                cloth_modifier = obj.modifiers.new(name="Cloth", type='CLOTH')
+                cloth_modifier = obj.modifiers.new(name="Cloth", type="CLOTH")
 
             # Check current mode and handle vertex groups
             current_mode = bpy.context.object.mode
             vertex_group_name = None
-            if current_mode == 'EDIT':
+            if current_mode == "EDIT":
                 if obj.vertex_groups:
                     if cloth_modifier.settings.vertex_group_mass:
                         # Replace the existing vertex group
@@ -111,7 +113,7 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
                         vertex_group_name = create_vertex_group(obj)
                 else:
                     vertex_group_name = create_vertex_group(obj)
-            elif current_mode == 'OBJECT' and obj.vertex_groups.active:
+            elif current_mode == "OBJECT" and obj.vertex_groups.active:
                 vertex_group_name = obj.vertex_groups.active.name
 
             # Modify specific cloth settings with the new values
@@ -119,7 +121,7 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
             cloth_modifier.settings.time_scale = 0.240
             cloth_modifier.settings.mass = 0.3
             cloth_modifier.settings.air_damping = 1
-            cloth_modifier.settings.bending_model = 'ANGULAR'
+            cloth_modifier.settings.bending_model = "ANGULAR"
             cloth_modifier.settings.tension_stiffness = 1
             cloth_modifier.settings.compression_stiffness = 0.1
             cloth_modifier.settings.shear_stiffness = 0.02
@@ -165,17 +167,18 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
             if vertex_group_name:
                 cloth_modifier.settings.vertex_group_mass = vertex_group_name
 
-            # Set simulation start and end to the same start and end frame values of the scene
+            # Set simulation start and end to the same start and end frame values of
+            # the scene
             cloth_modifier.point_cache.frame_start = bpy.context.scene.frame_start
             cloth_modifier.point_cache.frame_end = bpy.context.scene.frame_end
 
         # Toggle Edit Mode
-        if bpy.context.active_object and bpy.context.active_object.type == 'MESH':
+        if bpy.context.active_object and bpy.context.active_object.type == "MESH":
             # Store the current mode
             current_mode = bpy.context.object.mode
 
             # Switch to Edit Mode
-            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.object.mode_set(mode="EDIT")
 
             # Switch back to the previous mode (typically Object Mode)
             bpy.ops.object.mode_set(mode=current_mode)
@@ -189,34 +192,64 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
 class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_create_jiggle"
     bl_label = "Create Jiggle"
-    bl_description = "Needs to select vertices in Edit Mode.\nCreates a jiggle cage using the selected regions in Edit Mode and attaches it to the active mesh"
+    bl_description = "Needs to select vertices in Edit Mode.\nCreates a jiggle cage using the selected regions in Edit Mode and attaches it to the active mesh"  # noqa: E501
     bl_options = {"REGISTER", "UNDO"}
 
-    merge_proxies: bpy.props.BoolProperty(name='Merge Cages',
-                                          description='Merge the cages if the belong to disconnected vertex selections in Edit Mode.\nOtherwise different Objects will be created for each disconnected vertex island',
-                                          default=True)
-    proxy_subdivisions: bpy.props.IntProperty(name='Cage Resolution',
-                                              description='Resolution of the cage.\nThis is the number of subdivisions in the resulting cage',
-                                              default=1, subtype='NONE', min=1, max=8)
-    object_direction: bpy.props.EnumProperty(name="Pin Direction",
-                                             description="Direction where to create the Pin group weights.\nThe direction in global coordinates is the direction in which the weights decreases",
-                                             items=[("+X", "+X", "+X"), ("-X", "-X", "-X"), ("+Y", "+Y", "+Y"),
-                                                    ("-Y", "-Y", "-Y"), ("+Z", "+Z", "+Z"), ("-Z", "-Z", "-Z")],
-                                             default="+Y")
-    parent_to_model: bpy.props.BoolProperty(name='Parent to Model',
-                                            description='Parent the cage to the Model Armature',
-                                            default=False)
-    add_to_panel: bpy.props.BoolProperty(name='Add to Physics Panel',
-                                         description='Add the Collision item to Physics Panel',
-                                         default=True)
-    name: bpy.props.StringProperty(name='Cage Name',
-                                   description='Assign a name to the Cage and the associated modifiers',
-                                   default="")
+    merge_proxies: bpy.props.BoolProperty(
+        name="Merge Cages",
+        description="Merge the cages if the belong to disconnected vertex selections "
+        "in Edit Mode.\nOtherwise different Objects will be created for each "
+        "disconnected vertex island",
+        default=True,
+    )
+    proxy_subdivisions: bpy.props.IntProperty(
+        name="Cage Resolution",
+        description="Resolution of the cage.\nThis is the number of subdivisions in "
+        "the resulting cage",
+        default=1,
+        subtype="NONE",
+        min=1,
+        max=8,
+    )
+    object_direction: bpy.props.EnumProperty(
+        name="Pin Direction",
+        description="Direction where to create the Pin group weights.\nThe direction "
+        "in global coordinates is the direction in which the weights decreases",
+        items=[
+            ("+X", "+X", "+X"),
+            ("-X", "-X", "-X"),
+            ("+Y", "+Y", "+Y"),
+            ("-Y", "-Y", "-Y"),
+            ("+Z", "+Z", "+Z"),
+            ("-Z", "-Z", "-Z"),
+        ],
+        default="+Y",
+    )
+    parent_to_model: bpy.props.BoolProperty(
+        name="Parent to Model",
+        description="Parent the cage to the Model Armature",
+        default=False,
+    )
+    add_to_panel: bpy.props.BoolProperty(
+        name="Add to Physics Panel",
+        description="Add the Collision item to Physics Panel",
+        default=True,
+    )
+    name: bpy.props.StringProperty(
+        name="Cage Name",
+        description="Assign a name to the Cage and the associated modifiers",
+        default="",
+    )
 
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
-        return res and context.active_object and context.active_object.type == 'MESH' and bpy.context.mode == 'EDIT_MESH'
+        return (
+            res
+            and context.active_object
+            and context.active_object.type == "MESH"
+            and bpy.context.mode == "EDIT_MESH"
+        )
 
     def execute(self, context):
 
@@ -228,12 +261,14 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         # Store Armature Pose states
         stored_pose_states = {}
         for obj in bpy.context.scene.objects:
-            if obj.type == 'ARMATURE':
-                stored_pose_states[obj.name] = obj.data.pose_position  # Store the pose position ('REST' or 'POSE')
+            if obj.type == "ARMATURE":
+                stored_pose_states[obj.name] = (
+                    obj.data.pose_position
+                )  # Store the pose position ('REST' or 'POSE')
 
         for obj in [x for x in bpy.context.scene.objects if x.type == "ARMATURE"]:
             # Set the armature to rest position
-            obj.data.pose_position = 'REST'
+            obj.data.pose_position = "REST"
 
         # Update the scene to reflect the changes
         bpy.context.view_layer.update()
@@ -248,13 +283,15 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             return name
 
         # Assign names
-        base_name = generate_unique_name(self.name) if self.name != "" else "Physics_Proxy"
+        base_name = (
+            generate_unique_name(self.name) if self.name != "" else "Physics_Proxy"
+        )
         corrective_name = base_name
         surfdef_name = base_name + " Deform"
 
         def add_subdivided_cube(location, bbox_dimensions):
             # Deselect all objects
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             # Add a cube at the given location
             bpy.ops.mesh.primitive_cube_add(location=location)
             # Get the cube object
@@ -269,19 +306,19 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Apply the scale
             bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
             # Enter edit mode
-            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.object.mode_set(mode="EDIT")
             # Deselect all vertices
-            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.ops.mesh.select_all(action="DESELECT")
             # Select all vertices again
-            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.select_all(action="SELECT")
             # Subdivide
             bpy.ops.mesh.subdivide(number_cuts=self.proxy_subdivisions, smoothness=0.5)
             # Exit edit mode
-            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.mode_set(mode="OBJECT")
             # Set smooth shading
             bpy.ops.object.shade_flat()
             # Set display settings to wireframe and in front
-            cube.display_type = 'WIRE'
+            cube.display_type = "WIRE"
             cube.show_in_front = True
             # Disable the cube in renders
             cube.hide_render = True
@@ -291,24 +328,28 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Create a new vertex group on the object
             vg = obj.vertex_groups.new(name=group_name)
             for vert in vertices:
-                vg.add([vert.index], 1.0, 'ADD')  # Add vertex with full weight
+                vg.add([vert.index], 1.0, "ADD")  # Add vertex with full weight
             return vg
 
         def add_surface_deform_modifier(obj, target, group_name, modifier_name):
             # Add a Surface Deform modifier to the object
-            mod = obj.modifiers.new(name=modifier_name, type='SURFACE_DEFORM')
+            mod = obj.modifiers.new(name=modifier_name, type="SURFACE_DEFORM")
             mod.target = target
             mod.vertex_group = group_name
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.surfacedeform_bind(modifier=mod.name)  # Bind the modifier
             return mod
 
-        def add_corrective_smooth_modifier(obj, group_name=None, name="", iterations=20, smooth_type='SIMPLE'):
+        def add_corrective_smooth_modifier(
+            obj, group_name=None, name="", iterations=20, smooth_type="SIMPLE"
+        ):
             # Add a Corrective Smooth modifier with specified settings
-            mod = obj.modifiers.new(name=corrective_name if name == "" else name, type='CORRECTIVE_SMOOTH')
+            mod = obj.modifiers.new(
+                name=corrective_name if name == "" else name, type="CORRECTIVE_SMOOTH"
+            )
             mod.iterations = iterations
             mod.smooth_type = smooth_type
-            mod.rest_source = 'BIND'
+            mod.rest_source = "BIND"
             if group_name:
                 mod.vertex_group = group_name
             bpy.context.view_layer.objects.active = obj
@@ -321,7 +362,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         me = obj.data
 
         # Switch to object mode temporarily to access the bmesh
-        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.mode_set(mode="OBJECT")
         bm = bmesh.new()
         bm.from_mesh(me)
         bm.verts.ensure_lookup_table()
@@ -353,62 +394,84 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         # Store dynamically created vertex groups for each region
         region_vertex_groups = []
 
-        # For each island, calculate the center and bounding box, and add a physics proxy mesh
+        # For each island, calculate the center and bounding box, and add a physics
+        # proxy mesh
         for idx, island in enumerate(islands):
             island_coords = [v.co for v in island]
             # Calculate the bounding box (min and max coordinates)
-            min_coords = Vector((min([v.x for v in island_coords]),
-                                 min([v.y for v in island_coords]),
-                                 min([v.z for v in island_coords])))
-            max_coords = Vector((max([v.x for v in island_coords]),
-                                 max([v.y for v in island_coords]),
-                                 max([v.z for v in island_coords])))
+            min_coords = Vector(
+                (
+                    min([v.x for v in island_coords]),
+                    min([v.y for v in island_coords]),
+                    min([v.z for v in island_coords]),
+                )
+            )
+            max_coords = Vector(
+                (
+                    max([v.x for v in island_coords]),
+                    max([v.y for v in island_coords]),
+                    max([v.z for v in island_coords]),
+                )
+            )
             # Bounding box dimensions
             bbox_dimensions = max_coords - min_coords
             # Center of the bounding box
             center = (min_coords + max_coords) / 2
             # Create a physics proxy cube with dimensions matching the bounding box
-            proxy = add_subdivided_cube(location=obj.matrix_world @ center, bbox_dimensions=bbox_dimensions)
+            proxy = add_subdivided_cube(
+                location=obj.matrix_world @ center, bbox_dimensions=bbox_dimensions
+            )
             # Add the proxy object to the list of created proxies
             created_proxies.append(proxy)
             # Create a vertex group for this region
             group_name = f"Jiggle Region {idx + 1}"
             region_vertex_group = create_vertex_group(obj, group_name, island)
-            region_vertex_groups.append(region_vertex_group.name)  # Store the group name
+            region_vertex_groups.append(
+                region_vertex_group.name
+            )  # Store the group name
             # Add vertices from this island to the combined group
             combined_group_verts.update(island)
 
         # Create the combined vertex group for all regions
         combined_group_name = "Combined Jiggle Groups"
-        combined_vertex_group = create_vertex_group(obj, combined_group_name, combined_group_verts)
+        combined_vertex_group = create_vertex_group(
+            obj, combined_group_name, combined_group_verts
+        )
 
         # Clean up the bmesh
         bm.free()
 
         # Switch back to object mode
-        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.mode_set(mode="OBJECT")
 
         # Add Surface Deform modifiers
         if self.merge_proxies:
             # Merge the proxies if merge_proxies is True
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             for proxy in created_proxies:
                 proxy.select_set(True)
             bpy.context.view_layer.objects.active = created_proxies[0]
             bpy.ops.object.join()
             merged_proxy = bpy.context.object
             # Add a single Surface Deform modifier targeting the merged proxy
-            add_surface_deform_modifier(obj, merged_proxy, combined_vertex_group.name, surfdef_name)
+            add_surface_deform_modifier(
+                obj, merged_proxy, combined_vertex_group.name, surfdef_name
+            )
             # Select the merged proxy
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             merged_proxy.select_set(True)
         else:
-            # Add a Surface Deform modifier for each individual proxy using the correct vertex group for each
+            # Add a Surface Deform modifier for each individual proxy using the
+            # correct vertex group for each
             for idx, proxy in enumerate(created_proxies):
-                group_name = region_vertex_groups[idx]  # Use the dynamically created vertex group
-                add_surface_deform_modifier(obj, proxy, group_name, f"{surfdef_name} {idx + 1}")
+                group_name = region_vertex_groups[
+                    idx
+                ]  # Use the dynamically created vertex group
+                add_surface_deform_modifier(
+                    obj, proxy, group_name, f"{surfdef_name} {idx + 1}"
+                )
             # Select all proxies
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             for proxy in created_proxies:
                 proxy.select_set(True)
 
@@ -428,24 +491,34 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
         def copy_armature_modifier(source, targets):
             # Find the armature modifier in the source object
-            armature_modifier = next((mod for mod in source.modifiers if mod.type == 'ARMATURE'), None)
+            armature_modifier = next(
+                (mod for mod in source.modifiers if mod.type == "ARMATURE"), None
+            )
             if not armature_modifier:
                 print("No armature modifier found in the active object.")
                 return
             # Copy the armature modifier to each target object
             for target in targets:
-                if target != source and target.type == 'MESH':
+                if target != source and target.type == "MESH":
                     # Remove existing armature modifiers
                     for mod in target.modifiers:
-                        if mod.type == 'ARMATURE':
+                        if mod.type == "ARMATURE":
                             target.modifiers.remove(mod)
                     # Add a new armature modifier to the target object
-                    new_modifier = target.modifiers.new(name=armature_modifier.name, type='ARMATURE')
+                    new_modifier = target.modifiers.new(
+                        name=armature_modifier.name, type="ARMATURE"
+                    )
                     new_modifier.object = armature_modifier.object
                     new_modifier.use_vertex_groups = armature_modifier.use_vertex_groups
-                    new_modifier.use_bone_envelopes = armature_modifier.use_bone_envelopes
-                    new_modifier.use_deform_preserve_volume = armature_modifier.use_deform_preserve_volume
-                    new_modifier.use_multi_modifier = armature_modifier.use_multi_modifier
+                    new_modifier.use_bone_envelopes = (
+                        armature_modifier.use_bone_envelopes
+                    )
+                    new_modifier.use_deform_preserve_volume = (
+                        armature_modifier.use_deform_preserve_volume
+                    )
+                    new_modifier.use_multi_modifier = (
+                        armature_modifier.use_multi_modifier
+                    )
                     # Move the new modifier to the top of the stack
                     bpy.context.view_layer.objects.active = target
                     for _ in range(len(target.modifiers)):
@@ -464,11 +537,21 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         for obj in context.view_layer.objects:
             obj.select_set(obj in initial_selection)
 
-        bpy.ops.object.data_transfer('INVOKE_DEFAULT', use_freeze=False, data_type='VGROUP_WEIGHTS',
-                                     use_create=True, vert_mapping='POLYINTERP_NEAREST', use_auto_transform=False,
-                                     use_object_transform=True, use_max_distance=False, ray_radius=0.1,
-                                     layers_select_src='ALL', layers_select_dst='NAME', mix_mode='REPLACE',
-                                     mix_factor=1.0)
+        bpy.ops.object.data_transfer(
+            "INVOKE_DEFAULT",
+            use_freeze=False,
+            data_type="VGROUP_WEIGHTS",
+            use_create=True,
+            vert_mapping="POLYINTERP_NEAREST",
+            use_auto_transform=False,
+            use_object_transform=True,
+            use_max_distance=False,
+            ray_radius=0.1,
+            layers_select_src="ALL",
+            layers_select_dst="NAME",
+            mix_mode="REPLACE",
+            mix_factor=1.0,
+        )
 
         def create_unique_vertex_group_name(obj, base_name):
             """Create a unique vertex group name by appending a number if necessary."""
@@ -484,7 +567,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                 index += 1
 
         def create_gradient_vertex_group(obj, group_name, all_islands):
-            """Creates a vertex group with a gradient weight based on the Y position of vertices for all islands."""
+            """Creates a vertex group with a gradient weight based on the Y position of vertices for all islands."""  # noqa: E501
             # Create a unique name for the vertex group if needed
             unique_group_name = create_unique_vertex_group_name(obj, group_name)
             # Create the vertex group
@@ -493,7 +576,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             all_vertex_weights = []
             for island_verts in all_islands:
                 # Collect world coordinates and vertex indices for the current island
-                world_coords = [(v.index, obj.matrix_world @ v.co) for v in island_verts]
+                world_coords = [
+                    (v.index, obj.matrix_world @ v.co) for v in island_verts
+                ]
                 # Calculate min and max Y coordinates in world space for this island
                 if self.object_direction in ["+Y", "-Y"]:
                     bbox_min = min(world_coords, key=lambda vc: vc[1].y)[1].y
@@ -504,34 +589,48 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                 else:
                     bbox_min = min(world_coords, key=lambda vc: vc[1].z)[1].z
                     bbox_max = max(world_coords, key=lambda vc: vc[1].z)[1].z
-                bbox_depth = bbox_max - bbox_min if bbox_max != bbox_min else 1  # Avoid division by zero
+                bbox_depth = (
+                    bbox_max - bbox_min if bbox_max != bbox_min else 1
+                )  # Avoid division by zero
                 # Collect vertex weights for this island
                 invert = self.object_direction in ["-X", "-Y", "-Z"]
                 if invert:
                     if self.object_direction in ["+Y", "-Y"]:
-                        vertex_weights = [(v_idx, (world_co.y - bbox_min) / bbox_depth) for v_idx, world_co in
-                                          world_coords]
+                        vertex_weights = [
+                            (v_idx, (world_co.y - bbox_min) / bbox_depth)
+                            for v_idx, world_co in world_coords
+                        ]
                     elif self.object_direction in ["+X", "-X"]:
-                        vertex_weights = [(v_idx, (world_co.x - bbox_min) / bbox_depth) for v_idx, world_co in
-                                          world_coords]
+                        vertex_weights = [
+                            (v_idx, (world_co.x - bbox_min) / bbox_depth)
+                            for v_idx, world_co in world_coords
+                        ]
                     else:
-                        vertex_weights = [(v_idx, (world_co.z - bbox_min) / bbox_depth) for v_idx, world_co in
-                                          world_coords]
+                        vertex_weights = [
+                            (v_idx, (world_co.z - bbox_min) / bbox_depth)
+                            for v_idx, world_co in world_coords
+                        ]
                 else:
                     if self.object_direction in ["+Y", "-Y"]:
-                        vertex_weights = [(v_idx, 1 - (world_co.y - bbox_min) / bbox_depth) for v_idx, world_co in
-                                          world_coords]
+                        vertex_weights = [
+                            (v_idx, 1 - (world_co.y - bbox_min) / bbox_depth)
+                            for v_idx, world_co in world_coords
+                        ]
                     elif self.object_direction in ["+X", "-X"]:
-                        vertex_weights = [(v_idx, 1 - (world_co.x - bbox_min) / bbox_depth) for v_idx, world_co in
-                                          world_coords]
+                        vertex_weights = [
+                            (v_idx, 1 - (world_co.x - bbox_min) / bbox_depth)
+                            for v_idx, world_co in world_coords
+                        ]
                     else:
-                        vertex_weights = [(v_idx, 1 - (world_co.z - bbox_min) / bbox_depth) for v_idx, world_co in
-                                          world_coords]
+                        vertex_weights = [
+                            (v_idx, 1 - (world_co.z - bbox_min) / bbox_depth)
+                            for v_idx, world_co in world_coords
+                        ]
                 all_vertex_weights.extend(vertex_weights)
             # Apply weights to the vertex group in object mode
-            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.mode_set(mode="OBJECT")
             for index, weight in all_vertex_weights:
-                vertex_group.add([index], weight, 'REPLACE')
+                vertex_group.add([index], weight, "REPLACE")
 
         def get_geometry_islands(bm):
             """Get geometry islands as separate groups of vertices."""
@@ -557,7 +656,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
         def restore_selection_and_mode(mode, selected_objects, active_object):
             """Restore the original selection and mode."""
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             for obj in selected_objects:
                 obj.select_set(True)
             bpy.context.view_layer.objects.active = active_object
@@ -568,28 +667,35 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         initial_selected_objects = bpy.context.selected_objects
         initial_active_object = bpy.context.view_layer.objects.active
 
-        selected_objects = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
+        selected_objects = [
+            obj for obj in bpy.context.selected_objects if obj.type == "MESH"
+        ]
         active_object = bpy.context.view_layer.objects.active
 
         if selected_objects:
             for obj in selected_objects:
                 if obj != active_object:  # Exclude the active mesh
                     bpy.context.view_layer.objects.active = obj
-                    bpy.ops.object.mode_set(mode='EDIT')
+                    bpy.ops.object.mode_set(mode="EDIT")
                     bm = bmesh.from_edit_mesh(obj.data)
                     islands = get_geometry_islands(bm)
 
                     # Pass all islands at once to the vertex group creation function
                     create_gradient_vertex_group(obj, "Jiggle Pin", islands)
                     if addon_prefs.debug:
-                        print(f"Gradient vertex group 'Jiggle Pin' (or numbered version) applied to geometry islands in {obj.name}.")
+                        print(
+                            f"Gradient vertex group 'Jiggle Pin' (or numbered version) "
+                            f"applied to geometry islands in {obj.name}."
+                        )
 
         # Restore the original selection and mode
-        restore_selection_and_mode(initial_mode, initial_selected_objects, initial_active_object)
+        restore_selection_and_mode(
+            initial_mode, initial_selected_objects, initial_active_object
+        )
 
         # Restore Armature Pose States
         for obj in bpy.context.scene.objects:
-            if obj.type == 'ARMATURE' and obj.name in stored_pose_states:
+            if obj.type == "ARMATURE" and obj.name in stored_pose_states:
                 # Restore the saved pose position ('REST' or 'POSE')
                 obj.data.pose_position = stored_pose_states[obj.name]
 
@@ -599,7 +705,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         # Deselect Active Mesh
         active_obj = bpy.context.active_object
 
-        if active_obj and active_obj.type == 'MESH':
+        if active_obj and active_obj.type == "MESH":
             # Deselect the active mesh
             active_obj.select_set(False)
             # Update the scene (optional, depending on the Blender version)
@@ -615,43 +721,52 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             bpy.ops.object.vertex_group_levels(gain=gain_value)
 
         # Apply Default Preset
-        bpy.ops.mustardui.tools_creators_create_jiggle_preset('INVOKE_DEFAULT', )
+        bpy.ops.mustardui.tools_creators_create_jiggle_preset(
+            "INVOKE_DEFAULT",
+        )
 
         def move_cloth_above_corrective_smooth(obj):
             cloth_modifier = None
             last_corrective_smooth = None
             # Find the Cloth modifier and the last Corrective Smooth modifier
             for mod in obj.modifiers:
-                if mod.type == 'CLOTH':
+                if mod.type == "CLOTH":
                     cloth_modifier = mod
-                elif mod.type == 'CORRECTIVE_SMOOTH':
+                elif mod.type == "CORRECTIVE_SMOOTH":
                     last_corrective_smooth = mod
             if cloth_modifier and last_corrective_smooth:
                 # Move the Cloth modifier above the last Corrective Smooth modifier
-                while obj.modifiers.find(cloth_modifier.name) > obj.modifiers.find(last_corrective_smooth.name):
+                while obj.modifiers.find(cloth_modifier.name) > obj.modifiers.find(
+                    last_corrective_smooth.name
+                ):
                     bpy.context.view_layer.objects.active = obj
                     bpy.ops.object.modifier_move_up(modifier=cloth_modifier.name)
                 if addon_prefs.debug:
-                    print(f"Moved Cloth modifier above the last Corrective Smooth modifier for {obj.name}.")
+                    print(
+                        f"Moved Cloth modifier above the last Corrective Smooth "
+                        f"modifier for {obj.name}."
+                    )
             else:
                 if addon_prefs.debug:
-                    print(f"Cloth or Corrective Smooth modifier not found for {obj.name}.")
+                    print(
+                        f"Cloth or Corrective Smooth modifier not found for {obj.name}."
+                    )
 
         # Move Cloth for selected Objects
         selected_objects = bpy.context.selected_objects
         for obj in selected_objects:
-            if obj.type == 'MESH':
+            if obj.type == "MESH":
                 move_cloth_above_corrective_smooth(obj)
             else:
                 if addon_prefs.debug:
                     print(f"Skipped {obj.name}, not a mesh object.")
 
         # Toggle Edit Mode
-        if bpy.context.active_object and bpy.context.active_object.type == 'MESH':
+        if bpy.context.active_object and bpy.context.active_object.type == "MESH":
             # Store the current mode
             current_mode = bpy.context.object.mode
             # Switch to Edit Mode
-            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.object.mode_set(mode="EDIT")
             # Switch back to the previous mode (typically Object Mode)
             bpy.ops.object.mode_set(mode=current_mode)
 
@@ -660,8 +775,11 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             for obj in bpy.context.selected_objects:
                 add_item = physics_settings.items.add()
                 add_item.object = obj
-                add_item.type = 'CAGE'
-                if self.parent_to_model and rig_settings.model_armature_object is not None:
+                add_item.type = "CAGE"
+                if (
+                    self.parent_to_model
+                    and rig_settings.model_armature_object is not None
+                ):
                     parent = rig_settings.model_armature_object
                     obj.parent = parent
                     obj.matrix_parent_inverse = parent.matrix_world.inverted()
@@ -675,23 +793,23 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             obj.visible_transmission = False
             obj.visible_volume_scatter = False
 
-        self.report({'INFO'}, 'MustardUI - Jiggle Cage created.')
+        self.report({"INFO"}, "MustardUI - Jiggle Cage created.")
 
         return {"FINISHED"}
 
     def draw(self, context):
 
         layout = self.layout
-        layout.prop(self, 'proxy_subdivisions')
-        layout.prop(self, 'merge_proxies')
-        layout.prop(self, 'object_direction')
+        layout.prop(self, "proxy_subdivisions")
+        layout.prop(self, "merge_proxies")
+        layout.prop(self, "object_direction")
 
-        layout.prop(self, 'name')
+        layout.prop(self, "name")
 
         layout.separator()
 
-        layout.prop(self, 'add_to_panel')
-        layout.prop(self, 'parent_to_model')
+        layout.prop(self, "add_to_panel")
+        layout.prop(self, "parent_to_model")
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=300)

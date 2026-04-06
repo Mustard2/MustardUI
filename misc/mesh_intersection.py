@@ -1,5 +1,5 @@
-import bpy
 import bmesh
+import bpy
 from mathutils.bvhtree import BVHTree
 
 
