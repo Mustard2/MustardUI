@@ -25,8 +25,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             self.report({"WARNING"}, "No active MustardUI armature")
             return {"CANCELLED"}
 
-        addon_prefs = context.preferences.addons[base_package].preferences
-
         rig_settings = arm.MustardUI_RigSettings
         arm_settings = arm.MustardUI_ArmatureSettings
         physics = arm.MustardUI_PhysicsSettings
