@@ -63,6 +63,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 continue
 
             items = col.all_objects if use_subcollections else col.objects
+            items = [x for x in items if x is not None]
 
             is_active = col.name == outfits_list
             locked_collection = any(o.MustardUI_outfit_lock for o in items)
@@ -70,11 +71,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             any_object_visible = False
 
             for obj in items:
-                if obj is None:
-                    if addon_prefs.debug:
-                        print(f"MustardUI - An Object in {col.name} seems unavailable.")
-                    continue
-
                 hidden_flag = obj.MustardUI_outfit_visibility
 
                 locked = obj.MustardUI_outfit_lock
