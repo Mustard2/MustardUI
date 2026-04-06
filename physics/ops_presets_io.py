@@ -1,19 +1,21 @@
-import bpy
-from mathutils import Vector
-from ..model_selection.active_object import *
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from bpy.props import *
 import json
+
+import bpy
+from bpy.props import IntProperty, StringProperty
+from bpy_extras.io_utils import ExportHelper, ImportHelper
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
     """Export Physics Preset JSON from internal data to a file"""
+
     bl_idname = "mustardui.physics_preset_export"
     bl_label = "Export Physics Preset"
-    bl_options = {'PRESET', 'UNDO'}
+    bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
     preset_id: IntProperty(default=-1)
 
     @classmethod
@@ -22,7 +24,10 @@ class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
         if not res or arm is None:
             return False
         physics_settings = arm.MustardUI_PhysicsSettings
-        if arm.mustardui_physics_items_uilist_index < 0 or len(physics_settings.items) < 1:
+        if (
+            arm.mustardui_physics_items_uilist_index < 0
+            or len(physics_settings.items) < 1
+        ):
             return False
         obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object
         return obj and obj.type == "MESH"
@@ -32,11 +37,17 @@ class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
 
         if res:
             physics_settings = arm.MustardUI_PhysicsSettings
-            preset_name = physics_settings.presets[0].name if physics_settings.presets else "Preset"
+            preset_name = (
+                physics_settings.presets[0].name
+                if physics_settings.presets
+                else "Preset"
+            )
             model_name = getattr(arm, "name", "Model")
             safe_model_name = model_name.replace(" ", "_")
             safe_preset_name = preset_name.replace(" ", "_")
-            self.filepath = f"MustardUI_PhysicsPreset_{safe_model_name}_{safe_preset_name}.json"
+            self.filepath = (
+                f"MustardUI_PhysicsPreset_{safe_model_name}_{safe_preset_name}.json"
+            )
         return super().invoke(context, event)
 
     def execute(self, context):
@@ -44,39 +55,40 @@ class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         if len(physics_settings.presets) < 1 or self.preset_id < 0:
-            self.report({'WARNING'}, "No presets to export.")
-            return {'FINISHED'}
+            self.report({"WARNING"}, "No presets to export.")
+            return {"FINISHED"}
 
         preset = physics_settings.presets[self.preset_id]
 
         if not preset.data:
-            self.report({'WARNING'}, f"Preset '{preset.name}' has no internal data.")
-            return {'FINISHED'}
+            self.report({"WARNING"}, f"Preset '{preset.name}' has no internal data.")
+            return {"FINISHED"}
 
         try:
             # Load preset.data (string) into Python object
             preset_json = json.loads(preset.data)
 
             # Write proper JSON to file
-            with open(self.filepath, 'w', encoding='utf-8') as f:
+            with open(self.filepath, "w", encoding="utf-8") as f:
                 json.dump(preset_json, f, ensure_ascii=False, indent=4)
 
         except Exception as e:
-            self.report({'ERROR'}, f"Failed to export preset: {e}")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, f"Failed to export preset: {e}")
+            return {"CANCELLED"}
 
-        self.report({'INFO'}, f"Preset '{preset.name}' exported to '{self.filepath}'")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"Preset '{preset.name}' exported to '{self.filepath}'")
+        return {"FINISHED"}
 
 
 class MustardUI_Physics_PresetImport(bpy.types.Operator, ImportHelper):
     """Import Physics Presets from JSON file"""
+
     bl_idname = "mustardui.physics_preset_import"
     bl_label = "Import Physics Presets"
-    bl_options = {'PRESET', 'UNDO'}
+    bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
 
     @classmethod
     def poll(cls, context):
@@ -86,8 +98,8 @@ class MustardUI_Physics_PresetImport(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=0)
         if not res or not arm:
-            self.report({'ERROR'}, "No active MustardUI rig found.")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "No active MustardUI rig found.")
+            return {"CANCELLED"}
 
         physics_settings = arm.MustardUI_PhysicsSettings
         presets = physics_settings.presets
@@ -117,19 +129,25 @@ class MustardUI_Physics_PresetImport(bpy.types.Operator, ImportHelper):
                     preset.data = json.dumps(preset_json, ensure_ascii=False, indent=4)
 
                     # Populate flags based on keys
-                    preset.has_cloth = "cloth" in preset_json and bool(preset_json["cloth"])
-                    preset.has_soft_body = "soft_body" in preset_json and bool(preset_json["soft_body"])
-                    preset.has_collision = "object_collision" in preset_json and bool(preset_json["object_collision"])
+                    preset.has_cloth = "cloth" in preset_json and bool(
+                        preset_json["cloth"]
+                    )
+                    preset.has_soft_body = "soft_body" in preset_json and bool(
+                        preset_json["soft_body"]
+                    )
+                    preset.has_collision = "object_collision" in preset_json and bool(
+                        preset_json["object_collision"]
+                    )
 
                     n_import += 1
 
         except Exception as e:
-            self.report({'ERROR'}, f"Failed to import physics presets: {e}")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, f"Failed to import physics presets: {e}")
+            return {"CANCELLED"}
 
         arm.update_tag()
-        self.report({'INFO'}, f"{n_import} physics preset(s) imported from file.")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"{n_import} physics preset(s) imported from file.")
+        return {"FINISHED"}
 
 
 def register():

@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import *
+from bpy.props import CollectionProperty, StringProperty
 
 
 class MustardUI_Link(bpy.types.PropertyGroup):

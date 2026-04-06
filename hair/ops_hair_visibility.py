@@ -1,41 +1,50 @@
 import bpy
-from ..model_selection.active_object import mustardui_active_object
-from ..physics.update_enable import enable_physics_update
-from ..outfits.helper_functions import outfits_update_armature_collections
+
 from ..misc.set_bool import set_bool
+from ..model_selection.active_object import mustardui_active_object
+from ..outfits.helper_functions import outfits_update_armature_collections
 
 
 class MustardUI_HairVisibility(bpy.types.Operator):
     """Switch visibility of hair objects in a collection"""
+
     bl_idname = "mustardui.hair_visibility"
     bl_label = "Hair Visibility"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     def _set_object_visibility(self, obj, visible, rig_settings):
         """Set object and relevant modifiers visibility"""
         set_bool(obj, "hide_viewport", not visible)
         set_bool(obj, "hide_render", not visible)
 
-        for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]]:
+        for mod in [
+            x
+            for x in obj.modifiers
+            if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]
+        ]:
             if mod.type in ["PARTICLE_SYSTEM", "NODES"]:
                 set_bool(mod, "show_viewport", visible)
                 set_bool(mod, "show_render", visible)
             else:  # ARMATURE
-                set_bool(mod, "show_viewport", visible if rig_settings.hair_switch_armature_disable else True)
+                set_bool(
+                    mod,
+                    "show_viewport",
+                    visible if rig_settings.hair_switch_armature_disable else True,
+                )
 
     def execute(self, context):
 
         poll, arm = mustardui_active_object(context, config=0)
         if not poll:
-            self.report({'WARNING'}, "MustardUI - Active object not found.")
-            return {'CANCELLED'}
+            self.report({"WARNING"}, "MustardUI - Active object not found.")
+            return {"CANCELLED"}
 
         rig_settings = arm.MustardUI_RigSettings
         hair_collection = rig_settings.hair_collection
         hair_list = rig_settings.hair_list
         if not hair_collection:
-            self.report({'WARNING'}, "Hair collection not defined in Rig Settings.")
-            return {'CANCELLED'}
+            self.report({"WARNING"}, "Hair collection not defined in Rig Settings.")
+            return {"CANCELLED"}
 
         # Loop through hair objects
         for obj in [x for x in hair_collection.objects]:
@@ -50,14 +59,15 @@ class MustardUI_HairVisibility(bpy.types.Operator):
             for obj in hair_collection.objects:
                 obj.update_tag()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_HairVisibility_Extras(bpy.types.Operator):
     """Switch visibility of hair objects in a collection"""
+
     bl_idname = "mustardui.hair_visibility_extras"
     bl_label = "Hair Visibility Extras"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     obj_name: bpy.props.StringProperty(default="")
 
@@ -66,27 +76,37 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         set_bool(obj, "hide_viewport", not visible)
         set_bool(obj, "hide_render", not visible)
 
-        for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]]:
+        for mod in [
+            x
+            for x in obj.modifiers
+            if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]
+        ]:
             if mod.type in ["PARTICLE_SYSTEM", "NODES"]:
                 set_bool(mod, "show_viewport", visible)
                 set_bool(mod, "show_render", visible)
             else:  # ARMATURE
-                set_bool(mod, "show_viewport", visible if rig_settings.hair_switch_armature_disable else True)
+                set_bool(
+                    mod,
+                    "show_viewport",
+                    visible if rig_settings.hair_switch_armature_disable else True,
+                )
 
     def execute(self, context):
 
         poll, arm = mustardui_active_object(context, config=0)
         if not poll:
-            self.report({'WARNING'}, "MustardUI - Active object not found.")
-            return {'CANCELLED'}
+            self.report({"WARNING"}, "MustardUI - Active object not found.")
+            return {"CANCELLED"}
 
         rig_settings = arm.MustardUI_RigSettings
         hair_extras_collection = rig_settings.hair_extras_collection
         hair_name = self.obj_name
 
         if not hair_extras_collection:
-            self.report({'WARNING'}, "Hair Extras collection not defined in Rig Settings.")
-            return {'CANCELLED'}
+            self.report(
+                {"WARNING"}, "Hair Extras collection not defined in Rig Settings."
+            )
+            return {"CANCELLED"}
 
         obj = context.scene.objects[hair_name]
         visibility = obj.hide_viewport
@@ -103,14 +123,15 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
             for obj in hair_extras_collection.objects:
                 obj.update_tag()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
     """Switch visibility of particle hair system"""
+
     bl_idname = "mustardui.hair_visibility_extras_particle_system"
     bl_label = "Particle Hair Visibility Extras"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     obj_name: bpy.props.StringProperty(default="")
     particle_system: bpy.props.StringProperty()
@@ -119,8 +140,8 @@ class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
 
         poll, arm = mustardui_active_object(context, config=0)
         if not poll:
-            self.report({'WARNING'}, "MustardUI - Active object not found.")
-            return {'CANCELLED'}
+            self.report({"WARNING"}, "MustardUI - Active object not found.")
+            return {"CANCELLED"}
 
         obj = context.scene.objects[self.obj_name]
 
@@ -131,7 +152,7 @@ class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
                 set_bool(mod, "show_viewport", not visibility)
                 set_bool(mod, "show_render", not visibility)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

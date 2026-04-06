@@ -1,9 +1,8 @@
 import bpy
 
-from . import MainPanel
-from ..model_selection.active_object import *
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_old_UI import check_old_UI
-from ..settings.rig import *
+from . import MainPanel
 
 
 class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
@@ -28,8 +27,10 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         for link in arm.MustardUI_Links:
-            if link != '':
-                layout.operator('mustardui.openlink', text=link.name, icon="URL").url = link.url
+            if link != "":
+                layout.operator(
+                    "mustardui.openlink", text=link.name, icon="URL"
+                ).url = link.url
 
 
 def register():

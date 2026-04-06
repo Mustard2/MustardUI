@@ -1,7 +1,5 @@
 import bpy
-from bpy.props import *
-
-from ..model_selection.active_object import *
+from bpy.props import BoolProperty
 
 
 # Check presence of old UI scripts
@@ -15,10 +13,11 @@ def check_old_UI():
 
 
 class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
-    """Remove old and unused old UI. Remember to save and restart Blender after using this tool"""
+    """Remove old and unused old UI. Remember to save and restart Blender after using this tool"""  # noqa: E501
+
     bl_idname = "mustardui.warnings_fix_old_ui"
     bl_label = "Remove Outdated UI scripts"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     enable: BoolProperty(default=True)
 
@@ -36,7 +35,10 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
         box = layout.box()
 
         box.label(text="This script removes all old MustardUI script", icon="INFO")
-        box.label(text="Ignore the errors, and save and restart Blender after using this!", icon="ERROR")
+        box.label(
+            text="Ignore the errors, and save and restart Blender after using this!",
+            icon="ERROR",
+        )
 
     def execute(self, context):
 
@@ -49,17 +51,26 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
             if "mustard_ui.py" in file.name:
                 try:
                     bpy.data.texts.remove(file)
-                except:
+                except Exception:
                     ne += 1
                 nc += 1
 
         if ne > 0:
-            self.report({'ERROR'}, 'MustardUI - An error occurred while removing '
-                        + str(ne) + ' scripts (' + str(nc) + ' removed).')
+            self.report(
+                {"ERROR"},
+                "MustardUI - An error occurred while removing "
+                + str(ne)
+                + " scripts ("
+                + str(nc)
+                + " removed).",
+            )
 
-        self.report({'INFO'}, 'MustardUI - Removed ' + str(nc) + ' scripts. Save and restart Blender!')
+        self.report(
+            {"INFO"},
+            "MustardUI - Removed " + str(nc) + " scripts. Save and restart Blender!",
+        )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

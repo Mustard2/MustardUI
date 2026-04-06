@@ -1,24 +1,23 @@
-import bpy
-from ..model_selection.active_object import *
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from bpy.props import *
-from bpy.utils import register_class
 import json
+
+import bpy
+from bpy.props import BoolProperty, StringProperty
+from bpy_extras.io_utils import ExportHelper, ImportHelper
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
     """Export Links to json file, to be used on other UIs"""
-    bl_idname = 'mustardui.link_export'
-    bl_label = 'Export Links'
-    bl_options = {'PRESET', 'UNDO'}
 
-    filename_ext = '.json'
+    bl_idname = "mustardui.link_export"
+    bl_label = "Export Links"
+    bl_options = {"PRESET", "UNDO"}
 
-    filter_glob: StringProperty(
-        default='*.json',
-        options={'HIDDEN'}
-    )
+    filename_ext = ".json"
+
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
 
     @classmethod
     def poll(cls, context):
@@ -31,19 +30,19 @@ class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
         res, arm = mustardui_active_object(context, config=1)
 
         if len(arm.MustardUI_Links) < 1:
-            self.report({'WARNING'}, 'MustardUI - No link to export.')
-            return {'FINISHED'}
+            self.report({"WARNING"}, "MustardUI - No link to export.")
+            return {"FINISHED"}
 
         data = []
         for link in arm.MustardUI_Links:
             data.append({"name": link.name, "url": link.url})
 
-        with open(self.filepath, 'w', encoding='utf-8') as f:
+        with open(self.filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-        self.report({'INFO'}, 'MustardUI - Links Exported.')
+        self.report({"INFO"}, "MustardUI - Links Exported.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def draw(self, context):
         pass
@@ -51,21 +50,17 @@ class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
 
 class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
     """Import Links from json file"""
-    bl_idname = 'mustardui.link_import'
-    bl_label = 'Import Links'
-    bl_options = {'PRESET', 'UNDO'}
 
-    filename_ext = '.json'
+    bl_idname = "mustardui.link_import"
+    bl_label = "Import Links"
+    bl_options = {"PRESET", "UNDO"}
 
-    filter_glob: StringProperty(
-        default='*.json',
-        options={'HIDDEN'}
-    )
+    filename_ext = ".json"
+
+    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
 
     replace_links: BoolProperty(
-        default=False,
-        name="Replace links",
-        description="Replace current links"
+        default=False, name="Replace links", description="Replace current links"
     )
 
     @classmethod
@@ -84,7 +79,7 @@ class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
             if self.replace_links:
                 uilist.clear()
 
-            with open(self.filepath, "r", encoding='utf-8') as f:
+            with open(self.filepath, "r", encoding="utf-8") as f:
                 links_loaded = json.load(f)
 
                 for link in links_loaded:
@@ -96,15 +91,15 @@ class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
                 index = len(uilist) - 1
                 context.scene.mustardui_links_uilist_index = index
 
-        except:
-           self.report({'ERROR'}, 'MustardUI - Link file seems corrupted.')
-           return {'FINISHED'}
+        except Exception:
+            self.report({"ERROR"}, "MustardUI - Link file seems corrupted.")
+            return {"FINISHED"}
 
         arm.update_tag()
 
-        self.report({'INFO'}, 'MustardUI - ' + str(n_import) + ' links Imported.')
+        self.report({"INFO"}, "MustardUI - " + str(n_import) + " links Imported.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

@@ -1,13 +1,15 @@
 import bpy
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 from .misc import get_cp_source
 
 
 class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
     """Set the value of all morphs to the default value"""
+
     bl_idname = "mustardui.morphs_defaultvalues"
     bl_label = "Restore Default Values"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -29,7 +31,7 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                         continue
 
                     if isinstance(val, float):
-                        cp_source[morph.path] = 0.
+                        cp_source[morph.path] = 0.0
                     if isinstance(val, int):
                         cp_source[morph.path] = 0
                     elif isinstance(val, bool):
@@ -37,7 +39,7 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                 elif morph.shape_key:
                     kb = rig_settings.data.shape_keys.key_blocks.get(morph.path)
                     if kb is not None:
-                        kb.value = 0.
+                        kb.value = 0.0
 
         # Update everything
         if arm:
@@ -51,9 +53,9 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                 rig_settings.model_body.data.update()
         bpy.context.view_layer.update()
 
-        self.report({'INFO'}, 'MustardUI - Morphs values restored to default.')
+        self.report({"INFO"}, "MustardUI - Morphs values restored to default.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

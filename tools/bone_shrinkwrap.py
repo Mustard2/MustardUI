@@ -1,6 +1,6 @@
 import bpy
-from ..model_selection.active_object import *
 
+from ..model_selection.active_object import mustardui_active_object
 
 # =========================================================
 # UNIVERSAL LIP DETECTION
@@ -152,7 +152,7 @@ def apply_lips_shrinkwrap(props, armature):
         c = cm.ensure(pbone, "shrinkwrap", 'SHRINKWRAP')
 
         c.target = props.bone_shrinkwrap_target
-        c.wrap_mode = 'OUTSIDE'
+        c.wrap_mode = "OUTSIDE"
 
         dist = props.bone_shrinkwrap_distance
         if name in corners:
@@ -175,8 +175,7 @@ def apply_lips_shrinkwrap(props, armature):
         cf = cm.ensure(pbone, "friction", 'CHILD_OF')
 
         cf.target = (
-            props.bone_shrinkwrap_target_friction
-            or props.bone_shrinkwrap_target
+            props.bone_shrinkwrap_target_friction or props.bone_shrinkwrap_target
         )
 
         if props.bone_shrinkwrap_target_friction_subtarget:
@@ -194,9 +193,11 @@ def apply_lips_shrinkwrap(props, armature):
 
 
 class MUSTARDUI_OT_constraint_apply(bpy.types.Operator):
+    """Add Bone Shrinkwrap on the lips"""
+
     bl_idname = "mustardui.constraints_apply"
     bl_label = "Apply Constraint System"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -214,18 +215,20 @@ class MUSTARDUI_OT_constraint_apply(bpy.types.Operator):
         armature = arm.MustardUI_RigSettings.model_armature_object
 
         if not armature:
-            self.report({'ERROR'}, "No armature set")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "No armature set")
+            return {"CANCELLED"}
 
         apply_lips_shrinkwrap(arm.MustardUI_ToolsSettings, armature)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MUSTARDUI_OT_constraints_clear(bpy.types.Operator):
+    """Clear Bone Shrinkwrap on the lips, removing all constraints and settings"""
+
     bl_idname = "mustardui.constraints_clear"
     bl_label = "Clear Managed Constraints"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -241,7 +244,7 @@ class MUSTARDUI_OT_constraints_clear(bpy.types.Operator):
         for pb in armature.pose.bones:
             cm.remove_all_tagged(pb)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

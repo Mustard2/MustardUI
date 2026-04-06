@@ -1,15 +1,20 @@
 import bpy
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 # Function to format dynamic name
 def format_dynamic_name(x):
-    return x.particle_system.name if not ("Dynamic" in x.particle_system.name) else x.particle_system.name.replace(
-        "Dynamic", "").lstrip().rstrip()
+    return (
+        x.particle_system.name
+        if "Dynamic" not in x.particle_system.name
+        else x.particle_system.name.replace("Dynamic", "").lstrip().rstrip()
+    )
 
 
 class MustardUI_Physics_ParticleHair_Switch(bpy.types.Operator):
     """Enable/Disable particle Hair on the Object"""
+
     bl_idname = "mustardui.physics_particlehair_switch"
     bl_label = "Particle Hair Simulation"
 
@@ -25,17 +30,22 @@ class MustardUI_Physics_ParticleHair_Switch(bpy.types.Operator):
 
         scene = context.scene
 
-        if not (self.obj in scene.objects):
-            return {'FINISHED'}
+        if self.obj not in scene.objects:
+            return {"FINISHED"}
 
         o = scene.objects[self.obj]
 
-        mod_particle_system = [x for x in o.modifiers if x.type == "PARTICLE_SYSTEM" if "Dynamic" in x.particle_system.name]
+        mod_particle_system = [
+            x
+            for x in o.modifiers
+            if x.type == "PARTICLE_SYSTEM"
+            if "Dynamic" in x.particle_system.name
+        ]
 
         for mod in mod_particle_system:
             mod.particle_system.use_hair_dynamics = self.enable
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

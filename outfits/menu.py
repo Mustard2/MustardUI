@@ -1,8 +1,9 @@
 import bpy
-from .ops_add import MustardUI_AddOutfit
-from ..model_selection.active_object import *
-from ..outfits.ops_rename_outfit import MustardUI_RenameOutfit
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
+from ..outfits.ops_rename_outfit import MustardUI_RenameOutfit
+from .ops_add import MustardUI_AddOutfit
 
 
 class OUTLINER_MT_collection(bpy.types.Menu):
@@ -22,16 +23,23 @@ def mustardui_collection_menu(self, context):
 
     if res:
         layout.separator()
-        if not context.collection in [x.collection for x in rig_settings.outfits_collections]:
+        if context.collection not in [
+            x.collection for x in rig_settings.outfits_collections
+        ]:
             if addon_prefs.debug:
-                layout.operator(MustardUI_AddOutfit.bl_idname, text="Add Outfit: " + repr(context.collection.name),
-                                     icon="ADD")
+                layout.operator(
+                    MustardUI_AddOutfit.bl_idname,
+                    text="Add Outfit: " + repr(context.collection.name),
+                    icon="ADD",
+                )
             else:
                 layout.operator(MustardUI_AddOutfit.bl_idname, icon="ADD")
 
         col = layout.column()
-        col.operator_context = 'INVOKE_DEFAULT'
-        col.operator(MustardUI_RenameOutfit.bl_idname, icon="GREASEPENCIL").right_click_call = True
+        col.operator_context = "INVOKE_DEFAULT"
+        col.operator(
+            MustardUI_RenameOutfit.bl_idname, icon="GREASEPENCIL"
+        ).right_click_call = True
 
 
 def register():

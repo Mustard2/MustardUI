@@ -1,8 +1,9 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..warnings.ops_fix_old_UI import check_old_UI
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
+from ..warnings.ops_fix_old_UI import check_old_UI
+from . import MainPanel
 
 
 class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
@@ -27,19 +28,18 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=1)
         armature_settings = arm.MustardUI_ArmatureSettings
         rig_settings = arm.MustardUI_RigSettings
 
         box = layout.box()
         box.label(text="General Settings", icon="MODIFIER")
-        box.prop(armature_settings, 'mirror')
+        box.prop(armature_settings, "mirror")
 
         # Supported rigs: MHX
         row = box.row()
         row.enabled = rig_settings.model_rig_type == "mhx"
-        row.prop(armature_settings, 'rig_specific_panel')
+        row.prop(armature_settings, "rig_specific_panel")
 
         box = layout.box()
         row = box.row()
@@ -67,12 +67,15 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         col = row.column(align=True)
         if active_bcoll:
             col.separator()
-            col.operator("armature.collection_move", icon='TRIA_UP', text="").direction = 'UP'
-            col.operator("armature.collection_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+            col.operator(
+                "armature.collection_move", icon="TRIA_UP", text=""
+            ).direction = "UP"
+            col.operator(
+                "armature.collection_move", icon="TRIA_DOWN", text=""
+            ).direction = "DOWN"
             col.separator()
 
         if arm.collections.active_index > -1:
-
             collections = arm.collections_all
             bcoll = collections[arm.collections.active_index]
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
@@ -80,20 +83,22 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             row = col.row()
             row.enabled = not bcoll_settings.outfit_switcher_enable
-            row.prop(bcoll_settings, 'icon')
+            row.prop(bcoll_settings, "icon")
             row = col.row()
             row.enabled = not bcoll_settings.outfit_switcher_enable
-            row.prop(bcoll_settings, 'advanced')
+            row.prop(bcoll_settings, "advanced")
             row = col.row()
             row.enabled = not bcoll_settings.outfit_switcher_enable
-            row.prop(bcoll_settings, 'default')
+            row.prop(bcoll_settings, "default")
 
             col = box.column(align=True)
-            col.prop(bcoll_settings, 'outfit_switcher_enable')
+            col.prop(bcoll_settings, "outfit_switcher_enable")
             if bcoll_settings.outfit_switcher_enable:
-                col.prop(bcoll_settings, 'outfit_switcher_collection', text="Collection")
+                col.prop(
+                    bcoll_settings, "outfit_switcher_collection", text="Collection"
+                )
                 if bcoll_settings.outfit_switcher_collection is not None:
-                    col.prop(bcoll_settings, 'outfit_switcher_object', text="Object")
+                    col.prop(bcoll_settings, "outfit_switcher_object", text="Object")
 
             if bcoll.children:
                 box = layout.box()
@@ -115,20 +120,24 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
                 col = box.column(align=True)
                 row = col.row()
                 row.enabled = not cbcoll_settings.outfit_switcher_enable
-                row.prop(cbcoll_settings, 'icon')
+                row.prop(cbcoll_settings, "icon")
                 row = col.row()
                 row.enabled = not cbcoll_settings.outfit_switcher_enable
-                row.prop(cbcoll_settings, 'advanced')
+                row.prop(cbcoll_settings, "advanced")
                 row = col.row()
                 row.enabled = not cbcoll_settings.outfit_switcher_enable
-                row.prop(cbcoll_settings, 'default')
+                row.prop(cbcoll_settings, "default")
 
                 col = box.column(align=True)
-                col.prop(cbcoll_settings, 'outfit_switcher_enable')
+                col.prop(cbcoll_settings, "outfit_switcher_enable")
                 if cbcoll_settings.outfit_switcher_enable:
-                    col.prop(cbcoll_settings, 'outfit_switcher_collection', text="Collection")
+                    col.prop(
+                        cbcoll_settings, "outfit_switcher_collection", text="Collection"
+                    )
                     if cbcoll_settings.outfit_switcher_collection is not None:
-                        col.prop(cbcoll_settings, 'outfit_switcher_object', text="Object")
+                        col.prop(
+                            cbcoll_settings, "outfit_switcher_object", text="Object"
+                        )
 
 
 def register():
