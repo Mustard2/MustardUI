@@ -1,6 +1,5 @@
 import bpy
 
-from .. import __package__ as base_package
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
