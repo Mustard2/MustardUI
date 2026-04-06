@@ -1,5 +1,6 @@
 import bpy
 
+from .. import __package__ as base_package
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
@@ -23,6 +24,8 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         if not poll:
             self.report({"WARNING"}, "No active MustardUI armature")
             return {"CANCELLED"}
+
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         rig_settings = arm.MustardUI_RigSettings
         arm_settings = arm.MustardUI_ArmatureSettings
@@ -67,6 +70,11 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             any_object_visible = False
 
             for obj in items:
+                if obj is None:
+                    if addon_prefs.debug:
+                        print(f"MustardUI - An Object in {col.name} seems unavailable.")
+                    continue
+
                 hidden_flag = obj.MustardUI_outfit_visibility
 
                 locked = obj.MustardUI_outfit_lock
