@@ -1,13 +1,15 @@
 import bpy
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 from .misc import get_cp_source
 
 
 class MustardUI_Morphs_PresetCreate(bpy.types.Operator):
     """Create Morph preset"""
+
     bl_idname = "mustardui.morphs_preset_create"
     bl_label = "Morph Preset Create"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     new_preset_name: bpy.props.StringProperty()
 
@@ -19,8 +21,8 @@ class MustardUI_Morphs_PresetCreate(bpy.types.Operator):
     def execute(self, context):
 
         if self.new_preset_name == "":
-            self.report({'ERROR'}, f'MustardUI - Invalid preset name')
-            return {'FINISHED'}
+            self.report({"ERROR"}, "MustardUI - Invalid preset name")
+            return {"FINISHED"}
 
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
@@ -30,8 +32,8 @@ class MustardUI_Morphs_PresetCreate(bpy.types.Operator):
 
         preset_names = [x.name for x in presets]
         if self.new_preset_name in preset_names:
-            self.report({'ERROR'}, f'MustardUI - Preset name already used')
-            return {'FINISHED'}
+            self.report({"ERROR"}, "MustardUI - Preset name already used")
+            return {"FINISHED"}
 
         new_preset = presets.add()
         new_preset.name = self.new_preset_name
@@ -39,7 +41,7 @@ class MustardUI_Morphs_PresetCreate(bpy.types.Operator):
         for section in morph_settings.sections:
             for morph in section.morphs:
                 cp_source = get_cp_source(morph.custom_property_source, rig_settings)
-                val = 0.
+                val = 0.0
                 if cp_source and morph.custom_property:
                     cp = cp_source.get(morph.path)
                     if cp is not None:
@@ -60,16 +62,17 @@ class MustardUI_Morphs_PresetCreate(bpy.types.Operator):
                     new_morph.shape_key = morph.shape_key
                     new_morph.custom_property_source = morph.custom_property_source
 
-        self.report({'INFO'}, f'MustardUI - Preset \'' + new_preset.name + '\' created')
+        self.report({"INFO"}, "MustardUI - Preset '" + new_preset.name + "' created")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Morphs_PresetApply(bpy.types.Operator):
     """Apply Morph preset"""
+
     bl_idname = "mustardui.morphs_preset_apply"
     bl_label = "Morph Preset Create"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     preset_id: bpy.props.IntProperty(default=-1)
 
@@ -101,14 +104,22 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
 
                 current_val = cp
                 if isinstance(current_val, bool):
-                    cp_source[preset_morph.path] = True if abs(float(val)) > 0.001 else False
+                    cp_source[preset_morph.path] = (
+                        True if abs(float(val)) > 0.001 else False
+                    )
                 elif isinstance(current_val, int) and not isinstance(current_val, bool):
                     cp_source[preset_morph.path] = int(val)
                 else:
                     cp_source[preset_morph.path] = val
 
-            elif preset_morph.shape_key and rig_settings.data and rig_settings.data.shape_keys:
-                kb = rig_settings.model_body.data.shape_keys.key_blocks.get(preset_morph.path)
+            elif (
+                preset_morph.shape_key
+                and rig_settings.data
+                and rig_settings.data.shape_keys
+            ):
+                kb = rig_settings.model_body.data.shape_keys.key_blocks.get(
+                    preset_morph.path
+                )
                 if kb is None:
                     errors += 1
                     continue
@@ -127,18 +138,26 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
         bpy.context.view_layer.update()
 
         if errors == 0:
-            self.report({'INFO'}, f'MustardUI - Preset \'' + preset.name + '\' applied.')
+            self.report({"INFO"}, "MustardUI - Preset '" + preset.name + "' applied.")
         else:
-            self.report({'WARNING'}, f'MustardUI - Preset \'' + preset.name + '\' applied with ' + str(errors) + ' missing entries.')
+            self.report(
+                {"WARNING"},
+                "MustardUI - Preset '"
+                + preset.name
+                + "' applied with "
+                + str(errors)
+                + " missing entries.",
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Morphs_PresetDelete(bpy.types.Operator):
     """Delete Morph preset"""
+
     bl_idname = "mustardui.morphs_preset_delete"
     bl_label = "Morph Preset Create"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     preset_id: bpy.props.IntProperty(default=-1)
 
@@ -159,23 +178,22 @@ class MustardUI_Morphs_PresetDelete(bpy.types.Operator):
 
         presets.remove(self.preset_id)
 
-        self.report({'INFO'}, f'MustardUI - Preset \'' + preset_name + '\' deleted')
+        self.report({"INFO"}, "MustardUI - Preset '" + preset_name + "' deleted")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
     """Presets UI for Morphs"""
+
     bl_idname = "mustardui.morphs_presets_ui"
     bl_label = "Morph Presets"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
-    bl_space_type = 'OUTLINER'
-    bl_region_type = 'WINDOW'
+    bl_space_type = "OUTLINER"
+    bl_region_type = "WINDOW"
 
-    new_preset_name: bpy.props.StringProperty(
-        name="New Preset Name",
-        default="Preset")
+    new_preset_name: bpy.props.StringProperty(name="New Preset Name", default="Preset")
 
     @classmethod
     def poll(cls, context):
@@ -183,7 +201,7 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
         return res if arm is not None else False
 
     def execute(self, context):
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=250)
@@ -201,21 +219,31 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
 
         for pid, preset in enumerate(presets):
             row = box.row(align=True)
-            row.operator("mustardui.morphs_preset_apply", text=preset.name).preset_id = pid
-            row.operator("mustardui.morphs_preset_delete", text="", icon="X").preset_id = pid
+            row.operator(
+                "mustardui.morphs_preset_apply", text=preset.name
+            ).preset_id = pid
+            row.operator(
+                "mustardui.morphs_preset_delete", text="", icon="X"
+            ).preset_id = pid
             row.separator()
-            row.operator("mustardui.morphs_preset_export", text="", icon="COPYDOWN").preset_id = pid
+            row.operator(
+                "mustardui.morphs_preset_export", text="", icon="COPYDOWN"
+            ).preset_id = pid
 
         if len(presets):
             layout.separator()
 
         row = layout.row(align=True)
         row.prop(self, "new_preset_name", text="")
-        row.operator("mustardui.morphs_preset_create", icon="ADD", text="").new_preset_name = self.new_preset_name
+        row.operator(
+            "mustardui.morphs_preset_create", icon="ADD", text=""
+        ).new_preset_name = self.new_preset_name
 
         layout.separator()
         row = layout.row(align=True)
-        row.operator("mustardui.morphs_preset_import", text="Import Preset", icon="PASTEDOWN")
+        row.operator(
+            "mustardui.morphs_preset_import", text="Import Preset", icon="PASTEDOWN"
+        )
 
 
 def register():

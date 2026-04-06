@@ -1,12 +1,14 @@
 import bpy
-from ..model_selection.active_object import *
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
-    """Delete the selected Physics Item, removing it from the UI and deleting all the Objects from the scene"""
+    """Delete the selected Physics Item, removing it from the UI and deleting all the Objects from the scene"""  # noqa: E501
+
     bl_idname = "mustardui.physics_item_delete"
     bl_label = "Delete Physics Item"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     def execute(self, context):
 
@@ -17,7 +19,7 @@ class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
         index = arm.mustardui_physics_items_uilist_index
 
         if len(uilist) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         item = uilist[index]
         pi_obj = item.object
@@ -28,9 +30,10 @@ class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
             if obj.type != "MESH":
                 continue
             for mod in list(obj.modifiers):
-                if (mod.type == "SURFACE_DEFORM" and mod.target == pi_obj) or (
-                        mod.type == "MESH_DEFORM" and mod.target == pi_obj) or (
-                        mod.name == obj_name
+                if (
+                    (mod.type == "SURFACE_DEFORM" and mod.target == pi_obj)
+                    or (mod.type == "MESH_DEFORM" and mod.target == pi_obj)
+                    or (mod.name == obj_name)
                 ):
                     obj.modifiers.remove(mod)
 
@@ -39,16 +42,19 @@ class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
             data = pi_obj.data
             bpy.data.objects.remove(pi_obj)
             bpy.data.meshes.remove(data)
-        except:
-            self.report({'ERROR'}, 'MustardUI - An error occurred while deleting the Physics Item.')
-            return {'FINISHED'}
+        except Exception:
+            self.report(
+                {"ERROR"},
+                "MustardUI - An error occurred while deleting the Physics Item.",
+            )
+            return {"FINISHED"}
 
         # Remove the Physics Items from the list
         bpy.ops.mustardui.physics_item_remove()
 
-        self.report({'INFO'}, 'MustardUI - Physics Item deleted.')
+        self.report({"INFO"}, "MustardUI - Physics Item deleted.")
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():

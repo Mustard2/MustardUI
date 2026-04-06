@@ -1,8 +1,9 @@
 import bpy
-from . import MainPanel
-from ..model_selection.active_object import *
-from ..warnings.ops_fix_old_UI import check_old_UI
+
 from .. import __package__ as base_package
+from ..model_selection.active_object import mustardui_active_object
+from ..warnings.ops_fix_old_UI import check_old_UI
+from . import MainPanel
 
 
 class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
@@ -35,21 +36,29 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Enable Tools", icon="MODIFIER")
         col = box.column(align=True)
-        col.prop(simplify_settings, 'simplify_main_enable')
-        col.prop(tools_settings, 'autobreath_enable')
-        col.prop(tools_settings, 'autoeyelid_enable')
-        col.prop(tools_settings, 'bone_shrinkwrap_enable')
+        col.prop(simplify_settings, "simplify_main_enable")
+        col.prop(tools_settings, "autobreath_enable")
+        col.prop(tools_settings, "autoeyelid_enable")
+        col.prop(tools_settings, "bone_shrinkwrap_enable")
 
         if tools_settings.autoeyelid_enable:
             box = layout.box()
             box.label(text="Auto Blink Tool Settings", icon="HIDE_OFF")
-            box.prop(tools_settings, 'autoeyelid_driver_type', text="Type")
+            box.prop(tools_settings, "autoeyelid_driver_type", text="Type")
             col = box.column(align=True)
             if tools_settings.autoeyelid_driver_type == "SHAPE_KEY":
-                col.prop_search(tools_settings, "autoeyelid_eyeL_shapekey", rig_settings.model_body.data.shape_keys,
-                                "key_blocks")
-                col.prop_search(tools_settings, "autoeyelid_eyeR_shapekey", rig_settings.model_body.data.shape_keys,
-                                "key_blocks")
+                col.prop_search(
+                    tools_settings,
+                    "autoeyelid_eyeL_shapekey",
+                    rig_settings.model_body.data.shape_keys,
+                    "key_blocks",
+                )
+                col.prop_search(
+                    tools_settings,
+                    "autoeyelid_eyeR_shapekey",
+                    rig_settings.model_body.data.shape_keys,
+                    "key_blocks",
+                )
             else:
                 col.prop(tools_settings, "autoeyelid_morph")
 

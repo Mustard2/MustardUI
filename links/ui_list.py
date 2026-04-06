@@ -1,6 +1,7 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
+from bpy.props import IntProperty
+
+from ..model_selection.active_object import mustardui_active_object
 
 
 class MustardUI_Links_UIList_Switch(bpy.types.Operator):
@@ -9,8 +10,12 @@ class MustardUI_Links_UIList_Switch(bpy.types.Operator):
     bl_idname = "mustardui.link_switch"
     bl_label = "Move Link"
 
-    direction: bpy.props.EnumProperty(items=(('UP', 'Up', ""),
-                                             ('DOWN', 'Down', ""),))
+    direction: bpy.props.EnumProperty(
+        items=(
+            ("UP", "Up", ""),
+            ("DOWN", "Down", ""),
+        )
+    )
 
     @classmethod
     def poll(cls, context):
@@ -18,10 +23,10 @@ class MustardUI_Links_UIList_Switch(bpy.types.Operator):
         return obj is not None
 
     def move_index(self, uilist, index):
-        """ Move index of an item render queue while clamping it. """
+        """Move index of an item render queue while clamping it."""
 
         list_length = len(uilist) - 1  # (index starts at 0)
-        new_index = index + (-1 if self.direction == 'UP' else 1)
+        new_index = index + (-1 if self.direction == "UP" else 1)
 
         return max(0, min(new_index, list_length))
 
@@ -31,21 +36,22 @@ class MustardUI_Links_UIList_Switch(bpy.types.Operator):
         index = context.scene.mustardui_links_uilist_index
 
         if len(uilist) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == 'UP' else 1)
+        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         context.scene.mustardui_links_uilist_index = index
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Link_Remove(bpy.types.Operator):
     """Remove the selected link from the list"""
+
     bl_idname = "mustardui.link_remove"
     bl_label = "Remove Link"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -58,7 +64,7 @@ class MustardUI_Link_Remove(bpy.types.Operator):
         index = context.scene.mustardui_links_uilist_index
 
         if len(uilist) <= index:
-            return {'FINISHED'}
+            return {"FINISHED"}
 
         uilist.remove(index)
         index = min(max(0, index - 1), len(uilist) - 1)
@@ -66,14 +72,15 @@ class MustardUI_Link_Remove(bpy.types.Operator):
 
         obj.update_tag()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Link_Add(bpy.types.Operator):
     """Add a link to the list"""
+
     bl_idname = "mustardui.link_add"
     bl_label = "Add Link"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -92,16 +99,18 @@ class MustardUI_Link_Add(bpy.types.Operator):
 
         obj.update_tag()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MUSTARDUI_UL_Links_UIList(bpy.types.UIList):
     """UIList for links"""
 
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(
+        self, context, layout, data, item, icon, active_data, active_propname, index
+    ):
         row = layout.row()
-        row.prop(item, 'name', text="", emboss=False, translate=False)
-        row.prop(item, 'url', text="", emboss=False, translate=False)
+        row.prop(item, "name", text="", emboss=False, translate=False)
+        row.prop(item, "url", text="", emboss=False, translate=False)
 
 
 def register():

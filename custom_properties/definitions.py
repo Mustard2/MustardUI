@@ -1,6 +1,15 @@
 import bpy
-from bpy.props import *
-from ..misc.icons import *
+from bpy.props import (
+    BoolProperty,
+    CollectionProperty,
+    EnumProperty,
+    FloatProperty,
+    IntProperty,
+    PointerProperty,
+    StringProperty,
+)
+
+from ..misc.icons import mustardui_icon_list
 
 
 class MustardUI_LinkedProperty(bpy.types.PropertyGroup):
@@ -11,24 +20,31 @@ class MustardUI_LinkedProperty(bpy.types.PropertyGroup):
 
 class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     # Type
-    cp_type: EnumProperty(name="Type",
-                          default="BODY",
-                          items=(
-                              ("BODY", "Body", "Body"),
-                              ("OUTFIT", "Outfit", "Outfit"),
-                              ("HAIR", "Hair", "Hair"))
-                          )
+    cp_type: EnumProperty(
+        name="Type",
+        default="BODY",
+        items=(
+            ("BODY", "Body", "Body"),
+            ("OUTFIT", "Outfit", "Outfit"),
+            ("HAIR", "Hair", "Hair"),
+        ),
+    )
 
     # User defined properties
     name: StringProperty(name="Custom property name")
-    icon: EnumProperty(name='Icon',
-                       description="Choose the icon",
-                       items=mustardui_icon_list)
-    advanced: BoolProperty(name='Advanced',
-                           description="The property is shown only when Advanced settings are enabled")
-    hidden: BoolProperty(name='Hidden',
-                         description="The property is hidden from the UI.\nThis can be useful if the property is just "
-                                     "a proxy for some model_selection (e.g. for On Switch actions)")
+    icon: EnumProperty(
+        name="Icon", description="Choose the icon", items=mustardui_icon_list
+    )
+    advanced: BoolProperty(
+        name="Advanced",
+        description="The property is shown only when Advanced settings are enabled",
+    )
+    hidden: BoolProperty(
+        name="Hidden",
+        description="The property is hidden from the UI.\nThis can be useful if the "
+        "property is just a proxy for some model_selection (e.g. for On Switch "
+        "actions)",
+    )
 
     # Internal stored properties
     rna: StringProperty(name="RNA")
@@ -38,13 +54,15 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     type: StringProperty(name="Type")
     array_length: IntProperty(name="Array Length")
     subtype: StringProperty(name="Subtype")
-    force_type: EnumProperty(name="Force Property Type",
-                             default="None",
-                             items=(
-                                 ("None", "None", "None"),
-                                 ("Int", "Int", "Int"),
-                                 ("Bool", "Bool", "Bool"))
-                             )
+    force_type: EnumProperty(
+        name="Force Property Type",
+        default="None",
+        items=(
+            ("None", "None", "None"),
+            ("Int", "Int", "Int"),
+            ("Bool", "Bool", "Bool"),
+        ),
+    )
     step_float: bpy.props.FloatProperty(name="Step")
 
     # Properties stored to rebuild custom properties in case of troubles
@@ -62,33 +80,41 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     # Section settings
     section: StringProperty(default="")
-    add_section: BoolProperty(default=False,
-                              name="Add to section",
-                              description="Add the property to the selected section")
+    add_section: BoolProperty(
+        default=False,
+        name="Add to section",
+        description="Add the property to the selected section",
+    )
 
     # Outfits
     # Poll function for the selection of mesh only in pointer properties
     def poll_mesh(self, obj):
         rig_settings = self.id_data.MustardUI_RigSettings
 
-        if obj.type != 'MESH':
+        if obj.type != "MESH":
             return False
 
         hc = rig_settings.hair_collection
         hec = rig_settings.hair_extras_collection
 
-        return (
-                (hc and obj in hc.objects) or
-                (hec and obj in hec.objects)
-        )
+        return (hc and obj in hc.objects) or (hec and obj in hec.objects)
 
-    # Poll function for the selection of mesh belonging to an outfit in pointer properties
+    # Poll function for the selection of mesh belonging to an outfit in
+    # pointer properties
     def outfit_switcher_poll_collection(self, object):
         rig_settings = self.id_data.MustardUI_RigSettings
-        return object in [x.collection for x in rig_settings.outfits_collections if
-                          x.collection is not None] or object == rig_settings.extras_collection
+        return (
+            object
+            in [
+                x.collection
+                for x in rig_settings.outfits_collections
+                if x.collection is not None
+            ]
+            or object == rig_settings.extras_collection
+        )
 
-    # Poll function for the selection of mesh belonging to an outfit in pointer properties
+    # Poll function for the selection of mesh belonging to an outfit in
+    # pointer properties
     def outfit_switcher_poll_mesh(self, obj):
         if not self.outfit:
             return False
@@ -100,36 +126,46 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
             else self.outfit.objects
         )
 
-        return obj.type == 'MESH' and obj in items
+        return obj.type == "MESH" and obj in items
 
-    outfit: PointerProperty(name="Outfit Collection",
-                            type=bpy.types.Collection,
-                            poll=outfit_switcher_poll_collection)
-    outfit_piece: PointerProperty(name="Outfit Piece",
-                                  type=bpy.types.Object,
-                                  poll=outfit_switcher_poll_mesh)
+    outfit: PointerProperty(
+        name="Outfit Collection",
+        type=bpy.types.Collection,
+        poll=outfit_switcher_poll_collection,
+    )
+    outfit_piece: PointerProperty(
+        name="Outfit Piece", type=bpy.types.Object, poll=outfit_switcher_poll_mesh
+    )
 
-    outfit_enable_on_switch: BoolProperty(default=False,
-                                          name="Enable on Outfit Switch",
-                                          description="Set the value of this property to the max value when you "
-                                                      "enable the outfit/outfit piece")
-    outfit_disable_on_switch: BoolProperty(default=False,
-                                           name="Disable on Outfit Switch",
-                                           description="Set the value of this property to the default value when you "
-                                                       "disable the outfit/outfit piece")
+    outfit_enable_on_switch: BoolProperty(
+        default=False,
+        name="Enable on Outfit Switch",
+        description="Set the value of this property to the max value when you "
+        "enable the outfit/outfit piece",
+    )
+    outfit_disable_on_switch: BoolProperty(
+        default=False,
+        name="Disable on Outfit Switch",
+        description="Set the value of this property to the default value when you "
+        "disable the outfit/outfit piece",
+    )
 
     # Hair
-    hair: PointerProperty(name="Hair Style",
-                          type=bpy.types.Object,
-                          poll=poll_mesh)
+    hair: PointerProperty(name="Hair Style", type=bpy.types.Object, poll=poll_mesh)
 
 
 def register():
     bpy.utils.register_class(MustardUI_LinkedProperty)
     bpy.utils.register_class(MustardUI_CustomProperty)
-    bpy.types.Armature.MustardUI_CustomProperties = CollectionProperty(type=MustardUI_CustomProperty)
-    bpy.types.Armature.MustardUI_CustomPropertiesOutfit = CollectionProperty(type=MustardUI_CustomProperty)
-    bpy.types.Armature.MustardUI_CustomPropertiesHair = CollectionProperty(type=MustardUI_CustomProperty)
+    bpy.types.Armature.MustardUI_CustomProperties = CollectionProperty(
+        type=MustardUI_CustomProperty
+    )
+    bpy.types.Armature.MustardUI_CustomPropertiesOutfit = CollectionProperty(
+        type=MustardUI_CustomProperty
+    )
+    bpy.types.Armature.MustardUI_CustomPropertiesHair = CollectionProperty(
+        type=MustardUI_CustomProperty
+    )
 
 
 def unregister():

@@ -1,12 +1,23 @@
 import bpy
-from bpy.props import *
-from ..model_selection.active_object import *
-from .misc import *
-from ..misc.prop_utils import *
+from bpy.props import IntProperty
+
 from .. import __package__ as base_package
+from ..misc.prop_utils import evaluate_path
+from ..model_selection.active_object import mustardui_active_object
 
 
-def draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index, cptype=0):
+def draw_item_by_type(
+    self,
+    context,
+    layout,
+    _data,
+    item,
+    _icon,
+    _active_data,
+    _active_propname,
+    _index,
+    cptype=0,
+):
     res, obj = mustardui_active_object(context, config=1)
     rig_settings = obj.MustardUI_RigSettings
     addon_prefs = context.preferences.addons[base_package].preferences
@@ -15,9 +26,15 @@ def draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _
         return
 
     # Make sure your code supports all 3 layout types
-    if self.layout_type in {'DEFAULT', 'COMPACT'}:
-        layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
-                    translate=False)
+    if self.layout_type in {"DEFAULT", "COMPACT"}:
+        layout.prop(
+            item,
+            "name",
+            text="",
+            icon=item.icon if item.icon != "NONE" else "DOT",
+            emboss=False,
+            translate=False,
+        )
         layout.scale_x = 1.0
 
         row = layout.row(align=True)
@@ -25,18 +42,20 @@ def draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _
         if cptype == 1:
             if item.outfit is not None and item.outfit_piece is None:
                 if rig_settings.model_MustardUI_naming_convention:
-                    row.label(text=item.outfit.name[len(rig_settings.model_name) + 1:])
+                    row.label(text=item.outfit.name[len(rig_settings.model_name) + 1 :])
                 else:
                     row.label(text=item.outfit.name)
             elif item.outfit is not None and item.outfit_piece is not None:
                 if rig_settings.model_MustardUI_naming_convention:
-                    row.label(text=item.outfit_piece.name[len(rig_settings.model_name) + 1:])
+                    row.label(
+                        text=item.outfit_piece.name[len(rig_settings.model_name) + 1 :]
+                    )
                 else:
                     row.label(text=item.outfit_piece.name)
         elif cptype == 2:
             if item.hair is not None:
                 if rig_settings.model_MustardUI_naming_convention:
-                    row.label(text=item.hair.name[len(rig_settings.model_name) + 1:])
+                    row.label(text=item.hair.name[len(rig_settings.model_name) + 1 :])
                 else:
                     row.label(text=item.hair.name)
 
@@ -48,7 +67,7 @@ def draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _
                 error = True
             if error:
                 row.label(text="", icon="ERROR")
-        except:
+        except Exception:
             row.label(text="", icon="ERROR")
 
         if cptype == 0:
@@ -72,37 +91,106 @@ def draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _
             else:
                 row.label(text="", icon="HIDE_OFF")
 
-    elif self.layout_type in {'GRID'}:
-        layout.alignment = 'CENTER'
-        layout.prop(item, 'name', text="", icon=item.icon if item.icon != "NONE" else "DOT", emboss=False,
-                    translate=False)
+    elif self.layout_type in {"GRID"}:
+        layout.alignment = "CENTER"
+        layout.prop(
+            item,
+            "name",
+            text="",
+            icon=item.icon if item.icon != "NONE" else "DOT",
+            emboss=False,
+            translate=False,
+        )
 
 
 class MUSTARDUI_UL_Property_UIList(bpy.types.UIList):
     """UIList for custom properties"""
 
-    def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index):
-        draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index, cptype=0)
+    def draw_item(
+        self,
+        context,
+        layout,
+        _data,
+        item,
+        _icon,
+        _active_data,
+        _active_propname,
+        _index,
+    ):
+        draw_item_by_type(
+            self,
+            context,
+            layout,
+            _data,
+            item,
+            _icon,
+            _active_data,
+            _active_propname,
+            _index,
+            cptype=0,
+        )
 
 
 class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
     """UIList for outfits custom properties"""
 
-    def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index):
-        draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index, cptype=1)
+    def draw_item(
+        self,
+        context,
+        layout,
+        _data,
+        item,
+        _icon,
+        _active_data,
+        _active_propname,
+        _index,
+    ):
+        draw_item_by_type(
+            self,
+            context,
+            layout,
+            _data,
+            item,
+            _icon,
+            _active_data,
+            _active_propname,
+            _index,
+            cptype=1,
+        )
 
 
 class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
     """UIList for hair custom properties"""
 
-    def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index):
-        draw_item_by_type(self, context, layout, _data, item, _icon, _active_data, _active_propname, _index, cptype=2)
+    def draw_item(
+        self,
+        context,
+        layout,
+        _data,
+        item,
+        _icon,
+        _active_data,
+        _active_propname,
+        _index,
+    ):
+        draw_item_by_type(
+            self,
+            context,
+            layout,
+            _data,
+            item,
+            _icon,
+            _active_data,
+            _active_propname,
+            _index,
+            cptype=2,
+        )
 
 
 menus = (
     MUSTARDUI_UL_Property_UIList,
     MUSTARDUI_UL_Property_UIListOutfits,
-    MUSTARDUI_UL_Property_UIListHair
+    MUSTARDUI_UL_Property_UIListHair,
 )
 
 
@@ -111,8 +199,12 @@ def register():
         bpy.utils.register_class(m)
 
     bpy.types.Scene.mustardui_property_uilist_index = IntProperty(name="", default=0)
-    bpy.types.Scene.mustardui_property_uilist_outfits_index = IntProperty(name="", default=0)
-    bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(name="", default=0)
+    bpy.types.Scene.mustardui_property_uilist_outfits_index = IntProperty(
+        name="", default=0
+    )
+    bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(
+        name="", default=0
+    )
 
 
 def unregister():

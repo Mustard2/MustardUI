@@ -1,9 +1,11 @@
-from . import ops_configuration
-from . import ops_smartcheck
-from . import ops_cleanmodel
-from . import ops_debug
-from . import ops_removeui
-from . import ops_removearm
+from . import (
+    ops_cleanmodel,
+    ops_configuration,
+    ops_debug,
+    ops_removearm,
+    ops_removeui,
+    ops_smartcheck,
+)
 
 
 def register():

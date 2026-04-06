@@ -2,10 +2,11 @@ import bpy
 
 
 class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
-    """Copy all animation data (actions and NLA strip settings) and world transform from one armature to the Active Object armature"""
+    """Copy all animation data (actions and NLA strip settings) and world transform from one armature to the Active Object armature"""  # noqa: E501
+
     bl_idname = "mustardui.armature_transfer_animation"
     bl_label = "Transfer Animation To Active Object"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     @classmethod
     def poll(cls, context):
@@ -17,7 +18,7 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
 
         source = sel[0] if sel[1] == target else sel[1]
 
-        if source.type != 'ARMATURE' or target.type != 'ARMATURE':
+        if source.type != "ARMATURE" or target.type != "ARMATURE":
             return False
 
         return True
@@ -27,22 +28,22 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
         target = context.active_object
 
         if len(sel) != 2:
-            self.report({'ERROR'}, "Select exactly two armatures")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "Select exactly two armatures")
+            return {"CANCELLED"}
 
         source = sel[0] if sel[1] == target else sel[1]
 
-        if source.type != 'ARMATURE' or target.type != 'ARMATURE':
-            self.report({'ERROR'}, "Both objects must be armatures")
-            return {'CANCELLED'}
+        if source.type != "ARMATURE" or target.type != "ARMATURE":
+            self.report({"ERROR"}, "Both objects must be armatures")
+            return {"CANCELLED"}
 
         # Copy WORLD transform
         target.matrix_world = source.matrix_world.copy()
 
         # Animation data
         if not source.animation_data:
-            self.report({'WARNING'}, "Source armature has no animation data")
-            return {'CANCELLED'}
+            self.report({"WARNING"}, "Source armature has no animation data")
+            return {"CANCELLED"}
 
         if not target.animation_data:
             target.animation_data_create()
@@ -73,7 +74,7 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
                 tgt_strip = tgt_track.strips.new(
                     name=src_strip.name,
                     start=int(src_strip.frame_start),
-                    action=new_action
+                    action=new_action,
                 )
 
                 tgt_strip.frame_end = src_strip.frame_end
@@ -84,8 +85,12 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
                 tgt_strip.use_reverse = src_strip.use_reverse
                 tgt_strip.use_sync_length = src_strip.use_sync_length
 
-        self.report({'INFO'}, f"MustardUI - Animation transferred from '{source.name}' to '{target.name}'")
-        return {'FINISHED'}
+        self.report(
+            {"INFO"},
+            f"MustardUI - Animation transferred from '{source.name}' "
+            f"to '{target.name}'",
+        )
+        return {"FINISHED"}
 
 
 def register():

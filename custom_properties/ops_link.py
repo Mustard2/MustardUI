@@ -1,24 +1,28 @@
 import bpy
-from bpy.props import *
-from rna_prop_ui import rna_idprop_ui_create
-from ..model_selection.active_object import *
-from .misc import *
+from bpy.props import EnumProperty, StringProperty
+
+from ..misc.prop_utils import evaluate_path, evaluate_rna
+from ..model_selection.active_object import mustardui_active_object
+from .misc import (
+    mustardui_add_driver,
+    mustardui_check_cp,
+    mustardui_choose_cp,
+)
 
 
 class MustardUI_Property_MenuLink(bpy.types.Operator):
     """Link the property to an existing one"""
+
     bl_idname = "mustardui.property_menulink"
     bl_label = "Link Property"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     parent_rna: StringProperty()
     parent_path: StringProperty()
-    type: EnumProperty(default="BODY",
-                       items=(
-                           ("BODY", "Body", ""),
-                           ("OUTFIT", "Outfit", ""),
-                           ("HAIR", "Hair", ""))
-                       )
+    type: EnumProperty(
+        default="BODY",
+        items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
+    )
 
     @classmethod
     def poll(cls, context):
@@ -33,62 +37,85 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
         prop = context.button_prop
 
-        if not hasattr(context, 'button_prop') or not hasattr(prop, 'array_length'):
-            self.report({'ERROR'}, 'MustardUI - Can not link this property to anything.')
-            return {'FINISHED'}
+        if not hasattr(context, "button_prop") or not hasattr(prop, "array_length"):
+            self.report(
+                {"ERROR"}, "MustardUI - Can not link this property to anything."
+            )
+            return {"FINISHED"}
 
         if not prop.is_animatable:
-            self.report({'ERROR'}, 'MustardUI - Can not link a \'non animatable\' property.')
-            return {'FINISHED'}
+            self.report(
+                {"ERROR"}, "MustardUI - Can not link a 'non animatable' property."
+            )
+            return {"FINISHED"}
 
         found = False
         for parent_prop in custom_props:
-            if parent_prop.rna == self.parent_rna and parent_prop.path == self.parent_path:
+            if (
+                parent_prop.rna == self.parent_rna
+                and parent_prop.path == self.parent_path
+            ):
                 found = True
 
                 try:
-                    parent_prop_length = len(evaluate_path(parent_prop.rna, parent_prop.path))
-                except:
+                    parent_prop_length = len(
+                        evaluate_path(parent_prop.rna, parent_prop.path)
+                    )
+                except Exception:
                     parent_prop_length = 0
 
                 if prop.array_length != parent_prop_length:
-                    self.report({'ERROR'}, 'MustardUI - Can not link properties with different array length.')
-                    return {'FINISHED'}
+                    self.report(
+                        {"ERROR"},
+                        "MustardUI - Can not link properties with different array "
+                        "length.",
+                    )
+                    return {"FINISHED"}
 
                 if parent_prop.type != prop.type:
-                    self.report({'ERROR'}, 'MustardUI - Can not link properties with different type.')
-                    return {'FINISHED'}
+                    self.report(
+                        {"ERROR"},
+                        "MustardUI - Can not link properties with different type.",
+                    )
+                    return {"FINISHED"}
 
                 # dump(prop, 'button_prop')
 
                 # Copy the path of the selected property
                 try:
                     bpy.ops.ui.copy_data_path_button(full_path=True)
-                except:
-                    self.report({'ERROR'}, 'MustardUI - Invalid selection.')
-                    return {'FINISHED'}
+                except Exception:
+                    self.report({"ERROR"}, "MustardUI - Invalid selection.")
+                    return {"FINISHED"}
 
                 # Adjust the property path to be exported
-                rna, path = context.window_manager.clipboard.rsplit('.', 1)
-                if '][' in path:
-                    path, rem = path.rsplit('[', 1)
-                    rna = rna + '.' + path
-                    path = '[' + rem
-                elif '[' in path:
-                    path, rem = path.rsplit('[', 1)
+                rna, path = context.window_manager.clipboard.rsplit(".", 1)
+                if "][" in path:
+                    path, rem = path.rsplit("[", 1)
+                    rna = rna + "." + path
+                    path = "[" + rem
+                elif "[" in path:
+                    path, rem = path.rsplit("[", 1)
 
                 if parent_prop.rna == rna and parent_prop.path == path:
-                    self.report({'ERROR'}, 'MustardUI - Can not link a property with itself.')
-                    return {'FINISHED'}
+                    self.report(
+                        {"ERROR"}, "MustardUI - Can not link a property with itself."
+                    )
+                    return {"FINISHED"}
 
                 if not mustardui_check_cp(obj, rna, path):
-                    self.report({'ERROR'}, 'MustardUI - Can not link a property already added.')
-                    return {'FINISHED'}
+                    self.report(
+                        {"ERROR"}, "MustardUI - Can not link a property already added."
+                    )
+                    return {"FINISHED"}
 
                 switched_warning = False
                 for check_prop in custom_props:
                     for i in range(0, len(check_prop.linked_properties)):
-                        if check_prop.linked_properties[i].rna == rna and check_prop.linked_properties[i].path == path:
+                        if (
+                            check_prop.linked_properties[i].rna == rna
+                            and check_prop.linked_properties[i].path == path
+                        ):
                             switched_warning = True
                             check_prop.linked_properties.remove(i)
 
@@ -97,45 +124,52 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                     mustardui_add_driver(obj, rna, path, prop, parent_prop.prop_name)
 
                 # Add linked property to list
-                if not (rna, path) in [(x.rna, x.path) for x in parent_prop.linked_properties]:
+                if (rna, path) not in [
+                    (x.rna, x.path) for x in parent_prop.linked_properties
+                ]:
                     lp = parent_prop.linked_properties.add()
                     lp.rna = rna
                     lp.path = path
                 else:
-                    self.report({'ERROR'}, 'MustardUI - An error occurred while linking the property.')
-                    return {'FINISHED'}
+                    self.report(
+                        {"ERROR"},
+                        "MustardUI - An error occurred while linking the property.",
+                    )
+                    return {"FINISHED"}
 
                 if switched_warning:
-                    self.report({'WARNING'}, 'MustardUI - Switched linked property.')
+                    self.report({"WARNING"}, "MustardUI - Switched linked property.")
                 else:
-                    self.report({'INFO'}, 'MustardUI - Property linked.')
+                    self.report({"INFO"}, "MustardUI - Property linked.")
 
                 break
 
         if not found:
-            self.report({'ERROR'}, 'MustardUI - An error occurred while searching for parent property.')
-            return {'FINISHED'}
+            self.report(
+                {"ERROR"},
+                "MustardUI - An error occurred while searching for parent property.",
+            )
+            return {"FINISHED"}
 
         obj.update_tag()
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MustardUI_Property_RemoveLinked(bpy.types.Operator):
     """Remove the linked property from the list"""
+
     bl_idname = "mustardui.property_removelinked"
     bl_label = "Remove Linked Property"
-    bl_options = {'UNDO'}
+    bl_options = {"UNDO"}
 
     rna: bpy.props.StringProperty()
     path: bpy.props.StringProperty()
 
-    type: bpy.props.EnumProperty(default="BODY",
-                                 items=(
-                                     ("BODY", "Body", ""),
-                                     ("OUTFIT", "Outfit", ""),
-                                     ("HAIR", "Hair", ""))
-                                 )
+    type: bpy.props.EnumProperty(
+        default="BODY",
+        items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
+    )
 
     def clean_prop(self, obj, uilist, index):
 
@@ -144,7 +178,7 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
             driver_object = evaluate_rna(self.rna)
             driver_object.driver_remove(self.path)
             return True
-        except:
+        except Exception:
             return False
 
     @classmethod
@@ -155,7 +189,6 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
 
     def execute(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
@@ -175,11 +208,14 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         obj.update_tag()
 
         if not driver_removed:
-            self.report({'WARNING'},
-                        'MustardUI - The linked property was removed from the UI, but the associated driver was not '
-                        'found: you might need to remove it manually.')
+            self.report(
+                {"WARNING"},
+                "MustardUI - The linked property was removed from the UI, but the "
+                "associated driver was not found: you might need to remove it "
+                "manually.",
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def register():
