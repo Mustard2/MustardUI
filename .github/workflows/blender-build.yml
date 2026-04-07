@@ -51,26 +51,26 @@ jobs:
       - name: Build extension
         run: |
           set -e
-
+      
           echo "🚀 Running Blender build..."
-          timeout 360s blender --background --command extension build || true
-
-          # Typically output goes to ./dist/*.zip
-          FILE=$(find ./dist -type f -name "*.zip" | head -n1)
-
+          timeout 120s blender --background --command extension build || true
+      
+          # The build reports the filename, so we pick any zip in current folder
+          FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n1)
+      
           if [ -z "$FILE" ]; then
-            echo "❌ No extension zip found in ./dist"
+            echo "❌ No extension zip found"
             exit 1
           fi
-
+      
           echo "📦 Found extension archive: $FILE"
-
+      
           echo "⏳ Validating zip..."
           if ! unzip -t "$FILE" > /dev/null 2>&1; then
             echo "❌ Archive is invalid/corrupted"
             exit 1
           fi
-
+      
           echo "✅ Zip is valid"
           echo "ARCHIVE=$FILE" >> $GITHUB_ENV
 
