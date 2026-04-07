@@ -12,7 +12,7 @@ jobs:
 
     steps:
       # -----------------------------
-      # Checkout repo
+      # Checkout repository
       # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
           echo "LATEST=$LATEST" >> $GITHUB_ENV
 
       # -----------------------------
-      # Download Blender
+      # Download and extract Blender in separate folder
       # -----------------------------
       - name: Download Blender
         run: |
@@ -38,42 +38,43 @@ jobs:
             | sort -V \
             | tail -n1)
           wget https://download.blender.org/release/$LATEST/$VERSION_FILE
-          tar -xf $VERSION_FILE
-          BLENDER_DIR=$(tar -tf $VERSION_FILE | head -1 | cut -f1 -d"/")
-          echo "$PWD/$BLENDER_DIR" >> $GITHUB_PATH
+          mkdir blender
+          tar -xf $VERSION_FILE -C blender --strip-components=1
 
       - name: Verify Blender
-        run: blender --version
+        run: blender/blender --version
 
       # -----------------------------
-      # Build extension
+      # Build extension safely
       # -----------------------------
       - name: Build extension
         run: |
           set -e
           echo "🚀 Running Blender build..."
-          timeout 360s blender --background --command extension build || true
-      
-          # Pick the zip in root folder
+          timeout 120s blender/blender --background --command extension build || true
+
+          # Find the zip Blender just created in root folder
           FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n1)
-      
+
           if [ -z "$FILE" ]; then
             echo "❌ No extension zip found"
             exit 1
           fi
-      
-          echo "📦 Found extension archive: $FILE"
-      
+
+          echo "📦 Found extension zip: $FILE"
+
           # Validate zip
+          echo "⏳ Validating zip..."
           if ! unzip -t "$FILE" > /dev/null 2>&1; then
             echo "❌ Archive is invalid/corrupted"
             exit 1
           fi
-      
+
           echo "✅ Zip is valid"
-      
-          # Export absolute path for artifact
+
+          # Export absolute path and artifact name
           echo "ARCHIVE=$(realpath "$FILE")" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$(basename "$FILE")" >> $GITHUB_ENV
 
       # -----------------------------
       # Install and enable extension
@@ -87,13 +88,14 @@ jobs:
           fi
 
           echo "Installing and enabling extension: $EXT_ID"
-          blender --background --command extension install-file -r user -e "$ARCHIVE"
+          blender/blender --background --command extension install-file -r user -e "$ARCHIVE"
 
-      # -------------------------------
-      # Save the extension as artifact
-      # -------------------------------
-      - name: Upload artifact
+      # -----------------------------
+      # Upload artifact with same name as Blender zip
+      # -----------------------------
+      - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
-          name: blender-extension
+          name: ${{ env.ARTIFACT_NAME }}
           path: ${{ env.ARCHIVE }}
+  
