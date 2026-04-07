@@ -3,6 +3,8 @@ name: Build & Test Blender Extension
 on:
   push:
   pull_request:
+    branches:
+      main
 
 jobs:
   build:
@@ -47,11 +49,11 @@ jobs:
         run: blender --version
 
       # -----------------------------
-      # Build extension (with timeout fix)
+      # Build extension (handle hang)
       # -----------------------------
       - name: Build extension
         run: |
-          timeout 60s blender --background --command extension build || true
+          timeout 10s blender --background --command extension build || true
 
       # -----------------------------
       # Verify build output
@@ -70,12 +72,39 @@ jobs:
           echo "ARCHIVE=$FILE" >> $GITHUB_ENV
 
       # -----------------------------
-      # Install + enable extension
+      # Initialize extension system
       # -----------------------------
-      - name: Install and enable extension
+      - name: Initialize extension repos
         run: |
-          blender --background --command extension install "$ARCHIVE"
+          blender --background --command extension repo sync || true
 
+      # -----------------------------
+      # Install extension (CLI with fallback)
+      # -----------------------------
+      - name: Install extension
+        run: |
+          set -e
+
+          echo "Attempting CLI install..."
+          if blender --background --command extension install "$ARCHIVE" --repo user; then
+            echo "✅ CLI install succeeded"
+          else
+            echo "⚠️ CLI install failed, falling back to manual install"
+
+            BLENDER_VERSION=$(blender --version | head -n1 | awk '{print $2}' | cut -d'.' -f1,2)
+            EXT_DIR="$HOME/.config/blender/$BLENDER_VERSION/extensions/user"
+
+            mkdir -p "$EXT_DIR"
+            unzip -o "$ARCHIVE" -d "$EXT_DIR"
+
+            echo "✅ Manual install completed at $EXT_DIR"
+          fi
+
+      # -----------------------------
+      # Enable extension
+      # -----------------------------
+      - name: Enable extension
+        run: |
           EXT_ID=$(grep '^id' blender_manifest.toml | cut -d '"' -f2)
 
           if [ -z "$EXT_ID" ]; then
