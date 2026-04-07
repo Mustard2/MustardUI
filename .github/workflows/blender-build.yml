@@ -44,8 +44,9 @@ jobs:
       - name: Prepare build folder
         run: |
           mkdir build
-          # Copy only your extension folder/files to build/
-          cp -r MustardUI/* build/  # <-- adjust this path to your extension folder
+          shopt -s extglob  # enable extended globbing
+          # Copy all files except blender/ and build/ into build/
+          cp -r !("blender"|"build") build/
 
       # -----------------------------
       # Build extension inside build folder
