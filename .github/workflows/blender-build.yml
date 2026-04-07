@@ -1,8 +1,10 @@
 name: Build & Test Blender Extension
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -13,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Download Blender separately
+      # Download Blender
       # -----------------------------
       - name: Get latest Blender version
         run: |
@@ -37,14 +39,13 @@ jobs:
         run: blender/blender --version
 
       # -----------------------------
-      # Prepare separate build folder
+      # Prepare build folder (copy only extension source)
       # -----------------------------
       - name: Prepare build folder
         run: |
           mkdir build
-          cp -r * build/
-          # Remove blender folder from build folder to avoid recursive zip
-          rm -rf build/blender
+          # Copy only your extension folder/files to build/
+          cp -r MustardUI/* build/  # <-- adjust this path to your extension folder
 
       # -----------------------------
       # Build extension inside build folder
