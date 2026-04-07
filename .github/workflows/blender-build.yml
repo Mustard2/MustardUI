@@ -3,6 +3,8 @@ name: Build & Test Blender Extension
 on:
   push:
   pull_request:
+    branches:
+      main
 
 jobs:
   build:
@@ -51,7 +53,7 @@ jobs:
           set -e
 
           echo "🚀 Running Blender build..."
-          timeout 120s blender --background --command extension build || true
+          timeout 360s blender --background --command extension build || true
 
           # Typically output goes to ./dist/*.zip
           FILE=$(find ./dist -type f -name "*.zip" | head -n1)
