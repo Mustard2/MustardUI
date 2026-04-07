@@ -46,16 +46,15 @@ jobs:
         run: blender --version
 
       # -----------------------------
-      # Build extension safely
+      # Build extension
       # -----------------------------
       - name: Build extension
         run: |
           set -e
-      
           echo "🚀 Running Blender build..."
-          timeout 360s blender --background --command extension build || true
+          timeout 120s blender --background --command extension build || true
       
-          # The build reports the filename, so we pick any zip in current folder
+          # Pick the zip in root folder
           FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n1)
       
           if [ -z "$FILE" ]; then
@@ -65,14 +64,16 @@ jobs:
       
           echo "📦 Found extension archive: $FILE"
       
-          echo "⏳ Validating zip..."
+          # Validate zip
           if ! unzip -t "$FILE" > /dev/null 2>&1; then
             echo "❌ Archive is invalid/corrupted"
             exit 1
           fi
       
           echo "✅ Zip is valid"
-          echo "ARCHIVE=$FILE" >> $GITHUB_ENV
+      
+          # Export absolute path for artifact
+          echo "ARCHIVE=$(realpath "$FILE")" >> $GITHUB_ENV
 
       # -----------------------------
       # Install and enable extension
@@ -88,9 +89,9 @@ jobs:
           echo "Installing and enabling extension: $EXT_ID"
           blender --background --command extension install-file -r user -e "$ARCHIVE"
 
-      # -----------------------------
-      # Upload only the small extension zip
-      # -----------------------------
+      # -------------------------------
+      # Save the extension as artifact
+      # -------------------------------
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
