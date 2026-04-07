@@ -88,9 +88,11 @@ jobs:
             echo "❌ Could not determine extension ID"
             exit 1
           fi
-
+      
           echo "Installing and enabling extension: $EXT_ID"
-          ../blender/blender --background --command extension install-file -r user -e "$ARCHIVE"
+      
+          BLENDER_PATH="$GITHUB_WORKSPACE/blender/blender"
+          $BLENDER_PATH --background --command extension install-file -r user -e "$ARCHIVE"
 
       # -----------------------------
       # Upload artifact (only the zip)
