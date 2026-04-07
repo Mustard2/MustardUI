@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Get latest Blender version
+      # Get latest Blender
       # -----------------------------
       - name: Get latest Blender version
         run: |
@@ -29,9 +29,6 @@ jobs:
 
           echo "LATEST=$LATEST" >> $GITHUB_ENV
 
-      # -----------------------------
-      # Download Blender
-      # -----------------------------
       - name: Download Blender
         run: |
           VERSION_FILE=$(curl -s https://download.blender.org/release/$LATEST/ \
@@ -49,56 +46,53 @@ jobs:
         run: blender --version
 
       # -----------------------------
-      # Build extension (handle hang)
+      # Build extension (no blind kill)
       # -----------------------------
       - name: Build extension
         run: |
-          timeout 10s blender --background --command extension build || true
+          blender --background --command extension build &
+          BLENDER_PID=$!
+
+          echo "Waiting for build output..."
+
+          for i in {1..30}; do
+            FILE=$(find . -type f -name "*.zip" | head -n 1)
+
+            if [ -n "$FILE" ]; then
+              echo "Found file: $FILE"
+
+              # Check if it's a valid zip
+              if unzip -t "$FILE" > /dev/null 2>&1; then
+                echo "✅ Valid zip detected"
+                echo "ARCHIVE=$FILE" >> $GITHUB_ENV
+                kill $BLENDER_PID || true
+                break
+              else
+                echo "⏳ File exists but not valid yet..."
+              fi
+            fi
+
+            sleep 2
+          done
+
+          wait $BLENDER_PID || true
 
       # -----------------------------
-      # Verify build output
+      # Ensure archive exists
       # -----------------------------
-      - name: Find built archive
-        id: find_archive
+      - name: Verify archive
         run: |
-          FILE=$(find . -type f \( -name "*.zip" -o -name "*.rar" \) | head -n 1)
-
-          if [ -z "$FILE" ]; then
-            echo "❌ Build failed: no archive produced"
+          if [ -z "$ARCHIVE" ]; then
+            echo "❌ No valid archive produced"
             exit 1
           fi
 
-          echo "✅ Found archive: $FILE"
-          echo "ARCHIVE=$FILE" >> $GITHUB_ENV
-
       # -----------------------------
-      # Initialize extension system
-      # -----------------------------
-      - name: Initialize extension repos
-        run: |
-          blender --background --command extension repo sync || true
-
-      # -----------------------------
-      # Install extension (CLI with fallback)
+      # Install extension (correct CLI)
       # -----------------------------
       - name: Install extension
         run: |
-          set -e
-
-          echo "Attempting CLI install..."
-          if blender --background --command extension install "$ARCHIVE" --repo user; then
-            echo "✅ CLI install succeeded"
-          else
-            echo "⚠️ CLI install failed, falling back to manual install"
-
-            BLENDER_VERSION=$(blender --version | head -n1 | awk '{print $2}' | cut -d'.' -f1,2)
-            EXT_DIR="$HOME/.config/blender/$BLENDER_VERSION/extensions/user"
-
-            mkdir -p "$EXT_DIR"
-            unzip -o "$ARCHIVE" -d "$EXT_DIR"
-
-            echo "✅ Manual install completed at $EXT_DIR"
-          fi
+          blender --background --command extension install-file "$ARCHIVE"
 
       # -----------------------------
       # Enable extension
@@ -112,8 +106,6 @@ jobs:
             exit 1
           fi
 
-          echo "Enabling extension: $EXT_ID"
-
           blender --background --command extension enable "$EXT_ID"
 
       # -----------------------------
@@ -124,3 +116,4 @@ jobs:
         with:
           name: blender-extension
           path: ${{ env.ARCHIVE }}
+
