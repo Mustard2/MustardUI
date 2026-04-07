@@ -2,6 +2,8 @@
   <img src="https://github.com/user-attachments/assets/c10812e2-f136-4da9-bd70-d475eb906c9a" width="200" />
 </p>
 
+[![Build & Test Blender Extension](https://github.com/Mustard2/MustardUI/actions/workflows/blender-build.yml/badge.svg)](https://github.com/Mustard2/MustardUI/actions/workflows/blender-build.yml)
+[![Formatting and Linting](https://github.com/Mustard2/MustardUI/actions/workflows/lint.yml/badge.svg)](https://github.com/Mustard2/MustardUI/actions/workflows/lint.yml)
 
 # MustardUI
 
