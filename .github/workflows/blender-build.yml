@@ -93,25 +93,22 @@ jobs:
           fi
 
       # -----------------------------
-      # Install extension (correct CLI)
+      # Install and enable extension
       # -----------------------------
-      - name: Install extension
+      - name: Install and enable extension
         run: |
-          blender --background --command extension install-file "$ARCHIVE"
-
-      # -----------------------------
-      # Enable extension
-      # -----------------------------
-      - name: Enable extension
-        run: |
+          set -e
+      
+          echo "Installing extension..."
+          blender --background --command extension install-file -r user -e "$ARCHIVE"
+      
           EXT_ID=$(grep '^id' blender_manifest.toml | cut -d '"' -f2)
-
           if [ -z "$EXT_ID" ]; then
             echo "❌ Could not determine extension ID"
             exit 1
           fi
-
-          blender --background --command extension enable "$EXT_ID"
+      
+          echo "✅ Installed and enabled extension: $EXT_ID"
 
       # -----------------------------
       # Upload artifact
