@@ -48,35 +48,39 @@ jobs:
       # -----------------------------
       # Build extension (no blind kill)
       # -----------------------------
-      - name: Build extension (adaptive)
+      - name: Build extension
         run: |
-          blender --background --command extension build &
-          BLENDER_PID=$!
+          set -e
       
-          LAST_SIZE=0
+          echo "🚀 Running Blender build (with timeout safeguard)..."
+          timeout 360s blender --background --command extension build || true
       
-          for i in {1..30}; do
-            FILE=$(find . -type f -name "*.zip" | head -n 1)
+          echo "🔍 Searching for archive..."
+          FILE=$(find . -type f -name "*.zip" | head -n 1)
       
-            if [ -n "$FILE" ]; then
-              SIZE=$(stat -c%s "$FILE")
+          if [ -z "$FILE" ]; then
+            echo "❌ No archive found"
+            exit 1
+          fi
       
-              if [ "$SIZE" -eq "$LAST_SIZE" ] && [ "$SIZE" -ne 0 ]; then
-                echo "✅ File size stabilized"
-                break
-              fi
+          echo "Found: $FILE"
       
-              LAST_SIZE=$SIZE
+          echo "⏳ Waiting for file to finalize..."
+      
+          # Wait until zip becomes valid (after Blender exits)
+          for i in {1..10}; do
+            if unzip -t "$FILE" > /dev/null 2>&1; then
+              echo "✅ Archive is valid"
+              echo "ARCHIVE=$FILE" >> $GITHUB_ENV
+              exit 0
             fi
       
+            echo "Still invalid... retrying ($i)"
             sleep 2
           done
       
-          kill $BLENDER_PID || true
-          wait $BLENDER_PID || true
-      
-          unzip -t "$FILE"
-          echo "ARCHIVE=$FILE" >> $GITHUB_ENV
+          echo "❌ Archive never became valid"
+          exit 1
 
       # -----------------------------
       # Ensure archive exists
