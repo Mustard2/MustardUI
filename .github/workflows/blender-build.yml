@@ -3,8 +3,6 @@ name: Build & Test Blender Extension
 on:
   push:
   pull_request:
-    branches:
-      main
 
 jobs:
   build:
@@ -12,13 +10,13 @@ jobs:
 
     steps:
       # -----------------------------
-      # Checkout
+      # Checkout repo
       # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Get latest Blender
+      # Get latest Blender version
       # -----------------------------
       - name: Get latest Blender version
         run: |
@@ -26,19 +24,19 @@ jobs:
             | grep -Eo 'Blender[0-9]+\.[0-9]+' \
             | sort -V \
             | tail -n1)
-
           echo "LATEST=$LATEST" >> $GITHUB_ENV
 
+      # -----------------------------
+      # Download Blender
+      # -----------------------------
       - name: Download Blender
         run: |
           VERSION_FILE=$(curl -s https://download.blender.org/release/$LATEST/ \
             | grep -Eo 'blender-[0-9]+\.[0-9]+\.[0-9]+-linux-x64.tar.xz' \
             | sort -V \
             | tail -n1)
-
           wget https://download.blender.org/release/$LATEST/$VERSION_FILE
           tar -xf $VERSION_FILE
-
           BLENDER_DIR=$(tar -tf $VERSION_FILE | head -1 | cut -f1 -d"/")
           echo "$PWD/$BLENDER_DIR" >> $GITHUB_PATH
 
@@ -46,76 +44,53 @@ jobs:
         run: blender --version
 
       # -----------------------------
-      # Build extension (no blind kill)
+      # Build extension safely
       # -----------------------------
       - name: Build extension
         run: |
           set -e
-      
-          echo "🚀 Running Blender build (with timeout safeguard)..."
-          timeout 360s blender --background --command extension build || true
-      
-          echo "🔍 Searching for archive..."
-          FILE=$(find . -type f -name "*.zip" | head -n 1)
-      
-          if [ -z "$FILE" ]; then
-            echo "❌ No archive found"
-            exit 1
-          fi
-      
-          echo "Found: $FILE"
-      
-          echo "⏳ Waiting for file to finalize..."
-      
-          # Wait until zip becomes valid (after Blender exits)
-          for i in {1..10}; do
-            if unzip -t "$FILE" > /dev/null 2>&1; then
-              echo "✅ Archive is valid"
-              echo "ARCHIVE=$FILE" >> $GITHUB_ENV
-              exit 0
-            fi
-      
-            echo "Still invalid... retrying ($i)"
-            sleep 2
-          done
-      
-          echo "❌ Archive never became valid"
-          exit 1
 
-      # -----------------------------
-      # Ensure archive exists
-      # -----------------------------
-      - name: Verify archive
-        run: |
-          if [ -z "$ARCHIVE" ]; then
-            echo "❌ No valid archive produced"
+          echo "🚀 Running Blender build..."
+          timeout 120s blender --background --command extension build || true
+
+          # Typically output goes to ./dist/*.zip
+          FILE=$(find ./dist -type f -name "*.zip" | head -n1)
+
+          if [ -z "$FILE" ]; then
+            echo "❌ No extension zip found in ./dist"
             exit 1
           fi
+
+          echo "📦 Found extension archive: $FILE"
+
+          echo "⏳ Validating zip..."
+          if ! unzip -t "$FILE" > /dev/null 2>&1; then
+            echo "❌ Archive is invalid/corrupted"
+            exit 1
+          fi
+
+          echo "✅ Zip is valid"
+          echo "ARCHIVE=$FILE" >> $GITHUB_ENV
 
       # -----------------------------
       # Install and enable extension
       # -----------------------------
       - name: Install and enable extension
         run: |
-          set -e
-      
-          echo "Installing extension..."
-          blender --background --command extension install-file -r user -e "$ARCHIVE"
-      
           EXT_ID=$(grep '^id' blender_manifest.toml | cut -d '"' -f2)
           if [ -z "$EXT_ID" ]; then
             echo "❌ Could not determine extension ID"
             exit 1
           fi
-      
-          echo "✅ Installed and enabled extension: $EXT_ID"
+
+          echo "Installing and enabling extension: $EXT_ID"
+          blender --background --command extension install-file -r user -e "$ARCHIVE"
 
       # -----------------------------
-      # Upload artifact
+      # Upload only the small extension zip
       # -----------------------------
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: blender-extension
           path: ${{ env.ARCHIVE }}
-
