@@ -52,7 +52,7 @@ jobs:
         run: |
           set -e
           echo "🚀 Running Blender build..."
-          timeout 120s blender --background --command extension build || true
+          timeout 360s blender --background --command extension build || true
       
           # Pick the zip in root folder
           FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n1)
