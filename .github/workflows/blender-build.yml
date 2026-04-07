@@ -1,4 +1,4 @@
-name: Build Blender Extension
+name: Build & Test Blender Extension
 
 on:
   push:
@@ -9,38 +9,89 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # -----------------------------
+      # Checkout
+      # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # -----------------------------
+      # Get latest Blender version
+      # -----------------------------
       - name: Get latest Blender version
-        id: blender-version
         run: |
-          LATEST=$(curl -s https://download.blender.org/release/ | grep -Eo 'Blender[0-9]+\.[0-9]+' | sort -V | tail -n1)
+          LATEST=$(curl -s https://download.blender.org/release/ \
+            | grep -Eo 'Blender[0-9]+\.[0-9]+' \
+            | sort -V \
+            | tail -n1)
+
           echo "LATEST=$LATEST" >> $GITHUB_ENV
 
-      - name: Download latest Blender
+      # -----------------------------
+      # Download Blender
+      # -----------------------------
+      - name: Download Blender
         run: |
-          VERSION_URL=$(curl -s https://download.blender.org/release/$LATEST/ | \
-            grep -Eo 'blender-[0-9]+\.[0-9]+\.[0-9]+-linux-x64.tar.xz' | \
-            sort -V | tail -n1)
+          VERSION_FILE=$(curl -s https://download.blender.org/release/$LATEST/ \
+            | grep -Eo 'blender-[0-9]+\.[0-9]+\.[0-9]+-linux-x64.tar.xz' \
+            | sort -V \
+            | tail -n1)
 
-          wget https://download.blender.org/release/$LATEST/$VERSION_URL
-          tar -xf $VERSION_URL
+          wget https://download.blender.org/release/$LATEST/$VERSION_FILE
+          tar -xf $VERSION_FILE
 
-          BLENDER_DIR=$(tar -tf $VERSION_URL | head -1 | cut -f1 -d"/")
+          BLENDER_DIR=$(tar -tf $VERSION_FILE | head -1 | cut -f1 -d"/")
           echo "$PWD/$BLENDER_DIR" >> $GITHUB_PATH
 
       - name: Verify Blender
         run: blender --version
 
-      - name: Build extension using Blender CLI
+      # -----------------------------
+      # Build extension (with timeout fix)
+      # -----------------------------
+      - name: Build extension
         run: |
-          blender --background --command extension build
+          timeout 60s blender --background --command extension build || true
 
-      - name: Upload built extension
+      # -----------------------------
+      # Verify build output
+      # -----------------------------
+      - name: Find built archive
+        id: find_archive
+        run: |
+          FILE=$(find . -type f \( -name "*.zip" -o -name "*.rar" \) | head -n 1)
+
+          if [ -z "$FILE" ]; then
+            echo "❌ Build failed: no archive produced"
+            exit 1
+          fi
+
+          echo "✅ Found archive: $FILE"
+          echo "ARCHIVE=$FILE" >> $GITHUB_ENV
+
+      # -----------------------------
+      # Install + enable extension
+      # -----------------------------
+      - name: Install and enable extension
+        run: |
+          blender --background --command extension install "$ARCHIVE"
+
+          EXT_ID=$(grep '^id' blender_manifest.toml | cut -d '"' -f2)
+
+          if [ -z "$EXT_ID" ]; then
+            echo "❌ Could not determine extension ID"
+            exit 1
+          fi
+
+          echo "Enabling extension: $EXT_ID"
+
+          blender --background --command extension enable "$EXT_ID"
+
+      # -----------------------------
+      # Upload artifact
+      # -----------------------------
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: blender-extension
-          path: |
-            *.zip
-            dist/**
+          path: ${{ env.ARCHIVE }}
