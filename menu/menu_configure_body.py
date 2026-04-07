@@ -153,6 +153,9 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
 
                 row = col.row()
                 row.prop(sec, "collapsable")
+        else:
+            box = box.box()
+            box.label(text="No property added yet", icon="ERROR")
 
 
 def register():

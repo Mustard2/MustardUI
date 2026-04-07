@@ -60,6 +60,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 continue
 
             items = col.all_objects if use_subcollections else col.objects
+            items = [x for x in items if x is not None]
 
             is_active = col.name == outfits_list
             locked_collection = any(o.MustardUI_outfit_lock for o in items)

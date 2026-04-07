@@ -32,7 +32,7 @@ class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
             for mod in list(obj.modifiers):
                 if (
                     (mod.type == "SURFACE_DEFORM" and mod.target == pi_obj)
-                    or (mod.type == "MESH_DEFORM" and mod.target == pi_obj)
+                    or (mod.type == "MESH_DEFORM" and mod.object == pi_obj)
                     or (mod.name == obj_name)
                 ):
                     obj.modifiers.remove(mod)

@@ -102,7 +102,8 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     autoeyelid_morph: StringProperty(
         name="Morph",
         description="The name of the morph should be the name of the custom property "
-        "in the Armature object, and not the name of the morph shown in the UI",
+        "in the Armature object, and not the name of the morph shown in the"
+        " UI",
     )
 
     # ------------------------------------------------------------------------
@@ -147,6 +148,15 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         default=1.0,
         min=0.0,
         max=2.0,
+    )
+
+    bone_shrinkwrap_rotation_correction: bpy.props.BoolProperty(
+        name="Rotation Correction",
+        description="When enabled, rotations are corrected with axis alignment.\nMight"
+        " improve the behaviour of the shrinkwrap over lateral movements, "
+        "but introduce artifacts in the movement in some rigs or when the "
+        "shrinkwrap object is not touching the bones directly",
+        default=False,
     )
 
     bone_shrinkwrap_friction_influence: bpy.props.FloatProperty(
