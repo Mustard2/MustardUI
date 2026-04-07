@@ -11,11 +11,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # -----------------------------
+      # Checkout repository
+      # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Download Blender
+      # Get latest Blender version
       # -----------------------------
       - name: Get latest Blender version
         run: |
@@ -25,28 +28,32 @@ jobs:
             | tail -n1)
           echo "LATEST=$LATEST" >> $GITHUB_ENV
 
+      # -----------------------------
+      # Download Blender
+      # -----------------------------
       - name: Download and extract Blender
         run: |
+          mkdir -p blender_download
           VERSION_FILE=$(curl -s https://download.blender.org/release/$LATEST/ \
             | grep -Eo 'blender-[0-9]+\.[0-9]+\.[0-9]+-linux-x64.tar.xz' \
             | sort -V \
             | tail -n1)
-          wget https://download.blender.org/release/$LATEST/$VERSION_FILE
+          wget -O blender_download/$VERSION_FILE https://download.blender.org/release/$LATEST/$VERSION_FILE
           mkdir blender
-          tar -xf $VERSION_FILE -C blender --strip-components=1
+          tar -xf blender_download/$VERSION_FILE -C blender --strip-components=1
 
       - name: Verify Blender
         run: blender/blender --version
 
       # -----------------------------
-      # Prepare build folder (copy only extension source)
+      # Prepare build folder
       # -----------------------------
       - name: Prepare build folder
         run: |
           mkdir build
-          shopt -s extglob  # enable extended globbing
-          # Copy all files except blender/ and build/ into build/
-          cp -r !("blender"|"build") build/
+          shopt -s extglob
+          # Copy everything except blender folder, build folder, and blender tarball
+          cp -r !("blender"|"blender_download"|"build") build/
 
       # -----------------------------
       # Build extension inside build folder
@@ -88,14 +95,14 @@ jobs:
             echo "❌ Could not determine extension ID"
             exit 1
           fi
-      
+
           echo "Installing and enabling extension: $EXT_ID"
-      
+
           BLENDER_PATH="$GITHUB_WORKSPACE/blender/blender"
           $BLENDER_PATH --background --command extension install-file -r user -e "$ARCHIVE"
 
       # -----------------------------
-      # Upload artifact (only the zip)
+      # Upload artifact
       # -----------------------------
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
