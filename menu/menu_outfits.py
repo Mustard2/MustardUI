@@ -5,7 +5,7 @@ import bpy
 from ..misc.outfits import outfit_extract_items_from_collection
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.ops_fix_old_UI import can_draw_ui
 from . import MainPanel
 from .misc import mustardui_custom_properties_print
 
@@ -184,7 +184,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
 
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)

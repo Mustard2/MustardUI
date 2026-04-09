@@ -1,5 +1,5 @@
 from ...model_selection.active_object import mustardui_active_object
-from ...warnings.ops_fix_old_UI import check_old_UI
+from ...warnings.ops_fix_old_UI import can_draw_ui
 
 # MHX porting guide
 #
@@ -28,7 +28,7 @@ from ...warnings.ops_fix_old_UI import check_old_UI
 
 
 def panel_poll(cls, context):
-    if check_old_UI():
+    if can_draw_ui():
         return False
 
     res, arm = mustardui_active_object(context, config=0)

@@ -3,7 +3,7 @@ import bpy
 from ..misc.prop_utils import evaluate_rna
 from ..misc.ui_multiline import label_multiline
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.ops_fix_old_UI import can_draw_ui
 from . import MainPanel
 
 
@@ -106,7 +106,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
 
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)

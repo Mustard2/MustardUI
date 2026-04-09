@@ -2,7 +2,7 @@ import bpy
 
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.ops_fix_old_UI import can_draw_ui
 from ..warnings.ops_update_ui import is_ui_update
 from . import MainPanel
 
@@ -27,7 +27,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         if obj is not None:
             # If an old script is available, only this warning is shown
-            if check_old_UI():
+            if can_draw_ui():
                 return poll
 
             rig_settings = obj.MustardUI_RigSettings
@@ -52,7 +52,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         # Old UI scripts
-        if check_old_UI():
+        if can_draw_ui():
             box = layout.box()
             col = box.column(align=True)
             col.label(text="Old UI script found!", icon="TEXT")
