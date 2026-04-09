@@ -24,23 +24,31 @@ def mustardui_active_object(context, config=0):
             arm = obj.data
         if obj.type == "MESH":
             parent = obj.parent
-            if (parent is not None and
-                    parent.type == "ARMATURE" and
-                    parent.data is not None):
+            if (
+                parent is not None
+                and parent.type == "ARMATURE"
+                and parent.data is not None
+            ):
                 arm = parent.data
             if arm is not None:
-                modifiers = [x for x in obj.modifiers if
-                             x.type == "ARMATURE" and
-                             x.object is not None and
-                             x.object.data is not None]
+                modifiers = [
+                    x
+                    for x in obj.modifiers
+                    if x.type == "ARMATURE"
+                    and x.object is not None
+                    and x.object.data is not None
+                ]
                 if len(modifiers) == 1:
                     for m in modifiers:
                         arm = m.object.data
             if arm is not None:
-                constraints = [x for x in obj.constraints if
-                               x.type == "ARMATURE" and
-                               x.target is not None and
-                               x.target.data is not None]
+                constraints = [
+                    x
+                    for x in obj.constraints
+                    if x.type == "ARMATURE"
+                    and x.target is not None
+                    and x.target.data is not None
+                ]
                 if len(constraints) == 1:
                     for c in constraints:
                         arm = c.target.data
