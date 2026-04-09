@@ -60,7 +60,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             col.label(text="Save the current Blender file and", icon="BLANK1")
             col.label(text="restart after using this!", icon="BLANK1")
             box.operator("mustardui.warnings_fix_old_ui", icon="BRUSH_DATA")
-            # Fix for: https://github.com/Mustard2/MustardUI/issues/150
+            # Other panels should not be drawn before the above issue is solved
             return
 
         # Eevee normals enabled in Cycles
