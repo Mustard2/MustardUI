@@ -27,7 +27,6 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
 
         if obj is not None:
             # If an old script is available, only this warning is shown
-            # Fix for: https://github.com/Mustard2/MustardUI/issues/150
             if check_old_UI():
                 return poll
 
