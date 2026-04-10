@@ -2,13 +2,13 @@ from . import (
     definitions,
     menu,
     ops_add,
-    ops_visibility_full,
     ops_delete,
     ops_optimize,
     ops_remove,
     ops_rename_outfit,
     ops_smartcheck,
     ops_visibility,
+    ops_visibility_full,
     ui_list,
 )
 
