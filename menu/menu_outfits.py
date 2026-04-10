@@ -254,6 +254,11 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(rig_settings, "outfits_list", text="")
 
+        if rig_settings.hair_collection is not None and any(
+            x.hair is not None for x in rig_settings.outfits_collections
+        ):
+            row.prop(rig_settings, "hair_switch_with_outfit", text="", icon="CURVES")
+
         if rig_settings.outfits_list != "Nude":
             collection = bpy.data.collections[rig_settings.outfits_list]
             items = outfit_extract_items_from_collection(

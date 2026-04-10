@@ -904,6 +904,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "be added to the UI",
     )
 
+    # Switch Hair when changing Outfit if set in the Outfit settings
+    hair_switch_with_outfit: bpy.props.BoolProperty(
+        default=True,
+        name="Switch Hair on Outfit Change",
+        description="If assigned, switch Hair when changing an Outfit, if assigned",
+    )
+
     # ------------------------------------------------------------------------
     #    Creator Tools
     # ------------------------------------------------------------------------

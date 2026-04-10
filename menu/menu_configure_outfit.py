@@ -60,7 +60,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row()
             row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
-            row.operator("Mustardui.outfits_smartcheck", text="", icon="SHADERFX")
+            row.operator("mustardui.outfits_smartcheck", text="", icon="SHADERFX")
 
             # Outfits list panel
             box = box.box()
@@ -91,6 +91,14 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             op = col.operator("mustardui.delete_outfit", text="", icon="TRASH")
             op.is_config = True
             op.delete_cp = True
+
+            if rig_settings.hair_collection is not None:
+                box.prop(
+                    rig_settings.outfits_collections[
+                        scene.mustardui_outfits_uilist_index
+                    ],
+                    "hair",
+                )
 
             # Outfit properties
             box = layout.box()
