@@ -167,7 +167,12 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 hair_collection = rig_settings.hair_collection
 
                 # Rename the Objects in the Hair collection
-                for obj in [x for x in hair_collection.objects if x is not None]:
+                # Store the active object to try to use it as the hair list selection
+                # after the update
+                object_active = ""
+                for i, obj in enumerate(
+                    [x for x in hair_collection.objects if x is not None]
+                ):
                     if not obj.name.startswith(f"{hair_collection.name} - "):
                         # Remove any old convention
                         obj.name = obj.name.replace(
@@ -177,9 +182,20 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
                         # Replace the name with the new convention
                         obj.name = f"{hair_collection.name} - " + obj.name
+                    if not obj.hide_viewport and not obj.hide_render:
+                        object_active = obj.name
 
                 # Fix the list index
-                rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
+                hlist = rig_settings.hair_list_make(context)
+                # Try first if there was an active object
+                if object_active != "":
+                    try:
+                        rig_settings.hair_list = object_active
+                    except Exception:
+                        rig_settings.hair_list = hlist[0][0]
+                # Otherwise fix the list index with the first element in the list
+                else:
+                    rig_settings.hair_list = hlist[0][0]
 
                 rig_settings.model_mustardui_version = bl_info["version"]
             except Exception:
@@ -191,7 +207,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        self.report({"INFO"}, "MustardUI - UI updated.")
+        # self.report({"INFO"}, "MustardUI - UI updated.")
         return {"FINISHED"}
 
 
