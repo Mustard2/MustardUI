@@ -75,7 +75,9 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 and col_entry.hair is not None
                 and rig_settings.hair_list != col_entry.hair.name
             ):
-                hair_objects = [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]
+                hair_objects = [
+                    x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+                ]
                 if col_entry.hair in hair_objects:
                     rig_settings.hair_list = col_entry.hair.name
 
