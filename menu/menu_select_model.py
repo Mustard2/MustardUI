@@ -68,8 +68,10 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                 not in bpy.context.scene.objects
             ):
                 row.operator(
-                    "mustardui.remove_armature", text="", icon="X"
+                    "mustardui.remove_armature", text="", icon="BRUSH_DATA"
                 ).armature = armature.name
+            else:
+                row.operator("mustardui.remove", text="", icon="TRASH")
 
 
 def register():
