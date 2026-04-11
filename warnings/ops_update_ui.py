@@ -207,7 +207,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        # self.report({"INFO"}, "MustardUI - UI updated.")
+        self.report({"INFO"}, "MustardUI - UI updated.")
         return {"FINISHED"}
 
 
