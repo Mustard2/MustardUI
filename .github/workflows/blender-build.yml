@@ -8,6 +8,6 @@ on:
 
 jobs:
   blender:
-    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@main
+    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v1
     with:
       timeout-seconds: 180
