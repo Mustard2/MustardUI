@@ -71,7 +71,9 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                     "mustardui.remove_armature", text="", icon="BRUSH_DATA"
                 ).armature = armature.name
             else:
-                row.operator("mustardui.remove", text="", icon="TRASH")
+                row2 = row.row(align=True)
+                row2.enabled = armature == settings.panel_model_selection_armature
+                row2.operator("mustardui.remove", text="", icon="TRASH")
 
 
 def register():
