@@ -27,6 +27,12 @@ class MustardUI_Armature_ResetCollections(bpy.types.Operator):
             )
             coll.is_solo = False
 
+        # outfits visibility sync, (hair does not seem to be affected by the reset)
+        arm = obj.MustardUI_ArmatureSettings
+
+        arm.mustardui_armature_visibility_outfits_update(context)
+        # arm.mustardui_armature_visibility_hair_update(context)
+
         return {"FINISHED"}
 
 
