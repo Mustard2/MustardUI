@@ -10,6 +10,24 @@ class MustardUI_Outfit(bpy.types.PropertyGroup):
         name="Outfit Collection", type=bpy.types.Collection
     )
 
+    def poll_hair(self, object):
+        context = bpy.context
+        _, arm = mustardui_active_object(context, config=1)
+        rig_settings = arm.MustardUI_RigSettings
+
+        if rig_settings.hair_collection is None:
+            return False
+
+        objects = [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]
+        return object in objects
+
+    hair: bpy.props.PointerProperty(
+        name="Hair",
+        description="Hair Object to be used when the Outfit is shown",
+        type=bpy.types.Object,
+        poll=poll_hair,
+    )
+
 
 class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
     # Function to enable/disable physics for the single outfit

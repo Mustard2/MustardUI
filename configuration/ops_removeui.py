@@ -171,15 +171,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         box = layout.box()
         col = box.column(align=True)
-        col.label(text="Notes:")
-        col.label(
-            text="Read the descriptions of all buttons (keep the mouse on the "
-            "buttons).",
-            icon="DOT",
-        )
         col.label(
             text="This is a highly destructive operation! Use it at your own risk!",
             icon="ERROR",
+        )
+        col.label(
+            text="Move your cursor over a button to display its description.",
+            icon="BLANK1",
         )
 
         box = layout.box()

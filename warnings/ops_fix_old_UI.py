@@ -2,10 +2,11 @@ import bpy
 from bpy.props import BoolProperty
 
 
-# Check presence of old UI scripts
-def check_old_UI():
+# Checks if there are some conditions blocking the menus to be drawn
+def can_draw_ui():
     import bpy
 
+    # Check presence of old UI scripts
     for file in bpy.data.texts:
         if "mustard_ui.py" in file.name:
             return True
@@ -23,7 +24,7 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return check_old_UI()
+        return can_draw_ui()
 
     def invoke(self, context, event):
 

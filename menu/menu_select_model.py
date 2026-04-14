@@ -1,33 +1,43 @@
 import bpy
 
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.ops_fix_old_UI import can_draw_ui
 from . import MainPanel
 
 
 class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_SelectModel"
-    bl_label = "Model Selection"
+    bl_label = ""
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
+
+        if arm is None:
+            return False
+
         return res
 
     def draw_header(self, context):
-
-        poll, obj = mustardui_active_object(context, config=0)
         settings = bpy.context.scene.MustardUI_Settings
 
-        self.layout.label(
+        poll, arm = mustardui_active_object(context, config=0)
+
+        layout = self.layout
+
+        row = layout.row(align=True)
+        row.label(
             text="(Viewport)" if settings.viewport_model_selection else "(Direct)"
         )
+        row.label(text=arm.MustardUI_RigSettings.model_name)
 
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
+
+        poll, arm = mustardui_active_object(context, config=0)
 
         layout = self.layout
 
@@ -45,7 +55,9 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
             row.operator(
                 "mustardui.switchmodel",
                 text=armature.MustardUI_RigSettings.model_name,
-                depress=armature == settings.panel_model_selection_armature,
+                depress=armature == settings.panel_model_selection_armature
+                if not settings.viewport_model_selection
+                else armature == arm,
                 icon="ERROR"
                 if armature.MustardUI_RigSettings.model_armature_object.name
                 not in bpy.context.scene.objects
@@ -56,8 +68,12 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                 not in bpy.context.scene.objects
             ):
                 row.operator(
-                    "mustardui.remove_armature", text="", icon="X"
+                    "mustardui.remove_armature", text="", icon="BRUSH_DATA"
                 ).armature = armature.name
+            else:
+                row2 = row.row(align=True)
+                row2.enabled = armature == settings.panel_model_selection_armature
+                row2.operator("mustardui.remove", text="", icon="TRASH")
 
 
 def register():

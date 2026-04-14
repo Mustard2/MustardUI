@@ -3,7 +3,7 @@ import bpy
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
 from ..morphs.misc import get_cp_source, get_section_by_diffeomorphic_id
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.ops_fix_old_UI import can_draw_ui
 from . import MainPanel
 
 
@@ -48,7 +48,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
 
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
@@ -190,7 +190,7 @@ class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
@@ -273,7 +273,7 @@ class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
@@ -359,7 +359,7 @@ class PANEL_PT_MustardUI_Morphs_FACSUnits(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
@@ -442,7 +442,7 @@ class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
@@ -528,7 +528,7 @@ class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
@@ -615,7 +615,7 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
