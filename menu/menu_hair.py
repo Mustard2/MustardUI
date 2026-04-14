@@ -494,7 +494,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
                     depress=mod.show_viewport,
                 )
                 op.obj_name = rig_settings.model_body.name
-                op.particle_system = mod.name
+                op.mod_name = mod.name
 
 
 class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):

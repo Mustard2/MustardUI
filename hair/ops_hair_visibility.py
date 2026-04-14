@@ -32,12 +32,16 @@ class MustardUI_HairVisibility(bpy.types.Operator):
                     visible if rig_settings.hair_switch_armature_disable else True,
                 )
 
+    @classmethod
+    def poll(cls, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        if arm is None:
+            return False
+        return poll
+
     def execute(self, context):
 
         poll, arm = mustardui_active_object(context, config=0)
-        if not poll:
-            self.report({"WARNING"}, "MustardUI - Active object not found.")
-            return {"CANCELLED"}
 
         rig_settings = arm.MustardUI_RigSettings
         hair_collection = rig_settings.hair_collection
@@ -91,12 +95,16 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
                     visible if rig_settings.hair_switch_armature_disable else True,
                 )
 
+    @classmethod
+    def poll(cls, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        if arm is None:
+            return False
+        return poll
+
     def execute(self, context):
 
         poll, arm = mustardui_active_object(context, config=0)
-        if not poll:
-            self.report({"WARNING"}, "MustardUI - Active object not found.")
-            return {"CANCELLED"}
 
         rig_settings = arm.MustardUI_RigSettings
         hair_extras_collection = rig_settings.hair_extras_collection
@@ -134,20 +142,21 @@ class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     obj_name: bpy.props.StringProperty(default="")
-    particle_system: bpy.props.StringProperty()
+    mod_name: bpy.props.StringProperty()
+
+    @classmethod
+    def poll(cls, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        if arm is None:
+            return False
+        return poll
 
     def execute(self, context):
-
-        poll, arm = mustardui_active_object(context, config=0)
-        if not poll:
-            self.report({"WARNING"}, "MustardUI - Active object not found.")
-            return {"CANCELLED"}
-
         obj = context.scene.objects[self.obj_name]
 
         # Loop through hair objects
         for mod in obj.modifiers:
-            if mod.type == "PARTICLE_SYSTEM" and mod.name == self.particle_system:
+            if mod.type == "PARTICLE_SYSTEM" and mod.name == self.mod_name:
                 visibility = mod.show_viewport
                 set_bool(mod, "show_viewport", not visibility)
                 set_bool(mod, "show_render", not visibility)
