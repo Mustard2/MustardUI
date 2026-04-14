@@ -62,17 +62,11 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col2 = row.column()
         col2.enabled = simplify_settings.simplify_blender
         col2.prop(context.scene.render, "simplify_subdivision", text="Max Subdiv")
-        if (
-            rig_settings.outfits_enable_global_subsurface
-            or rig_settings.body_enable_subdiv
-        ):
-            col.prop(simplify_settings, "simplify_subdiv")
 
         # General Settings
         box = layout.box()
         box.label(text="General", icon="OUTLINER_OB_ARMATURE")
         col = box.column(align=True)
-        row = col.row()
 
         if (
             rig_settings.outfits_enable_global_subsurface
