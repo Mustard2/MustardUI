@@ -18,10 +18,16 @@ def outfits_update_armature_collections(rig_settings, arm):
 
         visible = False
         for ob in items:
+            # the reason why `bcoll_settings.outfit_switcher_collection.hide_viewport`
+            # and not `not bcoll_settings.outfit_switcher_collection.hide_viewport` is
+            # because bcoll_settings.outfit_switcher_collection.hide_viewport gives
+            # back the old state, meaning if the collection is hidden, and you click
+            # unhide, the value of that variable after clicking is still hidden, so we
+            # should negate it to get the current state if that makes sense ^^'
             if ob == bcoll_settings.outfit_switcher_object:
                 visible = (
                     not ob.hide_viewport
-                    and not bcoll_settings.outfit_switcher_collection.hide_viewport
+                    and bcoll_settings.outfit_switcher_collection.hide_viewport
                 )
                 break
 
