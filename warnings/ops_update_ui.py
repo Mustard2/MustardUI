@@ -176,7 +176,16 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                         obj.name = obj.name.replace(f"{rig_settings.model_name} ", "")
 
                         # Replace the name with the new convention
-                        obj.name = f"{hair_collection.name} - " + obj.name
+
+                        # handle the case when the hair and the collection have the
+                        # same name, the _armature_ won't be named correctly
+                        # it will be named: Hair_Collection - Armature, notice the
+                        # missing Hair between - and Armature
+                        is_armature = obj.name == "Armature"
+                        handle_default_hair = "Hair " if is_armature else ""
+                        obj.name = (
+                            f"{hair_collection.name} - {handle_default_hair}" + obj.name
+                        )
 
                 # Fix the list index
                 rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
