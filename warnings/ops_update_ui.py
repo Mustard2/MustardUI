@@ -182,10 +182,10 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
                         # Replace the name with the new convention
 
-                        # handle the case when the hair and the collection have the
+                        # Handle the case when the hair and the collection have the
                         # same name, the _armature_ won't be named correctly
-                        # it will be named: Hair_Collection - Armature, notice the
-                        # missing Hair between - and Armature
+                        # It will be named: Hair_Collection - Armature, without any
+                        # hair specification before Armature
                         is_armature = obj.name == "Armature"
                         handle_default_hair = "Hair " if is_armature else ""
                         obj.name = (

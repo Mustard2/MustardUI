@@ -191,10 +191,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             set_bool(extras, "hide_render", hidden)
 
         # Armature collections
-        # we update the armature collection after we set the collection visibility
-        # and we pass that state (visibility) to the function
         if armature_settings.outfits:
-            outfits_update_armature_collections(rig_settings, arm, hidden)
+            outfits_update_armature_collections(
+                rig_settings, arm, is_extras_hidden=hidden
+            )
 
         self.shift = False
         return {"FINISHED"}

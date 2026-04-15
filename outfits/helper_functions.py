@@ -19,13 +19,15 @@ def outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=None
         visible = False
         for ob in items:
             if ob == bcoll_settings.outfit_switcher_object:
-                # if it is an extras item, we should test if the collection
+                # If it is an Extras item, we should test if the collection
                 # is not hidden
                 is_extras_item = False
-                for extra in rig_settings.extras_collection.all_objects:
-                    if ob == extra:
-                        is_extras_item = True
-                        break
+                if rig_settings.extras_collection:
+                    is_extras_item = any(
+                        ob == extra
+                        for extra in rig_settings.extras_collection.all_objects
+                    )
+
                 if is_extras_item:
                     visible = (
                         not ob.hide_viewport
