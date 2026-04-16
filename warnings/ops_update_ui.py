@@ -181,7 +181,16 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                         obj.name = obj.name.replace(f"{rig_settings.model_name} ", "")
 
                         # Replace the name with the new convention
-                        obj.name = f"{hair_collection.name} - " + obj.name
+
+                        # Handle the case when the hair and the collection have the
+                        # same name, the _armature_ won't be named correctly
+                        # It will be named: Hair_Collection - Armature, without any
+                        # hair specification before Armature
+                        is_armature = obj.name == "Armature"
+                        handle_default_hair = "Hair " if is_armature else ""
+                        obj.name = (
+                            f"{hair_collection.name} - {handle_default_hair}" + obj.name
+                        )
                     if not obj.hide_viewport and not obj.hide_render:
                         object_active = obj.name
 
