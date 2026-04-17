@@ -8,6 +8,8 @@ on:
 
 jobs:
   lint:
+    name: Formatting and Linting
+
     runs-on: ubuntu-latest
 
     steps:
@@ -26,16 +28,14 @@ jobs:
       - name: Check formatting with Ruff
         run: ruff format --check .
 
-  blender-51:
-    needs: lint
-    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v1
-    with:
-      timeout-seconds: 180
-      blender-version: "5.1.0"
+  blender:
+    strategy:
+      matrix:
+        blender: [ "5.1.0", "4.2.0" ]
 
-  blender-42:
+    name: Build & Test Blender ${{ matrix.blender }} Extension
     needs: lint
     uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v1
     with:
       timeout-seconds: 180
-      blender-version: "4.2.0"
+      blender-version: ${{ matrix.blender }}
