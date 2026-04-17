@@ -99,6 +99,7 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
         data = []
 
         preset_data = {
+            "type": "PHYSICS",
             "name": new_preset.name,
             "cloth": {},
             "cloth_collision": {},
@@ -278,6 +279,13 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
 
         raw = json.loads(presets[index].data)
         preset = raw[0] if isinstance(raw, list) else raw
+
+        # Check the preset type
+        preset_type = preset.get("type", "PHYSICS")
+        if preset_type != "PHYSICS":
+            self.report({"ERROR"}, "This file is not a Physics preset")
+            return {"CANCELLED"}
+
         preset_name = preset.get("name", "Unnamed")
 
         # Force creation of modifiers

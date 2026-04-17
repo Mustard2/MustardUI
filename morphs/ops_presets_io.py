@@ -65,6 +65,7 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
         for morph in preset.morphs:
             preset_data["morphs"].append(
                 {
+                    "type": "MORPHS",
                     "name": morph.name,
                     "path": morph.path,
                     "shape_key": morph.shape_key,
@@ -115,6 +116,12 @@ class MustardUI_Morphs_PresetImport(bpy.types.Operator, ImportHelper):
             with open(self.filepath, "r", encoding="utf-8") as f:
                 presets_data = json.load(f)
                 for preset_json in presets_data:
+                    # Check the preset type
+                    preset_type = preset_json.get("type", "MORPHS")
+                    if preset_type != "MORPHS":
+                        self.report({"ERROR"}, "This file is not a Morphs preset")
+                        return {"CANCELLED"}
+
                     preset = morphs_settings.presets.add()
 
                     # Assign a unique name
