@@ -30,7 +30,8 @@ class MustardUI_Morphs_PresetCreate(bpy.types.Operator):
 
         presets = morph_settings.presets
 
-        # Check if the name is already used, otherwise rename with .xxx Blender convention
+        # Check if the name is already used, otherwise rename with .xxx Blender
+        # convention
         preset_names = [x.name for x in presets]
 
         base_name = self.new_preset_name
