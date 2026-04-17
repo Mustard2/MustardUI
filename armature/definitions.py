@@ -80,7 +80,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
 # Global Armature settings
 class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     # Outfit layers
-    def mustardui_armature_visibility_outfits_update(self, context):
+    def armature_visibility_outfits_update(self, context):
         poll, arm = mustardui_active_object(context, config=0)
         armature_settings = arm.MustardUI_ArmatureSettings
         rig_settings = arm.MustardUI_RigSettings
@@ -117,10 +117,10 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         default=True,
         name="Outfits",
         description="Show/hide the outfit armature",
-        update=mustardui_armature_visibility_outfits_update,
+        update=armature_visibility_outfits_update,
     )
 
-    def mustardui_armature_visibility_hair_update(self, context):
+    def armature_visibility_hair_update(self, context):
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
         armature_settings = arm.MustardUI_ArmatureSettings
@@ -145,7 +145,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         default=True,
         name="Hair",
         description="Show/hide the hair armature",
-        update=mustardui_armature_visibility_hair_update,
+        update=armature_visibility_hair_update,
     )
 
     # Enable Mirror from name
