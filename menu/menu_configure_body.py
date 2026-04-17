@@ -101,7 +101,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
             )
             col = row.column()
             col2 = col.column(align=True)
-            col2.operator("mustardui.body_assign_to_section", text="", icon="PRESET")
+            col2.operator("mustardui.section_property_assign", text="", icon="PRESET")
             col.separator()
             col2 = col.column(align=True)
             col2.operator("mustardui.section_add", text="", icon="ADD")
