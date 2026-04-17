@@ -51,10 +51,10 @@ class MustardUI_Section_UIList_Switch(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_Body_DeleteSection(bpy.types.Operator):
+class MustardUI_Section_Delete(bpy.types.Operator):
     """Delete the selected Section"""
 
-    bl_idname = "mustardui.body_deletesection"
+    bl_idname = "mustardui.section_delete"
     bl_label = "Delete Section"
     bl_options = {"UNDO"}
 
@@ -85,7 +85,7 @@ class MustardUI_Body_DeleteSection(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_Body_AddSection(bpy.types.Operator):
+class MustardUI_Section_Add(bpy.types.Operator):
     """Add a section to the list"""
 
     bl_idname = "mustardui.section_add"
@@ -153,8 +153,8 @@ class MUSTARDUI_UL_Section_UIList(bpy.types.UIList):
 
 def register():
     bpy.utils.register_class(MustardUI_Section_UIList_Switch)
-    bpy.utils.register_class(MustardUI_Body_AddSection)
-    bpy.utils.register_class(MustardUI_Body_DeleteSection)
+    bpy.utils.register_class(MustardUI_Section_Add)
+    bpy.utils.register_class(MustardUI_Section_Delete)
     bpy.utils.register_class(MUSTARDUI_UL_Section_UIList)
     bpy.types.Scene.mustardui_section_uilist_index = IntProperty(name="", default=0)
 
@@ -162,6 +162,6 @@ def register():
 def unregister():
     del bpy.types.Scene.mustardui_section_uilist_index
     bpy.utils.unregister_class(MUSTARDUI_UL_Section_UIList)
-    bpy.utils.unregister_class(MustardUI_Body_DeleteSection)
-    bpy.utils.unregister_class(MustardUI_Body_AddSection)
+    bpy.utils.unregister_class(MustardUI_Section_Delete)
+    bpy.utils.unregister_class(MustardUI_Section_Add)
     bpy.utils.unregister_class(MustardUI_Section_UIList_Switch)

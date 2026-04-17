@@ -105,7 +105,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
             col.separator()
             col2 = col.column(align=True)
             col2.operator("mustardui.section_add", text="", icon="ADD")
-            col2.operator("mustardui.body_deletesection", text="", icon="REMOVE")
+            col2.operator("mustardui.section_delete", text="", icon="REMOVE")
             col.separator()
             col2 = col.column(align=True)
             opup = col2.operator("mustardui.section_switch", icon="TRIA_UP", text="")
