@@ -35,7 +35,7 @@ jobs:
 
     name: Blender ${{ matrix.blender }}
     needs: lint
-    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@main
+    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v2
     with:
       timeout-seconds: 180
       blender-version: ${{ matrix.blender }}
