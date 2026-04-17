@@ -1,4 +1,4 @@
-name: Formatting and Linting
+name: CI
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,3 +25,17 @@ jobs:
 
       - name: Check formatting with Ruff
         run: ruff format --check .
+
+  blender-51:
+    needs: lint
+    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v1
+    with:
+      timeout-seconds: 180
+      blender-version: "5.1.0"
+
+  blender-42:
+    needs: lint
+    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v1
+    with:
+      timeout-seconds: 180
+      blender-version: "4.2.0"
