@@ -25,10 +25,10 @@ def make_json_serializable(value):
 
 
 class MustardUI_Physics_PresetCreate(bpy.types.Operator):
-    """Create Morph preset"""
+    """Create Physics preset"""
 
     bl_idname = "mustardui.physics_preset_create"
-    bl_label = "Morph Preset Create"
+    bl_label = "Physics Preset Create"
     bl_options = {"UNDO"}
 
     new_preset_name: bpy.props.StringProperty()
@@ -67,13 +67,20 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
 
         presets = physics_settings.presets
 
+        # Check if the name is already used, otherwise rename with .xxx Blender convention
         preset_names = [x.name for x in presets]
-        if self.new_preset_name in preset_names:
-            self.report({"ERROR"}, "MustardUI - Preset name already used")
-            return {"FINISHED"}
 
+        base_name = self.new_preset_name
+        new_name = base_name
+        counter = 1
+
+        while new_name in preset_names:
+            new_name = f"{base_name}.{counter:03d}"
+            counter += 1
+
+        # Add preset
         new_preset = presets.add()
-        new_preset.name = self.new_preset_name
+        new_preset.name = new_name
 
         obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object
 
@@ -193,7 +200,7 @@ class MustardUI_Physics_PresetCreate(bpy.types.Operator):
         )
         new_preset.data = json_string
 
-        self.report({"INFO"}, "MustardUI - Preset '" + new_preset.name + "' created")
+        self.report({"INFO"}, f"MustardUI - Preset '{new_preset.name}' created")
 
         return {"FINISHED"}
 
@@ -232,7 +239,6 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
     bl_label = "Apply Physics Preset"
     bl_options = {"UNDO"}
 
-    preset_id: bpy.props.IntProperty(default=-1)
     force_modifiers_creation: bpy.props.BoolProperty(default=False)
 
     @classmethod
@@ -260,11 +266,16 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         presets = physics_settings.presets
+        index = arm.mustardui_physics_preset_uilist_index
+
+        if len(presets) <= index:
+            return {"FINISHED"}
+
         obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object
 
         errors = 0
 
-        raw = json.loads(presets[self.preset_id].data)
+        raw = json.loads(presets[index].data)
         preset = raw[0] if isinstance(raw, list) else raw
         preset_name = preset.get("name", "Unnamed")
 
@@ -327,13 +338,11 @@ class MustardUI_Physics_PresetApply(bpy.types.Operator):
 
 
 class MustardUI_Physics_PresetDelete(bpy.types.Operator):
-    """Delete Morph preset"""
+    """Delete Physics preset"""
 
     bl_idname = "mustardui.physics_preset_delete"
-    bl_label = "Morph Preset Create"
+    bl_label = "Physics Physics Delete"
     bl_options = {"UNDO"}
-
-    preset_id: bpy.props.IntProperty(default=-1)
 
     @classmethod
     def poll(cls, context):
@@ -347,21 +356,56 @@ class MustardUI_Physics_PresetDelete(bpy.types.Operator):
 
         presets = physics_settings.presets
 
-        preset = presets[self.preset_id]
+        index = arm.mustardui_physics_preset_uilist_index
+
+        if len(presets) <= index:
+            return {"FINISHED"}
+
+        preset = presets[index]
         preset_name = preset.name
 
-        presets.remove(self.preset_id)
+        presets.remove(index)
 
-        self.report({"INFO"}, "MustardUI - Preset '" + preset_name + "' deleted")
+        index = min(max(0, index - 1), len(presets) - 1)
+        arm.mustardui_physics_preset_uilist_index = index
+
+        self.report({"INFO"}, f"MustardUI - Preset '{preset_name}' deleted")
 
         return {"FINISHED"}
 
 
+class MUSTARDUI_UL_Physics_Presets_UIList(bpy.types.UIList):
+    """UIList for Physics Presets"""
+
+    def poll(cls, context):
+        res, obj = mustardui_active_object(context, config=0)
+        return res if obj is not None else False
+
+    def draw_item(
+        self, context, layout, data, item, icon, active_data, active_propname, index
+    ):
+        row = layout.row(align=True)
+        row2 = row.row()
+        if item.has_cloth:
+            row2.label(text="", icon="MOD_CLOTH")
+        if item.has_soft_body:
+            row2.label(text="", icon="MOD_SOFT")
+        if item.has_collision:
+            row2.label(text="", icon="MOD_PHYSICS")
+        row2.prop(
+            item,
+            "name",
+            text="",
+            emboss=False,
+            translate=False,
+        )
+
+
 class MustardUI_Physics_PresetsUI(bpy.types.Operator):
-    """Presets UI for Morphs"""
+    """Presets UI for Physics"""
 
     bl_idname = "mustardui.physics_presets_ui"
-    bl_label = "Morph Presets"
+    bl_label = "Physics Presets"
     bl_options = {"UNDO"}
 
     bl_space_type = "OUTLINER"
@@ -396,31 +440,35 @@ class MustardUI_Physics_PresetsUI(bpy.types.Operator):
 
         layout = self.layout
 
-        if len(presets):
-            box = layout.box()
+        if len(presets) > 0:
+            row = layout.row()
+            row.template_list(
+                "MUSTARDUI_UL_Physics_Presets_UIList",
+                "The_List",
+                physics_settings,
+                "presets",
+                arm,
+                "mustardui_physics_preset_uilist_index",
+            )
+            col = row.column()
+            col.operator("mustardui.physics_preset_apply", text="", icon="PLAY")
+            col.separator()
 
-        for pid, preset in enumerate(presets):
-            row = box.row(align=True)
-            row2 = row.row()
-            if preset.has_cloth:
-                row2.label(text="", icon="MOD_CLOTH")
-            if preset.has_soft_body:
-                row2.label(text="", icon="MOD_SOFT")
-            if preset.has_collision:
-                row2.label(text="", icon="MOD_PHYSICS")
-            row2.operator(
-                "mustardui.physics_preset_apply", text=preset.name
-            ).preset_id = pid
-            row.operator(
-                "mustardui.physics_preset_delete", text="", icon="X"
-            ).preset_id = pid
-            row.separator()
-            row.operator(
-                "mustardui.physics_preset_export", text="", icon="COPYDOWN"
-            ).preset_id = pid
+            col2 = col.column(align=True)
+            col2.operator("mustardui.physics_preset_import", text="", icon="COPYDOWN")
+            col2.operator("mustardui.physics_preset_export", text="", icon="PASTEDOWN")
 
-        if len(presets):
-            layout.separator()
+            col.separator()
+            col.operator("mustardui.physics_preset_delete", text="", icon="X")
+        else:
+            row = layout.row(align=True)
+            row.operator(
+                "mustardui.physics_preset_import",
+                text="Import Preset",
+                icon="PASTEDOWN",
+            )
+
+        layout.separator()
 
         row = layout.row(align=True)
         row.prop(self, "new_preset_name", text="")
@@ -428,22 +476,24 @@ class MustardUI_Physics_PresetsUI(bpy.types.Operator):
             "mustardui.physics_preset_create", icon="ADD", text=""
         ).new_preset_name = self.new_preset_name
 
-        layout.separator()
-        row = layout.row(align=True)
-        row.operator(
-            "mustardui.physics_preset_import", text="Import Preset", icon="PASTEDOWN"
-        )
-
 
 def register():
+    bpy.utils.register_class(MUSTARDUI_UL_Physics_Presets_UIList)
     bpy.utils.register_class(MustardUI_Physics_PresetsUI)
     bpy.utils.register_class(MustardUI_Physics_PresetCreate)
     bpy.utils.register_class(MustardUI_Physics_PresetApply)
     bpy.utils.register_class(MustardUI_Physics_PresetDelete)
 
+    bpy.types.Armature.mustardui_physics_preset_uilist_index = bpy.props.IntProperty(
+        name="", default=0
+    )
+
 
 def unregister():
+    del bpy.types.Armature.mustardui_physics_preset_uilist_index
+
     bpy.utils.unregister_class(MustardUI_Physics_PresetDelete)
     bpy.utils.unregister_class(MustardUI_Physics_PresetApply)
     bpy.utils.unregister_class(MustardUI_Physics_PresetCreate)
     bpy.utils.unregister_class(MustardUI_Physics_PresetsUI)
+    bpy.utils.unregister_class(MUSTARDUI_UL_Physics_Presets_UIList)

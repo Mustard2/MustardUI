@@ -1,7 +1,6 @@
 import json
 
 import bpy
-from bpy.props import IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 from ..model_selection.active_object import mustardui_active_object
@@ -15,15 +14,20 @@ class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
     bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
-    preset_id: IntProperty(default=-1)
+    filter_glob: bpy.props.StringProperty(default="*.json", options={"HIDDEN"})
 
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
         if not res or arm is None:
             return False
+
         physics_settings = arm.MustardUI_PhysicsSettings
+        presets = physics_settings.presets
+        index = arm.mustardui_physics_preset_uilist_index
+        if len(presets) < 1 or len(presets) <= index:
+            return False
+
         if (
             arm.mustardui_physics_items_uilist_index < 0
             or len(physics_settings.items) < 1
@@ -54,11 +58,8 @@ class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
         res, arm = mustardui_active_object(context, config=0)
         physics_settings = arm.MustardUI_PhysicsSettings
 
-        if len(physics_settings.presets) < 1 or self.preset_id < 0:
-            self.report({"WARNING"}, "No presets to export.")
-            return {"FINISHED"}
-
-        preset = physics_settings.presets[self.preset_id]
+        index = arm.mustardui_physics_preset_uilist_index
+        preset = physics_settings.presets[index]
 
         if not preset.data:
             self.report({"WARNING"}, f"Preset '{preset.name}' has no internal data.")
@@ -88,7 +89,7 @@ class MustardUI_Physics_PresetImport(bpy.types.Operator, ImportHelper):
     bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
+    filter_glob: bpy.props.StringProperty(default="*.json", options={"HIDDEN"})
 
     @classmethod
     def poll(cls, context):
@@ -117,11 +118,14 @@ class MustardUI_Physics_PresetImport(bpy.types.Operator, ImportHelper):
 
                     # Assign a unique name
                     imported_name = preset_json.get("name", f"Preset_{n_import}")
-                    unique_name = imported_name
+                    base_name = imported_name
+                    unique_name = base_name
                     counter = 1
+
                     while unique_name in preset_names:
-                        unique_name = f"{imported_name}_{counter}"
+                        unique_name = f"{base_name}.{counter:03d}"
                         counter += 1
+
                     preset.name = unique_name
                     preset_names.append(unique_name)
 

@@ -1,7 +1,6 @@
 import json
 
 import bpy
-from bpy.props import StringProperty
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 from ..model_selection.active_object import mustardui_active_object
@@ -15,14 +14,21 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
     bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
-
-    preset_id: bpy.props.IntProperty(default=-1)
+    filter_glob: bpy.props.StringProperty(default="*.json", options={"HIDDEN"})
 
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        if arm is None:
+            return False
+
+        morphs_settings = arm.MustardUI_MorphsSettings
+        presets = morphs_settings.presets
+        index = arm.mustardui_morphs_preset_uilist_index
+        if len(presets) < 1 or len(presets) <= index:
+            return False
+
+        return res
 
     # Set a default file name
     def invoke(self, context, event):
@@ -49,12 +55,9 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
 
-        if len(morphs_settings.presets) < 1 or self.preset_id < 0:
-            self.report({"WARNING"}, "No morph presets to export.")
-            return {"FINISHED"}
-
         presets = morphs_settings.presets
-        preset = presets[self.preset_id]
+        index = arm.mustardui_morphs_preset_uilist_index
+        preset = presets[index]
 
         data = []
         preset_data = {"name": preset.name, "morphs": []}
@@ -92,7 +95,7 @@ class MustardUI_Morphs_PresetImport(bpy.types.Operator, ImportHelper):
     bl_options = {"PRESET", "UNDO"}
 
     filename_ext = ".json"
-    filter_glob: StringProperty(default="*.json", options={"HIDDEN"})
+    filter_glob: bpy.props.StringProperty(default="*.json", options={"HIDDEN"})
 
     @classmethod
     def poll(cls, context):
@@ -115,12 +118,12 @@ class MustardUI_Morphs_PresetImport(bpy.types.Operator, ImportHelper):
 
                     # Assign a unique name
                     imported_name = preset_json.get("name", f"Preset_{n_import}")
-                    unique_name = imported_name
+                    base_name = imported_name
+                    unique_name = base_name
                     counter = 1
                     while unique_name in preset_names:
-                        unique_name = f"{imported_name}_{counter}"
+                        unique_name = f"{base_name}.{counter:03d}"
                         counter += 1
-                    preset.name = unique_name
 
                     for morph_json in preset_json.get("morphs", []):
                         morph = preset.morphs.add()
