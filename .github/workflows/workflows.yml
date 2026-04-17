@@ -33,9 +33,9 @@ jobs:
       matrix:
         blender: [ "5.1.0", "4.2.0" ]
 
-    name: Build & Test Blender ${{ matrix.blender }} Extension
+    name: Blender ${{ matrix.blender }}
     needs: lint
-    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v1
+    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@main
     with:
       timeout-seconds: 180
       blender-version: ${{ matrix.blender }}
