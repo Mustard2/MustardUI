@@ -25,7 +25,7 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
         morphs_settings = arm.MustardUI_MorphsSettings
         presets = morphs_settings.presets
         index = arm.mustardui_morphs_preset_uilist_index
-        if len(presets) < 1 or len(presets) <= index:
+        if len(presets) < 1 or index < 0 or len(presets) <= index:
             return False
 
         return res
@@ -34,20 +34,21 @@ class MustardUI_Morphs_PresetExport(bpy.types.Operator, ExportHelper):
     def invoke(self, context, event):
         res, arm = mustardui_active_object(context, config=0)
 
-        if res:
-            morphs_settings = arm.MustardUI_MorphsSettings
-            if morphs_settings.presets:
-                preset_name = morphs_settings.presets[0].name
-            else:
-                preset_name = "Preset"
+        index = arm.mustardui_morphs_preset_uilist_index
 
-            model_name = getattr(arm, "name", "Model")
-            # Safe filename: replace spaces or invalid characters
-            safe_model_name = model_name.replace(" ", "_")
-            safe_preset_name = preset_name.replace(" ", "_")
-            self.filepath = (
-                f"MustardUI_MorphsPreset_{safe_model_name}_{safe_preset_name}.json"
-            )
+        morphs_settings = arm.MustardUI_MorphsSettings
+        if morphs_settings.presets:
+            preset_name = morphs_settings.presets[index].name
+        else:
+            preset_name = "Preset"
+
+        model_name = getattr(arm, "name", "Model")
+        # Safe filename: replace spaces or invalid characters
+        safe_model_name = model_name.replace(" ", "_")
+        safe_preset_name = preset_name.replace(" ", "_")
+        self.filepath = (
+            f"MustardUI_MorphsPreset_{safe_model_name}_{safe_preset_name}.json"
+        )
 
         return super().invoke(context, event)
 

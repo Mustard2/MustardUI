@@ -25,7 +25,7 @@ class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
         physics_settings = arm.MustardUI_PhysicsSettings
         presets = physics_settings.presets
         index = arm.mustardui_physics_preset_uilist_index
-        if len(presets) < 1 or len(presets) <= index:
+        if len(presets) < 1 or index < 0 or len(presets) <= index:
             return False
 
         if (
@@ -39,19 +39,21 @@ class MustardUI_Physics_PresetExport(bpy.types.Operator, ExportHelper):
     def invoke(self, context, event):
         res, arm = mustardui_active_object(context, config=0)
 
-        if res:
-            physics_settings = arm.MustardUI_PhysicsSettings
-            preset_name = (
-                physics_settings.presets[0].name
-                if physics_settings.presets
-                else "Preset"
-            )
-            model_name = getattr(arm, "name", "Model")
-            safe_model_name = model_name.replace(" ", "_")
-            safe_preset_name = preset_name.replace(" ", "_")
-            self.filepath = (
-                f"MustardUI_PhysicsPreset_{safe_model_name}_{safe_preset_name}.json"
-            )
+        index = arm.mustardui_physics_preset_uilist_index
+
+        physics_settings = arm.MustardUI_PhysicsSettings
+        preset_name = (
+            physics_settings.presets[index].name
+            if physics_settings.presets
+            else "Preset"
+        )
+        model_name = getattr(arm, "name", "Model")
+        safe_model_name = model_name.replace(" ", "_")
+        safe_preset_name = preset_name.replace(" ", "_")
+        self.filepath = (
+            f"MustardUI_PhysicsPreset_{safe_model_name}_{safe_preset_name}.json"
+        )
+
         return super().invoke(context, event)
 
     def execute(self, context):
