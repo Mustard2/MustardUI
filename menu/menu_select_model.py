@@ -1,3 +1,5 @@
+from collections import Counter
+
 import bpy
 
 from ..model_selection.active_object import mustardui_active_object
@@ -49,12 +51,28 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
         )
         layout.separator()
 
-        for armature in [x for x in bpy.data.armatures if x.MustardUI_created]:
+        armatures = [x for x in bpy.data.armatures if x.MustardUI_created]
+
+        # Create a dictionary to count how many times each model_name appears
+        model_name_count = Counter(
+            armature.MustardUI_RigSettings.model_name for armature in armatures
+        )
+
+        for armature in armatures:
+            model_name = armature.MustardUI_RigSettings.model_name
+            armature_name = armature.name
+
+            # Show armature name in parentheses only if the model name is duplicated
+            if model_name_count[model_name] > 1:
+                display_name = f"{model_name} ({armature_name})"
+            else:
+                display_name = model_name
+
             row = layout.row(align=True)
             row.enabled = not settings.viewport_model_selection
             row.operator(
                 "mustardui.switchmodel",
-                text=armature.MustardUI_RigSettings.model_name,
+                text=display_name,
                 depress=armature == settings.panel_model_selection_armature
                 if not settings.viewport_model_selection
                 else armature == arm,
