@@ -79,7 +79,8 @@ class MUSTARDUI_OT_SelectModel(bpy.types.Operator):
             settings.panel_model_selection_armature = target_arm
             self.report(
                 {"INFO"},
-                f"MustardUI - Model switched to: {target_arm.MustardUI_RigSettings.model_name}",
+                f"MustardUI - Model switched to: "
+                f"{target_arm.MustardUI_RigSettings.model_name}",
             )
 
         return {"FINISHED"}

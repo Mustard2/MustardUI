@@ -1,5 +1,4 @@
 import bpy
-from bpy.props import StringProperty
 
 from ..model_selection.active_object import mustardui_active_object
 
