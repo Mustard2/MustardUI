@@ -24,8 +24,12 @@ The main features are:
 * Diffeomorphic Daz Morphs support for Daz based models
 * Various other user tools for animators (physics panel, and many others)
 
-![](https://i.ibb.co/2v8m743/Immagine-2022-11-26-011024.png)
-![](https://i.ibb.co/z7gbkC9/Immagine-2022-11-26-011007.png)
+<div style="display: flex; gap: 10px;">
+  <img src="https://github.com/user-attachments/assets/aa9c7e9c-0c42-4752-8395-db9265cb06f2" width="288" />
+  <img src="https://github.com/user-attachments/assets/2c1907c5-fa3d-45b7-930c-e99565b72a41" width="288" />
+</div>
+
+
 
 ## How to install
 
