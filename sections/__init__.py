@@ -10,5 +10,6 @@ def register():
 
 def unregister():
     ui_list.unregister()
+    ops_default.unregister()
     ops_assign.unregister()
     definitions.unregister()
