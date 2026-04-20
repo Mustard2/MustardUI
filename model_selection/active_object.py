@@ -30,7 +30,7 @@ def mustardui_active_object(context, config=0):
                 and parent.data is not None
             ):
                 arm = parent.data
-            if arm is not None:
+            if arm is None:
                 modifiers = [
                     x
                     for x in obj.modifiers
@@ -41,11 +41,11 @@ def mustardui_active_object(context, config=0):
                 if len(modifiers) == 1:
                     for m in modifiers:
                         arm = m.object.data
-            if arm is not None:
+            if arm is None:
                 constraints = [
                     x
                     for x in obj.constraints
-                    if x.type == "ARMATURE"
+                    if x.type == "CHILD_OF"
                     and x.target is not None
                     and x.target.data is not None
                 ]

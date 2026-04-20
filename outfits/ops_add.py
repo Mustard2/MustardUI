@@ -12,7 +12,6 @@ class MustardUI_AddOutfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
         res, arm = mustardui_active_object(context, config=1)
         return res
 
