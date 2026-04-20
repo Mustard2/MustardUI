@@ -8,7 +8,7 @@ from . import MainPanel
 
 
 def draw_section(
-    context, layout, obj, settings, rig_settings, custom_props, section, draw_sub=True
+    context, layout, obj, settings, rig_settings, custom_props, section, section_id, draw_sub=True
 ):
     if rig_settings.body_custom_properties_name_order:
         custom_properties_section = sorted(
@@ -37,6 +37,7 @@ def draw_section(
     ):
         box = layout
 
+        # Header
         row = layout.row(align=False)
         if section.collapsable:
             row.prop(
@@ -50,6 +51,9 @@ def draw_section(
             row.label(text=section.name, icon=section.icon)
         else:
             row.label(text=section.name)
+        row.operator("mustardui.section_property_default", text="", icon="LOOP_BACK").section_id = section_id
+
+        # Properties
         if not section.collapsed:
             box = layout.box()
             if section.description != "":
@@ -266,14 +270,14 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
             sec_num = len(rig_settings.body_custom_properties_sections)
             id = 0
-            for section in rig_settings.body_custom_properties_sections:
+            for section_id, section in enumerate(rig_settings.body_custom_properties_sections):
                 # Subsections are drawn inside standard sections
                 if section.is_subsection:
                     continue
 
                 # Draw main section
                 sublayout, subcollapse = draw_section(
-                    context, layout, obj, settings, rig_settings, custom_props, section
+                    context, layout, obj, settings, rig_settings, custom_props, section, section_id
                 )
 
                 # Draw subsections if available
@@ -291,6 +295,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                         rig_settings,
                         custom_props,
                         subsec,
+                        section_id,
                         subcollapse,
                     )
                     id = id + 1
