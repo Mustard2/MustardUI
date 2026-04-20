@@ -394,7 +394,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
 
 class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
-    bl_label = "Extras"
+    bl_label = ""
     bl_parent_id = "PANEL_PT_MustardUI_Outfits"
     bl_options = {"HEADER_LAYOUT_EXPAND"}
 
@@ -418,6 +418,19 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         extras_avail = len(items) > 0
 
         return res and extras_avail
+
+    def draw_header(self, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+
+        layout = self.layout
+
+        row = layout.row(align=True)
+        row.label(text="Extras")
+
+        row2 = row.row(align=True)
+        row2.enabled = rig_settings.outfits_show
+        row2.prop(rig_settings.extras_collection, "hide_viewport", text="")
 
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
