@@ -163,43 +163,6 @@ class MustardUI_Morphs_PresetApply(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_Morphs_PresetDelete(bpy.types.Operator):
-    """Delete Morph preset"""
-
-    bl_idname = "mustardui.morphs_preset_delete"
-    bl_label = "Morph Preset Delete"
-    bl_options = {"UNDO"}
-
-    @classmethod
-    def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
-
-    def execute(self, context):
-
-        res, arm = mustardui_active_object(context, config=0)
-        morph_settings = arm.MustardUI_MorphsSettings
-
-        presets = morph_settings.presets
-
-        index = arm.mustardui_morphs_preset_uilist_index
-
-        if len(presets) <= index:
-            return {"FINISHED"}
-
-        preset = presets[index]
-        preset_name = preset.name
-
-        presets.remove(index)
-
-        index = min(max(0, index - 1), len(presets) - 1)
-        arm.mustardui_morphs_preset_uilist_index = index
-
-        self.report({"INFO"}, f"MustardUI - Preset '{preset_name}' deleted")
-
-        return {"FINISHED"}
-
-
 class MUSTARDUI_UL_Morphs_Presets_UIList(bpy.types.UIList):
     """UIList for Morph Presets"""
 
@@ -257,6 +220,8 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
         morph_settings = arm.MustardUI_MorphsSettings
         presets = morph_settings.presets
 
+        preset_type = "MORPHS"
+
         layout = self.layout
 
         if len(presets) > 0:
@@ -277,8 +242,12 @@ class MustardUI_Morphs_PresetsUI(bpy.types.Operator):
             col2.operator("mustardui.morphs_preset_import", text="", icon="COPYDOWN")
             col2.operator("mustardui.morphs_preset_export", text="", icon="PASTEDOWN")
 
+            op = col2.operator("mustardui.preset_transfer", text="", icon="FORWARD")
+            op.preset_type = preset_type
+
             col.separator()
-            col.operator("mustardui.morphs_preset_delete", text="", icon="X")
+            op = col.operator("mustardui.preset_delete", text="", icon="X")
+            op.preset_type = preset_type
         else:
             row = layout.row(align=True)
             row.operator(
@@ -299,7 +268,6 @@ def register():
     bpy.utils.register_class(MustardUI_Morphs_PresetsUI)
     bpy.utils.register_class(MustardUI_Morphs_PresetCreate)
     bpy.utils.register_class(MustardUI_Morphs_PresetApply)
-    bpy.utils.register_class(MustardUI_Morphs_PresetDelete)
 
     bpy.types.Armature.mustardui_morphs_preset_uilist_index = bpy.props.IntProperty(
         name="", default=0
@@ -309,7 +277,6 @@ def register():
 def unregister():
     del bpy.types.Armature.mustardui_morphs_preset_uilist_index
 
-    bpy.utils.unregister_class(MustardUI_Morphs_PresetDelete)
     bpy.utils.unregister_class(MustardUI_Morphs_PresetApply)
     bpy.utils.unregister_class(MustardUI_Morphs_PresetCreate)
     bpy.utils.unregister_class(MustardUI_Morphs_PresetsUI)

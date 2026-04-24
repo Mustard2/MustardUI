@@ -25,6 +25,7 @@ from . import (  # noqa: E402
     morphs,
     outfits,
     physics,
+    presets,
     sections,
     settings,
     tools,
@@ -40,6 +41,7 @@ def register():
     settings.register()
     misc.register()
     model_selection.register()
+    presets.register()
     warnings.register()
     armature.register()
     tools.register()
@@ -63,6 +65,7 @@ def unregister():
     tools.unregister()
     armature.unregister()
     warnings.unregister()
+    presets.unregister()
     model_selection.unregister()
     misc.unregister()
     settings.unregister()
