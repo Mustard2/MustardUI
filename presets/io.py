@@ -24,7 +24,7 @@ class MustardUI_PresetExport(bpy.types.Operator, ExportHelper):
     bl_label = "Export Preset"
     bl_options = {"PRESET", "UNDO"}
 
-    preset_type: bpy.props.EnumProperty(items=preset_type_items, options={'HIDDEN'})
+    preset_type: bpy.props.EnumProperty(items=preset_type_items, options={"HIDDEN"})
 
     filename_ext = ".json"
     filter_glob: bpy.props.StringProperty(default="*.json", options={"HIDDEN"})
@@ -81,7 +81,7 @@ class MustardUI_PresetImport(bpy.types.Operator, ImportHelper):
     bl_label = "Import Preset"
     bl_options = {"PRESET", "UNDO"}
 
-    preset_type: bpy.props.EnumProperty(items=preset_type_items, options={'HIDDEN'})
+    preset_type: bpy.props.EnumProperty(items=preset_type_items, options={"HIDDEN"})
 
     filename_ext = ".json"
     filter_glob: bpy.props.StringProperty(default="*.json", options={"HIDDEN"})
