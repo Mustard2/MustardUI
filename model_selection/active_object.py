@@ -83,3 +83,10 @@ def mustardui_active_object(context, config=0):
                 return True, settings.panel_model_selection_armature
 
     return False, None
+
+
+def active_object_operator_poll(context, config=0):
+    poll, arm = mustardui_active_object(context, config=config)
+    if arm is None:
+        return False
+    return poll
