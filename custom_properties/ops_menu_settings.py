@@ -6,7 +6,10 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.icons import mustardui_icon_list
 from ..misc.prop_utils import evaluate_path
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .misc import mustardui_choose_cp, mustardui_cp_path
 
 float_subtype_items = (
@@ -94,8 +97,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
-        return obj is not None
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
 

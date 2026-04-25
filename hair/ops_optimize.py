@@ -1,7 +1,10 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..tools.simplify import simplify_hair
 
 
@@ -15,8 +18,7 @@ class MustardUI_Hair_SwitchGlobal(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
         poll, obj = mustardui_active_object(context, config=0)

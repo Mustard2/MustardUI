@@ -63,8 +63,8 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 and rig_settings.model_body is not None
                 and rig_settings.model_name != ""
             )
-        else:
-            return False
+
+        return False
 
     def execute(self, context):
 

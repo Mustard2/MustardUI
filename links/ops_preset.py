@@ -5,7 +5,10 @@ from bpy.props import BoolProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
@@ -21,9 +24,8 @@ class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return active_object_operator_poll(context, config=1) and addon_prefs.developer
 
     def execute(self, context):
 

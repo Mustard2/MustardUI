@@ -3,7 +3,10 @@ from bpy.props import BoolProperty
 
 from .. import __package__ as base_package
 from ..custom_properties.misc import mustardui_delete_all_custom_properties
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_RemoveUI(bpy.types.Operator):
@@ -70,12 +73,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
-        res, arm = mustardui_active_object(context, config=0)
-
-        if arm is not None:
-            return res
-        return False
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
 

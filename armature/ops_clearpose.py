@@ -1,7 +1,10 @@
 import bpy
 from mathutils import Matrix, Vector
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Armature_ClearPose(bpy.types.Operator):
@@ -30,13 +33,10 @@ class MustardUI_Armature_ClearPose(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
-
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
 
         warnings = 0
