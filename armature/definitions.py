@@ -166,6 +166,16 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         " type of the rig.\nSupported rigs: MHX",
     )
 
+    # Show in Viewport
+    def show_viewport_update(self, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+        rig_settings.model_armature_object.hide_viewport = not self.show_viewport
+
+    show_viewport: bpy.props.BoolProperty(
+        default=True, name="Show Armature", description="", update=show_viewport_update
+    )
+
 
 def register():
     bpy.utils.register_class(MustardUI_ArmatureBoneCollection)

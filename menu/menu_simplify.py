@@ -57,11 +57,15 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         box.label(text="Blender Simplify", icon="BLENDER")
         col = box.column(align=True)
         row = col.row()
-        row.prop(simplify_settings, "simplify_blender")
+        row.prop(simplify_settings, "simplify_blender", text="Enable")
         row.scale_x = 0.5
-        col2 = row.column()
-        col2.enabled = simplify_settings.simplify_blender
-        col2.prop(context.scene.render, "simplify_subdivision", text="Max Subdiv")
+        col = box.column()
+        col.enabled = simplify_settings.simplify_blender
+        col.prop(context.scene.render, "simplify_subdivision")
+        col.prop(context.scene.render, "simplify_child_particles")
+        col.prop(context.scene.render, "simplify_volumes")
+        if hasattr(context.scene.render, "use_simplify_normals"):
+            col.prop(context.scene.render, "use_simplify_normals")
 
         # General Settings
         box = layout.box()

@@ -430,7 +430,14 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
 
         row2 = row.row(align=True)
         row2.enabled = rig_settings.outfits_show
-        row2.prop(rig_settings.extras_collection, "hide_viewport", text="")
+        row2.prop(
+            rig_settings,
+            "show_viewport_extras",
+            text="",
+            icon="RESTRICT_VIEW_OFF"
+            if rig_settings.show_viewport_extras
+            else "RESTRICT_VIEW_ON",
+        )
 
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings

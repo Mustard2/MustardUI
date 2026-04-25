@@ -130,6 +130,12 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         else:
             return res and len(enabled_colls) > 0
 
+    def draw_header(self, context):
+        poll, obj = mustardui_active_object(context, config=0)
+        armature_settings = obj.MustardUI_ArmatureSettings
+
+        self.layout.prop(armature_settings, "show_viewport", text="", toggle=False)
+
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
