@@ -49,7 +49,7 @@ class MustardUI_PresetApply(bpy.types.Operator):
         if not check_preset_version(data):
             self.report(
                 {"ERROR"},
-                "MustardUI - The Preset is not compatible with this MustardUI version",
+                "MustardUI - This Preset is not compatible with this MustardUI version",
             )
             return {"CANCELLED"}
 
