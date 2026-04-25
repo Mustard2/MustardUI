@@ -87,6 +87,4 @@ def mustardui_active_object(context, config=0):
 
 def active_object_operator_poll(context, config=0):
     poll, arm = mustardui_active_object(context, config=config)
-    if arm is None:
-        return False
-    return poll
+    return poll if arm is not None else False
