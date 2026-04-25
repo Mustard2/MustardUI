@@ -14,9 +14,7 @@ def set_object_visibility(obj, visible, rig_settings):
     set_bool(obj, "hide_render", not visible)
 
     for mod in [
-        x
-        for x in obj.modifiers
-        if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]
+        x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]
     ]:
         if mod.type in ["PARTICLE_SYSTEM", "NODES"]:
             set_bool(mod, "show_viewport", visible)
