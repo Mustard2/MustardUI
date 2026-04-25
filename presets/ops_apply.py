@@ -4,7 +4,7 @@ import bpy
 
 from ..model_selection.active_object import mustardui_active_object
 from .get_context import get_preset_context
-from .misc import check_preset_type
+from .misc import check_preset_type, check_preset_version
 from .types import get_preset_definition, preset_type_items
 
 
@@ -43,6 +43,14 @@ class MustardUI_PresetApply(bpy.types.Operator):
             data = json.loads(preset.data)
         except Exception:
             self.report({"ERROR"}, "MustardUI - Preset data not valid")
+            return {"CANCELLED"}
+
+        # Check the preset version
+        if not check_preset_version(data):
+            self.report(
+                {"ERROR"},
+                "MustardUI - The Preset is not compatible with this MustardUI version",
+            )
             return {"CANCELLED"}
 
         # Check the preset type

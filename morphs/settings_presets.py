@@ -4,8 +4,8 @@ from ..model_selection.active_object import mustardui_active_object
 from .misc import get_cp_source
 
 
-def morphs_to_json(morph_settings, rig_settings, preset_name):
-    data = {"type": "MORPHS", "name": preset_name, "morphs": []}
+def morphs_to_json(morph_settings, rig_settings):
+    data = {"morphs": []}
 
     for section in morph_settings.sections:
         for morph in section.morphs:

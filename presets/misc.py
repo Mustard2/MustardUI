@@ -1,3 +1,6 @@
+from .. import bl_info
+
+
 def get_unique_preset_name(presets, base_name):
     names = {p.name for p in presets}
 
@@ -22,3 +25,11 @@ def check_preset_type(preset_type, data, name):
             "MustardUI - Cannot determine the Preset type",
         )
     return "", ""
+
+
+def check_preset_version(preset):
+    preset_version = (0, 0, 0)
+    if "version" in preset.keys():
+        preset_version = tuple(preset["version"])
+    current_version = bl_info["version"]
+    return preset_version >= current_version

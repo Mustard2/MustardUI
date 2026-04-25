@@ -5,7 +5,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 from ..model_selection.active_object import mustardui_active_object
 from .get_context import get_preset_context
-from .misc import check_preset_type, get_unique_preset_name
+from .misc import check_preset_type, check_preset_version, get_unique_preset_name
 from .types import get_preset_definition, preset_type_items
 
 
@@ -99,6 +99,14 @@ class MustardUI_PresetImport(bpy.types.Operator, ImportHelper):
         try:
             with open(self.filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
+
+            # Check the preset version
+            if not check_preset_version(data):
+                self.report(
+                    {"ERROR"},
+                    "MustardUI - The Preset is not compatible with this MustardUI version",
+                )
+                return {"CANCELLED"}
 
             # Check the preset type
             definition = get_preset_definition(self.preset_type)

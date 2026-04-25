@@ -2,6 +2,7 @@ import json
 
 import bpy
 
+from .. import bl_info
 from ..model_selection.active_object import mustardui_active_object
 from .get_context import get_preset_context
 from .misc import get_unique_preset_name
@@ -83,9 +84,9 @@ class MustardUI_PresetCreate(bpy.types.Operator):
 
         # Build data
         if self.preset_type == "PHYSICS":
-            preset_data = builder(obj, new_preset_name)
+            preset_data = builder(obj)
         else:
-            preset_data = builder(settings, arm.MustardUI_RigSettings, new_preset_name)
+            preset_data = builder(settings, arm.MustardUI_RigSettings)
 
         if not preset_data:
             self.report({"WARNING"}, "MustardUI - No data to save")
@@ -105,6 +106,11 @@ class MustardUI_PresetCreate(bpy.types.Operator):
         # Create preset
         new_preset = presets.add()
         new_preset.name = new_name
+
+        # Add name and type
+        preset_data["type"] = self.preset_type
+        preset_data["name"] = new_name
+        preset_data["version"] = bl_info["version"]
 
         new_preset.data = json.dumps(
             preset_data, ensure_ascii=False, indent=4, default=make_json_serializable

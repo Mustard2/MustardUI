@@ -29,7 +29,7 @@ def get_physics_modifiers(obj):
     return cloth, soft_body, collision
 
 
-def physics_to_json(obj, preset_name):
+def physics_to_json(obj):
     cloth, soft_body, collision = get_physics_modifiers(obj)
 
     if not cloth and not soft_body and not collision:
@@ -50,8 +50,6 @@ def physics_to_json(obj, preset_name):
         return data
 
     preset_data = {
-        "type": "PHYSICS",
-        "name": preset_name,
         "cloth": {},
         "cloth_collision": {},
         "object_collision": {},
