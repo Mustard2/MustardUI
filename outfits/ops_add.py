@@ -1,6 +1,9 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_AddOutfit(bpy.types.Operator):
@@ -12,8 +15,7 @@ class MustardUI_AddOutfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
-        return res
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
 

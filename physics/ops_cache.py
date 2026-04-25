@@ -1,6 +1,9 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Physics_SyncFrames(bpy.types.Operator):
@@ -11,8 +14,7 @@ class MustardUI_Physics_SyncFrames(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
 

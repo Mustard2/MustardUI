@@ -55,16 +55,16 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=1)
+        if arm is None:
+            return False
 
-        if arm is not None:
-            rig_settings = arm.MustardUI_RigSettings
-            return (
-                rig_settings.model_MustardUI_naming_convention
-                and rig_settings.model_body is not None
-                and rig_settings.model_name != ""
-            )
-
-        return False
+        rig_settings = arm.MustardUI_RigSettings
+        return (
+            res
+            and rig_settings.model_MustardUI_naming_convention
+            and rig_settings.model_body is not None
+            and rig_settings.model_name != ""
+        )
 
     def execute(self, context):
 

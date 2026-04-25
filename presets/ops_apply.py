@@ -2,7 +2,10 @@ import json
 
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .get_context import get_preset_context
 from .misc import check_preset_type, check_preset_version
 from .types import get_preset_definition, preset_type_items
@@ -21,8 +24,7 @@ class MustardUI_PresetApply(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=0)

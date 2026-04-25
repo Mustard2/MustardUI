@@ -3,7 +3,10 @@ import json
 import bpy
 
 from .. import bl_info
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .get_context import get_preset_context
 from .misc import get_unique_preset_name
 from .types import get_preset_definition, preset_type_items
@@ -42,11 +45,9 @@ class MustardUI_PresetCreate(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return arm is not None and res
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
-
         new_preset_name = self.new_preset_name
 
         if not new_preset_name.strip():

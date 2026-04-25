@@ -43,24 +43,24 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=1)
-        if not res:
-            return res
+        if arm is None:
+            return False
 
         if context.mode != "POSE" or not bpy.context.selected_pose_bones:
             return False
-        else:
-            chain_bones = bpy.context.selected_pose_bones
 
-            if len(chain_bones) < 3:
-                return False
-            else:
-                abort_aa = False
-                for bone in chain_bones:
-                    for constraint in bone.constraints:
-                        if constraint.type == "SPLINE_IK":
-                            abort_aa = True
-                            break
-                return not abort_aa
+        chain_bones = bpy.context.selected_pose_bones
+
+        if len(chain_bones) < 3:
+            return False
+
+        abort_aa = False
+        for bone in chain_bones:
+            for constraint in bone.constraints:
+                if constraint.type == "SPLINE_IK":
+                    abort_aa = True
+                    break
+        return res and not abort_aa
 
     def execute(self, context):
 

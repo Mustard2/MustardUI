@@ -1,7 +1,10 @@
 import bpy
 from bpy.props import BoolProperty, StringProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 def remove_common_prefix_suffix(strings):
@@ -50,10 +53,7 @@ class MustardUI_RenameOutfit_Update(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
-        if arm is not None:
-            return res
-        return False
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
 
