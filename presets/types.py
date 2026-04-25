@@ -11,6 +11,42 @@ from ..physics.settings_presets import (
     warning_physics_preset,
 )
 
+# PRESETS Developement Guide
+#
+# All the presets data are stored in json file according to the builder function
+# (see below).
+#
+# To add a new Preset type do the following:
+#
+# - Create a bpy.types.PropertyGroup (e.g.MustardUI_Physics_Preset) to store at least:
+#   * name: bpy.types.StringProperty
+#   * data: bpy.props.StringProperty, where the json string is saved
+#
+# - Add the presets entry as a bpy.props.CollectionProperty with the type as the newly
+#   created group. E.g., bpy.props.CollectionProperty(type=MustardUI_Physics_Preset)
+#   This can be added to the appropriate settings, e.g., MustardUI_PhysicsSettings
+#   for the Physics presets.
+#   NOTE: The name of this new Collection entry should be exactly presets!
+#
+# - Create the bpy.types.UIList (e.g. MUSTARDUI_UL_Physics_Presets_UIList) to show
+#   the presets inside the preset menu.
+#
+# - Create an entry in MUSTARDUI_PRESETS with at least:
+#   * name
+#   * ui_list
+#   * index_prop
+#   * file_prefix
+#   * builder: function to create the json string to store when a preset is created
+#   * applier: function to read and apply preset from json string
+#
+# - Add an entry in get_context.py with the new preset settings.
+#
+# - Add the preset menu with the correct preset_type as input (same name as the key
+#   in MUSTARDUI_PRESETS).
+#
+# Some adjustements might be necessary also in the ops_* files, depending on the complexity
+# of the presets to be added.
+
 MUSTARDUI_PRESETS = {
     "MORPHS": {
         "name": "Morphs",
