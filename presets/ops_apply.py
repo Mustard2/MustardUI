@@ -44,7 +44,11 @@ class MustardUI_PresetApply(bpy.types.Operator):
         try:
             data = json.loads(preset.data)
         except Exception:
-            self.report({"ERROR"}, "MustardUI - Preset data not valid")
+            self.report(
+                {"ERROR"},
+                "MustardUI - Preset data not valid or incompatible to this MustardUI "
+                "version",
+            )
             return {"CANCELLED"}
 
         # Check the preset version
