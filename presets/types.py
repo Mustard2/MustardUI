@@ -44,8 +44,8 @@ from ..physics.settings_presets import (
 # - Add the preset menu with the correct preset_type as input (same name as the key
 #   in MUSTARDUI_PRESETS).
 #
-# Some adjustements might be necessary also in the ops_* files, depending on the complexity
-# of the presets to be added.
+# Some adjustements might be necessary also in the ops_* files, depending on the
+# complexity of the presets to be added.
 
 MUSTARDUI_PRESETS = {
     "MORPHS": {
