@@ -1,6 +1,3 @@
-import bpy
-
-
 def get_unique_preset_name(presets, base_name):
     names = {p.name for p in presets}
 
@@ -19,7 +16,7 @@ def check_preset_type(preset_type, data, name):
         preset_type_data = data.get("type", "")
         if preset_type_data != preset_type:
             return "ERROR", f"MustardUI - The Preset type is not {name}"
-    except:
+    except Exception:
         return (
             "ERROR",
             "MustardUI - Cannot determine the Preset type",

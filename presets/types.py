@@ -1,5 +1,3 @@
-import bpy
-
 from ..morphs.settings_presets import (
     apply_morphs_preset,
     morphs_to_json,
