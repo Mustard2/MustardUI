@@ -1,8 +1,8 @@
 import bpy
 
 from ..model_selection.active_object import mustardui_active_object
-from .get_context import mustardui_get_preset_context
-from .types import mustardui_preset_type_items
+from .get_context import get_preset_context
+from .types import preset_type_items
 
 
 class MustardUI_PresetDelete(bpy.types.Operator):
@@ -13,7 +13,7 @@ class MustardUI_PresetDelete(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     preset_type: bpy.props.EnumProperty(
-        items=mustardui_preset_type_items,
+        items=preset_type_items,
     )
 
     @classmethod
@@ -26,7 +26,7 @@ class MustardUI_PresetDelete(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=0)
 
         try:
-            settings, presets, preset, index, index_prop = mustardui_get_preset_context(
+            settings, presets, preset, index, index_prop = get_preset_context(
                 arm, self.preset_type
             )
         except ValueError as e:

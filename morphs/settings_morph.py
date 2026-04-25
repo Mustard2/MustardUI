@@ -20,26 +20,9 @@ class MustardUI_Morph(bpy.types.PropertyGroup):
     )
 
 
-class MustardUI_PresetMorph(bpy.types.PropertyGroup):
-    name: bpy.props.StringProperty(name="Name")
-    path: bpy.props.StringProperty(name="Path")
-
-    # Types for generic Morphs
-    shape_key: bpy.props.BoolProperty(default=False)
-    custom_property: bpy.props.BoolProperty(default=True)
-    custom_property_source: bpy.props.EnumProperty(
-        items=cp_source, default="ARMATURE_OBJ"
-    )
-
-    # Stored for presets usage
-    value: bpy.props.FloatProperty()
-
-
 def register():
     bpy.utils.register_class(MustardUI_Morph)
-    bpy.utils.register_class(MustardUI_PresetMorph)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_PresetMorph)
     bpy.utils.unregister_class(MustardUI_Morph)

@@ -1,7 +1,7 @@
 import bpy
 
 
-def mustardui_get_preset_context(arm, preset_type):
+def get_preset_context(arm, preset_type):
     if preset_type == "MORPHS":
         settings = arm.MustardUI_MorphsSettings
         index_prop = "mustardui_morphs_preset_uilist_index"

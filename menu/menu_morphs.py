@@ -116,7 +116,10 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 text="",
             )
             row2.separator()
-            row2.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
+
+            op = row2.operator("mustardui.presets_ui", icon="PRESET", text="")
+            op.preset_type = "MORPHS"
+
             if morphs_settings.diffeomorphic_enable_settings:
                 box = layout.box()
                 col = box.column(align=True)

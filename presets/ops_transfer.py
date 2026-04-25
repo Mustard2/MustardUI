@@ -1,8 +1,8 @@
 import bpy
 
-from .get_context import mustardui_get_preset_context
-from .types import mustardui_preset_type_items
 from ..model_selection.active_object import mustardui_active_object
+from .get_context import get_preset_context
+from .types import preset_type_items
 
 
 def mustardui_get_characters(self, context):
@@ -42,7 +42,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
     )
 
     preset_type: bpy.props.EnumProperty(
-        items=mustardui_preset_type_items,
+        items=preset_type_items,
     )
 
     @classmethod
@@ -55,7 +55,6 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
 
     def draw(self, context):
         self.layout.prop(self, "target_character")
-        self.layout.prop(self, "preset_type")
 
     def execute(self, context):
         res, source_arm = mustardui_active_object(context, config=0)
@@ -68,9 +67,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
         target_arm = target_obj.data
 
         try:
-            _, _, src_preset, _, _ = mustardui_get_preset_context(
-                source_arm, self.preset_type
-            )
+            _, _, src_preset, _, _ = get_preset_context(source_arm, self.preset_type)
         except ValueError as e:
             self.report({"ERROR"}, str(e))
             return {"CANCELLED"}
@@ -115,9 +112,10 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
             new_preset.has_soft_body = src_preset.has_soft_body
             new_preset.has_collision = src_preset.has_collision
 
+        target_name = target_arm.MustardUI_RigSettings.model_name
         self.report(
             {"INFO"},
-            f"MustardUI - Preset '{src_preset.name}' transferred to {target_arm.name}",
+            f"MustardUI - Preset '{src_preset.name}' transferred to {target_name}",
         )
 
         return {"FINISHED"}

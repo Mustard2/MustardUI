@@ -228,6 +228,7 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
         layout.label(text="Cloth Settings")
+        layout.enabled = physics_settings.enable_physics
 
         # Check if Mirror should be drawn
         if pi.type in ["CAGE", "SINGLE_ITEM"]:
@@ -236,12 +237,13 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
                 if check_mirror(pi.object.name, on, left=True) or check_mirror(
                     pi.object.name, on, left=False
                 ):
-                    layout.enabled = pi.enable
+                    layout.enabled = layout.enabled and pi.enable
             layout.operator(
                 "mustardui.physics_mirror", text="", icon="MOD_MIRROR"
             ).obj_name = pi.object.name
 
-        layout.operator("mustardui.physics_presets_ui", text="", icon="PRESET")
+        op = layout.operator("mustardui.presets_ui", text="", icon="PRESET")
+        op.preset_type = "PHYSICS"
 
     def draw(self, context):
 
@@ -296,6 +298,7 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
         layout.label(text="Soft Body Settings")
+        layout.enabled = physics_settings.enable_physics
 
         # Check if Mirror should be drawn
         if pi.type in ["CAGE", "SINGLE_ITEM"]:
@@ -304,12 +307,13 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
                 if check_mirror(pi.object.name, on, left=True) or check_mirror(
                     pi.object.name, on, left=False
                 ):
-                    layout.enabled = pi.enable
+                    layout.enabled = layout.enabled and pi.enable
             layout.operator(
                 "mustardui.physics_mirror", text="", icon="MOD_MIRROR"
             ).obj_name = pi.object.name
 
-        layout.operator("mustardui.physics_presets_ui", text="", icon="PRESET")
+        op = layout.operator("mustardui.presets_ui", text="", icon="PRESET")
+        op.preset_type = "PHYSICS"
 
     def draw(self, context):
 
@@ -358,9 +362,15 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
         return False
 
     def draw_header(self, context):
+        poll, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+
         layout = self.layout
+        layout.enabled = physics_settings.enable_physics
+
         layout.label(text="Collision Settings")
-        layout.operator("mustardui.physics_presets_ui", text="", icon="PRESET")
+        op = layout.operator("mustardui.presets_ui", text="", icon="PRESET")
+        op.preset_type = "PHYSICS"
 
     def draw(self, context):
 
