@@ -20,16 +20,13 @@ def check_preset_type(preset_type, data, name):
         if preset_type_data != preset_type:
             return "ERROR", f"MustardUI - The Preset type is not {name}"
     except Exception:
-        return (
-            "ERROR",
-            "MustardUI - Cannot determine the Preset type",
-        )
+        return "ERROR", "MustardUI - Cannot determine the Preset type"
     return "", ""
 
 
 def check_preset_version(preset):
     preset_version = (0, 0, 0)
-    if "version" in preset.keys():
+    if "version" in preset:
         preset_version = tuple(preset["version"])
     current_version = bl_info["version"]
     return preset_version >= current_version
