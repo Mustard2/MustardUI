@@ -121,6 +121,13 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
         description="Remove custom properties that can not be rebuilt because their "
         "path can not be found.",
     )
+    assign_pointers: bpy.props.BoolProperty(
+        name="Assign Pointers",
+        default=False,
+        description="Try to assign pointers to custom properties to be able to fix"
+                    " their path.\nThis only affects future custom properties rebuild, "
+                    "not the current",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -142,6 +149,16 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
             ("MustardUI_CustomPropertiesHair", obj.MustardUI_CustomPropertiesHair),
         ]
 
+        # Try to assign pointers to custom properties to be able to fix their path
+        pointers_errors = 0
+        if self.assign_pointers:
+            for custom_properties in custom_properties_types:
+                for custom_prop in custom_properties:
+                    try:
+                        assign_ptr(custom_prop, custom_prop.rna, addon_prefs)
+                    except Exception:
+                        pointers_errors += 1
+
         to_remove = []
 
         for prop_type_name, custom_properties in custom_properties_types:
@@ -149,7 +166,7 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
                 res = fix_custom_property_path(
                     obj, custom_properties, custom_prop, addon_prefs
                 )
-                if res == "VALID":
+                if res != "VALID":
                     invalid += 1
                 elif res == "NOT_FIXABLE":
                     not_fixable += 1
@@ -201,6 +218,30 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
             )
 
         return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=450)
+
+    def draw(self, context):
+
+        addon_prefs = context.preferences.addons[base_package].preferences
+
+        layout = self.layout
+
+        box = layout.box()
+        col = box.column(align=True)
+        col.label(
+            text="This will attempt to recover CP paths.",
+            icon="INFO",
+        )
+
+        box = layout.box()
+        col = box.column(align=True)
+        col.prop(self, "remove_invalid_properties")
+
+        if addon_prefs.debug:
+            col.separator()
+            col.prop(self, "assign_pointers")
 
 
 class MustardUI_Property_Rebuild(bpy.types.Operator):
@@ -271,9 +312,6 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
     def poll(cls, context):
         return active_object_operator_poll(context, config=0)
 
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self, width=450)
-
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=0)
@@ -288,19 +326,10 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
         errors = 0
 
-        # Try to assign pointers to custom properties to be able to fix their path
-        pointers_errors = 0
-        if self.assign_pointers:
-            for custom_properties in custom_properties_types:
-                for custom_prop in custom_properties:
-                    try:
-                        assign_ptr(custom_prop, custom_prop.rna, addon_prefs)
-                    except Exception:
-                        pointers_errors += 1
-
         if self.attempt_fix_paths:
             bpy.ops.mustardui.property_fix_path(
-                remove_invalid_properties=self.remove_invalid_properties
+                remove_invalid_properties=self.remove_invalid_properties,
+                assign_pointers=self.assign_pointers,
             )
 
         # Rebuilding custom properties and their linked properties drivers
@@ -455,6 +484,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             self.report({"INFO"}, "MustardUI - Custom Properties rebuilt.")
 
         return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=450)
 
     def draw(self, context):
 
