@@ -57,7 +57,9 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
                 box = layout.box()
                 row = box.row()
                 row.label(text="Custom properties", icon="PRESET_NEW")
-                row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
+                row.operator(
+                    "mustardui.property_fix_path", text="", icon="DECORATE_DRIVER"
+                )
 
                 if len(arm.MustardUI_CustomPropertiesHair) > 0:
                     row = box.row()

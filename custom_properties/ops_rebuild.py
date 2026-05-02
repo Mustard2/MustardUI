@@ -125,8 +125,8 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
         name="Assign Pointers",
         default=False,
         description="Try to assign pointers to custom properties to be able to fix"
-                    " their path.\nThis only affects future custom properties rebuild, "
-                    "not the current",
+        " their path.\nThis only affects future custom properties rebuild, "
+        "not the current",
     )
 
     @classmethod
