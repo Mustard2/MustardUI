@@ -321,9 +321,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             evaluate_path(custom_prop.rna, custom_prop.path) is None
         )
 
-        return context.window_manager.invoke_props_dialog(
-            self, width=500
-        )
+        return context.window_manager.invoke_props_dialog(self, width=500)
 
     def draw(self, context):
 
