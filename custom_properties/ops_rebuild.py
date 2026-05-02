@@ -1,4 +1,5 @@
 import ast
+import re
 
 import bpy
 from rna_prop_ui import rna_idprop_ui_create
@@ -12,12 +13,224 @@ from ..model_selection.active_object import (
 from .misc import mustardui_clean_prop, mustardui_cp_path
 
 
+def replace_id_block(rna_path, id_type, new_name):
+    patterns = {
+        "OBJECT": r'bpy\.data\.objects\[".*?"\]',
+        "ARMATURE": r'bpy\.data\.armatures\[".*?"\]',
+        "MATERIAL": r'bpy\.data\.materials\[".*?"\]',
+        "COLLECTION": r'bpy\.data\.collections\[".*?"\]',
+        "NODE_TREE": r'bpy\.data\.node_groups\[".*?"\]',
+    }
+
+    replacements = {
+        "OBJECT": f'bpy.data.objects["{new_name}"]',
+        "ARMATURE": f'bpy.data.armatures["{new_name}"]',
+        "MATERIAL": f'bpy.data.materials["{new_name}"]',
+        "COLLECTION": f'bpy.data.collections["{new_name}"]',
+        "NODE_TREE": f'bpy.data.node_groups["{new_name}"]',
+    }
+
+    pattern = patterns.get(id_type)
+    replacement = replacements.get(id_type)
+
+    if not pattern or not replacement:
+        raise Exception("Unsupported type")
+
+    return re.sub(pattern, replacement, rna_path, count=1)
+
+
+def fix_custom_property_path(obj, uilist, custom_prop, addon_prefs):
+    if evaluate_path(custom_prop.rna, custom_prop.path) is not None:
+        return "VALID"
+
+    if custom_prop.ptr_type == "None":
+        return "NOT_FIXABLE"
+
+    print(
+        "MustardUI - Can not find the property "
+        + mustardui_cp_path(custom_prop.rna, custom_prop.path)
+        + " for custom property "
+        + custom_prop.name
+        + ". Attempting to fix the path..."
+    )
+
+    if custom_prop.ptr_type == "OBJECT" and custom_prop.ptr_object:
+        custom_prop.rna = replace_id_block(
+            custom_prop.rna, "OBJECT", custom_prop.ptr_object.name
+        )
+    elif (
+        custom_prop.ptr_type == "SHAPEKEY"
+        and custom_prop.ptr_object
+        and custom_prop.ptr_object.data.shape_keys
+    ):
+        custom_prop.rna = (
+            f'bpy.data.objects["{custom_prop.ptr_object.name}"].data.shape_keys'
+        )
+
+    elif custom_prop.ptr_type == "ARMATURE" and custom_prop.ptr_armature:
+        custom_prop.rna = replace_id_block(
+            custom_prop.rna, "ARMATURE", custom_prop.ptr_armature.name
+        )
+
+    elif custom_prop.ptr_type == "MATERIAL" and custom_prop.ptr_material:
+        custom_prop.rna = replace_id_block(
+            custom_prop.rna, "MATERIAL", custom_prop.ptr_material.name
+        )
+
+    elif custom_prop.ptr_type == "COLLECTION" and custom_prop.ptr_collection:
+        custom_prop.rna = replace_id_block(
+            custom_prop.rna,
+            "COLLECTION",
+            custom_prop.ptr_collection.name,
+        )
+
+    elif custom_prop.ptr_type == "NODE_TREE" and custom_prop.ptr_node_tree:
+        custom_prop.rna = replace_id_block(
+            custom_prop.rna, "NODE_TREE", custom_prop.ptr_node_tree.name
+        )
+    else:
+        print(
+            "MustardUI - No valid pointer found for custom property "
+            + custom_prop.name
+            + "."
+        )
+
+    if evaluate_path(custom_prop.rna, custom_prop.path) is None:
+        print(
+            "MustardUI - Can not fix the path for custom property "
+            + custom_prop.name
+            + ". This custom property will be removed."
+        )
+
+        return "ERROR"
+
+    print(
+        "MustardUI - Path fixed for custom property "
+        + custom_prop.name
+        + ". New path: "
+        + custom_prop.rna
+    )
+
+    return "FIXED"
+
+
+class MustardUI_Property_FixPath(bpy.types.Operator):
+    """Attempt to fix an invalid path"""
+
+    bl_idname = "mustardui.property_fix_path"
+    bl_label = "Fix Custom Property Path"
+    bl_options = {"UNDO"}
+
+    remove_invalid_properties: bpy.props.BoolProperty(
+        name="Remove Invalid Properties",
+        default=True,
+        description="Remove custom properties that can not be rebuilt because their "
+        "path can not be found.",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
+
+    def execute(self, context):
+
+        res, obj = mustardui_active_object(context, config=-1)
+        addon_prefs = context.preferences.addons[base_package].preferences
+
+        invalid = 0
+        not_fixable = 0
+        fixed = 0
+        errors = 0
+
+        custom_properties_types = [
+            ("MustardUI_CustomProperties", obj.MustardUI_CustomProperties),
+            ("MustardUI_CustomPropertiesOutfit", obj.MustardUI_CustomPropertiesOutfit),
+            ("MustardUI_CustomPropertiesHair", obj.MustardUI_CustomPropertiesHair),
+        ]
+
+        to_remove = []
+
+        for prop_type_name, custom_properties in custom_properties_types:
+            for custom_prop in custom_properties:
+                res = fix_custom_property_path(
+                    obj, custom_properties, custom_prop, addon_prefs
+                )
+                if res == "VALID":
+                    invalid += 1
+                elif res == "NOT_FIXABLE":
+                    not_fixable += 1
+                elif res == "FIXED":
+                    fixed += 1
+                elif res == "ERROR":
+                    errors += 1
+                    to_remove.append((custom_prop, custom_properties))
+
+        if self.remove_invalid_properties:
+            for custom_prop, uilist in reversed(to_remove):
+                i = uilist.find(custom_prop.name)
+                mustardui_clean_prop(
+                    obj,
+                    uilist,
+                    i,
+                    addon_prefs,
+                )
+                uilist.remove(i)
+
+        total = (
+            len(obj.MustardUI_CustomProperties)
+            + len(obj.MustardUI_CustomPropertiesOutfit)
+            + len(obj.MustardUI_CustomPropertiesHair)
+        )
+
+        if invalid == 0:
+            self.report(
+                {"INFO"}, f"MustardUI - All {total} custom properties are valid."
+            )
+        else:
+            msg_parts = [f"{invalid} invalid"]
+
+            if fixed > 0:
+                msg_parts.append(f"{fixed} fixed")
+
+            if errors > 0:
+                msg_parts.append(f"{errors} removed")
+
+            if not_fixable > 0:
+                msg_parts.append(f"{not_fixable} not fixable")
+
+            summary = ", ".join(msg_parts)
+
+            level = {"INFO"} if errors == 0 else {"WARNING"}
+
+            self.report(
+                level,
+                f"MustardUI - {summary} custom properties. Check console for details.",
+            )
+
+        return {"FINISHED"}
+
+
 class MustardUI_Property_Rebuild(bpy.types.Operator):
     """Rebuild all drivers and custom properties. This can be used if the properties aren't working or if the properties max/min/default/descriptions are broken"""  # noqa: E501
 
     bl_idname = "mustardui.property_rebuild"
     bl_label = "Rebuild Custom Properties"
     bl_options = {"UNDO"}
+
+    attempt_fix_paths: bpy.props.BoolProperty(
+        name="Attempt to Fix Paths",
+        default=True,
+        description="Attempt to fix the paths of custom properties"
+        " that can not be rebuilt because their path can not be found. "
+        "This will try to find the new path of the property if it "
+        "was moved to another object or if it was renamed.",
+    )
+    remove_invalid_properties: bpy.props.BoolProperty(
+        name="Remove Invalid Properties",
+        default=True,
+        description="Remove custom properties that can not be rebuilt because their "
+        "path can not be found.",
+    )
 
     def add_driver(self, obj, rna, path, prop_name):
 
@@ -58,6 +271,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
     def poll(cls, context):
         return active_object_operator_poll(context, config=0)
 
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=450)
+
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=0)
@@ -73,6 +289,11 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         errors = 0
 
         to_remove = []
+
+        if self.attempt_fix_paths:
+            bpy.ops.mustardui.property_fix_path(
+                remove_invalid_properties=self.remove_invalid_properties
+            )
 
         # Rebuilding custom properties and their linked properties drivers
         for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
@@ -155,6 +376,8 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             linked_custom_prop.path,
                             custom_prop.prop_name,
                         )
+                if evaluate_path(custom_prop.rna, custom_prop.path) is None:
+                    raise Exception("Property not found after rebuilding")
             except Exception:
                 errors += 1
 
@@ -192,44 +415,74 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 mustardui_clean_prop(obj, uilist, i, addon_prefs)
                 to_remove.append((i, prop_type))
 
-        for i, prop_type in reversed(to_remove):
-            if prop_type == 0:
-                uilist = obj.MustardUI_CustomProperties
-            elif prop_type == 1:
-                uilist = obj.MustardUI_CustomPropertiesOutfit
-            else:
-                uilist = obj.MustardUI_CustomPropertiesHair
+        if self.remove_invalid_properties:
+            for i, prop_type in reversed(to_remove):
+                if prop_type == 0:
+                    uilist = obj.MustardUI_CustomProperties
+                elif prop_type == 1:
+                    uilist = obj.MustardUI_CustomPropertiesOutfit
+                else:
+                    uilist = obj.MustardUI_CustomPropertiesHair
 
-            uilist.remove(i)
+                uilist.remove(i)
 
         obj.update_tag()
 
         if errors > 0:
-            if errors > 1:
+            if self.remove_invalid_properties:
                 self.report(
                     {"WARNING"},
                     "MustardUI - "
                     + str(errors)
-                    + " custom properties were corrupted and deleted. Check the "
+                    + " custom properties were invalid and deleted. Check the "
                     "console for more infos.",
                 )
             else:
                 self.report(
                     {"WARNING"},
-                    "MustardUI - A custom property was corrupted and deleted. Check "
-                    "the console for more infos.",
+                    "MustardUI - "
+                    + str(errors)
+                    + " custom properties seems invalid. Check the console for more "
+                    "infos.",
                 )
         else:
             self.report(
-                {"INFO"}, "MustardUI - All the drivers and custom properties rebuilt."
+                {"INFO"}, "MustardUI - Custom Properties rebuilt."
             )
 
         return {"FINISHED"}
 
+    def draw(self, context):
+
+        layout = self.layout
+
+        box = layout.box()
+        col = box.column(align=True)
+        col.label(
+            text="This will attempt to rebuild all the drivers and custom properties.",
+            icon="ERROR",
+        )
+        col.label(
+            text="This can fix most issues with custom properties but it can also "
+            "cause issues ",
+            icon="BLANK1",
+        )
+        col.label(
+            text="if the paths of the custom properties are not valid anymore.",
+            icon="BLANK1",
+        )
+
+        box = layout.box()
+        col = box.column(align=True)
+        col.prop(self, "attempt_fix_paths")
+        col.prop(self, "remove_invalid_properties")
+
 
 def register():
+    bpy.utils.register_class(MustardUI_Property_FixPath)
     bpy.utils.register_class(MustardUI_Property_Rebuild)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_Property_Rebuild)
+    bpy.utils.unregister_class(MustardUI_Property_FixPath)
