@@ -171,6 +171,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     ptr_object: PointerProperty(
         type=bpy.types.Object, poll=lambda self, obj: obj.type == "MESH"
     )
+    ptr_key: PointerProperty(type=bpy.types.Key)
     ptr_material: PointerProperty(type=bpy.types.Material)
     ptr_collection: PointerProperty(type=bpy.types.Collection)
     ptr_node_tree: PointerProperty(type=bpy.types.NodeTree)

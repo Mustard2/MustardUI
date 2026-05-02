@@ -9,6 +9,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from .misc import (
+    assign_ptr,
     mustardui_add_driver,
     mustardui_check_cp,
     mustardui_choose_cp,
@@ -243,30 +244,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 cp.hair = context.scene.objects[self.hair]
 
             # Get the type and assign the pointer
-            try:
-                if "bpy.data.armatures" in rna:
-                    cp.ptr_armature = bpy.data.armatures[rna.split('"')[1]]
-                    cp.ptr_type = "ARMATURE"
-                elif "bpy.data.objects" in rna:
-                    cp.ptr_object = bpy.data.objects[rna.split('"')[1]]
-                    cp.ptr_type = "OBJECT" if "shape_keys" not in rna else "SHAPEKEY"
-                elif "bpy.data.materials" in rna:
-                    cp.ptr_material = bpy.data.materials[rna.split('"')[1]]
-                    cp.ptr_type = "MATERIAL"
-                elif "bpy.data.collections" in rna:
-                    cp.ptr_collection = bpy.data.collections[rna.split('"')[1]]
-                    cp.ptr_type = "COLLECTION"
-                elif "bpy.data.node_groups" in rna:
-                    cp.ptr_node_tree = bpy.data.node_groups[rna.split('"')[1]]
-                    cp.ptr_type = "NODE_TREE"
-                else:
-                    cp.ptr_type = "None"
-            except Exception as e:
-                if addon_prefs.debug:
-                    print(
-                        f"MustardUI - Error while assigning Custom Property pointer: {e}"
-                    )
-                cp.ptr_type = "None"
+            assign_ptr(cp, rna, addon_prefs)
 
             if cp.is_animatable:
                 ui_data_dict = obj.id_properties_ui(prop_name).as_dict()

@@ -16,6 +16,7 @@ from .misc import mustardui_clean_prop, mustardui_cp_path
 def replace_id_block(rna_path, id_type, new_name):
     patterns = {
         "OBJECT": r'bpy\.data\.objects\[".*?"\]',
+        "SHAPEKEY": r'bpy\.data\.shape_keys\[".*?"\]',
         "ARMATURE": r'bpy\.data\.armatures\[".*?"\]',
         "MATERIAL": r'bpy\.data\.materials\[".*?"\]',
         "COLLECTION": r'bpy\.data\.collections\[".*?"\]',
@@ -24,6 +25,7 @@ def replace_id_block(rna_path, id_type, new_name):
 
     replacements = {
         "OBJECT": f'bpy.data.objects["{new_name}"]',
+        "SHAPEKEY": f'bpy.data.shape_keys["{new_name}"]',
         "ARMATURE": f'bpy.data.armatures["{new_name}"]',
         "MATERIAL": f'bpy.data.materials["{new_name}"]',
         "COLLECTION": f'bpy.data.collections["{new_name}"]',
@@ -58,32 +60,24 @@ def fix_custom_property_path(obj, uilist, custom_prop, addon_prefs):
         custom_prop.rna = replace_id_block(
             custom_prop.rna, "OBJECT", custom_prop.ptr_object.name
         )
-    elif (
-        custom_prop.ptr_type == "SHAPEKEY"
-        and custom_prop.ptr_object
-        and custom_prop.ptr_object.data.shape_keys
-    ):
-        custom_prop.rna = (
-            f'bpy.data.objects["{custom_prop.ptr_object.name}"].data.shape_keys'
+    elif custom_prop.ptr_type == "SHAPEKEY" and custom_prop.ptr_key:
+        custom_prop.rna = replace_id_block(
+            custom_prop.rna, "SHAPEKEY", custom_prop.ptr_key.name
         )
-
     elif custom_prop.ptr_type == "ARMATURE" and custom_prop.ptr_armature:
         custom_prop.rna = replace_id_block(
             custom_prop.rna, "ARMATURE", custom_prop.ptr_armature.name
         )
-
     elif custom_prop.ptr_type == "MATERIAL" and custom_prop.ptr_material:
         custom_prop.rna = replace_id_block(
             custom_prop.rna, "MATERIAL", custom_prop.ptr_material.name
         )
-
     elif custom_prop.ptr_type == "COLLECTION" and custom_prop.ptr_collection:
         custom_prop.rna = replace_id_block(
             custom_prop.rna,
             "COLLECTION",
             custom_prop.ptr_collection.name,
         )
-
     elif custom_prop.ptr_type == "NODE_TREE" and custom_prop.ptr_node_tree:
         custom_prop.rna = replace_id_block(
             custom_prop.rna, "NODE_TREE", custom_prop.ptr_node_tree.name
@@ -298,6 +292,11 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         # Rebuilding custom properties and their linked properties drivers
         for custom_prop, prop_type in [x for x in custom_props if x[0].is_animatable]:
             try:
+                if evaluate_path(custom_prop.rna, custom_prop.path) is None:
+                    raise Exception(
+                        "Property not rebuildable because path is not valid"
+                    )
+
                 prop_name = custom_prop.prop_name
 
                 if prop_name in obj.keys():
@@ -412,8 +411,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                     ):
                         break
 
-                mustardui_clean_prop(obj, uilist, i, addon_prefs)
-                to_remove.append((i, prop_type))
+                    to_remove.append((i, prop_type))
 
         if self.remove_invalid_properties:
             for i, prop_type in reversed(to_remove):
@@ -424,6 +422,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                 else:
                     uilist = obj.MustardUI_CustomPropertiesHair
 
+                mustardui_clean_prop(obj, uilist, i, addon_prefs)
                 uilist.remove(i)
 
         obj.update_tag()
@@ -446,9 +445,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                     "infos.",
                 )
         else:
-            self.report(
-                {"INFO"}, "MustardUI - Custom Properties rebuilt."
-            )
+            self.report({"INFO"}, "MustardUI - Custom Properties rebuilt.")
 
         return {"FINISHED"}
 

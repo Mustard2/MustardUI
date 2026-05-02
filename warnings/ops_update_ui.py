@@ -1,6 +1,8 @@
 import bpy
 
+from .. import __package__ as base_package
 from .. import bl_info
+from ..custom_properties.misc import assign_ptr
 from ..model_selection.active_object import mustardui_active_object
 
 
@@ -21,6 +23,8 @@ def is_ui_update(rig_settings):
             and rig_settings.model_MustardUI_naming_convention
             and tuple(rig_settings.model_mustardui_version) < (2026, 4, 0)
         )
+        # Check for custom properties version
+        or (tuple(rig_settings.model_mustardui_version) < (2026, 5, 0))
     )
 
 
@@ -44,6 +48,8 @@ class MustardUI_UpdateUI(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
         simplify_settings = obj.MustardUI_SimplifySettings
+
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         if self.force:
             # Check if hair convention is satisfied, if not retrigger update
@@ -70,6 +76,11 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             rig_settings.hair_collection is not None
             and rig_settings.model_MustardUI_naming_convention
             and tuple(rig_settings.model_mustardui_version) < (2026, 4, 0)
+        )
+        custom_properties_status = tuple(rig_settings.model_mustardui_version) < (
+            2026,
+            5,
+            0,
         )
 
         errors = 0
@@ -209,6 +220,25 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 rig_settings.model_mustardui_version = bl_info["version"]
             except Exception:
                 errors += 1
+
+        if custom_properties_status:
+            custom_properties_types = [
+                ("MustardUI_CustomProperties", obj.MustardUI_CustomProperties),
+                (
+                    "MustardUI_CustomPropertiesOutfit",
+                    obj.MustardUI_CustomPropertiesOutfit,
+                ),
+                ("MustardUI_CustomPropertiesHair", obj.MustardUI_CustomPropertiesHair),
+            ]
+
+            for _, custom_properties in custom_properties_types:
+                for custom_prop in custom_properties:
+                    try:
+                        assign_ptr(custom_prop, custom_prop.rna, addon_prefs)
+                    except Exception:
+                        errors += 1
+
+            rig_settings.model_mustardui_version = bl_info["version"]
 
         if errors:
             self.report(

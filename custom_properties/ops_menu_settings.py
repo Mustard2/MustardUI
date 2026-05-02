@@ -274,11 +274,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             try:
                 ui_data = obj.id_properties_ui(custom_prop.prop_name)
                 ui_data_dict = ui_data.as_dict()
-            except Exception:
+            except Exception as e:
                 self.report(
                     {"ERROR"},
-                    "MustardUI - An error occurred while retrieving UI data. Try to "
-                    "rebuild properties to solve this",
+                    f"MustardUI - An error occurred while retrieving UI data: {e}. "
+                    f"Rebuild Properties might solve the issue.",
                 )
                 return {"FINISHED"}
 
@@ -322,7 +322,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         )
 
         return context.window_manager.invoke_props_dialog(
-            self, width=700 if addon_prefs.debug else 450
+            self, width=500
         )
 
     def draw(self, context):
@@ -528,6 +528,55 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 "changes!",
                 icon="ERROR",
             )
+
+        if addon_prefs.debug and custom_prop.ptr_type != "None":
+            box = layout.box()
+            row = box.row()
+            row.label(text="Debug", icon="INFO")
+            row = box.row()
+            row.enabled = False
+            if custom_prop.ptr_type == "ARMATURE":
+                row.prop(
+                    custom_prop,
+                    "ptr_armature",
+                    text="Stored Pointer: ",
+                    icon="ARMATURE_DATA",
+                )
+            elif custom_prop.ptr_type == "OBJECT":
+                row.prop(
+                    custom_prop,
+                    "ptr_object",
+                    text="Stored Pointer: ",
+                    icon="OBJECT_DATA",
+                )
+            elif custom_prop.ptr_type == "SHAPEKEY":
+                row.prop(
+                    custom_prop,
+                    "ptr_key",
+                    text="Stored Pointer: ",
+                    icon="SHAPEKEY_DATA",
+                )
+            elif custom_prop.ptr_type == "MATERIAL":
+                row.prop(
+                    custom_prop,
+                    "ptr_material",
+                    text="Stored Pointer: ",
+                    icon="MATERIAL_DATA",
+                )
+            elif custom_prop.ptr_type == "COLLECTION":
+                row.prop(
+                    custom_prop,
+                    "ptr_collection",
+                    text="",
+                    icon="OUTLINER_COLLECTION",
+                )
+            elif custom_prop.ptr_type == "NODE_TREE":
+                row.prop(
+                    custom_prop,
+                    "ptr_node_tree",
+                    text="Stored Pointer: ",
+                    icon="NODETREE",
+                )
 
 
 def register():
