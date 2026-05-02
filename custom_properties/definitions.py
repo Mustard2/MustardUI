@@ -141,7 +141,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
             ("Bool", "Bool", "Bool"),
         ),
     )
-    step_float: bpy.props.FloatProperty(name="Step")
+    step_float: bpy.props.FloatProperty(name="Step", default=0.01)
 
     # Properties stored to rebuild custom properties in case of troubles
     description: StringProperty()

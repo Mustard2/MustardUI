@@ -313,7 +313,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
                 if custom_prop.array_length == 0:
                     self.subtype = ui_data_dict["subtype"]
-                self.step_float = ui_data_dict["step"]
+                self.step_float = max(ui_data_dict["step"], 0.001)
 
         # Check if the custom property driver is available
         self.is_driver_corrupted = (

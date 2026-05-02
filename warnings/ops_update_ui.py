@@ -44,10 +44,10 @@ class MustardUI_UpdateUI(bpy.types.Operator):
         return poll if obj is not None else False
 
     def execute(self, context):
-        poll, obj = mustardui_active_object(context, config=-1)
-        rig_settings = obj.MustardUI_RigSettings
-        morphs_settings = obj.MustardUI_MorphsSettings
-        simplify_settings = obj.MustardUI_SimplifySettings
+        poll, arm = mustardui_active_object(context, config=-1)
+        rig_settings = arm.MustardUI_RigSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
+        simplify_settings = arm.MustardUI_SimplifySettings
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -135,7 +135,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 morphs_settings.enable_ui = False
 
                 # Switch out of configuration mode if needed
-                if not obj.MustardUI_enable:
+                if not arm.MustardUI_enable:
                     bpy.ops.mustardui.configuration()
 
                 errors += 1
@@ -223,12 +223,12 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
         if custom_properties_status:
             custom_properties_types = [
-                ("MustardUI_CustomProperties", obj.MustardUI_CustomProperties),
+                ("MustardUI_CustomProperties", arm.MustardUI_CustomProperties),
                 (
                     "MustardUI_CustomPropertiesOutfit",
-                    obj.MustardUI_CustomPropertiesOutfit,
+                    arm.MustardUI_CustomPropertiesOutfit,
                 ),
-                ("MustardUI_CustomPropertiesHair", obj.MustardUI_CustomPropertiesHair),
+                ("MustardUI_CustomPropertiesHair", arm.MustardUI_CustomPropertiesHair),
             ]
 
             for _, custom_properties in custom_properties_types:
