@@ -145,7 +145,7 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
         to_remove = []
 
         for prop_type_name, custom_properties in custom_properties_types:
-            for custom_prop in custom_properties:
+            for i, custom_prop in enumerate(custom_properties):
                 res = fix_custom_property_path(
                     obj, custom_properties, custom_prop, addon_prefs
                 )
@@ -157,11 +157,10 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
                     fixed += 1
                 elif res == "ERROR":
                     errors += 1
-                    to_remove.append((custom_prop, custom_properties))
+                    to_remove.append((i, custom_properties))
 
         if self.remove_invalid_properties:
-            for custom_prop, uilist in reversed(to_remove):
-                i = uilist.find(custom_prop.name)
+            for i, uilist in reversed(to_remove):
                 mustardui_clean_prop(
                     obj,
                     uilist,
@@ -308,7 +307,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         for custom_properties in custom_properties_types:
             to_remove = []
 
-            for custom_prop in custom_properties:
+            for i, custom_prop in enumerate(custom_properties):
                 try:
                     if evaluate_path(custom_prop.rna, custom_prop.path) is None:
                         raise Exception(
@@ -426,11 +425,10 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             + ". This custom property will be removed."
                         )
 
-                    to_remove.append(custom_prop)
+                    to_remove.append(i)
 
             if self.remove_invalid_properties:
-                for custom_prop in reversed(to_remove):
-                    i = custom_properties.find(custom_prop.name)
+                for i in reversed(to_remove):
                     mustardui_clean_prop(obj, custom_properties, i, addon_prefs)
                     custom_properties.remove(i)
 
