@@ -252,7 +252,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
-        addon_prefs = context.preferences.addons[base_package].preferences
 
         if len(custom_props) <= index:
             return {"FINISHED"}
