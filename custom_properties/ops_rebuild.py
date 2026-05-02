@@ -281,16 +281,10 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Rebuild all custom properties
-        custom_props = [(x, 0) for x in obj.MustardUI_CustomProperties]
-        for x in obj.MustardUI_CustomPropertiesOutfit:
-            custom_props.append((x, 1))
-        for x in obj.MustardUI_CustomPropertiesHair:
-            custom_props.append((x, 2))
-
         custom_properties_types = [
-            ("MustardUI_CustomProperties", obj.MustardUI_CustomProperties),
-            ("MustardUI_CustomPropertiesOutfit", obj.MustardUI_CustomPropertiesOutfit),
-            ("MustardUI_CustomPropertiesHair", obj.MustardUI_CustomPropertiesHair),
+            obj.MustardUI_CustomProperties,
+            obj.MustardUI_CustomPropertiesOutfit,
+            obj.MustardUI_CustomPropertiesHair,
         ]
 
         errors = 0
@@ -298,7 +292,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         # Try to assign pointers to custom properties to be able to fix their path
         pointers_errors = 0
         if self.assign_pointers:
-            for _, custom_properties in custom_properties_types:
+            for custom_properties in custom_properties_types:
                 for custom_prop in custom_properties:
                     try:
                         assign_ptr(custom_prop, custom_prop.rna, addon_prefs)
@@ -311,17 +305,18 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             )
 
         # Rebuilding custom properties and their linked properties drivers
-        for _, custom_properties in custom_properties_types:
+        for custom_properties in custom_properties_types:
             to_remove = []
 
-            for custom_prop, prop_type in [
-                x for x in custom_props if x[0].is_animatable
-            ]:
+            for custom_prop in custom_properties:
                 try:
                     if evaluate_path(custom_prop.rna, custom_prop.path) is None:
                         raise Exception(
                             "Property not rebuildable because path is not valid"
                         )
+
+                    if not custom_prop.is_animatable:
+                        continue
 
                     prop_name = custom_prop.prop_name
 
@@ -431,7 +426,6 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             + ". This custom property will be removed."
                         )
 
-                    i = custom_properties.find(custom_prop.name)
                     to_remove.append(custom_prop)
 
             if self.remove_invalid_properties:
