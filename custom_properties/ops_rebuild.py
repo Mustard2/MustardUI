@@ -231,7 +231,7 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
         box = layout.box()
         col = box.column(align=True)
         col.label(
-            text="This will attempt to recover CP paths.",
+            text="This will attempt to recover Custom Properties paths.",
             icon="INFO",
         )
 
