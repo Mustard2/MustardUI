@@ -10,6 +10,7 @@ from . import (
     ops_jiggle,
     ops_link_shape_keys,
     ops_naming,
+    ops_pack_rgba,
     ops_rename,
     ops_rename_images,
     ops_spline_ik,
@@ -34,9 +35,11 @@ def register():
     ops_naming.register()
     ops_link_shape_keys.register()
     ops_transfer_vertex_groups.register()
+    ops_pack_rgba.register()
 
 
 def unregister():
+    ops_pack_rgba.unregister()
     ops_transfer_vertex_groups.unregister()
     ops_link_shape_keys.unregister()
     ops_naming.unregister()
