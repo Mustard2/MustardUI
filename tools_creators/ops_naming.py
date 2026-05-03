@@ -122,9 +122,6 @@ class MustardUI_ToolsCreators_Naming(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self, width=450)
 
     def draw(self, context):
-
-        addon_prefs = context.preferences.addons[base_package].preferences
-
         layout = self.layout
 
         box = layout.box()

@@ -343,7 +343,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                         if abs_path != new_path:
                             os.rename(abs_path, new_path)
                             image.filepath = bpy.path.relpath(new_path)
-                except:
+                except Exception:
                     pass
 
         context.scene.mustardui_rename_images.clear()
