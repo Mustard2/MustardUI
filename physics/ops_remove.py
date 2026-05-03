@@ -15,11 +15,11 @@ class MustardUI_PhysicsItem_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=-1)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=-1)
         physics_settings = arm.MustardUI_PhysicsSettings
 
         uilist = physics_settings.items
