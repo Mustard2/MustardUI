@@ -9,7 +9,9 @@ from . import (
     ops_hair_cage_add_cloth,
     ops_jiggle,
     ops_link_shape_keys,
+    ops_naming,
     ops_rename,
+    ops_rename_images,
     ops_spline_ik,
     ops_transfer_vertex_groups,
     ops_transformations,
@@ -28,6 +30,8 @@ def register():
     ops_bone_physics.register()
     ops_face_controller.register()
     ops_rename.register()
+    ops_rename_images.register()
+    ops_naming.register()
     ops_link_shape_keys.register()
     ops_transfer_vertex_groups.register()
 
@@ -35,6 +39,8 @@ def register():
 def unregister():
     ops_transfer_vertex_groups.unregister()
     ops_link_shape_keys.unregister()
+    ops_naming.unregister()
+    ops_rename_images.unregister()
     ops_rename.unregister()
     ops_face_controller.unregister()
     ops_bone_physics.unregister()

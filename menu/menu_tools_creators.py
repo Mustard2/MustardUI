@@ -115,6 +115,12 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
+        row.operator(
+            "mustardui.tool_naming", icon="SMALL_CAPS", text="Enforce Naming on Data"
+        )
+        row = layout.row(align=True)
+        row.operator("mustardui.rename_image_nodes", icon="IMAGE_DATA")
+        row = layout.row(align=True)
         row.operator("mustardui.rename_model", icon="GREASEPENCIL")
 
 

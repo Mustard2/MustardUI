@@ -10,7 +10,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import assign_ptr, mustardui_clean_prop, mustardui_cp_path
+from .misc import assign_pointers, mustardui_clean_prop, mustardui_cp_path
 
 
 def replace_id_block(rna_path, id_type, new_name):
@@ -144,31 +144,27 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
         errors = 0
 
         custom_properties_types = [
-            ("MustardUI_CustomProperties", obj.MustardUI_CustomProperties),
-            ("MustardUI_CustomPropertiesOutfit", obj.MustardUI_CustomPropertiesOutfit),
-            ("MustardUI_CustomPropertiesHair", obj.MustardUI_CustomPropertiesHair),
+            obj.MustardUI_CustomProperties,
+            obj.MustardUI_CustomPropertiesOutfit,
+            obj.MustardUI_CustomPropertiesHair,
         ]
 
         # Try to assign pointers to custom properties to be able to fix their path
-        pointers_errors = 0
         if self.assign_pointers:
             for custom_properties in custom_properties_types:
-                for custom_prop in custom_properties:
-                    try:
-                        assign_ptr(custom_prop, custom_prop.rna, addon_prefs)
-                    except Exception:
-                        pointers_errors += 1
+                assign_pointers(custom_properties, addon_prefs)
 
         to_remove = []
 
-        for prop_type_name, custom_properties in custom_properties_types:
+        for custom_properties in custom_properties_types:
             for i, custom_prop in enumerate(custom_properties):
                 res = fix_custom_property_path(
                     obj, custom_properties, custom_prop, addon_prefs
                 )
                 if res != "VALID":
                     invalid += 1
-                elif res == "NOT_FIXABLE":
+
+                if res == "NOT_FIXABLE":
                     not_fixable += 1
                 elif res == "FIXED":
                     fixed += 1
@@ -231,7 +227,7 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
         box = layout.box()
         col = box.column(align=True)
         col.label(
-            text="This will attempt to recover Custom Properties paths.",
+            text="This tool attempts to recover Custom Properties paths.",
             icon="INFO",
         )
 
@@ -497,7 +493,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         box = layout.box()
         col = box.column(align=True)
         col.label(
-            text="This will attempt to rebuild all the drivers and custom properties.",
+            text="The tool attempts to rebuild all the drivers and custom properties.",
             icon="ERROR",
         )
         col.label(

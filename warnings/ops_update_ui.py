@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from .. import bl_info
-from ..custom_properties.misc import assign_ptr
+from ..custom_properties.misc import assign_pointers
 from ..model_selection.active_object import mustardui_active_object
 
 
@@ -223,20 +223,13 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
         if custom_properties_status:
             custom_properties_types = [
-                ("MustardUI_CustomProperties", arm.MustardUI_CustomProperties),
-                (
-                    "MustardUI_CustomPropertiesOutfit",
-                    arm.MustardUI_CustomPropertiesOutfit,
-                ),
-                ("MustardUI_CustomPropertiesHair", arm.MustardUI_CustomPropertiesHair),
+                arm.MustardUI_CustomProperties,
+                arm.MustardUI_CustomPropertiesOutfit,
+                arm.MustardUI_CustomPropertiesHair,
             ]
 
-            for _, custom_properties in custom_properties_types:
-                for custom_prop in custom_properties:
-                    try:
-                        assign_ptr(custom_prop, custom_prop.rna, addon_prefs)
-                    except Exception:
-                        errors += 1
+            for custom_properties in custom_properties_types:
+                assign_pointers(custom_properties, addon_prefs)
 
             rig_settings.model_mustardui_version = bl_info["version"]
 
