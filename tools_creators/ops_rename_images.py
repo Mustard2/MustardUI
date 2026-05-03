@@ -19,7 +19,9 @@ def sanitize_name(name: str):
 
 def make_node_label(name: str):
     parts = name.split("_")
-    return " ".join(p.upper() if p.upper() in {"AO", "UV"} else p.capitalize() for p in parts)
+    return " ".join(
+        p.upper() if p.upper() in {"AO", "UV"} else p.capitalize() for p in parts
+    )
 
 
 def detect_texture_type(name: str):
@@ -75,11 +77,7 @@ def detect_material_zone(material_name, image_name, node_name):
         ("Body", ["body", "torso"]),
     ]
 
-    sources = [
-        image_name.lower(),
-        node_name.lower(),
-        material_name.lower()
-    ]
+    sources = [image_name.lower(), node_name.lower(), material_name.lower()]
 
     # PASS 1: image name
     for zone, keys in mapping:
@@ -106,6 +104,7 @@ def detect_material_zone(material_name, image_name, node_name):
 # BASE EXTRACTION (CLEAN)
 # -------------------------
 
+
 def extract_base_name(image_name: str, tex_type: str, zone: str):
     # Remove .001 etc
     name = re.sub(r"\.\d+$", "", image_name).lower()
@@ -115,11 +114,26 @@ def extract_base_name(image_name: str, tex_type: str, zone: str):
 
     # Remove texture keywords
     type_words = [
-        "diffuse", "albedo", "basecolor", "color", "col",
-        "normal", "nrm", "roughness", "rough",
-        "metallic", "metal", "specular", "spec",
-        "ao", "opacity", "alpha", "height", "disp",
-        "emission", "emit"
+        "diffuse",
+        "albedo",
+        "basecolor",
+        "color",
+        "col",
+        "normal",
+        "nrm",
+        "roughness",
+        "rough",
+        "metallic",
+        "metal",
+        "specular",
+        "spec",
+        "ao",
+        "opacity",
+        "alpha",
+        "height",
+        "disp",
+        "emission",
+        "emit",
     ]
 
     for w in type_words:
@@ -128,15 +142,26 @@ def extract_base_name(image_name: str, tex_type: str, zone: str):
     # Remove ALL anatomical words
     zone_words = [
         "genital",
-        "fingernail", "toenail",
-        "eye", "iris", "sclera",
-        "face", "head",
+        "fingernail",
+        "toenail",
+        "eye",
+        "iris",
+        "sclera",
+        "face",
+        "head",
         "hair",
         "teeth",
-        "mouth", "tongue", "lips",
-        "arm", "hand",
-        "leg", "thigh", "calf", "foot",
-        "body", "torso"
+        "mouth",
+        "tongue",
+        "lips",
+        "arm",
+        "hand",
+        "leg",
+        "thigh",
+        "calf",
+        "foot",
+        "body",
+        "torso",
     ]
 
     for w in zone_words:
@@ -153,15 +178,15 @@ def extract_base_name(image_name: str, tex_type: str, zone: str):
 
 def make_node_color(tex_type: str):
     return {
-        "Diffuse":   (0.45, 0.45, 0.20),  # muted warm
-        "Normal":    (0.35, 0.40, 0.60),  # softer blue
+        "Diffuse": (0.45, 0.45, 0.20),  # muted warm
+        "Normal": (0.35, 0.40, 0.60),  # softer blue
         "Roughness": (0.25, 0.35, 0.50),  # cool muted
-        "Metallic":  (0.30, 0.30, 0.30),  # neutral gray
-        "Specular":  (0.40, 0.35, 0.45),  # subtle purple-gray
-        "AO":        (0.25, 0.45, 0.30),  # muted green
-        "Emission":  (0.60, 0.40, 0.20),  # toned orange
-        "Opacity":   (0.35, 0.35, 0.35),  # neutral
-        "Height":    (0.30, 0.30, 0.40),  # dark bluish
+        "Metallic": (0.30, 0.30, 0.30),  # neutral gray
+        "Specular": (0.40, 0.35, 0.45),  # subtle purple-gray
+        "AO": (0.25, 0.45, 0.30),  # muted green
+        "Emission": (0.60, 0.40, 0.20),  # toned orange
+        "Opacity": (0.35, 0.35, 0.35),  # neutral
+        "Height": (0.30, 0.30, 0.40),  # dark bluish
     }.get(tex_type, (0.35, 0.35, 0.35))  # fallback
 
 
@@ -205,9 +230,7 @@ class MustardUI_RenameImageNodes_Update(bpy.types.Operator):
 
             tex_type = detect_texture_type(original)
             zone = detect_material_zone(
-                item.material.name if item.material else "",
-                original,
-                item.node_name
+                item.material.name if item.material else "", original, item.node_name
             )
 
             base = extract_base_name(original, tex_type, zone)
@@ -256,10 +279,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
 
     rename_datablock: BoolProperty(default=True)
     rename_file: BoolProperty(default=False)
-    color_nodes: BoolProperty(
-        name="Color Nodes",
-        default=True
-    )
+    color_nodes: BoolProperty(name="Color Nodes", default=True)
 
     @classmethod
     def poll(cls, context):
@@ -306,7 +326,11 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                 image.name = new_name
 
             if self.rename_file:
-                if image.packed_file or image.source == 'TILED' or "<UDIM>" in image.filepath:
+                if (
+                    image.packed_file
+                    or image.source == "TILED"
+                    or "<UDIM>" in image.filepath
+                ):
                     continue
 
                 try:
@@ -334,8 +358,12 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
         row.operator("mustardui.rename_image_nodes_update", icon="LOOP_FORWARDS")
 
         row = box.row(align=True)
-        row.operator("mustardui.rename_image_nodes_select_all", text="Select All").value = True
-        row.operator("mustardui.rename_image_nodes_select_all", text="None").value = False
+        row.operator(
+            "mustardui.rename_image_nodes_select_all", text="Select All"
+        ).value = True
+        row.operator(
+            "mustardui.rename_image_nodes_select_all", text="None"
+        ).value = False
 
         box = layout.box()
         for item in col:
@@ -358,6 +386,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
 # -------------------------
 # REGISTER
 # -------------------------
+
 
 def register():
     bpy.utils.register_class(MustardUI_RenameImageNodes_Item)
