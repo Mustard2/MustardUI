@@ -1,6 +1,5 @@
 import bpy
 
-from .. import __package__ as base_package
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
