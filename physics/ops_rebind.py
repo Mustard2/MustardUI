@@ -208,8 +208,7 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
 
 
 class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
-    """Rebind cages to the current Outfit.\nDepending on the number of Physics Items, Blender might freeze for a
-    while"""  # noqa: E501
+    """Rebind cages to the current Outfit.\nDepending on the number of Physics Items, Blender might freeze for a while"""  # noqa: E501
 
     bl_idname = "mustardui.physics_rebind_outfit"
     bl_label = "Rebind Physics"
