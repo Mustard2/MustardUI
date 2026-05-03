@@ -35,12 +35,12 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
 
         # Create new image
         packed = bpy.data.images.new("Packed_RGBA", width=w, height=h, alpha=True)
-        packed.colorspace_settings.name = 'Non-Color'
+        packed.colorspace_settings.name = "Non-Color"
 
         # Load pixel data
         channels = []
         for img in images:
-            img.colorspace_settings.name = 'Non-Color'
+            img.colorspace_settings.name = "Non-Color"
 
             pixels = list(img.pixels[:])
 
