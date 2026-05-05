@@ -57,10 +57,7 @@ class MustardUI_HairVisibility(bpy.types.Operator):
             set_object_visibility(obj, visible, rig_settings)
 
             parent_armature = obj.find_armature()
-            if (
-                parent_armature is not None
-                and parent_armature in hair_collection_objs
-            ):
+            if parent_armature is not None and parent_armature in hair_collection_objs:
                 set_object_visibility(parent_armature, visible, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic

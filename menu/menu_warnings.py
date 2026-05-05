@@ -58,7 +58,9 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             col.label(text="Old UI script found!", icon="TEXT")
             col.label(text="Save the current Blender file and", icon="BLANK1")
             col.label(text="restart after using this!", icon="BLANK1")
-            box.operator("mustardui.warnings_fix_old_ui", icon="BRUSH_DATA")
+            row = box.row(align=True)
+            row.alert = True
+            row.operator("mustardui.warnings_remove_old_ui", icon="BRUSH_DATA")
             # Other panels should not be drawn before the above issue is solved
             return
 

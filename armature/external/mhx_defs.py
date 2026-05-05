@@ -1,5 +1,5 @@
 from ...model_selection.active_object import mustardui_active_object
-from ...warnings.ops_fix_old_UI import can_draw_ui
+from ...warnings.can_draw_ui import can_draw_ui
 
 # MHX porting guide
 #

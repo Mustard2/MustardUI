@@ -4,10 +4,10 @@ from bpy.props import BoolProperty
 from .can_draw_ui import can_draw_ui
 
 
-class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
+class MustardUI_Warnings_RemoveOldUI(bpy.types.Operator):
     """Remove old and unused old UI. Remember to save and restart Blender after using this tool"""  # noqa: E501
 
-    bl_idname = "mustardui.warnings_fix_old_ui"
+    bl_idname = "mustardui.warnings_remove_old_ui"
     bl_label = "Remove Outdated UI scripts"
     bl_options = {"UNDO"}
 
@@ -66,8 +66,8 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_Warnings_FixOldUI)
+    bpy.utils.register_class(MustardUI_Warnings_RemoveOldUI)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Warnings_FixOldUI)
+    bpy.utils.unregister_class(MustardUI_Warnings_RemoveOldUI)
