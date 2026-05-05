@@ -26,10 +26,16 @@ class PANEL_PT_MustardUI_Armature_External(MainPanel, bpy.types.Panel):
             layout.label(text="MHX")
 
     def draw(self, context):
+        poll, obj = mustardui_active_object(context, config=0)
+
         ob = context.object
-        if not (ob and ob.get("MhxRig", False)):
+        if not (ob and ob.get("MhxRig", False)) or ob.data != obj:
             layout = self.layout
-            layout.label(text="Hidden: Select MHX Armature", icon="ERROR")
+            layout.operator(
+                "mustardui.armature_select",
+                text="Select Armature",
+                icon="RESTRICT_SELECT_OFF",
+            )
 
 
 def register():

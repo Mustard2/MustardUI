@@ -19,10 +19,9 @@ from ...warnings.can_draw_ui import can_draw_ui
 # - Add to each other panel
 #       bl_parent_id = "PANEL_PT_MustardUI_Armature_External"
 # - Add the poll function
-# @classmethod
+#    @classmethod
 #    def poll(cls, context):
-#        ob = context.object
-#        return (ob and ob.get("MhxRig", False)) and panel_poll(cls, context)
+#        return panel_poll_mhx(cls, context)
 #
 # - Adjust classes at the end for register/unregister
 # - Change the names of the operators substituting MHX_OT with MHX_OT_MustardUI_
@@ -34,7 +33,7 @@ def panel_poll(cls, context):
         return False
 
     res, arm = mustardui_active_object(context, config=0)
-    if not res:
+    if not res or arm is None:
         return False
 
     rig_settings = arm.MustardUI_RigSettings
@@ -46,6 +45,17 @@ def panel_poll(cls, context):
     rig = arm.MustardUI_RigSettings.model_armature_object
 
     if rig_settings.model_rig_type == "mhx":
-        return all(name in rig for name in ("MhaArmIk_L", "MhaArmIk_R"))
+        return rig.get("MhxRig", False)
 
     return False
+
+
+def panel_poll_mhx(cls, context):
+    poll = panel_poll(cls, context)
+
+    res, arm = mustardui_active_object(context, config=0)
+    if not res or arm is None:
+        return False
+
+    ob = context.object
+    return poll and ob.data == arm

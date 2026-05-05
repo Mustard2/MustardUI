@@ -7,7 +7,7 @@ from .utils import *
 from .layers import *
 
 from ....menu import MainPanel
-from ...external.mhx_defs import panel_poll
+from ...external.mhx_defs import panel_poll_mhx
 
 
 def needsMhxUpdate(layout, rig):
@@ -40,8 +40,7 @@ class MHX_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        ob = context.object
-        return (ob and ob.get("MhxRig", False)) and panel_poll(cls, context)
+        return panel_poll_mhx(cls, context)
 
     def draw(self, context):
         rig = context.object
@@ -148,8 +147,7 @@ class MHX_PT_MustardUI_FKIKArmsLegs(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        ob = context.object
-        return (ob and ob.get("MhxRig", False)) and panel_poll(cls, context)
+        return panel_poll_mhx(cls, context)
 
     def draw(self, context):
         rig = context.object
@@ -230,8 +228,7 @@ class MHX_PT_MustardUI_FKIKFingers(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        ob = context.object
-        return (ob and ob.get("MhxRig", False)) and panel_poll(cls, context)
+        return panel_poll_mhx(cls, context)
 
     def draw(self, context):
         rig = context.object
@@ -318,8 +315,7 @@ class MHX_PT_MustardUI_Animation(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        ob = context.object
-        return (ob and ob.get("MhxRig", False)) and panel_poll(cls, context)
+        return panel_poll_mhx(cls, context)
 
     def draw(self, context):
         rig = context.object
