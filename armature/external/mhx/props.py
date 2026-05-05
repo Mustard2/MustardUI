@@ -13,7 +13,7 @@ from .fkik import Updater
 # ---------------------------------------------------------------------
 
 class MHX_OT_MustardUI_UpdateMhxBlender4(MhxOperator):
-    bl_idname = "mhx.update_mhx_blender4"
+    bl_idname = "mhx.mustardui_update_mhx_blender4"
     bl_label = "Update MHX To Blender 4"
     bl_options = {'UNDO'}
 
@@ -35,7 +35,7 @@ class MHX_OT_MustardUI_UpdateMhxBlender4(MhxOperator):
 # ---------------------------------------------------------------------
 
 class MHX_OT_MustardUI_ConvertMhxActions(MhxOperator):
-    bl_idname = "mhx.convert_mhx_actions"
+    bl_idname = "mhx.mustardui_convert_mhx_actions"
     bl_label = "Convert MHX Actions"
     bl_description = "Convert actions between legacy MHX (root/hips) and modern MHX (hip/pelvis)"
     bl_options = {'UNDO'}
@@ -96,7 +96,7 @@ def setRigLayer(rig, layer, value):
 
 
 class MHX_OT_MustardUI_EnableAllLayers(MhxOperator):
-    bl_idname = "mhx.enable_all_layers"
+    bl_idname = "mhx.mustardui_enable_all_layers"
     bl_label = "Enable all layers"
     bl_options = {'UNDO'}
 
@@ -111,7 +111,7 @@ class MHX_OT_MustardUI_EnableAllLayers(MhxOperator):
 
 
 class MHX_OT_MustardUI_DisableAllLayers(MhxOperator):
-    bl_idname = "mhx.disable_all_layers"
+    bl_idname = "mhx.mustardui_disable_all_layers"
     bl_label = "Disable all layers"
     bl_options = {'UNDO'}
 
@@ -137,7 +137,7 @@ class MHX_OT_MustardUI_DisableAllLayers(MhxOperator):
 #-------------------------------------------------------------
 
 class MHX_OT_MustardUI_UpdateMhx(MhxOperator):
-    bl_idname = "mhx.update_mhx"
+    bl_idname = "mhx.mustardui_update_mhx"
     bl_label = "Update MHX"
     bl_options = {'UNDO'}
 
@@ -329,7 +329,7 @@ def copyLocation(bone, target, rig, prop=None, expr="x", space='WORLD'):
 #-------------------------------------------------------------
 
 class MHX_OT_MustardUI_Unhinge(MhxOperator, Updater):
-    bl_idname = "mhx.unhinge"
+    bl_idname = "mhx.mustardui_unhinge"
     bl_label = "Unhinge"
     bl_description = "Remove hinges"
     bl_options = {'UNDO'}

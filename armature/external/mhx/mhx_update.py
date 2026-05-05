@@ -11,7 +11,7 @@ from .utils import *
 #-------------------------------------------------------------
 
 class MHX_OT_MustardUI_UpdateMhx(MhxOperator):
-    bl_idname = "mhx.update_mhx_animation"
+    bl_idname = "mhx.mustardui_update_mhx_animation"
     bl_label = "Update MHX Animation"
     bl_description = "Update MHX animation"
     bl_options = {'UNDO'}

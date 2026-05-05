@@ -25,6 +25,8 @@ from ...warnings.can_draw_ui import can_draw_ui
 #        return (ob and ob.get("MhxRig", False)) and panel_poll(cls, context)
 #
 # - Adjust classes at the end for register/unregister
+# - Change the names of the operators substituting MHX_OT with MHX_OT_MustardUI_
+# - Change the bl_idname of the operators substituting mhx. with mhx.mustardui_
 
 
 def panel_poll(cls, context):

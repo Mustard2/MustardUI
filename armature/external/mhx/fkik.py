@@ -556,7 +556,7 @@ class FootSnapper(Snapper):
 #-------------------------------------------------------------
 
 class MHX_OT_MustardUI_MhxSnapFkLeftArm(Snapper, HideOperator):
-    bl_idname = "mhx.snap_fk_left_arm"
+    bl_idname = "mhx.mustardui_snap_fk_left_arm"
     bl_label = "Snap FK"
     bl_description = "Snap the left FK arm to the pose of the left IK arm"
     bl_options = {'UNDO'}
@@ -577,7 +577,7 @@ class MHX_OT_MustardUI_MhxSnapFkLeftArm(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapFkRightArm(Snapper, HideOperator):
-    bl_idname = "mhx.snap_fk_right_arm"
+    bl_idname = "mhx.mustardui_snap_fk_right_arm"
     bl_label = "Snap FK"
     bl_description = "Snap the right FK arm to the pose of the right IK arm"
     bl_options = {'UNDO'}
@@ -598,7 +598,7 @@ class MHX_OT_MustardUI_MhxSnapFkRightArm(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapFkLeftLeg(Snapper, HideOperator):
-    bl_idname = "mhx.snap_fk_left_leg"
+    bl_idname = "mhx.mustardui_snap_fk_left_leg"
     bl_label = "Snap FK"
     bl_description = "Snap the left FK leg to the pose of the left IK leg"
     bl_options = {'UNDO'}
@@ -620,7 +620,7 @@ class MHX_OT_MustardUI_MhxSnapFkLeftLeg(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapFkRightLeg(Snapper, HideOperator):
-    bl_idname = "mhx.snap_fk_right_leg"
+    bl_idname = "mhx.mustardui_snap_fk_right_leg"
     bl_label = "Snap FK"
     bl_description = "Snap the right FK leg to the pose of the right IK leg"
     bl_options = {'UNDO'}
@@ -642,7 +642,7 @@ class MHX_OT_MustardUI_MhxSnapFkRightLeg(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapFkAll(Snapper, HideOperator):
-    bl_idname = "mhx.snap_fk_all"
+    bl_idname = "mhx.mustardui_snap_fk_all"
     bl_label = "Snap FK All"
     bl_description = "Snap all FK limbs to the pose of IK limbs"
     bl_options = {'UNDO'}
@@ -678,7 +678,7 @@ class MHX_OT_MustardUI_MhxSnapFkAll(Snapper, HideOperator):
 #-------------------------------------------------------------
 
 class MHX_OT_MustardUI_MhxSnapIkLeftArm(Snapper, HideOperator):
-    bl_idname = "mhx.snap_ik_left_arm"
+    bl_idname = "mhx.mustardui_snap_ik_left_arm"
     bl_label = "Snap IK"
     bl_description = "Snap the left IK arm to the pose of the left FK arm"
     bl_options = {'UNDO'}
@@ -699,7 +699,7 @@ class MHX_OT_MustardUI_MhxSnapIkLeftArm(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapIkRightArm(Snapper, HideOperator):
-    bl_idname = "mhx.snap_ik_right_arm"
+    bl_idname = "mhx.mustardui_snap_ik_right_arm"
     bl_label = "Snap IK"
     bl_description = "Snap the right IK arm to the pose of the right FK arm"
     bl_options = {'UNDO'}
@@ -720,7 +720,7 @@ class MHX_OT_MustardUI_MhxSnapIkRightArm(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapIkLeftLeg(FootSnapper, HideOperator):
-    bl_idname = "mhx.snap_ik_left_leg"
+    bl_idname = "mhx.mustardui_snap_ik_left_leg"
     bl_label = "Snap IK"
     bl_description = "Snap the left IK leg to the pose of the left FK leg"
     bl_options = {'UNDO'}
@@ -743,7 +743,7 @@ class MHX_OT_MustardUI_MhxSnapIkLeftLeg(FootSnapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapIkRightLeg(FootSnapper, HideOperator):
-    bl_idname = "mhx.snap_ik_right_leg"
+    bl_idname = "mhx.mustardui_snap_ik_right_leg"
     bl_label = "Snap IK"
     bl_description = "Snap the right IK leg to the pose of the right FK leg"
     bl_options = {'UNDO'}
@@ -766,7 +766,7 @@ class MHX_OT_MustardUI_MhxSnapIkRightLeg(FootSnapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapIkAll(FootSnapper, HideOperator):
-    bl_idname = "mhx.snap_ik_all"
+    bl_idname = "mhx.mustardui_snap_ik_all"
     bl_label = "Snap IK All"
     bl_description = "Snap all IK limbs to the pose of FK limbs"
     bl_options = {'UNDO'}
@@ -803,7 +803,7 @@ class MHX_OT_MustardUI_MhxSnapIkAll(FootSnapper, HideOperator):
 #-------------------------------------------------------------
 
 class MHX_OT_MustardUI_MhxSnapReverse(Snapper, HideOperator):
-    bl_idname = "mhx.snap_reverse"
+    bl_idname = "mhx.mustardui_snap_reverse"
     bl_label = "Snap Reverse"
     bl_description = "Snap bone to reversed bone"
     bl_options = {'UNDO'}
@@ -830,7 +830,7 @@ class MHX_OT_MustardUI_MhxSnapReverse(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapFingers(Snapper, HideOperator):
-    bl_idname = "mhx.snap_fingers"
+    bl_idname = "mhx.mustardui_snap_fingers"
     bl_label = "Snap Fingers"
     bl_description = "Snap finger links"
     bl_options = {'UNDO'}
@@ -843,7 +843,7 @@ class MHX_OT_MustardUI_MhxSnapFingers(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapSpine(Snapper, HideOperator):
-    bl_idname = "mhx.snap_spine"
+    bl_idname = "mhx.mustardui_snap_spine"
     bl_label = "Snap Spine"
     bl_description = "Snap the spine bones and clear the back bone"
     bl_options = {'UNDO'}
@@ -856,7 +856,7 @@ class MHX_OT_MustardUI_MhxSnapSpine(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapTongue(Snapper, HideOperator):
-    bl_idname = "mhx.snap_tongue"
+    bl_idname = "mhx.mustardui_snap_tongue"
     bl_label = "Snap Tongue"
     bl_description = "Snap the tongue links and clear the tongue bone"
     bl_options = {'UNDO'}
@@ -867,7 +867,7 @@ class MHX_OT_MustardUI_MhxSnapTongue(Snapper, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxSnapShaft(Snapper, HideOperator):
-    bl_idname = "mhx.snap_shaft"
+    bl_idname = "mhx.mustardui_snap_shaft"
     bl_label = "Snap Shaft"
     bl_description = "Snap the shaft links and clear the shaft bone"
     bl_options = {'UNDO'}
@@ -904,7 +904,7 @@ class FootClearer:
 
 
 class MHX_OT_MustardUI_MhxClearFeet(FootClearer, HideOperator):
-    bl_idname = "mhx.clear_feet"
+    bl_idname = "mhx.mustardui_clear_feet"
     bl_label = "Clear Feet"
     bl_description = "Clear pose for feet and toes"
     bl_options = {'UNDO'}
@@ -914,7 +914,7 @@ class MHX_OT_MustardUI_MhxClearFeet(FootClearer, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxClearFingers(FootClearer, HideOperator):
-    bl_idname = "mhx.clear_fingers"
+    bl_idname = "mhx.mustardui_clear_fingers"
     bl_label = "Clear Fingers"
     bl_description = "Clear pose for fingers"
     bl_options = {'UNDO'}
@@ -925,7 +925,7 @@ class MHX_OT_MustardUI_MhxClearFingers(FootClearer, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxClearTongue(FootClearer, HideOperator):
-    bl_idname = "mhx.clear_tongue"
+    bl_idname = "mhx.mustardui_clear_tongue"
     bl_label = "Clear Tongue"
     bl_description = "Clear pose for tongue"
     bl_options = {'UNDO'}
@@ -935,7 +935,7 @@ class MHX_OT_MustardUI_MhxClearTongue(FootClearer, HideOperator):
 
 
 class MHX_OT_MustardUI_MhxClearFace(FootClearer, HideOperator):
-    bl_idname = "mhx.clear_face"
+    bl_idname = "mhx.mustardui_clear_face"
     bl_label = "Clear Face"
     bl_description = "Clear pose for face bones"
     bl_options = {'UNDO'}
@@ -977,7 +977,7 @@ class ToggleFkIk(Updater):
 
 
 class MHX_OT_MustardUI_MhxToggleFkIkLeftArm(MhxOperator, ToggleFkIk):
-    bl_idname = "mhx.toggle_fkik_left_arm"
+    bl_idname = "mhx.mustardui_toggle_fkik_left_arm"
     bl_label = ""
     bl_description = "Toggle left arm FK - IK"
     bl_options = {'UNDO'}
@@ -987,7 +987,7 @@ class MHX_OT_MustardUI_MhxToggleFkIkLeftArm(MhxOperator, ToggleFkIk):
 
 
 class MHX_OT_MustardUI_MhxToggleFkIkRightArm(MhxOperator, ToggleFkIk):
-    bl_idname = "mhx.toggle_fkik_right_arm"
+    bl_idname = "mhx.mustardui_toggle_fkik_right_arm"
     bl_label = ""
     bl_description = "Toggle right arm FK - IK"
     bl_options = {'UNDO'}
@@ -997,7 +997,7 @@ class MHX_OT_MustardUI_MhxToggleFkIkRightArm(MhxOperator, ToggleFkIk):
 
 
 class MHX_OT_MustardUI_MhxToggleFkIkLeftLeg(MhxOperator, ToggleFkIk):
-    bl_idname = "mhx.toggle_fkik_left_leg"
+    bl_idname = "mhx.mustardui_toggle_fkik_left_leg"
     bl_label = ""
     bl_description = "Toggle left leg FK - IK"
     bl_options = {'UNDO'}
@@ -1007,7 +1007,7 @@ class MHX_OT_MustardUI_MhxToggleFkIkLeftLeg(MhxOperator, ToggleFkIk):
 
 
 class MHX_OT_MustardUI_MhxToggleFkIkRightLeg(MhxOperator, ToggleFkIk):
-    bl_idname = "mhx.toggle_fkik_right_leg"
+    bl_idname = "mhx.mustardui_toggle_fkik_right_leg"
     bl_label = ""
     bl_description = "Toggle right leg FK - IK"
     bl_options = {'UNDO'}
@@ -1043,7 +1043,7 @@ class SetFkIk(Updater):
 
 
 class MHX_OT_MustardUI_SetFkAll(SetFkIk, MhxOperator):
-    bl_idname = "mhx.set_fk_all"
+    bl_idname = "mhx.mustardui_set_fk_all"
     bl_label = "Set FK All"
     bl_description = "Set all limbs to FK"
     bl_options = {'UNDO'}
@@ -1052,7 +1052,7 @@ class MHX_OT_MustardUI_SetFkAll(SetFkIk, MhxOperator):
 
 
 class MHX_OT_MustardUI_SetIkAll(SetFkIk, MhxOperator):
-    bl_idname = "mhx.set_ik_all"
+    bl_idname = "mhx.mustardui_set_ik_all"
     bl_label = "Set IK All"
     bl_description = "Set all limbs to IK"
     bl_options = {'UNDO'}
@@ -1064,7 +1064,7 @@ class MHX_OT_MustardUI_SetIkAll(SetFkIk, MhxOperator):
 #----------------------------------------------------------
 
 class MHX_OT_MustardUI_MhxUpdateElbowKneeParents(MhxOperator, Updater):
-    bl_idname = "mhx.update_elbow_knee_parents"
+    bl_idname = "mhx.mustardui_update_elbow_knee_parents"
     bl_label = "Update Elbow And Knee Parents"
     bl_description = "Update parents of the elbow and knee pole targets"
     bl_options = {'UNDO'}
@@ -1144,7 +1144,7 @@ class ToggleToeTarsal:
 
 
 class MHX_OT_MustardUI_MhxToggleLeftToeTarsal(MhxOperator, ToggleToeTarsal):
-    bl_idname = "mhx.toggle_left_toe_tarsal"
+    bl_idname = "mhx.mustardui_toggle_left_toe_tarsal"
     bl_label = "Left Toe"
     bl_description = "Toggle left small toes parent (toe or tarsal bone)"
     bl_options = {'UNDO'}
@@ -1153,7 +1153,7 @@ class MHX_OT_MustardUI_MhxToggleLeftToeTarsal(MhxOperator, ToggleToeTarsal):
         self.toggle(context, "MhaToeTarsal_L", "L")
 
 class MHX_OT_MustardUI_MhxToggleRightToeTarsal(MhxOperator, ToggleToeTarsal):
-    bl_idname = "mhx.toggle_right_toe_tarsal"
+    bl_idname = "mhx.mustardui_toggle_right_toe_tarsal"
     bl_label = "Right Toe"
     bl_description = "Toggle right small toes parent (toe or tarsal bone)"
     bl_options = {'UNDO'}
@@ -1166,7 +1166,7 @@ class MHX_OT_MustardUI_MhxToggleRightToeTarsal(MhxOperator, ToggleToeTarsal):
 #----------------------------------------------------------
 
 class MHX_OT_MustardUI_MhxToggleLimits(MhxOperator):
-    bl_idname = "mhx.toggle_limits"
+    bl_idname = "mhx.mustardui_toggle_limits"
     bl_label = "Limits"
     bl_description = "Toggle limit constraints (location, rotation, scale)"
 
