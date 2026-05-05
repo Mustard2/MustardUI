@@ -50,9 +50,14 @@ class MustardUI_HairVisibility(bpy.types.Operator):
             return {"CANCELLED"}
 
         # Loop through hair objects
-        for obj in [x for x in hair_collection.objects]:
+        for obj in [x for x in hair_collection.objects if x.type != "ARMATURE"]:
             visible = hair_list == obj.name
+
             set_object_visibility(obj, visible, rig_settings)
+
+            parent_armature = obj.find_armature()
+            if parent_armature is not None:
+                set_object_visibility(parent_armature, visible, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)

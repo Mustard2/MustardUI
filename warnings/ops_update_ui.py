@@ -140,12 +140,12 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
                 errors += 1
 
-        # Check if Simplify was enabled in previous versions
+        # 2025.3.0 - Check if Simplify was enabled in previous versions
         if simplify_status:
             simplify_settings.simplify_main_enable = True
             rig_settings.simplify_main_enable = False
 
-        # Check if the Hair curves were used
+        # 2025.3.0 - Check if the Hair curves were used
         if curves_hair_status and rig_settings.hair_collection is not None:
             if any(x.type == "CURVES" for x in rig_settings.hair_collection.objects):
                 try:
@@ -172,7 +172,24 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             else:
                 rig_settings.curves_hair_enable = False
 
-        # Check Hair naming convention
+        # 2025.4.0 - Check Hair naming convention
+        def update_hair_name(name):
+            # Remove any old convention
+            name = name.replace(f"{rig_settings.model_name} Hair ", "")
+            name = name.replace(f"{rig_settings.model_name} ", "")
+
+            # Replace the name with the new convention
+
+            # Handle the case when the hair and the collection have the
+            # same name, the _armature_ won't be named correctly
+            # It will be named: Hair_Collection - Armature, without any
+            # hair specification before Armature
+            is_armature = name == "Armature"
+            handle_default_hair = "Hair " if is_armature else ""
+            name = f"{hair_collection.name} - {handle_default_hair}" + name
+
+            return name
+
         if hair_convention_status and rig_settings.hair_collection is not None:
             try:
                 hair_collection = rig_settings.hair_collection
@@ -185,24 +202,14 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                     [x for x in hair_collection.objects if x is not None]
                 ):
                     if not obj.name.startswith(f"{hair_collection.name} - "):
-                        # Remove any old convention
-                        obj.name = obj.name.replace(
-                            f"{rig_settings.model_name} Hair ", ""
-                        )
-                        obj.name = obj.name.replace(f"{rig_settings.model_name} ", "")
-
-                        # Replace the name with the new convention
-
-                        # Handle the case when the hair and the collection have the
-                        # same name, the _armature_ won't be named correctly
-                        # It will be named: Hair_Collection - Armature, without any
-                        # hair specification before Armature
-                        is_armature = obj.name == "Armature"
-                        handle_default_hair = "Hair " if is_armature else ""
-                        obj.name = (
-                            f"{hair_collection.name} - {handle_default_hair}" + obj.name
-                        )
-                    if not obj.hide_viewport and not obj.hide_render:
+                        obj_name = obj.name
+                        obj_name = update_hair_name(obj_name)
+                        obj.name = obj_name
+                    if (
+                        not obj.hide_viewport
+                        and not obj.hide_render
+                        and obj.type == "MESH"
+                    ):
                         object_active = obj.name
 
                 # Fix the list index
@@ -211,6 +218,14 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 if object_active != "":
                     try:
                         rig_settings.hair_list = object_active
+                        # Also show the Armature
+                        for obj in hair_collection.objects:
+                            if obj.name == rig_settings.hair_list:
+                                parent_armature = None
+                                if parent_armature is not None:
+                                    parent_armature.hide_viewport = False
+                                    parent_armature.hide_render = False
+                                break
                     except Exception:
                         rig_settings.hair_list = hlist[0][0]
                 # Otherwise fix the list index with the first element in the list
@@ -221,6 +236,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             except Exception:
                 errors += 1
 
+        # 2025.5.0 - Update Custom Properties with the pointers
         if custom_properties_status:
             custom_properties_types = [
                 arm.MustardUI_CustomProperties,
@@ -235,9 +251,8 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
         if errors:
             self.report(
-                {"ERROR"}, "MustardUI - An error occurred while updating the model."
+                {"WARNING"}, "MustardUI - Errors occurred while updating the model."
             )
-            return {"FINISHED"}
 
         self.report({"INFO"}, "MustardUI - UI updated.")
         return {"FINISHED"}
