@@ -138,7 +138,7 @@ class Bender(Basic):
                     kp.co[1] = y0
 
 
-class MHX_OT_LimbsBendPositive(FrameRange, Bender):
+class MHX_OT_MustardUI_LimbsBendPositive(FrameRange, Bender):
     bl_idname = "mhx.limbs_bend_positive"
     bl_label = "Bend Limbs Positive"
     bl_description = "Ensure that limbs' X rotation is positive."
@@ -158,7 +158,7 @@ class MHX_OT_LimbsBendPositive(FrameRange, Bender):
 #   Remove unused F-curves
 #-------------------------------------------------------------
 
-class MHX_OT_RemoveUnusedFcurves(MhxOperator, HasAction):
+class MHX_OT_MustardUI_RemoveUnusedFcurves(MhxOperator, HasAction):
     bl_idname = "mhx.remove_unused_fcurves"
     bl_label = "Remove Unused F-curves"
     bl_description = "Remove unused f-curves"
@@ -239,7 +239,7 @@ class LimitEnforcer:
         return None
 
 
-class MHX_OT_EnforceLimits(LimitEnforcer, HideOperator, Basic):
+class MHX_OT_MustardUI_EnforceLimits(LimitEnforcer, HideOperator, Basic):
     bl_idname = "mhx.enforce_limits"
     bl_label = "Enforce Limits"
     bl_description = "Keep all channels within limits"
@@ -263,7 +263,7 @@ class MHX_OT_EnforceLimits(LimitEnforcer, HideOperator, Basic):
         pass
 
 
-class MHX_OT_ClearIkTwistBones(HideOperator, Basic):
+class MHX_OT_MustardUI_ClearIkTwistBones(HideOperator, Basic):
     bl_idname = "mhx.clear_ik_twist_bones"
     bl_label = "Clear IK Twist Bones"
     bl_description = "Clear IK twist bones"
@@ -298,7 +298,7 @@ class MHX_OT_ClearIkTwistBones(HideOperator, Basic):
 
 
 
-class MHX_OT_EnforceAllLimits(LimitEnforcer, FrameRange, Basic):
+class MHX_OT_MustardUI_EnforceAllLimits(LimitEnforcer, FrameRange, Basic):
     bl_idname = "mhx.enforce_all_limits"
     bl_label = "Enforce All Limits"
     bl_description = "Keep all channels within limits for active action"
@@ -417,7 +417,7 @@ class Transferer:
 #   Transfer to links
 #------------------------------------------------------------------------
 
-class MHX_OT_TransferToLinks(Snapper, FrameRange):
+class MHX_OT_MustardUI_TransferToLinks(Snapper, FrameRange):
     bl_idname = "mhx.transfer_to_links"
     bl_label = "Transfer To Links"
     bl_description = "Transfer animation to link bones"
@@ -505,7 +505,7 @@ class MHX_OT_TransferToLinks(Snapper, FrameRange):
 #   Transfer to FK
 #------------------------------------------------------------------------
 
-class MHX_OT_TransferToFk(Transferer, FootSnapper, FrameRange, Bender):
+class MHX_OT_MustardUI_TransferToFk(Transferer, FootSnapper, FrameRange, Bender):
     bl_idname = "mhx.transfer_to_fk"
     bl_label = "Transfer IK => FK"
     bl_description = "Transfer IK animation to FK bones"
@@ -565,7 +565,7 @@ class MHX_OT_TransferToFk(Transferer, FootSnapper, FrameRange, Bender):
 #   Transfer to IK
 #------------------------------------------------------------------------
 
-class MHX_OT_TransferToIk(Transferer, FootSnapper, FrameRange):
+class MHX_OT_MustardUI_TransferToIk(Transferer, FootSnapper, FrameRange):
     bl_idname = "mhx.transfer_to_ik"
     bl_label = "Transfer FK => IK"
     bl_description = "Transfer FK animation to IK bones"
@@ -646,7 +646,7 @@ class MHX_OT_TransferToIk(Transferer, FootSnapper, FrameRange):
 #   Clear animation
 #------------------------------------------------------------------------
 
-class MHX_OT_ClearAnimation(FrameRange):
+class MHX_OT_MustardUI_ClearAnimation(FrameRange):
     bl_idname = "mhx.clear_animation"
     bl_label = "Clear Animation"
     bl_description = "Clear Animation For FK or IK Bones"
@@ -863,7 +863,7 @@ class Footer(Basic):
 #   Offset toes
 #-------------------------------------------------------------
 
-class MHX_OT_ConstrainFeet(MhxOperator):
+class MHX_OT_MustardUI_ConstrainFeet(MhxOperator):
     bl_idname = "mhx.constrain_feet"
     bl_label = "Constrain Feet"
     bl_description = "Add aggressive constraints to the feet"
@@ -919,7 +919,7 @@ def getTailOffset(pb, ez, origin):
 #   Floor
 #-------------------------------------------------------------
 
-class MHX_OT_ShiftBoneFCurves(FrameRange, Basic):
+class MHX_OT_MustardUI_ShiftBoneFCurves(FrameRange, Basic):
     bl_idname = "mhx.shift_animation"
     bl_label = "Shift Animation"
     bl_description = "Shift the animation globally for selected boens"
@@ -1020,7 +1020,7 @@ class MHX_OT_ShiftBoneFCurves(FrameRange, Basic):
 #   Floor FK foot
 #-------------------------------------------------------------
 
-class MHX_OT_FloorFkFoot(Footer, FrameRange):
+class MHX_OT_MustardUI_FloorFkFoot(Footer, FrameRange):
     bl_idname = "mhx.floor_fk_feet"
     bl_label = "Keep FK Feet Above Floor"
     bl_description = "Keep FK Feet Above Zero Plane"
@@ -1096,7 +1096,7 @@ class MHX_OT_FloorFkFoot(Footer, FrameRange):
 #   Floor IK foot
 #-------------------------------------------------------------
 
-class MHX_OT_FloorIkFoot(Footer, FrameRange):
+class MHX_OT_MustardUI_FloorIkFoot(Footer, FrameRange):
     bl_idname = "mhx.floor_ik_feet"
     bl_label = "Keep IK Feet Above Floor"
     bl_description = "Keep IK Feet Above Zero Plane"
@@ -1269,19 +1269,19 @@ class MHX_OT_FloorIkFoot(Footer, FrameRange):
 #----------------------------------------------------------
 
 classes = [
-    MHX_OT_RemoveUnusedFcurves,
-    MHX_OT_ConstrainFeet,
-    MHX_OT_EnforceLimits,
-    MHX_OT_ClearIkTwistBones,
-    MHX_OT_EnforceAllLimits,
-    MHX_OT_LimbsBendPositive,
-    MHX_OT_ShiftBoneFCurves,
-    MHX_OT_TransferToLinks,
-    MHX_OT_TransferToFk,
-    MHX_OT_TransferToIk,
-    MHX_OT_ClearAnimation,
-    MHX_OT_FloorFkFoot,
-    MHX_OT_FloorIkFoot,
+    MHX_OT_MustardUI_RemoveUnusedFcurves,
+    MHX_OT_MustardUI_ConstrainFeet,
+    MHX_OT_MustardUI_EnforceLimits,
+    MHX_OT_MustardUI_ClearIkTwistBones,
+    MHX_OT_MustardUI_EnforceAllLimits,
+    MHX_OT_MustardUI_LimbsBendPositive,
+    MHX_OT_MustardUI_ShiftBoneFCurves,
+    MHX_OT_MustardUI_TransferToLinks,
+    MHX_OT_MustardUI_TransferToFk,
+    MHX_OT_MustardUI_TransferToIk,
+    MHX_OT_MustardUI_ClearAnimation,
+    MHX_OT_MustardUI_FloorFkFoot,
+    MHX_OT_MustardUI_FloorIkFoot,
 ]
 
 def register():

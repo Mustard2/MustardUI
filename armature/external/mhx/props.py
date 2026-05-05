@@ -12,7 +12,7 @@ from .fkik import Updater
 #   Convert MHX actions from legacy to modern
 # ---------------------------------------------------------------------
 
-class MHX_OT_UpdateMhxBlender4(MhxOperator):
+class MHX_OT_MustardUI_UpdateMhxBlender4(MhxOperator):
     bl_idname = "mhx.update_mhx_blender4"
     bl_label = "Update MHX To Blender 4"
     bl_options = {'UNDO'}
@@ -34,7 +34,7 @@ class MHX_OT_UpdateMhxBlender4(MhxOperator):
 #   Convert MHX actions from legacy to modern
 # ---------------------------------------------------------------------
 
-class MHX_OT_ConvertMhxActions(MhxOperator):
+class MHX_OT_MustardUI_ConvertMhxActions(MhxOperator):
     bl_idname = "mhx.convert_mhx_actions"
     bl_label = "Convert MHX Actions"
     bl_description = "Convert actions between legacy MHX (root/hips) and modern MHX (hip/pelvis)"
@@ -95,7 +95,7 @@ def setRigLayer(rig, layer, value):
             coll.is_visible = value
 
 
-class MHX_OT_EnableAllLayers(MhxOperator):
+class MHX_OT_MustardUI_EnableAllLayers(MhxOperator):
     bl_idname = "mhx.enable_all_layers"
     bl_label = "Enable all layers"
     bl_options = {'UNDO'}
@@ -110,7 +110,7 @@ class MHX_OT_EnableAllLayers(MhxOperator):
                     coll.is_visible = True
 
 
-class MHX_OT_DisableAllLayers(MhxOperator):
+class MHX_OT_MustardUI_DisableAllLayers(MhxOperator):
     bl_idname = "mhx.disable_all_layers"
     bl_label = "Disable all layers"
     bl_options = {'UNDO'}
@@ -136,7 +136,7 @@ class MHX_OT_DisableAllLayers(MhxOperator):
 #   Update MHX
 #-------------------------------------------------------------
 
-class MHX_OT_UpdateMhx(MhxOperator):
+class MHX_OT_MustardUI_UpdateMhx(MhxOperator):
     bl_idname = "mhx.update_mhx"
     bl_label = "Update MHX"
     bl_options = {'UNDO'}
@@ -328,7 +328,7 @@ def copyLocation(bone, target, rig, prop=None, expr="x", space='WORLD'):
 #   Unhinge
 #-------------------------------------------------------------
 
-class MHX_OT_Unhinge(MhxOperator, Updater):
+class MHX_OT_MustardUI_Unhinge(MhxOperator, Updater):
     bl_idname = "mhx.unhinge"
     bl_label = "Unhinge"
     bl_description = "Remove hinges"
@@ -370,12 +370,12 @@ class MHX_OT_Unhinge(MhxOperator, Updater):
 #----------------------------------------------------------
 
 classes = [
-    MHX_OT_EnableAllLayers,
-    MHX_OT_DisableAllLayers,
-    MHX_OT_ConvertMhxActions,
-    MHX_OT_UpdateMhxBlender4,
-    MHX_OT_UpdateMhx,
-    MHX_OT_Unhinge,
+    MHX_OT_MustardUI_EnableAllLayers,
+    MHX_OT_MustardUI_DisableAllLayers,
+    MHX_OT_MustardUI_ConvertMhxActions,
+    MHX_OT_MustardUI_UpdateMhxBlender4,
+    MHX_OT_MustardUI_UpdateMhx,
+    MHX_OT_MustardUI_Unhinge,
 ]
 
 def register():
