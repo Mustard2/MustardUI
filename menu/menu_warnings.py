@@ -23,7 +23,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     def poll(cls, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=-1)
 
         if obj is not None:
             # If an old script is available, only this warning is shown
@@ -46,7 +46,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=-1)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
