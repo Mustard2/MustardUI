@@ -3,7 +3,7 @@ import bpy
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
 from ..morphs.misc import get_cp_source, get_section_by_diffeomorphic_id
-from ..warnings.ops_fix_old_UI import can_draw_ui
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 

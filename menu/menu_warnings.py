@@ -1,8 +1,8 @@
 import bpy
 
 from ..model_selection.active_object import mustardui_active_object
+from ..warnings.can_draw_ui import can_draw_ui
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
-from ..warnings.ops_fix_old_UI import can_draw_ui
 from ..warnings.ops_update_ui import is_ui_update
 from . import MainPanel
 

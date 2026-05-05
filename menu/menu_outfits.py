@@ -5,7 +5,7 @@ import bpy
 from ..misc.outfits import outfit_extract_items_from_collection
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import can_draw_ui
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .misc import mustardui_custom_properties_print
 
