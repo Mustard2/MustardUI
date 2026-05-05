@@ -50,7 +50,7 @@ class MustardUI_HairVisibility(bpy.types.Operator):
             return {"CANCELLED"}
 
         # Loop through hair objects
-        for obj in [x for x in hair_collection.objects if x.type != "ARMATURE"]:
+        for obj in [x for x in hair_collection.objects if x.type in {"MESH", "CURVES"}]:
             visible = hair_list == obj.name
 
             set_object_visibility(obj, visible, rig_settings)
