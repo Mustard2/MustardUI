@@ -77,6 +77,9 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
+        if arm is None:
+            return False
+
         physics_settings = arm.MustardUI_PhysicsSettings
         return (
             res

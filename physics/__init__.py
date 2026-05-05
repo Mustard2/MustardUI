@@ -4,7 +4,6 @@ from . import (
     ops_cache,
     ops_delete,
     ops_mirror,
-    ops_presets_io,
     ops_rebind,
     ops_remove,
     ops_setup,
@@ -14,7 +13,6 @@ from . import (
     ui_list,
     ui_list_menu,
     ui_list_outfits,
-    ui_presets,
 )
 
 
@@ -33,13 +31,9 @@ def register():
     ui_list.register()
     ui_list_outfits.register()
     ui_list_menu.register()
-    ops_presets_io.register()
-    ui_presets.register()
 
 
 def unregister():
-    ui_presets.unregister()
-    ops_presets_io.unregister()
     ui_list_menu.unregister()
     ui_list_outfits.unregister()
     ui_list.unregister()

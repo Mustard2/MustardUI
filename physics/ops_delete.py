@@ -1,6 +1,9 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
@@ -10,9 +13,13 @@ class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
     bl_label = "Delete Physics Item"
     bl_options = {"UNDO"}
 
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
+
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=-1)
         physics_settings = arm.MustardUI_PhysicsSettings
 
         uilist = physics_settings.items

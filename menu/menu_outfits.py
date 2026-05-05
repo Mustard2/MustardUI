@@ -5,7 +5,7 @@ import bpy
 from ..misc.outfits import outfit_extract_items_from_collection
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .misc import mustardui_custom_properties_print
 
@@ -184,7 +184,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
 
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)
@@ -253,6 +253,11 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
         row = layout.row(align=True)
         row.prop(rig_settings, "outfits_list", text="")
+
+        if rig_settings.hair_collection is not None and any(
+            x.hair is not None for x in rig_settings.outfits_collections
+        ):
+            row.prop(rig_settings, "hair_switch_with_outfit", text="", icon="CURVES")
 
         if rig_settings.outfits_list != "Nude":
             collection = bpy.data.collections[rig_settings.outfits_list]
@@ -389,7 +394,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
 
 class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
-    bl_label = "Extras"
+    bl_label = ""
     bl_parent_id = "PANEL_PT_MustardUI_Outfits"
     bl_options = {"HEADER_LAYOUT_EXPAND"}
 
@@ -413,6 +418,26 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         extras_avail = len(items) > 0
 
         return res and extras_avail
+
+    def draw_header(self, context):
+        poll, arm = mustardui_active_object(context, config=0)
+        rig_settings = arm.MustardUI_RigSettings
+
+        layout = self.layout
+
+        row = layout.row(align=True)
+        row.label(text="Extras")
+
+        row2 = row.row(align=True)
+        row2.enabled = rig_settings.outfits_show
+        row2.prop(
+            rig_settings,
+            "show_viewport_extras",
+            text="",
+            icon="RESTRICT_VIEW_OFF"
+            if rig_settings.show_viewport_extras
+            else "RESTRICT_VIEW_ON",
+        )
 
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings

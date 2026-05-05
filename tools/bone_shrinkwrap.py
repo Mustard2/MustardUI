@@ -2,10 +2,6 @@ import bpy
 
 from ..model_selection.active_object import mustardui_active_object
 
-# =========================================================
-# UNIVERSAL LIP DETECTION
-# =========================================================
-
 
 def detect_lip_map(armature):
     names = {b.name for b in armature.data.bones}

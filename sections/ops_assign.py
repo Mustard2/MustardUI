@@ -3,10 +3,10 @@ import bpy
 from ..model_selection.active_object import mustardui_active_object
 
 
-class MustardUI_Body_AssignToSection(bpy.types.Operator):
+class MustardUI_Section_PropertyAssign(bpy.types.Operator):
     """Assign properties to the selected section"""
 
-    bl_idname = "mustardui.body_assign_to_section"
+    bl_idname = "mustardui.section_property_assign"
     bl_label = "Assign Properties"
     bl_options = {"UNDO"}
 
@@ -69,8 +69,8 @@ class MustardUI_Body_AssignToSection(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_Body_AssignToSection)
+    bpy.utils.register_class(MustardUI_Section_PropertyAssign)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Body_AssignToSection)
+    bpy.utils.unregister_class(MustardUI_Section_PropertyAssign)

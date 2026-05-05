@@ -1,6 +1,9 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Armature_ResetCollections(bpy.types.Operator):
@@ -12,9 +15,7 @@ class MustardUI_Armature_ResetCollections(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
-        res, arm = mustardui_active_object(context, config=0)
-        return res
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
 
@@ -26,6 +27,11 @@ class MustardUI_Armature_ResetCollections(bpy.types.Operator):
                 and coll.MustardUI_ArmatureBoneCollection.default
             )
             coll.is_solo = False
+
+        # Outfits visibility sync, (Hair does not seem to be affected by the reset)
+        arm = obj.MustardUI_ArmatureSettings
+
+        arm.armature_visibility_outfits_update(context)
 
         return {"FINISHED"}
 

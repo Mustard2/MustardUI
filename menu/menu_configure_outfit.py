@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -13,7 +13,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=1)
@@ -60,7 +60,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row()
             row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
-            row.operator("Mustardui.outfits_smartcheck", text="", icon="SHADERFX")
+            row.operator("mustardui.outfits_smartcheck", text="", icon="SHADERFX")
 
             # Outfits list panel
             box = box.box()
@@ -92,6 +92,14 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             op.is_config = True
             op.delete_cp = True
 
+            if rig_settings.hair_collection is not None:
+                box.prop(
+                    rig_settings.outfits_collections[
+                        scene.mustardui_outfits_uilist_index
+                    ],
+                    "hair",
+                )
+
             # Outfit properties
             box = layout.box()
             box.label(text="Global properties", icon="MODIFIER")
@@ -108,6 +116,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             box = layout.box()
             row = box.row()
             row.label(text="Custom properties", icon="PRESET_NEW")
+            row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
 
             if len(arm.MustardUI_CustomPropertiesOutfit) > 0:
                 row = box.row()

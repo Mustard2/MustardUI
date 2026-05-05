@@ -6,8 +6,8 @@ from ..configuration.naming_convention import (
 )
 from ..misc.icons import get_hair_icon
 from ..model_selection.active_object import mustardui_active_object
+from .ops_add import MustardUI_Property_MenuAdd
 from .ops_link import MustardUI_Property_MenuLink
-from .ops_props import MustardUI_Property_MenuAdd
 
 
 class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):

@@ -4,7 +4,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -18,7 +18,7 @@ class PANEL_PT_MustardUI_Development(MainPanel, bpy.types.Panel):
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, obj = mustardui_active_object(context, config=0)

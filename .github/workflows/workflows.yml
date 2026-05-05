@@ -1,4 +1,4 @@
-name: Formatting and Linting
+name: Continuous Integration
 
 on:
   pull_request:
@@ -7,7 +7,9 @@ on:
       - main
 
 jobs:
-  build:
+  lint:
+    name: Formatting and Linting
+
     runs-on: ubuntu-latest
 
     steps:
@@ -25,3 +27,15 @@ jobs:
 
       - name: Check formatting with Ruff
         run: ruff format --check .
+
+  blender:
+    strategy:
+      matrix:
+        blender: [ "5.1.0", "4.5.8", "4.2.19" ]
+
+    name: Blender ${{ matrix.blender }}
+    needs: lint
+    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v2
+    with:
+      timeout-seconds: 180
+      blender-version: ${{ matrix.blender }}

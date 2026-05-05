@@ -3,7 +3,6 @@ from . import (
     ops_defvalue,
     ops_drivers,
     ops_optimize,
-    ops_presets_io,
     settings,
     settings_morph,
     settings_presets,
@@ -11,7 +10,6 @@ from . import (
     ui_list_morphs,
     ui_list_morphs_menu,
     ui_list_sections,
-    ui_presets,
 )
 
 
@@ -27,13 +25,9 @@ def register():
     ui_list_sections.register()
     ui_list_morphs.register()
     ui_list_morphs_menu.register()
-    ui_presets.register()
-    ops_presets_io.register()
 
 
 def unregister():
-    ops_presets_io.unregister()
-    ui_presets.unregister()
     ui_list_morphs_menu.unregister()
     ui_list_morphs.unregister()
     ui_list_sections.unregister()

@@ -30,7 +30,10 @@ the scope of MustardUI
 import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
@@ -54,8 +57,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
-        return res and bpy.context.selected_objects
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
 

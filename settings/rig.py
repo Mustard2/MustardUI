@@ -605,6 +605,24 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Extras Collection", type=bpy.types.Collection, poll=poll_collection_extras
     )
 
+    # Show in Viewport
+    def show_viewport_extras_update(self, context):
+        if self.extras_collection is None:
+            return
+        extras_objects = self.extras_collection.objects
+
+        if any(not obj.hide_viewport for obj in extras_objects):
+            self.extras_collection.hide_viewport = not self.show_viewport_extras
+        else:
+            self.extras_collection.hide_viewport = True
+
+    show_viewport_extras: bpy.props.BoolProperty(
+        default=True,
+        name="Show Armature",
+        description="",
+        update=show_viewport_extras_update,
+    )
+
     # ------------------------------------------------------------------------
     #    Hair properties
     # ------------------------------------------------------------------------
@@ -902,6 +920,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Show Particle Systems in the UI.\nIf enabled, "
         "particle systems on the body mesh are automatically "
         "be added to the UI",
+    )
+
+    # Switch Hair when changing Outfit if set in the Outfit settings
+    hair_switch_with_outfit: bpy.props.BoolProperty(
+        default=True,
+        name="Switch Hair on Outfit Change",
+        description="If assigned, switch Hair when changing an Outfit, if assigned",
     )
 
     # ------------------------------------------------------------------------

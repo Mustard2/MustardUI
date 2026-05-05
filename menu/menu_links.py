@@ -1,7 +1,7 @@
 import bpy
 
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -12,7 +12,7 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=0)

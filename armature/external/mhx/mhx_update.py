@@ -10,8 +10,8 @@ from .utils import *
 #   Update MHX
 #-------------------------------------------------------------
 
-class MHX_OT_UpdateMhx(MhxOperator):
-    bl_idname = "mhx.update_mhx_animation"
+class MHX_OT_MustardUI_UpdateMhx(MhxOperator):
+    bl_idname = "mhx.mustardui_update_mhx_animation"
     bl_label = "Update MHX Animation"
     bl_description = "Update MHX animation"
     bl_options = {'UNDO'}
@@ -28,7 +28,7 @@ class MHX_OT_UpdateMhx(MhxOperator):
 #-------------------------------------------------------------
 
 classes = [
-    MHX_OT_UpdateMhx,
+    MHX_OT_MustardUI_UpdateMhx,
 ]
 
 def register():

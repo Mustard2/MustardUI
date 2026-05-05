@@ -2,7 +2,7 @@ import bpy
 
 from ..misc.mirror import check_mirror
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -93,7 +93,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
 
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, obj = mustardui_active_object(context, config=0)
@@ -129,6 +129,12 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             )
         else:
             return res and len(enabled_colls) > 0
+
+    def draw_header(self, context):
+        poll, obj = mustardui_active_object(context, config=0)
+        armature_settings = obj.MustardUI_ArmatureSettings
+
+        self.layout.prop(armature_settings, "show_viewport", text="", toggle=False)
 
     def draw(self, context):
 

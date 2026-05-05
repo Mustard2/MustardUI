@@ -55,6 +55,9 @@ class MustardUI_Configuration(bpy.types.Operator):
                     )
                     return {"FINISHED"}
 
+                # Set the version with which the model has been created
+                rig_settings.model_mustardui_version = bl_info["version"]
+
             # Check Body mesh scale
             if (
                 rig_settings.model_body.scale[0] != 1.0
@@ -229,9 +232,6 @@ class MustardUI_Configuration(bpy.types.Operator):
                 rig_settings.model_version_date = date_str
             else:
                 rig_settings.model_version_date = ""
-
-            # Set the version with which the model has been saved
-            rig_settings.model_mustardui_version = bl_info["version"]
 
             # Clean the model temporary settings
             settings.rename_outfits_temp_class.clear()

@@ -41,6 +41,18 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                     if kb is not None:
                         kb.value = 0.0
 
+        # Check if a preset is default
+        preset_default = -1
+        preset_name = ""
+        for i, preset in enumerate(morphs_settings.presets):
+            if preset.default:
+                preset_default = i
+                preset_name = preset.name
+                break
+        # Apply the preset
+        if preset_default > -1:
+            bpy.ops.mustardui.morphs_preset_apply()
+
         # Update everything
         if arm:
             arm.update_tag()
@@ -53,7 +65,13 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                 rig_settings.model_body.data.update()
         bpy.context.view_layer.update()
 
-        self.report({"INFO"}, "MustardUI - Morphs values restored to default.")
+        if preset_default < 0:
+            self.report({"INFO"}, "MustardUI - Morphs values restored to default.")
+        else:
+            self.report(
+                {"INFO"},
+                f"MustardUI - Morphs values restored to preset '{preset_name}'.",
+            )
 
         return {"FINISHED"}
 

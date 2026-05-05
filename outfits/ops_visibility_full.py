@@ -67,6 +67,20 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
 
             any_object_visible = False
 
+            # Switch Hair if available
+            if (
+                rig_settings.hair_switch_with_outfit
+                and is_active
+                and rig_settings.hair_collection is not None
+                and col_entry.hair is not None
+                and rig_settings.hair_list != col_entry.hair.name
+            ):
+                hair_objects = [
+                    x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+                ]
+                if col_entry.hair in hair_objects:
+                    rig_settings.hair_list = col_entry.hair.name
+
             for obj in items:
                 hidden_flag = obj.MustardUI_outfit_visibility
 

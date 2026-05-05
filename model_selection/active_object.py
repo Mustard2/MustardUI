@@ -7,19 +7,61 @@ def mustardui_active_object(context, config=0):
 
     # If Viewport Model Selection is enabled, the active object will be the active
     # object only if it is an armature
+    # If not an Armature, additional checks are made to determine the active object:
+    # - is the object parent to an armature,
+    # - the object has only one armature modifier with a valid object
+    # - the object has only one ChildOf modifier with a valid target
+    # The above are tested one after another, starting with the first which is the
+    # least expensive to check
     if settings.viewport_model_selection:
         if context.active_object is None:
             return False, None
 
         obj = context.active_object
 
+        arm = None
         if obj.data is not None and obj.type == "ARMATURE":
-            if config == 1:
-                return not obj.data.MustardUI_enable, obj.data
-            elif config == 0:
-                return obj.data.MustardUI_enable, obj.data
-            elif config == -1:
-                return True, obj.data
+            arm = obj.data
+        if obj.type == "MESH":
+            parent = obj.parent
+            if (
+                parent is not None
+                and parent.type == "ARMATURE"
+                and parent.data is not None
+            ):
+                arm = parent.data
+            if arm is None:
+                modifiers = [
+                    x
+                    for x in obj.modifiers
+                    if x.type == "ARMATURE"
+                    and x.object is not None
+                    and x.object.data is not None
+                ]
+                if len(modifiers) == 1:
+                    for m in modifiers:
+                        arm = m.object.data
+            if arm is None:
+                constraints = [
+                    x
+                    for x in obj.constraints
+                    if x.type == "CHILD_OF"
+                    and x.target is not None
+                    and x.target.data is not None
+                ]
+                if len(constraints) == 1:
+                    for c in constraints:
+                        arm = c.target.data
+
+        if arm is None:
+            return False, None
+
+        if config == 1:
+            return not arm.MustardUI_enable, arm
+        elif config == 0:
+            return arm.MustardUI_enable, arm
+        elif config == -1:
+            return True, arm
 
         return False, None
 
@@ -41,3 +83,8 @@ def mustardui_active_object(context, config=0):
                 return True, settings.panel_model_selection_armature
 
     return False, None
+
+
+def active_object_operator_poll(context, config=0):
+    poll, arm = mustardui_active_object(context, config=config)
+    return poll if arm is not None else False

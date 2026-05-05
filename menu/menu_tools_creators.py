@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -12,7 +12,7 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=1)
@@ -50,7 +50,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=1)
@@ -98,7 +98,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=1)
@@ -115,6 +115,12 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
+        row.operator(
+            "mustardui.tool_naming", icon="SMALL_CAPS", text="Enforce Naming on Data"
+        )
+        row = layout.row(align=True)
+        row.operator("mustardui.rename_image_nodes", icon="IMAGE_DATA")
+        row = layout.row(align=True)
         row.operator("mustardui.rename_model", icon="GREASEPENCIL")
 
 
@@ -125,7 +131,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=1)
@@ -159,7 +165,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=1)

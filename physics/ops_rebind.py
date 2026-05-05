@@ -1,7 +1,10 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 def bind_object(
@@ -142,8 +145,7 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
 
@@ -206,8 +208,7 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
 
 
 class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
-    """Rebind cages to the current Outfit.\nDepending on the number of Physics Items, Blender might freeze for a
-    while"""  # noqa: E501
+    """Rebind cages to the current Outfit.\nDepending on the number of Physics Items, Blender might freeze for a while"""  # noqa: E501
 
     bl_idname = "mustardui.physics_rebind_outfit"
     bl_label = "Rebind Physics"

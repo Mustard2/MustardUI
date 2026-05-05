@@ -93,14 +93,14 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=1)
-        if not res:
+        if arm is None:
             return False
 
         if len(bpy.context.selected_objects) > 1:
             return False
 
         if bpy.context.active_object and bpy.context.active_object.type == "MESH":
-            return bpy.context.active_object.MustardUI_tools_creators_is_created
+            return res and bpy.context.active_object.MustardUI_tools_creators_is_created
 
         return False
 

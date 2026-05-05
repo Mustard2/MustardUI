@@ -46,35 +46,6 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         "actions)",
     )
 
-    # Internal stored properties
-    rna: StringProperty(name="RNA")
-    path: StringProperty(name="Path")
-    prop_name: StringProperty(name="Property Name")
-    is_animatable: BoolProperty(name="Animatable")
-    type: StringProperty(name="Type")
-    array_length: IntProperty(name="Array Length")
-    subtype: StringProperty(name="Subtype")
-    force_type: EnumProperty(
-        name="Force Property Type",
-        default="None",
-        items=(
-            ("None", "None", "None"),
-            ("Int", "Int", "Int"),
-            ("Bool", "Bool", "Bool"),
-        ),
-    )
-    step_float: bpy.props.FloatProperty(name="Step")
-
-    # Properties stored to rebuild custom properties in case of troubles
-    description: StringProperty()
-    default_int: IntProperty()
-    min_int: IntProperty()
-    max_int: IntProperty()
-    default_float: FloatProperty()
-    min_float: FloatProperty()
-    max_float: FloatProperty()
-    default_array: StringProperty()
-
     # Linked properties
     linked_properties: CollectionProperty(type=MustardUI_LinkedProperty)
 
@@ -152,6 +123,58 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     # Hair
     hair: PointerProperty(name="Hair Style", type=bpy.types.Object, poll=poll_mesh)
+
+    # Internal stored properties
+    rna: StringProperty(name="RNA")
+    path: StringProperty(name="Path")
+    prop_name: StringProperty(name="Property Name")
+    is_animatable: BoolProperty(name="Animatable")
+    type: StringProperty(name="Type")
+    array_length: IntProperty(name="Array Length")
+    subtype: StringProperty(name="Subtype")
+    force_type: EnumProperty(
+        name="Force Property Type",
+        default="None",
+        items=(
+            ("None", "None", "None"),
+            ("Int", "Int", "Int"),
+            ("Bool", "Bool", "Bool"),
+        ),
+    )
+    step_float: bpy.props.FloatProperty(name="Step", default=0.01)
+
+    # Properties stored to rebuild custom properties in case of troubles
+    description: StringProperty()
+    default_int: IntProperty()
+    min_int: IntProperty()
+    max_int: IntProperty()
+    default_float: FloatProperty()
+    min_float: FloatProperty()
+    max_float: FloatProperty()
+    default_array: StringProperty()
+
+    # Pointers to rebuild the property in case of troubles
+    ptr_type: EnumProperty(
+        name="Custom Property Source",
+        default="None",
+        items=(
+            ("None", "None", "None"),
+            ("ARMATURE", "Armature", "Armature"),
+            ("OBJECT", "Object", "Object"),
+            ("SHAPEKEY", "Shape Key", "Shape Key"),
+            ("MATERIAL", "Material", "Material"),
+            ("COLLECTION", "Collection", "Collection"),
+            ("NODE_TREE", "Node Tree", "Node Tree"),
+        ),
+    )
+    ptr_armature: PointerProperty(type=bpy.types.Armature)
+    ptr_object: PointerProperty(
+        type=bpy.types.Object, poll=lambda self, obj: obj.type == "MESH"
+    )
+    ptr_key: PointerProperty(type=bpy.types.Key)
+    ptr_material: PointerProperty(type=bpy.types.Material)
+    ptr_collection: PointerProperty(type=bpy.types.Collection)
+    ptr_node_tree: PointerProperty(type=bpy.types.NodeTree)
 
 
 def register():

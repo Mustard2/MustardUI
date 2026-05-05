@@ -17,15 +17,15 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
     def poll(cls, context):
 
         res, arm = mustardui_active_object(context, config=1)
-        rig_settings = arm.MustardUI_RigSettings
+        if arm is None:
+            return False
 
-        if arm is not None:
-            return (
-                res
-                and rig_settings.model_name != ""
-                and rig_settings.model_MustardUI_naming_convention
-            )
-        return False
+        rig_settings = arm.MustardUI_RigSettings
+        return (
+            res
+            and rig_settings.model_name != ""
+            and rig_settings.model_MustardUI_naming_convention
+        )
 
     def change_modifiers_name(self, obj, old_name):
         if obj.modifiers is None:

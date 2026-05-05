@@ -175,11 +175,10 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
-        simplify_settings = arm.MustardUI_SimplifySettings
-
         if arm is None:
             return False
 
+        simplify_settings = arm.MustardUI_SimplifySettings
         return res and simplify_settings.simplify_main_enable
 
     def execute(self, context):

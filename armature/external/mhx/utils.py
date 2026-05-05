@@ -227,12 +227,12 @@ class MhxPopup(bpy.types.Operator):
 
 
 class ErrorOperator(MhxPopup):
-    bl_idname = "mhx.error"
+    bl_idname = "mhx.mustardui_error"
     bl_label = "MHX Error"
 
 
 class MessageOperator(MhxPopup):
-    bl_idname = "mhx.message"
+    bl_idname = "mhx.mustardui_message"
     bl_label = "MHX"
 
 
@@ -263,16 +263,16 @@ class MhxOperator(bpy.types.Operator):
             if getSilentMode():
                 print(theMessage)
             else:
-                bpy.ops.mhx.error('INVOKE_DEFAULT')
+                bpy.ops.mhx.mustardui_error('INVOKE_DEFAULT')
         except MhxMessage:
             if getSilentMode():
                 print(theMessage)
             else:
-                bpy.ops.mhx.message('INVOKE_DEFAULT')
+                bpy.ops.mhx.mustardui_message('INVOKE_DEFAULT')
         except KeyboardInterrupt:
             global theErrorLines
             theErrorLines = ["Keyboard interrupt"]
-            bpy.ops.mhx.error('INVOKE_DEFAULT')
+            bpy.ops.mhx.mustardui_error('INVOKE_DEFAULT')
         finally:
             self.sequel(context)
         return{'FINISHED'}

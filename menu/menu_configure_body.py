@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
-from ..warnings.ops_fix_old_UI import check_old_UI
+from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .menu_configure import row_scale
 
@@ -14,7 +14,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if check_old_UI():
+        if can_draw_ui():
             return False
 
         res, arm = mustardui_active_object(context, config=1)
@@ -49,6 +49,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         row = box.row()
         row.label(text="Custom properties", icon="PRESET_NEW")
         row.operator("mustardui.property_smartcheck", text="", icon="SHADERFX")
+        row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
 
         if len(arm.MustardUI_CustomProperties) > 0:
             row = box.row()
@@ -101,11 +102,11 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
             )
             col = row.column()
             col2 = col.column(align=True)
-            col2.operator("mustardui.body_assign_to_section", text="", icon="PRESET")
+            col2.operator("mustardui.section_property_assign", text="", icon="PRESET")
             col.separator()
             col2 = col.column(align=True)
             col2.operator("mustardui.section_add", text="", icon="ADD")
-            col2.operator("mustardui.body_deletesection", text="", icon="REMOVE")
+            col2.operator("mustardui.section_delete", text="", icon="REMOVE")
             col.separator()
             col2 = col.column(align=True)
             opup = col2.operator("mustardui.section_switch", icon="TRIA_UP", text="")

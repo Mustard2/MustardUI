@@ -1,21 +1,13 @@
 import bpy
 from bpy.props import BoolProperty
 
-
-# Check presence of old UI scripts
-def check_old_UI():
-    import bpy
-
-    for file in bpy.data.texts:
-        if "mustard_ui.py" in file.name:
-            return True
-    return False
+from .can_draw_ui import can_draw_ui
 
 
-class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
+class MustardUI_Warnings_RemoveOldUI(bpy.types.Operator):
     """Remove old and unused old UI. Remember to save and restart Blender after using this tool"""  # noqa: E501
 
-    bl_idname = "mustardui.warnings_fix_old_ui"
+    bl_idname = "mustardui.warnings_remove_old_ui"
     bl_label = "Remove Outdated UI scripts"
     bl_options = {"UNDO"}
 
@@ -23,7 +15,7 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return check_old_UI()
+        return can_draw_ui()
 
     def invoke(self, context, event):
 
@@ -74,8 +66,8 @@ class MustardUI_Warnings_FixOldUI(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_Warnings_FixOldUI)
+    bpy.utils.register_class(MustardUI_Warnings_RemoveOldUI)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Warnings_FixOldUI)
+    bpy.utils.unregister_class(MustardUI_Warnings_RemoveOldUI)

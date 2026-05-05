@@ -1,6 +1,8 @@
 import bpy
 
+from .. import __package__ as base_package
 from .. import bl_info
+from ..custom_properties.misc import assign_pointers
 from ..model_selection.active_object import mustardui_active_object
 
 
@@ -21,6 +23,8 @@ def is_ui_update(rig_settings):
             and rig_settings.model_MustardUI_naming_convention
             and tuple(rig_settings.model_mustardui_version) < (2026, 4, 0)
         )
+        # Check for custom properties version
+        or (tuple(rig_settings.model_mustardui_version) < (2026, 5, 0))
     )
 
 
@@ -40,10 +44,12 @@ class MustardUI_UpdateUI(bpy.types.Operator):
         return poll if obj is not None else False
 
     def execute(self, context):
-        poll, obj = mustardui_active_object(context, config=-1)
-        rig_settings = obj.MustardUI_RigSettings
-        morphs_settings = obj.MustardUI_MorphsSettings
-        simplify_settings = obj.MustardUI_SimplifySettings
+        poll, arm = mustardui_active_object(context, config=-1)
+        rig_settings = arm.MustardUI_RigSettings
+        morphs_settings = arm.MustardUI_MorphsSettings
+        simplify_settings = arm.MustardUI_SimplifySettings
+
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         if self.force:
             # Check if hair convention is satisfied, if not retrigger update
@@ -70,6 +76,11 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             rig_settings.hair_collection is not None
             and rig_settings.model_MustardUI_naming_convention
             and tuple(rig_settings.model_mustardui_version) < (2026, 4, 0)
+        )
+        custom_properties_status = tuple(rig_settings.model_mustardui_version) < (
+            2026,
+            5,
+            0,
         )
 
         errors = 0
@@ -124,17 +135,17 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 morphs_settings.enable_ui = False
 
                 # Switch out of configuration mode if needed
-                if not obj.MustardUI_enable:
+                if not arm.MustardUI_enable:
                     bpy.ops.mustardui.configuration()
 
                 errors += 1
 
-        # Check if Simplify was enabled in previous versions
+        # 2025.3.0 - Check if Simplify was enabled in previous versions
         if simplify_status:
             simplify_settings.simplify_main_enable = True
             rig_settings.simplify_main_enable = False
 
-        # Check if the Hair curves were used
+        # 2025.3.0 - Check if the Hair curves were used
         if curves_hair_status and rig_settings.hair_collection is not None:
             if any(x.type == "CURVES" for x in rig_settings.hair_collection.objects):
                 try:
@@ -161,35 +172,87 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             else:
                 rig_settings.curves_hair_enable = False
 
-        # Check Hair naming convention
+        # 2025.4.0 - Check Hair naming convention
+        def update_hair_name(name):
+            # Remove any old convention
+            name = name.replace(f"{rig_settings.model_name} Hair ", "")
+            name = name.replace(f"{rig_settings.model_name} ", "")
+
+            # Replace the name with the new convention
+
+            # Handle the case when the hair and the collection have the
+            # same name, the _armature_ won't be named correctly
+            # It will be named: Hair_Collection - Armature, without any
+            # hair specification before Armature
+            is_armature = name == "Armature"
+            handle_default_hair = "Hair " if is_armature else ""
+            name = f"{hair_collection.name} - {handle_default_hair}" + name
+
+            return name
+
         if hair_convention_status and rig_settings.hair_collection is not None:
             try:
                 hair_collection = rig_settings.hair_collection
 
                 # Rename the Objects in the Hair collection
-                for obj in [x for x in hair_collection.objects if x is not None]:
+                # Store the active object to try to use it as the hair list selection
+                # after the update
+                object_active = ""
+                for i, obj in enumerate(
+                    [x for x in hair_collection.objects if x is not None]
+                ):
                     if not obj.name.startswith(f"{hair_collection.name} - "):
-                        # Remove any old convention
-                        obj.name = obj.name.replace(
-                            f"{rig_settings.model_name} Hair ", ""
-                        )
-                        obj.name = obj.name.replace(f"{rig_settings.model_name} ", "")
-
-                        # Replace the name with the new convention
-                        obj.name = f"{hair_collection.name} - " + obj.name
+                        obj_name = obj.name
+                        obj_name = update_hair_name(obj_name)
+                        obj.name = obj_name
+                    if (
+                        not obj.hide_viewport
+                        and not obj.hide_render
+                        and obj.type == "MESH"
+                    ):
+                        object_active = obj.name
 
                 # Fix the list index
-                rig_settings.hair_list = rig_settings.hair_list_make(context)[0][0]
+                hlist = rig_settings.hair_list_make(context)
+                # Try first if there was an active object
+                if object_active != "":
+                    try:
+                        rig_settings.hair_list = object_active
+                        # Also show the Armature
+                        for obj in hair_collection.objects:
+                            if obj.name == rig_settings.hair_list:
+                                parent_armature = None
+                                if parent_armature is not None:
+                                    parent_armature.hide_viewport = False
+                                    parent_armature.hide_render = False
+                                break
+                    except Exception:
+                        rig_settings.hair_list = hlist[0][0]
+                # Otherwise fix the list index with the first element in the list
+                else:
+                    rig_settings.hair_list = hlist[0][0]
 
                 rig_settings.model_mustardui_version = bl_info["version"]
             except Exception:
                 errors += 1
 
+        # 2025.5.0 - Update Custom Properties with the pointers
+        if custom_properties_status:
+            custom_properties_types = [
+                arm.MustardUI_CustomProperties,
+                arm.MustardUI_CustomPropertiesOutfit,
+                arm.MustardUI_CustomPropertiesHair,
+            ]
+
+            for custom_properties in custom_properties_types:
+                assign_pointers(custom_properties, addon_prefs)
+
+            rig_settings.model_mustardui_version = bl_info["version"]
+
         if errors:
             self.report(
-                {"ERROR"}, "MustardUI - An error occurred while updating the model."
+                {"WARNING"}, "MustardUI - Errors occurred while updating the model."
             )
-            return {"FINISHED"}
 
         self.report({"INFO"}, "MustardUI - UI updated.")
         return {"FINISHED"}

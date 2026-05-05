@@ -1,9 +1,9 @@
 from . import (
     definitions,
     menus,
+    ops_add,
     ops_link,
     ops_menu_settings,
-    ops_props,
     ops_rebuild,
     ops_smartcheck,
     ui_list,
@@ -12,7 +12,7 @@ from . import (
 
 def register():
     definitions.register()
-    ops_props.register()
+    ops_add.register()
     ops_link.register()
     menus.register()
     ui_list.register()
@@ -28,5 +28,5 @@ def unregister():
     ui_list.unregister()
     menus.unregister()
     ops_link.unregister()
-    ops_props.unregister()
+    ops_add.unregister()
     definitions.unregister()

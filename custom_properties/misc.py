@@ -164,3 +164,48 @@ def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_setting
 
 def mustardui_cp_path(rna, path):
     return rna + "." + path if not all(["[" in path, "]" in path]) else rna + path
+
+
+def assign_ptr(custom_prop, rna, addon_prefs):
+    # Get the type and assign the pointer
+    try:
+        if "bpy.data.armatures" in rna and custom_prop.ptr_armature is None:
+            custom_prop.ptr_armature = bpy.data.armatures[rna.split('"')[1]]
+            custom_prop.ptr_type = "ARMATURE"
+        elif "bpy.data.objects" in rna and custom_prop.ptr_object is None:
+            custom_prop.ptr_object = bpy.data.objects[rna.split('"')[1]]
+            custom_prop.ptr_type = "OBJECT"
+        elif "bpy.data.shape_keys" in rna and custom_prop.ptr_key is None:
+            custom_prop.ptr_key = bpy.data.shape_keys[rna.split('"')[1]]
+            custom_prop.ptr_type = "SHAPEKEY"
+        elif "bpy.data.materials" in rna and custom_prop.ptr_material is None:
+            custom_prop.ptr_material = bpy.data.materials[rna.split('"')[1]]
+            custom_prop.ptr_type = "MATERIAL"
+        elif "bpy.data.collections" in rna and custom_prop.ptr_collection is None:
+            custom_prop.ptr_collection = bpy.data.collections[rna.split('"')[1]]
+            custom_prop.ptr_type = "COLLECTION"
+        elif "bpy.data.node_groups" in rna and custom_prop.ptr_node_tree is None:
+            custom_prop.ptr_node_tree = bpy.data.node_groups[rna.split('"')[1]]
+            custom_prop.ptr_type = "NODE_TREE"
+        else:
+            custom_prop.ptr_type = "None"
+    except Exception as e:
+        if addon_prefs.debug:
+            print(f"MustardUI - Error while assigning Custom Property pointer: {e}")
+        custom_prop.ptr_type = "None"
+
+
+def assign_pointers(custom_properties, addon_prefs):
+    pointers_errors = 0
+    for custom_prop in custom_properties:
+        try:
+            assign_ptr(custom_prop, custom_prop.rna, addon_prefs)
+        except Exception as e:
+            if addon_prefs.debug:
+                print(
+                    f"MustardUI - Error while assigning Custom Property pointer for "
+                    f"RNA {custom_prop.rna}: {e}"
+                )
+            pointers_errors += 1
+
+    return pointers_errors
