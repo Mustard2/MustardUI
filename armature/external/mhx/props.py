@@ -148,18 +148,15 @@ class MHX_OT_UpdateMhx(MhxOperator):
                 prop = baseRef(trg.data_path)
                 if trg.id == rig.data and prop[0:3] == "Mha" and prop in rig.data.keys():
                     value = getValue(prop, rig.data[prop])
-                    if hasattr(rig, prop):
-                        setattr(rig, prop, value)
-                        nvar = fcu.driver.variables.new()
-                        varname = var.name
-                        ntrg = nvar.targets[0]
-                        ntrg.id_type == 'OBJECT'
-                        ntrg.id = rig
-                        ntrg.data_path = propRef(prop)
-                        fcu.driver.variables.remove(var)
-                        nvar.name = varname
-                    else:
-                        rig[prop] = value
+                    rig[prop] = value
+                    nvar = fcu.driver.variables.new()
+                    varname = var.name
+                    ntrg = nvar.targets[0]
+                    ntrg.id_type == 'OBJECT'
+                    ntrg.id = rig
+                    ntrg.data_path = propRef(prop)
+                    fcu.driver.variables.remove(var)
+                    nvar.name = varname
                 elif trg.id == rig and prop[0:3] == "Mha" and hasattr(rig, prop):
                     value = getValue(prop, getattr(rig, prop))
                     if hasattr(rig, prop):
@@ -174,6 +171,8 @@ class MHX_OT_UpdateMhx(MhxOperator):
             elif key.startswith("MhaKneeParent") and isinstance(value, int):
                 return {0: 'FOOT', 1: 'HIP', 2: 'MASTER'}[value]
             elif isinstance(value, bool):
+                return bool(value)
+            elif isinstance(value, int) and value in [0,1]:
                 return bool(value)
             else:
                 return value
@@ -210,7 +209,7 @@ class MHX_OT_UpdateMhx(MhxOperator):
             for fcu in rig.data.animation_data.drivers:
                 fixFcurve(fcu, rig)
         for key in list(rig.data.keys()):
-            if key[0:3] == "Mha" and hasattr(rig, key):
+            if key[0:3] == "Mha":
                 del rig.data[key]
 
         def addStretchDrivers():
@@ -262,7 +261,7 @@ class MHX_OT_UpdateMhx(MhxOperator):
         setMode('OBJECT')
         if bpy.app.version >= (4,0,0):
             updateCollections(rig)
-        rig.data["MhaFeatures"] = rig.data.get("MhaFeatures") | F_IDPROPS
+        rig.data["MhaFeatures"] = rig.data.get("MhaFeatures", 0) | F_IDPROPS
 
 
 def getConstraint(pb, ctype):
@@ -357,14 +356,14 @@ class MHX_OT_Unhinge(MhxOperator, Updater):
             pb = rig.pose.bones.get("%s.%s" % (bname, self.suffix))
             mats.append((pb, pb.matrix.copy()))
         rig[prop] = 0.0
-        self.updatePose()
+        self.updatePose(rig)
         for bname in self.Sockets[self.limb]:
             pb = rig.pose.bones.get("%s.%s" % (bname, self.suffix))
             pb.matrix_basis = Matrix()
-        self.updatePose()
+        self.updatePose(rig)
         for pb,mat in mats:
             pb.matrix = mat
-            self.updatePose()
+            self.updatePose(rig)
 
 #----------------------------------------------------------
 #

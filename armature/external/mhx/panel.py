@@ -25,6 +25,11 @@ def needsMhxUpdate(layout, rig):
 #    Mhx Properties Panel
 #------------------------------------------------------------------------
 
+def drawRigProp(layout, rig, prop, text=""):
+        if prop in rig.keys():
+            layout.prop(rig, propRef(prop), text=text)
+
+
 class MHX_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
     bl_label = "Properties"
     bl_space_type = "VIEW_3D"
@@ -52,13 +57,11 @@ class MHX_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
             self.layout.prop(rig, propRef("MhaTongueIk"), text="Tongue IK")
 
         self.layout.label(text = "Spine")
-        if "MhaNeckFollowsSpine" in rig.keys():
-            self.layout.prop(rig, propRef("MhaNeckFollowsSpine"), text="Neck Follows Spine")
-        if "MhaSpineIk" in rig.keys():
-            self.layout.prop(rig, propRef("MhaSpineIk"), text="Spine IK")
+        drawRigProp(self.layout, rig, "MhaNeckFollowsSpine", text="Neck Follows Spine")
+        drawRigProp(self.layout, rig, "MhaSpineIk", text="Spine IK")
         row = self.layout.row()
-        row.prop(rig, propRef("MhaSpineControl"), text="FK/IK Spine")
-        row.prop(rig, propRef("MhaNeckControl"), text="FK/IK Neck")
+        drawRigProp(row, rig, "MhaSpineControl", text="FK/IK Spine")
+        drawRigProp(row, rig, "MhaNeckControl", text="FK/IK Neck")
 
         self.layout.label(text = "Hinge")
         row = self.layout.row()
@@ -84,15 +87,14 @@ class MHX_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
 
         self.layout.label(text = "Hands And Fingers")
         row = self.layout.row()
-        row.prop(rig, propRef("MhaForearmFollow_L"), text="Forearm Follows Hand Left")
-        row.prop(rig, propRef("MhaForearmFollow_R"), text="Forearm Follows Hand Right")
+        drawRigProp(row, rig, "MhaForearmFollow_L", text="Forearm Follows Hand Left")
+        drawRigProp(row, rig, "MhaForearmFollow_R", text="Forearm Follows Hand Right")
         row = self.layout.row()
-        row.prop(rig, propRef("MhaFingerControl_L"), text="FK/IK Fingers Left")
-        row.prop(rig, propRef("MhaFingerControl_R"), text="FK/IK Fingers Right")
-        if "MhaFingerIk_L" in rig.keys():
-            row = self.layout.row()
-            row.prop(rig, propRef("MhaFingerIk_L"), text="Finger IK Left")
-            row.prop(rig, propRef("MhaFingerIk_R"), text="Finger IK Right")
+        drawRigProp(row, rig, "MhaFingerControl_L", text="FK/IK Fingers Left")
+        drawRigProp(row, rig, "MhaFingerControl_R", text="FK/IK Fingers Right")
+        row = self.layout.row()
+        drawRigProp(row, rig, "MhaFingerIk_L", text="Finger IK Left")
+        drawRigProp(row, rig, "MhaFingerIk_R", text="Finger IK Right")
 
         self.layout.label(text = "Limits")
         row = self.layout.row()
@@ -129,7 +131,7 @@ class MHX_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
 
 
     def updateFunction(self, layout, rig, prop, opname):
-        icon = ('CHECKBOX_HLT' if rig[prop] else 'CHECKBOX_DEHLT')
+        icon = ('CHECKBOX_HLT' if rig.get(prop) else 'CHECKBOX_DEHLT')
         layout.operator(opname, icon=icon)
 
 #------------------------------------------------------------------------
@@ -240,8 +242,8 @@ class MHX_PT_MustardUI_FKIKFingers(MainPanel, bpy.types.Panel):
         box = self.layout.box()
         box.label(text = "Spine")
         row = box.row()
-        row.prop(rig, propRef("MhaSpineControl"), text="Spine FK/IK")
-        row.prop(rig, propRef("MhaNeckControl"), text="Neck FK/IK")
+        drawRigProp(row, rig, "MhaSpineControl", text="Spine FK/IK")
+        drawRigProp(row, rig, "MhaNeckControl", text="Neck FK/IK")
         if "MhaSpineIk" in rig.keys():
             box.prop(rig, propRef("MhaSpineIk"), text="Spine IK")
             row = box.row()

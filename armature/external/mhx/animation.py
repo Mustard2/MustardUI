@@ -491,7 +491,7 @@ class MHX_OT_TransferToLinks(Snapper, FrameRange):
                     fkboness.append(fkbones)
                     pbonesss.append(pboness)
                 matsss[n].append(matss)
-            self.updatePose()
+            self.updatePose(self.rig)
         for prop in props:
             self.rig[prop] = False
         for n,frame in enumerate(frames):

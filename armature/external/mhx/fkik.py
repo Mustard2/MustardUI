@@ -8,14 +8,17 @@ from mathutils import *
 from .utils import *
 from .layers import *
 
-
 #------------------------------------------------------------------
 #   Updater
 #------------------------------------------------------------------
 
 class Updater:
-    def updatePose(self):
+    def updatePose(self, rig=None):
         bpy.context.view_layer.update()
+        if rig:
+            rig.update_tag()
+        elif self.rig:
+            self.rig.update_tag()
 
     def updateScene(self):
         deps = bpy.context.evaluated_depsgraph_get()
@@ -30,7 +33,6 @@ class Updater:
         self.frame = frame
         self.updateScene()
 
-
 #----------------------------------------------------------
 #   Basic utilities
 #----------------------------------------------------------
@@ -43,6 +45,7 @@ class Basic:
         else:
             raise MhxError("What? Bone %s not found" % bname)
 
+
     def getPoseMatrix(self, gmat, pb):
         restInv = pb.bone.matrix_local.inverted()
         if pb.parent:
@@ -52,17 +55,20 @@ class Basic:
         else:
             return restInv @ gmat
 
+
     def insertLocation(self, pb, mat=None):
         if mat:
             pb.location = mat.to_translation()
         if self.auto or isKeyed(self.rig, pb, "location"):
             pb.keyframe_insert("location", frame=self.frame, group=pb.name)
 
+
     def insertScale(self, pb, mat=None):
         if mat:
             pb.scale = mat.to_scale()
         if self.auto or isKeyed(self.rig, pb, "scale"):
             pb.keyframe_insert("scale", frame=self.frame, group=pb.name)
+
 
     def insertRotation(self, pb, mat=None):
         if mat:
@@ -74,10 +80,12 @@ class Basic:
         if self.auto or isKeyed(self.rig, pb, channel):
             pb.keyframe_insert(channel, frame=self.frame, group=pb.name)
 
+
     def findBoneFCurves(self, pb, channel):
         fcurves = getRnaFcurves(self.rig)
         path = 'pose.bones["%s"].%s' % (pb.name, self.getTrueChannel(pb, channel))
         return [fcu for fcu in fcurves if fcu.data_path == path]
+
 
     def getTrueChannel(self, pb, channel):
         if channel == "rotation":
@@ -88,6 +96,7 @@ class Basic:
         else:
             return channel
 
+
     def findBoneFCurve(self, pb, channel, idx):
         for fcu in self.findBoneFCurves(pb, channel):
             if fcu.array_index == idx:
@@ -95,25 +104,22 @@ class Basic:
         #print('F-curve %s[%d] for "%s" not found.' % (channel, idx, pb.name))
         return None
 
-
 #------------------------------------------------------------------
 #   Snapper class
 #------------------------------------------------------------------
 
 SnapBones = {
-    "Arm": ["upper_arm", "forearm", "hand"],
-    "ArmFK": ["upper_arm.fk", "forearm.fk", "hand.fk"],
-    "ArmIK": ["upper_arm.ik", "forearm.ik", "upper_arm.ik.twist", "forearm.ik.twist", "elbow.pt.ik", "elbowPoleA",
-              "hand.ik"],
-    "Leg": ["thigh", "shin", "foot", "tarsal", "toe"],
-    "LegFK": ["thigh.fk", "shin.fk", "foot.fk", "tarsal.fk", "toe.fk"],
-    "LegIK": ["thigh.ik", "shin.ik", "thigh.ik.twist", "shin.ik.twist", "knee.pt.ik", "kneePoleA",
-              "foot.2", "ankle.ik",
-              "foot.ik", "foot.rev", "tarsal.rev", "toe.rev",
-              "foot.inv.fk", "tarsal.inv.fk", "toe.inv.fk",
-              "foot.inv.ik", "tarsal.inv.ik", "toe.inv.ik"],
+    "Arm"   : ["upper_arm", "forearm", "hand"],
+    "ArmFK" : ["upper_arm.fk", "forearm.fk", "hand.fk"],
+    "ArmIK" : ["upper_arm.ik", "forearm.ik", "upper_arm.ik.twist", "forearm.ik.twist", "elbow.pt.ik", "elbowPoleA", "hand.ik"],
+    "Leg"   : ["thigh", "shin", "foot", "tarsal", "toe"],
+    "LegFK" : ["thigh.fk", "shin.fk", "foot.fk", "tarsal.fk", "toe.fk"],
+    "LegIK" : ["thigh.ik", "shin.ik", "thigh.ik.twist", "shin.ik.twist", "knee.pt.ik", "kneePoleA",
+               "foot.2", "ankle.ik",
+               "foot.ik", "foot.rev", "tarsal.rev", "toe.rev",
+               "foot.inv.fk", "tarsal.inv.fk", "toe.inv.fk",
+               "foot.inv.ik", "tarsal.inv.ik", "toe.inv.ik"],
 }
-
 
 class Snapper(Updater, Basic):
     prop2 = None
@@ -122,8 +128,10 @@ class Snapper(Updater, Basic):
     def prequel(self, context):
         HideOperator.prequel(self, context)
 
+
     def sequel(self, context):
         HideOperator.sequel(self, context)
+
 
     def setup(self, context, value, change=True):
         rig = context.object
@@ -134,16 +142,17 @@ class Snapper(Updater, Basic):
         self.auto = scn.tool_settings.use_keyframe_insert_auto
         if change:
             self.rig[self.prop] = value
-            self.updatePose()
+            self.updatePose(rig)
+
 
     def setupAll(self, context, value):
         checkVisible(context.object)
         setMode('OBJECT')
-        self.oldvalues = [self.rig.get("MhaArmIk_L"), self.rig.get("MhaArmIk_R"), self.rig.get("MhaLegIk_L"),
-                          self.rig.get("MhaLegIk_R")]
+        self.oldvalues = [self.rig.get("MhaArmIk_L"), self.rig.get("MhaArmIk_R"), self.rig.get("MhaLegIk_L"), self.rig.get("MhaLegIk_R")]
         self.rig["MhaArmIk_L"] = self.rig["MhaArmIk_R"] = self.rig["MhaLegIk_L"] = self.rig["MhaLegIk_R"] = value
         self.auto = context.scene.tool_settings.use_keyframe_insert_auto
         self.updatePose()
+
 
     def restore(self, context, value, fk, ik):
         scn = context.scene
@@ -160,6 +169,7 @@ class Snapper(Updater, Basic):
         elif self.prop:
             self.rig[self.prop] = self.oldvalue
         self.updatePose()
+
 
     def restoreAll(self, context, value, fk, ik):
         scn = context.scene
@@ -187,6 +197,7 @@ class Snapper(Updater, Basic):
             self.rig["MhaLegIk_R"] = self.oldvalues[3]
         self.updatePose()
 
+
     def setWorldMatrix(self, pb, gmat, useLoc=False, useRot=False):
         pb.matrix = gmat
         self.updatePose()
@@ -194,6 +205,7 @@ class Snapper(Updater, Basic):
             self.insertLocation(pb)
         if useRot:
             self.insertRotation(pb)
+
 
     def setLocalMatrix(self, lmat, pb, useLoc=False, useRot=False):
         pb.matrix_basis = lmat
@@ -203,15 +215,18 @@ class Snapper(Updater, Basic):
             self.insertRotation(pb)
         self.updatePose()
 
+
     def matchRotation(self, pb, src):
         if pb is None:
             return
         self.setWorldMatrix(pb, src.matrix, False, True)
 
+
     def matchTransform(self, pb, src):
         if pb is None:
             return
         self.setWorldMatrix(pb, src.matrix, True, True)
+
 
     def imposeLocks(self, pb):
         return
@@ -225,6 +240,7 @@ class Snapper(Updater, Basic):
         for idx in range(3):
             if pb.lock_scale[idx]:
                 pb.scale[idx] = 1
+
 
     def matchIkLeg(self, legIk, toeFk):
         # No x and y rotation for Leg IK target
@@ -241,6 +257,7 @@ class Snapper(Updater, Basic):
         gmat.col[3][:3] = head
         self.setWorldMatrix(legIk, gmat, True, True)
 
+
     def matchPoleTarget(self, pb, above, below, poleA):
         ay = above.y_axis
         by = below.y_axis
@@ -251,11 +268,11 @@ class Snapper(Updater, Basic):
         if abs(n.length) > 1e-4:
             d = ay - by
             n.normalize()
-            d -= d.dot(n) * n
+            d -= d.dot(n)*n
             d.normalize()
             if d.dot(az) > 0:
                 d = -d
-            p = p0 + 1 * pb.bone.length * d
+            p = p0 + 1*pb.bone.length*d
         else:
             p = p0
         self.setWorldMatrix(pb, Matrix.Translation(p), True, False)
@@ -286,12 +303,14 @@ class Snapper(Updater, Basic):
         self.updatePose()
         self.insertLocation(poleTrg)
 
+
     def matchPoseReverse(self, pb, src):
         gmat = src.matrix
         tail = gmat.col[3] + src.length * gmat.col[1]
         rmat = Matrix((gmat.col[0], -gmat.col[1], -gmat.col[2], tail))
         rmat.transpose()
         self.setWorldMatrix(pb, rmat, False, True)
+
 
     def getSnapBones(self, key, suffix):
         pbones = []
@@ -315,7 +334,8 @@ class Snapper(Updater, Basic):
             for cns in pb.constraints:
                 if cns.type == 'LIMIT_ROTATION' and not cns.mute:
                     constraints.append(cns)
-        return tuple(pbones), constraints
+        return tuple(pbones),constraints
+
 
     def snapFkArm(self, snapFk, snapIk):
         (uparmFk, forearmFk, handFk) = snapFk
@@ -330,6 +350,7 @@ class Snapper(Updater, Basic):
         else:
             self.matchRotation(forearmFk, forearmIk)
         self.matchRotation(handFk, handIk)
+
 
     def snapIkArm(self, snapFk, snapIk):
         (uparmFk, forearmFk, handFk) = snapFk
@@ -346,6 +367,7 @@ class Snapper(Updater, Basic):
         if not self.useApproximate:
             self.matchTransform(uparmIkTwist, uparmFk)
             self.matchTransform(forearmIkTwist, forearmFk)
+
 
     def snapFkLeg(self, snapFk, snapIk, legIkToAnkle):
         (thighFk, shinFk, footFk, tarsalFk, toeFk) = snapFk
@@ -369,6 +391,7 @@ class Snapper(Updater, Basic):
                 self.matchRotation(tarsalFk, tarsalInvIk)
             self.matchRotation(toeFk, toeInvIk)
 
+
     def snapIkLeg(self, snapFk, snapIk, legIkToAnkle):
         (thighFk, shinFk, footFk, tarsalFk, toeFk) = snapFk
         (thighIk, shinIk, thighIkTwist, shinIkTwist, kneePt, kneePoleA,
@@ -377,7 +400,7 @@ class Snapper(Updater, Basic):
          footInvFk, tarsalInvFk, toeInvFk,
          footInvIk, tarsalInvIk, toeInvIk) = snapIk
 
-        footFk.location = (0, 0, 0)
+        footFk.location = (0,0,0)
         self.matchIkLeg(legIk, toeFk)
         if foot2 and legIkToAnkle:
             self.setWorldMatrix(foot2, footFk.matrix, True, True)
@@ -406,6 +429,7 @@ class Snapper(Updater, Basic):
             self.matchTransform(thighIkTwist, thighFk)
             self.matchTransform(shinIkTwist, shinFk)
 
+
     Fingers = ["thumb", "index", "middle", "ring", "pinky"]
     F_Fingers = ["thumb", "f_index", "f_middle", "f_ring", "f_pinky"]
 
@@ -418,12 +442,13 @@ class Snapper(Updater, Basic):
         self.updatePose()
         self.setLinkBones(pboness, matss)
 
+
     def getBonesMatrices(self, info):
         fknames, iknames, bnamess = info
         pboness = []
         matss = []
         fkbones = []
-        for fkname, ikname, bnames in zip(fknames, iknames, bnamess):
+        for fkname,ikname,bnames in zip(fknames, iknames, bnamess):
             pbones = [self.rig.pose.bones.get(bname) for bname in bnames]
             pbones = [pb for pb in pbones if pb]
             defbones = [self.rig.pose.bones.get("DEF-%s" % pb.name) for pb in pbones]
@@ -439,9 +464,10 @@ class Snapper(Updater, Basic):
                 fkbones.append(fkbone)
         return fkbones, pboness, matss
 
+
     def clearFkIkBones(self, info, fkbones):
         fknames, iknames, bnamess = info
-        for fkname, ikname, fkbone in zip(fknames, iknames, fkbones):
+        for fkname,ikname,fkbone in zip(fknames,iknames,fkbones):
             if fkbone:
                 fkbone.matrix_basis = Matrix()
                 self.insertLocation(fkbone)
@@ -454,12 +480,13 @@ class Snapper(Updater, Basic):
                 self.insertRotation(ikbone)
                 self.insertScale(ikbone)
 
+
     def setLinkBones(self, pboness, matss):
         if not pboness:
             return
         nlinks = len(pboness[0])
         for n in range(nlinks):
-            for pbones, mats in zip(pboness, matss):
+            for pbones,mats in zip(pboness, matss):
                 self.setWorldMatrix(pbones[n], mats[n])
         for pbones in pboness:
             for pb in pbones:
@@ -468,27 +495,32 @@ class Snapper(Updater, Basic):
                 self.insertRotation(pb)
                 self.insertScale(pb)
 
+
     def snapReverse(self, bone, revbone):
         bone.matrix = revbone.matrix
         self.insertLocation(bone)
         self.insertRotation(bone)
         self.insertScale(bone)
 
+
     def getFingerInfo(self, suffix):
         fknames = []
         iknames = []
         pboness = []
-        for fing, ffing in zip(self.Fingers, self.F_Fingers):
-            fknames.append("%s.%s" % (fing, suffix))
-            iknames.append("%s.ik.%s" % (fing, suffix))
-            pboness.append(["%s.0%d.%s" % (ffing, n, suffix) for n in range(1, 4)])
+        for fing,ffing in zip(self.Fingers, self.F_Fingers):
+            fknames.append( "%s.%s" % (fing, suffix) )
+            iknames.append( "%s.ik.%s" % (fing, suffix))
+            pboness.append( ["%s.0%d.%s" % (ffing, n, suffix) for n in range(1,4)] )
         return fknames, iknames, pboness
+
 
     def getNeckHeadInfo(self):
         return ["neckhead"], ["ik_neck"], [["neck", "neck-1", "head"]]
 
+
     def getSpineInfo(self):
         return ["back"], ["ik_back"], [["spine", "spine-1", "chest", "chest-1"]]
+
 
     def getTongueInfo(self, rig):
         def isTongue(bname):
@@ -497,6 +529,7 @@ class Snapper(Updater, Basic):
         tonguebones = [bone.name for bone in rig.data.bones if isTongue(bone.name)]
         tonguebones.sort()
         return ["tongue"], ["ik_%s" % tonguebones[-1]], [tonguebones]
+
 
     def getShaftInfo(self, rig):
         def isShaft(bname):
@@ -507,11 +540,12 @@ class Snapper(Updater, Basic):
         return ["shaft"], ["ik_%s" % shaftbones[-1]], [shaftbones]
 
 
+
 class FootSnapper(Snapper):
     useRotation: BoolProperty(
-        name="Rotate IK Foot",
-        description="Also match IK effector rotation.\nSuitable for hand animation",
-        default=True)
+        name = "Rotate IK Foot",
+        description = "Also match IK effector rotation.\nSuitable for hand animation",
+        default = True)
 
     def draw(self, context):
         self.layout.prop(self, "useRotation")
@@ -536,8 +570,8 @@ class MHX_OT_MhxSnapFkLeftArm(Snapper, HideOperator):
     def run(self, context):
         print("Snap Left FK Arm")
         self.setup(context, 1.0)
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "L")
         self.snapFkArm(snapFk, snapIk)
         self.restore(context, 0.0, True, False)
 
@@ -557,8 +591,8 @@ class MHX_OT_MhxSnapFkRightArm(Snapper, HideOperator):
     def run(self, context):
         print("Snap Right FK Arm")
         self.setup(context, 1.0)
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "R")
         self.snapFkArm(snapFk, snapIk)
         self.restore(context, 0.0, True, False)
 
@@ -579,8 +613,8 @@ class MHX_OT_MhxSnapFkLeftLeg(Snapper, HideOperator):
     def run(self, context):
         print("Snap Left FK Leg")
         self.setup(context, 1.0)
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "L")
         self.snapFkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_L"))
         self.restore(context, 0.0, True, False)
 
@@ -601,8 +635,8 @@ class MHX_OT_MhxSnapFkRightLeg(Snapper, HideOperator):
     def run(self, context):
         print("Snap Right FK Leg")
         self.setup(context, 1.0)
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "R")
         self.snapFkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_R"))
         self.restore(context, 0.0, True, False)
 
@@ -618,27 +652,26 @@ class MHX_OT_MhxSnapFkAll(Snapper, HideOperator):
         self.setupAll(context, 1.0)
 
         self.prop = "MhaArmIk_L"
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "L")
         self.snapFkArm(snapFk, snapIk)
 
         self.prop = "MhaArmIk_R"
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "R")
         self.snapFkArm(snapFk, snapIk)
 
         self.prop = "MhaLegIk_L"
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "L")
         self.snapFkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_L"))
 
         self.prop = "MhaLegIk_R"
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "R")
         self.snapFkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_R"))
 
         self.restoreAll(context, 0.0, True, False)
-
 
 #-------------------------------------------------------------
 #  Snap IK
@@ -659,8 +692,8 @@ class MHX_OT_MhxSnapIkLeftArm(Snapper, HideOperator):
     def run(self, context):
         print("Snap Left IK Arm")
         self.setup(context, 0.0)
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "L")
         self.snapIkArm(snapFk, snapIk)
         self.restore(context, 1.0, False, True)
 
@@ -680,8 +713,8 @@ class MHX_OT_MhxSnapIkRightArm(Snapper, HideOperator):
     def run(self, context):
         print("Snap Right IK Arm")
         self.setup(context, 0.0)
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "R")
         self.snapIkArm(snapFk, snapIk)
         self.restore(context, 1.0, False, True)
 
@@ -703,8 +736,8 @@ class MHX_OT_MhxSnapIkLeftLeg(FootSnapper, HideOperator):
         print("Snap Left IK Leg")
         self.useRotation = context.scene.MhxUseSnapRotation
         self.setup(context, 0.0)
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "L")
         self.snapIkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_L"))
         self.restore(context, 1.0, False, True)
 
@@ -726,8 +759,8 @@ class MHX_OT_MhxSnapIkRightLeg(FootSnapper, HideOperator):
         print("Snap Right IK Leg")
         self.useRotation = context.scene.MhxUseSnapRotation
         self.setup(context, 0.0)
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "R")
         self.snapIkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_R"))
         self.restore(context, 1.0, False, True)
 
@@ -743,28 +776,27 @@ class MHX_OT_MhxSnapIkAll(FootSnapper, HideOperator):
         self.setupAll(context, 0.0)
 
         self.prop = "MhaArmIk_L"
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "L")
         self.snapIkArm(snapFk, snapIk)
 
         self.prop = "MhaArmIk_R"
-        snapFk, _cnsFk = self.getSnapBones("ArmFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("ArmIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("ArmFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("ArmIK", "R")
         self.snapIkArm(snapFk, snapIk)
 
         self.useRotation = context.scene.MhxUseSnapRotation
         self.prop = "MhaLegIk_L"
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "L")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "L")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "L")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "L")
         self.snapIkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_L"))
 
         self.prop = "MhaLegIk_R"
-        snapFk, _cnsFk = self.getSnapBones("LegFK", "R")
-        snapIk, _cnsIk = self.getSnapBones("LegIK", "R")
+        snapFk,_cnsFk = self.getSnapBones("LegFK", "R")
+        snapIk,_cnsIk = self.getSnapBones("LegIK", "R")
         self.snapIkLeg(snapFk, snapIk, self.rig.get("MhaLegIkToAnkle_R"))
 
         self.restoreAll(context, 1.0, False, True)
-
 
 #-------------------------------------------------------------
 #  Snap back and neck-head
@@ -776,21 +808,21 @@ class MHX_OT_MhxSnapReverse(Snapper, HideOperator):
     bl_description = "Snap bone to reversed bone"
     bl_options = {'UNDO'}
 
-    prop: StringProperty()
-    value: FloatProperty()
-    bonename: StringProperty()
-    revname: StringProperty()
-    if bpy.app.version < (4, 0, 0):
-        fk: IntProperty()
-        ik: IntProperty()
+    prop : StringProperty()
+    value : FloatProperty()
+    bonename : StringProperty()
+    revname : StringProperty()
+    if bpy.app.version < (4,0,0):
+        fk : IntProperty()
+        ik : IntProperty()
     else:
-        fk: StringProperty()
-        ik: StringProperty()
+        fk : StringProperty()
+        ik : StringProperty()
     ik2 = None
 
     def run(self, context):
         print("Snap %s to %s" % (self.bonename, self.revname))
-        self.setup(context, 1 - self.value, change=False)
+        self.setup(context, 1-self.value, change=False)
         bone = self.rig.pose.bones[self.bonename]
         revbone = self.rig.pose.bones[self.revname]
         self.snapReverse(bone, revbone)
@@ -803,7 +835,7 @@ class MHX_OT_MhxSnapFingers(Snapper, HideOperator):
     bl_description = "Snap finger links"
     bl_options = {'UNDO'}
 
-    suffix: StringProperty()
+    suffix : StringProperty()
 
     def run(self, context):
         prop = "MhaFingerControl_%s" % self.suffix
@@ -844,7 +876,6 @@ class MHX_OT_MhxSnapShaft(Snapper, HideOperator):
         print("Snap shaft")
         self.snapLinks(context, self.getShaftInfo(context.object), "MhaShaftControl")
 
-
 #----------------------------------------------------------
 #   Clear Fingers and Feet
 #----------------------------------------------------------
@@ -858,7 +889,7 @@ class FootClearer:
         unit = Matrix()
         for pb in rig.pose.bones:
             if (pb.name.startswith(self.clearBones) and
-                    not pb.name.startswith(self.skipBones)):
+                not pb.name.startswith(self.skipBones)):
                 pb.matrix_basis = unit
                 if auto or isKeyed(rig, pb, "location"):
                     pb.keyframe_insert("location", frame=frame, group=pb.name)
@@ -869,7 +900,7 @@ class FootClearer:
                         pb.keyframe_insert("rotation_quaternion", frame=frame, group=pb.name)
                 else:
                     if auto or isKeyed(rig, pb, "rotation_euler"):
-                        pb.keyframe_insert("rotation_euler", frame=frame, group=pb.name)
+                       pb.keyframe_insert("rotation_euler", frame=frame, group=pb.name)
 
 
 class MHX_OT_MhxClearFeet(FootClearer, HideOperator):
@@ -912,7 +943,6 @@ class MHX_OT_MhxClearFace(FootClearer, HideOperator):
     clearBones = ("brow", "nose", "lip", "mouth", "eye")
     skipBones = ("none")
 
-
 #----------------------------------------------------------
 #   Toggle FK - IK
 #----------------------------------------------------------
@@ -934,7 +964,7 @@ class ToggleFkIk(Updater):
             ik = True
         rig[prop] = value
         if (scn.tool_settings.use_keyframe_insert_auto or
-                isKeyed(rig, None, prop)):
+            isKeyed(rig, None, prop)):
             rig.keyframe_insert(propRef(prop), frame=scn.frame_current)
         if scn.MhxUseSwitch:
             if fklayer != iklayer:
@@ -943,7 +973,7 @@ class ToggleFkIk(Updater):
                     setRigLayer(rig, iklayer2, ik)
                 else:
                     setRigLayer(rig, iklayer, ik)
-        self.updatePose()
+        self.updatePose(rig)
 
 
 class MHX_OT_MhxToggleFkIkLeftArm(MhxOperator, ToggleFkIk):
@@ -985,7 +1015,6 @@ class MHX_OT_MhxToggleFkIkRightLeg(MhxOperator, ToggleFkIk):
     def run(self, context):
         self.toggle(context, "MhaLegIk_R", "MhaLegIkToAnkle_R", L_RLEGFK, L_RLEGIK, L_RLEG2IK)
 
-
 #----------------------------------------------------------
 #   Set FK and IK All
 #----------------------------------------------------------
@@ -997,6 +1026,7 @@ class SetFkIk(Updater):
         self.setFkIk(context, "MhaLegIk_L", "MhaLegIkToAnkle_L", L_LLEGFK, L_LLEGIK, L_LLEG2IK)
         self.setFkIk(context, "MhaLegIk_R", "MhaLegIkToAnkle_R", L_RLEGFK, L_RLEGIK, L_RLEG2IK)
 
+
     def setFkIk(self, context, prop, prop2, fklayer, iklayer, iklayer2):
         rig = context.object
         scn = context.scene
@@ -1004,12 +1034,12 @@ class SetFkIk(Updater):
         if scn.tool_settings.use_keyframe_insert_auto:
             rig.keyframe_insert(propRef(prop))
         if scn.MhxUseSwitch:
-            setRigLayer(rig, fklayer, (1 - self.ik))
+            setRigLayer(rig, fklayer, (1-self.ik))
             if prop2 and rig.get(prop2):
                 setRigLayer(rig, iklayer2, self.ik)
             else:
                 setRigLayer(rig, iklayer, self.ik)
-        self.updatePose()
+        self.updatePose(rig)
 
 
 class MHX_OT_SetFkAll(SetFkIk, MhxOperator):
@@ -1029,7 +1059,6 @@ class MHX_OT_SetIkAll(SetFkIk, MhxOperator):
 
     ik = 1
 
-
 #----------------------------------------------------------
 #   Toggle elbow and knee parents
 #----------------------------------------------------------
@@ -1041,10 +1070,10 @@ class MHX_OT_MhxUpdateElbowKneeParents(MhxOperator, Updater):
     bl_options = {'UNDO'}
 
     def run(self, context):
-        self.toggle(context, "MhaElbowParent_L", "elbow.pt.ik.L", "elbowPoleP.L", "arm_parent.L")
-        self.toggle(context, "MhaElbowParent_R", "elbow.pt.ik.R", "elbowPoleP.R", "arm_parent.R")
-        self.toggle(context, "MhaKneeParent_L", "knee.pt.ik.L", "kneePoleP.L", "hip")
-        self.toggle(context, "MhaKneeParent_R", "knee.pt.ik.R", "kneePoleP.R", "hip")
+        self.toggle(context, "MhaElbowParent_L", "elbow.pt.ik.L", "elbowPoleP.L",  "arm_parent.L")
+        self.toggle(context, "MhaElbowParent_R", "elbow.pt.ik.R", "elbowPoleP.R",  "arm_parent.R")
+        self.toggle(context, "MhaKneeParent_L", "knee.pt.ik.L", "kneePoleP.L",  "hip")
+        self.toggle(context, "MhaKneeParent_R", "knee.pt.ik.R", "kneePoleP.R",  "hip")
 
     def toggle(self, context, prop, bname, polep, limbpar):
         rig = context.object
@@ -1067,7 +1096,6 @@ class MHX_OT_MhxUpdateElbowKneeParents(MhxOperator, Updater):
         pb = rig.pose.bones[bname]
         pb.matrix = wmat
 
-
 #----------------------------------------------------------
 #   Toggle Toe Tarsal parenting
 #----------------------------------------------------------
@@ -1080,7 +1108,7 @@ class ToggleToeTarsal:
             pb = rig.pose.bones[bname]
             for cns in pb.constraints:
                 if (cns.type == 'COPY_ROTATION' and
-                        cns.subtarget == toename):
+                    cns.subtarget == toename):
                     cns.mute = mute
                     return
             raise MhxError("Cannot set toe tarsal parents for this rig")
@@ -1100,7 +1128,7 @@ class ToggleToeTarsal:
         toename = "toe.%s" % suffix
         tarsalname = "tarsal.%s" % suffix
         if (toename not in rig.data.bones.keys() or
-                tarsalname not in rig.data.bones.keys()):
+            tarsalname not in rig.data.bones.keys()):
             msg = ("Missing bones: %s or %s" % (toename, tarsalname))
             raise MhxError(msg)
         wason = rig.get(prop, False)
@@ -1124,7 +1152,6 @@ class MHX_OT_MhxToggleLeftToeTarsal(MhxOperator, ToggleToeTarsal):
     def run(self, context):
         self.toggle(context, "MhaToeTarsal_L", "L")
 
-
 class MHX_OT_MhxToggleRightToeTarsal(MhxOperator, ToggleToeTarsal):
     bl_idname = "mhx.toggle_right_toe_tarsal"
     bl_label = "Right Toe"
@@ -1133,7 +1160,6 @@ class MHX_OT_MhxToggleRightToeTarsal(MhxOperator, ToggleToeTarsal):
 
     def run(self, context):
         self.toggle(context, "MhaToeTarsal_R", "R")
-
 
 #----------------------------------------------------------
 #   Toggle limits
@@ -1155,7 +1181,6 @@ class MHX_OT_MhxToggleLimits(MhxOperator):
             for bname in ["upper_arm", "forearm", "thigh", "shin"]:
                 pb = rig.pose.bones["%s.ik.%s" % (bname, suffix)]
                 pb.use_ik_limit_x = pb.use_ik_limit_y = pb.use_ik_limit_z = rig["MhaLimitsOn"]
-
 
 #----------------------------------------------------------
 #   Initialize
@@ -1193,17 +1218,16 @@ classes = [
     MHX_OT_MhxToggleLimits,
 ]
 
-
 def register():
     bpy.types.Scene.MhxUseSwitch = BoolProperty(
-        name="Switch Mode And Layers",
-        description="Also switch the FK/IK mode and bone layers",
-        default=True)
+        name = "Switch Mode And Layers",
+        description = "Also switch the FK/IK mode and bone layers",
+        default = True)
 
     bpy.types.Scene.MhxUseSnapRotation = BoolProperty(
-        name="Rotate IK Foot",
-        description="Also match IK effector rotation.\nSuitable for hand animation",
-        default=True)
+        name = "Rotate IK Foot",
+        description = "Also match IK effector rotation.\nSuitable for hand animation",
+        default = True)
 
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -1212,3 +1236,4 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
+
