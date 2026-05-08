@@ -180,6 +180,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         # Extras collection visibility
         extras = rig_settings.extras_collection
+        hidden = None
         if extras:
             items = (
                 extras.all_objects
