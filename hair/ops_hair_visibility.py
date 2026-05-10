@@ -71,6 +71,51 @@ def set_hair_extra_visibility_prop(obj, value):
     set_hair_extra_visibility(bpy.context, obj, value)
 
 
+def _apply_visibility_to_main_hair(rig_settings, predicate):
+    # Iterates direct children of hair_collection only — nested
+    # sub-collections (hair_extras_collection, hair_switch_collection) are
+    # intentionally untouched so users who organise them under hair_collection
+    # in the outliner aren't dragged into cascade-hides.
+    hair_collection = rig_settings.hair_collection
+    if hair_collection is None:
+        return
+
+    hair_objs = list(hair_collection.objects)
+    for obj in hair_objs:
+        if obj.type not in {"MESH", "CURVES"}:
+            continue
+        visible = predicate(obj.name)
+        set_object_visibility(obj, visible, rig_settings)
+        parent_armature = obj.find_armature()
+        if parent_armature is not None and parent_armature in hair_objs:
+            set_object_visibility(parent_armature, visible, rig_settings)
+
+    if rig_settings.hair_update_tag_on_switch:
+        for obj in hair_collection.objects:
+            obj.update_tag()
+
+
+def hide_all_main_hair(rig_settings):
+    """Hide every main-hair piece in hair_collection (direct children only).
+
+    Used by the outfit code when an outfit piece linked into
+    ``hair_switch_collection`` becomes visible: the main hair gets out of the
+    way without cascade-hiding any nested sub-collections.
+    """
+    _apply_visibility_to_main_hair(rig_settings, lambda _name: False)
+
+
+def apply_hair_list_visibility(rig_settings):
+    """Restore main-hair visibility per ``rig_settings.hair_list`` selection.
+
+    Used by the outfit code when a hair-switching piece becomes hidden, to
+    bring back the currently selected hair (matches the semantics of the
+    ``mustardui.hair_visibility`` operator).
+    """
+    hair_list = rig_settings.hair_list
+    _apply_visibility_to_main_hair(rig_settings, lambda name: name == hair_list)
+
+
 class MustardUI_HairVisibility(bpy.types.Operator):
     """Switch visibility of hair objects in a collection"""
 

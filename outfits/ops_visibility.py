@@ -7,6 +7,14 @@ from .helper_functions import outfits_update_armature_collections
 
 
 def set_outfit_visibility(context, obj, desired_visible, include_children=False):
+    # Lazy import: hair.ops_hair_visibility itself imports from
+    # outfits.helper_functions, so importing it at module top-level would
+    # create a circular import when the outfits package is being initialised.
+    from ..hair.ops_hair_visibility import (
+        apply_hair_list_visibility,
+        hide_all_main_hair,
+    )
+
     # Shared visibility update used by both the operator and the UI toggle
     poll, arm = mustardui_active_object(context, config=0)
     if not poll:
@@ -75,15 +83,20 @@ def set_outfit_visibility(context, obj, desired_visible, include_children=False)
                     desired = visible if rig_settings.outfits_global_subsurface else False
                     set_bool(mod, "show_viewport", desired)
 
-        # Hair visibility
+        # Hair visibility (when this outfit piece doubles as a hair switcher).
+        # Toggle main-hair pieces individually rather than the whole
+        # hair_collection, so nested sub-collections (extras, switcher) aren't
+        # cascade-hidden by Blender's collection visibility.
         if (
             hair_collection is not None
             and o.type in ["MESH", "ARMATURE"]
             and hair_switch_collection is not None
             and o.name in hair_switch_collection.all_objects.keys()
         ):
-            hair_collection.hide_viewport = visible
-            hair_collection.hide_render = visible
+            if visible:
+                hide_all_main_hair(rig_settings)
+            else:
+                apply_hair_list_visibility(rig_settings)
 
         # Custom properties
         ui_data_cache = {}

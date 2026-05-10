@@ -18,6 +18,13 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def execute(self, context):
+        # Lazy import: hair.ops_hair_visibility itself imports from
+        # outfits.helper_functions, so importing it at module top-level
+        # would create a circular import during package initialisation.
+        from ..hair.ops_hair_visibility import (
+            apply_hair_list_visibility,
+            hide_all_main_hair,
+        )
 
         poll, arm = mustardui_active_object(context, config=0)
         if not poll:
@@ -52,7 +59,14 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         mask = rig_settings.outfits_global_mask
 
         # Collections, objects, modifiers, masks
-        hair_switcher_set = False
+        # ``hair_switcher_seen`` tracks whether any iterated outfit object
+        # was linked into hair_switch_collection; ``hair_switcher_active``
+        # records whether any of those was visible. We act on hair_collection
+        # only after all outfits are processed, individually toggling main
+        # hair pieces (not the collection itself) so nested sub-collections
+        # like hair_extras_collection aren't cascade-hidden.
+        hair_switcher_seen = False
+        hair_switcher_active = False
 
         for col_entry in rig_settings.outfits_collections:
             col = col_entry.collection
@@ -96,23 +110,19 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 set_bool(obj, "hide_viewport", not show_obj)
                 set_bool(obj, "hide_render", not show_obj)
 
-                # Check Hair Visibility against the Hair Switcher Collection
-                hair_collection = rig_settings.hair_collection
+                # Check Hair Visibility against the Hair Switcher Collection.
+                # Only collect flags here; the actual hair toggle happens
+                # once after all outfits have been processed.
                 if (
-                    hair_collection is not None
+                    rig_settings.hair_collection is not None
                     and obj.type in ["MESH", "ARMATURE"]
                     and rig_settings.hair_switch_collection is not None
                     and obj.name
                     in rig_settings.hair_switch_collection.all_objects.keys()
                 ):
+                    hair_switcher_seen = True
                     if show_obj:
-                        hair_switcher_set = True
-                    set_bool(
-                        hair_collection, "hide_viewport", show_obj or hair_switcher_set
-                    )
-                    set_bool(
-                        hair_collection, "hide_render", show_obj or hair_switcher_set
-                    )
+                        hair_switcher_active = True
 
                 if show_obj:
                     any_object_visible = True
@@ -180,6 +190,14 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             col_visible = is_active or locked_collection or any_object_visible
             set_bool(col, "hide_viewport", not col_visible)
             set_bool(col, "hide_render", not col_visible)
+
+        # Apply hair switching once, per-piece (preserves nested
+        # extras/switcher sub-collections under hair_collection).
+        if hair_switcher_seen:
+            if hair_switcher_active:
+                hide_all_main_hair(rig_settings)
+            else:
+                apply_hair_list_visibility(rig_settings)
 
         # Armature layers
         if arm_settings.outfits:
