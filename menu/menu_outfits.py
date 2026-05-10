@@ -53,19 +53,31 @@ def draw_outfit_piece(
         nname = obj.name[len(re.sub(r"\.\d{3}", "", coll_name)) :]
         nname = re.sub(r"\.\d{3}", "", nname)
 
-        row.operator(
-            "mustardui.object_visibility",
+        row.prop(
+            obj,
+            "MustardUI_outfit_toggle_visibility",
             text=nname,
             icon="OUTLINER_OB_" + obj.type,
-            depress=not obj.hide_viewport,
-        ).obj = obj.name
+            toggle=True,
+        )
     else:
-        row.operator(
-            "mustardui.object_visibility",
+        row.prop(
+            obj,
+            "MustardUI_outfit_toggle_visibility",
             text=obj.name,
             icon="OUTLINER_OB_" + obj.type,
-            depress=not obj.hide_viewport,
-        ).obj = obj.name
+            toggle=True,
+        )
+
+    # Toggle self + children together (replaces the old shift+click behaviour)
+    if obj.children:
+        op = row.operator(
+            "mustardui.object_visibility",
+            text="",
+            icon="LINKED",
+        )
+        op.obj = obj.name
+        op.shift = True
 
     # Physics
     pi = None

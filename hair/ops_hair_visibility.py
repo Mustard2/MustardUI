@@ -27,6 +27,50 @@ def set_object_visibility(obj, visible, rig_settings):
             )
 
 
+def update_hair_extras_collection_visibility(hair_extras_collection):
+    # Sync the collection visibility with the objects visibility
+    hidden = all(x.hide_viewport for x in hair_extras_collection.objects)
+    hair_extras_collection.hide_viewport = hidden
+    hair_extras_collection.hide_render = hidden
+
+
+def set_hair_extra_visibility(context, obj, visible):
+    # Shared visibility update used by both the operator and the UI toggle
+    poll, arm = mustardui_active_object(context, config=0)
+    if not poll:
+        return False
+
+    rig_settings = arm.MustardUI_RigSettings
+    hair_extras_collection = rig_settings.hair_extras_collection
+    if not hair_extras_collection:
+        return False
+
+    extra_objects = [x for x in hair_extras_collection.objects if obj.name == x.name]
+    if len(extra_objects) == 0:
+        return False
+
+    for extra_obj in extra_objects:
+        set_object_visibility(extra_obj, visible, rig_settings)
+
+    update_hair_extras_collection_visibility(hair_extras_collection)
+
+    outfits_update_armature_collections(rig_settings, arm)
+
+    if rig_settings.hair_update_tag_on_switch:
+        for extra_obj in hair_extras_collection.objects:
+            extra_obj.update_tag()
+
+    return True
+
+
+def get_hair_extra_visibility(obj):
+    return not obj.hide_viewport
+
+
+def set_hair_extra_visibility_prop(obj, value):
+    set_hair_extra_visibility(bpy.context, obj, value)
+
+
 class MustardUI_HairVisibility(bpy.types.Operator):
     """Switch visibility of hair objects in a collection"""
 
@@ -72,7 +116,13 @@ class MustardUI_HairVisibility(bpy.types.Operator):
 
 
 class MustardUI_HairVisibility_Extras(bpy.types.Operator):
-    """Switch visibility of hair objects in a collection"""
+    """Switch visibility of hair objects in a collection.
+
+    Note: the in-panel UI no longer invokes this operator (it uses the
+    ``MustardUI_hair_extra_visibility`` BoolProperty on Object so that
+    drag-toggle works). This operator is kept as a public API entry
+    point for keymaps and external scripts referencing ``bl_idname``.
+    """
 
     bl_idname = "mustardui.hair_visibility_extras"
     bl_label = "Hair Visibility Extras"
@@ -101,24 +151,7 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         obj = context.scene.objects[hair_name]
         visibility = obj.hide_viewport
 
-        # Loop through hair objects
-        for obj in [x for x in hair_extras_collection.objects if hair_name == x.name]:
-            set_object_visibility(obj, visibility, rig_settings)
-
-        if all(x.hide_viewport for x in hair_extras_collection.objects):
-            hair_extras_collection.hide_viewport = True
-            hair_extras_collection.hide_render = True
-        else:
-            hair_extras_collection.hide_viewport = False
-            hair_extras_collection.hide_render = False
-
-        # Update armature collections visibility using the outfit-style logic
-        outfits_update_armature_collections(rig_settings, arm)
-
-        # Update tags if enabled
-        if rig_settings.hair_update_tag_on_switch:
-            for obj in hair_extras_collection.objects:
-                obj.update_tag()
+        set_hair_extra_visibility(context, obj, visibility)
 
         return {"FINISHED"}
 
@@ -151,6 +184,14 @@ class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
 
 
 def register():
+    # Bool property used to enable drag-toggle interactions in the UI
+    bpy.types.Object.MustardUI_hair_extra_visibility = bpy.props.BoolProperty(
+        default=False,
+        name="",
+        description="Toggle Hair Extra visibility",
+        get=get_hair_extra_visibility,
+        set=set_hair_extra_visibility_prop,
+    )
     bpy.utils.register_class(MustardUI_HairVisibility)
     bpy.utils.register_class(MustardUI_HairVisibility_Extras)
     bpy.utils.register_class(MustardUI_HairVisibility_Extras_ParticleSystem)
@@ -160,3 +201,4 @@ def unregister():
     bpy.utils.unregister_class(MustardUI_HairVisibility_Extras_ParticleSystem)
     bpy.utils.unregister_class(MustardUI_HairVisibility_Extras)
     bpy.utils.unregister_class(MustardUI_HairVisibility)
+    del bpy.types.Object.MustardUI_hair_extra_visibility

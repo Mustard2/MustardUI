@@ -29,17 +29,17 @@ def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
     col = layout.column()
     row = col.row(align=True)
 
-    op = row.operator(
-        "mustardui.hair_visibility_extras",
+    row.prop(
+        obj,
+        "MustardUI_hair_extra_visibility",
         text=strip_naming_convention(
             obj.name,
             rig_settings.hair_extras_collection.name,
             rig_settings.model_MustardUI_naming_convention,
         ),
         icon="OUTLINER_OB_" + obj.type,
-        depress=not obj.hide_viewport,
+        toggle=True,
     )
-    op.obj_name = obj.name
 
     # Physics
     pi = None
