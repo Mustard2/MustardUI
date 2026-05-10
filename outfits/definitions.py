@@ -19,7 +19,8 @@ class MustardUI_Outfit(bpy.types.PropertyGroup):
             return False
 
         objects = [
-            x for x in rig_settings.hair_collection.objects
+            x
+            for x in rig_settings.hair_collection.objects
             if x.type in {"MESH", "CURVES"}
         ]
         return object in objects
