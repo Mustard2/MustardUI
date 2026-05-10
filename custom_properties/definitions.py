@@ -58,11 +58,11 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     )
 
     # Outfits
-    # Poll function for the selection of mesh only in pointer properties
-    def poll_mesh(self, obj):
+    # Poll function for the selection of supported hair objects in pointer properties
+    def poll_hair_object(self, obj):
         rig_settings = self.id_data.MustardUI_RigSettings
 
-        if obj.type != "MESH":
+        if obj.type not in {"MESH", "CURVES"}:
             return False
 
         hc = rig_settings.hair_collection
@@ -122,7 +122,9 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     )
 
     # Hair
-    hair: PointerProperty(name="Hair Style", type=bpy.types.Object, poll=poll_mesh)
+    hair: PointerProperty(
+        name="Hair Style", type=bpy.types.Object, poll=poll_hair_object
+    )
 
     # Internal stored properties
     rna: StringProperty(name="RNA")
@@ -168,8 +170,11 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         ),
     )
     ptr_armature: PointerProperty(type=bpy.types.Armature)
+    # CURVES is allowed so custom properties bound to a CURVES hair object's
+    # data path can be stored here (ptr_type == "OBJECT" path).
     ptr_object: PointerProperty(
-        type=bpy.types.Object, poll=lambda self, obj: obj.type == "MESH"
+        type=bpy.types.Object,
+        poll=lambda self, obj: obj.type in {"MESH", "CURVES"},
     )
     ptr_key: PointerProperty(type=bpy.types.Key)
     ptr_material: PointerProperty(type=bpy.types.Material)

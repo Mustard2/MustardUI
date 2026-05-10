@@ -22,6 +22,15 @@ def hair_extras_list_make(rig_settings):
     return [obj for obj in objects if obj.type in {"MESH", "CURVES"}]
 
 
+def hair_objects_list_make(rig_settings):
+    if rig_settings.hair_collection is None:
+        return []
+
+    return [
+        obj for obj in rig_settings.hair_collection.objects if obj.type in {"MESH", "CURVES"}
+    ]
+
+
 def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
     if obj in [x.object for x in physics_settings.items]:
         return
@@ -142,15 +151,11 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         model_body = rig_settings.model_body
 
         hair_avail = hair_collection is not None and any(
-            obj.type == "MESH" for obj in hair_collection.objects
+            obj.type in {"MESH", "CURVES"} for obj in hair_collection.objects
         )
 
         hair_extras_avail = hair_extras_collection is not None and any(
-            obj.type == "MESH" for obj in hair_extras_collection.objects
-        )
-
-        curves_hair = hair_collection is not None and any(
-            obj.type == "CURVES" for obj in hair_collection.objects
+            obj.type in {"MESH", "CURVES"} for obj in hair_extras_collection.objects
         )
 
         particle_avail = (
@@ -165,7 +170,6 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 hair_avail
                 or hair_extras_avail
                 or particle_avail
-                or curves_hair
                 or hair_global_properties_avail
             )
             else False
@@ -191,16 +195,15 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         layout.enabled = rig_settings.hair_show
 
         if rig_settings.hair_collection is not None:
-            hair_num = len(
-                [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]
-            )
+            hair_objects = hair_objects_list_make(rig_settings)
+            hair_num = len(hair_objects)
 
             if hair_num > 1:
                 row = layout.row(align=True)
                 row.prop(rig_settings, "hair_list", text="")
 
-            elif hair_num > 0 and rig_settings.hair_collection.objects[0] is not None:
-                obj = rig_settings.hair_collection.objects[0]
+            elif hair_num > 0 and hair_objects[0] is not None:
+                obj = hair_objects[0]
                 row = layout.row(align=True)
                 row.label(
                     text=strip_naming_convention(
@@ -435,7 +438,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
         model_body = rig_settings.model_body
 
         hair_extras_avail = hair_extras_collection is not None and any(
-            obj.type == "MESH" for obj in hair_extras_collection.objects
+            obj.type in {"MESH", "CURVES"} for obj in hair_extras_collection.objects
         )
         particle_avail = (
             model_body is not None
@@ -562,9 +565,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
             or rig_settings.hair_enable_global_particles
         )
         if rig_settings.hair_collection is not None:
-            hair_num = len(
-                [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]
-            )
+            hair_num = len(hair_objects_list_make(rig_settings))
             return res if (global_settings_avail and hair_num) else False
 
         return False
