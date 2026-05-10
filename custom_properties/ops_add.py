@@ -255,7 +255,9 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                     if prop.array_length == 0:
                         if prop.type == "FLOAT":
                             cp.default_float = prop.default
-                        elif prop.type == "INT" or prop.type == "BOOLEAN":
+                        elif prop.type == "BOOLEAN":
+                            cp.default_bool = prop.default
+                        elif prop.type == "INT":
                             cp.default_int = prop.default
                     else:
                         cp.default_array = str(ui_data_dict["default"])

@@ -145,6 +145,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     # Properties stored to rebuild custom properties in case of troubles
     description: StringProperty()
+    default_bool: BoolProperty()
     default_int: IntProperty()
     min_int: IntProperty()
     max_int: IntProperty()

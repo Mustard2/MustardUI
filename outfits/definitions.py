@@ -18,7 +18,10 @@ class MustardUI_Outfit(bpy.types.PropertyGroup):
         if rig_settings.hair_collection is None:
             return False
 
-        objects = [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
+        objects = [
+            x for x in rig_settings.hair_collection.objects
+            if x.type in {"MESH", "CURVES"}
+        ]
         return object in objects
 
     hair: bpy.props.PointerProperty(

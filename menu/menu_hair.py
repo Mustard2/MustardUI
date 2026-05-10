@@ -192,7 +192,10 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
         if rig_settings.hair_collection is not None:
             hair_num = len(
-                [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
+                [
+                    x for x in rig_settings.hair_collection.objects
+                    if x.type in {"MESH", "CURVES"}
+                ]
             )
 
             if hair_num > 1:
@@ -563,7 +566,10 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
         )
         if rig_settings.hair_collection is not None:
             hair_num = len(
-                [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
+                [
+                    x for x in rig_settings.hair_collection.objects
+                    if x.type in {"MESH", "CURVES"}
+                ]
             )
             return res if (global_settings_avail and hair_num) else False
 
