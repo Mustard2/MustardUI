@@ -110,15 +110,19 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                         )
                         set_bool(mod, "show_viewport", desired)
 
-            # Hair visibility
+            # Hair visibility — toggle direct children of hair_collection
+            # individually so nested sub-collections (extras, switcher) are
+            # not cascade-hidden by Blender's collection visibility.
             if (
                 hair_collection is not None
                 and o.type in ["MESH", "ARMATURE"]
                 and hair_switch_collection is not None
                 and o.name in hair_switch_collection.all_objects.keys()
             ):
-                hair_collection.hide_viewport = not visible
-                hair_collection.hide_render = not visible
+                for hair_obj in hair_collection.objects:
+                    if hair_obj.type in {"MESH", "CURVES"}:
+                        hair_obj.hide_viewport = not visible
+                        hair_obj.hide_render = not visible
 
             # Custom properties
             ui_data_cache = {}

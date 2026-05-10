@@ -279,7 +279,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             if rig_settings.hair_collection is not None:
                 objects = []
                 for obj in [
-                    x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+                    x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}
                 ]:
                     objects.append(obj)
 

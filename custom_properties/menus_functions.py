@@ -69,7 +69,7 @@ def mustardui_property_menuadd(self, context):
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
                 for object in [
-                    x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+                    x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}
                 ]:
                     if object == context.active_object:
                         op = layout.operator(

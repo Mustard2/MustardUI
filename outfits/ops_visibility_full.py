@@ -76,7 +76,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 and rig_settings.hair_list != col_entry.hair.name
             ):
                 hair_objects = [
-                    x for x in rig_settings.hair_collection.objects if x.type == "MESH"
+                    x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}
                 ]
                 if col_entry.hair in hair_objects:
                     rig_settings.hair_list = col_entry.hair.name
@@ -107,12 +107,10 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 ):
                     if show_obj:
                         hair_switcher_set = True
-                    set_bool(
-                        hair_collection, "hide_viewport", show_obj or hair_switcher_set
-                    )
-                    set_bool(
-                        hair_collection, "hide_render", show_obj or hair_switcher_set
-                    )
+                    for hair_obj in rig_settings.hair_collection.objects:
+                        if hair_obj.type in {"MESH", "CURVES"}:
+                            hair_obj.hide_viewport = show_obj or hair_switcher_set
+                            hair_obj.hide_render = show_obj or hair_switcher_set
 
                 if show_obj:
                     any_object_visible = True
