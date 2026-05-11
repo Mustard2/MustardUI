@@ -142,11 +142,11 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         model_body = rig_settings.model_body
 
         hair_avail = hair_collection is not None and any(
-            obj.type == "MESH" for obj in hair_collection.objects
+            obj.type in {"MESH", "CURVES"} for obj in hair_collection.objects
         )
 
         hair_extras_avail = hair_extras_collection is not None and any(
-            obj.type == "MESH" for obj in hair_extras_collection.objects
+            obj.type in {"MESH", "CURVES"} for obj in hair_extras_collection.objects
         )
 
         curves_hair = hair_collection is not None and any(
@@ -192,7 +192,11 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
         if rig_settings.hair_collection is not None:
             hair_num = len(
-                [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]
+                [
+                    x
+                    for x in rig_settings.hair_collection.objects
+                    if x.type in {"MESH", "CURVES"}
+                ]
             )
 
             if hair_num > 1:
@@ -435,7 +439,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
         model_body = rig_settings.model_body
 
         hair_extras_avail = hair_extras_collection is not None and any(
-            obj.type == "MESH" for obj in hair_extras_collection.objects
+            obj.type in {"MESH", "CURVES"} for obj in hair_extras_collection.objects
         )
         particle_avail = (
             model_body is not None
@@ -563,7 +567,11 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
         )
         if rig_settings.hair_collection is not None:
             hair_num = len(
-                [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]
+                [
+                    x
+                    for x in rig_settings.hair_collection.objects
+                    if x.type in {"MESH", "CURVES"}
+                ]
             )
             return res if (global_settings_avail and hair_num) else False
 
