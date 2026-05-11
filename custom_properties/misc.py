@@ -91,6 +91,10 @@ def mustardui_reassign_default(obj, uilist, index, addon_prefs):
             obj[prop.prop_name] = prop.default_float
         elif prop.type == "INT" or (prop.type == "FLOAT" and prop.force_type == "Int"):
             obj[prop.prop_name] = prop.default_int
+        elif prop.type == "BOOLEAN" or (
+            prop.type == "FLOAT" and prop.force_type == "Bool"
+        ):
+            obj[prop.prop_name] = prop.default_bool
     except Exception:
         if addon_prefs.debug:
             print(

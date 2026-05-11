@@ -38,6 +38,12 @@ class MustardUI_Section_PropertyDefault(bpy.types.Operator):
                 ui_data_dict = ui_data.as_dict()
                 obj[prop.prop_name] = ui_data_dict["default"]
 
+        # Force depsgraph re-evaluation and UI redraw so the changes
+        # take effect immediately (not just after re-selecting the armature).
+        obj.update_tag()
+        context.view_layer.update()
+        if context.area:
+            context.area.tag_redraw()
         return {"FINISHED"}
 
 

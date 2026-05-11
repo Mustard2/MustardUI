@@ -62,7 +62,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     def poll_mesh(self, obj):
         rig_settings = self.id_data.MustardUI_RigSettings
 
-        if obj.type != "MESH":
+        if obj.type not in {"MESH", "CURVES"}:
             return False
 
         hc = rig_settings.hair_collection
@@ -145,6 +145,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     # Properties stored to rebuild custom properties in case of troubles
     description: StringProperty()
+    default_bool: BoolProperty()
     default_int: IntProperty()
     min_int: IntProperty()
     max_int: IntProperty()
@@ -168,9 +169,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         ),
     )
     ptr_armature: PointerProperty(type=bpy.types.Armature)
-    ptr_object: PointerProperty(
-        type=bpy.types.Object, poll=lambda self, obj: obj.type == "MESH"
-    )
+    ptr_object: PointerProperty(type=bpy.types.Object)
     ptr_key: PointerProperty(type=bpy.types.Key)
     ptr_material: PointerProperty(type=bpy.types.Material)
     ptr_collection: PointerProperty(type=bpy.types.Collection)
