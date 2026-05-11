@@ -1,4 +1,4 @@
-from .. import bl_info
+from .version import PRESETS_VERSION
 
 
 def get_unique_preset_name(presets, base_name):
@@ -28,5 +28,4 @@ def check_preset_version(preset):
     preset_version = (0, 0, 0)
     if "version" in preset:
         preset_version = tuple(preset["version"])
-    current_version = bl_info["version"]
-    return preset_version >= current_version
+    return preset_version >= PRESETS_VERSION
