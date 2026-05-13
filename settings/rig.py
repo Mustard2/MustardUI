@@ -440,7 +440,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     continue
 
                 for mod in self.model_body.modifiers:
-                    if mod.type != "MASK":
+                    if mod.type not in {"MASK", "VERTEX_WEIGHT_MIX"}:
                         continue
                     if not self.outfits_enable_global_mask:
                         continue
