@@ -287,18 +287,18 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             if self.smartcheck_body_mask_from_vg:
                 body = rig_settings.model_body
                 if body is not None:
-                    obj_to_col = {}
-                    for c in outfit_colls:
-                        for outfit_obj in [x for x in c.objects if x.type == "MESH"]:
-                            obj_to_col[outfit_obj] = c
-                    if rig_settings.extras_collection is not None:
-                        for outfit_obj in [
-                            x for x in rig_settings.extras_collection.objects if x.type == "MESH"
-                        ]:
-                            obj_to_col[outfit_obj] = rig_settings.extras_collection
+                    all_colls = outfit_colls + (
+                        [rig_settings.extras_collection]
+                        if rig_settings.extras_collection
+                        else []
+                    )
+                    obj_to_col = {
+                        o: c for c in all_colls for o in c.objects if o.type == "MESH"
+                    }
 
                     if any(
-                        mod.type in {"MASK", "VERTEX_WEIGHT_MIX"} and outfit_obj.name in mod.name.split("|")
+                        mod.type in {"MASK", "VERTEX_WEIGHT_MIX"}
+                        and outfit_obj.name in mod.name.split("|")
                         for outfit_obj in obj_to_col
                         for mod in body.modifiers
                     ):
@@ -309,15 +309,17 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                     if mask_vg_name not in body.vertex_groups:
                         body.vertex_groups.new(name=mask_vg_name)
 
-                    insert_pos = 0
-                    armature_found = False
-                    for i, mod in enumerate(body.modifiers):
-                        if mod.type == "ARMATURE":
-                            insert_pos = i + 1
-                            armature_found = True
-                            break
-                    if not armature_found:
-                        warnings.append("No Armature modifier found on body; VWM modifiers inserted at stack top")
+                    arm_idx = next(
+                        (
+                            i
+                            for i, m in enumerate(body.modifiers)
+                            if m.type == "ARMATURE"
+                        ),
+                        None,
+                    )
+                    if arm_idx is None:
+                        warnings.append("No Armature on body")
+                    insert_pos = arm_idx + 1 if arm_idx is not None else 0
 
                     # Temporarily set body as active for modifier_move_to_index
                     prev_active = context.view_layer.objects.active
@@ -332,15 +334,23 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                                 for m in body.modifiers
                             )
                             if not exists:
-                                mod = body.modifiers.new(name=vg.name, type="VERTEX_WEIGHT_MIX")
+                                mod = body.modifiers.new(
+                                    name=vg.name, type="VERTEX_WEIGHT_MIX"
+                                )
                                 mod.vertex_group_a = mask_vg_name
                                 mod.vertex_group_b = vg.name
                                 mod.mix_set = "ALL"
                                 mod.mix_mode = "ADD"
                                 mod.show_expanded = False
                                 is_active = col.name == rig_settings.outfits_list
-                                is_locked = getattr(outfit_obj, "MustardUI_outfit_lock", False)
-                                visible = (is_active or is_locked) and not outfit_obj.hide_viewport and rig_settings.outfits_global_mask
+                                is_locked = getattr(
+                                    outfit_obj, "MustardUI_outfit_lock", False
+                                )
+                                visible = (
+                                    (is_active or is_locked)
+                                    and not outfit_obj.hide_viewport
+                                    and rig_settings.outfits_global_mask
+                                )
                                 mod.show_viewport = visible
                                 mod.show_render = visible
                                 bpy.ops.object.modifier_move_to_index(
@@ -348,10 +358,14 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                                 )
                                 insert_pos += 1
                                 rig_settings.outfits_enable_global_mask = True
-                            break  # first-match wins: each VG is assigned to one outfit object
+                            break  # first-match wins: one outfit per VG
 
                     mask_mod = next(
-                        (m for m in body.modifiers if m.type == "MASK" and m.name == mask_vg_name),
+                        (
+                            m
+                            for m in body.modifiers
+                            if m.type == "MASK" and m.name == mask_vg_name
+                        ),
                         None,
                     )
                     if mask_mod is None:
@@ -361,22 +375,28 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                         mask_mod.show_expanded = False
                         rig_settings.outfits_enable_global_mask = True
 
-                    last_vwm = -1
-                    for i, mod in enumerate(body.modifiers):
-                        if mod.type == "VERTEX_WEIGHT_MIX":
-                            last_vwm = i
+                    last_vwm = next(
+                        (
+                            i
+                            for i, m in reversed(list(enumerate(body.modifiers)))
+                            if m.type == "VERTEX_WEIGHT_MIX"
+                        ),
+                        -1,
+                    )
                     target_mask = min(
                         last_vwm + 1 if last_vwm >= 0 else insert_pos,
                         len(body.modifiers) - 1,
                     )
-                    current_mask_idx = list(body.modifiers).index(mask_mod)
+                    current_mask_idx = next(
+                        i
+                        for i, m in enumerate(body.modifiers)
+                        if m.name == mask_vg_name
+                    )
                     if current_mask_idx != target_mask:
                         bpy.ops.object.modifier_move_to_index(
                             modifier=mask_mod.name, index=target_mask
                         )
-                        warnings.append(
-                            f"Mask modifier moved to index {target_mask} (after last VERTEX_WEIGHT_MIX)"
-                        )
+                        warnings.append(f"Mask repositioned to index {target_mask}")
 
                     context.view_layer.objects.active = prev_active
 
@@ -385,12 +405,18 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                     for i, mod in enumerate(body.modifiers):
                         if mod.type == "SUBSURF" and subdiv_idx is None:
                             subdiv_idx = i
-                        if mod.type == "MASK" and mod.name == mask_vg_name and mask_pos is None:
+                        if (
+                            mod.type == "MASK"
+                            and mod.name == mask_vg_name
+                            and mask_pos is None
+                        ):
                             mask_pos = i
-                    if subdiv_idx is not None and mask_pos is not None and subdiv_idx < mask_pos:
-                        warnings.append(
-                            "Subdivision modifier should be placed after Mask modifier"
-                        )
+                    if (
+                        subdiv_idx is not None
+                        and mask_pos is not None
+                        and subdiv_idx < mask_pos
+                    ):
+                        warnings.append("Move Subdivision after Mask")
 
             # Hair
             if rig_settings.hair_collection is not None:
