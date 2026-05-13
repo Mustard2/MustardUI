@@ -118,8 +118,8 @@ def add_custom_property(obj, rna, path, name, type, custom_props, sections_to_re
     # Add driver
     try:
         add_driver(obj, rna, path, prop_name)
-    except Exception:
-        print("MustardUI - Could not add a driver for " + prop_name)
+    except Exception as e:
+        print("MustardUI - Could not add a driver for " + prop_name + ":" + str(e))
         del obj[prop_name]
         return
 
@@ -276,7 +276,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 if "MustardUI Float" in shape_key.name:
                     add_custom_property(
                         obj,
-                        f'context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                        f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Float - ") :],
                         "FLOAT",
@@ -287,7 +287,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 elif "MustardUI Bool" in shape_key.name:
                     add_custom_property(
                         obj,
-                        f'context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                        f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Bool - ") :],
                         "BOOL",
