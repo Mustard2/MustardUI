@@ -53,7 +53,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     smartcheck_body_mask_from_vg: bpy.props.BoolProperty(
         name="Body Mask from Vertex Groups",
         default=True,
-        description="Auto-create VERTEX_WEIGHT_MIX modifiers on the Body "
+        description="Auto-create Vertex Weight Mix modifiers on the Body "
         "by matching vertex group names with Outfit object names",
     )
 
