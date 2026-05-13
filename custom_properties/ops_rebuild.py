@@ -477,7 +477,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                     "infos.",
                 )
         else:
-            self.report({"INFO"}, "MustardUI - Custom Properties rebuilt.")
+            self.report(
+                {"INFO"}, "MustardUI - All Custom Properties successfully rebuilt."
+            )
 
         return {"FINISHED"}
 

@@ -171,6 +171,18 @@ def mustardui_cp_path(rna, path):
 
 
 def assign_ptr(custom_prop, rna, addon_prefs):
+    # Skip assignment if already assigned
+    # This is to avoid to overwrite the custom property type to "None"
+    if custom_prop.ptr_type != "None" and (
+        custom_prop.ptr_armature is not None
+        or custom_prop.ptr_object is not None
+        or custom_prop.ptr_key is not None
+        or custom_prop.ptr_material is not None
+        or custom_prop.ptr_collection is not None
+        or custom_prop.ptr_node_tree is not None
+    ):
+        return
+
     # Get the type and assign the pointer
     try:
         if "bpy.data.armatures" in rna and custom_prop.ptr_armature is None:
