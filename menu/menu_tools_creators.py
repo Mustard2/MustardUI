@@ -211,15 +211,47 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
         )
 
 
+class PANEL_PT_MustardUI_ToolsCreators_OptimizeCleanup(MainPanel, bpy.types.Panel):
+    bl_parent_id = "PANEL_PT_MustardUI_ToolsCreators"
+    bl_label = "Optimize & Clean-up"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        if can_draw_ui():
+            return False
+
+        res, arm = mustardui_active_object(context, config=1)
+        addon_prefs = context.preferences.addons[base_package].preferences
+        settings = bpy.context.scene.MustardUI_Settings
+        return res and addon_prefs.developer and not settings.viewport_model_selection
+
+    def draw_header(self, context):
+        layout = self.layout
+        layout.label(text="", icon="FORCE_WIND")
+
+    def draw(self, context):
+
+        layout = self.layout
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_optimize_modifiers",
+            icon="MOD_SMOOTH",
+        )
+
+
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_ToolsCreators)
     bpy.utils.register_class(PANEL_PT_MustardUI_ToolsCreators_Model)
     bpy.utils.register_class(PANEL_PT_MustardUI_ToolsCreators_Rig)
     bpy.utils.register_class(PANEL_PT_MustardUI_ToolsCreators_Mesh)
     bpy.utils.register_class(PANEL_PT_MustardUI_ToolsCreators_Physics)
+    bpy.utils.register_class(PANEL_PT_MustardUI_ToolsCreators_OptimizeCleanup)
 
 
 def unregister():
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_ToolsCreators_OptimizeCleanup)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ToolsCreators_Physics)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ToolsCreators_Mesh)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ToolsCreators_Rig)
