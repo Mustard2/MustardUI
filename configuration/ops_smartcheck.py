@@ -4,11 +4,179 @@ from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
 
 
+def smartcheck_body_mask_from_vg(self, context, rig_settings):
+    warnings = 0
+
+    mask_vg_name = "MustardUI - Mask"
+
+    outfit_colls = [
+        x.collection for x in rig_settings.outfits_collections if x.collection
+    ]
+
+    body = rig_settings.model_body
+    if body is None:
+        warnings += 1
+        print(
+            "MustardUI Smart Check - Body Mask from Vertex Groups - "
+            "No Body Object found"
+        )
+        return warnings
+
+    arm_idx = next(
+        (i for i, m in enumerate(body.modifiers) if m.type == "ARMATURE"),
+        None,
+    )
+    if arm_idx is None:
+        warnings += 1
+        print(
+            "MustardUI Smart Check - Body Mask from Vertex Groups - No Armature on Body"
+        )
+        return warnings
+
+    all_colls = outfit_colls + (
+        [rig_settings.extras_collection] if rig_settings.extras_collection else []
+    )
+    obj_to_col = {o: c for c in all_colls for o in c.objects if o.type == "MESH"}
+
+    if len(obj_to_col) < 1:
+        warnings += 1
+        print(
+            "MustardUI Smart Check - Body Mask from Vertex Groups - "
+            "No Outfit added on the current model"
+        )
+        return warnings
+
+    if any(
+        mod.type in {"MASK", "VERTEX_WEIGHT_MIX"}
+        and outfit_obj.name in mod.name.split("|")
+        for outfit_obj in obj_to_col
+        for mod in body.modifiers
+    ):
+        rig_settings.outfits_enable_global_mask = True
+
+    if mask_vg_name not in body.vertex_groups:
+        body.vertex_groups.new(name=mask_vg_name)
+
+    insert_pos = arm_idx + 1 if arm_idx is not None else 0
+
+    # Temporarily set body as active for modifier_move_to_index
+    prev_active = context.view_layer.objects.active
+    context.view_layer.objects.active = body
+
+    outfits_with_mask = 0
+    for vg in body.vertex_groups:
+        mod = next(
+            (
+                m
+                for m in body.modifiers
+                if (m.type == "VERTEX_WEIGHT_MIX" and m.vertex_group_b == vg.name)
+                or (
+                    self.smartcheck_body_mask_optimize
+                    and m.type == "MASK"
+                    and m.vertex_group == vg.name
+                )
+            ),
+            None,
+        )
+
+        for outfit_obj, col in obj_to_col.items():
+            if outfit_obj.name not in vg.name.split("|"):
+                continue
+
+            outfits_with_mask += 1
+
+            if mod is None or (mod is not None and mod.type == "MASK"):
+                if mod is not None and mod.type == "MASK":
+                    body.modifiers.remove(mod)
+                mod = body.modifiers.new(name=vg.name, type="VERTEX_WEIGHT_MIX")
+                mod.vertex_group_a = mask_vg_name
+                mod.vertex_group_b = vg.name
+                mod.mix_set = "ALL"
+                mod.mix_mode = "ADD"
+                mod.show_expanded = False
+
+            is_active = col.name == rig_settings.outfits_list
+            is_locked = getattr(outfit_obj, "MustardUI_outfit_lock", False)
+            visible = (
+                (is_active or is_locked)
+                and not outfit_obj.hide_viewport
+                and rig_settings.outfits_global_mask
+            )
+            mod.show_viewport = visible
+            mod.show_render = visible
+            bpy.ops.object.modifier_move_to_index(modifier=mod.name, index=insert_pos)
+            insert_pos += 1
+            rig_settings.outfits_enable_global_mask = True
+            break  # first-match wins: one outfit per VG
+
+    if outfits_with_mask < 1:
+        warnings += 1
+        print(
+            "MustardUI Smart Check - Body Mask from Vertex Groups - "
+            "No valid Vertex Group to add"
+        )
+        return warnings
+
+    mask_mod = next(
+        (m for m in body.modifiers if m.type == "MASK" and m.name == mask_vg_name),
+        None,
+    )
+    if mask_mod is None:
+        mask_mod = body.modifiers.new(name=mask_vg_name, type="MASK")
+        mask_mod.vertex_group = mask_vg_name
+        mask_mod.invert_vertex_group = True
+        mask_mod.show_expanded = False
+        rig_settings.outfits_enable_global_mask = True
+
+    last_vwm = next(
+        (
+            i
+            for i, m in reversed(list(enumerate(body.modifiers)))
+            if m.type == "VERTEX_WEIGHT_MIX"
+        ),
+        -1,
+    )
+    target_mask = min(
+        last_vwm + 1 if last_vwm >= 0 else insert_pos,
+        len(body.modifiers) - 1,
+    )
+    current_mask_idx = next(
+        i
+        for i, m in enumerate(body.modifiers)
+        if m.name == mask_vg_name and m.type == "MASK"
+    )
+    if current_mask_idx != target_mask:
+        bpy.ops.object.modifier_move_to_index(modifier=mask_mod.name, index=target_mask)
+        print(
+            f"MustardUI Smart Check - Body Mask from Vertex Groups - "
+            f"Mask repositioned to index {target_mask}"
+        )
+
+    context.view_layer.objects.active = prev_active
+
+    subdiv_idx = None
+    mask_pos = None
+    for i, mod in enumerate(body.modifiers):
+        if mod.type == "SUBSURF" and subdiv_idx is None:
+            subdiv_idx = i
+        if mod.type == "MASK" and mod.name == mask_vg_name and mask_pos is None:
+            mask_pos = i
+    if subdiv_idx is not None and mask_pos is not None and subdiv_idx < mask_pos:
+        warnings += 1
+        print(
+            "MustardUI Smart Check - Body Mask from Vertex Groups - "
+            "The Subdivision modifier should be manually placed after "
+            "the Mask"
+        )
+
+    return warnings
+
+
 class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     """Search for MustardUI configuration options based on the name of the model and its body"""  # noqa: E501
 
     bl_idname = "mustardui.configuration_smartcheck"
-    bl_label = "Smart Search."
+    bl_label = "Smart Check"
     bl_options = {"UNDO"}
 
     smartcheck_custom_properties: bpy.props.BoolProperty(
@@ -50,6 +218,19 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         "on the Body Object or in the Outfits/Extras/Hair, it will "
         "be added as a Global Setting.",
     )
+    smartcheck_body_mask_from_vg: bpy.props.BoolProperty(
+        name="Create Masks from Vertex Groups",
+        default=True,
+        description="Auto-create Vertex Weight Mix modifiers on the Body "
+        "by matching vertex group with Outfit Objects names",
+    )
+    smartcheck_body_mask_optimize: bpy.props.BoolProperty(
+        name="Optimize Mask modifiers",
+        default=True,
+        description="Replace Mask modifiers with Vertex Weight Mix modifiers.\n"
+        "This should greatly improve the performance of the model "
+        "when several Maks are used",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -71,6 +252,8 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
+
+        warnings = 0
 
         # Try to assign the rig object
         if not obj.MustardUI_created:
@@ -275,6 +458,10 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                     elif m.type == "TRIANGULATE":
                         rig_settings.outfits_enable_global_triangulate = True
 
+            # Auto-create VERTEX_WEIGHT_MIX from body VGs matching outfit objects
+            if self.smartcheck_body_mask_from_vg:
+                warnings += smartcheck_body_mask_from_vg(self, context, rig_settings)
+
             # Hair
             if rig_settings.hair_collection is not None:
                 objects = []
@@ -305,7 +492,14 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         if addon_prefs.debug:
             print("\nMustardUI - Smart Check - End")
 
-        self.report({"INFO"}, "MustardUI - Smart Check complete.")
+        if warnings:
+            self.report(
+                {"WARNING"},
+                "MustardUI - Smart Check generated Warnings. See the Console for more"
+                " information.",
+            )
+        else:
+            self.report({"INFO"}, "MustardUI - Smart Check complete.")
 
         return {"FINISHED"}
 
@@ -320,7 +514,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         layout = self.layout
 
         box = layout.box()
-        box.label(text="Categories to Smart Check")
+        box.label(text="Categories", icon="DUPLICATE")
         col = box.column()
         col.prop(self, "smartcheck_outfits")
 
@@ -330,9 +524,13 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         row.label(text="", icon="BLANK1")
         row.prop(self, "reset_current_collections")
 
-        col.separator()
         col.prop(self, "smartcheck_settings")
-        col.prop(self, "smartcheck_custom_properties")
+
+        box = layout.box()
+        box.label(text="Mask", icon="MOD_MASK")
+        col = box.column(align=True)
+        col.prop(self, "smartcheck_body_mask_from_vg")
+        col.prop(self, "smartcheck_body_mask_optimize")
 
 
 def register():
