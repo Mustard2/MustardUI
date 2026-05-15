@@ -239,11 +239,10 @@ class MustardUI_ToolsCreators_OptimizeModifiers(bpy.types.Operator):
         col.prop(self, "mask", icon="MOD_MASK")
         col.prop(self, "smooth_corrective", icon="MOD_SMOOTH")
 
-        box = layout.box()
-        box.label(text="Settings", icon="PREFERENCES")
-        col = box.column(align=True)
-        col.prop(self, "preserve_modifiers")
+        layout.separator()
 
+        col = layout.column(align=True)
+        col.prop(self, "preserve_modifiers")
         row = col.row()
         row.enabled = self.smooth_corrective
         row.prop(self, "sm_influence")
