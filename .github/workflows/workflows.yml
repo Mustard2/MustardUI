@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
@@ -35,7 +35,7 @@ jobs:
 
     name: Blender ${{ matrix.blender }}
     needs: lint
-    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v3
+    uses: Mustard2/blender-workflows/.github/workflows/blender-build.yml@v4
     with:
       timeout-seconds: 180
       blender-version: ${{ matrix.blender }}

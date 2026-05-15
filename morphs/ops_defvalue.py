@@ -51,7 +51,12 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                 break
         # Apply the preset
         if preset_default > -1:
-            bpy.ops.mustardui.morphs_preset_apply()
+            # Override the selected preset
+            arm.mustardui_morphs_preset_uilist_index = preset_default
+            # Set the preset
+            bpy.ops.mustardui.preset_apply(
+                preset_type="MORPHS", force_modifiers_creation=False
+            )
 
         # Update everything
         if arm:
