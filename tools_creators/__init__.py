@@ -12,6 +12,7 @@ from . import (
     ops_naming,
     ops_optimize_mods,
     ops_optimize_shaders,
+    ops_optimize_sk,
     ops_pack_rgba,
     ops_rename,
     ops_rename_images,
@@ -42,9 +43,11 @@ def register():
     ops_optimize_mods.register()
     ops_optimize_shaders.register()
     ops_select_preview_texture.register()
+    ops_optimize_sk.register()
 
 
 def unregister():
+    ops_optimize_sk.unregister()
     ops_select_preview_texture.unregister()
     ops_optimize_shaders.unregister()
     ops_optimize_mods.unregister()

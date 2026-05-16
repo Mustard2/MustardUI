@@ -63,6 +63,8 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
 
     morphs_optimized: bpy.props.BoolProperty(default=False)
 
+    use_shape_key_mute_drivers: bpy.props.BoolProperty(default=False)
+
     # DIFFEOMORPHIC support
 
     # Switcher for Morphs (drivers, shape keys, etc..) in the Diffeomorphic case

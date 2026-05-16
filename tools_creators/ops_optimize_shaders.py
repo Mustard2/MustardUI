@@ -8,7 +8,7 @@ from .. import __package__ as base_package
 class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
     """Replace duplicate shader node groups and duplicate images"""
 
-    bl_idname = "mustardui.tool_creators_optimize_shaders"
+    bl_idname = "mustardui.tools_creators_optimize_shaders"
     bl_label = "Optimize Shaders"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -230,7 +230,17 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
         return hashlib.sha256(raw).hexdigest()
 
+    @classmethod
+    def poll(cls, context):
+        return context.active_object.type == "MESH"
+
     def execute(self, context):
+
+        if not self.remove_duplicate_groups and not self.remove_duplicate_images:
+            self.report(
+                {"WARNING"},
+                "MustardUI - No Option Selected.",
+            )
 
         addon_prefs = context.preferences.addons[base_package].preferences
 

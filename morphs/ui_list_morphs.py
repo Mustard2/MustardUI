@@ -15,15 +15,37 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=1)
+        rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 
-        uilist = morphs_settings.sections[
-            arm.mustardui_morphs_section_uilist_index
-        ].morphs
+        section = morphs_settings.sections[arm.mustardui_morphs_section_uilist_index]
+
+        uilist = section.morphs
         index = arm.mustardui_morphs_uilist_index
 
         if len(uilist) <= index:
             return {"FINISHED"}
+
+        # Remove the mute driver if available
+        if section.shape_keys:
+            shape_keys = rig_settings.model_body.data.shape_keys
+            if shape_keys:
+                morph = uilist[index]
+                try:
+                    driver_path = f'key_blocks["{morph.path}"].mute'
+                    fcurve = shape_keys.animation_data.drivers.find(driver_path)
+                    if fcurve:
+                        drv = fcurve.driver
+                        if (
+                            drv.type == "SCRIPTED"
+                            and drv.expression == "abs(var) < 0.001"
+                        ):
+                            shape_keys.driver_remove(driver_path)
+
+                    # Unmute if muted
+                    shape_keys.key_blocks[morph.path].mute = False
+                except Exception:
+                    pass
 
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
