@@ -11,6 +11,7 @@ from . import (
     ops_link_shape_keys,
     ops_naming,
     ops_optimize_mods,
+    ops_optimize_shaders,
     ops_pack_rgba,
     ops_rename,
     ops_rename_images,
@@ -38,9 +39,11 @@ def register():
     ops_transfer_vertex_groups.register()
     ops_pack_rgba.register()
     ops_optimize_mods.register()
+    ops_optimize_shaders.register()
 
 
 def unregister():
+    ops_optimize_shaders.unregister()
     ops_optimize_mods.unregister()
     ops_pack_rgba.unregister()
     ops_transfer_vertex_groups.unregister()

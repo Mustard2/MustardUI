@@ -239,6 +239,11 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
             "mustardui.tools_creators_optimize_modifiers",
             icon="MOD_SMOOTH",
         )
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tool_creators_optimize_shaders",
+            icon="SHADING_RENDERED",
+        )
 
 
 def register():
