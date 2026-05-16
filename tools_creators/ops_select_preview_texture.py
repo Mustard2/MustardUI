@@ -110,7 +110,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
                     outer_socket = parent_group.inputs[output_index]
 
-                    result = MustardUI_ToolsCreators_SelectPreviewTexture.find_image_from_socket(
+                    result = MustardUI_ToolsCreators_SelectPreviewTexture.find_image_from_socket(  # noqa: E501
                         outer_socket, parent_group.id_data, None, visited
                     )
 
