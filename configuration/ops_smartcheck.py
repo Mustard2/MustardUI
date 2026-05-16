@@ -525,6 +525,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         row.prop(self, "reset_current_collections")
 
         col.prop(self, "smartcheck_settings")
+        col.prop(self, "smartcheck_custom_properties")
 
         box = layout.box()
         box.label(text="Mask", icon="MOD_MASK")
