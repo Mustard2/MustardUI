@@ -42,7 +42,6 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
             return None
 
         try:
-
             import os
 
             if not os.path.exists(filepath):
@@ -62,7 +61,6 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
             hasher = hashlib.sha256()
 
             with open(filepath, "rb") as f:
-
                 start = f.read(CHUNK_SIZE)
 
                 f.seek(max(0, stat.st_size - CHUNK_SIZE))
