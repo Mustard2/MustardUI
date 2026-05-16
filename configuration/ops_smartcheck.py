@@ -457,10 +457,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                     elif m.type == "TRIANGULATE":
                         rig_settings.outfits_enable_global_triangulate = True
 
-            # Auto-create VERTEX_WEIGHT_MIX from body VGs matching outfit objects
-            if self.smartcheck_body_mask_from_vg:
-                warnings += smartcheck_body_mask_from_vg(self, context, rig_settings)
-
             # Hair
             if rig_settings.hair_collection is not None:
                 objects = []
@@ -486,6 +482,10 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                             rig_settings.hair_enable_global_solidify = True
                         elif m.type == "PARTICLE_SYSTEM":
                             rig_settings.hair_enable_global_particles = True
+
+        # Auto-create VERTEX_WEIGHT_MIX from body VGs matching outfit objects
+        if self.smartcheck_body_mask_from_vg:
+            warnings += smartcheck_body_mask_from_vg(self, context, rig_settings)
 
         # End of debug messages
         if addon_prefs.debug:
