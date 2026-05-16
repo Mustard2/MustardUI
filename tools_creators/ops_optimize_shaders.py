@@ -2,30 +2,91 @@ import hashlib
 
 import bpy
 
+from .. import __package__ as base_package
+
 
 class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
-    """Replace duplicate shader node groups with identical ones across all materials"""
+    """Replace duplicate shader node groups and duplicate images"""
 
     bl_idname = "mustardui.tool_creators_optimize_shaders"
     bl_label = "Optimize Shaders"
     bl_options = {"REGISTER", "UNDO"}
 
-    remove_unused: bpy.props.BoolProperty(
-        name="Remove Unused Groups",
+    remove_duplicate_groups: bpy.props.BoolProperty(
+        name="Remove Duplicate Groups",
         default=True,
-        description="Remove duplicate node groups left without users",
+        description="Remove duplicate Groups",
     )
 
+    remove_duplicate_images: bpy.props.BoolProperty(
+        name="Remove Duplicate Images",
+        default=True,
+        description="Remove duplicate Images",
+    )
+
+    remove_unused: bpy.props.BoolProperty(
+        name="Remove Unused",
+        default=True,
+        description="Remove duplicate datablocks left without users",
+    )
+
+    # Image hashing
+    def image_signature(self, image):
+
+        if image.source != "FILE":
+            return None
+
+        filepath = bpy.path.abspath(image.filepath)
+
+        if not filepath:
+            return None
+
+        try:
+
+            import os
+
+            if not os.path.exists(filepath):
+                return None
+
+            stat = os.stat(filepath)
+
+            meta = (
+                image.size[0],
+                image.size[1],
+                image.channels,
+                stat.st_size,
+            )
+
+            CHUNK_SIZE = 8192
+
+            hasher = hashlib.sha256()
+
+            with open(filepath, "rb") as f:
+
+                start = f.read(CHUNK_SIZE)
+
+                f.seek(max(0, stat.st_size - CHUNK_SIZE))
+
+                end = f.read(CHUNK_SIZE)
+
+            hasher.update(repr(meta).encode("utf-8"))
+            hasher.update(start)
+            hasher.update(end)
+
+            return hasher.hexdigest()
+
+        except Exception:
+            return None
+
+    # Group hashing
     def socket_default(self, socket):
         try:
             if hasattr(socket, "default_value"):
                 value = socket.default_value
 
-                # Float / Int
                 if isinstance(value, (float, int, bool)):
                     return value
 
-                # Vector / Color
                 try:
                     return tuple(value)
                 except Exception:
@@ -51,7 +112,6 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
             "properties": {},
         }
 
-        # Generic RNA properties
         ignored = {
             "name",
             "label",
@@ -91,8 +151,8 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
             except Exception:
                 pass
 
-        # Input defaults
         inputs = []
+
         for socket in node.inputs:
             inputs.append(
                 {
@@ -104,9 +164,13 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
         data["inputs"] = inputs
 
-        # Special handling for nested groups
+        # Nested groups
         if node.type == "GROUP" and node.node_tree:
             data["group_name"] = node.node_tree.name
+
+        # Image texture nodes
+        if node.type == "TEX_IMAGE" and node.image:
+            data["image_name"] = node.image.name
 
         return data
 
@@ -123,6 +187,7 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                         link.to_socket.name,
                     )
                 )
+
             except Exception:
                 pass
 
@@ -131,7 +196,6 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
     def serialize_interface(self, node_tree):
         interface = []
 
-        # Blender 4+
         if hasattr(node_tree, "interface"):
             try:
                 for item in node_tree.interface.items_tree:
@@ -145,18 +209,13 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                             item.name,
                         )
                     )
+
             except Exception:
                 pass
 
         return interface
 
     def node_tree_signature(self, node_tree):
-        """
-        Generate a structural signature for the node tree.
-        If two groups have the same signature,
-        they are considered duplicates.
-        """
-
         data = {
             "type": node_tree.bl_idname,
             "nodes": [],
@@ -175,86 +234,211 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
     def execute(self, context):
 
-        # Only shader node groups
-        groups = [ng for ng in bpy.data.node_groups if ng.bl_idname == "ShaderNodeTree"]
+        addon_prefs = context.preferences.addons[base_package].preferences
 
-        if not groups:
-            self.report({"INFO"}, "No shader groups found")
-            return {"CANCELLED"}
+        total_group_replaced = 0
+        total_group_removed = 0
 
-        signature_map = {}
-        duplicate_map = {}
+        total_image_replaced = 0
+        total_image_removed = 0
 
-        # Detect duplicates
-        for group in groups:
-            try:
-                signature = self.node_tree_signature(group)
+        if addon_prefs.debug:
+            print("------------------------------------------------------")
+            print("Shader Optimization")
 
-            except Exception as e:
-                self.report({"WARNING"}, f"Failed analyzing {group.name}: {e}")
-                continue
+        # Remove duplicate shader groups
+        if self.remove_duplicate_groups:
+            groups = [
+                ng for ng in bpy.data.node_groups if ng.bl_idname == "ShaderNodeTree"
+            ]
 
-            if signature not in signature_map:
-                signature_map[signature] = group
-            else:
-                original = signature_map[signature]
-                duplicate_map[group] = original
+            signature_map = {}
+            duplicate_map = {}
 
-        if not duplicate_map:
-            self.report({"INFO"}, "No duplicate shader groups found")
-            return {"FINISHED"}
+            for group in groups:
+                try:
+                    signature = self.node_tree_signature(group)
 
-        # Replace references
-        replaced = 0
-        for material in bpy.data.materials:
-            if not material.use_nodes or not material.node_tree:
-                continue
-
-            for node in material.node_tree.nodes:
-                if node.type != "GROUP":
+                except Exception as e:
+                    self.report(
+                        {"WARNING"},
+                        f"Failed analyzing {group.name}: {e}",
+                    )
                     continue
 
-                if not node.node_tree:
+                if signature not in signature_map:
+                    signature_map[signature] = group
+                else:
+                    original = signature_map[signature]
+                    duplicate_map[group] = original
+                    if addon_prefs.debug:
+                        print(f"Group duplicate found: {group.name}")
+
+            # Replace in materials
+            for material in bpy.data.materials:
+                if not material.use_nodes or not material.node_tree:
                     continue
 
-                if node.node_tree in duplicate_map:
-                    original = duplicate_map[node.node_tree]
+                for node in material.node_tree.nodes:
+                    if node.type != "GROUP":
+                        continue
 
-                    node.node_tree = original
-                    replaced += 1
+                    if not node.node_tree:
+                        continue
 
-        # Replace inside node groups too
-        for group in bpy.data.node_groups:
-            if not hasattr(group, "nodes"):
-                continue
+                    if node.node_tree in duplicate_map:
+                        original = duplicate_map[node.node_tree]
 
-            for node in group.nodes:
-                if node.type != "GROUP":
+                        if addon_prefs.debug:
+                            print(
+                                f"Material {material.name} - "
+                                f"Group {node.node_tree.name} substituted with "
+                                f"{original.name}."
+                            )
+
+                        node.node_tree = original
+                        total_group_replaced += 1
+
+            # Replace inside groups too
+            for group in bpy.data.node_groups:
+                if not hasattr(group, "nodes"):
                     continue
 
-                if not node.node_tree:
+                for node in group.nodes:
+                    if node.type != "GROUP":
+                        continue
+
+                    if not node.node_tree:
+                        continue
+
+                    if node.node_tree in duplicate_map:
+                        original = duplicate_map[node.node_tree]
+
+                        if addon_prefs.debug:
+                            print(
+                                f"Group {group.name} - "
+                                f"Group {node.node_tree.name} substituted with "
+                                f"{original.name}."
+                            )
+
+                        node.node_tree = original
+                        total_group_replaced += 1
+
+            # Remove unused duplicate groups
+            if self.remove_unused:
+                for duplicate in duplicate_map.keys():
+                    if duplicate.users == 0:
+                        bpy.data.node_groups.remove(duplicate)
+                        total_group_removed += 1
+
+        # Remove duplicate images
+        if self.remove_duplicate_images:
+            image_map = {}
+            duplicate_images = {}
+
+            for image in bpy.data.images:
+                signature = self.image_signature(image)
+
+                if signature is None:
                     continue
 
-                if node.node_tree in duplicate_map:
-                    original = duplicate_map[node.node_tree]
+                if signature not in image_map:
+                    image_map[signature] = image
+                else:
+                    original = image_map[signature]
+                    duplicate_images[image] = original
 
-                    node.node_tree = original
-                    replaced += 1
+                    if addon_prefs.debug:
+                        print(f"Image duplicate found: {image.name}")
 
-        # Remove unused duplicates
-        removed = 0
-        if self.remove_unused:
-            for duplicate in duplicate_map.keys():
-                if duplicate.users == 0:
-                    bpy.data.node_groups.remove(duplicate)
-                    removed += 1
+            # Replace image texture nodes in materials
+            for material in bpy.data.materials:
+                if not material.use_nodes or not material.node_tree:
+                    continue
+
+                for node in material.node_tree.nodes:
+                    if node.type != "TEX_IMAGE":
+                        continue
+
+                    if not node.image:
+                        continue
+
+                    if node.image in duplicate_images:
+                        original = duplicate_images[node.image]
+
+                        print(
+                            f"Material {material.name} - "
+                            f"Group {node.image.name} substituted with "
+                            f"{original.name}."
+                        )
+
+                        node.image = original
+                        total_image_replaced += 1
+
+            # Replace image texture nodes in groups
+            for group in bpy.data.node_groups:
+                if not hasattr(group, "nodes"):
+                    continue
+
+                for node in group.nodes:
+                    if node.type != "TEX_IMAGE":
+                        continue
+
+                    if not node.image:
+                        continue
+
+                    if node.image in duplicate_images:
+                        original = duplicate_images[node.image]
+
+                        print(
+                            f"Group {group.name} - "
+                            f"Group {node.image.name} substituted with "
+                            f"{original.name}."
+                        )
+
+                        node.image = original
+                        total_image_replaced += 1
+
+            # Remove unused duplicate images
+            if self.remove_unused:
+                for duplicate in duplicate_images.keys():
+                    if duplicate.users == 0:
+                        bpy.data.images.remove(duplicate)
+                        total_image_removed += 1
+
+        if addon_prefs.debug:
+            print("------------------------------------------------------")
+            print("Shader Optimization Recap")
+
+            print(f"Duplicate Group Nodes Removed: {total_group_replaced}")
+            print(f"Duplicate Image Nodes Removed: {total_image_replaced}")
+
+            if self.remove_unused:
+                print(f"Duplicate Group Data Removed : {total_group_removed}")
+                print(f"Duplicate Images Data Removed: {total_image_removed}")
 
         self.report(
             {"INFO"},
-            f"MustardUI - Shaders Optimized: replaced {replaced} shader groups",
+            "MustardUI - Shaders Optimized.",
         )
 
         return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=250)
+
+    def draw(self, context):
+
+        layout = self.layout
+
+        col = layout.column(align=True)
+
+        col.prop(self, "remove_duplicate_images")
+        col.prop(self, "remove_duplicate_groups")
+
+        col.separator()
+
+        col.prop(self, "remove_unused")
 
 
 def register():
