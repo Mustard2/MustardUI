@@ -2,12 +2,11 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
+from ..tools_creators.ops_optimize_mods import mask_vg_name
 
 
 def smartcheck_body_mask_from_vg(self, context, rig_settings):
     warnings = 0
-
-    mask_vg_name = "MustardUI - Mask"
 
     outfit_colls = [
         x.collection for x in rig_settings.outfits_collections if x.collection
