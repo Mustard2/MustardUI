@@ -7,6 +7,8 @@ from ..model_selection.active_object import mustardui_active_object
 
 
 def is_ui_update(rig_settings):
+    version = tuple(rig_settings.model_mustardui_version)
+
     return not (
         (
             rig_settings.diffeomorphic_support
@@ -21,10 +23,10 @@ def is_ui_update(rig_settings):
         or (
             rig_settings.hair_collection is not None
             and rig_settings.model_MustardUI_naming_convention
-            and tuple(rig_settings.model_mustardui_version) < (2026, 4, 0)
+            and version < (2026, 4, 0)
         )
         # Check for custom properties version
-        or (tuple(rig_settings.model_mustardui_version) < (2026, 5, 0))
+        or (version != (0, 0, 0) and version < (2026, 5, 0))
     )
 
 
