@@ -172,8 +172,17 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                             "MASK",
                             "VERTEX_WEIGHT_MIX",
                         ] and obj.name in mod.name.split("|"):
-                            set_bool(mod, "show_viewport", mask_visible)
-                            set_bool(mod, "show_render", mask_visible)
+                            should_show = mask_visible
+                            if not should_show:
+                                for other_name in mod.name.split("|"):
+                                    if other_name == obj.name:
+                                        continue
+                                    other_obj = context.scene.objects.get(other_name)
+                                    if other_obj and not other_obj.hide_viewport:
+                                        should_show = True
+                                        break
+                            set_bool(mod, "show_viewport", should_show)
+                            set_bool(mod, "show_render", should_show)
 
             # Collection visibility AFTER objects
             col_visible = is_active or locked_collection or any_object_visible

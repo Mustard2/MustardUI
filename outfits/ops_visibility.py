@@ -176,8 +176,17 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                         and self.obj in mod.name.split("|")
                         and rig_settings.outfits_global_mask
                     ):
-                        set_bool(mod, "show_viewport", not o.hide_viewport)
-                        set_bool(mod, "show_render", not o.hide_viewport)
+                        should_show = not o.hide_viewport
+                        if not should_show:
+                            for other_name in mod.name.split("|"):
+                                if other_name == self.obj:
+                                    continue
+                                other_obj = scene.objects.get(other_name)
+                                if other_obj and not other_obj.hide_viewport:
+                                    should_show = True
+                                    break
+                        set_bool(mod, "show_viewport", should_show)
+                        set_bool(mod, "show_render", should_show)
             else:
                 self.report(
                     {"WARNING"}, "MustardUI - Outfit Body has not been specified."
@@ -188,9 +197,13 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         # Apply to children if shift is pressed
         if self.shift:
-            for child in obj.children:
-                if child.hide_viewport != obj.hide_viewport:
-                    apply_visibility(child)
+            def apply_visibility_recursive(parent):
+                for child in parent.children:
+                    if child.hide_viewport != obj.hide_viewport:
+                        apply_visibility(child)
+                    apply_visibility_recursive(child)
+
+            apply_visibility_recursive(obj)
 
         # ------------------- GLOBAL UPDATES ------------------- #
         # Physics update
@@ -200,9 +213,13 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         # Update tags
         if rig_settings.outfits_update_tag_on_switch:
             arm.update_tag()
-            obj.update_tag()
-            for child in obj.children:
-                child.update_tag()
+
+            def update_tags_recursive(parent):
+                parent.update_tag()
+                for child in parent.children:
+                    update_tags_recursive(child)
+
+            update_tags_recursive(obj)
 
         # Extras collection visibility
         extras = rig_settings.extras_collection
