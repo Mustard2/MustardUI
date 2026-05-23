@@ -104,7 +104,7 @@ def optimize_modifiers(
         )
 
     if len(mods) < 1:
-        return 0, "No Modifier to convert"
+        return 0
 
     if mod_type == "CORRECTIVE_SMOOTH" and sm_influence and max_iterations > 0:
         for mod, iterations, scale in [x for x in mods if x is not None]:
