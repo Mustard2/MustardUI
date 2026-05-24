@@ -52,6 +52,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         description="Remove modifiers for mesh not affected by Physics cages",
     )
 
+    single_outfit: bpy.props.StringProperty(default="")
+
     def bind(self, obj, mod):
 
         warnings = 0
@@ -99,6 +101,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
 
     def execute(self, context):
 
+        scene = context.scene
+
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -120,24 +124,40 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
             body_show = m.show_viewport
             m.show_viewport = False
+
+        # Update everything
         body.data.update_tag()
+        body.data.update()
         body.update_tag()
+        bpy.context.view_layer.update()
 
         arm.pose_position = "REST"
 
         warnings = 0
 
-        colls = [
-            x.collection
-            for x in rig_settings.outfits_collections
-            if x.collection is not None
-        ]
-        if rig_settings.extras_collection is not None:
-            colls.append(rig_settings.extras_collection)
+        if self.single_outfit != "":
+            colls = [
+                x.collection
+                for x in rig_settings.outfits_collections
+                if x.collection is not None and x.collection.name == self.single_outfit
+            ]
+            if (
+                rig_settings.extras_collection is not None
+                and rig_settings.extras_collection.name == self.single_outfit
+            ):
+                colls.append(rig_settings.extras_collection)
+        else:
+            colls = [
+                x.collection
+                for x in rig_settings.outfits_collections
+                if x.collection is not None
+            ]
+            if rig_settings.extras_collection is not None:
+                colls.append(rig_settings.extras_collection)
 
-        # Clear current intersection objects
-        for pi in [x for x in items if x.type == "CAGE"]:
-            pi.intersecting_objects.clear()
+            # Clear current intersection objects
+            for pi in [x for x in items if x.type == "CAGE"]:
+                pi.intersecting_objects.clear()
 
         for coll in colls:
             objs = (
@@ -259,7 +279,6 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         if self.attempt_fix_bind != "NONE" and warnings > 0:
             warnings_objects = []
 
-            scene = context.scene
             level = scene.render.simplify_subdivision
             body_levels = 0
             body_show = False

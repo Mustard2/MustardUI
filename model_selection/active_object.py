@@ -14,7 +14,7 @@ def mustardui_active_object(context, config=0):
         if obj.type != "ARMATURE" or obj.data is None:
             return False, None
         arm = obj.data
-        return not arm.MustardUI_created, arm
+        return not arm.MustardUI_created and settings.viewport_model_selection, arm
 
     # If Viewport Model Selection is enabled, the active object will be the active
     # object only if it is an armature

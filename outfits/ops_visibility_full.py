@@ -19,7 +19,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=-1)
         if not poll:
             self.report({"WARNING"}, "No active MustardUI armature")
             return {"CANCELLED"}

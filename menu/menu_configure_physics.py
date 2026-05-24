@@ -121,7 +121,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Outfits Support", icon="MOD_CLOTH")
         row = box.row(align=True)
-        row.operator("mustardui.physics_setup", icon="PHYSICS")
+        row.operator("mustardui.physics_setup", icon="PHYSICS").single_outfit = ""
         if settings.advanced:
             row.operator(
                 "mustardui.physics_setup_intersecting_objects", icon="XRAY", text=""
