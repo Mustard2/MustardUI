@@ -1,4 +1,5 @@
 import hashlib
+import os
 
 import bpy
 
@@ -46,8 +47,6 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
             return None
 
         try:
-            import os
-
             if not os.path.exists(filepath):
                 return None
 
@@ -184,9 +183,9 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                 links.append(
                     (
                         link.from_node.name,
-                        link.from_socket.name,
+                        link.from_socket.identifier,
                         link.to_node.name,
-                        link.to_socket.name,
+                        link.to_socket.identifier,
                     )
                 )
 
@@ -246,6 +245,7 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                 {"WARNING"},
                 "MustardUI - No Option Selected.",
             )
+            return {"CANCELLED"}
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -432,9 +432,28 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                 print(f"Duplicate Group Data Removed : {total_group_removed}")
                 print(f"Duplicate Images Data Removed: {total_image_removed}")
 
+        total = total_group_replaced + total_group_removed + total_image_replaced + total_image_removed
+
+        if total == 0:
+            self.report({"WARNING"}, "MustardUI - Nothing to optimize.")
+            return {"FINISHED"}
+
+
+        parts = []
+        if self.remove_duplicate_groups:
+            group_msg = f"Groups: {total_group_replaced} replaced"
+            if self.remove_unused:
+                group_msg += f", {total_group_removed} removed"
+            parts.append(group_msg)
+        if self.remove_duplicate_images:
+            image_msg = f"Images: {total_image_replaced} replaced"
+            if self.remove_unused:
+                image_msg += f", {total_image_removed} removed"
+            parts.append(image_msg)
+
         self.report(
             {"INFO"},
-            "MustardUI - Shaders Optimized.",
+            "MustardUI - Shaders Optimized. " + " | ".join(parts),
         )
 
         return {"FINISHED"}
