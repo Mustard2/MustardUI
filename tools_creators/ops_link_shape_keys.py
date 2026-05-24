@@ -52,7 +52,10 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
             obj_keys = obj.data.shape_keys.key_blocks
 
             for key in obj_keys:
-                if key.name not in active_keys or key == obj.data.shape_keys.reference_key:
+                if (
+                    key.name not in active_keys
+                    or key == obj.data.shape_keys.reference_key
+                ):
                     continue
 
                 # Remove existing driver if any
@@ -71,9 +74,7 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
 
                     target = var.targets[0]
                     target.id = active_obj
-                    target.data_path = (
-                        f'data.shape_keys.key_blocks["{key.name}"].value'
-                    )
+                    target.data_path = f'data.shape_keys.key_blocks["{key.name}"].value'
 
                     driver.expression = "val"
 
