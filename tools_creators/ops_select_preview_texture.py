@@ -133,11 +133,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
     def execute(self, context):
 
-        obj = context.object
-
-        if not obj:
-            self.report({"WARNING"}, "No active object")
-            return {"CANCELLED"}
+        obj = context.active_object
 
         processed = 0
 
