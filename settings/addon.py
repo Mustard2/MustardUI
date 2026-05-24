@@ -113,11 +113,13 @@ def register():
     bpy.types.Scene.MustardUI_Settings = PointerProperty(type=MustardUI_Settings)
 
     # Properties to specify if the Armature has a MustardUI currently in use
-    bpy.types.Armature.MustardUI_enable = bpy.props.BoolProperty(default=False, name="")
+    bpy.types.Armature.MustardUI_enable = bpy.props.BoolProperty(
+        default=False, name="", override={'LIBRARY_OVERRIDABLE'}
+    )
 
     # Properties to specify if the Armature has a MustardUI created
     bpy.types.Armature.MustardUI_created = bpy.props.BoolProperty(
-        default=False, name=""
+        default=False, name="", override={'LIBRARY_OVERRIDABLE'}
     )
 
     bpy.app.handlers.load_post.append(load_handler)

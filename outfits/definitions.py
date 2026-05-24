@@ -51,6 +51,7 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
         name="Enable Physics",
         description="Enable Physics on the current Outfit piece",
         update=update_physics,
+        override={'LIBRARY_OVERRIDABLE'},
     )
 
     # Enable Physics based on current Physics Objects
@@ -67,6 +68,7 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
         name="Enable Physics",
         description="Enable Physics on the current Outfit piece",
         update=update_enable_pi_physics,
+        override={'LIBRARY_OVERRIDABLE'},
     )
 
     # Enable Collisions based on current Physics Objects
@@ -83,25 +85,28 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
         name="Enable Collisions",
         description="Enable Collisions on the current Outfit piece",
         update=update_enable_pi_collisions,
+        override={'LIBRARY_OVERRIDABLE'},
     )
 
     # Variable to collapse children in Outfit pieces list
-    collapse_children: bpy.props.BoolProperty(default=True, description="", name="")
+    collapse_children: bpy.props.BoolProperty(default=True, description="", name="", override={'LIBRARY_OVERRIDABLE'})
 
     # Custom properties show
     additional_options_show: bpy.props.BoolProperty(
         default=False,
         name="",
         description="Show additional properties for the selected object",
+        override={'LIBRARY_OVERRIDABLE'},
     )
     additional_options_show_lock: bpy.props.BoolProperty(
         default=False,
         name="",
         description="Show additional properties for the selected object",
+        override={'LIBRARY_OVERRIDABLE'},
     )
 
     # Simplify status
-    simplify_status: bpy.props.BoolProperty()
+    simplify_status: bpy.props.BoolProperty(override={'LIBRARY_OVERRIDABLE'})
 
 
 def register():
@@ -109,15 +114,17 @@ def register():
     bpy.utils.register_class(MustardUI_OutfitSettings)
 
     bpy.types.Object.MustardUI_OutfitSettings = bpy.props.PointerProperty(
-        type=MustardUI_OutfitSettings
+        type=MustardUI_OutfitSettings,
+        override={'LIBRARY_OVERRIDABLE'},
     )
 
     bpy.types.Object.MustardUI_outfit_visibility = bpy.props.BoolProperty(
-        default=False, name=""
+        default=False, name="", override={'LIBRARY_OVERRIDABLE'}
     )
 
     bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(
-        default=False, name="", description="Lock/unlock the outfit"
+        default=False, name="", description="Lock/unlock the outfit",
+        override={'LIBRARY_OVERRIDABLE'}
     )
 
 

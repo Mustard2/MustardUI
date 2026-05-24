@@ -93,7 +93,7 @@ def register():
     bpy.utils.register_class(MUSTARDUI_UL_Morphs_UIList_Menu)
 
     bpy.types.Armature.mustardui_morphs_uilist_menu_index = IntProperty(
-        name="", default=0
+        name="", default=0, override={'LIBRARY_OVERRIDABLE'}
     )
 
 
