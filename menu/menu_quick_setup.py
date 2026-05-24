@@ -50,7 +50,6 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=2)
         rig_settings = arm.MustardUI_RigSettings
-        scene = context.scene
         scanned = rig_settings.model_armature_object is not None
 
         # --- General ---

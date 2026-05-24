@@ -174,7 +174,8 @@ class MustardUI_QuickSetup(bpy.types.Operator):
         if rig_settings.model_body is None:
             self.report(
                 {"ERROR"},
-                "MustardUI - No body mesh found. Select one in the Body field and try again.",
+                "MustardUI - No body mesh found. Select one in the Body field and "
+                "try again.",
             )
             return {"FINISHED"}
 
