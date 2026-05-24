@@ -30,7 +30,9 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
         description="Remove duplicate datablocks left without users",
     )
 
-    # Image hashing
+    # Image hashing — reads only the first and last 8 KB of each file for
+    # performance. Two images with identical metadata and boundary chunks but
+    # different middle content would be incorrectly treated as duplicates.
     def image_signature(self, image):
 
         if image.source != "FILE":

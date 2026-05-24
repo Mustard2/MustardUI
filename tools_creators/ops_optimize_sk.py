@@ -113,7 +113,9 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
 
         self.report(
             {"INFO"},
-            "MustardUI - Shape Keys Optimized.",
+            "MustardUI - Shape Key drivers removed."
+            if self.revert
+            else "MustardUI - Shape Keys Optimized.",
         )
 
         return {"FINISHED"}

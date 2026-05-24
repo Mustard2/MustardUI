@@ -32,7 +32,14 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
         return colorspace in allowed
 
     @staticmethod
-    def find_principled_recursive(node_tree, parent_group=None):
+    def find_principled_recursive(node_tree, parent_group=None, visited=None):
+
+        if visited is None:
+            visited = set()
+
+        if id(node_tree) in visited:
+            return None
+        visited.add(id(node_tree))
 
         # Direct Principled
         for node in node_tree.nodes:
@@ -49,7 +56,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
             result = (
                 MustardUI_ToolsCreators_SelectPreviewTexture.find_principled_recursive(
-                    node.node_tree, node
+                    node.node_tree, node, visited
                 )
             )
 
