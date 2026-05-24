@@ -232,7 +232,8 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.active_object is not None and context.active_object.type == "MESH"
+        obj = context.active_object
+        return obj is not None and obj.type == "MESH"
 
     def execute(self, context):
 
