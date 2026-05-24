@@ -77,8 +77,49 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
         # Adjust the property path to be exported
         clipboard = context.window_manager.clipboard
+
+        # On Wayland, copy_data_path_button may only write the short property
+        # identifier (e.g. "value") instead of the full dotted path.  When that
+        # happens there is no "." in the clipboard, so reconstruct the full path
+        # from button_pointer / button_prop which are always available.
+        if "." not in clipboard and "][" not in clipboard:
+            ptr = context.button_pointer
+            if ptr is not None:
+                try:
+                    id_data = ptr.id_data
+                    rel_path = ptr.path_from_id()
+                    # Find the bpy.data collection that owns this ID data-block
+                    id_path = None
+                    for bpy_data_prop in bpy.data.bl_rna.properties:
+                        if bpy_data_prop.type != "COLLECTION":
+                            continue
+                        try:
+                            coll = getattr(bpy.data, bpy_data_prop.identifier)
+                            item = coll.get(id_data.name)
+                            if item is id_data:
+                                name = id_data.name.replace("'", "\\'")
+                                id_path = f"bpy.data.{bpy_data_prop.identifier}['{name}']"
+                                break
+                        except (TypeError, KeyError, AttributeError):
+                            continue
+                    if id_path is not None:
+                        if rel_path:
+                            clipboard = f"{id_path}.{rel_path}.{clipboard}"
+                        else:
+                            clipboard = f"{id_path}.{clipboard}"
+                except Exception:
+                    pass
+
         blender_custom_property = "][" in clipboard
         if not blender_custom_property:
+            if "." not in clipboard:
+                self.report(
+                    {"ERROR"},
+                    "MustardUI - Could not retrieve the full property path. "
+                    "If you are using Wayland, try running Blender with: "
+                    'WAYLAND_DISPLAY="" blender',
+                )
+                return {"FINISHED"}
             rna, path = clipboard.rsplit(".", 1)
         else:
             path = clipboard
