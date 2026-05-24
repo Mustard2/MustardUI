@@ -21,6 +21,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Model name",
         description="Model name",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Body object
@@ -56,6 +57,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         min=0,
         default=(0, 0, 0),
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -95,6 +97,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "model, enabling this can greatly affect rendering times",
         update=update_subdiv,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     body_subdiv_rend_lv: bpy.props.IntProperty(
         default=2,
@@ -106,6 +109,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "increasing this can greatly affect rendering times",
         update=update_subdiv,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     body_subdiv_view: bpy.props.BoolProperty(
         default=False,
@@ -117,6 +121,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "activate, and Blender will freeze during this",
         update=update_subdiv,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     body_subdiv_view_lv: bpy.props.IntProperty(
         default=1,
@@ -131,6 +136,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "freeze while applying the modification",
         update=update_subdiv,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     body_enable_subdiv: bpy.props.BoolProperty(
         default=True,
@@ -138,6 +144,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Creates a switcher on the UI to enable/disable all "
         "modifiers of this type on the Body",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Smooth correction
@@ -149,6 +156,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "it before rendering",
         update=update_smooth_corr,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     body_enable_smoothcorr: bpy.props.BoolProperty(
         default=False,
@@ -156,6 +164,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Creates a switcher on the UI to enable/disable all "
         "modifiers of this type on the Body",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Solidify
@@ -165,6 +174,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Solidify modifiers on the Body",
         update=update_solidify,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     body_enable_solidify: bpy.props.BoolProperty(
         default=False,
@@ -172,6 +182,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Creates a switcher on the UI to enable/disable all "
         "modifiers of this type on the Body",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Volume Preserve
@@ -204,6 +215,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "the model (body and outfits)",
         update=update_volume_preserve,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     body_enable_preserve_volume: bpy.props.BoolProperty(
@@ -213,6 +225,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "the Preserve Volume option on the Armature "
         "modifier",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Material normals tool
@@ -225,6 +238,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "Viewport mode",
         name="Eevee Optimized Normals tool",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Custom properties
@@ -235,6 +249,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "this can clash with the section icons, "
         "making the menu difficult to read",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     body_custom_properties_name_order: bpy.props.BoolProperty(
         default=False,
@@ -242,6 +257,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Order the custom properties by name "
         "instead of by appearance in the list",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Geometry Nodes
@@ -256,6 +272,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable all Geometry Nodes on the Body",
         update=update_geometry_nodes,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     body_enable_geometry_nodes: bpy.props.BoolProperty(
@@ -264,6 +281,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Creates a switcher on the UI to enable/disable "
         "all modifiers of this type on the Body",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Geometry Nodes support
@@ -274,6 +292,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "Sections.\nThe properties displayed are "
         "the attributes of the Geometry Node",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # List of the sections for body custom properties
@@ -294,6 +313,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "on the Body.\nThis tool will enable/disable "
         "modifiers only for Viewport",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_enable_global_smoothcorrection: bpy.props.BoolProperty(
@@ -303,6 +323,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "type on the Body",
         name="Smooth Correction modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_enable_global_surfacedeform: bpy.props.BoolProperty(
@@ -312,6 +333,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "type on the Body",
         name="Surface Deform modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_enable_global_shrinkwrap: bpy.props.BoolProperty(
@@ -321,6 +343,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "on the Body",
         name="Shrinkwrap modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_enable_global_mask: bpy.props.BoolProperty(
@@ -329,6 +352,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "all modifiers of this type on the Body",
         name="Mask modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_enable_global_solidify: bpy.props.BoolProperty(
@@ -338,6 +362,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "the Body",
         name="Solidify modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_enable_global_triangulate: bpy.props.BoolProperty(
@@ -347,10 +372,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "on the Body",
         name="Triangulate modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_max_hierarchy_level: bpy.props.IntProperty(
-        default=3, override={"LIBRARY_OVERRIDABLE"}
+        default=3,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # OUTFITS FUNCTIONS AND DATA
@@ -365,6 +393,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Show Outfits",
         update=outfits_show_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Function to create an array of tuples for Outfit enum collections
@@ -507,6 +536,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         items=outfits_list_make,
         update=outfits_visibility_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Nude outfit enable
@@ -517,6 +547,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "'outfit' in the Outfits list, which can be useful for SFW "
         "models",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Global outfit properties
@@ -527,6 +558,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "Viewport) on the Outfits",
         update=outfits_global_options_subsurf_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_global_smoothcorrection: bpy.props.BoolProperty(
@@ -535,6 +567,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Smooth Correction modifiers on the Outfits",
         update=outfits_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_global_shrinkwrap: bpy.props.BoolProperty(
@@ -543,6 +576,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Shrinkwrap modifiers on the Outfits",
         update=outfits_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_global_surfacedeform: bpy.props.BoolProperty(
@@ -551,6 +585,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Surface Deform modifiers on the Outfits",
         update=outfits_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_global_mask: bpy.props.BoolProperty(
@@ -559,6 +594,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Mask modifiers on the Outfits",
         update=outfits_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_global_solidify: bpy.props.BoolProperty(
@@ -567,6 +603,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Solidify modifiers on the Outfits",
         update=outfits_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_global_triangulate: bpy.props.BoolProperty(
@@ -575,6 +612,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Triangulate modifiers on the Outfits",
         update=outfits_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfit_custom_properties_icons: bpy.props.BoolProperty(
@@ -582,6 +620,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Show Icons",
         description="Enable properties icons in the outfit menu",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     outfit_custom_properties_name_order: bpy.props.BoolProperty(
         default=False,
@@ -589,6 +628,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Order the custom properties by name "
         "instead of by appearance in the list",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfit_global_custom_properties_collapse: bpy.props.BoolProperty(
@@ -596,6 +636,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="",
         description="Show additional properties for the selected object",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfit_config_subcollections: bpy.props.BoolProperty(
@@ -604,6 +645,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Add also Objects that are in sub-collections "
         "with respect to the main Outfit collection added",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfits_update_tag_on_switch: bpy.props.BoolProperty(
@@ -614,6 +656,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "is slow when using the Outfit piece visibility "
         "buttons in the UI",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfit_switch_armature_disable: bpy.props.BoolProperty(
@@ -622,6 +665,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Disable Armature modifiers of Outfits that "
         "are not visible to increase performance",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfit_switch_modifiers_disable: bpy.props.BoolProperty(
@@ -633,6 +677,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "Properties are considered (Smooth Correction, "
         "Subdivision Surface and Shrinkwrap only)",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfit_switch_shape_keys_disable: bpy.props.BoolProperty(
@@ -641,6 +686,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Disable the shape keys on the unused Outfits "
         "(and their drivers) to increase performance",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     outfit_physics_support: bpy.props.BoolProperty(
@@ -649,6 +695,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="If enabled, a button near outfit pieces with Physics "
         "modifiers is added to enable/disable physics",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Extras
@@ -681,6 +728,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="",
         update=show_viewport_extras_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -787,6 +835,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         items=hair_list_make,
         update=hair_list_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_custom_properties_icons: bpy.props.BoolProperty(
@@ -794,6 +843,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Show Icons",
         description="Enable properties icons in the menu",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     hair_custom_properties_name_order: bpy.props.BoolProperty(
         default=False,
@@ -801,6 +851,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Order the custom properties by name "
         "instead of by appearance in the list",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_switch_armature_disable: bpy.props.BoolProperty(
@@ -809,6 +860,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Disable Armature modifiers of Hair that are not "
         "visible to increase performance",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Property to enable/disable hair to increase viewport performance
@@ -821,6 +873,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Show Hair",
         update=hair_show_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     def hair_particle_children_viewport_factor_update(self, context):
@@ -843,6 +896,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         max=1.0,
         update=hair_particle_children_viewport_factor_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     def hair_particle_hide_viewport_update(self, context):
@@ -867,6 +921,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Hide the current Hair Particle and its Particle System modifiers",
         update=hair_particle_hide_viewport_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_particle_hide_render: bpy.props.BoolProperty(
@@ -875,6 +930,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Hide the current Hair Particle and its Particle System modifiers",
         update=hair_particle_hide_render_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Hair Global Properties
@@ -883,6 +939,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Subdivision Surface modifiers",
         description="This tool will enable/disable modifiers only for Viewport",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_enable_global_smoothcorrection: bpy.props.BoolProperty(
@@ -892,6 +949,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "type on the Body",
         name="Smooth Correction modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_enable_global_solidify: bpy.props.BoolProperty(
@@ -900,6 +958,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "all modifiers of this type on the Body",
         name="Solidify modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_enable_global_particles: bpy.props.BoolProperty(
@@ -908,6 +967,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "all modifiers of this type on the Body",
         name="Particle Hair modifiers",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Function to update the global hair properties
@@ -959,6 +1019,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "Viewport) on the Hair",
         update=hair_global_options_subsurf_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_global_smoothcorrection: bpy.props.BoolProperty(
@@ -967,6 +1028,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Smooth Correction modifiers on the Hair",
         update=hair_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_global_solidify: bpy.props.BoolProperty(
@@ -975,6 +1037,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Solidify modifiers on the Hair",
         update=hair_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_global_particles: bpy.props.BoolProperty(
@@ -983,6 +1046,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable/disable the Particle Hair modifiers on the Hair",
         update=hair_global_options_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair_update_tag_on_switch: bpy.props.BoolProperty(
@@ -993,6 +1057,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "slow when using the Outfit piece visibility "
         "buttons in the UI",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Particle system enable
@@ -1003,6 +1068,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "particle systems on the body mesh are automatically "
         "be added to the UI",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Switch Hair when changing Outfit if set in the Outfit settings
@@ -1011,6 +1077,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Switch Hair on Outfit Change",
         description="If assigned, switch Hair when changing an Outfit, if assigned",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -1018,7 +1085,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
 
     creator_tools_face_rig_version: bpy.props.IntProperty(
-        default=1, override={"LIBRARY_OVERRIDABLE"}
+        default=1,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -1026,7 +1095,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
 
     # Version of the model
-    model_version: bpy.props.StringProperty(override={"LIBRARY_OVERRIDABLE"})
+    model_version: bpy.props.StringProperty(
+        override={"LIBRARY_OVERRIDABLE"}, options={"LIBRARY_EDITABLE"}
+    )
     model_version_vector: bpy.props.IntVectorProperty(
         name="Model version",
         size=3,
@@ -1034,6 +1105,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         default=(0, 0, 0),
         description="Version of the model",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     model_version_type: bpy.props.EnumProperty(
         default="Standard",
@@ -1044,12 +1116,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         ],
         name="Version Status",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     model_changelog_link: StringProperty(
         name="Changelog Link",
         default="",
         description="Link to a changelog webpage",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     model_minimum_blender_version: bpy.props.IntVectorProperty(
         name="Minimum Blender version",
@@ -1062,6 +1136,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "version.\nLeave it 0,0,0 to disable this "
         "warning",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     model_version_date_enable: bpy.props.BoolProperty(
         name="Add Date to version",
@@ -1070,6 +1145,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "empty, today's date will be used",
         default=False,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     model_version_date_format: bpy.props.EnumProperty(
         name="Date Format",
@@ -1081,12 +1157,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Format of the date to be used for the version",
         default="DMY",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     model_version_date: bpy.props.StringProperty(
         name="Date",
         default="",
         description="Date of the version",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     model_version_date_vector: bpy.props.IntVectorProperty(
         name="Date",
@@ -1099,6 +1177,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "other two cases.\nLeave 0,0,0 to use today's "
         "date",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Object and Collection MustardUI naming convention
@@ -1111,6 +1190,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "outfits will be stripped of unnecessary "
         "parts in the name",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     model_rig_type: bpy.props.EnumProperty(
@@ -1123,10 +1203,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         ],
         name="Rig type",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     model_cleaned: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Links
@@ -1136,6 +1219,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Create a Link panel in the UI to show custom links",
         name="Show Links",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -1144,12 +1228,16 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Old versioning
     model_version: bpy.props.StringProperty(
-        default="", override={"LIBRARY_OVERRIDABLE"}
+        default="",
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Old hair curves support
     curves_hair_enable: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Diffeomorphic support
@@ -1157,37 +1245,57 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # At the moment this is used to check if there was an old morphs version and try to
     # readd the morphs
     diffeomorphic_support: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     diffeomorphic_morphs_number: bpy.props.IntProperty(
-        default=0, override={"LIBRARY_OVERRIDABLE"}
+        default=0,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     # Also keeping the settings to attempt a quick fix
     diffeomorphic_emotions: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     diffeomorphic_emotions_custom: bpy.props.StringProperty(
-        default="", override={"LIBRARY_OVERRIDABLE"}
+        default="",
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     diffeomorphic_facs_emotions: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     diffeomorphic_emotions_units: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     diffeomorphic_body_morphs: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     diffeomorphic_body_morphs_custom: bpy.props.StringProperty(
-        default="", override={"LIBRARY_OVERRIDABLE"}
+        default="",
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Old Simplify enabler
     simplify_main_enable: bpy.props.BoolProperty(
-        default=False, override={"LIBRARY_OVERRIDABLE"}
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # END OF MustardUI_RigSettings class
@@ -1198,6 +1306,7 @@ def register():
     bpy.types.Armature.MustardUI_RigSettings = bpy.props.PointerProperty(
         type=MustardUI_RigSettings,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Redefinition for lock functionality
@@ -1207,6 +1316,7 @@ def register():
         description="Lock/unlock the outfit",
         update=MustardUI_RigSettings.outfits_visibility_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 

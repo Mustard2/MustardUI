@@ -132,7 +132,10 @@ def register():
     bpy.utils.register_class(MUSTARDUI_UL_Morphs_Presets_UIList)
 
     bpy.types.Armature.mustardui_morphs_preset_uilist_index = bpy.props.IntProperty(
-        name="", default=0, override={"LIBRARY_OVERRIDABLE"}
+        name="",
+        default=0,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 

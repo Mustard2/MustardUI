@@ -20,6 +20,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="Enable the Auto Breath tool.\nThis tool will allow a quick "
         "creation of a breathing animation",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autobreath_frequency: FloatProperty(
@@ -29,6 +30,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Frequency",
         description="Breathing frequency in breath/minute",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autobreath_amplitude: FloatProperty(
@@ -38,6 +40,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Amplitude",
         description="Amplitude of the breathing animation",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autobreath_random: FloatProperty(
@@ -47,6 +50,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Random factor",
         description="Randomization of breathing",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autobreath_sampling: IntProperty(
@@ -56,6 +60,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Sampling",
         description="Number of frames between two animations key",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -68,6 +73,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="Enable the Auto Blink tool.\nThis tool will allow a quick "
         "creation of eyelid blinking animation",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autoeyelid_driver_type: EnumProperty(
@@ -78,6 +84,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         ],
         name="Driver type",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autoeyelid_blink_length: FloatProperty(
@@ -88,6 +95,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="Increasing this value, you will proportionally increase the "
         "length of the blink from the common values of 0.1-0.25 ms",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autoeyelid_blink_rate_per_minute: IntProperty(
@@ -99,17 +107,20 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         "randomization is included in the tool, therefore the "
         "final realization number might be different",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     autoeyelid_eyeL_shapekey: StringProperty(
         name="Key",
         description="Name of the first shape key to animate (required)",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     autoeyelid_eyeR_shapekey: StringProperty(
         name="Optional",
         description="Name of the second shape key to animate (optional)",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     autoeyelid_morph: StringProperty(
         name="Morph",
@@ -117,6 +128,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         "in the Armature object, and not the name of the morph shown in the"
         " UI",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -128,6 +140,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="Enable the Shrinkwrap tool",
         default=False,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     bone_shrinkwrap_target: bpy.props.PointerProperty(
@@ -147,6 +160,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="Bone/vertex group for friction target",
         default="",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     bone_shrinkwrap_enable_friction: bpy.props.BoolProperty(
@@ -154,6 +168,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="Enable lip sticking/friction",
         default=False,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     bone_shrinkwrap_distance: bpy.props.FloatProperty(
@@ -162,6 +177,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         default=0.005,
         min=0.0,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     bone_shrinkwrap_corner_correction: bpy.props.FloatProperty(
@@ -171,6 +187,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         min=0.0,
         max=2.0,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     bone_shrinkwrap_rotation_correction: bpy.props.BoolProperty(
@@ -181,6 +198,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         "shrinkwrap object is not touching the bones directly",
         default=False,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     bone_shrinkwrap_friction_influence: bpy.props.FloatProperty(
@@ -190,6 +208,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         min=0.0,
         max=1.0,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Internal
@@ -198,6 +217,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         default="MUSTARDUI_LIPS",
         description="Internal tag for constraint manager",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 
@@ -206,6 +226,7 @@ def register():
     bpy.types.Armature.MustardUI_ToolsSettings = PointerProperty(
         type=MustardUI_ToolsSettings,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 

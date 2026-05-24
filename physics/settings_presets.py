@@ -214,7 +214,10 @@ def register():
     bpy.utils.register_class(MUSTARDUI_UL_Physics_Presets_UIList)
 
     bpy.types.Armature.mustardui_physics_preset_uilist_index = bpy.props.IntProperty(
-        name="", default=0, override={"LIBRARY_OVERRIDABLE"}
+        name="",
+        default=0,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 

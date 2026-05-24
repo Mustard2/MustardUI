@@ -77,6 +77,7 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
         name="Enable Physics",
         description="Enable Physics panel and tools in the UI",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Mirror
@@ -86,6 +87,7 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
         description="If two Cage Objects with .r/.l or .R/.L are available in the "
         "Physics Items list, show only one panel which updates both in the UI",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # UI
@@ -97,6 +99,7 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
         description="Enable Physics for the current model",
         update=enable_physics_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Bake settings
@@ -108,6 +111,7 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
         name="Start",
         update=update_frame,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
     frame_end: bpy.props.IntProperty(
         default=250,
@@ -117,6 +121,7 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
         name="End",
         update=update_frame,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # INTERNAL
@@ -132,6 +137,7 @@ def register():
     bpy.types.Armature.MustardUI_PhysicsSettings = bpy.props.PointerProperty(
         type=MustardUI_PhysicsSettings,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 

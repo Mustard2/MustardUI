@@ -10,6 +10,7 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=False,
         description="Enable the Simplify tool for better viewport performance",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     def update_simplify(self, context):
@@ -22,6 +23,7 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         description="Enable Simplify options to increase viewport performance",
         update=update_simplify,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_revert_settings: bpy.props.BoolProperty(
@@ -29,6 +31,7 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=True,
         description="Revert Settings to pre-Simplify status after disabling Simplify",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_blender: bpy.props.BoolProperty(
@@ -36,6 +39,7 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=False,
         description="Enable Blender Simplify when Simplify is enabled",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_normals_optimize: bpy.props.BoolProperty(
@@ -43,6 +47,7 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=False,
         description="Optimize Eevee normals when Simplify is enabled",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_subdiv: bpy.props.BoolProperty(
@@ -50,26 +55,35 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=True,
         description="Disable Subdivision Surface modifiers when Simplify is enabled",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_outfit_switch_nude: bpy.props.BoolProperty(
         name="Switch to Nude",
         default=False,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_outfit_global: bpy.props.BoolProperty(
         name="Disable Outfit Global Properties",
         default=True,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_extras: bpy.props.BoolProperty(
-        name="Hide Extras", default=True, override={"LIBRARY_OVERRIDABLE"}
+        name="Hide Extras",
+        default=True,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_hair: bpy.props.BoolProperty(
-        name="Hide Hair (Viewport)", default=True, override={"LIBRARY_OVERRIDABLE"}
+        name="Hide Hair (Viewport)",
+        default=True,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_particles: bpy.props.BoolProperty(
@@ -77,12 +91,14 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=True,
         description="Disable particle system modifiers when Simplify is enabled",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_hair_global: bpy.props.BoolProperty(
         name="Disable Hair Global Properties",
         default=True,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_armature_child: bpy.props.BoolProperty(
@@ -90,18 +106,28 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=True,
         description="Disables all objects parented to the Armature, except the Body",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_morphs: bpy.props.BoolProperty(
-        name="Disable Morphs", default=True, override={"LIBRARY_OVERRIDABLE"}
+        name="Disable Morphs",
+        default=True,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_morphs_freeze: bpy.props.BoolProperty(
-        name="Freeze Morphs", default=True, override={"LIBRARY_OVERRIDABLE"}
+        name="Freeze Morphs",
+        default=True,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_physics: bpy.props.BoolProperty(
-        name="Disable Physics", default=False, override={"LIBRARY_OVERRIDABLE"}
+        name="Disable Physics",
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_force_no_physics: bpy.props.BoolProperty(
@@ -109,6 +135,7 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=False,
         description="Disable all physics modifiers on all scene objects",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     simplify_force_no_particles: bpy.props.BoolProperty(
@@ -116,6 +143,7 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
         default=False,
         description="Disable all particle system modifiers on all scene objects",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 
@@ -482,6 +510,7 @@ def register():
     bpy.types.Armature.MustardUI_SimplifySettings = bpy.props.PointerProperty(
         type=MustardUI_SimplifySettings,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 

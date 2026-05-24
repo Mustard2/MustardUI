@@ -119,6 +119,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         description="Show/hide the outfit armature",
         update=armature_visibility_outfits_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     def armature_visibility_hair_update(self, context):
@@ -141,6 +142,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         "enabled, the UI will automatically detect armatures in "
         "the hair collection",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     hair: bpy.props.BoolProperty(
@@ -149,6 +151,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         description="Show/hide the hair armature",
         update=armature_visibility_hair_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Enable Mirror from name
@@ -159,6 +162,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         "collections.\nName the collections with the same name plus .R and .L "
         "to see them in the UI as two near buttons",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # IK/FK panel
@@ -169,6 +173,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         "Armature type of the rig.\nAvailable features depend on the"
         " type of the rig.\nSupported rigs: MHX",
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
     # Show in Viewport
@@ -183,6 +188,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         description="",
         update=show_viewport_update,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 
@@ -195,6 +201,7 @@ def register():
     bpy.types.Armature.MustardUI_ArmatureSettings = bpy.props.PointerProperty(
         type=MustardUI_ArmatureSettings,
         override={"LIBRARY_OVERRIDABLE"},
+        options={"LIBRARY_EDITABLE"},
     )
 
 
