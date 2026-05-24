@@ -121,7 +121,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.active_object.type == "MESH"
+        return context.active_object is not None and context.active_object.type == "MESH"
 
     def execute(self, context):
 
