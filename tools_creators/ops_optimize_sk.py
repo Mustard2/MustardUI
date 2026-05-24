@@ -68,7 +68,7 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
             if not self.revert:
                 for sk in kb:
                     # Skip Basis
-                    if "Basi" in sk.name:
+                    if sk == sks.reference_key:
                         continue
 
                     # Remove existing driver if present
