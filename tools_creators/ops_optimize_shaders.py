@@ -375,11 +375,12 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                     if node.image in duplicate_images:
                         original = duplicate_images[node.image]
 
-                        print(
-                            f"Material {material.name} - "
-                            f"Group {node.image.name} substituted with "
-                            f"{original.name}."
-                        )
+                        if addon_prefs.debug:
+                            print(
+                                f"Material {material.name} - "
+                                f"Image {node.image.name} substituted with "
+                                f"{original.name}."
+                            )
 
                         node.image = original
                         total_image_replaced += 1
@@ -399,11 +400,12 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                     if node.image in duplicate_images:
                         original = duplicate_images[node.image]
 
-                        print(
-                            f"Group {group.name} - "
-                            f"Group {node.image.name} substituted with "
-                            f"{original.name}."
-                        )
+                        if addon_prefs.debug:
+                            print(
+                                f"Group {group.name} - "
+                                f"Image {node.image.name} substituted with "
+                                f"{original.name}."
+                            )
 
                         node.image = original
                         total_image_replaced += 1
