@@ -432,12 +432,16 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                 print(f"Duplicate Group Data Removed : {total_group_removed}")
                 print(f"Duplicate Images Data Removed: {total_image_removed}")
 
-        total = total_group_replaced + total_group_removed + total_image_replaced + total_image_removed
+        total = (
+            total_group_replaced
+            + total_group_removed
+            + total_image_replaced
+            + total_image_removed
+        )
 
         if total == 0:
             self.report({"WARNING"}, "MustardUI - Nothing to optimize.")
             return {"FINISHED"}
-
 
         parts = []
         if self.remove_duplicate_groups:

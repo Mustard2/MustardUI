@@ -129,8 +129,7 @@ def optimize_modifiers(
     else:
         master_mod = add_mask_modifier(obj, mod_vg_name, mod_vg_name)
 
-    if master_mod is None:
-        master_mod.show_expanded = False
+    master_mod.show_expanded = False
     bpy.ops.object.modifier_move_to_index(
         modifier=master_mod.name,
         index=lst_index + 1,
@@ -194,6 +193,7 @@ class MustardUI_ToolsCreators_OptimizeModifiers(bpy.types.Operator):
                 {"WARNING"},
                 "MustardUI - No Modifier type selected",
             )
+            return {"CANCELLED"}
 
         sm_converted = 0
         mask_converted = 0
@@ -212,7 +212,7 @@ class MustardUI_ToolsCreators_OptimizeModifiers(bpy.types.Operator):
                 context.active_object,
                 "MASK",
                 mask_vg_name,
-                self.sm_influence,
+                False,
                 self.preserve_modifiers,
             )
 
