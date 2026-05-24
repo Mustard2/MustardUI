@@ -63,40 +63,41 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
                 {"WARNING"},
                 "MustardUI - No Option Selected.",
             )
+            return {"CANCELLED"}
 
-        if self.add_shape_key_mute_driver:
-            if not self.revert:
-                for sk in kb:
-                    # Skip Basis
-                    if sk == sks.reference_key:
-                        continue
+        if not self.revert:
+            for sk in kb:
+                # Skip Basis
+                if sk == sks.reference_key:
+                    continue
 
-                    # Remove existing driver if present
-                    try:
-                        sk.driver_remove("mute")
-                    except Exception:
-                        pass
+                # Remove existing driver if present
+                try:
+                    sk.driver_remove("mute")
+                except Exception:
+                    pass
 
-                    fcurve = sk.driver_add("mute")
-                    driver = fcurve.driver
+                fcurve = sk.driver_add("mute")
+                driver = fcurve.driver
 
-                    driver.type = "SCRIPTED"
+                driver.type = "SCRIPTED"
 
-                    var = driver.variables.new()
-                    var.name = "var"
+                var = driver.variables.new()
+                var.name = "var"
 
-                    target = var.targets[0]
-                    target.id_type = "KEY"
-                    target.id = sks
-                    target.data_path = f'key_blocks["{sk.name}"].value'
+                target = var.targets[0]
+                target.id_type = "KEY"
+                target.id = sks
+                target.data_path = f'key_blocks["{sk.name}"].value'
 
-                    driver.expression = "abs(var) < 0.001"
+                driver.expression = "abs(var) < 0.001"
 
-            # Otherwise remove the mute driver
-            else:
-                for sk in kb:
-                    try:
-                        driver_path = f'key_blocks["{sk.name}"].mute'
+        # Otherwise remove the mute driver
+        else:
+            for sk in kb:
+                try:
+                    driver_path = f'key_blocks["{sk.name}"].mute'
+                    if sks.animation_data:
                         fcurve = sks.animation_data.drivers.find(driver_path)
                         if fcurve:
                             drv = fcurve.driver
@@ -106,10 +107,10 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
                             ):
                                 sks.driver_remove(driver_path)
 
-                        # Unmute if muted
-                        sks.key_blocks[sk.name].mute = False
-                    except Exception:
-                        pass
+                    # Unmute if muted
+                    sks.key_blocks[sk.name].mute = False
+                except Exception:
+                    pass
 
         self.report(
             {"INFO"},
