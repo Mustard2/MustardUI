@@ -6,7 +6,9 @@ from .. import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
-    """Replace duplicate shader node groups and duplicate images"""
+    """Replace duplicate shader node groups and duplicate images.
+    Node group matching includes canvas position and width, so groups that are
+    structurally identical but placed at different locations will not be merged."""
 
     bl_idname = "mustardui.tools_creators_optimize_shaders"
     bl_label = "Optimize Shaders"
@@ -423,8 +425,8 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
             print("------------------------------------------------------")
             print("Shader Optimization Recap")
 
-            print(f"Duplicate Group Nodes Removed: {total_group_replaced}")
-            print(f"Duplicate Image Nodes Removed: {total_image_replaced}")
+            print(f"Duplicate Group Nodes Replaced: {total_group_replaced}")
+            print(f"Duplicate Image Nodes Replaced: {total_image_replaced}")
 
             if self.remove_unused:
                 print(f"Duplicate Group Data Removed : {total_group_removed}")

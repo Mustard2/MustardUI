@@ -114,7 +114,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
         name="Automatically Mute null Shape Keys",
         description="Add a driver on the Mute property of the Shape Keys, which are "
         "automatically disabled when their value is 0.\nNote: Freezable option for "
-        "custom sectionswill be disabled as incompatible with drivers on the Mute "
+        "custom sections will be disabled as incompatible with drivers on the Mute "
         "properties",
     )
 
