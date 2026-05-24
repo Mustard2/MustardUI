@@ -52,43 +52,45 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
             obj_keys = obj.data.shape_keys.key_blocks
 
             for key in obj_keys:
-                if key.name in active_keys and key.name != "Basis":
-                    # Remove existing driver if any
-                    try:
-                        key.driver_remove("value")
-                    except TypeError:
-                        pass
+                if key.name not in active_keys or key == obj.data.shape_keys.reference_key:
+                    continue
 
-                    try:
-                        driver = key.driver_add("value").driver
-                        driver.type = "SCRIPTED"
+                # Remove existing driver if any
+                try:
+                    key.driver_remove("value")
+                except TypeError:
+                    pass
 
-                        var = driver.variables.new()
-                        var.name = "val"
-                        var.type = "SINGLE_PROP"
+                try:
+                    driver = key.driver_add("value").driver
+                    driver.type = "SCRIPTED"
 
-                        target = var.targets[0]
-                        target.id = active_obj
-                        target.data_path = (
-                            f'data.shape_keys.key_blocks["{key.name}"].value'
-                        )
+                    var = driver.variables.new()
+                    var.name = "val"
+                    var.type = "SINGLE_PROP"
 
-                        driver.expression = "val"
+                    target = var.targets[0]
+                    target.id = active_obj
+                    target.data_path = (
+                        f'data.shape_keys.key_blocks["{key.name}"].value'
+                    )
 
-                        if debug:
-                            print(
-                                f'MustardUI - Linked: Shape Key "{key.name}" in Object '
-                                f'"{obj.name}"'
-                            )
+                    driver.expression = "val"
 
-                        linked += 1
-
-                    except TypeError:
+                    if debug:
                         print(
-                            f'MustardUI - Can not link Shape Key "{key.name}" to '
-                            f'Object "{obj.name}"'
+                            f'MustardUI - Linked: Shape Key "{key.name}" in Object '
+                            f'"{obj.name}"'
                         )
-                        errors += 1
+
+                    linked += 1
+
+                except TypeError:
+                    print(
+                        f'MustardUI - Can not link Shape Key "{key.name}" to '
+                        f'Object "{obj.name}"'
+                    )
+                    errors += 1
 
         if errors == 0:
             self.report(
