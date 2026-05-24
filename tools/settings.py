@@ -19,7 +19,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Auto Breath",
         description="Enable the Auto Breath tool.\nThis tool will allow a quick "
         "creation of a breathing animation",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autobreath_frequency: FloatProperty(
@@ -28,7 +28,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         max=200.0,
         name="Frequency",
         description="Breathing frequency in breath/minute",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autobreath_amplitude: FloatProperty(
@@ -37,7 +37,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         max=1.0,
         name="Amplitude",
         description="Amplitude of the breathing animation",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autobreath_random: FloatProperty(
@@ -46,7 +46,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         max=1.0,
         name="Random factor",
         description="Randomization of breathing",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autobreath_sampling: IntProperty(
@@ -55,7 +55,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         max=24,
         name="Sampling",
         description="Number of frames between two animations key",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -67,7 +67,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Auto Blink",
         description="Enable the Auto Blink tool.\nThis tool will allow a quick "
         "creation of eyelid blinking animation",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autoeyelid_driver_type: EnumProperty(
@@ -77,7 +77,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
             ("MORPH", "Morph", "Morph", "OUTLINER_OB_ARMATURE", 1),
         ],
         name="Driver type",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autoeyelid_blink_length: FloatProperty(
@@ -87,7 +87,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Blink Length Factor",
         description="Increasing this value, you will proportionally increase the "
         "length of the blink from the common values of 0.1-0.25 ms",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autoeyelid_blink_rate_per_minute: IntProperty(
@@ -98,24 +98,25 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="Number of blinks per minute.\nNote that some "
         "randomization is included in the tool, therefore the "
         "final realization number might be different",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     autoeyelid_eyeL_shapekey: StringProperty(
-        name="Key", description="Name of the first shape key to animate (required)",
-        override={'LIBRARY_OVERRIDABLE'},
+        name="Key",
+        description="Name of the first shape key to animate (required)",
+        override={"LIBRARY_OVERRIDABLE"},
     )
     autoeyelid_eyeR_shapekey: StringProperty(
         name="Optional",
         description="Name of the second shape key to animate (optional)",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
     autoeyelid_morph: StringProperty(
         name="Morph",
         description="The name of the morph should be the name of the custom property "
         "in the Armature object, and not the name of the morph shown in the"
         " UI",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # ------------------------------------------------------------------------
@@ -123,8 +124,10 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
 
     bone_shrinkwrap_enable: bpy.props.BoolProperty(
-        name="Lips Shrinkwrap", description="Enable the Shrinkwrap tool", default=False,
-        override={'LIBRARY_OVERRIDABLE'},
+        name="Lips Shrinkwrap",
+        description="Enable the Shrinkwrap tool",
+        default=False,
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     bone_shrinkwrap_target: bpy.props.PointerProperty(
@@ -143,19 +146,22 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Friction Subtarget",
         description="Bone/vertex group for friction target",
         default="",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     bone_shrinkwrap_enable_friction: bpy.props.BoolProperty(
         name="Enable Friction",
         description="Enable lip sticking/friction",
         default=False,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     bone_shrinkwrap_distance: bpy.props.FloatProperty(
-        name="Distance", description="Shrinkwrap distance", default=0.005, min=0.0,
-        override={'LIBRARY_OVERRIDABLE'},
+        name="Distance",
+        description="Shrinkwrap distance",
+        default=0.005,
+        min=0.0,
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     bone_shrinkwrap_corner_correction: bpy.props.FloatProperty(
@@ -164,7 +170,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         default=1.0,
         min=0.0,
         max=2.0,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     bone_shrinkwrap_rotation_correction: bpy.props.BoolProperty(
@@ -174,7 +180,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         "but introduce artifacts in the movement in some rigs or when the "
         "shrinkwrap object is not touching the bones directly",
         default=False,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     bone_shrinkwrap_friction_influence: bpy.props.FloatProperty(
@@ -183,7 +189,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         default=0.1,
         min=0.0,
         max=1.0,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # Internal
@@ -191,7 +197,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         name="Constraint Tag",
         default="MUSTARDUI_LIPS",
         description="Internal tag for constraint manager",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
 
@@ -199,7 +205,7 @@ def register():
     bpy.utils.register_class(MustardUI_ToolsSettings)
     bpy.types.Armature.MustardUI_ToolsSettings = PointerProperty(
         type=MustardUI_ToolsSettings,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
 

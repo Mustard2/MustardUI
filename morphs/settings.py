@@ -27,7 +27,7 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         name="Diffeomorphic",
         description="Enable Diffeomorphic support.\nIf enabled, standard "
         "morphs from Diffeomorphic will be added to the UI",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     type: bpy.props.EnumProperty(
@@ -36,14 +36,14 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         description="Type of Morphs to add.\nIf Morphs are already available, this "
         "setting can not be changed. Clear the Morphs before changing this setting",
         name="Morphs Type",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     show_type_icon: bpy.props.BoolProperty(
         default=False,
         name="Show Type Icon",
         description="Show Morph type icon in the UI",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     enable_freeze_morphs: bpy.props.BoolProperty(
@@ -52,20 +52,24 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         description="If this option is enabled, the Freeze Morphs operator "
         "will be shown in the Morphs panel.\nThis operator "
         "disables the Morphs not in use to increase performance",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # INTERNAL
 
-    morphs_number: bpy.props.IntProperty(default=0, override={'LIBRARY_OVERRIDABLE'})
+    morphs_number: bpy.props.IntProperty(default=0, override={"LIBRARY_OVERRIDABLE"})
 
-    diffeomorphic_genesis_version: bpy.props.IntProperty(default=0, override={'LIBRARY_OVERRIDABLE'})
+    diffeomorphic_genesis_version: bpy.props.IntProperty(
+        default=0, override={"LIBRARY_OVERRIDABLE"}
+    )
 
     sections: bpy.props.CollectionProperty(type=MustardUI_Morph_Section)
 
     presets: bpy.props.CollectionProperty(type=MustardUI_Morph_Preset)
 
-    morphs_optimized: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    morphs_optimized: bpy.props.BoolProperty(
+        default=False, override={"LIBRARY_OVERRIDABLE"}
+    )
 
     # DIFFEOMORPHIC support
 
@@ -76,19 +80,21 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         description="Enabling morphs might affect performance. You can "
         "disable them to increase performance",
         update=diffeomorphic_enable_update,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # Panel morph search filters
     diffeomorphic_search: bpy.props.StringProperty(
-        name="", description="Search for a specific morph", default="",
-        override={'LIBRARY_OVERRIDABLE'},
+        name="",
+        description="Search for a specific morph",
+        default="",
+        override={"LIBRARY_OVERRIDABLE"},
     )
     diffeomorphic_filter_null: bpy.props.BoolProperty(
         default=False,
         name="Filter morphs",
         description="Filter used morphs.\nOnly non null morphs will be shown",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # Settings panel for switching on/off morphs
@@ -96,19 +102,19 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         default=False,
         name="Morph Settings",
         description="Show the Morph Settings panel",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
     diffeomorphic_enable_shapekeys: bpy.props.BoolProperty(
         default=True,
         name="Mute Shape Keys",
         description="Shape Keys will also be muted when the Morphs are disabled",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
     diffeomorphic_enable_facs: bpy.props.BoolProperty(
         default=True,
         name="Mute Face Controls",
         description="Face Controls will also be muted when the Morphs are disabled",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
     diffeomorphic_enable_facs_bones: bpy.props.BoolProperty(
         default=True,
@@ -119,13 +125,13 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         "work correctly, at the price of performance "
         "decrease.\nNote: if Mute Face Controls is "
         "enabled, bones will always be disabled",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
     diffeomorphic_enable_pJCM: bpy.props.BoolProperty(
         default=True,
         name="Mute Corrective Morphs",
         description="Corrective Morphs will also be muted when the Morphs are disabled",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
     diffeomorphic_disable_exceptions: bpy.props.StringProperty(
         default="",
@@ -136,7 +142,7 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         "of the name of the morph), separated by "
         "commas.\nNote: spaces and order are "
         "considered",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # Settings to import Diffeomorphic Morphs
@@ -144,7 +150,7 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         default=False,
         name="Emotions Morphs",
         description="Search for Diffeomorphic emotions",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     diffeomorphic_emotions_custom: bpy.props.StringProperty(
@@ -154,7 +160,7 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         "should map the initial part of the name of "
         "the morph), separated by commas.\nNote: "
         "spaces and order are considered",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     diffeomorphic_facs_emotions: bpy.props.BoolProperty(
@@ -163,14 +169,14 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         description="Search for Diffeomorphic FACS emotions.\nThese "
         "morphs will be shown as Advanced Emotions in the"
         " UI",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     diffeomorphic_emotions_units: bpy.props.BoolProperty(
         default=False,
         name="Emotions Units Morphs",
         description="Search for Diffeomorphic emotions units",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     diffeomorphic_facs_emotions_units: bpy.props.BoolProperty(
@@ -179,14 +185,14 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         description="Search for Diffeomorphic FACS emotions "
         "units.\nThese morphs will be shown as "
         "Advanced Emotion Units in the UI",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     diffeomorphic_body_morphs: bpy.props.BoolProperty(
         default=False,
         name="Body Morphs Morphs",
         description="Search for Diffeomorphic Body morphs",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     diffeomorphic_body_morphs_custom: bpy.props.StringProperty(
@@ -197,7 +203,7 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         "of the morph), separated by "
         "commas.\nNote: spaces and order are "
         "considered",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
 
@@ -205,7 +211,7 @@ def register():
     bpy.utils.register_class(MustardUI_MorphsSettings)
     bpy.types.Armature.MustardUI_MorphsSettings = bpy.props.PointerProperty(
         type=MustardUI_MorphsSettings,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
 

@@ -22,7 +22,7 @@ from . import (
 
 def register():
     bpy.types.Object.MustardUI_tools_creators_is_created = BoolProperty(
-        default=False, override={'LIBRARY_OVERRIDABLE'}
+        default=False, override={"LIBRARY_OVERRIDABLE"}
     )
 
     ops_transformations.register()

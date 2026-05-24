@@ -176,7 +176,7 @@ def register():
     bpy.utils.register_class(MustardUI_Morphs_Section_Remove)
 
     bpy.types.Armature.mustardui_morphs_section_uilist_index = IntProperty(
-        name="", default=0, override={'LIBRARY_OVERRIDABLE'}
+        name="", default=0, override={"LIBRARY_OVERRIDABLE"}
     )
 
 

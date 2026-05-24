@@ -118,7 +118,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         name="Outfits",
         description="Show/hide the outfit armature",
         update=armature_visibility_outfits_update,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     def armature_visibility_hair_update(self, context):
@@ -140,7 +140,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         description="Enable the automatic armature hair detection.\nIf "
         "enabled, the UI will automatically detect armatures in "
         "the hair collection",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     hair: bpy.props.BoolProperty(
@@ -148,7 +148,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         name="Hair",
         description="Show/hide the hair armature",
         update=armature_visibility_hair_update,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # Enable Mirror from name
@@ -158,7 +158,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         description="Show two buttons (left and right) on the UI for selected bone "
         "collections.\nName the collections with the same name plus .R and .L "
         "to see them in the UI as two near buttons",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # IK/FK panel
@@ -168,7 +168,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         description="Add a panel with all the properties of the specific "
         "Armature type of the rig.\nAvailable features depend on the"
         " type of the rig.\nSupported rigs: MHX",
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
     # Show in Viewport
@@ -178,8 +178,11 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         rig_settings.model_armature_object.hide_viewport = not self.show_viewport
 
     show_viewport: bpy.props.BoolProperty(
-        default=True, name="Show Armature", description="", update=show_viewport_update,
-        override={'LIBRARY_OVERRIDABLE'},
+        default=True,
+        name="Show Armature",
+        description="",
+        update=show_viewport_update,
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
 
@@ -191,7 +194,7 @@ def register():
     )
     bpy.types.Armature.MustardUI_ArmatureSettings = bpy.props.PointerProperty(
         type=MustardUI_ArmatureSettings,
-        override={'LIBRARY_OVERRIDABLE'},
+        override={"LIBRARY_OVERRIDABLE"},
     )
 
 
