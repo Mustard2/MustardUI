@@ -211,7 +211,7 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
 
         layout.operator(
             "mustardui.quick_setup_smart_check",
-            text="Re-scan",
+            text="Re-scan for Other Settings",
             icon="FILE_REFRESH",
         )
 
