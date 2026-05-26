@@ -3,6 +3,9 @@ from ..model_selection.active_object import mustardui_active_object
 
 
 def set_cage_modifiers(physics_item, iterator, s, obj, body):
+    if physics_item.object is None:
+        return
+
     intersecting_objects = [x.object for x in physics_item.intersecting_objects]
     for mod in iterator:
         if mod.type == "MESH_DEFORM":
@@ -19,6 +22,9 @@ def set_cage_modifiers(physics_item, iterator, s, obj, body):
 
 
 def influence_cage_modifiers(physics_item, iterator, influence):
+    if physics_item.object is None:
+        return
+
     for mod in iterator:
         if mod.type == "SURFACE_DEFORM":
             if physics_item.object == mod.target:
@@ -28,6 +34,9 @@ def influence_cage_modifiers(physics_item, iterator, influence):
 
 
 def set_modifiers(physics_item, obj, status, mtype=""):
+    if physics_item.object is None:
+        return
+
     for modifier in obj.modifiers:
         if physics_item.object.name in modifier.name and (
             mtype == "" or modifier.type == mtype
@@ -37,7 +46,6 @@ def set_modifiers(physics_item, obj, status, mtype=""):
 
 
 def enable_physics_update(self, context):
-
     res, arm = mustardui_active_object(context, config=0)
 
     if arm is None or not res:
@@ -90,8 +98,10 @@ def enable_physics_update(self, context):
             pi.collapse_softbody = True
             pi.collapse_collisions = True
 
+    pi_cages = [x for x in self.items if x.type == "CAGE" and x.object]
+
     for obj in rig_settings.model_armature_object.children:
-        for pi in [x for x in self.items if x.type == "CAGE"]:
+        for pi in pi_cages:
             if obj == pi.object:
                 continue
             status = self.enable_physics and pi.enable and not obj.hide_viewport
@@ -107,7 +117,7 @@ def enable_physics_update(self, context):
             else coll.collection.objects
         )
         for obj in [x for x in items if x.type == "MESH"]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -121,7 +131,7 @@ def enable_physics_update(self, context):
         for obj in [
             x for x in rig_settings.hair_collection.objects if x.type == "MESH"
         ]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -135,7 +145,7 @@ def enable_physics_update(self, context):
         for obj in [
             x for x in rig_settings.extras_collection.objects if x.type == "MESH"
         ]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -149,7 +159,7 @@ def enable_physics_update(self, context):
         for obj in [
             x for x in rig_settings.hair_extras_collection.objects if x.type == "MESH"
         ]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -163,7 +173,6 @@ def enable_physics_update(self, context):
 
 
 def enable_physics_update_single(self, context):
-
     res, arm = mustardui_active_object(context, config=0)
 
     if arm is None or not res or not self.object:
