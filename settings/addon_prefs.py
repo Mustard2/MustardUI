@@ -61,9 +61,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         # row.prop(self, "experimental")
 
         row = layout.row(align=True)
-        row.operator(
-            "wm.url_open", text="GitHub", icon="URL"
-        ).url = self.url_MustardUI
+        row.operator("wm.url_open", text="GitHub", icon="URL").url = self.url_MustardUI
         row.operator(
             "wm.url_open", text="User Guide", icon="URL"
         ).url = self.url_MustardUI_Tutorial
