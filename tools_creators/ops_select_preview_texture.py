@@ -66,7 +66,9 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
         return None
 
     @staticmethod
-    def find_image_from_socket(socket, current_tree, root_tree, parent_group=None, visited=None):
+    def find_image_from_socket(
+        socket, current_tree, root_tree, parent_group=None, visited=None
+    ):
 
         if visited is None:
             visited = set()
@@ -90,7 +92,9 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
             # RGB image found — only accept if at the root (level 0) tree.
             # Images inside groups are ignored so we keep traversing GROUP_INPUT
             # back out to the top-level node tree.
-            if MustardUI_ToolsCreators_SelectPreviewTexture.is_rgb_image_node(from_node):
+            if MustardUI_ToolsCreators_SelectPreviewTexture.is_rgb_image_node(
+                from_node
+            ):
                 if current_tree is root_tree:
                     return from_node.image
                 # Inside a group: fall through and let GROUP_INPUT handling
@@ -166,7 +170,9 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
             if not socket:
                 continue
 
-            image = self.find_image_from_socket(socket, principled_tree, node_tree, parent_group)
+            image = self.find_image_from_socket(
+                socket, principled_tree, node_tree, parent_group
+            )
 
             if not image:
                 continue
