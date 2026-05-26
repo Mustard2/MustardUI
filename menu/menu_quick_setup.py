@@ -34,6 +34,7 @@ class MUSTARDUI_UL_QuickSetup_Hair(bpy.types.UIList):
         else:
             layout.label(text="Object not found", icon="ERROR")
 
+
 class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_QuickSetup"
     bl_label = "Quick Setup"
@@ -193,8 +194,12 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
         # --- Info ---
         box = layout.box()
         col = box.column(align=True)
-        col.label(text="Additional features can be configured in Developer", icon="INFO")
-        col.label(text="mode (enable it in Blender's Add-on Preferences).", icon="BLANK1")
+        col.label(
+            text="Additional features can be configured in Developer", icon="INFO"
+        )
+        col.label(
+            text="mode (enable it in Blender's Add-on Preferences).", icon="BLANK1"
+        )
         col.separator()
         col.label(text="For more information check the Documentation.", icon="BLANK1")
         col.separator()

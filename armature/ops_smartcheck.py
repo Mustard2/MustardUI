@@ -283,7 +283,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             self.report(
                 {"INFO"},
                 f"MustardUI - Smart Check auto-selected {found_colls} bone "
-                f"collection(s) by keyword matching.",
+                f"collection(s) for an unknown Armature type.",
             )
         elif outfits:
             self.report(
