@@ -56,15 +56,15 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
 
         # --- General ---
         box = layout.box()
-        box.label(text="General", icon="MODIFIER")
+        box.label(text="Model Details", icon="MODIFIER")
         col = box.column()
-        col.prop(rig_settings, "model_name", text="Name")
-        col.prop(rig_settings, "model_body", text="Body")
+        col.prop(rig_settings, "model_name", text="Model Name")
+        col.prop(rig_settings, "model_body", text="Body Object")
 
         if not scanned:
             layout.operator(
                 "mustardui.quick_setup_smart_check",
-                text="Scan",
+                text="Scan for Other Settings",
                 icon="FILE_REFRESH",
             )
             return

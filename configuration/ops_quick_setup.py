@@ -4,7 +4,7 @@ import bpy
 
 
 class MustardUI_QuickSetup_SmartCheck(bpy.types.Operator):
-    """Scan the scene for the current configuration"""
+    """Scan the scene for the current configuration.\nFill the Model Name and select the Body Object to activate this operator"""  # noqa: E501
 
     bl_idname = "mustardui.quick_setup_smart_check"
     bl_label = "Smart Check"
@@ -196,6 +196,7 @@ class MustardUI_QuickSetup(bpy.types.Operator):
             rig_settings.hair_extras_collection,
         }
         reserved.discard(None)
+
         existing = [x.collection for x in rig_settings.outfits_collections]
         for item in rig_settings.quick_setup_outfit_collections:
             if not item.enabled or item.collection is None:
@@ -206,11 +207,15 @@ class MustardUI_QuickSetup(bpy.types.Operator):
                 entry = rig_settings.outfits_collections.add()
                 entry.collection = item.collection
                 existing.append(item.collection)
+
             lc = find_layer_collection(
                 context.view_layer.layer_collection, item.collection
             )
             if lc and lc.exclude:
                 lc.exclude = False
+
+        if len(rig_settings.outfits_collections) > 0:
+            rig_settings.outfits_list = "Nude"
 
         # Build hair collection from objects the user toggled on in the UIList
         if rig_settings.hair_collection is None:
@@ -229,17 +234,13 @@ class MustardUI_QuickSetup(bpy.types.Operator):
                 for obj in selected_hair:
                     if obj.name not in hair_coll.objects:
                         hair_coll.objects.link(obj)
+
                 rig_settings.hair_collection = hair_coll
                 lc = find_layer_collection(
                     context.view_layer.layer_collection, hair_coll
                 )
                 if lc and lc.exclude:
                     lc.exclude = False
-                self.report(
-                    {"INFO"},
-                    f"MustardUI - Hair collection '{hair_coll_name}' set up with "
-                    f"{len(selected_hair)} object(s).",
-                )
 
         if rig_settings.extras_collection is not None:
             lc = find_layer_collection(
