@@ -34,7 +34,6 @@ class MUSTARDUI_UL_QuickSetup_Hair(bpy.types.UIList):
         else:
             layout.label(text="Object not found", icon="ERROR")
 
-
 class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_QuickSetup"
     bl_label = "Quick Setup"
@@ -144,7 +143,6 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
             col.label(text="to the Armature panel", icon="BLANK1")
 
             active_bcoll = arm.collections.active
-            rows = 4 if active_bcoll else 1
             row = box.row()
             row.template_list(
                 "MUSTARDUI_UL_Armature_UIList",
@@ -153,18 +151,58 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
                 "collections",
                 arm.collections,
                 "active_index",
-                rows=rows,
+                rows=4,
             )
             col = row.column(align=True)
-            if active_bcoll:
-                col.separator()
-                col.operator(
-                    "armature.collection_move", icon="TRIA_UP", text=""
-                ).direction = "UP"
-                col.operator(
-                    "armature.collection_move", icon="TRIA_DOWN", text=""
-                ).direction = "DOWN"
-                col.separator()
+            col.separator()
+            sub = col.column(align=True)
+            sub.enabled = active_bcoll is not None
+            sub.operator(
+                "armature.collection_move", icon="TRIA_UP", text=""
+            ).direction = "UP"
+            sub.operator(
+                "armature.collection_move", icon="TRIA_DOWN", text=""
+            ).direction = "DOWN"
+            col.separator()
+
+            # Add a warning if the bone collesion visibility is driven by a driver
+            arm_obj = rig_settings.model_armature_object
+            _selected_names = {
+                c.name
+                for c in arm.collections_all
+                if c.MustardUI_ArmatureBoneCollection.is_in_UI
+            }
+            _anim_sources = [arm.animation_data]
+            if arm_obj is not None:
+                _anim_sources.append(arm_obj.animation_data)
+            has_driven_colls = any(
+                any(name in fc.data_path for name in _selected_names)
+                and "is_visible" in fc.data_path
+                for src in _anim_sources
+                if src is not None
+                for fc in src.drivers
+            )
+            if has_driven_colls:
+                col = box.box().column(align=True)
+                col.label(text="Some layers may appear purple (driven).", icon="ERROR")
+                col.label(
+                    text="Right-click on those and select Delete Driver", icon="BLANK1"
+                )
+                col.label(text="to make them functional in MustardUI.", icon="BLANK1")
+
+        # --- Info ---
+        box = layout.box()
+        col = box.column(align=True)
+        col.label(text="Additional features can be configured in Developer", icon="INFO")
+        col.label(text="mode (enable it in Blender's Add-on Preferences).", icon="BLANK1")
+        col.separator()
+        col.label(text="For more information check the Documentation.", icon="BLANK1")
+        col.separator()
+        col.operator(
+            "wm.url_open",
+            text="MustardUI Wiki",
+            icon="URL",
+        ).url = "https://github.com/Mustard2/MustardUI/wiki/Configuration"
 
         layout.operator(
             "mustardui.quick_setup_smart_check",
