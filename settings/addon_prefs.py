@@ -62,13 +62,13 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
         row = layout.row(align=True)
         row.operator(
-            "mustardui.openlink", text="GitHub", icon="URL"
+            "wm.url_open", text="GitHub", icon="URL"
         ).url = self.url_MustardUI
         row.operator(
-            "mustardui.openlink", text="User Guide", icon="URL"
+            "wm.url_open", text="User Guide", icon="URL"
         ).url = self.url_MustardUI_Tutorial
         row.operator(
-            "mustardui.openlink", text="Report Bug", icon="URL"
+            "wm.url_open", text="Report Bug", icon="URL"
         ).url = self.url_MustardUI_ReportBug
 
         if self.debug:
