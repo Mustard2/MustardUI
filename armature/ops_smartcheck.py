@@ -167,7 +167,8 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                     continue
                 for keyword, icon, default in _RULES:
                     if keyword in n:
-                        # FK-only collections default off even if spine/hand also matches
+                        # FK-only collections default off even if spine/hand also
+                        # matches
                         resolved_default = (
                             False if ("fk" in n and "ik" not in n) else default
                         )
