@@ -1,5 +1,11 @@
 import bpy
 
+from ..misc.get_ui_objects import get_ui_mesh_objects
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
+
 
 class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
     """Set Viewport Solid Mode preview texture for all materials of the Active Object"""
@@ -7,8 +13,6 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_select_preview_texture"
     bl_label = "Select Solid Preview Texture"
     bl_options = {"REGISTER", "UNDO"}
-
-    PREVIEW_NODE_NAME = "__MUSTARDUI_PREVIEW__"
 
     @staticmethod
     def is_rgb_image_node(node):
@@ -66,7 +70,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
         return None
 
     @staticmethod
-    def find_image_from_socket(
+    def find_node_from_socket(
         socket, current_tree, root_tree, parent_group=None, visited=None
     ):
 
@@ -96,14 +100,14 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
                 from_node
             ):
                 if current_tree is root_tree:
-                    return from_node.image
+                    return from_node
                 # Inside a group: fall through and let GROUP_INPUT handling
                 # bubble us back to the root tree.
 
             # Traverse normally inside same tree
             for input_socket in from_node.inputs:
                 result = (
-                    MustardUI_ToolsCreators_SelectPreviewTexture.find_image_from_socket(
+                    MustardUI_ToolsCreators_SelectPreviewTexture.find_node_from_socket(
                         input_socket, current_tree, root_tree, parent_group, visited
                     )
                 )
@@ -124,7 +128,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
                     outer_socket = parent_group.inputs[output_index]
 
-                    result = MustardUI_ToolsCreators_SelectPreviewTexture.find_image_from_socket(  # noqa: E501
+                    result = MustardUI_ToolsCreators_SelectPreviewTexture.find_node_from_socket(  # noqa: E501
                         outer_socket, parent_group.id_data, root_tree, None, visited
                     )
 
@@ -135,74 +139,52 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        obj = context.active_object
-        return obj is not None and obj.type == "MESH"
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
 
-        obj = context.active_object
+        res, arm = mustardui_active_object(context, config=1)
+        rig_settings = arm.MustardUI_RigSettings
 
         processed = 0
 
-        for slot in obj.material_slots:
-            mat = slot.material
+        for obj in get_ui_mesh_objects(rig_settings):
+            for slot in obj.material_slots:
+                mat = slot.material
 
-            if not mat:
-                continue
+                if not mat:
+                    continue
 
-            if not mat.use_nodes:
-                continue
+                if not mat.use_nodes:
+                    continue
 
-            if not mat.node_tree:
-                continue
+                if not mat.node_tree:
+                    continue
 
-            node_tree = mat.node_tree
+                node_tree = mat.node_tree
 
-            principled_data = self.find_principled_recursive(node_tree)
+                principled_data = self.find_principled_recursive(node_tree)
 
-            if not principled_data:
-                continue
+                if not principled_data:
+                    continue
 
-            principled, principled_tree, parent_group = principled_data
+                principled, principled_tree, parent_group = principled_data
 
-            socket = principled.inputs.get("Base Color")
+                socket = principled.inputs.get("Base Color")
 
-            if not socket:
-                continue
+                if not socket:
+                    continue
 
-            image = self.find_image_from_socket(
-                socket, principled_tree, node_tree, parent_group
-            )
+                preview_node = self.find_node_from_socket(
+                    socket, principled_tree, node_tree, parent_group
+                )
 
-            if not image:
-                continue
+                if not preview_node:
+                    continue
 
-            # Remove old preview node
-            old_node = node_tree.nodes.get(self.PREVIEW_NODE_NAME)
+                node_tree.nodes.active = preview_node
 
-            if old_node:
-                node_tree.nodes.remove(old_node)
-
-            # Create preview node
-            preview_node = node_tree.nodes.new("ShaderNodeTexImage")
-
-            preview_node.name = self.PREVIEW_NODE_NAME
-            preview_node.label = self.PREVIEW_NODE_NAME
-
-            preview_node.image = image
-
-            preview_node.location = (-10000, -10000)
-            preview_node.hide = True
-
-            # Deselect all
-            for node in node_tree.nodes:
-                node.select = False
-
-            # Set active node
-            preview_node.select = True
-            node_tree.nodes.active = preview_node
-
-            processed += 1
+                processed += 1
 
         if processed == 0:
             self.report({"WARNING"}, "No RGB preview textures found")
