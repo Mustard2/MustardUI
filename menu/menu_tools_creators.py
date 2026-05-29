@@ -234,16 +234,13 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
             "mustardui.tools_creators_optimize_modifiers",
             icon="MOD_SMOOTH",
         )
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.tools_creators_optimize_shaders",
             icon="SHADING_RENDERED",
         )
-        row = layout.row(align=True)
-        row.operator(
-            "mustardui.tools_creators_select_preview_texture",
-            icon="SHADING_SOLID",
-        )
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.tools_creators_optimize_shape_keys",
@@ -252,6 +249,12 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
         row.operator(
             "mustardui.tools_creators_optimize_shape_keys", icon="LOOP_BACK", text=""
         ).revert = True
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_select_preview_texture",
+            icon="SHADING_SOLID",
+        )
 
 
 def register():
