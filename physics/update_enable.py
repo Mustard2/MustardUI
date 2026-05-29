@@ -1,6 +1,7 @@
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 
+
 def set_cage_modifiers(physics_item, iterator, s, obj, body):
     if physics_item.object is None:
         return
@@ -36,7 +37,7 @@ def set_modifiers(physics_item, obj, status, mtype=""):
     if physics_item.object is None:
         return
 
-    smooth_mods = {}        # vertex_group -> CORRECTIVE_SMOOTH modifier
+    smooth_mods = {}  # vertex_group -> CORRECTIVE_SMOOTH modifier
     weight_mix_active = {}  # vertex_group_a -> whether any feeding weight mix is active
 
     for modifier in obj.modifiers:
@@ -53,7 +54,9 @@ def set_modifiers(physics_item, obj, status, mtype=""):
                 modifier.show_viewport = status
                 modifier.show_render = status
             vg_a = modifier.vertex_group_a
-            weight_mix_active[vg_a] = weight_mix_active.get(vg_a, False) or modifier.show_viewport
+            weight_mix_active[vg_a] = (
+                weight_mix_active.get(vg_a, False) or modifier.show_viewport
+            )
 
     for vg, mod in smooth_mods.items():
         if vg in weight_mix_active:
