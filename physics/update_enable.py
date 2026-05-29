@@ -1,7 +1,6 @@
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 
-
 def set_cage_modifiers(physics_item, iterator, s, obj, body):
     if physics_item.object is None:
         return
@@ -37,12 +36,29 @@ def set_modifiers(physics_item, obj, status, mtype=""):
     if physics_item.object is None:
         return
 
+    smooth_mods = {}        # vertex_group -> CORRECTIVE_SMOOTH modifier
+    weight_mix_active = {}  # vertex_group_a -> whether any feeding weight mix is active
+
     for modifier in obj.modifiers:
-        if physics_item.object.name in modifier.name and (
-            mtype == "" or modifier.type == mtype
-        ):
+        name_match = physics_item.object.name in modifier.name
+        if name_match and (mtype == "" or modifier.type == mtype):
             modifier.show_viewport = status
             modifier.show_render = status
+        if modifier.type == "CORRECTIVE_SMOOTH" and modifier.vertex_group:
+            smooth_mods[modifier.vertex_group] = modifier
+        if modifier.type == "VERTEX_WEIGHT_MIX" and modifier.vertex_group_a:
+            # Optimized smooth corrective: a VERTEX_WEIGHT_MIX feeds a master CORRECTIVE_SMOOTH
+            # when vertex_group_a matches the vertex_group of one of the smooth modifiers
+            if name_match and (mtype == "" or mtype == "CORRECTIVE_SMOOTH"):
+                modifier.show_viewport = status
+                modifier.show_render = status
+            vg_a = modifier.vertex_group_a
+            weight_mix_active[vg_a] = weight_mix_active.get(vg_a, False) or modifier.show_viewport
+
+    for vg, mod in smooth_mods.items():
+        if vg in weight_mix_active:
+            mod.show_viewport = weight_mix_active[vg]
+            mod.show_render = weight_mix_active[vg]
 
 
 def enable_physics_update(self, context):
