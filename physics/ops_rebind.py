@@ -115,7 +115,7 @@ def bind_object(
                         bpy.ops.object.correctivesmooth_bind(modifier=m.name)
                     except Exception:
                         pass
-            elif not m.is_bound and force:
+            elif not m.is_bind and force:
                 with bpy.context.temp_override(object=obj):
                     try:
                         bpy.ops.object.correctivesmooth_bind(modifier=m.name)
