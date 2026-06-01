@@ -46,9 +46,6 @@ def ikfk_has_complete_chains(arm):
     return any(ikfk_chain_is_complete(c) for c in snapper.ikfk_chains)
 
 
-# ---------------------------------------------------------------------------
-# Storage
-# ---------------------------------------------------------------------------
 class MustardUI_IKFKChain(bpy.types.PropertyGroup):
     """Describes one auto-detected (or manually refined) IK/FK chain."""
 
@@ -101,10 +98,6 @@ class MustardUI_IKFKSnapperSettings(bpy.types.PropertyGroup):
     ikfk_chains: CollectionProperty(type=MustardUI_IKFKChain)
     ikfk_chains_index: IntProperty(name="Active Chain", default=0)
 
-
-# ---------------------------------------------------------------------------
-# Auto-detection helpers
-# ---------------------------------------------------------------------------
 
 # Ordered substitution rules: (ik_token, fk_token).
 # Applied left-to-right; first match wins.
@@ -326,11 +319,6 @@ def detect_chains(arm_obj):
     return results
 
 
-# ---------------------------------------------------------------------------
-# Helpers used by operators
-# ---------------------------------------------------------------------------
-
-
 def _arm_obj(arm_data):
     for obj in bpy.data.objects:
         if obj.type == "ARMATURE" and obj.data is arm_data:
@@ -390,11 +378,6 @@ def _auto_key(bone, frame):
     else:
         bone.keyframe_insert("rotation_euler", frame=frame)
     bone.keyframe_insert("scale", frame=frame)
-
-
-# ---------------------------------------------------------------------------
-# Auto-detect operator
-# ---------------------------------------------------------------------------
 
 
 def populate_ikfk_chains(arm, arm_obj, clear_existing=False):
@@ -468,11 +451,6 @@ class MUSTARDUI_OT_IKFKDetect(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# ---------------------------------------------------------------------------
-# Snap operator
-# ---------------------------------------------------------------------------
-
-
 class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
     """Snap between IK and FK for the selected chain"""
 
@@ -528,7 +506,6 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
         return {"FINISHED"}
 
-    # ------------------------------------------------------------------
     def _snap_fk_to_ik(self, arm_obj, chain, frame):
         ik_ctrl_bone = _bone(arm_obj, chain.ik_ctrl)
         if ik_ctrl_bone is None:
@@ -686,7 +663,6 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
         return True
 
-    # ------------------------------------------------------------------
     @staticmethod
     def _match_pole(
         arm_obj, chain, ik_list, pole_bone, base, axis, radial_len, desired_dir
@@ -754,7 +730,6 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         bpy.context.view_layer.update()
         return result
 
-    # ------------------------------------------------------------------
     @staticmethod
     def _force_ik_solve(arm_obj, chain, ik_list, copy_types):
         """Force a clean IK solve so the chain reflects the IK controls.
@@ -804,7 +779,6 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         if saved:
             bpy.context.view_layer.update()
 
-    # ------------------------------------------------------------------
     def _snap_ik_to_fk(self, arm_obj, chain, frame):
         ik_list = _split_bones(chain.ik_bones)
         fk_list = _split_bones(chain.fk_bones)
@@ -885,11 +859,6 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
             _auto_key(pb, frame)
 
         return True
-
-
-# ---------------------------------------------------------------------------
-# Shared switch logic
-# ---------------------------------------------------------------------------
 
 
 def _remove_driver_and_set(arm_obj, bone, cns, influence, frame):
@@ -992,11 +961,6 @@ def apply_ikfk_switch(arm_obj, chain, direction, frame):
     bpy.context.view_layer.update()
 
 
-# ---------------------------------------------------------------------------
-# Simple switch operator (no snap)
-# ---------------------------------------------------------------------------
-
-
 class MUSTARDUI_OT_IKFKSwitch(bpy.types.Operator):
     """Switch between IK and FK without snapping bone positions"""
 
@@ -1035,11 +999,6 @@ class MUSTARDUI_OT_IKFKSwitch(bpy.types.Operator):
         snap_direction = "FK_TO_IK" if self.direction == "TO_IK" else "IK_TO_FK"
         apply_ikfk_switch(arm_obj, chain, snap_direction, context.scene.frame_current)
         return {"FINISHED"}
-
-
-# ---------------------------------------------------------------------------
-# Chain list operators (for manual editing in configure panel)
-# ---------------------------------------------------------------------------
 
 
 class MUSTARDUI_OT_IKFKChainAdd(bpy.types.Operator):
@@ -1087,11 +1046,6 @@ class MUSTARDUI_OT_IKFKChainRemove(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# ---------------------------------------------------------------------------
-# UIList
-# ---------------------------------------------------------------------------
-
-
 class MUSTARDUI_UL_IKFKChain_UIList(bpy.types.UIList):
     def draw_item(
         self,
@@ -1113,10 +1067,6 @@ class MUSTARDUI_UL_IKFKChain_UIList(bpy.types.UIList):
         if not fk_list:
             row.label(text="", icon="ERROR")
 
-
-# ---------------------------------------------------------------------------
-# Register
-# ---------------------------------------------------------------------------
 
 _classes = [
     MustardUI_IKFKChain,
