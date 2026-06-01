@@ -8,7 +8,7 @@ from ..model_selection.active_object import (
 
 
 class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
-    """Set Viewport Solid Mode preview texture for all materials of the Active Object"""
+    """Set Viewport Solid Mode preview texture for all materials of the model"""
 
     bl_idname = "mustardui.tools_creators_select_preview_texture"
     bl_label = "Select Solid Preview Texture"
