@@ -15,7 +15,7 @@ def is_ui_update(rig_settings):
             and rig_settings.diffeomorphic_morphs_number > 0
         )
         or rig_settings.simplify_main_enable
-        # Check if the Hair curves were enabled (behaviour was different)
+        # Check if the Hair curves were enabled (behavior was different)
         or (
             rig_settings.hair_collection is not None and rig_settings.curves_hair_enable
         )

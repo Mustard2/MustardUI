@@ -45,10 +45,6 @@ def register():
         name="", default=0
     )
 
-    MustardUI_RigSettings.quick_setup_detect_unkown_ikfk = bpy.props.BoolProperty(
-        name="", default=0
-    )
-
 
 def unregister():
     from ..settings.rig import MustardUI_RigSettings
