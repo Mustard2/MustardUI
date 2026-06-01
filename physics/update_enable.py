@@ -48,8 +48,9 @@ def set_modifiers(physics_item, obj, status, mtype=""):
         if modifier.type == "CORRECTIVE_SMOOTH" and modifier.vertex_group:
             smooth_mods[modifier.vertex_group] = modifier
         if modifier.type == "VERTEX_WEIGHT_MIX" and modifier.vertex_group_a:
-            # Optimized smooth corrective: a VERTEX_WEIGHT_MIX feeds a master CORRECTIVE_SMOOTH
-            # when vertex_group_a matches the vertex_group of one of the smooth modifiers
+            # Optimized smooth corrective: a VERTEX_WEIGHT_MIX feeds a master
+            # CORRECTIVE_SMOOTH when vertex_group_a matches the vertex_group
+            # of one of the smooth modifiers
             if name_match and (mtype == "" or mtype == "CORRECTIVE_SMOOTH"):
                 modifier.show_viewport = status
                 modifier.show_render = status

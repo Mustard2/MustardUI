@@ -43,7 +43,6 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         row.enabled = ikfk_snapper_available(arm)
         row.prop(armature_settings, "ikfk_snapper_enable")
 
-
         # Supported rigs: MHX
         row = col.row()
         row.enabled = rig_settings.model_rig_type == "mhx"

@@ -36,9 +36,7 @@ def ikfk_chain_is_complete(chain):
     """A chain is usable only if it has the vital fields: IK bones, FK bones and
     an IK control."""
     return bool(
-        _split_bones(chain.ik_bones)
-        and _split_bones(chain.fk_bones)
-        and chain.ik_ctrl
+        _split_bones(chain.ik_bones) and _split_bones(chain.fk_bones) and chain.ik_ctrl
     )
 
 
