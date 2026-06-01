@@ -1,8 +1,8 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
 from ..armature.ik_fk_snapper import ikfk_snapper_available
+from ..model_selection.active_object import mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 

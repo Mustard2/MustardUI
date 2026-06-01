@@ -1,8 +1,8 @@
 import bpy
 
+from ..armature.ik_fk_snapper import ikfk_snapper_available
 from ..misc.mirror import check_mirror
 from ..model_selection.active_object import mustardui_active_object
-from ..armature.ik_fk_snapper import ikfk_snapper_available
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 

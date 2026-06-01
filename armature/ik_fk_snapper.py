@@ -460,7 +460,8 @@ class MUSTARDUI_OT_IKFKDetect(bpy.types.Operator):
         fk_missing = sum(1 for d in found if d["fk_found"] == 0)
         msg = f"Found {len(found)} IK chain(s)"
         if fk_missing:
-            msg += f"; {fk_missing} chain(s) have no FK counterparts (IK→FK snap unavailable)"
+            msg += (f"; {fk_missing} chain(s) have no FK counterparts "
+                    f"(IK→FK snap unavailable)")
         self.report({"INFO"}, msg)
         return {"FINISHED"}
 

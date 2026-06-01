@@ -1,12 +1,12 @@
 from . import (
     definitions,
     external,
+    ik_fk_snapper,
     ops_clearpose,
     ops_reset,
     ops_select_armature,
     ops_smartcheck,
     ops_transfer_animation,
-    ik_fk_snapper,
     ui_list,
 )
 
