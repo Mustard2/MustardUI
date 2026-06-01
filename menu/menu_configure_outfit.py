@@ -73,17 +73,30 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
                 "outfits_collections",
                 scene,
                 "mustardui_outfits_uilist_index",
-                rows=6,
+                rows=8,
             )
+
             col = row.column()
+
             col2 = col.column(align=True)
             opup = col2.operator("mustardui.outfits_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
+
             opdown = col2.operator(
                 "mustardui.outfits_switch", icon="TRIA_DOWN", text=""
             )
             opdown.direction = "DOWN"
+
             col.separator()
+
+            col.operator(
+                "mustardui.outfits_select_in_configuration",
+                text="",
+                icon="RESTRICT_SELECT_OFF",
+            )
+
+            col.separator()
+
             col.operator(
                 "mustardui.rename_outfit", text="", icon="GREASEPENCIL"
             ).right_click_call = False
@@ -99,19 +112,14 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             else:
                 op.single_outfit = ""
 
-            col2.operator(
-                "mustardui.outfits_select_in_configuration",
-                text="",
-                icon="RESTRICT_SELECT_OFF",
-            )
-
             col.separator()
 
-            op = col.operator("mustardui.remove_outfit", text="", icon="X")
+            col2 = col.column(align=True)
+            op = col2.operator("mustardui.remove_outfit", text="", icon="X")
             op.is_config = True
             op.delete_cp = True
 
-            op = col.operator("mustardui.delete_outfit", text="", icon="TRASH")
+            op = col2.operator("mustardui.delete_outfit", text="", icon="TRASH")
             op.is_config = True
             op.delete_cp = True
 

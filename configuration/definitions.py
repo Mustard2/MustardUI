@@ -1,6 +1,21 @@
 import bpy
 
 
+def mustardui_detect_rig_type(armature, armature_object):
+    """Recognize the rig type from its custom properties.
+
+    Returns one of "arp", "rigify", "mhx" or "other". The ARP/Rigify markers
+    live on the armature data, the MHX marker on the armature object.
+    """
+    if hasattr(armature, '["arp_updated"]'):
+        return "arp"
+    if hasattr(armature, '["rig_id"]') and armature["rig_id"] != "":
+        return "rigify"
+    if hasattr(armature_object, '["MhxRig"]'):
+        return "mhx"
+    return "other"
+
+
 class MustardUI_QuickSetupOutfit(bpy.types.PropertyGroup):
     collection: bpy.props.PointerProperty(name="Collection", type=bpy.types.Collection)
     enabled: bpy.props.BoolProperty(name="Include as Outfit", default=False)
@@ -27,6 +42,10 @@ def register():
         type=MustardUI_QuickSetupHairObject
     )
     MustardUI_RigSettings.quick_setup_hair_index = bpy.props.IntProperty(
+        name="", default=0
+    )
+
+    MustardUI_RigSettings.quick_setup_detect_unkown_ikfk = bpy.props.BoolProperty(
         name="", default=0
     )
 

@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
+from ..armature.ik_fk_snapper import ikfk_snapper_available
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -36,8 +37,15 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         box.label(text="General Settings", icon="MODIFIER")
         box.prop(armature_settings, "mirror")
 
+        col = box.column()
+        # IK/FK Snapper: only for a configured generic ("Other") rig.
+        row = col.row()
+        row.enabled = ikfk_snapper_available(arm)
+        row.prop(armature_settings, "ikfk_snapper_enable")
+
+
         # Supported rigs: MHX
-        row = box.row()
+        row = col.row()
         row.enabled = rig_settings.model_rig_type == "mhx"
         row.prop(armature_settings, "rig_specific_panel")
 
@@ -138,6 +146,59 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
                         col.prop(
                             cbcoll_settings, "outfit_switcher_object", text="Object"
                         )
+
+        if armature_settings.ikfk_snapper_enable and ikfk_snapper_available(arm):
+            self._draw_ikfk_config(layout, arm)
+
+    def _draw_ikfk_config(self, layout, arm):
+        snapper = arm.MustardUI_IKFKSnapperSettings
+        chains = snapper.ikfk_chains
+
+        box = layout.box()
+        box.label(text="IK/FK Chains", icon="CONSTRAINT_BONE")
+        box.operator(
+            "mustardui.ikfk_detect", text="Auto-Detect from Rig", icon="FILE_REFRESH"
+        )
+
+        row = box.row()
+        row.template_list(
+            "MUSTARDUI_UL_IKFKChain_UIList",
+            "",
+            snapper,
+            "ikfk_chains",
+            snapper,
+            "ikfk_chains_index",
+            rows=3,
+        )
+        col = row.column(align=True)
+        col.operator("mustardui.ikfk_chain_add", icon="ADD", text="")
+        col.operator("mustardui.ikfk_chain_remove", icon="REMOVE", text="")
+
+        if not chains or snapper.ikfk_chains_index >= len(chains):
+            return
+
+        chain = chains[snapper.ikfk_chains_index]
+
+        b = box.box()
+        b.label(text="IK Bones (comma-separated, root→end)", icon="BONE_DATA")
+        b.prop(chain, "ik_bones", text="")
+
+        b = box.box()
+        b.label(text="FK Bones (same order as IK bones)", icon="BONE_DATA")
+        b.prop(chain, "fk_bones", text="")
+
+        b = box.box()
+        b.label(text="IK Controls", icon="CONSTRAINT_BONE")
+        col = b.column(align=True)
+        col.prop_search(chain, "ik_ctrl", arm, "bones", text="IK Ctrl")
+        col.prop_search(chain, "pole_ctrl", arm, "bones", text="Pole")
+        col.prop(chain, "pole_distance")
+
+        b = box.box()
+        b.label(text="Bone Collections (shown per mode)", icon="GROUP_BONE")
+        col = b.column(align=True)
+        col.prop_search(chain, "ik_collection", arm, "collections_all", text="IK Layer")
+        col.prop_search(chain, "fk_collection", arm, "collections_all", text="FK Layer")
 
 
 def register():

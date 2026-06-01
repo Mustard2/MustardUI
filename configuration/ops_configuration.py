@@ -6,6 +6,7 @@ from .. import __package__ as base_package
 from .. import bl_info
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
+from .definitions import mustardui_detect_rig_type
 
 
 class MustardUI_Configuration(bpy.types.Operator):
@@ -126,31 +127,13 @@ class MustardUI_Configuration(bpy.types.Operator):
                         return {"FINISHED"}
 
             # Check the type of the rig
-            rig_recognized = 0
-            if hasattr(obj, '["arp_updated"]'):
-                rig_settings.model_rig_type = "arp"
-                rig_recognized += 1
-            elif hasattr(obj, '["rig_id"]') and obj["rig_id"] != "":
-                rig_settings.model_rig_type = "rigify"
-                rig_recognized += 1
-            elif hasattr(rig_settings.model_armature_object, '["MhxRig"]'):
-                rig_settings.model_rig_type = "mhx"
-                rig_recognized += 1
-            else:
-                rig_settings.model_rig_type = "other"
-
-            if rig_recognized < 2:
-                print(
-                    "MustardUI - The rig has been recognized as "
-                    + rig_settings.model_rig_type
-                )
-            else:
-                warnings = warnings + 1
-                if addon_prefs.debug:
-                    print(
-                        "MustardUI - Configuration Warning - The rig has multiple rig "
-                        "types. This might create problems in the UI"
-                    )
+            rig_settings.model_rig_type = mustardui_detect_rig_type(
+                obj, rig_settings.model_armature_object
+            )
+            print(
+                "MustardUI - The rig has been recognized as "
+                + rig_settings.model_rig_type
+            )
 
             # Check for errors in the list selection
             if (

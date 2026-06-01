@@ -2,6 +2,8 @@ import re
 
 import bpy
 
+from .definitions import mustardui_detect_rig_type
+
 
 class MustardUI_QuickSetup_SmartCheck(bpy.types.Operator):
     """Scan the scene for the current configuration.\nFill the Model Name and select the Body Object to activate this operator"""  # noqa: E501
@@ -108,14 +110,7 @@ class MustardUI_QuickSetup_SmartCheck(bpy.types.Operator):
         # Detect rig type using the same logic as the configuration operator
         settings = context.scene.MustardUI_Settings
         rig_settings.model_armature_object = arm_obj
-        if hasattr(arm, '["arp_updated"]'):
-            rig_settings.model_rig_type = "arp"
-        elif hasattr(arm, '["rig_id"]') and arm["rig_id"] != "":
-            rig_settings.model_rig_type = "rigify"
-        elif hasattr(arm_obj, '["MhxRig"]'):
-            rig_settings.model_rig_type = "mhx"
-        else:
-            rig_settings.model_rig_type = "other"
+        rig_settings.model_rig_type = mustardui_detect_rig_type(arm, arm_obj)
 
         # Run the armature smart check to auto-configure bone collections
         # (applies the bone-collection preset for the detected rig type).
@@ -257,6 +252,22 @@ class MustardUI_QuickSetup(bpy.types.Operator):
         rig_settings.quick_setup_outfit_index = 0
         rig_settings.quick_setup_hair_objects.clear()
         rig_settings.quick_setup_hair_index = 0
+
+        # When the rig is not a recognized type ("other"), set up the IK/FK Snapper
+        # automatically: detect its chains and enable it. If detection finds no
+        # usable chain (missing the vital IK/FK bones), keep it disabled so it does
+        # not show up in the final configuration.
+        from ..armature.ik_fk_snapper import (
+            ikfk_has_complete_chains,
+            populate_ikfk_chains,
+        )
+
+        armature_settings = arm.MustardUI_ArmatureSettings
+        if mustardui_detect_rig_type(arm, arm_obj) == "other":
+            populate_ikfk_chains(arm, arm_obj)
+            armature_settings.ikfk_snapper_enable = ikfk_has_complete_chains(arm)
+        else:
+            armature_settings.ikfk_snapper_enable = False
 
         # In Direct Panel Mode, point the selection at this armature so the
         # main configuration operator can find it
