@@ -842,7 +842,7 @@ def _remove_driver_and_set(arm_obj, bone, cns, influence, frame):
             arm_obj.animation_data.drivers.remove(drv)
     cns.influence = influence
     if bpy.context.scene.tool_settings.use_keyframe_insert_auto:
-        bone.keyframe_insert(f'constraints["{cns.name}"].influence', frame=frame)
+        arm_obj.keyframe_insert(data_path, frame=frame)
 
 
 def _find_bone_collection(armature, name):
