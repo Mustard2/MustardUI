@@ -755,6 +755,56 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         return result
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _force_ik_solve(arm_obj, chain, ik_list, copy_types):
+        """Force a clean IK solve so the chain reflects the IK controls.
+
+        Enables the IK constraint and the companion constraints that copy the IK
+        ctrl, and disables the FK→IK copies that would otherwise pin the IK bones
+        to the FK pose. Returns the (constraint, original_influence) pairs to
+        restore. When already in IK mode this only records the (unchanged) state.
+        """
+        saved = []
+
+        end_ik = _bone(arm_obj, ik_list[-1])
+        if end_ik is not None:
+            for cns in end_ik.constraints:
+                if cns.type == "IK" and cns.subtarget == chain.ik_ctrl:
+                    saved.append((cns, cns.influence))
+                    cns.influence = 1.0
+                    break
+
+        for pb in arm_obj.pose.bones:
+            for cns in pb.constraints:
+                if (
+                    cns.type in copy_types
+                    and getattr(cns, "subtarget", "") == chain.ik_ctrl
+                ):
+                    saved.append((cns, cns.influence))
+                    cns.influence = 1.0
+
+        fk_set = set(_split_bones(chain.fk_bones))
+        for ik_name in ik_list:
+            pb = _bone(arm_obj, ik_name)
+            if pb is None:
+                continue
+            for cns in pb.constraints:
+                if cns.type in copy_types and getattr(cns, "subtarget", "") in fk_set:
+                    saved.append((cns, cns.influence))
+                    cns.influence = 0.0
+
+        if saved:
+            bpy.context.view_layer.update()
+        return saved
+
+    @staticmethod
+    def _restore_influences(saved):
+        for cns, influence in saved:
+            cns.influence = influence
+        if saved:
+            bpy.context.view_layer.update()
+
+    # ------------------------------------------------------------------
     def _snap_ik_to_fk(self, arm_obj, chain, frame):
         ik_list = _split_bones(chain.ik_bones)
         fk_list = _split_bones(chain.fk_bones)
@@ -769,37 +819,46 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         if single_chain:
             fk_list = ik_list
 
-        # Capture the solved IK world matrices before changing anything: writing a
-        # bone triggers a view_layer update that re-evaluates the IK solve and can
-        # shift the remaining matrices.
-        pairs = []
-        for ik_name, fk_name in zip(ik_list, fk_list):
-            ik_b = _bone(arm_obj, ik_name)
-            fk_b = _bone(arm_obj, fk_name)
-            if ik_b is None or fk_b is None:
-                continue
-            pairs.append((fk_b, ik_b.matrix.copy()))
+        _companion_types = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
+
+        # The IK pose only exists when the IK constraint is solving. If we're in FK
+        # mode it is off and the chain tracks FK instead, so reading it now would
+        # make IK→FK a no-op (you'd have to switch to IK first). Force a clean IK
+        # solve while we read, then restore the constraints.
+        restore = self._force_ik_solve(arm_obj, chain, ik_list, _companion_types)
+        try:
+            # Capture the solved IK world matrices before changing anything: writing
+            # a bone triggers a view_layer update that re-evaluates the IK solve and
+            # can shift the remaining matrices.
+            pairs = []
+            for ik_name, fk_name in zip(ik_list, fk_list):
+                ik_b = _bone(arm_obj, ik_name)
+                fk_b = _bone(arm_obj, fk_name)
+                if ik_b is None or fk_b is None:
+                    continue
+                pairs.append((fk_b, ik_b.matrix.copy()))
+
+            # The tip/hand bone is not part of the IK chain: its rotation comes from
+            # a companion Copy Rotation/Transforms that targets the IK ctrl. Capture
+            # that IK-driven world matrix too, so we can bake it into the FK pose —
+            # otherwise the tip snaps back to its old FK rotation when the switch
+            # disables the companion.
+            companions = []  # (pose_bone, world_matrix, [constraints])
+            for pb in arm_obj.pose.bones:
+                cnss = [
+                    c
+                    for c in pb.constraints
+                    if c.type in _companion_types
+                    and getattr(c, "subtarget", "") == chain.ik_ctrl
+                ]
+                if cnss:
+                    companions.append((pb, pb.matrix.copy(), cnss))
+        finally:
+            self._restore_influences(restore)
 
         if not pairs:
             self.report({"ERROR"}, "No valid IK/FK bone pairs found")
             return False
-
-        # The tip/hand bone is not part of the IK chain: its rotation comes from a
-        # companion Copy Rotation/Transforms that targets the IK ctrl. Capture that
-        # IK-driven world matrix too, so we can bake it into the FK pose — otherwise
-        # the tip snaps back to its old FK rotation when the switch disables the
-        # companion.
-        _companion_types = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
-        companions = []  # (pose_bone, world_matrix, [constraints])
-        for pb in arm_obj.pose.bones:
-            cnss = [
-                c
-                for c in pb.constraints
-                if c.type in _companion_types
-                and getattr(c, "subtarget", "") == chain.ik_ctrl
-            ]
-            if cnss:
-                companions.append((pb, pb.matrix.copy(), cnss))
 
         # Disable everything that drives these bones from the IK side so the
         # matrices we write below bake into the basis instead of being overwritten:
