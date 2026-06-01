@@ -7,7 +7,7 @@ from ..model_selection.active_object import (
 
 
 class MustardUI_Outfits_SelectInConfiguration(bpy.types.Operator):
-    """Show the Outfit on the Model"""  # noqa: E501
+    """Show the Outfit"""
 
     bl_idname = "mustardui.outfits_select_in_configuration"
     bl_label = "Outfits Property Switch"
@@ -22,6 +22,13 @@ class MustardUI_Outfits_SelectInConfiguration(bpy.types.Operator):
 
         poll, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
+
+        if (
+            scene.mustardui_outfits_uilist_index
+            >= len(rig_settings.outfits_collections)
+            or scene.mustardui_outfits_uilist_index < 0
+        ):
+            return {"CANCELLED"}
 
         collection = rig_settings.outfits_collections[
             scene.mustardui_outfits_uilist_index
