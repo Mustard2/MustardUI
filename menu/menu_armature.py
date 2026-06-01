@@ -257,25 +257,27 @@ class PANEL_PT_MustardUI_Armature_IKFKSnapper(MainPanel, bpy.types.Panel):
 
             # Snap row (moves bones then switches)
             row = box.row(align=True)
-            row.label(text="Snap:", icon="SNAP_ON")
-            op = row.operator("mustardui.ikfk_snap", text="FK → IK")
+            row.label(text="", icon="SNAP_ON")
+            row.separator()
+            op = row.operator("mustardui.ikfk_snap", text="Snap  IK")
             op.chain_index = i
             op.direction = "FK_TO_IK"
             op.switch = True
             sub = row.row(align=True)
             sub.enabled = has_fk
-            op = sub.operator("mustardui.ikfk_snap", text="IK → FK")
+            op = sub.operator("mustardui.ikfk_snap", text="Snap FK")
             op.chain_index = i
             op.direction = "IK_TO_FK"
             op.switch = True
 
             # Switch row (mode only, no position snap)
             row = box.row(align=True)
-            row.label(text="Switch:", icon="ARROW_LEFTRIGHT")
-            op = row.operator("mustardui.ikfk_switch", text="→ IK")
+            row.label(text="", icon="ARROW_LEFTRIGHT")
+            row.separator()
+            op = row.operator("mustardui.ikfk_switch", text="Switch IK")
             op.chain_index = i
             op.direction = "TO_IK"
-            op = row.operator("mustardui.ikfk_switch", text="→ FK")
+            op = row.operator("mustardui.ikfk_switch", text="Switch FK")
             op.chain_index = i
             op.direction = "TO_FK"
 
