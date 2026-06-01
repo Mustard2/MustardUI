@@ -225,7 +225,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                 self.report(
                     {"WARNING"},
                     "MustardUI - Some warning were generated during the configuration. "
-                    "Enable Debug mode and check the console for more informations",
+                    "Enable Debug mode and check the console for more information.",
                 )
             else:
                 if addon_prefs.debug:

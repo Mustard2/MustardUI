@@ -67,7 +67,7 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
 
     # DIFFEOMORPHIC support
 
-    # Switcher for Morphs (drivers, shape keys, etc..) in the Diffeomorphic case
+    # Switcher for Morphs (drivers, shape keys, etc.) in the Diffeomorphic case
     diffeomorphic_enable: bpy.props.BoolProperty(
         default=True,
         name="Enable Morphs",

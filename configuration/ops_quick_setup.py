@@ -112,7 +112,7 @@ class MustardUI_QuickSetup_SmartCheck(bpy.types.Operator):
         rig_settings.model_armature_object = arm_obj
         rig_settings.model_rig_type = mustardui_detect_rig_type(arm, arm_obj)
 
-        # Run the armature smart check to auto-configure bone collections
+        # Run the armature smart check to autoconfigure bone collections
         # (applies the bone-collection preset for the detected rig type).
         # In Direct Panel Mode, panel_model_selection_armature must point here first.
         if not settings.viewport_model_selection:

@@ -12,7 +12,7 @@ from ..model_selection.active_object import (
 
 
 class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
-    """Export Links to json file, to be used on other UIs"""
+    """Export Links to JSON file, to be used on other UIs"""
 
     bl_idname = "mustardui.link_export"
     bl_label = "Export Links"

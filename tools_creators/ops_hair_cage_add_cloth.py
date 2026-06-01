@@ -138,7 +138,7 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
         # Get the playback FPS from the scene's current FPS
         playback_fps = bpy.context.scene.render.fps
 
-        # Calculate the time scale using the formula:
+        # Calculate the timescale using the formula:
         # (base_fps / playback_fps) * timescale_multiplier
         time_scale_value = (base_fps / playback_fps) * timescale_multiplier
 

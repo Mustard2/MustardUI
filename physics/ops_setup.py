@@ -119,7 +119,7 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         body = rig_settings.model_body
 
         # Disable subdivision modifiers on the body to attempt binding with
-        # less vertices
+        # fewer vertices
         body_show = False
         for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
             body_show = m.show_viewport
