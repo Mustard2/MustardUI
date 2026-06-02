@@ -266,6 +266,8 @@ class MustardUI_QuickSetup(bpy.types.Operator):
         if mustardui_detect_rig_type(arm, arm_obj) == "other":
             populate_ikfk_chains(arm, arm_obj)
             armature_settings.ikfk_snapper_enable = ikfk_has_complete_chains(arm)
+        elif mustardui_detect_rig_type(arm, arm_obj) == "mhx":
+            armature_settings.rig_specific_panel = True
         else:
             armature_settings.ikfk_snapper_enable = False
 
