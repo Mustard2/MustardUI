@@ -171,7 +171,9 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         default=False,
         name="IK/FK Snapper",
         description="Enable the IK/FK Snapper.\nAllows snapping between IK and FK "
-        "for defined bone chains on a generic rig",
+        "for defined bone chains on a generic rig.\nCan be enabled only if the rig"
+        "is not a supported one which already has its own vender provided panel "
+        "(i.e. not MHX, Rigify or ARP)",
     )
 
     # Show in Viewport
