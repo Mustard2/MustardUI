@@ -799,7 +799,12 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         # and IK→FK appears to do nothing.
         single_chain = (not fk_list) or (ik_list == fk_list)
         if single_chain:
-            fk_list = ik_list
+            fk_pairing = ik_list
+        else:
+            # Preserve empty positions: a partial FK mapping stores "" for bones
+            # with no FK counterpart, and dropping them would shift every later FK
+            # bone one slot left and mis-pair the chain. Skip the empty pairs below.
+            fk_pairing = [n.strip() for n in chain.fk_bones.split(",")]
 
         _companion_types = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
 
@@ -813,7 +818,9 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
             # a bone triggers a view_layer update that re-evaluates the IK solve and
             # can shift the remaining matrices.
             pairs = []
-            for ik_name, fk_name in zip(ik_list, fk_list):
+            for ik_name, fk_name in zip(ik_list, fk_pairing):
+                if not ik_name or not fk_name:
+                    continue
                 ik_b = _bone(arm_obj, ik_name)
                 fk_b = _bone(arm_obj, fk_name)
                 if ik_b is None or fk_b is None:
