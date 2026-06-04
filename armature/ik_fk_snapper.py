@@ -396,7 +396,15 @@ def populate_ikfk_chains(arm, arm_obj, clear_existing=False):
         for i in reversed(to_remove):
             snapper.ikfk_chains.remove(i)
 
-    found = detect_chains(arm_obj)
+    def _sort_key(d):
+        name = d["name"].lower()
+        if "arm" in name:
+            return 0
+        if "leg" in name:
+            return 1
+        return 2
+
+    found = sorted(detect_chains(arm_obj), key=_sort_key)
     for data in found:
         item = snapper.ikfk_chains.add()
         item.name = data["name"]
@@ -1046,6 +1054,43 @@ class MUSTARDUI_OT_IKFKChainRemove(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class MUSTARDUI_OT_IKFKChainSwitch(bpy.types.Operator):
+    """Move the selected IK/FK chain in the list"""
+
+    bl_idname = "mustardui.ikfk_chain_switch"
+    bl_label = "Move IK/FK Chain"
+
+    direction: bpy.props.EnumProperty(
+        items=(
+            ("UP", "Up", ""),
+            ("DOWN", "Down", ""),
+        )
+    )
+
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=1)
+        return res and arm is not None
+
+    def execute(self, context):
+        res, arm = mustardui_active_object(context, config=1)
+        snapper = arm.MustardUI_IKFKSnapperSettings
+        chains = snapper.ikfk_chains
+        index = snapper.ikfk_chains_index
+
+        if len(chains) <= index:
+            return {"FINISHED"}
+
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+        chains.move(neighbour, index)
+
+        list_length = len(chains) - 1
+        new_index = index + (-1 if self.direction == "UP" else 1)
+        snapper.ikfk_chains_index = max(0, min(new_index, list_length))
+
+        return {"FINISHED"}
+
+
 class MUSTARDUI_UL_IKFKChain_UIList(bpy.types.UIList):
     def draw_item(
         self,
@@ -1077,7 +1122,9 @@ _classes = [
     MUSTARDUI_OT_IKFKSwitch,
     MUSTARDUI_OT_IKFKChainAdd,
     MUSTARDUI_OT_IKFKChainRemove,
+    MUSTARDUI_OT_IKFKChainSwitch,
 ]
+
 
 
 def register():

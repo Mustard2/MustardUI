@@ -172,6 +172,9 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         col = row.column(align=True)
         col.operator("mustardui.ikfk_chain_add", icon="ADD", text="")
         col.operator("mustardui.ikfk_chain_remove", icon="REMOVE", text="")
+        col.separator()
+        col.operator("mustardui.ikfk_chain_switch", icon="TRIA_UP", text="").direction = "UP"
+        col.operator("mustardui.ikfk_chain_switch", icon="TRIA_DOWN", text="").direction = "DOWN"
 
         if not chains or snapper.ikfk_chains_index >= len(chains):
             return
