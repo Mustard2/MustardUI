@@ -196,9 +196,12 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
 
                 for pi in [x for x in items if x.type == "CAGE"]:
                     if check_mesh_intersection(pi.object, obj):
-                        # Add the object to the intersecting objects of the physics item
-                        npi = pi.intersecting_objects.add()
-                        npi.object = obj
+                        # Add the object to the intersecting objects of the physics
+                        # item, avoiding duplicates (the single_outfit path does not
+                        # clear intersecting_objects beforehand)
+                        if obj not in [x.object for x in pi.intersecting_objects]:
+                            npi = pi.intersecting_objects.add()
+                            npi.object = obj
 
                         if pi_found:
                             continue
