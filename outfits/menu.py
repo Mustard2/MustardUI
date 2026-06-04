@@ -16,30 +16,33 @@ class OUTLINER_MT_collection(bpy.types.Menu):
 def mustardui_collection_menu(self, context):
 
     res, arm = mustardui_active_object(context, config=1)
+
+    if arm is None or not res:
+        return
+
     rig_settings = arm.MustardUI_RigSettings
     addon_prefs = context.preferences.addons[base_package].preferences
 
     layout = self.layout
 
-    if res:
-        layout.separator()
-        if context.collection not in [
-            x.collection for x in rig_settings.outfits_collections
-        ]:
-            if addon_prefs.debug:
-                layout.operator(
-                    MustardUI_AddOutfit.bl_idname,
-                    text="Add Outfit: " + repr(context.collection.name),
-                    icon="ADD",
-                )
-            else:
-                layout.operator(MustardUI_AddOutfit.bl_idname, icon="ADD")
+    layout.separator()
+    if context.collection not in [
+        x.collection for x in rig_settings.outfits_collections
+    ]:
+        if addon_prefs.debug:
+            layout.operator(
+                MustardUI_AddOutfit.bl_idname,
+                text="Add Outfit: " + repr(context.collection.name),
+                icon="ADD",
+            )
+        else:
+            layout.operator(MustardUI_AddOutfit.bl_idname, icon="ADD")
 
-        col = layout.column()
-        col.operator_context = "INVOKE_DEFAULT"
-        col.operator(
-            MustardUI_RenameOutfit.bl_idname, icon="GREASEPENCIL"
-        ).right_click_call = True
+    col = layout.column()
+    col.operator_context = "INVOKE_DEFAULT"
+    col.operator(
+        MustardUI_RenameOutfit.bl_idname, icon="GREASEPENCIL"
+    ).right_click_call = True
 
 
 def register():
