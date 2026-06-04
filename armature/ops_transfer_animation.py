@@ -40,15 +40,33 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
         # Copy WORLD transform
         target.matrix_world = source.matrix_world.copy()
 
-        # Animation data
-        if not source.animation_data:
-            self.report({"WARNING"}, "Source armature has no animation data")
-            return {"CANCELLED"}
+        src_ad = source.animation_data
+        has_animation = bool(src_ad and (src_ad.action or src_ad.nla_tracks))
 
+        # No actual animation (action/NLA): the model is just posed.
+        if not has_animation:
+            for src_bone in source.pose.bones:
+                tgt_bone = target.pose.bones.get(src_bone.name)
+                if tgt_bone is None:
+                    continue
+                tgt_bone.rotation_mode = src_bone.rotation_mode
+                tgt_bone.location = src_bone.location.copy()
+                tgt_bone.rotation_quaternion = src_bone.rotation_quaternion.copy()
+                tgt_bone.rotation_axis_angle = list(src_bone.rotation_axis_angle)
+                tgt_bone.rotation_euler = src_bone.rotation_euler.copy()
+                tgt_bone.scale = src_bone.scale.copy()
+
+            self.report(
+                {"INFO"},
+                f"MustardUI - Pose transferred from '{source.name}' "
+                f"to '{target.name}'",
+            )
+            return {"FINISHED"}
+
+        # Animation data: Animation
         if not target.animation_data:
             target.animation_data_create()
 
-        src_ad = source.animation_data
         tgt_ad = target.animation_data
 
         # Clear target animation data
