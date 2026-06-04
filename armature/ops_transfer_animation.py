@@ -58,8 +58,7 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
 
             self.report(
                 {"INFO"},
-                f"MustardUI - Pose transferred from '{source.name}' "
-                f"to '{target.name}'",
+                f"MustardUI - Pose transferred from '{source.name}' to '{target.name}'",
             )
             return {"FINISHED"}
 
