@@ -21,9 +21,24 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     # Maintenance tools
     developer: BoolProperty(
         default=False,
-        name="Developer Tools",
+        name="Developer Mode",
         description="Enable Developer Tools.\nVarious developer tools will be "
         "added to the UI and in the Settings panel",
+        update=developer_update,
+    )
+
+    # Quick Setup
+    quick_setup: BoolProperty(
+        default=False,
+        name="Enable Quick Setup",
+        description="Enable a quick way to set up a UI for any model.\n"
+        "This is a simpler alternative to the full Configuration, ideal for "
+        "inexperienced users or when only a few features are needed "
+        "(Outfits, Hair, Armature).\n"
+        "To use it, just select any Armature that does not "
+        "already have a UI configured.\n"
+        "The full Configuration can still be used afterwards "
+        "(enable it with Developer Tools).",
         update=developer_update,
     )
 
@@ -53,6 +68,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         layout = self.layout
         col = layout.column(align=True)
         col.prop(self, "developer", text="Developer Tools (for Model creators)")
+        col.prop(self, "quick_setup")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")

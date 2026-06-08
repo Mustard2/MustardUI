@@ -45,7 +45,7 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
             return False
         res, arm = mustardui_active_object(context, config=2)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and not addon_prefs.developer
+        return res and addon_prefs.quick_setup
 
     def draw(self, context):
         layout = self.layout
