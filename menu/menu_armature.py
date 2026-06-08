@@ -220,10 +220,10 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         )
 
 
-class PANEL_PT_MustardUI_Armature_IKFKSnapper(MainPanel, bpy.types.Panel):
+class PANEL_PT_MustardUI_Armature_IKFKPanel(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Armature"
-    bl_idname = "PANEL_PT_MustardUI_Armature_IKFKSnapper"
-    bl_label = "IK/FK Snapper"
+    bl_idname = "PANEL_PT_MustardUI_Armature_IKFKPanel"
+    bl_label = "IK/FK Settings"
     bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -284,9 +284,9 @@ class PANEL_PT_MustardUI_Armature_IKFKSnapper(MainPanel, bpy.types.Panel):
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Armature)
-    bpy.utils.register_class(PANEL_PT_MustardUI_Armature_IKFKSnapper)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Armature_IKFKPanel)
 
 
 def unregister():
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Armature_IKFKSnapper)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Armature_IKFKPanel)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Armature)
