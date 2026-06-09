@@ -183,6 +183,21 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                     {"WARNING"}, "MustardUI - Outfit Body has not been specified."
                 )
 
+        _MAX_DEPTH = 3
+
+        def apply_visibility_recursive(o, depth=0):
+            apply_visibility(o)
+            if depth < _MAX_DEPTH:
+                for child in o.children:
+                    if child.hide_viewport != o.hide_viewport:
+                        apply_visibility_recursive(child, depth + 1)
+
+        def update_tags_recursive(o, depth=0):
+            o.update_tag()
+            if depth < _MAX_DEPTH:
+                for child in o.children:
+                    update_tags_recursive(child, depth + 1)
+
         # Apply to main object
         apply_visibility(obj)
 
@@ -190,7 +205,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         if self.shift:
             for child in obj.children:
                 if child.hide_viewport != obj.hide_viewport:
-                    apply_visibility(child)
+                    apply_visibility_recursive(child, depth=1)
 
         # ------------------- GLOBAL UPDATES ------------------- #
         # Physics update
@@ -200,9 +215,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         # Update tags
         if rig_settings.outfits_update_tag_on_switch:
             arm.update_tag()
-            obj.update_tag()
-            for child in obj.children:
-                child.update_tag()
+            update_tags_recursive(obj)
 
         # Extras collection visibility
         extras = rig_settings.extras_collection
