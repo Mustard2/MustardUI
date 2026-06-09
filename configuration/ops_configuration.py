@@ -4,6 +4,7 @@ import bpy
 
 from .. import __package__ as base_package
 from .. import bl_info
+from ..hair.helper_functions import set_selected_hair, store_current_hair
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 
@@ -187,9 +188,8 @@ class MustardUI_Configuration(bpy.types.Operator):
                     > 0
                 ):
                     try:
-                        rig_settings.hair_list = rig_settings.hair_list_make(context)[
-                            0
-                        ][0]
+                        object_active = store_current_hair(rig_settings)
+                        set_selected_hair(context, rig_settings, object_active)
                         print(
                             "MustardUI - Configuration Warning - Fixed hair_list index"
                         )

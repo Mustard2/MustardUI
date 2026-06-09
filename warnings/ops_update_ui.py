@@ -3,6 +3,7 @@ import bpy
 from .. import __package__ as base_package
 from .. import bl_info
 from ..custom_properties.misc import assign_pointers
+from ..hair.helper_functions import set_selected_hair, store_current_hair
 from ..model_selection.active_object import mustardui_active_object
 
 
@@ -195,9 +196,6 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 hair_collection = rig_settings.hair_collection
 
                 # Rename the Objects in the Hair collection
-                # Store the active object to try to use it as the hair list selection
-                # after the update
-                object_active = ""
                 for i, obj in enumerate(
                     [x for x in hair_collection.objects if x is not None]
                 ):
@@ -205,32 +203,10 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                         obj_name = obj.name
                         obj_name = update_hair_name(obj_name)
                         obj.name = obj_name
-                    if (
-                        not obj.hide_viewport
-                        and not obj.hide_render
-                        and obj.type == "MESH"
-                    ):
-                        object_active = obj.name
 
-                # Fix the list index
-                hlist = rig_settings.hair_list_make(context)
-                # Try first if there was an active object
-                if object_active != "":
-                    try:
-                        rig_settings.hair_list = object_active
-                        # Also show the Armature
-                        for obj in hair_collection.objects:
-                            if obj.name == rig_settings.hair_list:
-                                parent_armature = None
-                                if parent_armature is not None:
-                                    parent_armature.hide_viewport = False
-                                    parent_armature.hide_render = False
-                                break
-                    except Exception:
-                        rig_settings.hair_list = hlist[0][0]
-                # Otherwise fix the list index with the first element in the list
-                else:
-                    rig_settings.hair_list = hlist[0][0]
+                # Fix the list index, restoring the previously active hair
+                object_active = store_current_hair(rig_settings)
+                set_selected_hair(context, rig_settings, object_active)
 
                 rig_settings.model_mustardui_version = bl_info["version"]
             except Exception:
