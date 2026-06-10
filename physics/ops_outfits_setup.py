@@ -1,6 +1,6 @@
 import bpy
 
-from ..misc.mesh_intersection import check_mesh_intersection
+from ..misc.mesh_intersection import MeshIntersectionChecker
 from ..model_selection.active_object import mustardui_active_object
 from .update_enable import enable_physics_update
 
@@ -159,6 +159,10 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
             for pi in [x for x in items if x.type == "CAGE"]:
                 pi.intersecting_objects.clear()
 
+        # Caches BVH trees/bounding boxes so each cage and object mesh is only
+        # built once across all intersection checks below.
+        intersection_checker = MeshIntersectionChecker()
+
         for coll in colls:
             objs = (
                 coll.all_objects
@@ -195,7 +199,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                 pi_found = False
 
                 for pi in [x for x in items if x.type == "CAGE"]:
-                    if check_mesh_intersection(pi.object, obj):
+                    if intersection_checker.intersect(pi.object, obj):
                         # Add the object to the intersecting objects of the physics
                         # item, avoiding duplicates (the single_outfit path does not
                         # clear intersecting_objects beforehand)
@@ -511,6 +515,10 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         if rig_settings.extras_collection is not None:
             colls.append(rig_settings.extras_collection)
 
+        # Caches BVH trees/bounding boxes so each cage and object mesh is only
+        # built once across all intersection checks below.
+        intersection_checker = MeshIntersectionChecker()
+
         for coll in colls:
             objs = (
                 coll.all_objects
@@ -548,13 +556,13 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
                     pi = physics_settings.items[
                         arm.mustardui_physics_items_uilist_index
                     ]
-                    if check_mesh_intersection(pi.object, obj):
+                    if intersection_checker.intersect(pi.object, obj):
                         # Add the object to the intersecting objects of the physics item
                         npi = pi.intersecting_objects.add()
                         npi.object = obj
                 else:
                     for pi in [x for x in items if x.type == "CAGE"]:
-                        if check_mesh_intersection(pi.object, obj):
+                        if intersection_checker.intersect(pi.object, obj):
                             # Add the object to the intersecting objects of the
                             # physics item
                             npi = pi.intersecting_objects.add()
