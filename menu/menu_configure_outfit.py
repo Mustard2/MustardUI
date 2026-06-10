@@ -102,7 +102,9 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             ).right_click_call = False
 
             col2 = col.column(align=True)
-            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
+            op = col2.operator(
+                "mustardui.physics_outfits_setup", icon="PHYSICS", text=""
+            )
 
             outfit_collection = rig_settings.outfits_collections[
                 scene.mustardui_outfits_uilist_index

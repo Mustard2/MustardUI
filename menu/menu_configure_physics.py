@@ -90,10 +90,14 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Outfits Support", icon="MOD_CLOTH")
         row = box.row(align=True)
-        row.operator("mustardui.physics_outfits_setup", icon="PHYSICS").single_outfit = ""
+        row.operator(
+            "mustardui.physics_outfits_setup", icon="PHYSICS"
+        ).single_outfit = ""
         if settings.advanced:
             row.operator(
-                "mustardui.physics_outfits_setup_intersecting_objects", icon="XRAY", text=""
+                "mustardui.physics_outfits_setup_intersecting_objects",
+                icon="XRAY",
+                text="",
             ).unique = False
         row.operator("mustardui.physics_outfits_setup_clear", icon="X", text="")
 
@@ -122,7 +126,9 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             )
             col = row.column()
             col.operator(
-                "mustardui.physics_outfits_setup_intersecting_objects", icon="XRAY", text=""
+                "mustardui.physics_outfits_setup_intersecting_objects",
+                icon="XRAY",
+                text="",
             ).unique = True
             col.separator()
             col.operator(
