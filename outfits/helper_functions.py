@@ -1,3 +1,29 @@
+from ..misc.set_bool import set_bool
+from ..tools_creators.ops_optimize_mods import mask_vg_name
+
+
+def update_outfit_body_masks(body, obj_name, visible):
+    for mod in body.modifiers:
+        if mod.type in ("MASK", "VERTEX_WEIGHT_MIX") and obj_name in mod.name.split(
+            "|"
+        ):
+            set_bool(mod, "show_viewport", visible)
+            set_bool(mod, "show_render", visible)
+
+
+def update_global_body_mask(body):
+    activate = any(
+        mod.type == "VERTEX_WEIGHT_MIX"
+        and mod.vertex_group_a == mask_vg_name
+        and mod.show_viewport
+        for mod in body.modifiers
+    )
+    for mod in body.modifiers:
+        if mod.type == "MASK" and mod.vertex_group == mask_vg_name:
+            set_bool(mod, "show_viewport", activate)
+            set_bool(mod, "show_render", activate)
+
+
 def outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=None):
     """Update visibility of armature bone collections like the outfit operator"""
 

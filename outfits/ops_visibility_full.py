@@ -3,7 +3,11 @@ import bpy
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
-from .helper_functions import outfits_update_armature_collections
+from .helper_functions import (
+    outfits_update_armature_collections,
+    update_global_body_mask,
+    update_outfit_body_masks,
+)
 
 
 def _set_modifier_visibility(mod, value):
@@ -167,18 +171,17 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 # Body masks
                 if body:
                     mask_visible = (is_active or locked) and show_obj and mask
-                    for mod in body.modifiers:
-                        if mod.type in [
-                            "MASK",
-                            "VERTEX_WEIGHT_MIX",
-                        ] and obj.name in mod.name.split("|"):
-                            set_bool(mod, "show_viewport", mask_visible)
-                            set_bool(mod, "show_render", mask_visible)
+                    update_outfit_body_masks(body, obj.name, mask_visible)
 
             # Collection visibility AFTER objects
             col_visible = is_active or locked_collection or any_object_visible
             set_bool(col, "hide_viewport", not col_visible)
             set_bool(col, "hide_render", not col_visible)
+
+        # Refresh the combined global mask once, after every outfit piece has been
+        # processed, so it reflects the final state of all Vertex Weight Mix modifiers.
+        if body:
+            update_global_body_mask(body)
 
         # Apply hair switching once, toggling direct children of
         # hair_collection so nested sub-collections aren't cascade-hidden.

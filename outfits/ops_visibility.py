@@ -3,7 +3,11 @@ import bpy
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
-from .helper_functions import outfits_update_armature_collections
+from .helper_functions import (
+    outfits_update_armature_collections,
+    update_global_body_mask,
+    update_outfit_body_masks,
+)
 
 
 class MustardUI_OutfitVisibility(bpy.types.Operator):
@@ -170,14 +174,9 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             # Body mask modifiers
             body = rig_settings.model_body
             if body:
-                for mod in body.modifiers:
-                    if (
-                        mod.type in ["MASK", "VERTEX_WEIGHT_MIX"]
-                        and self.obj in mod.name.split("|")
-                        and rig_settings.outfits_global_mask
-                    ):
-                        set_bool(mod, "show_viewport", not o.hide_viewport)
-                        set_bool(mod, "show_render", not o.hide_viewport)
+                if rig_settings.outfits_global_mask:
+                    update_outfit_body_masks(body, self.obj, not o.hide_viewport)
+                update_global_body_mask(body)
             else:
                 self.report(
                     {"WARNING"}, "MustardUI - Outfit Body has not been specified."
