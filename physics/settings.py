@@ -68,6 +68,10 @@ def update_frame(self, context):
     return
 
 
+def poll_mesh(self, o):
+    return o.type == "MESH"
+
+
 class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
     # CONFIGURATION
 
@@ -112,6 +116,15 @@ class MustardUI_PhysicsSettings(bpy.types.PropertyGroup):
         description="Frame on which the simulation stops",
         name="End",
         update=update_frame,
+    )
+
+    # Outfits Setup: optional custom Surface Deform target (uses the body if None)
+    outfits_setup_surface_deform_target: bpy.props.PointerProperty(
+        name="Target",
+        description="Mesh to use as the Surface Deform target instead of the body.\n"
+        "Leave empty to use the body mesh",
+        type=bpy.types.Object,
+        poll=poll_mesh,
     )
 
     # INTERNAL

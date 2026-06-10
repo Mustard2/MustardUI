@@ -116,7 +116,15 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         physics_settings.enable_physics = False
 
         items = physics_settings.items
+
         body = rig_settings.model_body
+
+        # Surface Deform target: a custom mesh if one was selected in the popup,
+        # otherwise the body itself. This only changes what the Surface Deform
+        # modifiers bind to; intersection checks still use the body cages.
+        target = physics_settings.outfits_setup_surface_deform_target
+        if target is None or target.type != "MESH":
+            target = body
 
         # Disable subdivision modifiers on the body to attempt binding with
         # fewer vertices
@@ -192,7 +200,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                 # Check if Physics modifiers are available on the mesh
                 # If these modifiers are available, most probably the item does not
                 # need to be driven by Surface Deform
-                if not self.override_armature_check:
+                if not self.override_physics_check:
                     if any(x.type in ["CLOTH", "SOFT_BODY"] for x in obj.modifiers):
                         continue
 
@@ -214,13 +222,13 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                         # If the modifier is already added, attempt to rebind if
                         # needed and skip
                         if any(
-                            x.type == "SURFACE_DEFORM" and x.target == body
+                            x.type == "SURFACE_DEFORM" and x.target == target
                             for x in obj.modifiers
                         ):
                             for mod in [
                                 x
                                 for x in obj.modifiers
-                                if x.type == "SURFACE_DEFORM" and x.target == body
+                                if x.type == "SURFACE_DEFORM" and x.target == target
                             ]:
                                 # Attempt to rebind if found but not bound
                                 if not mod.is_bound:
@@ -236,8 +244,8 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                             continue
 
                         # Add Surface Deform modifier
-                        nm = obj.modifiers.new(name=body.name, type="SURFACE_DEFORM")
-                        nm.target = body
+                        nm = obj.modifiers.new(name=target.name, type="SURFACE_DEFORM")
+                        nm.target = target
                         with bpy.context.temp_override(object=obj):
                             # Bind the modifier
                             warnings += self.bind(obj, nm)
@@ -269,7 +277,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                     mods = [
                         x
                         for x in obj.modifiers
-                        if x.type == "SURFACE_DEFORM" and x.target == body
+                        if x.type == "SURFACE_DEFORM" and x.target == target
                     ]
                     mods.reverse()
                     for mod in mods:
@@ -303,14 +311,14 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                     m.show_viewport = True
                     break
             else:
-                rig_settings.model_body.hide_viewport = False
+                body.hide_viewport = False
 
                 bpy.ops.object.mode_set(mode="OBJECT")
                 bpy.ops.object.select_all(action="DESELECT")
-                bpy.context.view_layer.objects.active = rig_settings.model_body
+                bpy.context.view_layer.objects.active = body
 
                 # Use Split Concave operator to attempt a fix
-                with bpy.context.temp_override(active_object=rig_settings.model_body):
+                with bpy.context.temp_override(active_object=body):
                     bpy.ops.object.mode_set(mode="EDIT")
                     bpy.ops.mesh.select_all(action="SELECT")
                     bpy.ops.mesh.vert_connect_concave()
@@ -340,7 +348,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                     for mod in [
                         x
                         for x in obj.modifiers
-                        if x.type == "SURFACE_DEFORM" and x.target == body
+                        if x.type == "SURFACE_DEFORM" and x.target == target
                     ]:
                         # Attempt to rebind if found but not bound
                         if not mod.is_bound:
@@ -410,7 +418,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                 for mod in [
                     x
                     for x in obj.modifiers
-                    if x.type == "SURFACE_DEFORM" and x.target == body
+                    if x.type == "SURFACE_DEFORM" and x.target == target
                 ]:
                     if not mod.is_bound:
                         print(
@@ -438,6 +446,10 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
         layout = self.layout
 
+        settings = context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config=1)
+        physics_settings = arm.MustardUI_PhysicsSettings
+
         col = layout.column(align=True)
         col.prop(self, "attempt_fix_bind")
 
@@ -447,6 +459,15 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
         col = layout.column(align=True)
         col.prop(self, "clean_modifiers")
+
+        # Advanced: optional custom Surface Deform target
+        if settings.advanced:
+            col = layout.column(align=True)
+            col.prop(
+                physics_settings,
+                "outfits_setup_surface_deform_target",
+                icon="MESH_DATA",
+            )
 
 
 class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
@@ -548,7 +569,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
                 # Check if Physics modifiers are available on the mesh
                 # If these modifiers are available, most probably the item does not
                 # need to be driven by Surface Deform
-                if not self.override_armature_check:
+                if not self.override_physics_check:
                     if any(x.type in ["CLOTH", "SOFT_BODY"] for x in obj.modifiers):
                         continue
 
@@ -616,6 +637,13 @@ class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
         body = rig_settings.model_body
         items = physics_settings.items
 
+        # Surface Deform modifiers may target the body or a custom target chosen
+        # during setup, so clear both.
+        targets = {body}
+        custom_target = physics_settings.outfits_setup_surface_deform_target
+        if custom_target is not None and custom_target.type == "MESH":
+            targets.add(custom_target)
+
         # Clear current intersection objects
         for pi in [x for x in items if x.type == "CAGE"]:
             pi.intersecting_objects.clear()
@@ -641,7 +669,7 @@ class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
                 mods = [
                     x
                     for x in obj.modifiers
-                    if x.type == "SURFACE_DEFORM" and x.target == body
+                    if x.type == "SURFACE_DEFORM" and x.target in targets
                 ]
                 mods.reverse()
                 for mod in mods:
