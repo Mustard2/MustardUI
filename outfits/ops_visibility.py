@@ -192,19 +192,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                 if child.hide_viewport != obj.hide_viewport:
                     apply_visibility(child)
 
-        # ------------------- GLOBAL UPDATES ------------------- #
-        # Physics update
-        if physics_settings.enable_ui:
-            enable_physics_update(physics_settings, context)
-
-        # Update tags
-        if rig_settings.outfits_update_tag_on_switch:
-            arm.update_tag()
-            obj.update_tag()
-            for child in obj.children:
-                child.update_tag()
-
-        # Extras collection visibility
+        # Extras
         extras = rig_settings.extras_collection
         hidden = None
         if extras:
@@ -216,6 +204,18 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             hidden = all(x.hide_render for x in items)
             set_bool(extras, "hide_viewport", hidden)
             set_bool(extras, "hide_render", hidden)
+
+        # ------------------- GLOBAL UPDATES ------------------- #
+        # Physics update
+        if physics_settings.enable_ui:
+            enable_physics_update(physics_settings, context)
+
+        # Update tags
+        if rig_settings.outfits_update_tag_on_switch:
+            arm.update_tag()
+            obj.update_tag()
+            for child in obj.children:
+                child.update_tag()
 
         # Armature collections
         if armature_settings.outfits:
