@@ -6,6 +6,10 @@ from bpy.props import StringProperty
 from ..misc.icons import get_hair_icon
 from ..misc.set_bool import set_bool
 from ..outfits.definitions import MustardUI_Outfit
+from ..outfits.helper_functions import (
+    update_global_body_mask,
+    update_outfit_body_masks,
+)
 from ..sections.definitions import MustardUI_SectionItem
 
 
@@ -436,26 +440,26 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     set_bool(mod, "show_render", value)
 
                 # Update body mask modifiers
-                if self.model_body is None:
+                if self.model_body is None or not self.outfits_enable_global_mask:
                     continue
 
-                for mod in self.model_body.modifiers:
-                    if mod.type not in {"MASK", "VERTEX_WEIGHT_MIX"}:
-                        continue
-                    if not self.outfits_enable_global_mask:
-                        continue
-                    if obj.name not in mod.name:
-                        continue
-                    visible = (
-                        (
-                            collection.name == self.outfits_list
-                            or obj.MustardUI_outfit_lock
-                        )
-                        and not obj.hide_viewport
-                        and self.outfits_global_mask
+                # Extras are independent of the outfit switcher, so their masks follow
+                # the piece's own visibility rather than the active outfit.
+                is_extras = collection == self.extras_collection
+                visible = (
+                    (
+                        is_extras
+                        or collection.name == self.outfits_list
+                        or obj.MustardUI_outfit_lock
                     )
-                    set_bool(mod, "show_viewport", visible)
-                    set_bool(mod, "show_render", visible)
+                    and not obj.hide_viewport
+                    and self.outfits_global_mask
+                )
+                update_outfit_body_masks(self.model_body, obj.name, visible)
+
+        # Refresh the combined global mask once all outfit pieces are processed.
+        if self.model_body is not None and self.outfits_enable_global_mask:
+            update_global_body_mask(self.model_body)
 
     # List of the collections from which to extract the outfits
     outfits_collections: bpy.props.CollectionProperty(
