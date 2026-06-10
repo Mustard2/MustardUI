@@ -19,10 +19,10 @@ fixes = [
 ]
 
 
-class MustardUI_Physics_Setup(bpy.types.Operator):
+class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
     """This button creates Surface Deform modifiers on Outfit pieces affected by Cages physics items.\nThe modifier is added only if the Outfit piece and the Cage intersect.\nBlender might freeze during the process"""  # noqa: E501
 
-    bl_idname = "mustardui.physics_setup"
+    bl_idname = "mustardui.physics_outfits_setup"
     bl_label = "Setup Outfits Physics"
     bl_options = {"UNDO"}
 
@@ -445,10 +445,10 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         col.prop(self, "clean_modifiers")
 
 
-class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
+class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
     """Compute Outfits Intersecting with Physics Items.\nBlender might freeze for a while, depending on the complexity of the Outfits mesh"""  # noqa: E501
 
-    bl_idname = "mustardui.physics_setup_intersecting_objects"
+    bl_idname = "mustardui.physics_outfits_setup_intersecting_objects"
     bl_label = "Compute Intersecting Outfits"
     bl_options = {"UNDO"}
 
@@ -501,7 +501,7 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
             pi = physics_settings.items[arm.mustardui_physics_items_uilist_index]
             pi.intersecting_objects.clear()
         else:
-            bpy.ops.mustardui.physics_setup_clear()
+            bpy.ops.mustardui.physics_outfits_setup_clear()
 
         colls = [
             x.collection
@@ -576,10 +576,10 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
         col.prop(self, "override_physics_check")
 
 
-class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
+class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
     """Clear the data driving the enable/disable of surface deform modifiers when Physics is activated/disabled"""  # noqa: E501
 
-    bl_idname = "mustardui.physics_setup_clear"
+    bl_idname = "mustardui.physics_outfits_setup_clear"
     bl_label = "Clear Setup Outfits Physics"
     bl_options = {"UNDO"}
 
@@ -659,12 +659,12 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_Physics_Setup)
-    bpy.utils.register_class(MustardUI_Physics_Setup_IntersectingObjects)
-    bpy.utils.register_class(MustardUI_Physics_Setup_Clear)
+    bpy.utils.register_class(MustardUI_Physics_OutfitsSetup)
+    bpy.utils.register_class(MustardUI_Physics_OutfitsSetup_IntersectingObjects)
+    bpy.utils.register_class(MustardUI_Physics_OutfitsSetup_Clear)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Physics_Setup_Clear)
-    bpy.utils.unregister_class(MustardUI_Physics_Setup_IntersectingObjects)
-    bpy.utils.unregister_class(MustardUI_Physics_Setup)
+    bpy.utils.unregister_class(MustardUI_Physics_OutfitsSetup_Clear)
+    bpy.utils.unregister_class(MustardUI_Physics_OutfitsSetup_IntersectingObjects)
+    bpy.utils.unregister_class(MustardUI_Physics_OutfitsSetup)

@@ -4,9 +4,9 @@ from . import (
     ops_cache,
     ops_delete,
     ops_mirror,
+    ops_outfits_setup,
     ops_rebind,
     ops_remove,
-    ops_setup,
     settings,
     settings_item,
     settings_presets,
@@ -22,7 +22,7 @@ def register():
     settings.register()
     ops_cache.register()
     menu.register()
-    ops_setup.register()
+    ops_outfits_setup.register()
     ops_mirror.register()
     ops_add.register()
     ops_remove.register()
@@ -42,7 +42,7 @@ def unregister():
     ops_remove.unregister()
     ops_add.unregister()
     ops_mirror.unregister()
-    ops_setup.unregister()
+    ops_outfits_setup.unregister()
     menu.unregister()
     ops_cache.unregister()
     settings.unregister()

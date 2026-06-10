@@ -102,7 +102,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             ).right_click_call = False
 
             col2 = col.column(align=True)
-            op = col2.operator("mustardui.physics_setup", icon="PHYSICS", text="")
+            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
 
             outfit_collection = rig_settings.outfits_collections[
                 scene.mustardui_outfits_uilist_index
@@ -202,7 +202,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         row2.enabled = (
             rig_settings.extras_collection is not None and physics_settings.enable_ui
         )
-        op = row2.operator("mustardui.physics_setup", icon="PHYSICS", text="")
+        op = row2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
         if rig_settings.extras_collection:
             op.single_outfit = rig_settings.extras_collection.name
         else:
