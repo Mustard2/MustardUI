@@ -1088,6 +1088,10 @@ class MUSTARDUI_OT_IKFKChainSwitch(bpy.types.Operator):
         if len(chains) <= index:
             return {"FINISHED"}
 
+        if self.direction == "UP" and index == 0:
+            return {"FINISHED"}
+        if self.direction == "DOWN" and index >= len(chains) - 1:
+            return {"FINISHED"}
         neighbour = index + (-1 if self.direction == "UP" else 1)
         chains.move(neighbour, index)
 
