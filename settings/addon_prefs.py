@@ -39,7 +39,6 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         "already have a UI configured.\n"
         "The full Configuration can still be used afterwards "
         "(enable it with Developer Tools).",
-        update=developer_update,
     )
 
     # Debug mode
