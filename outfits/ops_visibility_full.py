@@ -216,6 +216,9 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 continue
             if not outfit_nude and not cp.outfit:
                 continue
+            # Skip Extras evaluation
+            if cp.outfit is not None and cp.outfit == rig_settings.extras_collection:
+                continue
 
             prop = cp.prop_name
             if prop not in arm.keys():
