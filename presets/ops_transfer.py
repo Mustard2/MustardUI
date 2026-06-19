@@ -50,7 +50,10 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return (
+            active_object_operator_poll(context, config=0)
+            and len(mustardui_get_characters(None, context)) > 0
+        )
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -85,18 +88,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
             new_preset = trg_settings.presets.add()
             new_preset.name = src_preset.name
 
-            for morph in src_preset.morphs:
-                m = new_preset.morphs.add()
-
-                m.name = morph.name
-                m.path = morph.path
-                m.section_name = getattr(morph, "section_name", "")
-
-                m.shape_key = morph.shape_key
-                m.custom_property = morph.custom_property
-                m.custom_property_source = morph.custom_property_source
-
-                m.value = morph.value
+            new_preset.data = src_preset.data
 
         # Physics
         elif self.preset_type == "PHYSICS":
