@@ -148,6 +148,13 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         if target is None or target.type != "MESH":
             target = body
 
+        # Disabling Physics may have excluded the cage collections: re-include them
+        # for binding (the final exclude state is restored with enable_physics below).
+        physics_objs = [x.object for x in items if x.object is not None]
+        physics_objs.append(target)
+        for pcoll in {c for o in physics_objs for c in o.users_collection}:
+            include_collection(pcoll)
+
         # Disable subdivision modifiers on the body to attempt binding with
         # fewer vertices
         body_show = False
@@ -565,6 +572,12 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         if rig_settings.extras_collection is not None:
             colls.append(rig_settings.extras_collection)
 
+        # Physics may be disabled, excluding the cage collections: re-include them for
+        # the intersection checks, then restore their exclude state at the end.
+        cage_objs = [x.object for x in items if x.type == "CAGE" and x.object]
+        cage_colls = {coll for o in cage_objs for coll in o.users_collection}
+        cage_states = [include_collection(coll) for coll in cage_colls]
+
         # Caches BVH trees/bounding boxes so each cage and object mesh is only
         # built once across all intersection checks below.
         intersection_checker = MeshIntersectionChecker()
@@ -621,6 +634,9 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
                             npi.object = obj
 
             restore_collection(lc, was_excluded)
+
+        for cage_lc, cage_was_excluded in cage_states:
+            restore_collection(cage_lc, cage_was_excluded)
 
         self.report({"INFO"}, "MustardUI - Recomputed Physics Outfits settings.")
 
