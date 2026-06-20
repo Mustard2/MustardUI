@@ -45,8 +45,12 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_ToolsCreators"
-    bl_label = "Armature"
-    bl_options = {"DEFAULT_CLOSED"}
+    bl_label = ""
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
+
+    url_MustardUI_ToolsGuide = (
+        "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Armature"
+    )
 
     @classmethod
     def poll(cls, context):
@@ -60,7 +64,10 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="", icon="OUTLINER_DATA_ARMATURE")
+        layout.label(text="Armature", icon="OUTLINER_DATA_ARMATURE")
+        layout.operator(
+            "wm.url_open", text="", icon="QUESTION"
+        ).url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout
@@ -157,8 +164,12 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_ToolsCreators"
-    bl_label = "Physics"
-    bl_options = {"DEFAULT_CLOSED"}
+    bl_label = ""
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
+
+    url_MustardUI_ToolsGuide = (
+        "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Physics"
+    )
 
     @classmethod
     def poll(cls, context):
@@ -172,7 +183,10 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="", icon="PHYSICS")
+        layout.label(text="Physics", icon="PHYSICS")
+        layout.operator(
+            "wm.url_open", text="", icon="QUESTION"
+        ).url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout
@@ -209,8 +223,12 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
 
 class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_ToolsCreators"
-    bl_label = "Optimizations"
-    bl_options = {"DEFAULT_CLOSED"}
+    bl_label = ""
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
+
+    url_MustardUI_ToolsGuide = (
+        "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Optimization"
+    )
 
     @classmethod
     def poll(cls, context):
@@ -224,7 +242,10 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="", icon="FORCE_WIND")
+        layout.label(text="Optimizations", icon="FORCE_WIND")
+        layout.operator(
+            "wm.url_open", text="", icon="QUESTION"
+        ).url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout
