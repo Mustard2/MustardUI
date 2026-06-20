@@ -207,7 +207,7 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
             "wm.url_open",
             text="MustardUI Wiki",
             icon="URL",
-        ).url = "https://github.com/Mustard2/MustardUI/wiki/Configuration"
+        ).url = "https://github.com/Mustard2/MustardUI/wiki/Creator-Configuration"
 
         layout.operator(
             "mustardui.quick_setup_smart_check",
