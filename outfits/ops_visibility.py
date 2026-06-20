@@ -183,9 +183,34 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         # Apply to children if shift is pressed
         if self.shift:
-            for child in obj.children:
-                if child.hide_viewport != obj.hide_viewport:
-                    apply_visibility(child)
+
+            def apply_visibility_recursive(parent, depth=0):
+                if depth >= 3:
+                    return
+                for child in parent.children:
+                    if child.hide_viewport != obj.hide_viewport:
+                        apply_visibility(child)
+                    apply_visibility_recursive(child, depth + 1)
+
+            apply_visibility_recursive(obj)
+
+        # ------------------- GLOBAL UPDATES ------------------- #
+        # Physics update
+        if physics_settings.enable_ui:
+            enable_physics_update(physics_settings, context)
+
+        # Update tags
+        if rig_settings.outfits_update_tag_on_switch:
+            arm.update_tag()
+
+            def update_tags_recursive(parent, depth=0):
+                if depth >= 3:
+                    return
+                parent.update_tag()
+                for child in parent.children:
+                    update_tags_recursive(child, depth + 1)
+
+            update_tags_recursive(obj)
 
         # Extras
         extras = rig_settings.extras_collection
