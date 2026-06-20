@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object, active_object_operator_poll
+from ..model_selection.active_object import active_object_operator_poll, mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     outfits_update_armature_collections,
