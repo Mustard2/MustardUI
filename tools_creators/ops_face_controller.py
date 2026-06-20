@@ -646,8 +646,8 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
             if addon_prefs.debug:
                 print(f"MustardUI - Expression before removal: {current_expression}'.")
             for v in [var.name for var in variables_to_remove]:
-                if "fcd" in var.name:
-                    pattern = r"([+\-]?\s*\d*\.?\d*)\s?\*(?:\s*\d*\.?\d*\s?\*)*\s?(min\([^\)]+fcd[^\)]+[^\)]+fcd[^\)]+\)|\w*fcd\w*(\*\w*fcd\w*)*|\([^\)]+fcd[^\)]+\))"  # noqa: E501
+                if "fcd" in v:
+                    pattern = r"([+\-]?\s*(?:\d+(?:\.\d+)?|\.\d+)?)\s?\*(?:\s*(?:\d+(?:\.\d+)?|\.\d+)\s?\*)*\s?(min\([^\)]+fcd[^\)]+[^\)]+fcd[^\)]+\)|\w*fcd\w*(\*\w*fcd\w*)*|\([^\)]+fcd[^\)]+\))"  # noqa: E501
                     current_expression = re.sub(
                         pattern,
                         lambda m: "" if m.group(0).strip() else "",
