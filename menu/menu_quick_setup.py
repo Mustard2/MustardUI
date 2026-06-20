@@ -118,7 +118,8 @@ class PANEL_PT_MustardUI_QuickSetup_Outfits(MainPanel, bpy.types.Panel):
             col = layout.column(align=True)
             col.label(text="Add the Collections containing Outfits.", icon="INFO")
             col.label(
-                text="Each Collection will be an entry in the Outfits list.", icon="BLANK1"
+                text="Each Collection will be an entry in the Outfits list.",
+                icon="BLANK1",
             )
 
             layout.template_list(
@@ -234,7 +235,10 @@ class PANEL_PT_MustardUI_QuickSetup_Armature(MainPanel, bpy.types.Panel):
 
         col = layout.column(align=True)
         col.label(text="Unrecognized Armature Type!", icon="ERROR")
-        col.label(text="Review the Bone Collections to add to the Armature panel.", icon="BLANK1")
+        col.label(
+            text="Review the Bone Collections to add to the Armature panel.",
+            icon="BLANK1",
+        )
 
         active_bcoll = arm.collections.active
         row = layout.row()
