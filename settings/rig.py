@@ -456,7 +456,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     and not obj.hide_viewport
                     and self.outfits_global_mask
                 )
-                update_outfit_body_masks(self.model_body, obj.name, visible)
+                update_outfit_body_masks(context, self.model_body, obj.name, visible)
 
         # Refresh the combined global mask once all outfit pieces are processed.
         if self.model_body is not None and self.outfits_enable_global_mask:

@@ -14,13 +14,24 @@ def find_layer_collection(layer_coll, collection):
     return None
 
 
-def update_outfit_body_masks(body, obj_name, visible):
+def update_outfit_body_masks(context, body, obj_name, visible):
     for mod in body.modifiers:
         if mod.type in ("MASK", "VERTEX_WEIGHT_MIX") and obj_name in mod.name.split(
             "|"
         ):
-            set_bool(mod, "show_viewport", visible)
-            set_bool(mod, "show_render", visible)
+            # Shared modifier (names joined by "|"): keep it on if another
+            # piece using it is still visible.
+            should_show = visible
+            if not should_show:
+                for other_name in mod.name.split("|"):
+                    if other_name == obj_name:
+                        continue
+                    other_obj = context.scene.objects.get(other_name)
+                    if other_obj and not other_obj.hide_viewport:
+                        should_show = True
+                        break
+            set_bool(mod, "show_viewport", should_show)
+            set_bool(mod, "show_render", should_show)
 
 
 def update_global_body_mask(body):

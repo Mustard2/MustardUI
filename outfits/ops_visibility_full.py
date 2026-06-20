@@ -165,7 +165,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 # Body masks
                 if body and enable_mask:
                     mask_visible = (is_active or locked) and show_obj and mask
-                    update_outfit_body_masks(body, obj.name, mask_visible)
+                    update_outfit_body_masks(context, body, obj.name, mask_visible)
 
             # Collection visibility AFTER objects
             col_visible = is_active or locked_collection or any_object_visible
@@ -187,7 +187,9 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 else rig_settings.extras_collection.objects
             )
             for obj in extras_items:
-                update_outfit_body_masks(body, obj.name, not obj.hide_viewport and mask)
+                update_outfit_body_masks(
+                    context, body, obj.name, not obj.hide_viewport and mask
+                )
 
         # Refresh the combined global mask once, after every outfit piece has been
         # processed, so it reflects the final state of all Vertex Weight Mix modifiers.

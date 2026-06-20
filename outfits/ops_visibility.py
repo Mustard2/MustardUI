@@ -175,7 +175,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             # Body mask modifiers
             body = rig_settings.model_body
             if body and rig_settings.outfits_global_mask:
-                update_outfit_body_masks(body, self.obj, not o.hide_viewport)
+                update_outfit_body_masks(context, body, self.obj, not o.hide_viewport)
                 update_global_body_mask(body)
 
         # Apply to main object
