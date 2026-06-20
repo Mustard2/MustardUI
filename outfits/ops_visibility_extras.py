@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import mustardui_active_object, active_object_operator_poll
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     outfits_update_armature_collections,
@@ -16,6 +16,10 @@ class MustardUI_ExtrasCollectionVisibility(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     collection: bpy.props.StringProperty()
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
         collection = bpy.data.collections.get(self.collection)
