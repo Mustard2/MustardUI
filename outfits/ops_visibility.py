@@ -198,11 +198,13 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         # Apply to children if shift is pressed
         if self.shift:
 
-            def apply_visibility_recursive(parent):
+            def apply_visibility_recursive(parent, depth=0):
+                if depth >= 3:
+                    return
                 for child in parent.children:
                     if child.hide_viewport != obj.hide_viewport:
                         apply_visibility(child)
-                    apply_visibility_recursive(child)
+                    apply_visibility_recursive(child, depth + 1)
 
             apply_visibility_recursive(obj)
 
