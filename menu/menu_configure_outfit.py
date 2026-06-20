@@ -31,6 +31,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
 
         box = layout.box()
         box.label(text="General Settings", icon="MODIFIER")
@@ -72,23 +73,55 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
                 "outfits_collections",
                 scene,
                 "mustardui_outfits_uilist_index",
+                rows=8,
             )
+
             col = row.column()
+
             col2 = col.column(align=True)
             opup = col2.operator("mustardui.outfits_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
+
             opdown = col2.operator(
                 "mustardui.outfits_switch", icon="TRIA_DOWN", text=""
             )
             opdown.direction = "DOWN"
+
             col.separator()
+
+            col.operator(
+                "mustardui.outfits_select_in_configuration",
+                text="",
+                icon="RESTRICT_SELECT_OFF",
+            )
+
+            col.separator()
+
             col.operator(
                 "mustardui.rename_outfit", text="", icon="GREASEPENCIL"
             ).right_click_call = False
-            op = col.operator("mustardui.remove_outfit", text="", icon="X")
+
+            col2 = col.column(align=True)
+            op = col2.operator(
+                "mustardui.physics_outfits_setup", icon="PHYSICS", text=""
+            )
+
+            outfit_collection = rig_settings.outfits_collections[
+                scene.mustardui_outfits_uilist_index
+            ].collection
+            if outfit_collection is not None:
+                op.single_outfit = outfit_collection.name
+            else:
+                op.single_outfit = ""
+
+            col.separator()
+
+            col2 = col.column(align=True)
+            op = col2.operator("mustardui.remove_outfit", text="", icon="X")
             op.is_config = True
             op.delete_cp = True
-            op = col.operator("mustardui.delete_outfit", text="", icon="TRASH")
+
+            op = col2.operator("mustardui.delete_outfit", text="", icon="TRASH")
             op.is_config = True
             op.delete_cp = True
 
@@ -165,7 +198,17 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
 
         # Extras list
         box.label(text="Extras", icon="ADD")
-        box.prop(rig_settings, "extras_collection", text="")
+        row = box.row()
+        row.prop(rig_settings, "extras_collection", text="")
+        row2 = row.row(align=True)
+        row2.enabled = (
+            rig_settings.extras_collection is not None and physics_settings.enable_ui
+        )
+        op = row2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
+        if rig_settings.extras_collection:
+            op.single_outfit = rig_settings.extras_collection.name
+        else:
+            op.single_outfit = ""
 
 
 def register():

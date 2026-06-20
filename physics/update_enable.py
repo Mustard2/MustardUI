@@ -1,8 +1,34 @@
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
+from ..outfits.helper_functions import find_layer_collection
+
+
+def update_physics_collections_exclude(physics_settings, context):
+    """Exclude (or re-include) collections that contain only UI physics items."""
+    physics_objects = {pi.object for pi in physics_settings.items if pi.object}
+    if not physics_objects:
+        return
+
+    master = context.scene.collection
+    view_layer = context.view_layer
+
+    # Collections directly holding at least one physics item object
+    candidate_colls = {coll for obj in physics_objects for coll in obj.users_collection}
+
+    for coll in candidate_colls:
+        if coll == master:
+            continue
+        # Only act on collections whose contents are exclusively physics items
+        if all(obj in physics_objects for obj in coll.all_objects):
+            lc = find_layer_collection(view_layer.layer_collection, coll)
+            if lc is not None:
+                set_bool(lc, "exclude", not physics_settings.enable_physics)
 
 
 def set_cage_modifiers(physics_item, iterator, s, obj, body):
+    if physics_item.object is None:
+        return
+
     intersecting_objects = [x.object for x in physics_item.intersecting_objects]
     for mod in iterator:
         if mod.type == "MESH_DEFORM":
@@ -19,6 +45,9 @@ def set_cage_modifiers(physics_item, iterator, s, obj, body):
 
 
 def influence_cage_modifiers(physics_item, iterator, influence):
+    if physics_item.object is None:
+        return
+
     for mod in iterator:
         if mod.type == "SURFACE_DEFORM":
             if physics_item.object == mod.target:
@@ -28,16 +57,38 @@ def influence_cage_modifiers(physics_item, iterator, influence):
 
 
 def set_modifiers(physics_item, obj, status, mtype=""):
+    if physics_item.object is None:
+        return
+
+    smooth_mods = {}  # vertex_group -> CORRECTIVE_SMOOTH modifier
+    weight_mix_active = {}  # vertex_group_a -> whether any feeding weight mix is active
+
     for modifier in obj.modifiers:
-        if physics_item.object.name in modifier.name and (
-            mtype == "" or modifier.type == mtype
-        ):
+        name_match = physics_item.object.name in modifier.name
+        if name_match and (mtype == "" or modifier.type == mtype):
             modifier.show_viewport = status
             modifier.show_render = status
+        if modifier.type == "CORRECTIVE_SMOOTH" and modifier.vertex_group:
+            smooth_mods[modifier.vertex_group] = modifier
+        if modifier.type == "VERTEX_WEIGHT_MIX" and modifier.vertex_group_a:
+            # Optimized smooth corrective: a VERTEX_WEIGHT_MIX feeds a master
+            # CORRECTIVE_SMOOTH when vertex_group_a matches the vertex_group
+            # of one of the smooth modifiers
+            if name_match and (mtype == "" or mtype == "CORRECTIVE_SMOOTH"):
+                modifier.show_viewport = status
+                modifier.show_render = status
+            vg_a = modifier.vertex_group_a
+            weight_mix_active[vg_a] = (
+                weight_mix_active.get(vg_a, False) or modifier.show_viewport
+            )
+
+    for vg, mod in smooth_mods.items():
+        if vg in weight_mix_active:
+            mod.show_viewport = weight_mix_active[vg]
+            mod.show_render = weight_mix_active[vg]
 
 
 def enable_physics_update(self, context):
-
     res, arm = mustardui_active_object(context, config=0)
 
     if arm is None or not res:
@@ -90,8 +141,10 @@ def enable_physics_update(self, context):
             pi.collapse_softbody = True
             pi.collapse_collisions = True
 
+    pi_cages = [x for x in self.items if x.type == "CAGE" and x.object]
+
     for obj in rig_settings.model_armature_object.children:
-        for pi in [x for x in self.items if x.type == "CAGE"]:
+        for pi in pi_cages:
             if obj == pi.object:
                 continue
             status = self.enable_physics and pi.enable and not obj.hide_viewport
@@ -107,7 +160,7 @@ def enable_physics_update(self, context):
             else coll.collection.objects
         )
         for obj in [x for x in items if x.type == "MESH"]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -121,7 +174,7 @@ def enable_physics_update(self, context):
         for obj in [
             x for x in rig_settings.hair_collection.objects if x.type == "MESH"
         ]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -135,7 +188,7 @@ def enable_physics_update(self, context):
         for obj in [
             x for x in rig_settings.extras_collection.objects if x.type == "MESH"
         ]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -149,7 +202,7 @@ def enable_physics_update(self, context):
         for obj in [
             x for x in rig_settings.hair_extras_collection.objects if x.type == "MESH"
         ]:
-            for pi in [x for x in self.items if x.type == "CAGE"]:
+            for pi in pi_cages:
                 status = (
                     self.enable_physics
                     and pi.enable
@@ -159,11 +212,13 @@ def enable_physics_update(self, context):
                 set_cage_modifiers(pi, obj.modifiers, status, obj, body)
                 set_modifiers(pi, obj, status)
 
+    # Exclude collections that hold only UI physics items when Physics is disabled
+    update_physics_collections_exclude(self, context)
+
     return
 
 
 def enable_physics_update_single(self, context):
-
     res, arm = mustardui_active_object(context, config=0)
 
     if arm is None or not res or not self.object:

@@ -130,7 +130,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
                     "MustardUI - The number of pinned bones can not be bigger than the "
                     "number of available bones.",
                 )
-                return {"FINISHED"}
+                return {"CANCELLED"}
 
             # Create a curve to represent the path through the bone tips
             curve_data = bpy.data.curves.new("MustardUI Bone Physics", type="CURVE")
@@ -332,16 +332,6 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
     bl_label = "Remove Bone Physics"
     bl_description = "Clean the bone physics of the selected mesh"
     bl_options = {"REGISTER", "UNDO"}
-
-    curve_width: bpy.props.FloatProperty(
-        default=0.01, name="Curve Width", description=""
-    )
-    pinned_bones: bpy.props.IntProperty(default=1, name="Pinned Bones", description="")
-    add_to_panel: bpy.props.BoolProperty(
-        name="Add to Physics Panel",
-        description="Add the Collision item to Physics Panel",
-        default=True,
-    )
 
     @classmethod
     def poll(cls, context):

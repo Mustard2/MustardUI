@@ -41,7 +41,7 @@ from ..model_selection.active_object import (
 class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_create_jiggle_preset"
     bl_label = "Jiggle Preset"
-    bl_description = "Adds cloth jiggle physics with Wildeer settings to mesh. Uses active vtx group as 'Pin Group' in object mode. If in edit mode then it creates a new vtx group from selection and uses it instead. Applies to active and selected"  # noqa: E501
+    bl_description = "Adds cloth jiggle physics to the mesh. Uses active vtx group as 'Pin Group' in object mode. If in edit mode then it creates a new vtx group from selection and uses it instead. Applies to active and selected"  # noqa: E501
     bl_options = {"REGISTER", "UNDO", "INTERNAL"}
 
     @classmethod

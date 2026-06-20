@@ -36,7 +36,14 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
         box.label(text="General", icon="MODIFIER")
         col = box.column(align=True)
         col.prop(morphs_settings, "enable_ui", text="Enable Morph Panel")
-        col.prop(morphs_settings, "enable_freeze_morphs")
+
+        row = col.row()
+        row.enabled = (
+            not morphs_settings.type == "GENERIC"
+            if morphs_settings.use_shape_key_mute_drivers
+            else True
+        )
+        row.prop(morphs_settings, "enable_freeze_morphs")
 
         box = layout.box()
         box.label(text="Morphs Type", icon="ASSET_MANAGER")
@@ -106,7 +113,10 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
             col.prop(section, "hidden")
 
             row = col.row()
-            row.enabled = morphs_settings.enable_freeze_morphs
+            row.enabled = (
+                morphs_settings.enable_freeze_morphs
+                and not morphs_settings.use_shape_key_mute_drivers
+            )
             row.prop(section, "freezable")
 
             col.separator()

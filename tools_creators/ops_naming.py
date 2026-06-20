@@ -102,6 +102,15 @@ class MustardUI_ToolsCreators_Naming(bpy.types.Operator):
             ]:
                 rename_object(obj)
 
+        # Hair Extras
+        if rig_settings.hair_extras_collection is not None:
+            for obj in [
+                x
+                for x in rig_settings.hair_extras_collection.all_objects
+                if x is not None and x.data is not None
+            ]:
+                rename_object(obj)
+
         bpy.context.view_layer.update()
 
         # Second call to ensure the paths are fixed

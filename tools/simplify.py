@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
+from ..outfits.helper_functions import find_layer_collection
 
 
 class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
@@ -154,7 +155,15 @@ def simplify_hair(
     if rig_settings.hair_collection is None:
         return
 
-    rig_settings.hair_collection.hide_viewport = enable if simplify_hair_coll else False
+    hide = enable if simplify_hair_coll else False
+    rig_settings.hair_collection.hide_viewport = hide
+
+    # Exclude the Collection
+    lc = find_layer_collection(
+        bpy.context.view_layer.layer_collection, rig_settings.hair_collection
+    )
+    if lc is not None:
+        lc.exclude = hide
 
     if simplify_hair_global:
         if simplify_subdiv and rig_settings.hair_enable_global_subsurface and enable:

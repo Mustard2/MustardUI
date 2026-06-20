@@ -1,5 +1,5 @@
 from . import (
-    ops_checkmorphs,
+    ops_add,
     ops_defvalue,
     ops_drivers,
     ops_optimize,
@@ -18,7 +18,7 @@ def register():
     settings_section.register()
     settings_presets.register()
     settings.register()
-    ops_checkmorphs.register()
+    ops_add.register()
     ops_defvalue.register()
     ops_drivers.register()
     ops_optimize.register()
@@ -34,7 +34,7 @@ def unregister():
     ops_optimize.unregister()
     ops_drivers.unregister()
     ops_defvalue.unregister()
-    ops_checkmorphs.unregister()
+    ops_add.unregister()
     settings.unregister()
     settings_presets.unregister()
     settings_section.unregister()

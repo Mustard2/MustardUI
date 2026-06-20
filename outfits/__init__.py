@@ -6,6 +6,7 @@ from . import (
     ops_optimize,
     ops_remove,
     ops_rename_outfit,
+    ops_select_config,
     ops_smartcheck,
     ops_visibility,
     ops_visibility_full,
@@ -23,6 +24,7 @@ def register():
     ops_visibility.register()
     ops_visibility_full.register()
     ops_rename_outfit.register()
+    ops_select_config.register()
     ui_list.register()
     menu.register()
 
@@ -30,6 +32,7 @@ def register():
 def unregister():
     menu.unregister()
     ui_list.unregister()
+    ops_select_config.unregister()
     ops_rename_outfit.unregister()
     ops_visibility_full.unregister()
     ops_visibility.unregister()

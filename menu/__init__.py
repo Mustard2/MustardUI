@@ -4,36 +4,35 @@ class MainPanel:
     bl_category = "MustardUI"
 
 
-from . import (  # noqa: E402
-    menu_armature,
-    menu_armature_external,
-    menu_body,
-    # Configure panel
+from . import (  # noqa: E402, I001
+    menu_select_model,
+    menu_development,
+    menu_warnings,
     menu_configure,
-    menu_configure_armature,
-    # Sub-panels
     menu_configure_body,
-    menu_configure_complete,
-    menu_configure_debug,
-    menu_configure_hair,
-    menu_configure_links,
-    menu_configure_morphs,
-    menu_configure_others,
     menu_configure_outfit,
+    menu_configure_hair,
+    menu_configure_armature,
     menu_configure_physics,
     menu_configure_tools,
-    menu_development,
-    menu_hair,
-    menu_links,
+    menu_configure_morphs,
+    menu_configure_links,
+    menu_configure_others,
+    menu_configure_debug,
+    menu_configure_complete,
+    menu_tools_creators,
+    menu_quick_setup,
+    menu_body,
     menu_morphs,
     menu_outfits,
-    menu_physics,
-    menu_select_model,
-    menu_settings,
+    menu_hair,
+    menu_armature,
+    menu_armature_external,
     menu_simplify,
+    menu_physics,
     menu_tools,
-    menu_tools_creators,
-    menu_warnings,
+    menu_settings,
+    menu_links,
 )
 
 
@@ -54,6 +53,7 @@ def register():
     menu_configure_debug.register()
     menu_configure_complete.register()
     menu_tools_creators.register()
+    menu_quick_setup.register()
     menu_body.register()
     menu_morphs.register()
     menu_outfits.register()
@@ -79,6 +79,7 @@ def unregister():
     menu_outfits.unregister()
     menu_morphs.unregister()
     menu_body.unregister()
+    menu_quick_setup.unregister()
     menu_tools_creators.unregister()
     menu_configure_complete.unregister()
     menu_configure_debug.unregister()

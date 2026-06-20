@@ -3,12 +3,12 @@ import bpy
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
-from .helper_functions import outfits_update_armature_collections
-
-
-def _set_modifier_visibility(mod, value):
-    if mod.show_viewport != value:
-        mod.show_viewport = value
+from .helper_functions import (
+    find_layer_collection,
+    outfits_update_armature_collections,
+    update_global_body_mask,
+    update_outfit_body_masks,
+)
 
 
 # Operator to switch visibility of an object
@@ -19,7 +19,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=-1)
         if not poll:
             self.report({"WARNING"}, "No active MustardUI armature")
             return {"CANCELLED"}
@@ -37,18 +37,16 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         mods_disable = rig_settings.outfit_switch_modifiers_disable
         sk_disable = rig_settings.outfit_switch_shape_keys_disable
 
-        smooth = (
-            rig_settings.outfits_enable_global_smoothcorrection
-            and rig_settings.outfits_global_smoothcorrection
-        )
-        shrink = (
-            rig_settings.outfits_enable_global_shrinkwrap
-            and rig_settings.outfits_global_shrinkwrap
-        )
-        subsurf = (
-            rig_settings.outfits_enable_global_subsurface
-            and rig_settings.outfits_global_subsurface
-        )
+        # For each global option the "enable" flag screens the writes (skip entirely
+        # when the feature is not configured), and the toggle is the visibility value
+        # (the modifier is hidden when the feature is on but toggled off).
+        enable_smooth = rig_settings.outfits_enable_global_smoothcorrection
+        smooth = rig_settings.outfits_global_smoothcorrection
+        enable_shrink = rig_settings.outfits_enable_global_shrinkwrap
+        shrink = rig_settings.outfits_global_shrinkwrap
+        enable_subsurf = rig_settings.outfits_enable_global_subsurface
+        subsurf = rig_settings.outfits_global_subsurface
+        enable_mask = rig_settings.outfits_enable_global_mask
         mask = rig_settings.outfits_global_mask
 
         # Collections, objects, modifiers, masks
@@ -157,37 +155,46 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                         if not mods_disable:
                             continue
 
-                        if mod.type == "CORRECTIVE_SMOOTH" and smooth:
-                            set_bool(mod, "show_viewport", show_obj)
-                        elif mod.type == "SHRINKWRAP" and shrink:
-                            set_bool(mod, "show_viewport", show_obj)
-                        elif mod.type == "SUBSURF" and subsurf:
-                            set_bool(mod, "show_viewport", show_obj)
+                        if mod.type == "CORRECTIVE_SMOOTH" and enable_smooth:
+                            set_bool(mod, "show_viewport", show_obj and smooth)
+                        elif mod.type == "SHRINKWRAP" and enable_shrink:
+                            set_bool(mod, "show_viewport", show_obj and shrink)
+                        elif mod.type == "SUBSURF" and enable_subsurf:
+                            set_bool(mod, "show_viewport", show_obj and subsurf)
 
                 # Body masks
-                if body:
+                if body and enable_mask:
                     mask_visible = (is_active or locked) and show_obj and mask
-                    for mod in body.modifiers:
-                        if mod.type in [
-                            "MASK",
-                            "VERTEX_WEIGHT_MIX",
-                        ] and obj.name in mod.name.split("|"):
-                            should_show = mask_visible
-                            if not should_show:
-                                for other_name in mod.name.split("|"):
-                                    if other_name == obj.name:
-                                        continue
-                                    other_obj = context.scene.objects.get(other_name)
-                                    if other_obj and not other_obj.hide_viewport:
-                                        should_show = True
-                                        break
-                            set_bool(mod, "show_viewport", should_show)
-                            set_bool(mod, "show_render", should_show)
+                    update_outfit_body_masks(context, body, obj.name, mask_visible)
 
             # Collection visibility AFTER objects
             col_visible = is_active or locked_collection or any_object_visible
             set_bool(col, "hide_viewport", not col_visible)
             set_bool(col, "hide_render", not col_visible)
+
+            # Exclude the Collection
+            lc = find_layer_collection(context.view_layer.layer_collection, col)
+            if lc is not None:
+                set_bool(lc, "exclude", not col_visible)
+
+        # Extras are independent of the outfit switcher: their visibility is not
+        # changed here, but their body masks are refreshed to follow each piece's own
+        # visibility so they stay consistent on outfit switches.
+        if body and enable_mask and rig_settings.extras_collection is not None:
+            extras_items = (
+                rig_settings.extras_collection.all_objects
+                if use_subcollections
+                else rig_settings.extras_collection.objects
+            )
+            for obj in extras_items:
+                update_outfit_body_masks(
+                    context, body, obj.name, not obj.hide_viewport and mask
+                )
+
+        # Refresh the combined global mask once, after every outfit piece has been
+        # processed, so it reflects the final state of all Vertex Weight Mix modifiers.
+        if body and enable_mask:
+            update_global_body_mask(body)
 
         # Apply hair switching once, toggling direct children of
         # hair_collection so nested sub-collections aren't cascade-hidden.
@@ -216,6 +223,9 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             if not (cp.outfit_enable_on_switch or cp.outfit_disable_on_switch):
                 continue
             if not outfit_nude and not cp.outfit:
+                continue
+            # Skip Extras evaluation
+            if cp.outfit is not None and cp.outfit == rig_settings.extras_collection:
                 continue
 
             prop = cp.prop_name

@@ -119,6 +119,20 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
                 rig_settings.hair_collection.name.replace(old_name, self.name)
             )
 
+        # Hair Extras
+        if rig_settings.hair_extras_collection is not None:
+            for obj in [
+                x
+                for x in rig_settings.hair_extras_collection.all_objects
+                if x is not None
+            ]:
+                obj.name = obj.name.replace(old_name, self.name)
+                self.change_modifiers_name(obj, old_name)
+                self.change_materials_name(obj, old_name)
+            rig_settings.hair_extras_collection.name = (
+                rig_settings.hair_extras_collection.name.replace(old_name, self.name)
+            )
+
         # Finally change the model name
         rig_settings.model_name = self.name
 
