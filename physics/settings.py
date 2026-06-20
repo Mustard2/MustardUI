@@ -50,7 +50,12 @@ def update_frame(self, context):
                 update_modifiers(self, obj)
 
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            extras_objects = (
+                rig_settings.extras_collection.all_objects
+                if rig_settings.extras_config_subcollections
+                else rig_settings.extras_collection.objects
+            )
+            for obj in [x for x in extras_objects if x.type == "MESH"]:
                 update_modifiers(self, obj)
 
     if rig_settings.hair_collection is not None:

@@ -131,10 +131,18 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
         objects = [rig_settings.model_body]
         outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
         for c in outfit_colls:
-            for obj in [x for x in c.objects if x.type == "MESH"]:
+            outfit_objects = (
+                c.all_objects if rig_settings.outfits_config_subcollections else c.objects
+            )
+            for obj in [x for x in outfit_objects if x.type == "MESH"]:
                 objects.append(obj)
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            extras_objects = (
+                rig_settings.extras_collection.all_objects
+                if rig_settings.extras_config_subcollections
+                else rig_settings.extras_collection.objects
+            )
+            for obj in [x for x in extras_objects if x.type == "MESH"]:
                 objects.append(obj)
         if rig_settings.hair_collection is not None:
             for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
@@ -329,7 +337,12 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
             for obj in [x for x in c.objects if x.type == "MESH"]:
                 objects.append(obj)
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            extras_objects = (
+                rig_settings.extras_collection.all_objects
+                if rig_settings.extras_config_subcollections
+                else rig_settings.extras_collection.objects
+            )
+            for obj in [x for x in extras_objects if x.type == "MESH"]:
                 objects.append(obj)
         if rig_settings.hair_collection is not None:
             for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:

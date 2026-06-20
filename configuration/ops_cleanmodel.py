@@ -301,7 +301,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if rig_settings.extras_collection is not None:
                 items = (
                     rig_settings.extras_collection.all_objects
-                    if rig_settings.outfit_config_subcollections
+                    if rig_settings.extras_config_subcollections
                     else rig_settings.extras_collection.objects
                 )
                 for obj in items:
@@ -515,7 +515,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if rig_settings.extras_collection is not None and self.remove_unselected_extras:
             items = (
                 rig_settings.extras_collection.all_objects
-                if rig_settings.outfit_config_subcollections
+                if rig_settings.extras_config_subcollections
                 else rig_settings.extras_collection.objects
             )
             objs = [x for x in items if x.hide_viewport]
@@ -572,7 +572,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             # Delete the collection if now empty
             items = (
                 rig_settings.extras_collection.all_objects
-                if rig_settings.outfit_config_subcollections
+                if rig_settings.extras_config_subcollections
                 else rig_settings.extras_collection.objects
             )
             if len(items) < 1:
