@@ -338,7 +338,6 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
-        layout.enabled = rig_settings.hair_show
 
         layout.label(text="Particles Settings")
 
@@ -350,6 +349,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         )
 
         row = layout.row(align=True)
+        row.enabled = rig_settings.hair_show
         if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
             status = any(
                 x.particle_system.use_hair_dynamics for x in mod_particle_system
@@ -364,6 +364,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
             op.obj = obj.name
 
         row = layout.row(align=True)
+        row.enabled = rig_settings.hair_show
         row.prop(
             rig_settings,
             "hair_particle_hide_viewport",

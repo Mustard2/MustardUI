@@ -2,6 +2,18 @@ from ..misc.set_bool import set_bool
 from ..tools_creators.ops_optimize_mods import mask_vg_name
 
 
+def find_layer_collection(layer_coll, collection):
+    """Recursively find the LayerCollection (view-layer wrapper that holds the
+    'exclude' flag) for a given collection, starting from a root layer collection."""
+    if layer_coll.collection == collection:
+        return layer_coll
+    for child in layer_coll.children:
+        result = find_layer_collection(child, collection)
+        if result:
+            return result
+    return None
+
+
 def update_outfit_body_masks(body, obj_name, visible):
     for mod in body.modifiers:
         if mod.type in ("MASK", "VERTEX_WEIGHT_MIX") and obj_name in mod.name.split(

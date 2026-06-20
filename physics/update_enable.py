@@ -1,5 +1,28 @@
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
+from ..outfits.helper_functions import find_layer_collection
+
+
+def update_physics_collections_exclude(physics_settings, context):
+    """Exclude (or re-include) collections that contain only UI physics items."""
+    physics_objects = {pi.object for pi in physics_settings.items if pi.object}
+    if not physics_objects:
+        return
+
+    master = context.scene.collection
+    view_layer = context.view_layer
+
+    # Collections directly holding at least one physics item object
+    candidate_colls = {coll for obj in physics_objects for coll in obj.users_collection}
+
+    for coll in candidate_colls:
+        if coll == master:
+            continue
+        # Only act on collections whose contents are exclusively physics items
+        if all(obj in physics_objects for obj in coll.all_objects):
+            lc = find_layer_collection(view_layer.layer_collection, coll)
+            if lc is not None:
+                set_bool(lc, "exclude", not physics_settings.enable_physics)
 
 
 def set_cage_modifiers(physics_item, iterator, s, obj, body):
@@ -188,6 +211,9 @@ def enable_physics_update(self, context):
                 )
                 set_cage_modifiers(pi, obj.modifiers, status, obj, body)
                 set_modifiers(pi, obj, status)
+
+    # Exclude collections that hold only UI physics items when Physics is disabled
+    update_physics_collections_exclude(self, context)
 
     return
 

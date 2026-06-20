@@ -447,7 +447,9 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         layout = self.layout
-        layout.enabled = rig_settings.outfits_show
+        # Gray out the Extras pieces when the collection is excluded
+        # or the Outfits are simplified
+        layout.enabled = rig_settings.outfits_show and rig_settings.show_viewport_extras
 
         eitems = outfit_extract_items_from_collection(
             rig_settings.extras_collection, rig_settings.outfit_config_subcollections

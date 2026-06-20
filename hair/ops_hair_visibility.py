@@ -5,7 +5,10 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ..outfits.helper_functions import outfits_update_armature_collections
+from ..outfits.helper_functions import (
+    find_layer_collection,
+    outfits_update_armature_collections,
+)
 
 
 def set_object_visibility(obj, visible, rig_settings):
@@ -105,12 +108,16 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         for obj in [x for x in hair_extras_collection.objects if hair_name == x.name]:
             set_object_visibility(obj, visibility, rig_settings)
 
-        if all(x.hide_viewport for x in hair_extras_collection.objects):
-            hair_extras_collection.hide_viewport = True
-            hair_extras_collection.hide_render = True
-        else:
-            hair_extras_collection.hide_viewport = False
-            hair_extras_collection.hide_render = False
+        hidden = all(x.hide_viewport for x in hair_extras_collection.objects)
+        hair_extras_collection.hide_viewport = hidden
+        hair_extras_collection.hide_render = hidden
+
+        # Exclude the Collection
+        lc = find_layer_collection(
+            context.view_layer.layer_collection, hair_extras_collection
+        )
+        if lc is not None:
+            set_bool(lc, "exclude", hidden)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)

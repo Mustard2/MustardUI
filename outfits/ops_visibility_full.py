@@ -4,6 +4,7 @@ from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
+    find_layer_collection,
     outfits_update_armature_collections,
     update_global_body_mask,
     update_outfit_body_masks,
@@ -170,6 +171,11 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             col_visible = is_active or locked_collection or any_object_visible
             set_bool(col, "hide_viewport", not col_visible)
             set_bool(col, "hide_render", not col_visible)
+
+            # Exclude the Collection
+            lc = find_layer_collection(context.view_layer.layer_collection, col)
+            if lc is not None:
+                set_bool(lc, "exclude", not col_visible)
 
         # Extras are independent of the outfit switcher: their visibility is not
         # changed here, but their body masks are refreshed to follow each piece's own

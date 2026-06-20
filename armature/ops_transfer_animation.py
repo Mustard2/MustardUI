@@ -2,10 +2,10 @@ import bpy
 
 
 class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
-    """Copy all animation data (actions and NLA strip settings) and world transform from one armature to the Active Object armature"""  # noqa: E501
+    """Copy pose or animation data (actions and NLA strip settings) and world transform from one armature to the Active Object armature"""  # noqa: E501
 
     bl_idname = "mustardui.armature_transfer_animation"
-    bl_label = "Transfer Animation To Active Object"
+    bl_label = "Transfer Pose/Animation To Active Object"
     bl_options = {"UNDO"}
 
     @classmethod

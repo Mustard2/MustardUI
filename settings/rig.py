@@ -7,6 +7,7 @@ from ..misc.icons import get_hair_icon
 from ..misc.set_bool import set_bool
 from ..outfits.definitions import MustardUI_Outfit
 from ..outfits.helper_functions import (
+    find_layer_collection,
     update_global_body_mask,
     update_outfit_body_masks,
 )
@@ -616,9 +617,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         extras_objects = self.extras_collection.objects
 
         if any(not obj.hide_viewport for obj in extras_objects):
-            self.extras_collection.hide_viewport = not self.show_viewport_extras
+            hidden = not self.show_viewport_extras
         else:
-            self.extras_collection.hide_viewport = True
+            hidden = True
+
+        self.extras_collection.hide_viewport = hidden
+
+        # Exclude Collection
+        lc = find_layer_collection(
+            context.view_layer.layer_collection, self.extras_collection
+        )
+        if lc is not None:
+            lc.exclude = hidden
 
     show_viewport_extras: bpy.props.BoolProperty(
         default=True,

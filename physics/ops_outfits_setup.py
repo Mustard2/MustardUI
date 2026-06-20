@@ -2,7 +2,29 @@ import bpy
 
 from ..misc.mesh_intersection import MeshIntersectionChecker
 from ..model_selection.active_object import mustardui_active_object
+from ..outfits.helper_functions import find_layer_collection
 from .update_enable import enable_physics_update
+
+
+def include_collection(coll):
+    """Temporarily clear a collection's view-layer 'exclude' flag so its objects are
+    in the depsgraph.
+    Returns (LayerCollection, previously_excluded) for restore_collection()."""
+    lc = find_layer_collection(bpy.context.view_layer.layer_collection, coll)
+    if lc is None:
+        return None, False
+    was_excluded = lc.exclude
+    if was_excluded:
+        lc.exclude = False
+        bpy.context.view_layer.update()
+    return lc, was_excluded
+
+
+def restore_collection(lc, was_excluded):
+    """Restore the 'exclude' flag saved by include_collection()."""
+    if lc is not None and was_excluded:
+        lc.exclude = True
+
 
 fixes = [
     ("NONE", "None", "No fix attempt if the binding fails"),
@@ -172,6 +194,8 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         intersection_checker = MeshIntersectionChecker()
 
         for coll in colls:
+            lc, was_excluded = include_collection(coll)
+
             objs = (
                 coll.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -285,6 +309,8 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
                 obj.update_tag()
 
+            restore_collection(lc, was_excluded)
+
         # Re-enable subdivision modifiers on the body
         for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
             m.show_viewport = body_show
@@ -329,6 +355,8 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                 )
 
             for coll in colls:
+                lc, was_excluded = include_collection(coll)
+
                 objs = (
                     coll.all_objects
                     if rig_settings.outfit_config_subcollections
@@ -382,6 +410,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                     obj.update_tag()
 
                 coll.hide_viewport = show_coll
+                restore_collection(lc, was_excluded)
                 bpy.context.view_layer.update()
 
             if self.attempt_fix_bind == "SUBDIVISION":
@@ -541,6 +570,8 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         intersection_checker = MeshIntersectionChecker()
 
         for coll in colls:
+            lc, was_excluded = include_collection(coll)
+
             objs = (
                 coll.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -588,6 +619,8 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
                             # physics item
                             npi = pi.intersecting_objects.add()
                             npi.object = obj
+
+            restore_collection(lc, was_excluded)
 
         self.report({"INFO"}, "MustardUI - Recomputed Physics Outfits settings.")
 
