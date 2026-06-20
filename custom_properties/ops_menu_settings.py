@@ -106,9 +106,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         custom_prop = custom_props[index]
 
         if self.name == "":
-            self.report(
-                {"ERROR"}, "MustardUI - Can not rename a property with an empty name."
-            )
+            self.report({"ERROR"}, "MustardUI - Can not rename a property with an empty name.")
             return {"FINISHED"}
 
         prop_type = custom_prop.type
@@ -117,9 +115,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             or isinstance(self.min_float, int)
             or isinstance(self.default_float, int)
         ):
-            self.report(
-                {"ERROR"}, "MustardUI - Can not change type of the custom property."
-            )
+            self.report({"ERROR"}, "MustardUI - Can not change type of the custom property.")
             return {"FINISHED"}
 
         if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR":
@@ -131,8 +127,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             if len(ast.literal_eval(self.default_array)) != custom_prop.array_length:
                 self.report(
                     {"ERROR"},
-                    "MustardUI - Can not change default with different vector "
-                    "dimension.",
+                    "MustardUI - Can not change default with different vector dimension.",
                 )
                 return {"FINISHED"}
 
@@ -316,9 +311,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 self.step_float = max(ui_data_dict["step"], 0.001)
 
         # Check if the custom property driver is available
-        self.is_driver_corrupted = (
-            evaluate_path(custom_prop.rna, custom_prop.path) is None
-        )
+        self.is_driver_corrupted = evaluate_path(custom_prop.rna, custom_prop.path) is None
 
         return context.window_manager.invoke_props_dialog(self, width=500)
 
@@ -450,9 +443,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row.label(text="Default:")
                 row.prop(
                     self,
-                    "default_bool"
-                    if custom_prop.array_length == 0
-                    else "default_array",
+                    "default_bool" if custom_prop.array_length == 0 else "default_array",
                     text="",
                 )
 
@@ -476,9 +467,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                         row.scale_x = 1
                     else:
                         row.label(text=mustardui_cp_path(lp.rna, lp.path), icon="RNA")
-                    op = row.operator(
-                        "mustardui.property_removelinked", text="", icon="X"
-                    )
+                    op = row.operator("mustardui.property_removelinked", text="", icon="X")
                     op.rna = lp.rna
                     op.path = lp.path
                     op.type = self.type
@@ -511,8 +500,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 row = box.row()
                 row.alert = True
                 row.label(
-                    text="Path seems corrupted/non-existent. Please check its "
-                    "definition.",
+                    text="Path seems corrupted/non-existent. Please check its definition.",
                     icon="ERROR",
                 )
                 row.operator(
@@ -521,8 +509,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         if self.change_rna or self.change_rna_linked:
             layout.box().label(
-                text="Rebuild properties after modifying path values to apply the "
-                "changes!",
+                text="Rebuild properties after modifying path values to apply the changes!",
                 icon="ERROR",
             )
 

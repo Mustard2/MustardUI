@@ -27,9 +27,7 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         else:
             col = bpy.data.collections[rig_settings.outfits_list]
 
-        bpy.ops.mustardui.remove_outfit(
-            is_config=self.is_config, delete_cp=self.delete_cp
-        )
+        bpy.ops.mustardui.remove_outfit(is_config=self.is_config, delete_cp=self.delete_cp)
 
         if not col:
             self.report(
@@ -42,11 +40,7 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
 
         # Remove Objects
         items = {}
-        for obj in (
-            col.all_objects
-            if rig_settings.outfit_config_subcollections
-            else col.objects
-        ):
+        for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
             items[obj.name] = obj
 
             # Remove linked Physics Objects

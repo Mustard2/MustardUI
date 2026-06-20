@@ -6,9 +6,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Item(bpy.types.PropertyGroup)
 
 
 class MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups(bpy.types.UIList):
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row()
 
         obj = context.active_object
@@ -42,15 +40,12 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Add(bpy.types.Operator):
 
         # Prevent duplicates
         if vg_name in [
-            item.group_name
-            for item in scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
+            item.group_name for item in scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
         ]:
             self.report({"WARNING"}, "MustardUI - Vertex group already in list")
             return {"CANCELLED"}
 
-        scene.MustardUI_ToolsCreators_TransferVertexGroups_Items.add().group_name = (
-            vg_name
-        )
+        scene.MustardUI_ToolsCreators_TransferVertexGroups_Items.add().group_name = vg_name
         scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = (
             len(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items) - 1
         )
@@ -150,15 +145,13 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         source_vg_names = {vg.name for vg in source.vertex_groups}
         items_not_valid = [
             i
-            for i, item in enumerate(
-                scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
-            )
+            for i, item in enumerate(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items)
             if item.group_name not in source_vg_names
         ]
 
-        items_to_transfer = len(
-            scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
-        ) - len(items_not_valid)
+        items_to_transfer = len(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items) - len(
+            items_not_valid
+        )
         if items_to_transfer < 1:
             self.report({"ERROR"}, "MustardUI - No Vertex Groups to transfer")
             return {"CANCELLED"}
@@ -183,9 +176,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
                     target.vertex_groups.new(name=vg_name)
 
                 # Create Data Transfer modifier
-                mod = target.modifiers.new(
-                    name=f"Transfer_{vg_name}", type="DATA_TRANSFER"
-                )
+                mod = target.modifiers.new(name=f"Transfer_{vg_name}", type="DATA_TRANSFER")
                 mod.object = source
 
                 mod.use_vert_data = True
@@ -231,12 +222,10 @@ def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups)
 
     bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_Items = (
-        bpy.props.CollectionProperty(
-            type=MustardUI_ToolsCreators_TransferVertexGroups_Item
-        )
+        bpy.props.CollectionProperty(type=MustardUI_ToolsCreators_TransferVertexGroups_Item)
     )
-    bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = (
-        bpy.props.IntProperty(default=0, name="")
+    bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = bpy.props.IntProperty(
+        default=0, name=""
     )
 
 

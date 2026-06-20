@@ -55,9 +55,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         mutepJCM = morphs_settings.diffeomorphic_enable_pJCM
 
         mutefacs = morphs_settings.diffeomorphic_enable_facs
-        mutefacs_bones = (
-            True if mutefacs else morphs_settings.diffeomorphic_enable_facs_bones
-        )
+        mutefacs_bones = True if mutefacs else morphs_settings.diffeomorphic_enable_facs_bones
         check_bones_rot = diffeomorphic_facs_bones_rot if not mutefacs_bones else []
         check_bones_loc = diffeomorphic_facs_bones_loc if not mutefacs_bones else []
 
@@ -121,9 +119,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         if warnings < 1:
             self.report({"INFO"}, "MustardUI - Morphs disabled.")
         else:
-            self.report(
-                {"WARNING"}, "MustardUI - An error occurred while disabling morphs."
-            )
+            self.report({"WARNING"}, "MustardUI - An error occurred while disabling morphs.")
 
         return {"FINISHED"}
 
@@ -157,9 +153,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         mutepJCM = morphs_settings.diffeomorphic_enable_pJCM
 
         mutefacs = morphs_settings.diffeomorphic_enable_facs
-        mutefacs_bones = (
-            True if mutefacs else morphs_settings.diffeomorphic_enable_facs_bones
-        )
+        mutefacs_bones = True if mutefacs else morphs_settings.diffeomorphic_enable_facs_bones
         check_bones_rot = diffeomorphic_facs_bones_rot if not mutefacs_bones else []
         check_bones_loc = diffeomorphic_facs_bones_loc if not mutefacs_bones else []
 
@@ -188,9 +182,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
             if addon_prefs.debug:
                 print("MustardUI - Error occurred while un-muting Daz drivers.")
 
-        for collection in [
-            x for x in rig_settings.outfits_collections if x.collection is not None
-        ]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 collection.collection.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -228,9 +220,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
         if warnings < 1:
             self.report({"INFO"}, "MustardUI - Morphs enabled.")
         else:
-            self.report(
-                {"WARNING"}, "MustardUI - An error occurred while enabling morphs."
-            )
+            self.report({"WARNING"}, "MustardUI - An error occurred while enabling morphs.")
 
         return {"FINISHED"}
 

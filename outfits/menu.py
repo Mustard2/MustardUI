@@ -26,9 +26,7 @@ def mustardui_collection_menu(self, context):
     layout = self.layout
 
     layout.separator()
-    if context.collection not in [
-        x.collection for x in rig_settings.outfits_collections
-    ]:
+    if context.collection not in [x.collection for x in rig_settings.outfits_collections]:
         if addon_prefs.debug:
             layout.operator(
                 MustardUI_AddOutfit.bl_idname,
@@ -40,9 +38,7 @@ def mustardui_collection_menu(self, context):
 
     col = layout.column()
     col.operator_context = "INVOKE_DEFAULT"
-    col.operator(
-        MustardUI_RenameOutfit.bl_idname, icon="GREASEPENCIL"
-    ).right_click_call = True
+    col.operator(MustardUI_RenameOutfit.bl_idname, icon="GREASEPENCIL").right_click_call = True
 
 
 def register():

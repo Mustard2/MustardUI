@@ -132,14 +132,10 @@ def apply_physics_preset(context, arm, settings, data, force=False):
             )
 
     if obj.collision and collision:
-        errors = apply_settings(
-            obj.collision, data.get("object_collision"), errors, False
-        )
+        errors = apply_settings(obj.collision, data.get("object_collision"), errors, False)
 
     if soft_body:
-        errors = apply_settings(
-            soft_body.settings, data.get("soft_body"), errors, False
-        )
+        errors = apply_settings(soft_body.settings, data.get("soft_body"), errors, False)
 
     return errors
 
@@ -189,9 +185,7 @@ class MUSTARDUI_UL_Physics_Presets_UIList(bpy.types.UIList):
         res, obj = mustardui_active_object(context, config=0)
         return res if obj is not None else False
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         row2 = row.row()
         if item.has_cloth:

@@ -7,9 +7,7 @@ from .settings_item import mustardui_physics_item_type_dict
 class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
     """UIList for Physics Items"""
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if not item.object:
             layout.label(text="Object not found!", icon="ERROR")
             return
@@ -45,9 +43,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
         row.prop(item.object, "hide_viewport", text="", emboss=False)
 
         if settings.advanced and item.object is not None:
-            op = row.operator(
-                "mustardui.physics_rebind_single_cage", text="", icon="FILE_REFRESH"
-            )
+            op = row.operator("mustardui.physics_rebind_single_cage", text="", icon="FILE_REFRESH")
             op.cage_name = item.object.name
 
 

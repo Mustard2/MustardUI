@@ -6,7 +6,9 @@ from .. import __package__ as base_package
 class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_link_shape_keys"
     bl_label = "Link Shape Keys to Active"
-    bl_description = "Link matching Shape Keys on selected objects to the active object using Drivers"  # noqa: E501
+    bl_description = (
+        "Link matching Shape Keys on selected objects to the active object using Drivers"  # noqa: E501
+    )
     bl_options = {"UNDO"}
 
     @classmethod
@@ -52,10 +54,7 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
             obj_keys = obj.data.shape_keys.key_blocks
 
             for key in obj_keys:
-                if (
-                    key.name not in active_keys
-                    or key == obj.data.shape_keys.reference_key
-                ):
+                if key.name not in active_keys or key == obj.data.shape_keys.reference_key:
                     continue
 
                 # Remove existing driver if any
@@ -79,18 +78,12 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
                     driver.expression = "val"
 
                     if debug:
-                        print(
-                            f'MustardUI - Linked: Shape Key "{key.name}" in Object '
-                            f'"{obj.name}"'
-                        )
+                        print(f'MustardUI - Linked: Shape Key "{key.name}" in Object "{obj.name}"')
 
                     linked += 1
 
                 except TypeError:
-                    print(
-                        f'MustardUI - Can not link Shape Key "{key.name}" to '
-                        f'Object "{obj.name}"'
-                    )
+                    print(f'MustardUI - Can not link Shape Key "{key.name}" to Object "{obj.name}"')
                     errors += 1
 
         if errors == 0:

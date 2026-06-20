@@ -57,9 +57,7 @@ def mirror_cloth(obj, obj_mirror) -> bool:
     cloth_mirror.internal_tension_stiffness = cloth.internal_tension_stiffness
     cloth_mirror.internal_compression_stiffness = cloth.internal_compression_stiffness
     cloth_mirror.internal_tension_stiffness_max = cloth.internal_tension_stiffness_max
-    cloth_mirror.internal_compression_stiffness_max = (
-        cloth.internal_compression_stiffness_max
-    )
+    cloth_mirror.internal_compression_stiffness_max = cloth.internal_compression_stiffness_max
 
     cloth_mirror.use_pressure = cloth.use_pressure
     cloth_mirror.uniform_pressure_force = cloth.uniform_pressure_force
@@ -154,9 +152,7 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
                 obj_mirror = on.object
                 break
         if obj_mirror is None:
-            self.report(
-                {"WARNING"}, "MustardUI - No Object as target for mirror found."
-            )
+            self.report({"WARNING"}, "MustardUI - No Object as target for mirror found.")
 
         # Cloth Settings
         cloth = mirror_cloth(obj, obj_mirror)
@@ -169,9 +165,7 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
         if cloth or soft_body:
             self.report({"INFO"}, "MustardUI - Physics Item settings mirrored.")
         else:
-            self.report(
-                {"WARNING"}, "MustardUI - An error occurred while mirroring settings."
-            )
+            self.report({"WARNING"}, "MustardUI - An error occurred while mirroring settings.")
 
         return {"FINISHED"}
 

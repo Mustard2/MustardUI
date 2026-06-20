@@ -101,10 +101,7 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
                         fcurve = sks.animation_data.drivers.find(driver_path)
                         if fcurve:
                             drv = fcurve.driver
-                            if (
-                                drv.type == "SCRIPTED"
-                                and drv.expression == "abs(var) < 0.001"
-                            ):
+                            if drv.type == "SCRIPTED" and drv.expression == "abs(var) < 0.001":
                                 sks.driver_remove(driver_path)
 
                     # Unmute if muted

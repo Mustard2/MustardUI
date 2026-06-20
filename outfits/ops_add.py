@@ -29,9 +29,7 @@ class MustardUI_AddOutfit(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Collection already added as Hair.")
             return {"FINISHED"}
 
-        if bpy.context.collection not in [
-            x.collection for x in rig_settings.outfits_collections
-        ]:
+        if bpy.context.collection not in [x.collection for x in rig_settings.outfits_collections]:
             add_item = rig_settings.outfits_collections.add()
             add_item.collection = bpy.context.collection
             self.report({"INFO"}, "MustardUI - Outfit added.")

@@ -9,9 +9,7 @@ from . import MainPanel
 
 def check_blender_version(rig_settings):
     current_blender_version = bpy.app.version
-    return tuple(current_blender_version) < tuple(
-        rig_settings.model_minimum_blender_version
-    )
+    return tuple(current_blender_version) < tuple(rig_settings.model_minimum_blender_version)
 
 
 class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):

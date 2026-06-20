@@ -47,9 +47,7 @@ def draw_item_by_type(
                     row.label(text=item.outfit.name)
             elif item.outfit is not None and item.outfit_piece is not None:
                 if rig_settings.model_MustardUI_naming_convention:
-                    row.label(
-                        text=item.outfit_piece.name[len(rig_settings.model_name) + 1 :]
-                    )
+                    row.label(text=item.outfit_piece.name[len(rig_settings.model_name) + 1 :])
                 else:
                     row.label(text=item.outfit_piece.name)
         elif cptype == 2:
@@ -199,12 +197,8 @@ def register():
         bpy.utils.register_class(m)
 
     bpy.types.Scene.mustardui_property_uilist_index = IntProperty(name="", default=0)
-    bpy.types.Scene.mustardui_property_uilist_outfits_index = IntProperty(
-        name="", default=0
-    )
-    bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(
-        name="", default=0
-    )
+    bpy.types.Scene.mustardui_property_uilist_outfits_index = IntProperty(name="", default=0)
+    bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(name="", default=0)
 
 
 def unregister():

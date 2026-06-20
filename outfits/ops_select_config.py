@@ -24,8 +24,7 @@ class MustardUI_Outfits_SelectInConfiguration(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
 
         if (
-            scene.mustardui_outfits_uilist_index
-            >= len(rig_settings.outfits_collections)
+            scene.mustardui_outfits_uilist_index >= len(rig_settings.outfits_collections)
             or scene.mustardui_outfits_uilist_index < 0
         ):
             return {"CANCELLED"}

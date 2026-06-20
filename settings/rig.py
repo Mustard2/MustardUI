@@ -50,9 +50,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         poll=poll_armature,
     )
 
-    model_mustardui_version: bpy.props.IntVectorProperty(
-        name="", size=3, min=0, default=(0, 0, 0)
-    )
+    model_mustardui_version: bpy.props.IntVectorProperty(name="", size=3, min=0, default=(0, 0, 0))
 
     # ------------------------------------------------------------------------
     #    Body properties
@@ -69,9 +67,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Update function for Smooth Correction modifiers
     def update_smooth_corr(self, context):
-        for modifier in [
-            x for x in self.model_body.modifiers if x.type == "CORRECTIVE_SMOOTH"
-        ]:
+        for modifier in [x for x in self.model_body.modifiers if x.type == "CORRECTIVE_SMOOTH"]:
             modifier.show_viewport = self.body_smooth_corr
             modifier.show_render = self.body_smooth_corr
 
@@ -173,9 +169,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         for collection in collections:
             items = (
-                collection.all_objects
-                if self.outfit_config_subcollections
-                else collection.objects
+                collection.all_objects if self.outfit_config_subcollections else collection.objects
             )
             for obj in items:
                 for modifier in obj.modifiers:
@@ -222,8 +216,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     body_custom_properties_name_order: bpy.props.BoolProperty(
         default=False,
         name="Order by name",
-        description="Order the custom properties by name "
-        "instead of by appearance in the list",
+        description="Order the custom properties by name instead of by appearance in the list",
     )
 
     # Geometry Nodes
@@ -256,9 +249,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     )
 
     # List of the sections for body custom properties
-    body_custom_properties_sections: bpy.props.CollectionProperty(
-        type=MustardUI_SectionItem
-    )
+    body_custom_properties_sections: bpy.props.CollectionProperty(type=MustardUI_SectionItem)
 
     # ------------------------------------------------------------------------
     #    Outfit properties
@@ -336,9 +327,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Function to create an array of tuples for Outfit enum collections
     def outfits_list_make(self, context):
         items = []
-        prefix_len = (
-            len(self.model_name + " ") if self.model_MustardUI_naming_convention else 0
-        )
+        prefix_len = len(self.model_name + " ") if self.model_MustardUI_naming_convention else 0
 
         for el in self.outfits_collections:
             coll = el.collection
@@ -375,25 +364,18 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         for collection in collections:
             items = (
-                collection.all_objects
-                if self.outfit_config_subcollections
-                else collection.objects
+                collection.all_objects if self.outfit_config_subcollections else collection.objects
             )
             for obj in items:
                 for modifier in obj.modifiers:
-                    if (
-                        modifier.type == "SUBSURF"
-                        and self.outfits_enable_global_subsurface
-                    ):
+                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
                         modifier.show_viewport = self.outfits_global_subsurface
 
     def outfits_global_options_update(self, context):
         """Update global outfit options for all collections and their modifiers."""
 
         # Gather all collections (outfits + extras)
-        collections = [
-            x.collection for x in self.outfits_collections if x.collection is not None
-        ]
+        collections = [x.collection for x in self.outfits_collections if x.collection is not None]
         if self.extras_collection is not None:
             collections.append(self.extras_collection)
 
@@ -424,9 +406,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         for collection in collections:
             items = (
-                collection.all_objects
-                if self.outfit_config_subcollections
-                else collection.objects
+                collection.all_objects if self.outfit_config_subcollections else collection.objects
             )
 
             for obj in items:
@@ -448,11 +428,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 # the piece's own visibility rather than the active outfit.
                 is_extras = collection == self.extras_collection
                 visible = (
-                    (
-                        is_extras
-                        or collection.name == self.outfits_list
-                        or obj.MustardUI_outfit_lock
-                    )
+                    (is_extras or collection.name == self.outfits_list or obj.MustardUI_outfit_lock)
                     and not obj.hide_viewport
                     and self.outfits_global_mask
                 )
@@ -485,8 +461,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfits_global_subsurface: bpy.props.BoolProperty(
         default=True,
         name="Subdivision Surface",
-        description="Enable/disable subdivision surface modifiers ("
-        "Viewport) on the Outfits",
+        description="Enable/disable subdivision surface modifiers (Viewport) on the Outfits",
         update=outfits_global_options_subsurf_update,
     )
 
@@ -540,8 +515,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     outfit_custom_properties_name_order: bpy.props.BoolProperty(
         default=False,
         name="Order by name",
-        description="Order the custom properties by name "
-        "instead of by appearance in the list",
+        description="Order the custom properties by name instead of by appearance in the list",
     )
 
     outfit_global_custom_properties_collapse: bpy.props.BoolProperty(
@@ -624,9 +598,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         self.extras_collection.hide_viewport = hidden
 
         # Exclude Collection
-        lc = find_layer_collection(
-            context.view_layer.layer_collection, self.extras_collection
-        )
+        lc = find_layer_collection(context.view_layer.layer_collection, self.extras_collection)
         if lc is not None:
             lc.exclude = hidden
 
@@ -707,11 +679,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
         objects = self.hair_collection.objects
 
-        prefix = (
-            f"{self.hair_collection.name} - "
-            if self.model_MustardUI_naming_convention
-            else ""
-        )
+        prefix = f"{self.hair_collection.name} - " if self.model_MustardUI_naming_convention else ""
         prefix_len = len(prefix)
 
         def display_name(obj_name):
@@ -748,8 +716,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_custom_properties_name_order: bpy.props.BoolProperty(
         default=False,
         name="Order by name",
-        description="Order the custom properties by name "
-        "instead of by appearance in the list",
+        description="Order the custom properties by name instead of by appearance in the list",
     )
 
     hair_switch_armature_disable: bpy.props.BoolProperty(
@@ -773,10 +740,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                 if p.type == "HAIR":
                     p.child_percent = max(
                         1,
-                        int(
-                            p.rendered_child_count
-                            * self.hair_particle_children_viewport_factor
-                        ),
+                        int(p.rendered_child_count * self.hair_particle_children_viewport_factor),
                     )
 
     hair_particle_children_viewport_factor: bpy.props.FloatProperty(
@@ -790,17 +754,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     def hair_particle_hide_viewport_update(self, context):
         hair_obj = context.scene.objects[self.hair_list]
-        for mod in [
-            x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]
-        ]:
+        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
             mod.show_viewport = self.hair_particle_hide_viewport
         hair_obj.hide_viewport = not self.hair_particle_hide_viewport
 
     def hair_particle_hide_render_update(self, context):
         hair_obj = context.scene.objects[self.hair_list]
-        for mod in [
-            x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]
-        ]:
+        for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
             mod.show_render = self.hair_particle_hide_render
         hair_obj.hide_render = not self.hair_particle_hide_render
 
@@ -853,10 +813,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         if self.hair_collection is not None:
             for obj in self.hair_collection.objects:
                 for modifier in obj.modifiers:
-                    if (
-                        modifier.type == "SUBSURF"
-                        and self.hair_enable_global_subsurface
-                    ):
+                    if modifier.type == "SUBSURF" and self.hair_enable_global_subsurface:
                         modifier.show_viewport = self.hair_global_subsurface
 
     def hair_global_options_update(self, context):
@@ -892,8 +849,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_global_subsurface: bpy.props.BoolProperty(
         default=True,
         name="Subdivision Surface",
-        description="Enable/disable subdivision surface modifiers ("
-        "Viewport) on the Hair",
+        description="Enable/disable subdivision surface modifiers (Viewport) on the Hair",
         update=hair_global_options_subsurf_update,
     )
 
@@ -1082,9 +1038,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
 def register():
     bpy.utils.register_class(MustardUI_RigSettings)
-    bpy.types.Armature.MustardUI_RigSettings = bpy.props.PointerProperty(
-        type=MustardUI_RigSettings
-    )
+    bpy.types.Armature.MustardUI_RigSettings = bpy.props.PointerProperty(type=MustardUI_RigSettings)
 
     # Redefinition for lock functionality
     bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(

@@ -32,11 +32,7 @@ def find_bone_chains(selected_bones):
         chain = []
         current_bone = bone
 
-        while (
-            current_bone
-            and current_bone not in visited
-            and current_bone in selected_bones
-        ):
+        while current_bone and current_bone not in visited and current_bone in selected_bones:
             chain.append(current_bone)
             visited.add(current_bone)
             if len(current_bone.children) == 1:
@@ -98,9 +94,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             if bpy.app.version >= (5, 0, 0):
                 selected_bones = [bone for bone in armature.pose.bones if bone.select]
             else:
-                selected_bones = [
-                    bone for bone in armature.pose.bones if bone.bone.select
-                ]
+                selected_bones = [bone for bone in armature.pose.bones if bone.bone.select]
             return len(selected_bones) >= 2
 
         return False
@@ -139,21 +133,15 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
             # Set the curve points to the bone head/tails
             spline.points.add(count=len(chain))
-            spline.points[0].co = (armature.matrix_world @ chain[0].head).to_tuple() + (
-                1,
-            )
+            spline.points[0].co = (armature.matrix_world @ chain[0].head).to_tuple() + (1,)
             spline.points[0].tilt = self.curve_tilt
             for i, bone in enumerate(chain):
                 i += 1
                 if i == len(chain):
-                    spline.points[i].co = (
-                        armature.matrix_world @ bone.tail
-                    ).to_tuple() + (1,)
+                    spline.points[i].co = (armature.matrix_world @ bone.tail).to_tuple() + (1,)
                     spline.points[i].tilt = self.curve_tilt
                 else:
-                    spline.points[i].co = (
-                        armature.matrix_world @ bone.tail
-                    ).to_tuple() + (1,)
+                    spline.points[i].co = (armature.matrix_world @ bone.tail).to_tuple() + (1,)
                     spline.points[i].tilt = self.curve_tilt
 
             # Extrude to solidify the curve
@@ -358,8 +346,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
         if armature.type != "ARMATURE":
             self.report(
                 {"WARNING"},
-                "MustardUI - Removal was not possible: the mesh is not parented to "
-                "any Armature.",
+                "MustardUI - Removal was not possible: the mesh is not parented to any Armature.",
             )
             return {"FINISHED"}
 

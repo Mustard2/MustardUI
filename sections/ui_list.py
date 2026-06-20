@@ -132,9 +132,7 @@ class MUSTARDUI_UL_Section_UIList(bpy.types.UIList):
 
         row.label(text="", icon=item.icon if item.icon != "NONE" else "DOT")
         if item.is_subsection:
-            row.prop(
-                item, "name", text="", emboss=False, translate=False, icon="REMOVE"
-            )
+            row.prop(item, "name", text="", emboss=False, translate=False, icon="REMOVE")
         else:
             row.prop(item, "name", text="", emboss=False, translate=False)
 

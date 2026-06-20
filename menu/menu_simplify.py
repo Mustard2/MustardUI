@@ -72,17 +72,13 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         box.label(text="General", icon="OUTLINER_OB_ARMATURE")
         col = box.column(align=True)
 
-        if (
-            rig_settings.outfits_enable_global_subsurface
-            or rig_settings.body_enable_subdiv
-        ):
+        if rig_settings.outfits_enable_global_subsurface or rig_settings.body_enable_subdiv:
             col.prop(simplify_settings, "simplify_subdiv")
         col.prop(simplify_settings, "simplify_normals_optimize")
 
         # Morphs
         if morphs_settings.enable_ui and (
-            "DIFFEO_GENESIS" in morphs_settings.type
-            or morphs_settings.enable_freeze_morphs
+            "DIFFEO_GENESIS" in morphs_settings.type or morphs_settings.enable_freeze_morphs
         ):
             box = layout.box()
             box.label(text="Morphs", icon="SHAPEKEY_DATA")

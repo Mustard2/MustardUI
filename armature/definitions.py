@@ -91,15 +91,13 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                 outfit_switcher_object = bcoll_settings.outfit_switcher_object
                 outfit_switcher_collection = bcoll_settings.outfit_switcher_collection
                 check_coll = (
-                    bpy.data.collections[rig_settings.outfits_list]
-                    == outfit_switcher_collection
+                    bpy.data.collections[rig_settings.outfits_list] == outfit_switcher_collection
                     if rig_settings.outfits_list != "Nude"
                     else False
                 )
                 if rig_settings.extras_collection is not None:
                     check_coll = (
-                        check_coll
-                        or outfit_switcher_collection == rig_settings.extras_collection
+                        check_coll or outfit_switcher_collection == rig_settings.extras_collection
                     )
 
                 if outfit_switcher_object is None:
@@ -190,8 +188,8 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
 def register():
     bpy.utils.register_class(MustardUI_ArmatureBoneCollection)
     bpy.utils.register_class(MustardUI_ArmatureSettings)
-    bpy.types.BoneCollection.MustardUI_ArmatureBoneCollection = (
-        bpy.props.PointerProperty(type=MustardUI_ArmatureBoneCollection)
+    bpy.types.BoneCollection.MustardUI_ArmatureBoneCollection = bpy.props.PointerProperty(
+        type=MustardUI_ArmatureBoneCollection
     )
     bpy.types.Armature.MustardUI_ArmatureSettings = bpy.props.PointerProperty(
         type=MustardUI_ArmatureSettings

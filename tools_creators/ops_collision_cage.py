@@ -136,13 +136,9 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
                 create_vertex_group_from_selection(
                     obj
                 )  # Keep creating the vertex group without adding a mask modifier
-                print(
-                    f"Vertex group created for {obj.name} but mask modifier not added."
-                )
+                print(f"Vertex group created for {obj.name} but mask modifier not added.")
 
-            displace_modifier = duplicate_obj.modifiers.new(
-                name="Displace", type="DISPLACE"
-            )
+            displace_modifier = duplicate_obj.modifiers.new(name="Displace", type="DISPLACE")
             displace_modifier.mid_level = 0.990
 
             add_driver(displace_modifier, duplicate_obj, '["Inflate"]', "strength")
@@ -182,9 +178,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
                 bpy.ops.mesh.fill_holes(sides=0)
                 bpy.ops.mesh.select_all(action="DESELECT")
                 bpy.ops.mesh.select_face_by_sides(number=4, type="GREATER")
-                bpy.ops.mesh.quads_convert_to_tris(
-                    quad_method="BEAUTY", ngon_method="BEAUTY"
-                )
+                bpy.ops.mesh.quads_convert_to_tris(quad_method="BEAUTY", ngon_method="BEAUTY")
             else:
                 # Operations when in object mode or edit mode without selection
                 bpy.ops.mesh.reveal()
@@ -198,9 +192,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
                 bpy.ops.mesh.fill_holes(sides=0)
                 bpy.ops.mesh.select_all(action="DESELECT")
                 bpy.ops.mesh.select_face_by_sides(number=4, type="GREATER")
-                bpy.ops.mesh.quads_convert_to_tris(
-                    quad_method="BEAUTY", ngon_method="BEAUTY"
-                )
+                bpy.ops.mesh.quads_convert_to_tris(quad_method="BEAUTY", ngon_method="BEAUTY")
 
             bpy.ops.object.mode_set(mode="OBJECT")
 
@@ -243,10 +235,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
                 # Set the active object to the proxy if the original was active
                 if original == active_obj:
                     bpy.context.view_layer.objects.active = proxy
-            print(
-                "Proxies created, processed, and selection restored for all "
-                "selected meshes."
-            )
+            print("Proxies created, processed, and selection restored for all selected meshes.")
         else:
             print("No selected meshes to process.")
 
@@ -283,10 +272,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         for obj in initial_selection:
             obj.select_set(True)
         bpy.context.view_layer.objects.active = initial_active
-        print(
-            "Collision modifier applied to all selected meshes, and selection "
-            "state restored."
-        )
+        print("Collision modifier applied to all selected meshes, and selection state restored.")
 
         # Iterate over all selected objects
         for obj in bpy.context.selected_objects:

@@ -32,9 +32,7 @@ class MUSTARDUI_UL_Armature_UIList(bpy.types.UIList):
             if b.MustardUI_ArmatureBoneCollection.icon != "NONE":
                 row.label(
                     text="",
-                    icon=bcoll_settings.icon
-                    if bcoll_settings.icon != "NONE"
-                    else "BLANK1",
+                    icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1",
                 )
                 break
 
@@ -99,9 +97,7 @@ class MUSTARDUI_UL_Armature_UIList_Children(bpy.types.UIList):
 
         bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
 
-        active_bone = (
-            armature.id_data.edit_bones.active or armature.id_data.bones.active
-        )
+        active_bone = armature.id_data.edit_bones.active or armature.id_data.bones.active
         has_active_bone = active_bone and bcoll.name in active_bone.collections
 
         row = layout.row(align=True)
@@ -113,9 +109,7 @@ class MUSTARDUI_UL_Armature_UIList_Children(bpy.types.UIList):
             if b.MustardUI_ArmatureBoneCollection.icon != "NONE":
                 row.label(
                     text="",
-                    icon=bcoll_settings.icon
-                    if bcoll_settings.icon != "NONE"
-                    else "BLANK1",
+                    icon=bcoll_settings.icon if bcoll_settings.icon != "NONE" else "BLANK1",
                 )
                 break
 

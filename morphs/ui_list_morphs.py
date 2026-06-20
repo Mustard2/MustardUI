@@ -36,10 +36,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
                     fcurve = shape_keys.animation_data.drivers.find(driver_path)
                     if fcurve:
                         drv = fcurve.driver
-                        if (
-                            drv.type == "SCRIPTED"
-                            and drv.expression == "abs(var) < 0.001"
-                        ):
+                        if drv.type == "SCRIPTED" and drv.expression == "abs(var) < 0.001":
                             shape_keys.driver_remove(driver_path)
 
                     # Unmute if muted
@@ -89,9 +86,7 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
     def execute(self, context):
         res, obj = mustardui_active_object(context, config=1)
         morphs_settings = obj.MustardUI_MorphsSettings
-        uilist = morphs_settings.sections[
-            obj.mustardui_morphs_section_uilist_index
-        ].morphs
+        uilist = morphs_settings.sections[obj.mustardui_morphs_section_uilist_index].morphs
         index = obj.mustardui_morphs_uilist_index
 
         if len(uilist) <= index:
@@ -112,9 +107,7 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
         res, obj = mustardui_active_object(context, config=1)
         return res if obj is not None else False
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
         icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
@@ -129,9 +122,7 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
         ):
             layout.prop(item, "name", text="", emboss=False, translate=False, icon=icon)
         else:
-            layout.prop(
-                item, "name", text="", emboss=False, translate=False, icon="ERROR"
-            )
+            layout.prop(item, "name", text="", emboss=False, translate=False, icon="ERROR")
 
 
 def register():

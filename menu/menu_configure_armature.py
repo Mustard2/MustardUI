@@ -74,12 +74,8 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         col = row.column(align=True)
         if active_bcoll:
             col.separator()
-            col.operator(
-                "armature.collection_move", icon="TRIA_UP", text=""
-            ).direction = "UP"
-            col.operator(
-                "armature.collection_move", icon="TRIA_DOWN", text=""
-            ).direction = "DOWN"
+            col.operator("armature.collection_move", icon="TRIA_UP", text="").direction = "UP"
+            col.operator("armature.collection_move", icon="TRIA_DOWN", text="").direction = "DOWN"
             col.separator()
 
         if arm.collections.active_index > -1:
@@ -101,9 +97,7 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
             col = box.column(align=True)
             col.prop(bcoll_settings, "outfit_switcher_enable")
             if bcoll_settings.outfit_switcher_enable:
-                col.prop(
-                    bcoll_settings, "outfit_switcher_collection", text="Collection"
-                )
+                col.prop(bcoll_settings, "outfit_switcher_collection", text="Collection")
                 if bcoll_settings.outfit_switcher_collection is not None:
                     col.prop(bcoll_settings, "outfit_switcher_object", text="Object")
 
@@ -138,13 +132,9 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
                 col = box.column(align=True)
                 col.prop(cbcoll_settings, "outfit_switcher_enable")
                 if cbcoll_settings.outfit_switcher_enable:
-                    col.prop(
-                        cbcoll_settings, "outfit_switcher_collection", text="Collection"
-                    )
+                    col.prop(cbcoll_settings, "outfit_switcher_collection", text="Collection")
                     if cbcoll_settings.outfit_switcher_collection is not None:
-                        col.prop(
-                            cbcoll_settings, "outfit_switcher_object", text="Object"
-                        )
+                        col.prop(cbcoll_settings, "outfit_switcher_object", text="Object")
 
         if armature_settings.ikfk_snapper_enable and ikfk_snapper_available(arm):
             self._draw_ikfk_config(layout, arm)
@@ -155,9 +145,7 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
 
         box = layout.box()
         box.label(text="IK/FK Chains", icon="CONSTRAINT_BONE")
-        box.operator(
-            "mustardui.ikfk_detect", text="Auto-Detect from Rig", icon="FILE_REFRESH"
-        )
+        box.operator("mustardui.ikfk_detect", text="Auto-Detect from Rig", icon="FILE_REFRESH")
 
         row = box.row()
         row.template_list(
@@ -173,12 +161,8 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         col.operator("mustardui.ikfk_chain_add", icon="ADD", text="")
         col.operator("mustardui.ikfk_chain_remove", icon="REMOVE", text="")
         col.separator()
-        col.operator(
-            "mustardui.ikfk_chain_switch", icon="TRIA_UP", text=""
-        ).direction = "UP"
-        col.operator(
-            "mustardui.ikfk_chain_switch", icon="TRIA_DOWN", text=""
-        ).direction = "DOWN"
+        col.operator("mustardui.ikfk_chain_switch", icon="TRIA_UP", text="").direction = "UP"
+        col.operator("mustardui.ikfk_chain_switch", icon="TRIA_DOWN", text="").direction = "DOWN"
 
         if not chains or snapper.ikfk_chains_index >= len(chains):
             return

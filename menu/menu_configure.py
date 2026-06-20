@@ -12,9 +12,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_InitPanel"
     bl_label = "UI Configuration"
 
-    url_MustardUI_ConfigGuide = (
-        "https://github.com/Mustard2/MustardUI/wiki/Developer-Guide"
-    )
+    url_MustardUI_ConfigGuide = "https://github.com/Mustard2/MustardUI/wiki/Developer-Guide"
 
     @classmethod
     def poll(cls, context):
@@ -36,9 +34,7 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         row = layout.row(align=False)
         row.label(text=arm.name, icon="OUTLINER_DATA_ARMATURE")
         row.operator("mustardui.configuration_smartcheck", icon="SHADERFX", text="")
-        row.operator(
-            "wm.url_open", text="", icon="QUESTION"
-        ).url = self.url_MustardUI_ConfigGuide
+        row.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ConfigGuide
 
         box = layout.box()
         col = box.column()

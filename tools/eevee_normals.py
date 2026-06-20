@@ -83,9 +83,7 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
                         uvNode.mute = True
                         uvNode.hide = True
                         uvNode.select = False
-                        uvNode.location = Vector(
-                            (new.location.x, new.location.y - 150.0)
-                        )
+                        uvNode.location = Vector((new.location.x, new.location.y - 150.0))
                         uvNode.id_data.links.new(uvNode.outputs["UV"], new.inputs["UV"])
                     else:
                         try:
@@ -95,9 +93,7 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
                                 for input in node.inputs:
                                     if (
                                         input
-                                        and isinstance(
-                                            input, bpy.types.NodeSocketVector
-                                        )
+                                        and isinstance(input, bpy.types.NodeSocketVector)
                                         and input.is_linked
                                     ):
                                         if isinstance(
@@ -110,8 +106,7 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
                             nodes.remove(uvNode)
                         except Exception:
                             print(
-                                "Mustard Simplify - Could not restore UV before using "
-                                "Fast Normals"
+                                "Mustard Simplify - Could not restore UV before using Fast Normals"
                             )
                             pass
 
@@ -136,26 +131,18 @@ def default_custom_nodes():
     links = group.links
 
     # Input
-    input = group.interface.new_socket(
-        "Strength", in_out="INPUT", socket_type="NodeSocketFloat"
-    )
+    input = group.interface.new_socket("Strength", in_out="INPUT", socket_type="NodeSocketFloat")
     input.default_value = 1.0
     input.min_value = 0.0
     input.max_value = 1.0
-    input = group.interface.new_socket(
-        "Color", in_out="INPUT", socket_type="NodeSocketColor"
-    )
+    input = group.interface.new_socket("Color", in_out="INPUT", socket_type="NodeSocketColor")
     input.default_value = (0.5, 0.5, 1.0, 1.0)
 
     # Input UV as Backup
-    input = group.interface.new_socket(
-        "UV", in_out="INPUT", socket_type="NodeSocketVector"
-    )
+    input = group.interface.new_socket("UV", in_out="INPUT", socket_type="NodeSocketVector")
 
     # Output
-    group.interface.new_socket(
-        "Normal", in_out="OUTPUT", socket_type="NodeSocketVector"
-    )
+    group.interface.new_socket("Normal", in_out="OUTPUT", socket_type="NodeSocketVector")
 
     # Add Nodes
     frame = nodes.new("NodeFrame")
@@ -375,71 +362,29 @@ def default_custom_nodes():
     links.new(nodes["UV Gradients"].outputs["Y"], nodes["Bi-Tangent"].inputs["Height"])
     links.new(nodes["UV Map"].outputs["UV"], nodes["UV Gradients"].inputs["Vector"])
     links.new(nodes["Tangent"].outputs["Normal"], nodes["Separate XYZ.001"].inputs[0])
-    links.new(
-        nodes["Bi-Tangent"].outputs["Normal"], nodes["Separate XYZ.002"].inputs[0]
-    )
+    links.new(nodes["Bi-Tangent"].outputs["Normal"], nodes["Separate XYZ.002"].inputs[0])
     links.new(nodes["Normal"].outputs["Normal"], nodes["Separate XYZ.003"].inputs[0])
-    links.new(
-        nodes["Vector Math.004"].outputs["Vector"], nodes["Vector Math"].inputs[1]
-    )
-    links.new(
-        nodes["Combine XYZ.001"].outputs["Vector"], nodes["Vector Math"].inputs[0]
-    )
-    links.new(
-        nodes["Vector Math.004"].outputs["Vector"], nodes["Vector Math.001"].inputs[1]
-    )
-    links.new(
-        nodes["Combine XYZ.002"].outputs["Vector"], nodes["Vector Math.001"].inputs[0]
-    )
-    links.new(
-        nodes["Vector Math.004"].outputs["Vector"], nodes["Vector Math.002"].inputs[1]
-    )
-    links.new(
-        nodes["Combine XYZ.003"].outputs["Vector"], nodes["Vector Math.002"].inputs[0]
-    )
-    links.new(
-        nodes["Vector Math.003"].outputs["Vector"], nodes["Vector Math.004"].inputs[0]
-    )
-    links.new(
-        nodes["Vector Math.003"].outputs["Vector"], nodes["Vector Math.004"].inputs[1]
-    )
+    links.new(nodes["Vector Math.004"].outputs["Vector"], nodes["Vector Math"].inputs[1])
+    links.new(nodes["Combine XYZ.001"].outputs["Vector"], nodes["Vector Math"].inputs[0])
+    links.new(nodes["Vector Math.004"].outputs["Vector"], nodes["Vector Math.001"].inputs[1])
+    links.new(nodes["Combine XYZ.002"].outputs["Vector"], nodes["Vector Math.001"].inputs[0])
+    links.new(nodes["Vector Math.004"].outputs["Vector"], nodes["Vector Math.002"].inputs[1])
+    links.new(nodes["Combine XYZ.003"].outputs["Vector"], nodes["Vector Math.002"].inputs[0])
+    links.new(nodes["Vector Math.003"].outputs["Vector"], nodes["Vector Math.004"].inputs[0])
+    links.new(nodes["Vector Math.003"].outputs["Vector"], nodes["Vector Math.004"].inputs[1])
     links.new(nodes["Vector Math"].outputs["Value"], nodes["Combine XYZ"].inputs["X"])
-    links.new(
-        nodes["Vector Math.001"].outputs["Value"], nodes["Combine XYZ"].inputs["Y"]
-    )
-    links.new(
-        nodes["Vector Math.002"].outputs["Value"], nodes["Combine XYZ"].inputs["Z"]
-    )
-    links.new(
-        nodes["Separate XYZ.001"].outputs["X"], nodes["Combine XYZ.001"].inputs["X"]
-    )
-    links.new(
-        nodes["Separate XYZ.002"].outputs["X"], nodes["Combine XYZ.001"].inputs["Y"]
-    )
-    links.new(
-        nodes["Separate XYZ.003"].outputs["X"], nodes["Combine XYZ.001"].inputs["Z"]
-    )
-    links.new(
-        nodes["Separate XYZ.001"].outputs["Y"], nodes["Combine XYZ.002"].inputs["X"]
-    )
-    links.new(
-        nodes["Separate XYZ.002"].outputs["Y"], nodes["Combine XYZ.002"].inputs["Y"]
-    )
-    links.new(
-        nodes["Separate XYZ.003"].outputs["Y"], nodes["Combine XYZ.002"].inputs["Z"]
-    )
-    links.new(
-        nodes["Separate XYZ.001"].outputs["Z"], nodes["Combine XYZ.003"].inputs["X"]
-    )
-    links.new(
-        nodes["Separate XYZ.002"].outputs["Z"], nodes["Combine XYZ.003"].inputs["Y"]
-    )
-    links.new(
-        nodes["Separate XYZ.003"].outputs["Z"], nodes["Combine XYZ.003"].inputs["Z"]
-    )
-    links.new(
-        nodes["Combine XYZ"].outputs["Vector"], nodes["Group Output"].inputs["Normal"]
-    )
+    links.new(nodes["Vector Math.001"].outputs["Value"], nodes["Combine XYZ"].inputs["Y"])
+    links.new(nodes["Vector Math.002"].outputs["Value"], nodes["Combine XYZ"].inputs["Z"])
+    links.new(nodes["Separate XYZ.001"].outputs["X"], nodes["Combine XYZ.001"].inputs["X"])
+    links.new(nodes["Separate XYZ.002"].outputs["X"], nodes["Combine XYZ.001"].inputs["Y"])
+    links.new(nodes["Separate XYZ.003"].outputs["X"], nodes["Combine XYZ.001"].inputs["Z"])
+    links.new(nodes["Separate XYZ.001"].outputs["Y"], nodes["Combine XYZ.002"].inputs["X"])
+    links.new(nodes["Separate XYZ.002"].outputs["Y"], nodes["Combine XYZ.002"].inputs["Y"])
+    links.new(nodes["Separate XYZ.003"].outputs["Y"], nodes["Combine XYZ.002"].inputs["Z"])
+    links.new(nodes["Separate XYZ.001"].outputs["Z"], nodes["Combine XYZ.003"].inputs["X"])
+    links.new(nodes["Separate XYZ.002"].outputs["Z"], nodes["Combine XYZ.003"].inputs["Y"])
+    links.new(nodes["Separate XYZ.003"].outputs["Z"], nodes["Combine XYZ.003"].inputs["Z"])
+    links.new(nodes["Combine XYZ"].outputs["Vector"], nodes["Group Output"].inputs["Normal"])
 
     return group
 

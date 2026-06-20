@@ -22,9 +22,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
         rig_settings = arm.MustardUI_RigSettings
         return (
-            res
-            and rig_settings.model_name != ""
-            and rig_settings.model_MustardUI_naming_convention
+            res and rig_settings.model_name != "" and rig_settings.model_MustardUI_naming_convention
         )
 
     def change_modifiers_name(self, obj, old_name):
@@ -63,14 +61,12 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
         old_name = rig_settings.model_name
 
         # Armature
-        rig_settings.model_armature_object.name = (
-            rig_settings.model_armature_object.name.replace(old_name, self.name)
+        rig_settings.model_armature_object.name = rig_settings.model_armature_object.name.replace(
+            old_name, self.name
         )
 
         # Body and children of the armature
-        for obj in [
-            x for x in rig_settings.model_armature_object.children if x is not None
-        ]:
+        for obj in [x for x in rig_settings.model_armature_object.children if x is not None]:
             if old_name in obj.name:
                 obj.name = obj.name.replace(old_name, self.name)
             self.change_modifiers_name(obj, old_name)
@@ -84,9 +80,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
         # Outfits
         for coll in [
-            x.collection
-            for x in rig_settings.outfits_collections
-            if x.collection is not None
+            x.collection for x in rig_settings.outfits_collections if x.collection is not None
         ]:
             items = coll.all_objects
             for obj in [x for x in items if x is not None]:
@@ -97,34 +91,28 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
         # Extras
         if rig_settings.extras_collection is not None:
-            for obj in [
-                x for x in rig_settings.extras_collection.all_objects if x is not None
-            ]:
+            for obj in [x for x in rig_settings.extras_collection.all_objects if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
                 self.change_materials_name(obj, old_name)
-            rig_settings.extras_collection.name = (
-                rig_settings.extras_collection.name.replace(old_name, self.name)
+            rig_settings.extras_collection.name = rig_settings.extras_collection.name.replace(
+                old_name, self.name
             )
 
         # Hair
         if rig_settings.hair_collection is not None:
-            for obj in [
-                x for x in rig_settings.hair_collection.all_objects if x is not None
-            ]:
+            for obj in [x for x in rig_settings.hair_collection.all_objects if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
                 self.change_materials_name(obj, old_name)
-            rig_settings.hair_collection.name = (
-                rig_settings.hair_collection.name.replace(old_name, self.name)
+            rig_settings.hair_collection.name = rig_settings.hair_collection.name.replace(
+                old_name, self.name
             )
 
         # Hair Extras
         if rig_settings.hair_extras_collection is not None:
             for obj in [
-                x
-                for x in rig_settings.hair_extras_collection.all_objects
-                if x is not None
+                x for x in rig_settings.hair_extras_collection.all_objects if x is not None
             ]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
@@ -138,8 +126,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
         self.report(
             {"INFO"},
-            f"MustardUI - Model renamed from {repr(old_name)} to "
-            f"{repr(rig_settings.model_name)}",
+            f"MustardUI - Model renamed from {repr(old_name)} to {repr(rig_settings.model_name)}",
         )
 
         return {"FINISHED"}

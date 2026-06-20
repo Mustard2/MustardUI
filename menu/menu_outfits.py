@@ -11,9 +11,7 @@ from .misc import mustardui_custom_properties_print
 
 
 # Type: 0 - Standard, 1 - Locked Objects, 2 - Extras
-def draw_outfit_piece(
-    layout, obj, arm, rig_settings, physics_settings, settings, otype=0, level=0
-):
+def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, otype=0, level=0):
     if otype < 0 or otype > 3:
         return
 
@@ -194,14 +192,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
             # Check if one of these should be shown in the UI
             outfits_avail = (
-                len(
-                    [
-                        x
-                        for x in rig_settings.outfits_collections
-                        if x.collection is not None
-                    ]
-                )
-                > 0
+                len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0
             )
 
             if rig_settings.extras_collection is not None:
@@ -234,16 +225,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         # Outfit list
-        if (
-            not len(
-                [
-                    x
-                    for x in rig_settings.outfits_collections
-                    if x.collection is not None
-                ]
-            )
-            > 0
-        ):
+        if not len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
             return
 
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -272,8 +254,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         [
                             x
                             for x in arm.MustardUI_CustomPropertiesOutfit
-                            if x.outfit
-                            == bpy.data.collections[rig_settings.outfits_list]
+                            if x.outfit == bpy.data.collections[rig_settings.outfits_list]
                             and x.outfit_piece is None
                             and not x.hidden
                             and (not x.advanced if not settings.advanced else True)
@@ -372,9 +353,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
         # Locked objects
         locked_objects = []
-        for coll in [
-            x for x in rig_settings.outfits_collections if x.collection is not None
-        ]:
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 coll.collection.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -388,9 +367,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             layout.separator()
             layout.label(text="Locked objects:", icon="LOCKED")
             for obj in locked_objects:
-                draw_outfit_piece(
-                    layout, obj, arm, rig_settings, physics_settings, settings, 1, 0
-                )
+                draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, 1, 0)
 
 
 class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
@@ -434,9 +411,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
             rig_settings,
             "show_viewport_extras",
             text="",
-            icon="RESTRICT_VIEW_OFF"
-            if rig_settings.show_viewport_extras
-            else "RESTRICT_VIEW_ON",
+            icon="RESTRICT_VIEW_OFF" if rig_settings.show_viewport_extras else "RESTRICT_VIEW_ON",
         )
 
     def draw(self, context):
@@ -456,9 +431,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         )
 
         for obj in sorted(eitems, key=lambda x: x.name):
-            draw_outfit_piece(
-                layout, obj, arm, rig_settings, physics_settings, settings, 2, 0
-            )
+            draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, 2, 0)
 
 
 class PANEL_PT_MustardUI_Outfits_Optimize(MainPanel, bpy.types.Panel):

@@ -25,9 +25,7 @@ def rename_morph(self, name, protected_strings=None):
 
     # 2. Apply spacing rules (placeholders are safe)
     name = re.sub(r"(?<=[a-z])([A-Z])", r" \1", name)  # lower → upper
-    name = re.sub(
-        r"(?<=[A-Z])([A-Z][a-z])", r" \1", name
-    )  # upper block → capital+lower
+    name = re.sub(r"(?<=[A-Z])([A-Z][a-z])", r" \1", name)  # upper block → capital+lower
     name = re.sub(r"(?<=[a-zA-Z])(\d)", r" \1", name)  # letter → number
     name = re.sub(r"_+", " ", name)  # underscores → spaces
 
@@ -101,8 +99,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
     custom_rename: bpy.props.BoolProperty(
         default=False,
         name="Attempt Renaming",
-        description="Apply a predefined set of rules to attempt a better renaming of "
-        "the Morphs",
+        description="Apply a predefined set of rules to attempt a better renaming of the Morphs",
     )
     clear_existing_morphs: bpy.props.BoolProperty(
         default=False,
@@ -137,10 +134,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
         # Try to assign the rig object
         if not arm.MustardUI_created:
-            if (
-                context.active_object is not None
-                and context.active_object.type == "ARMATURE"
-            ):
+            if context.active_object is not None and context.active_object.type == "ARMATURE":
                 rig_settings.model_armature_object = context.active_object
             else:
                 self.report(
@@ -157,10 +151,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
         properties_number = 0
 
-        if (
-            morphs_settings.type == "DIFFEO_GENESIS_8"
-            or morphs_settings.type == "DIFFEO_GENESIS_9"
-        ):
+        if morphs_settings.type == "DIFFEO_GENESIS_8" or morphs_settings.type == "DIFFEO_GENESIS_9":
             # TYPE: 0: Emotion Units, 1: Emotions, 2: FACS Emotion Units,
             # 3: FACS Emotions, 4: Body Morphs
 
@@ -199,14 +190,9 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
                 for emotion in emotions_units:
                     name = emotion[len("eCTRL")] + "".join(
-                        [
-                            c if not c.isupper() else " " + c
-                            for c in emotion[len("eCTRL") + 1 :]
-                        ]
+                        [c if not c.isupper() else " " + c for c in emotion[len("eCTRL") + 1 :]]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[0].morphs, [name, emotion]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[0].morphs, [name, emotion])
 
                 morphs_settings.sections[0].freezable = False
 
@@ -233,9 +219,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 # Custom Diffeomorphic emotions
                 emotions_custom = []
                 emotions_custom_strings = [
-                    x
-                    for x in morphs_settings.diffeomorphic_emotions_custom.split(",")
-                    if x != ""
+                    x for x in morphs_settings.diffeomorphic_emotions_custom.split(",") if x != ""
                 ]
                 for string in emotions_custom_strings:
                     for x in [
@@ -248,14 +232,9 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
                 for emotion in emotions:
                     name = emotion[len("eCTRL")] + "".join(
-                        [
-                            c if not c.isupper() else " " + c
-                            for c in emotion[len("eCTRL") + 1 :]
-                        ]
+                        [c if not c.isupper() else " " + c for c in emotion[len("eCTRL") + 1 :]]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[1].morphs, [name, emotion]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[1].morphs, [name, emotion])
                 for emotion in emotions_custom:
                     mustardui_add_morph(
                         morphs_settings.sections[1].morphs,
@@ -304,18 +283,12 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                         ]
                     )
                     name = name.removesuffix("_div2")
-                    mustardui_add_morph(
-                        morphs_settings.sections[2].morphs, [name, emotion]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[2].morphs, [name, emotion])
 
                 morphs_settings.sections[2].freezable = False
 
             # FACS Emotions
-            sec = (
-                "Advanced Emotions"
-                if morphs_settings.type == "DIFFEO_GENESIS_8"
-                else "Emotions"
-            )
+            sec = "Advanced Emotions" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotions"
             mustardui_add_section(
                 morphs_settings.sections, [sec], is_internal=True, diffeomorphic=3
             )
@@ -329,9 +302,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 # For Genesis 9, add also custom emotions to the panel
                 emotions_custom = []
                 emotions_custom_strings = [
-                    x
-                    for x in morphs_settings.diffeomorphic_emotions_custom.split(",")
-                    if x != ""
+                    x for x in morphs_settings.diffeomorphic_emotions_custom.split(",") if x != ""
                 ]
                 if morphs_settings.type == "DIFFEO_GENESIS_9":
                     emotions_custom = []
@@ -351,9 +322,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                             for c in emotion[len("facs_ctrl_") + 1 :]
                         ]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[3].morphs, [name, emotion]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[3].morphs, [name, emotion])
 
                 for emotion in emotions_custom:
                     mustardui_add_morph(
@@ -418,65 +387,36 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
                 for morph in body_morphs_FBM:
                     name = morph[len("FBM")] + "".join(
-                        [
-                            c if not c.isupper() else " " + c
-                            for c in morph[len("FBM") + 1 :]
-                        ]
+                        [c if not c.isupper() else " " + c for c in morph[len("FBM") + 1 :]]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[4].morphs, [name, morph]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[4].morphs, [name, morph])
                 for morph in body_morphs_bs:
                     name = morph[len("body_bs_")] + "".join(
-                        [
-                            c if not c.isupper() else " " + c
-                            for c in morph[len("body_bs_") + 1 :]
-                        ]
+                        [c if not c.isupper() else " " + c for c in morph[len("body_bs_") + 1 :]]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[4].morphs, [name, morph]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[4].morphs, [name, morph])
                 for morph in body_morphs_CTRLB:
                     name = morph[len("CTRL")] + "".join(
-                        [
-                            c if not c.isupper() else " " + c
-                            for c in morph[len("CTRL") + 1 :]
-                        ]
+                        [c if not c.isupper() else " " + c for c in morph[len("CTRL") + 1 :]]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[4].morphs, [name, morph]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[4].morphs, [name, morph])
                 for morph in body_morphs_ctrl:
                     name = morph[len("body_ctrl_")] + "".join(
-                        [
-                            c if not c.isupper() else " " + c
-                            for c in morph[len("body_ctrl_") + 1 :]
-                        ]
+                        [c if not c.isupper() else " " + c for c in morph[len("body_ctrl_") + 1 :]]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[4].morphs, [name, morph]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[4].morphs, [name, morph])
                 for morph in body_morphs_PBM:
                     name = morph[len("PBM")] + "".join(
-                        [
-                            c if not c.isupper() else " " + c
-                            for c in morph[len("PBM") + 1 :]
-                        ]
+                        [c if not c.isupper() else " " + c for c in morph[len("PBM") + 1 :]]
                     )
-                    mustardui_add_morph(
-                        morphs_settings.sections[4].morphs, [name, morph]
-                    )
+                    mustardui_add_morph(morphs_settings.sections[4].morphs, [name, morph])
                 for morph in body_morphs_custom:
                     morph_name = morph
                     if self.custom_rename:
                         morph_name = re.sub(r"_body_bs_", " ", morph_name)
                         morph_name = re.sub(r"_body_cbs_", " ", morph_name)
-                    morph_name = rename_morph(
-                        self, morph_name, body_morphs_custom_strings
-                    )
-                    mustardui_add_morph(
-                        morphs_settings.sections[4].morphs, [morph_name, morph]
-                    )
+                    morph_name = rename_morph(self, morph_name, body_morphs_custom_strings)
+                    mustardui_add_morph(morphs_settings.sections[4].morphs, [morph_name, morph])
 
             # Set the Genesis version
             morphs_settings.diffeomorphic_genesis_version = (
@@ -495,9 +435,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 cp_source = get_cp_source(custom_properties_source, rig_settings)
                 if cp_source is None:
                     continue
-                custom_props = [
-                    x for x in cp_source.keys() if any(s in x for s in strings)
-                ]
+                custom_props = [x for x in cp_source.keys() if any(s in x for s in strings)]
                 for morph in custom_props:
                     mustardui_add_morph(
                         morphs_settings.sections[i].morphs,
@@ -508,9 +446,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
             body_sks = rig_settings.model_body.data.shape_keys
             if shape_keys and body_sks is not None:
-                sks = [
-                    x for x in body_sks.key_blocks if any(s in x.name for s in strings)
-                ]
+                sks = [x for x in body_sks.key_blocks if any(s in x.name for s in strings)]
 
                 # Disable the freezable setting as it would work on the Mute
                 # button which is now blocked by the driver
@@ -552,10 +488,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                             fcurve = body_sks.animation_data.drivers.find(driver_path)
                             if fcurve:
                                 drv = fcurve.driver
-                                if (
-                                    drv.type == "SCRIPTED"
-                                    and drv.expression == "abs(var) < 0.001"
-                                ):
+                                if drv.type == "SCRIPTED" and drv.expression == "abs(var) < 0.001":
                                     body_sks.driver_remove(driver_path)
                             # Unmute if muted
                             body_sks.key_blocks[sk.name].mute = False

@@ -57,13 +57,9 @@ def fix_custom_property_path(obj, uilist, custom_prop, addon_prefs):
     )
 
     if custom_prop.ptr_type == "OBJECT" and custom_prop.ptr_object:
-        custom_prop.rna = replace_id_block(
-            custom_prop.rna, "OBJECT", custom_prop.ptr_object.name
-        )
+        custom_prop.rna = replace_id_block(custom_prop.rna, "OBJECT", custom_prop.ptr_object.name)
     elif custom_prop.ptr_type == "SHAPEKEY" and custom_prop.ptr_key:
-        custom_prop.rna = replace_id_block(
-            custom_prop.rna, "SHAPEKEY", custom_prop.ptr_key.name
-        )
+        custom_prop.rna = replace_id_block(custom_prop.rna, "SHAPEKEY", custom_prop.ptr_key.name)
     elif custom_prop.ptr_type == "ARMATURE" and custom_prop.ptr_armature:
         custom_prop.rna = replace_id_block(
             custom_prop.rna, "ARMATURE", custom_prop.ptr_armature.name
@@ -83,11 +79,7 @@ def fix_custom_property_path(obj, uilist, custom_prop, addon_prefs):
             custom_prop.rna, "NODE_TREE", custom_prop.ptr_node_tree.name
         )
     else:
-        print(
-            "MustardUI - No valid pointer found for custom property "
-            + custom_prop.name
-            + "."
-        )
+        print("MustardUI - No valid pointer found for custom property " + custom_prop.name + ".")
 
     if evaluate_path(custom_prop.rna, custom_prop.path) is None:
         print(
@@ -158,9 +150,7 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
 
         for custom_properties in custom_properties_types:
             for i, custom_prop in enumerate(custom_properties):
-                res = fix_custom_property_path(
-                    obj, custom_properties, custom_prop, addon_prefs
-                )
+                res = fix_custom_property_path(obj, custom_properties, custom_prop, addon_prefs)
                 if res != "VALID":
                     invalid += 1
 
@@ -189,9 +179,7 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
         )
 
         if invalid == 0:
-            self.report(
-                {"INFO"}, f"MustardUI - All {total} custom properties are valid."
-            )
+            self.report({"INFO"}, f"MustardUI - All {total} custom properties are valid.")
         else:
             msg_parts = [f"{invalid} invalid"]
 
@@ -335,9 +323,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             for i, custom_prop in enumerate(custom_properties):
                 try:
                     if evaluate_path(custom_prop.rna, custom_prop.path) is None:
-                        raise Exception(
-                            "Property not rebuildable because path is not valid"
-                        )
+                        raise Exception("Property not rebuildable because path is not valid")
 
                     if not custom_prop.is_animatable:
                         continue
@@ -347,14 +333,9 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                     if prop_name in obj.keys():
                         del obj[prop_name]
 
-                    if (
-                        custom_prop.type == "BOOLEAN"
-                        or custom_prop.force_type == "Bool"
-                    ):
+                    if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
                         try:
-                            default_bool = bool(
-                                evaluate_path(custom_prop.rna, custom_prop.path)
-                            )
+                            default_bool = bool(evaluate_path(custom_prop.rna, custom_prop.path))
                         except Exception:
                             print(
                                 "MustardUI - Can not find the property "
@@ -369,9 +350,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             overridable=True,
                         )
 
-                    elif (
-                        custom_prop.type == "FLOAT" and custom_prop.force_type == "None"
-                    ):
+                    elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
                         rna_idprop_ui_create(
                             obj,
                             prop_name,
@@ -477,9 +456,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                     "infos.",
                 )
         else:
-            self.report(
-                {"INFO"}, "MustardUI - All Custom Properties successfully rebuilt."
-            )
+            self.report({"INFO"}, "MustardUI - All Custom Properties successfully rebuilt.")
 
         return {"FINISHED"}
 
@@ -499,8 +476,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
             icon="ERROR",
         )
         col.label(
-            text="This can fix most issues with custom properties but it can also "
-            "cause issues ",
+            text="This can fix most issues with custom properties but it can also cause issues ",
             icon="BLANK1",
         )
         col.label(

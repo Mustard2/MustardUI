@@ -91,16 +91,11 @@ def mustardui_reassign_default(obj, uilist, index, addon_prefs):
             obj[prop.prop_name] = prop.default_float
         elif prop.type == "INT" or (prop.type == "FLOAT" and prop.force_type == "Int"):
             obj[prop.prop_name] = prop.default_int
-        elif prop.type == "BOOLEAN" or (
-            prop.type == "FLOAT" and prop.force_type == "Bool"
-        ):
+        elif prop.type == "BOOLEAN" or (prop.type == "FLOAT" and prop.force_type == "Bool"):
             obj[prop.prop_name] = prop.default_bool
     except Exception:
         if addon_prefs.debug:
-            print(
-                "MustardUI - Could not reassign default value. Skipping for this "
-                "custom property"
-            )
+            print("MustardUI - Could not reassign default value. Skipping for this custom property")
 
     return
 
@@ -112,19 +107,14 @@ def mustardui_clean_prop(obj, uilist, index, addon_prefs):
         ui_data.clear()
     except Exception:
         if addon_prefs.debug:
-            print(
-                "MustardUI - Could not clean UI property. Skipping for this custom "
-                "property"
-            )
+            print("MustardUI - Could not clean UI property. Skipping for this custom property")
 
     # Delete custom property
     try:
         del obj[uilist[index].prop_name]
     except Exception:
         if addon_prefs.debug:
-            print(
-                "MustardUI - Properties not found. Skipping custom properties deletion"
-            )
+            print("MustardUI - Properties not found. Skipping custom properties deletion")
 
     # Remove linked properties drivers
     for lp in uilist[index].linked_properties:

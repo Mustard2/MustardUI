@@ -149,9 +149,7 @@ class MUSTARDUI_UL_Morphs_Section_UIList(bpy.types.UIList):
         res, obj = mustardui_active_object(context, config=1)
         return res if obj is not None else False
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         res, obj = mustardui_active_object(context, config=1)
         morphs_settings = obj.MustardUI_MorphsSettings
 
@@ -160,12 +158,8 @@ class MUSTARDUI_UL_Morphs_Section_UIList(bpy.types.UIList):
             row.prop(item, "name", text="", emboss=False, translate=False)
             row2 = row.row(align=True)
             if morphs_settings.type == "GENERIC":
-                row2.label(
-                    text="", icon="SHAPEKEY_DATA" if item.shape_keys else "BLANK1"
-                )
-                row2.label(
-                    text="", icon="OBJECT_DATA" if item.custom_properties else "BLANK1"
-                )
+                row2.label(text="", icon="SHAPEKEY_DATA" if item.shape_keys else "BLANK1")
+                row2.label(text="", icon="OBJECT_DATA" if item.custom_properties else "BLANK1")
             row2.label(text=str(len(item.morphs)))
 
 
@@ -175,9 +169,7 @@ def register():
     bpy.utils.register_class(MustardUI_Morphs_Section_Add)
     bpy.utils.register_class(MustardUI_Morphs_Section_Remove)
 
-    bpy.types.Armature.mustardui_morphs_section_uilist_index = IntProperty(
-        name="", default=0
-    )
+    bpy.types.Armature.mustardui_morphs_section_uilist_index = IntProperty(name="", default=0)
 
 
 def unregister():

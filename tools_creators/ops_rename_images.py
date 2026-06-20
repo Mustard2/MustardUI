@@ -19,9 +19,7 @@ def sanitize_name(name: str):
 
 def make_node_label(name: str):
     parts = name.split("_")
-    return " ".join(
-        p.upper() if p.upper() in {"AO", "UV"} else p.capitalize() for p in parts
-    )
+    return " ".join(p.upper() if p.upper() in {"AO", "UV"} else p.capitalize() for p in parts)
 
 
 def detect_texture_type(name: str):
@@ -321,11 +319,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                 image.name = new_name
 
             if self.rename_file:
-                if (
-                    image.packed_file
-                    or image.source == "TILED"
-                    or "<UDIM>" in image.filepath
-                ):
+                if image.packed_file or image.source == "TILED" or "<UDIM>" in image.filepath:
                     continue
 
                 try:
@@ -353,12 +347,8 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
         row.operator("mustardui.rename_image_nodes_update", icon="LOOP_FORWARDS")
 
         row = box.row(align=True)
-        row.operator(
-            "mustardui.rename_image_nodes_select_all", text="Select All"
-        ).value = True
-        row.operator(
-            "mustardui.rename_image_nodes_select_all", text="None"
-        ).value = False
+        row.operator("mustardui.rename_image_nodes_select_all", text="Select All").value = True
+        row.operator("mustardui.rename_image_nodes_select_all", text="None").value = False
 
         box = layout.box()
         for item in col:

@@ -129,10 +129,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
             # Make the new selected object the active one
             bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
         else:
-            print(
-                "Make sure there are at least two selected objects and one active "
-                "object."
-            )
+            print("Make sure there are at least two selected objects and one active object.")
 
         voxel_size = self.voxel_res
         voxel_size = 0.4 / (voxel_size / 5)
@@ -149,9 +146,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
             # Add Displace modifier if attempt_tight_bind is True
             if self.attempt_tight_bind:
-                displace_mod = duplicate_obj.modifiers.new(
-                    name="Displace", type="DISPLACE"
-                )
+                displace_mod = duplicate_obj.modifiers.new(name="Displace", type="DISPLACE")
                 displace_mod.strength = -0.9
                 displace_mod.mid_level = 0.99
 
@@ -354,16 +349,12 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
             """Copies all armature modifiers from the original object to the duplicate."""  # noqa: E501
             for modifier in original_obj.modifiers:
                 if modifier.type == "ARMATURE":
-                    arm_mod = duplicate_obj.modifiers.new(
-                        name=modifier.name, type="ARMATURE"
-                    )
+                    arm_mod = duplicate_obj.modifiers.new(name=modifier.name, type="ARMATURE")
                     arm_mod.object = modifier.object
                     arm_mod.use_bone_envelopes = modifier.use_bone_envelopes
                     arm_mod.use_vertex_groups = modifier.use_vertex_groups
                     arm_mod.invert_vertex_group = modifier.invert_vertex_group
-                    arm_mod.use_deform_preserve_volume = (
-                        modifier.use_deform_preserve_volume
-                    )
+                    arm_mod.use_deform_preserve_volume = modifier.use_deform_preserve_volume
                     arm_mod.use_multi_modifier = modifier.use_multi_modifier
                     arm_mod.show_on_cage = modifier.show_on_cage
                     arm_mod.show_in_editmode = modifier.show_in_editmode
@@ -413,9 +404,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                 for modifier in obj.modifiers:
                     if modifier.type == "ARMATURE" and modifier.object:
                         armature_obj = modifier.object
-                        initial_pose_states[armature_obj.name] = (
-                            armature_obj.data.pose_position
-                        )
+                        initial_pose_states[armature_obj.name] = armature_obj.data.pose_position
 
         # Set all armatures in the scene to rest pose
         for obj in bpy.data.objects:
@@ -529,10 +518,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                 for mod in reversed(target_obj.modifiers):
                     if mod.type == "SURFACE_DEFORM" and surface_deform_modifier is None:
                         surface_deform_modifier = mod
-                    elif (
-                        mod.type == "CORRECTIVE_SMOOTH"
-                        and corrective_smooth_modifier is None
-                    ):
+                    elif mod.type == "CORRECTIVE_SMOOTH" and corrective_smooth_modifier is None:
                         corrective_smooth_modifier = mod
                 # Assign the vertex group to the modifiers
                 if surface_deform_modifier:
@@ -615,10 +601,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                 # Invert the vertex group mask
                 last_displace.invert_vertex_group = True
                 if addon_prefs.debug:
-                    print(
-                        f"Set '{active_vertex_group}' as the vertex group mask and "
-                        f"inverted it."
-                    )
+                    print(f"Set '{active_vertex_group}' as the vertex group mask and inverted it.")
             else:
                 if addon_prefs.debug:
                     print("No active vertex group found.")

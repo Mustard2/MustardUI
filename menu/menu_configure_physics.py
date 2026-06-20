@@ -56,13 +56,9 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             )
             col = row.column()
             col2 = col.column(align=True)
-            opup = col2.operator(
-                "mustardui.physics_items_switch", icon="TRIA_UP", text=""
-            )
+            opup = col2.operator("mustardui.physics_items_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
-            opdown = col2.operator(
-                "mustardui.physics_items_switch", icon="TRIA_DOWN", text=""
-            )
+            opdown = col2.operator("mustardui.physics_items_switch", icon="TRIA_DOWN", text="")
             opdown.direction = "DOWN"
             col.separator()
             col.operator("mustardui.physics_item_remove", text="", icon="X")
@@ -90,9 +86,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="Outfits Support", icon="MOD_CLOTH")
         row = box.row(align=True)
-        row.operator(
-            "mustardui.physics_outfits_setup", icon="PHYSICS"
-        ).single_outfit = ""
+        row.operator("mustardui.physics_outfits_setup", icon="PHYSICS").single_outfit = ""
         if settings.advanced:
             row.operator(
                 "mustardui.physics_outfits_setup_intersecting_objects",
@@ -131,9 +125,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
                 text="",
             ).unique = True
             col.separator()
-            col.operator(
-                "mustardui.physics_intersecting_object_remove", text="", icon="X"
-            )
+            col.operator("mustardui.physics_intersecting_object_remove", text="", icon="X")
 
 
 def register():

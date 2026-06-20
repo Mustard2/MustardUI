@@ -50,9 +50,7 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
 class MUSTARDUI_UL_Outfits_UIList(bpy.types.UIList):
     """UIList for outfits"""
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.collection:
             layout.prop(item.collection, "name", text="", emboss=False, translate=False)
         else:

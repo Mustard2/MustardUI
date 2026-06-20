@@ -5,9 +5,7 @@ def get_ui_mesh_objects(rig_settings):
     if rig_settings.model_body is not None:
         objects.append(rig_settings.model_body)
 
-    for coll in [
-        x for x in rig_settings.outfits_collections if x.collection is not None
-    ]:
+    for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = (
             coll.collection.all_objects
             if rig_settings.outfit_config_subcollections

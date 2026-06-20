@@ -52,8 +52,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
         # Firstly set the custom property to their default value
         for i, cp in enumerate(outfit_cp):
             if (not uilist[index].collection and not cp.outfit) or (
-                uilist[index].collection
-                and cp.outfit.name == uilist[index].collection.name
+                uilist[index].collection and cp.outfit.name == uilist[index].collection.name
             ):
                 mustardui_reassign_default(arm, outfit_cp, i, addon_prefs)
 
@@ -66,8 +65,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
         if self.delete_cp:
             for i, cp in enumerate(outfit_cp):
                 if (not uilist[index].collection and not cp.outfit) or (
-                    uilist[index].collection
-                    and cp.outfit.name == uilist[index].collection.name
+                    uilist[index].collection and cp.outfit.name == uilist[index].collection.name
                 ):
                     mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
                     to_remove.append(i)
@@ -81,9 +79,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
             rig_settings.outfits_list = "Nude"
         else:
             if len(rig_settings.outfits_list_make(context)) > 0:
-                rig_settings.outfits_list = rig_settings.outfits_list_make(context)[0][
-                    0
-                ]
+                rig_settings.outfits_list = rig_settings.outfits_list_make(context)[0][0]
 
         index = min(max(0, index - 1), len(uilist) - 1)
         context.scene.mustardui_outfits_uilist_index = index

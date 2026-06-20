@@ -238,9 +238,7 @@ def compute_fixes(driver, var_out, armature, bone, sk, fac):
         # Set the target object and property for the variable
         var.targets[0].id = armature  # Target object (armature)
         var.targets[0].bone_target = "Jaw"  # Target bone
-        var.targets[
-            0
-        ].transform_type = "LOC_Z"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
+        var.targets[0].transform_type = "LOC_Z"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
         var.targets[0].transform_space = "LOCAL_SPACE"  # Local space for bone transform
 
         expression = f"+{str(fac)}*min(-{var_out.name},{var.name})"
@@ -253,9 +251,7 @@ def compute_fixes(driver, var_out, armature, bone, sk, fac):
         # Set the target object and property for the variable
         var.targets[0].id = armature  # Target object (armature)
         var.targets[0].bone_target = bone  # Target bone
-        var.targets[
-            0
-        ].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
+        var.targets[0].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
         var.targets[0].transform_space = "LOCAL_SPACE"  # Local space for bone transform
 
         expression = f"-{str(fac)}*100*{var_out.name}*{var.name}+50*{var_out.name}"
@@ -268,9 +264,7 @@ def compute_fixes(driver, var_out, armature, bone, sk, fac):
         # Set the target object and property for the variable
         var.targets[0].id = armature  # Target object (armature)
         var.targets[0].bone_target = bone  # Target bone
-        var.targets[
-            0
-        ].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
+        var.targets[0].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
         var.targets[0].transform_space = "LOCAL_SPACE"  # Local space for bone transform
 
         expression = f"+{str(fac)}*100*{var_out.name}*{var.name}+50*{var_out.name}"
@@ -283,9 +277,7 @@ def compute_fixes(driver, var_out, armature, bone, sk, fac):
         # Set the target object and property for the variable
         var.targets[0].id = armature  # Target object (armature)
         var.targets[0].bone_target = bone  # Target bone
-        var.targets[
-            0
-        ].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
+        var.targets[0].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
         var.targets[0].transform_space = "LOCAL_SPACE"  # Local space for bone transform
 
         expression = f"+{str(fac)}*100*{var_out.name}*{var.name}-100*{var_out.name}"
@@ -298,9 +290,7 @@ def compute_fixes(driver, var_out, armature, bone, sk, fac):
         # Set the target object and property for the variable
         var.targets[0].id = armature  # Target object (armature)
         var.targets[0].bone_target = bone  # Target bone
-        var.targets[
-            0
-        ].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
+        var.targets[0].transform_type = "LOC_Y"  # Transformation type (e.g., LOC_X, LOC_Y, LOC_Z)
         var.targets[0].transform_space = "LOCAL_SPACE"  # Local space for bone transform
 
         expression = f"-{str(fac)}*100*{var_out.name}*{var.name}-100*{var_out.name}"
@@ -359,8 +349,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
         if not os.path.exists(blend_file):
             self.report(
                 {"ERROR"},
-                "MustardUI - An error occurred while appending the face controller "
-                "rig.",
+                "MustardUI - An error occurred while appending the face controller rig.",
             )
             return {"CANCELLED"}
 
@@ -376,8 +365,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
             if appended_object is None or appended_object.type != "ARMATURE":
                 self.report(
                     {"ERROR"},
-                    "MustardUI - An error occurred while appending the face controller "
-                    "rig.",
+                    "MustardUI - An error occurred while appending the face controller rig.",
                 )
                 return {"FINISHED"}
 
@@ -448,9 +436,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
                         if driver is None:
                             # No driver exists, so add one for the shape key's
                             # value property
-                            driver = model_armature.data.driver_add(
-                                f'["{sk}(fin)"]'
-                            ).driver
+                            driver = model_armature.data.driver_add(f'["{sk}(fin)"]').driver
 
                         # Remove any variables with "fcd" in the name
                         variables_to_remove = [
@@ -476,16 +462,12 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
                         )
                         var.targets[
                             0
-                        ].transform_space = (
-                            "LOCAL_SPACE"  # Local space for bone transform
-                        )
+                        ].transform_space = "LOCAL_SPACE"  # Local space for bone transform
 
                         # Get the current driver expression
                         current_expression = driver.expression.strip()
 
-                        fixed_expression = compute_fixes(
-                            driver, var, model_armature, bone, sk, fac
-                        )
+                        fixed_expression = compute_fixes(driver, var, model_armature, bone, sk, fac)
 
                         term_to_add = (
                             f"{sign}{fac}*fcd{str(num)}"
@@ -532,9 +514,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
                     "added: " + str(ctrl_added) + ").",
                 )
             else:
-                self.report(
-                    {"INFO"}, "MustardUI - Controller successfully added to the model."
-                )
+                self.report({"INFO"}, "MustardUI - Controller successfully added to the model.")
             return {"FINISHED"}
 
         except Exception as e:
@@ -613,9 +593,7 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
 
             # Remove variables related to fcd or fcd_fix
             variables_to_remove = [
-                var
-                for var in driver.variables
-                if "fcd" in var.name or "fcd_fix" in var.name
+                var for var in driver.variables if "fcd" in var.name or "fcd_fix" in var.name
             ]
 
             # Also remove variables related to bones in fctrl_bones list
@@ -636,10 +614,7 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
             if addon_prefs.debug:
                 print(f"MustardUI - Working on driver '{dr.data_path}'...")
                 for v in [var.name for var in variables_to_remove]:
-                    print(
-                        f"MustardUI - Variables '{v}' to be deleted from "
-                        f"'{dr.data_path}'."
-                    )
+                    print(f"MustardUI - Variables '{v}' to be deleted from '{dr.data_path}'.")
 
             # Remove variables from current expression
             current_expression = driver.expression.strip()
@@ -653,17 +628,16 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
                         lambda m: "" if m.group(0).strip() else "",
                         current_expression,
                     )
-                pattern = rf"([+\-]?\s*\d*\.?\d*)\s?\*\s?\(?\s?([a-zA-Z0-9_]+|{re.escape(v)}\d+)\s?\)?"  # noqa: E501
+                pattern = (
+                    rf"([+\-]?\s*\d*\.?\d*)\s?\*\s?\(?\s?([a-zA-Z0-9_]+|{re.escape(v)}\d+)\s?\)?"  # noqa: E501
+                )
                 current_expression = re.sub(
                     pattern,
                     lambda m: "" if m.group(0).strip() else "",
                     current_expression,
                 )
             if addon_prefs.debug:
-                print(
-                    f"MustardUI - Expression before removal: "
-                    f"{current_expression.strip()}'."
-                )
+                print(f"MustardUI - Expression before removal: {current_expression.strip()}'.")
             driver.expression = current_expression.strip()
 
             # Remove variables
@@ -701,9 +675,7 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
         # Set the face rig version
         rig_settings.creator_tools_face_rig_version = face_rig_current_version
 
-        self.report(
-            {"INFO"}, "MustardUI - Controller successfully removed from the model."
-        )
+        self.report({"INFO"}, "MustardUI - Controller successfully removed from the model.")
 
         return {"FINISHED"}
 

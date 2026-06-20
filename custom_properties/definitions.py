@@ -32,9 +32,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     # User defined properties
     name: StringProperty(name="Custom property name")
-    icon: EnumProperty(
-        name="Icon", description="Choose the icon", items=mustardui_icon_list
-    )
+    icon: EnumProperty(name="Icon", description="Choose the icon", items=mustardui_icon_list)
     advanced: BoolProperty(
         name="Advanced",
         description="The property is shown only when Advanced settings are enabled",
@@ -76,11 +74,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         rig_settings = self.id_data.MustardUI_RigSettings
         return (
             object
-            in [
-                x.collection
-                for x in rig_settings.outfits_collections
-                if x.collection is not None
-            ]
+            in [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
             or object == rig_settings.extras_collection
         )
 

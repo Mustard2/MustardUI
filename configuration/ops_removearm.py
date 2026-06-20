@@ -34,8 +34,7 @@ class MustardUI_RemoveArmature(bpy.types.Operator):
 
         self.report(
             {"INFO"},
-            f"MustardUI - Removed armature {self.armature}. Switched to Viewport Model "
-            f"Selection",
+            f"MustardUI - Removed armature {self.armature}. Switched to Viewport Model Selection",
         )
 
         return {"FINISHED"}

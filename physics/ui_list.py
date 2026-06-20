@@ -56,9 +56,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
         description="The Physics Item seems not to have any Physics modifier active",
     )
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.object:
             layout.prop(item.object, "name", text="", emboss=False, translate=False)
             row = layout.row(align=True)
@@ -104,9 +102,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
             row.label(text="", icon=mustardui_physics_item_type_dict[item.type])
             row.label(
                 text="",
-                icon="MOD_CLOTH"
-                if item.outfit_enable and item.outfit_collection
-                else "BLANK1",
+                icon="MOD_CLOTH" if item.outfit_enable and item.outfit_collection else "BLANK1",
             )
         else:
             layout.label(text="Object not found!", icon="ERROR")
@@ -116,9 +112,7 @@ def register():
     bpy.utils.register_class(MUSTARDUI_UL_PhysicsItems_UIList)
     bpy.utils.register_class(MustardUI_PhysicsItems_UIList_Switch)
 
-    bpy.types.Armature.mustardui_physics_items_uilist_index = IntProperty(
-        name="", default=0
-    )
+    bpy.types.Armature.mustardui_physics_items_uilist_index = IntProperty(name="", default=0)
 
 
 def unregister():

@@ -68,10 +68,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
         # Rigify
         elif hasattr(obj, '["rig_id"]') and obj["rig_id"] != "":
             if addon_prefs.debug:
-                print(
-                    "\nMustardUI - Smart Check - Found a Rigify rig, setting layers "
-                    "for Rigify."
-                )
+                print("\nMustardUI - Smart Check - Found a Rigify rig, setting layers for Rigify.")
 
             # Collection name, name to change, icon, default
             preset_bone_collections = [
@@ -104,10 +101,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
         # MHX Rig
         elif hasattr(rig_settings.model_armature_object, '["MhxRig"]'):
             if addon_prefs.debug:
-                print(
-                    "\nMustardUI - Smart Check - Found a MHX rig, setting layers "
-                    "for MHX."
-                )
+                print("\nMustardUI - Smart Check - Found a MHX rig, setting layers for MHX.")
 
             # Collection name, name to change, icon, default
             preset_bone_collections = [
@@ -169,12 +163,8 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                     if keyword in n:
                         # FK-only collections default off even if spine/hand also
                         # matches
-                        resolved_default = (
-                            False if ("fk" in n and "ik" not in n) else default
-                        )
-                        preset_bone_collections.append(
-                            (coll.name, "", icon, resolved_default)
-                        )
+                        resolved_default = False if ("fk" in n and "ik" not in n) else default
+                        preset_bone_collections.append((coll.name, "", icon, resolved_default))
                         if addon_prefs.debug:
                             print(
                                 f"\nMustardUI - Smart Check - Keyword '{keyword}' "
@@ -187,20 +177,11 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                 n = entry[0].lower()
                 if any(kw in n for kw in ("face", "head")):
                     return 0
-                if any(
-                    kw in n
-                    for kw in ("arm", "hand", "finger", "elbow", "shoulder", "wrist")
-                ):
+                if any(kw in n for kw in ("arm", "hand", "finger", "elbow", "shoulder", "wrist")):
                     return 1
-                if any(
-                    kw in n
-                    for kw in ("spine", "torso", "chest", "back", "abdomen", "waist")
-                ):
+                if any(kw in n for kw in ("spine", "torso", "chest", "back", "abdomen", "waist")):
                     return 2
-                if any(
-                    kw in n
-                    for kw in ("leg", "foot", "feet", "toe", "knee", "hip", "thigh")
-                ):
+                if any(kw in n for kw in ("leg", "foot", "feet", "toe", "knee", "hip", "thigh")):
                     return 3
                 if any(kw in n for kw in ("root", "base")):
                     return 4
@@ -241,9 +222,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
 
         # Check for Outfit/Hair/Extras switcher
         outfits = 0
-        outfit_colls = [
-            x.collection for x in rig_settings.outfits_collections if x.collection
-        ]
+        outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
         if rig_settings.extras_collection is not None:
             outfit_colls.append(rig_settings.extras_collection)
         if rig_settings.hair_collection is not None:
@@ -252,9 +231,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
             for o in coll.objects:
                 for bcoll in obj.collections_all:
                     if bcoll.name == o.name:
-                        bcArmatureBoneCollection = (
-                            bcoll.MustardUI_ArmatureBoneCollection
-                        )
+                        bcArmatureBoneCollection = bcoll.MustardUI_ArmatureBoneCollection
                         bcArmatureBoneCollection.is_in_UI = True
                         bcArmatureBoneCollection.outfit_switcher_enable = True
                         bcArmatureBoneCollection.outfit_switcher_collection = coll
@@ -287,9 +264,7 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                 f"collection(s) for an unknown Armature type.",
             )
         elif outfits:
-            self.report(
-                {"INFO"}, "MustardUI - Outfits Switcher bone collections were added."
-            )
+            self.report({"INFO"}, "MustardUI - Outfits Switcher bone collections were added.")
         else:
             self.report(
                 {"WARNING"},

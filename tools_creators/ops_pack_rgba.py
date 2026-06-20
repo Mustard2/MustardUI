@@ -38,9 +38,7 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
         w, h = images[0].size
         for img in images:
             if img.size[0] != w or img.size[1] != h:
-                self.report(
-                    {"ERROR"}, "MustardUI - All images must have same resolution"
-                )
+                self.report({"ERROR"}, "MustardUI - All images must have same resolution")
                 return {"CANCELLED"}
 
         num_pixels = w * h

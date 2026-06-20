@@ -6,9 +6,7 @@ class MUSTARDUI_OT_SelectModel(bpy.types.Operator):
 
     bl_idname = "mustardui.select_model"
     bl_label = "Select Model"
-    bl_description = (
-        "Switch to the selected model (respects Viewport Model Selection setting)"
-    )
+    bl_description = "Switch to the selected model (respects Viewport Model Selection setting)"
     bl_options = {"REGISTER", "UNDO", "INTERNAL"}
 
     # Property passed from the button
@@ -33,9 +31,7 @@ class MUSTARDUI_OT_SelectModel(bpy.types.Operator):
                 break
 
         if not target_arm:
-            self.report(
-                {"WARNING"}, f"MustardUI - Could not find model: {self.model_to_select}"
-            )
+            self.report({"WARNING"}, f"MustardUI - Could not find model: {self.model_to_select}")
             return {"CANCELLED"}
 
         # === Viewport Model Selection Mode ===
@@ -54,24 +50,17 @@ class MUSTARDUI_OT_SelectModel(bpy.types.Operator):
                 obj.select_set(True)
                 context.view_layer.objects.active = obj
             else:
-                self.report(
-                    {"WARNING"}, "MustardUI - Target armature object not found in scene"
-                )
+                self.report({"WARNING"}, "MustardUI - Target armature object not found in scene")
                 return {"CANCELLED"}
 
         # === Direct Panel Mode ===
         else:
             # Check if you are trying to switch to the same model already in use
-            if (
-                bpy.data.armatures[self.model_to_select]
-                == settings.panel_model_selection_armature
-            ):
+            if bpy.data.armatures[self.model_to_select] == settings.panel_model_selection_armature:
                 self.report(
                     {"WARNING"},
                     "MustardUI - Already using "
-                    + bpy.data.armatures[
-                        self.model_to_select
-                    ].MustardUI_RigSettings.model_name
+                    + bpy.data.armatures[self.model_to_select].MustardUI_RigSettings.model_name
                     + " model.",
                 )
                 return {"CANCELLED"}
@@ -79,8 +68,7 @@ class MUSTARDUI_OT_SelectModel(bpy.types.Operator):
             settings.panel_model_selection_armature = target_arm
             self.report(
                 {"INFO"},
-                f"MustardUI - Model switched to: "
-                f"{target_arm.MustardUI_RigSettings.model_name}",
+                f"MustardUI - Model switched to: {target_arm.MustardUI_RigSettings.model_name}",
             )
 
         return {"FINISHED"}

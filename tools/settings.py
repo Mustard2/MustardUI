@@ -177,9 +177,7 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
 
 def register():
     bpy.utils.register_class(MustardUI_ToolsSettings)
-    bpy.types.Armature.MustardUI_ToolsSettings = PointerProperty(
-        type=MustardUI_ToolsSettings
-    )
+    bpy.types.Armature.MustardUI_ToolsSettings = PointerProperty(type=MustardUI_ToolsSettings)
 
 
 def unregister():

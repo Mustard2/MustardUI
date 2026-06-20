@@ -46,9 +46,7 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.label(
-            text="(Viewport)" if settings.viewport_model_selection else "(Direct)"
-        )
+        row.label(text="(Viewport)" if settings.viewport_model_selection else "(Direct)")
         row.label(text=display_name)
 
     def draw(self, context):

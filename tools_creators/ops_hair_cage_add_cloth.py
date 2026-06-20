@@ -206,8 +206,7 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
 
         # Print a completion message
         print(
-            "Cloth modifiers added, configured, and collisions enabled for selected "
-            "mesh objects."
+            "Cloth modifiers added, configured, and collisions enabled for selected mesh objects."
         )
 
         cloth_modifier = None
@@ -225,10 +224,7 @@ class MustardUI_ToolsCreators_AddClothToHair(bpy.types.Operator):
             ):
                 bpy.context.view_layer.objects.active = obj
                 bpy.ops.object.modifier_move_up(modifier=cloth_modifier.name)
-            print(
-                f"Moved Cloth modifier above the last Corrective Smooth modifier for "
-                f"{obj.name}."
-            )
+            print(f"Moved Cloth modifier above the last Corrective Smooth modifier for {obj.name}.")
         else:
             print(f"Cloth or Corrective Smooth modifier not found for {obj.name}.")
 

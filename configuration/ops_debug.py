@@ -22,21 +22,9 @@ def bar(bars=15):
 
 def addon_status(status, addon_name, tabs=2):
     if status == 2:
-        return (
-            addon_name
-            + " status:"
-            + tab(tabs)
-            + "Correctly installed and enabled"
-            + new_line()
-        )
+        return addon_name + " status:" + tab(tabs) + "Correctly installed and enabled" + new_line()
     elif status == 1:
-        return (
-            addon_name
-            + " status:"
-            + tab(tabs)
-            + "Installed but not enabled"
-            + new_line()
-        )
+        return addon_name + " status:" + tab(tabs) + "Installed but not enabled" + new_line()
     else:
         return (
             addon_name
@@ -83,9 +71,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
         log += new_line()
 
         if bpy.context.preferences.addons["cycles"]:
-            device_type = bpy.context.preferences.addons[
-                "cycles"
-            ].preferences.compute_device_type
+            device_type = bpy.context.preferences.addons["cycles"].preferences.compute_device_type
 
             log += "Device type:" + tab(tabs_num) + device_type
             log += new_line()
@@ -191,11 +177,7 @@ class MustardUI_Debug_Log(bpy.types.Operator):
             log += (
                 "Extras status:"
                 + tab(tabs_num)
-                + (
-                    "Hidden"
-                    if rig_settings.extras_collection.hide_viewport
-                    else "Shown"
-                )
+                + ("Hidden" if rig_settings.extras_collection.hide_viewport else "Shown")
             )
             log += new_line()
 
@@ -210,14 +192,12 @@ class MustardUI_Debug_Log(bpy.types.Operator):
 
             self.report(
                 {"INFO"},
-                "MustardUI - A log file 'mustardui_log.txt' has been created in the "
-                "model folder.",
+                "MustardUI - A log file 'mustardui_log.txt' has been created in the model folder.",
             )
         except Exception:
             self.report(
                 {"WARNING"},
-                "MustardUI - Cannot create a log file. Try to run Blender with admin "
-                "privileges.",
+                "MustardUI - Cannot create a log file. Try to run Blender with admin privileges.",
             )
 
         return {"FINISHED"}

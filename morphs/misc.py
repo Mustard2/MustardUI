@@ -134,9 +134,7 @@ def muteDazFcurves(
             if isDazFcurve(fcu.data_path) and pJCMcheck(fcu.data_path, mutepJCM):
                 if muteDazFcurves_facscheck(
                     mutefacs, fcu.data_path, check_bones_rot, check_bones_loc
-                ) and muteDazFcurves_exceptionscheck(
-                    muteexceptions, fcu.data_path, exceptions
-                ):
+                ) and muteDazFcurves_exceptionscheck(muteexceptions, fcu.data_path, exceptions):
                     fcu.mute = mute
                 else:
                     fcu.mute = False
@@ -147,10 +145,7 @@ def muteDazFcurves(
             if words[0] == "pose.bones[":
                 channel = words[-1].rsplit(".", 1)[-1]
                 if (
-                    (
-                        channel in ["rotation_euler", "rotation_quaternion"]
-                        and useRotation
-                    )
+                    (channel in ["rotation_euler", "rotation_quaternion"] and useRotation)
                     or (channel == "location" and useLocation)
                     or (channel == "scale" and useScale)
                     or channel in ["HdOffset", "TlOffset"]

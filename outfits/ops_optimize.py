@@ -61,9 +61,7 @@ class MustardUI_Outfit_DisableViewport(bpy.types.Operator):
             if "mustardui_outfit_show" not in arm:
                 outfits_global_subsurface = rig_settings.outfits_global_subsurface
                 outfits_global_mask = rig_settings.outfits_global_mask
-                outfits_global_smoothcorrection = (
-                    rig_settings.outfits_global_smoothcorrection
-                )
+                outfits_global_smoothcorrection = rig_settings.outfits_global_smoothcorrection
                 outfits_global_shrinkwrap = rig_settings.outfits_global_shrinkwrap
                 outfits_global_solidify = rig_settings.outfits_global_solidify
                 outfits_global_triangulate = rig_settings.outfits_global_triangulate

@@ -62,17 +62,13 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
                 "mustardui_property_uilist_index",
             )
             col = row.column()
-            col.operator(
-                "mustardui.property_settings", icon="PREFERENCES", text=""
-            ).type = "BODY"
+            col.operator("mustardui.property_settings", icon="PREFERENCES", text="").type = "BODY"
             col.separator()
             col2 = col.column(align=True)
             opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
             opup.type = "BODY"
-            opdown = col2.operator(
-                "mustardui.property_switch", icon="TRIA_DOWN", text=""
-            )
+            opdown = col2.operator("mustardui.property_switch", icon="TRIA_DOWN", text="")
             opdown.direction = "DOWN"
             opdown.type = "BODY"
             col.separator()
@@ -111,9 +107,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
             col2 = col.column(align=True)
             opup = col2.operator("mustardui.section_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
-            opdown = col2.operator(
-                "mustardui.section_switch", icon="TRIA_DOWN", text=""
-            )
+            opdown = col2.operator("mustardui.section_switch", icon="TRIA_DOWN", text="")
             opdown.direction = "DOWN"
 
             if (

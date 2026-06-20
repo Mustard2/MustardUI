@@ -104,8 +104,7 @@ class MustardUI_PresetImport(bpy.types.Operator, ImportHelper):
             if not check_preset_version(data):
                 self.report(
                     {"ERROR"},
-                    "MustardUI - This Preset is not compatible with this MustardUI "
-                    "version",
+                    "MustardUI - This Preset is not compatible with this MustardUI version",
                 )
                 return {"CANCELLED"}
 
@@ -120,9 +119,7 @@ class MustardUI_PresetImport(bpy.types.Operator, ImportHelper):
                 data = [data]
 
             for i, preset_json in enumerate(data):
-                new_name = get_unique_preset_name(
-                    presets, preset_json.get("name", f"Preset_{i}")
-                )
+                new_name = get_unique_preset_name(presets, preset_json.get("name", f"Preset_{i}"))
 
                 new_preset = presets.add()
                 new_preset.name = new_name

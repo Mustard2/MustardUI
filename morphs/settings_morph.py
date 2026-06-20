@@ -15,9 +15,7 @@ class MustardUI_Morph(bpy.types.PropertyGroup):
     # Types for generic Morphs
     shape_key: bpy.props.BoolProperty(default=False)
     custom_property: bpy.props.BoolProperty(default=True)
-    custom_property_source: bpy.props.EnumProperty(
-        items=cp_source, default="ARMATURE_OBJ"
-    )
+    custom_property_source: bpy.props.EnumProperty(items=cp_source, default="ARMATURE_OBJ")
 
 
 def register():

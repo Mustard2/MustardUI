@@ -185,9 +185,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                 colls.append(rig_settings.extras_collection)
         else:
             colls = [
-                x.collection
-                for x in rig_settings.outfits_collections
-                if x.collection is not None
+                x.collection for x in rig_settings.outfits_collections if x.collection is not None
             ]
             if rig_settings.extras_collection is not None:
                 colls.append(rig_settings.extras_collection)
@@ -203,14 +201,8 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         for coll in colls:
             lc, was_excluded = include_collection(coll)
 
-            objs = (
-                coll.all_objects
-                if rig_settings.outfit_config_subcollections
-                else coll.objects
-            )
-            for obj in [
-                x for x in objs if x.type == "MESH" and x.modifiers is not None
-            ]:
+            objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
+            for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                 # Check if the Armature modifier is available on the Object
                 # This should be an indication of the fact that the Object should be
                 # driven by the body with Surface Deform modifiers
@@ -253,8 +245,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                         # If the modifier is already added, attempt to rebind if
                         # needed and skip
                         if any(
-                            x.type == "SURFACE_DEFORM" and x.target == target
-                            for x in obj.modifiers
+                            x.type == "SURFACE_DEFORM" and x.target == target for x in obj.modifiers
                         ):
                             for mod in [
                                 x
@@ -284,11 +275,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                             # Move the modifier after the Armature one
                             # Get the Armature modifier index
                             last_armature_index = max(
-                                (
-                                    i
-                                    for i, m in enumerate(obj.modifiers)
-                                    if m.type == "ARMATURE"
-                                ),
+                                (i for i, m in enumerate(obj.modifiers) if m.type == "ARMATURE"),
                                 default=-1,
                             )
                             # Index of the current modifier
@@ -357,26 +344,20 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                     bpy.ops.mesh.vert_connect_concave()
                     bpy.ops.object.mode_set(mode="OBJECT")
 
-                bpy.context.view_layer.objects.active = (
-                    rig_settings.model_armature_object
-                )
+                bpy.context.view_layer.objects.active = rig_settings.model_armature_object
 
             for coll in colls:
                 lc, was_excluded = include_collection(coll)
 
                 objs = (
-                    coll.all_objects
-                    if rig_settings.outfit_config_subcollections
-                    else coll.objects
+                    coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
                 )
 
                 show_coll = coll.hide_viewport
                 coll.hide_viewport = False
                 bpy.context.view_layer.update()
 
-                for obj in [
-                    x for x in objs if x.type == "MESH" and x.modifiers is not None
-                ]:
+                for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                     show_obj = obj.hide_viewport
                     obj.hide_viewport = False
 
@@ -443,18 +424,10 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
         # Last check on binding to raise warnings
         for coll in colls:
-            objs = (
-                coll.all_objects
-                if rig_settings.outfit_config_subcollections
-                else coll.objects
-            )
-            for obj in [
-                x for x in objs if x.type == "MESH" and x.modifiers is not None
-            ]:
+            objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
+            for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                 for mod in [
-                    x
-                    for x in obj.modifiers
-                    if x.type == "SURFACE_DEFORM" and x.target == target
+                    x for x in obj.modifiers if x.type == "SURFACE_DEFORM" and x.target == target
                 ]:
                     if not mod.is_bound:
                         print(
@@ -551,10 +524,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         if self.unique:
             if arm.mustardui_physics_items_uilist_index < 0:
                 return {"FINISHED"}
-            if (
-                physics_settings.items[arm.mustardui_physics_items_uilist_index].object
-                is None
-            ):
+            if physics_settings.items[arm.mustardui_physics_items_uilist_index].object is None:
                 return {"FINISHED"}
 
         # Clear current intersection objects
@@ -564,11 +534,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         else:
             bpy.ops.mustardui.physics_outfits_setup_clear()
 
-        colls = [
-            x.collection
-            for x in rig_settings.outfits_collections
-            if x.collection is not None
-        ]
+        colls = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
         if rig_settings.extras_collection is not None:
             colls.append(rig_settings.extras_collection)
 
@@ -585,14 +551,8 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         for coll in colls:
             lc, was_excluded = include_collection(coll)
 
-            objs = (
-                coll.all_objects
-                if rig_settings.outfit_config_subcollections
-                else coll.objects
-            )
-            for obj in [
-                x for x in objs if x.type == "MESH" and x.modifiers is not None
-            ]:
+            objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
+            for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                 # Check if the Armature modifier is available on the Object
                 # This should be an indication of the fact that the Object should be
                 # driven by the body with Surface Deform modifiers
@@ -618,9 +578,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
                         continue
 
                 if self.unique:
-                    pi = physics_settings.items[
-                        arm.mustardui_physics_items_uilist_index
-                    ]
+                    pi = physics_settings.items[arm.mustardui_physics_items_uilist_index]
                     if intersection_checker.intersect(pi.object, obj):
                         # Add the object to the intersecting objects of the physics item
                         npi = pi.intersecting_objects.add()
@@ -698,27 +656,15 @@ class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
             pi.intersecting_objects.clear()
 
         # Disable or remove all Surface Deform modifiers
-        colls = [
-            x.collection
-            for x in rig_settings.outfits_collections
-            if x.collection is not None
-        ]
+        colls = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
         if rig_settings.extras_collection is not None:
             colls.append(rig_settings.extras_collection)
 
         for coll in colls:
-            objs = (
-                coll.all_objects
-                if rig_settings.outfit_config_subcollections
-                else coll.objects
-            )
-            for obj in [
-                x for x in objs if x.type == "MESH" and x.modifiers is not None
-            ]:
+            objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
+            for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                 mods = [
-                    x
-                    for x in obj.modifiers
-                    if x.type == "SURFACE_DEFORM" and x.target in targets
+                    x for x in obj.modifiers if x.type == "SURFACE_DEFORM" and x.target in targets
                 ]
                 mods.reverse()
                 for mod in mods:

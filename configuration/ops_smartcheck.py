@@ -8,17 +8,12 @@ from ..tools_creators.ops_optimize_mods import mask_vg_name
 def smartcheck_body_mask_from_vg(self, context, rig_settings):
     warnings = 0
 
-    outfit_colls = [
-        x.collection for x in rig_settings.outfits_collections if x.collection
-    ]
+    outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
 
     body = rig_settings.model_body
     if body is None:
         warnings += 1
-        print(
-            "MustardUI Smart Check - Body Mask from Vertex Groups - "
-            "No Body Object found"
-        )
+        print("MustardUI Smart Check - Body Mask from Vertex Groups - No Body Object found")
         return warnings
 
     arm_idx = next(
@@ -27,9 +22,7 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
     )
     if arm_idx is None:
         warnings += 1
-        print(
-            "MustardUI Smart Check - Body Mask from Vertex Groups - No Armature on Body"
-        )
+        print("MustardUI Smart Check - Body Mask from Vertex Groups - No Armature on Body")
         return warnings
 
     all_colls = outfit_colls + (
@@ -46,8 +39,7 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
         return warnings
 
     if any(
-        mod.type in {"MASK", "VERTEX_WEIGHT_MIX"}
-        and outfit_obj.name in mod.name.split("|")
+        mod.type in {"MASK", "VERTEX_WEIGHT_MIX"} and outfit_obj.name in mod.name.split("|")
         for outfit_obj in obj_to_col
         for mod in body.modifiers
     ):
@@ -110,10 +102,7 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
 
     if outfits_with_mask < 1:
         warnings += 1
-        print(
-            "MustardUI Smart Check - Body Mask from Vertex Groups - "
-            "No valid Vertex Group to add"
-        )
+        print("MustardUI Smart Check - Body Mask from Vertex Groups - No valid Vertex Group to add")
         return warnings
 
     mask_mod = next(
@@ -128,11 +117,7 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
         rig_settings.outfits_enable_global_mask = True
 
     last_vwm = next(
-        (
-            i
-            for i, m in reversed(list(enumerate(body.modifiers)))
-            if m.type == "VERTEX_WEIGHT_MIX"
-        ),
+        (i for i, m in reversed(list(enumerate(body.modifiers))) if m.type == "VERTEX_WEIGHT_MIX"),
         -1,
     )
     target_mask = min(
@@ -140,9 +125,7 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
         len(body.modifiers) - 1,
     )
     current_mask_idx = next(
-        i
-        for i, m in enumerate(body.modifiers)
-        if m.name == mask_vg_name and m.type == "MASK"
+        i for i, m in enumerate(body.modifiers) if m.name == mask_vg_name and m.type == "MASK"
     )
     if current_mask_idx != target_mask:
         bpy.ops.object.modifier_move_to_index(modifier=mask_mod.name, index=target_mask)
@@ -256,10 +239,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
         # Try to assign the rig object
         if not obj.MustardUI_created:
-            if (
-                context.active_object is not None
-                and context.active_object.type == "ARMATURE"
-            ):
+            if context.active_object is not None and context.active_object.type == "ARMATURE":
                 rig_settings.model_armature_object = context.active_object
 
         # Initialize Smart Check header
@@ -268,9 +248,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
         if self.smartcheck_custom_properties:
             if addon_prefs.debug:
-                print(
-                    "MustardUI - Smart Check - Searching for body additional options\n"
-                )
+                print("MustardUI - Smart Check - Searching for body additional options\n")
             # Check for body additional properties
             bpy.ops.mustardui.property_smartcheck()
 
@@ -309,8 +287,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 )
         else:
             print(
-                "\nMustardUI - Smart Check - Hair collection already defined. Skipping "
-                "this part."
+                "\nMustardUI - Smart Check - Hair collection already defined. Skipping this part."
             )
 
         # Search for Extras
@@ -343,8 +320,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 )
         else:
             print(
-                "\nMustardUI - Smart Check - Extras collection already defined. "
-                "Skipping this part."
+                "\nMustardUI - Smart Check - Extras collection already defined. Skipping this part."
             )
 
         # Search for Hair Extras
@@ -391,10 +367,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
         if self.smartcheck_settings:
             if addon_prefs.debug:
-                print(
-                    "\nMustardUI - Smart Check - Searching for Global Settings "
-                    "to enable."
-                )
+                print("\nMustardUI - Smart Check - Searching for Global Settings to enable.")
 
             # Body
             if rig_settings.model_body is not None:
@@ -411,25 +384,16 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                         rig_settings.body_enable_solidify = True
             else:
                 if addon_prefs.debug:
-                    print(
-                        "\nMustardUI - Smart Check - Could not check Body Global "
-                        "Properties."
-                    )
+                    print("\nMustardUI - Smart Check - Could not check Body Global Properties.")
 
             # Outfits
             objects = []
-            outfit_colls = [
-                x.collection for x in rig_settings.outfits_collections if x.collection
-            ]
+            outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
             for c in outfit_colls:
                 for obj in [x for x in c.objects if x.type == "MESH"]:
                     objects.append(obj)
             if rig_settings.extras_collection is not None:
-                for obj in [
-                    x
-                    for x in rig_settings.extras_collection.objects
-                    if x.type == "MESH"
-                ]:
+                for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
                     objects.append(obj)
 
             rig_settings.outfits_enable_global_subsurface = False
@@ -461,9 +425,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             if rig_settings.hair_collection is not None:
                 objects = []
                 for obj in [
-                    x
-                    for x in rig_settings.hair_collection.objects
-                    if x.type in {"MESH", "CURVES"}
+                    x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}
                 ]:
                     objects.append(obj)
 
@@ -494,8 +456,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         if warnings:
             self.report(
                 {"WARNING"},
-                "MustardUI - Smart Check generated Warnings. See the Console for more"
-                " information.",
+                "MustardUI - Smart Check generated Warnings. See the Console for more information.",
             )
         else:
             self.report({"INFO"}, "MustardUI - Smart Check complete.")

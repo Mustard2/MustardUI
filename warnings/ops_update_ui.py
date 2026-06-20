@@ -11,15 +11,10 @@ def is_ui_update(rig_settings):
     version = tuple(rig_settings.model_mustardui_version)
 
     return not (
-        (
-            rig_settings.diffeomorphic_support
-            and rig_settings.diffeomorphic_morphs_number > 0
-        )
+        (rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0)
         or rig_settings.simplify_main_enable
         # Check if the Hair curves were enabled (behavior was different)
-        or (
-            rig_settings.hair_collection is not None and rig_settings.curves_hair_enable
-        )
+        or (rig_settings.hair_collection is not None and rig_settings.curves_hair_enable)
         # Check for Hair convention
         or (
             rig_settings.hair_collection is not None
@@ -68,8 +63,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             return {"CANCELLED"}
 
         diffeomorphic_status = (
-            rig_settings.diffeomorphic_support
-            and rig_settings.diffeomorphic_morphs_number > 0
+            rig_settings.diffeomorphic_support and rig_settings.diffeomorphic_morphs_number > 0
         )
         simplify_status = rig_settings.simplify_main_enable
         curves_hair_status = (
@@ -102,9 +96,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 morphs_settings.enable_ui = True
 
                 # Retrieve settings from the old Morphs implementation
-                morphs_settings.diffeomorphic_emotions = (
-                    rig_settings.diffeomorphic_emotions
-                )
+                morphs_settings.diffeomorphic_emotions = rig_settings.diffeomorphic_emotions
                 morphs_settings.diffeomorphic_emotions_custom = (
                     rig_settings.diffeomorphic_emotions_custom
                 )
@@ -117,9 +109,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 morphs_settings.diffeomorphic_facs_emotions_units = (
                     rig_settings.diffeomorphic_facs_emotions_units
                 )
-                morphs_settings.diffeomorphic_body_morphs = (
-                    rig_settings.diffeomorphic_body_morphs
-                )
+                morphs_settings.diffeomorphic_body_morphs = rig_settings.diffeomorphic_body_morphs
                 morphs_settings.diffeomorphic_body_morphs_custom = (
                     rig_settings.diffeomorphic_body_morphs_custom
                 )
@@ -198,9 +188,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 hair_collection = rig_settings.hair_collection
 
                 # Rename the Objects in the Hair collection
-                for i, obj in enumerate(
-                    [x for x in hair_collection.objects if x is not None]
-                ):
+                for i, obj in enumerate([x for x in hair_collection.objects if x is not None]):
                     if not obj.name.startswith(f"{hair_collection.name} - "):
                         obj_name = obj.name
                         obj_name = update_hair_name(obj_name)
@@ -228,9 +216,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
             rig_settings.model_mustardui_version = bl_info["version"]
 
         if errors:
-            self.report(
-                {"WARNING"}, "MustardUI - Errors occurred while updating the model."
-            )
+            self.report({"WARNING"}, "MustardUI - Errors occurred while updating the model.")
 
         self.report({"INFO"}, "MustardUI - UI updated.")
         return {"FINISHED"}

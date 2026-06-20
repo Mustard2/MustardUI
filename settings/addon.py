@@ -19,8 +19,7 @@ class MustardUI_Settings(bpy.types.PropertyGroup):
     advanced: BoolProperty(
         default=False,
         name="Advanced Options",
-        description="Unlock Advanced Options.\nMore advanced options will be shown in "
-        "the UI",
+        description="Unlock Advanced Options.\nMore advanced options will be shown in the UI",
     )
 
     # Model selection
@@ -97,11 +96,7 @@ def load_handler(_):
         for obj in [x for x in scene.objects if x.type == "ARMATURE"]:
             arm = obj.data
             if hasattr(arm, "MustardUI_created") and hasattr(arm, "MustardUI_enable"):
-                if (
-                    arm.MustardUI_created
-                    and not arm.MustardUI_enable
-                    and not addon_prefs.developer
-                ):
+                if arm.MustardUI_created and not arm.MustardUI_enable and not addon_prefs.developer:
                     arm.MustardUI_enable = not arm.MustardUI_enable
                     if addon_prefs.debug:
                         print(f"MustardUI - Fixed missing UI on {repr(obj.name)}")
@@ -116,9 +111,7 @@ def register():
     bpy.types.Armature.MustardUI_enable = bpy.props.BoolProperty(default=False, name="")
 
     # Properties to specify if the Armature has a MustardUI created
-    bpy.types.Armature.MustardUI_created = bpy.props.BoolProperty(
-        default=False, name=""
-    )
+    bpy.types.Armature.MustardUI_created = bpy.props.BoolProperty(default=False, name="")
 
     bpy.app.handlers.load_post.append(load_handler)
 
