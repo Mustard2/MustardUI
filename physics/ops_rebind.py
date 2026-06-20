@@ -132,7 +132,7 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
         outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
         for c in outfit_colls:
             outfit_objects = (
-                c.all_objects if rig_settings.outfits_config_subcollections else c.objects
+                c.all_objects if rig_settings.outfit_config_subcollections else c.objects
             )
             for obj in [x for x in outfit_objects if x.type == "MESH"]:
                 objects.append(obj)
