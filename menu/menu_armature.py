@@ -1,5 +1,6 @@
 import bpy
 
+from ..armature.ik_fk_snapper import ikfk_snapper_available
 from ..misc.mirror import check_mirror
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
@@ -219,9 +220,73 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         )
 
 
+class PANEL_PT_MustardUI_Armature_IKFKPanel(MainPanel, bpy.types.Panel):
+    bl_parent_id = "PANEL_PT_MustardUI_Armature"
+    bl_idname = "PANEL_PT_MustardUI_Armature_IKFKPanel"
+    bl_label = "IK/FK Settings"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=0)
+        if not arm:
+            return False
+        return (
+            res
+            and arm.MustardUI_ArmatureSettings.ikfk_snapper_enable
+            and ikfk_snapper_available(arm)
+        )
+
+    def draw(self, context):
+        res, arm = mustardui_active_object(context, config=0)
+        snapper = arm.MustardUI_IKFKSnapperSettings
+        chains = snapper.ikfk_chains
+        layout = self.layout
+
+        if not chains:
+            layout.label(text="No chains found yet.", icon="INFO")
+            return
+
+        for i, chain in enumerate(chains):
+            box = layout.box()
+            icon = "CURVE_PATH" if chain.auto_detected else "ARMATURE_DATA"
+            box.label(text=chain.name, icon=icon)
+
+            fk_list = [n.strip() for n in chain.fk_bones.split(",") if n.strip()]
+            has_fk = bool(fk_list and any(fk_list))
+
+            # Snap row (moves bones then switches)
+            row = box.row(align=True)
+            row.label(text="", icon="SNAP_ON")
+            row.separator()
+            op = row.operator("mustardui.ikfk_snap", text="Snap  IK")
+            op.chain_index = i
+            op.direction = "FK_TO_IK"
+            op.switch = True
+            sub = row.row(align=True)
+            sub.enabled = has_fk
+            op = sub.operator("mustardui.ikfk_snap", text="Snap FK")
+            op.chain_index = i
+            op.direction = "IK_TO_FK"
+            op.switch = True
+
+            # Switch row (mode only, no position snap)
+            row = box.row(align=True)
+            row.label(text="", icon="ARROW_LEFTRIGHT")
+            row.separator()
+            op = row.operator("mustardui.ikfk_switch", text="Switch IK")
+            op.chain_index = i
+            op.direction = "TO_IK"
+            op = row.operator("mustardui.ikfk_switch", text="Switch FK")
+            op.chain_index = i
+            op.direction = "TO_FK"
+
+
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Armature)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Armature_IKFKPanel)
 
 
 def unregister():
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Armature_IKFKPanel)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Armature)

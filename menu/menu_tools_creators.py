@@ -63,7 +63,6 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
         layout.label(text="", icon="OUTLINER_DATA_ARMATURE")
 
     def draw(self, context):
-
         layout = self.layout
 
         row = layout.row(align=True)
@@ -111,7 +110,6 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
         layout.label(text="", icon="ARMATURE_DATA")
 
     def draw(self, context):
-
         layout = self.layout
 
         row = layout.row(align=True)
@@ -144,7 +142,6 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         layout.label(text="", icon="MESH_DATA")
 
     def draw(self, context):
-
         layout = self.layout
 
         row = layout.row(align=True)
@@ -178,7 +175,6 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
         layout.label(text="", icon="PHYSICS")
 
     def draw(self, context):
-
         layout = self.layout
 
         row = layout.row(align=True)
@@ -231,13 +227,33 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
         layout.label(text="", icon="FORCE_WIND")
 
     def draw(self, context):
-
         layout = self.layout
 
         row = layout.row(align=True)
         row.operator(
             "mustardui.tools_creators_optimize_modifiers",
             icon="MOD_SMOOTH",
+        )
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_optimize_shaders",
+            icon="SHADING_RENDERED",
+        )
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_optimize_shape_keys",
+            icon="SHAPEKEY_DATA",
+        ).revert = False
+        row.operator(
+            "mustardui.tools_creators_optimize_shape_keys", icon="LOOP_BACK", text=""
+        ).revert = True
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_select_preview_texture",
+            icon="SHADING_SOLID",
         )
 
 

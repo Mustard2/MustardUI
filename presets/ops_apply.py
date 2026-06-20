@@ -40,7 +40,7 @@ class MustardUI_PresetApply(bpy.types.Operator):
 
         definition = get_preset_definition(self.preset_type)
 
-        # Load the data inside the preset in Json format
+        # Load the data inside the preset in JSON format
         try:
             data = json.loads(preset.data)
         except Exception:

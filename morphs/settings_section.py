@@ -42,7 +42,8 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
         default=True,
         name="Freezable",
         description="If disabled, morphs in this section will not be disabled when "
-        "using the Freeze Morphs option",
+        "using the Freeze Morphs option.\nThis is incompatible with the drivers on "
+        "the Mute property of Shape Keys",
     )
     hidden: bpy.props.BoolProperty(
         default=False,

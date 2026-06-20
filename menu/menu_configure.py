@@ -37,12 +37,13 @@ class PANEL_PT_MustardUI_InitPanel(MainPanel, bpy.types.Panel):
         row.label(text=arm.name, icon="OUTLINER_DATA_ARMATURE")
         row.operator("mustardui.configuration_smartcheck", icon="SHADERFX", text="")
         row.operator(
-            "mustardui.openlink", text="", icon="QUESTION"
+            "wm.url_open", text="", icon="QUESTION"
         ).url = self.url_MustardUI_ConfigGuide
 
         box = layout.box()
-        box.prop(rig_settings, "model_name", text="Name")
-        box.prop(rig_settings, "model_body", text="Body")
+        col = box.column()
+        col.prop(rig_settings, "model_name", text="Name")
+        col.prop(rig_settings, "model_body", text="Body")
 
         box.prop(rig_settings, "model_MustardUI_naming_convention")
 

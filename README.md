@@ -6,47 +6,41 @@
 
 # MustardUI
 
-MustardUI is a Blender Extension that provides an intuitive and easy-to-use user interface for human models.
+MustardUI is a Blender extension that gives human models a clean, easy-to-use interface.
 
-**Note: do not download the file from the Code button, download it from the [Blender Extension official website](https://extensions.blender.org/add-ons/mustardui/) or use the .zip file on the [latest release](https://github.com/Mustard2/MustardUI/releases/latest) instead.**
+> [!IMPORTANT]
+> Do not download the file from the Code button. Use the official release on the [official Blender Extensions website](https://extensions.blender.org/add-ons/mustardui/) instead.
+
 
 ## Features
 
-The main features are:
-
-* Configuration panel to create your UI without writing a single line of Python code
-* Automatic Outfit and Hair recognition, with possible manual additions
-* Full outfit support: possibility to combine parts from different outfits, automatic mask/armature layers switcher for the body and the hair on outfit selection, and many other functionalities
-* Settings like Subsurface Scattering and Normals Auto Smooth can be toggled on/off for all model parts in one click
-* Any Blender property can be added with a simple right-click to Body, Outfit and Hair panels
-* Simplify button to quickly turn off modifiers and settings that can decrease Viewport performance
-* Creator tools to quickly add physics effects (Cages, Bone Physics) and useful rigs (Spline IK). Plus many others.
-* Diffeomorphic Daz Morphs support for Daz based models
-* Various other user tools for animators (physics panel, and many others)
+* **No Python required**: build your whole UI from a panel inside Blender.
+* **Outfit support**: mix parts from different outfits, with automatic mask and armature-layer switching on the body and hair.
+* **Hair support**: enable or disable hair (mesh, particle, curves) and its modifiers.
+* **Custom properties**: add any Blender property to the UI panels with a right-click.
+* **Morphs support**: add morphs to any model, with dedicated support for Diffeomorphic Daz models.
+* **Automatic optimization**: as you use the UI, modifiers, shape keys, drivers and collections are toggled and muted for you to keep the Viewport fast.
+* **Custom Simplify**: disable modifiers and settings that slow down the viewport in one click.
+* **Creator tools**: add physics and optimize your model in a few clicks.
+* ...and much more.
 
 <div style="display: flex; gap: 10px;">
   <img src="https://github.com/user-attachments/assets/aa9c7e9c-0c42-4752-8395-db9265cb06f2" width="288" />
   <img src="https://github.com/user-attachments/assets/2c1907c5-fa3d-45b7-930c-e99565b72a41" width="288" />
 </div>
 
-
-
 ## How to install
 
 There are two supported ways to install the add-on:
 
-- (Recommended) Install the add-on as a Blender extension, either from the [website](https://extensions.blender.org/add-ons/mustardui/) or in the Get Extensions panel of Blender settings. **This is the recommended method for installing the add-on, as it ensures automatic updates.**
-- Download the [latest version](https://github.com/Mustard2/MustardUI/releases/latest) from the Releases page, and install it as a Blender Extension or a Legacy Blender add-on. **Do not download the code from the repository! Only use the .zip files in the Release page.**
+- **(Recommended)** Install it as a Blender extension, from the [website](https://extensions.blender.org/add-ons/mustardui/) or the Get Extensions panel in Blender's settings. This method keeps the add-on updated automatically.
+- Download the [latest version](https://github.com/Mustard2/MustardUI/releases/latest) from the Releases page and install it as a Blender extension or a legacy add-on. **Use only the .zip files from the Releases page — never the code from the repository.**
 
 ## Configuration and Tutorial
 
-- For creators of models, be sure to follow the [Developer Guide](https://github.com/Mustard2/MustardUI/wiki/Developer-Guide)!
-- For users, check the [tutorial](https://mustard3d.eu/documentation/#mustardui-and-tools) (MustardUI section).
+- Building a UI for your model? Follow the [Developer Guide](https://github.com/Mustard2/MustardUI/wiki/Developer-Guide).
+- Using a model? See the [tutorial](https://mustard3d.eu/documentation/#mustardui-and-tools) (MustardUI section).
 
-## Note for Developers/Users
+## Feedback
 
-Feel free to open new Issues, both for bugs and new features proposals. Also, all comments are very welcome!
-
-## Credits
-
-- [Diffeomorphic and MHX developers](https://diffeomorphic.blogspot.com/)
+Feel free to open an issue for bugs or feature requests: all comments are welcome!

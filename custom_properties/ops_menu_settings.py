@@ -516,8 +516,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     icon="ERROR",
                 )
                 row.operator(
-                    "mustardui.openlink", text="", icon="QUESTION"
-                ).url = "https://github.com/Mustard2/MustardUI/wiki/Troubleshooting#custom-properties-error"
+                    "wm.url_open", text="", icon="QUESTION"
+                ).url = "https://github.com/Mustard2/MustardUI/wiki/Creator-Troubleshooting#custom-properties-error"
 
         if self.change_rna or self.change_rna_linked:
             layout.box().label(

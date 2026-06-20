@@ -1,8 +1,30 @@
 import bpy
 
-from ..misc.mesh_intersection import check_mesh_intersection
+from ..misc.mesh_intersection import MeshIntersectionChecker
 from ..model_selection.active_object import mustardui_active_object
+from ..outfits.helper_functions import find_layer_collection
 from .update_enable import enable_physics_update
+
+
+def include_collection(coll):
+    """Temporarily clear a collection's view-layer 'exclude' flag so its objects are
+    in the depsgraph.
+    Returns (LayerCollection, previously_excluded) for restore_collection()."""
+    lc = find_layer_collection(bpy.context.view_layer.layer_collection, coll)
+    if lc is None:
+        return None, False
+    was_excluded = lc.exclude
+    if was_excluded:
+        lc.exclude = False
+        bpy.context.view_layer.update()
+    return lc, was_excluded
+
+
+def restore_collection(lc, was_excluded):
+    """Restore the 'exclude' flag saved by include_collection()."""
+    if lc is not None and was_excluded:
+        lc.exclude = True
+
 
 fixes = [
     ("NONE", "None", "No fix attempt if the binding fails"),
@@ -19,10 +41,10 @@ fixes = [
 ]
 
 
-class MustardUI_Physics_Setup(bpy.types.Operator):
+class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
     """This button creates Surface Deform modifiers on Outfit pieces affected by Cages physics items.\nThe modifier is added only if the Outfit piece and the Cage intersect.\nBlender might freeze during the process"""  # noqa: E501
 
-    bl_idname = "mustardui.physics_setup"
+    bl_idname = "mustardui.physics_outfits_setup"
     bl_label = "Setup Outfits Physics"
     bl_options = {"UNDO"}
 
@@ -51,6 +73,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         name="Clean Modifiers",
         description="Remove modifiers for mesh not affected by Physics cages",
     )
+
+    single_outfit: bpy.props.StringProperty(default="")
 
     def bind(self, obj, mod):
 
@@ -99,6 +123,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
 
     def execute(self, context):
 
+        scene = context.scene
+
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -112,34 +138,71 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         physics_settings.enable_physics = False
 
         items = physics_settings.items
+
         body = rig_settings.model_body
 
+        # Surface Deform target: a custom mesh if one was selected in the popup,
+        # otherwise the body itself. This only changes what the Surface Deform
+        # modifiers bind to; intersection checks still use the body cages.
+        target = physics_settings.outfits_setup_surface_deform_target
+        if target is None or target.type != "MESH":
+            target = body
+
+        # Disabling Physics may have excluded the cage collections: re-include them
+        # for binding (the final exclude state is restored with enable_physics below).
+        physics_objs = [x.object for x in items if x.object is not None]
+        physics_objs.append(target)
+        for pcoll in {c for o in physics_objs for c in o.users_collection}:
+            include_collection(pcoll)
+
         # Disable subdivision modifiers on the body to attempt binding with
-        # less vertices
+        # fewer vertices
         body_show = False
         for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
             body_show = m.show_viewport
             m.show_viewport = False
+
+        # Update everything
         body.data.update_tag()
+        body.data.update()
         body.update_tag()
+        bpy.context.view_layer.update()
 
         arm.pose_position = "REST"
 
         warnings = 0
 
-        colls = [
-            x.collection
-            for x in rig_settings.outfits_collections
-            if x.collection is not None
-        ]
-        if rig_settings.extras_collection is not None:
-            colls.append(rig_settings.extras_collection)
+        if self.single_outfit != "":
+            colls = [
+                x.collection
+                for x in rig_settings.outfits_collections
+                if x.collection is not None and x.collection.name == self.single_outfit
+            ]
+            if (
+                rig_settings.extras_collection is not None
+                and rig_settings.extras_collection.name == self.single_outfit
+            ):
+                colls.append(rig_settings.extras_collection)
+        else:
+            colls = [
+                x.collection
+                for x in rig_settings.outfits_collections
+                if x.collection is not None
+            ]
+            if rig_settings.extras_collection is not None:
+                colls.append(rig_settings.extras_collection)
 
-        # Clear current intersection objects
-        for pi in [x for x in items if x.type == "CAGE"]:
-            pi.intersecting_objects.clear()
+            # Clear current intersection objects
+            for pi in [x for x in items if x.type == "CAGE"]:
+                pi.intersecting_objects.clear()
+
+        # Caches BVH trees/bounding boxes so each cage and object mesh is only
+        # built once across all intersection checks below.
+        intersection_checker = MeshIntersectionChecker()
 
         for coll in colls:
+            lc, was_excluded = include_collection(coll)
+
             objs = (
                 coll.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -168,17 +231,20 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                 # Check if Physics modifiers are available on the mesh
                 # If these modifiers are available, most probably the item does not
                 # need to be driven by Surface Deform
-                if not self.override_armature_check:
+                if not self.override_physics_check:
                     if any(x.type in ["CLOTH", "SOFT_BODY"] for x in obj.modifiers):
                         continue
 
                 pi_found = False
 
                 for pi in [x for x in items if x.type == "CAGE"]:
-                    if check_mesh_intersection(pi.object, obj):
-                        # Add the object to the intersecting objects of the physics item
-                        npi = pi.intersecting_objects.add()
-                        npi.object = obj
+                    if intersection_checker.intersect(pi.object, obj):
+                        # Add the object to the intersecting objects of the physics
+                        # item, avoiding duplicates (the single_outfit path does not
+                        # clear intersecting_objects beforehand)
+                        if obj not in [x.object for x in pi.intersecting_objects]:
+                            npi = pi.intersecting_objects.add()
+                            npi.object = obj
 
                         if pi_found:
                             continue
@@ -187,13 +253,13 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                         # If the modifier is already added, attempt to rebind if
                         # needed and skip
                         if any(
-                            x.type == "SURFACE_DEFORM" and x.target == body
+                            x.type == "SURFACE_DEFORM" and x.target == target
                             for x in obj.modifiers
                         ):
                             for mod in [
                                 x
                                 for x in obj.modifiers
-                                if x.type == "SURFACE_DEFORM" and x.target == body
+                                if x.type == "SURFACE_DEFORM" and x.target == target
                             ]:
                                 # Attempt to rebind if found but not bound
                                 if not mod.is_bound:
@@ -209,8 +275,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                             continue
 
                         # Add Surface Deform modifier
-                        nm = obj.modifiers.new(name=body.name, type="SURFACE_DEFORM")
-                        nm.target = body
+                        nm = obj.modifiers.new(name=target.name, type="SURFACE_DEFORM")
+                        nm.target = target
                         with bpy.context.temp_override(object=obj):
                             # Bind the modifier
                             warnings += self.bind(obj, nm)
@@ -242,13 +308,15 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                     mods = [
                         x
                         for x in obj.modifiers
-                        if x.type == "SURFACE_DEFORM" and x.target == body
+                        if x.type == "SURFACE_DEFORM" and x.target == target
                     ]
                     mods.reverse()
                     for mod in mods:
                         obj.modifiers.remove(mod)
 
                 obj.update_tag()
+
+            restore_collection(lc, was_excluded)
 
         # Re-enable subdivision modifiers on the body
         for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
@@ -259,7 +327,6 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         if self.attempt_fix_bind != "NONE" and warnings > 0:
             warnings_objects = []
 
-            scene = context.scene
             level = scene.render.simplify_subdivision
             body_levels = 0
             body_show = False
@@ -277,14 +344,14 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                     m.show_viewport = True
                     break
             else:
-                rig_settings.model_body.hide_viewport = False
+                body.hide_viewport = False
 
                 bpy.ops.object.mode_set(mode="OBJECT")
                 bpy.ops.object.select_all(action="DESELECT")
-                bpy.context.view_layer.objects.active = rig_settings.model_body
+                bpy.context.view_layer.objects.active = body
 
                 # Use Split Concave operator to attempt a fix
-                with bpy.context.temp_override(active_object=rig_settings.model_body):
+                with bpy.context.temp_override(active_object=body):
                     bpy.ops.object.mode_set(mode="EDIT")
                     bpy.ops.mesh.select_all(action="SELECT")
                     bpy.ops.mesh.vert_connect_concave()
@@ -295,6 +362,8 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                 )
 
             for coll in colls:
+                lc, was_excluded = include_collection(coll)
+
                 objs = (
                     coll.all_objects
                     if rig_settings.outfit_config_subcollections
@@ -314,7 +383,7 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                     for mod in [
                         x
                         for x in obj.modifiers
-                        if x.type == "SURFACE_DEFORM" and x.target == body
+                        if x.type == "SURFACE_DEFORM" and x.target == target
                     ]:
                         # Attempt to rebind if found but not bound
                         if not mod.is_bound:
@@ -348,6 +417,7 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                     obj.update_tag()
 
                 coll.hide_viewport = show_coll
+                restore_collection(lc, was_excluded)
                 bpy.context.view_layer.update()
 
             if self.attempt_fix_bind == "SUBDIVISION":
@@ -384,7 +454,7 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
                 for mod in [
                     x
                     for x in obj.modifiers
-                    if x.type == "SURFACE_DEFORM" and x.target == body
+                    if x.type == "SURFACE_DEFORM" and x.target == target
                 ]:
                     if not mod.is_bound:
                         print(
@@ -412,6 +482,10 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
 
         layout = self.layout
 
+        settings = context.scene.MustardUI_Settings
+        res, arm = mustardui_active_object(context, config=1)
+        physics_settings = arm.MustardUI_PhysicsSettings
+
         col = layout.column(align=True)
         col.prop(self, "attempt_fix_bind")
 
@@ -422,11 +496,20 @@ class MustardUI_Physics_Setup(bpy.types.Operator):
         col = layout.column(align=True)
         col.prop(self, "clean_modifiers")
 
+        # Advanced: optional custom Surface Deform target
+        if settings.advanced:
+            col = layout.column(align=True)
+            col.prop(
+                physics_settings,
+                "outfits_setup_surface_deform_target",
+                icon="MESH_DATA",
+            )
 
-class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
+
+class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
     """Compute Outfits Intersecting with Physics Items.\nBlender might freeze for a while, depending on the complexity of the Outfits mesh"""  # noqa: E501
 
-    bl_idname = "mustardui.physics_setup_intersecting_objects"
+    bl_idname = "mustardui.physics_outfits_setup_intersecting_objects"
     bl_label = "Compute Intersecting Outfits"
     bl_options = {"UNDO"}
 
@@ -479,7 +562,7 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
             pi = physics_settings.items[arm.mustardui_physics_items_uilist_index]
             pi.intersecting_objects.clear()
         else:
-            bpy.ops.mustardui.physics_setup_clear()
+            bpy.ops.mustardui.physics_outfits_setup_clear()
 
         colls = [
             x.collection
@@ -489,7 +572,19 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
         if rig_settings.extras_collection is not None:
             colls.append(rig_settings.extras_collection)
 
+        # Physics may be disabled, excluding the cage collections: re-include them for
+        # the intersection checks, then restore their exclude state at the end.
+        cage_objs = [x.object for x in items if x.type == "CAGE" and x.object]
+        cage_colls = {coll for o in cage_objs for coll in o.users_collection}
+        cage_states = [include_collection(coll) for coll in cage_colls]
+
+        # Caches BVH trees/bounding boxes so each cage and object mesh is only
+        # built once across all intersection checks below.
+        intersection_checker = MeshIntersectionChecker()
+
         for coll in colls:
+            lc, was_excluded = include_collection(coll)
+
             objs = (
                 coll.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -518,7 +613,7 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
                 # Check if Physics modifiers are available on the mesh
                 # If these modifiers are available, most probably the item does not
                 # need to be driven by Surface Deform
-                if not self.override_armature_check:
+                if not self.override_physics_check:
                     if any(x.type in ["CLOTH", "SOFT_BODY"] for x in obj.modifiers):
                         continue
 
@@ -526,17 +621,22 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
                     pi = physics_settings.items[
                         arm.mustardui_physics_items_uilist_index
                     ]
-                    if check_mesh_intersection(pi.object, obj):
+                    if intersection_checker.intersect(pi.object, obj):
                         # Add the object to the intersecting objects of the physics item
                         npi = pi.intersecting_objects.add()
                         npi.object = obj
                 else:
                     for pi in [x for x in items if x.type == "CAGE"]:
-                        if check_mesh_intersection(pi.object, obj):
+                        if intersection_checker.intersect(pi.object, obj):
                             # Add the object to the intersecting objects of the
                             # physics item
                             npi = pi.intersecting_objects.add()
                             npi.object = obj
+
+            restore_collection(lc, was_excluded)
+
+        for cage_lc, cage_was_excluded in cage_states:
+            restore_collection(cage_lc, cage_was_excluded)
 
         self.report({"INFO"}, "MustardUI - Recomputed Physics Outfits settings.")
 
@@ -554,10 +654,10 @@ class MustardUI_Physics_Setup_IntersectingObjects(bpy.types.Operator):
         col.prop(self, "override_physics_check")
 
 
-class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
+class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
     """Clear the data driving the enable/disable of surface deform modifiers when Physics is activated/disabled"""  # noqa: E501
 
-    bl_idname = "mustardui.physics_setup_clear"
+    bl_idname = "mustardui.physics_outfits_setup_clear"
     bl_label = "Clear Setup Outfits Physics"
     bl_options = {"UNDO"}
 
@@ -586,6 +686,13 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
         body = rig_settings.model_body
         items = physics_settings.items
 
+        # Surface Deform modifiers may target the body or a custom target chosen
+        # during setup, so clear both.
+        targets = {body}
+        custom_target = physics_settings.outfits_setup_surface_deform_target
+        if custom_target is not None and custom_target.type == "MESH":
+            targets.add(custom_target)
+
         # Clear current intersection objects
         for pi in [x for x in items if x.type == "CAGE"]:
             pi.intersecting_objects.clear()
@@ -611,7 +718,7 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
                 mods = [
                     x
                     for x in obj.modifiers
-                    if x.type == "SURFACE_DEFORM" and x.target == body
+                    if x.type == "SURFACE_DEFORM" and x.target in targets
                 ]
                 mods.reverse()
                 for mod in mods:
@@ -637,12 +744,12 @@ class MustardUI_Physics_Setup_Clear(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_Physics_Setup)
-    bpy.utils.register_class(MustardUI_Physics_Setup_IntersectingObjects)
-    bpy.utils.register_class(MustardUI_Physics_Setup_Clear)
+    bpy.utils.register_class(MustardUI_Physics_OutfitsSetup)
+    bpy.utils.register_class(MustardUI_Physics_OutfitsSetup_IntersectingObjects)
+    bpy.utils.register_class(MustardUI_Physics_OutfitsSetup_Clear)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_Physics_Setup_Clear)
-    bpy.utils.unregister_class(MustardUI_Physics_Setup_IntersectingObjects)
-    bpy.utils.unregister_class(MustardUI_Physics_Setup)
+    bpy.utils.unregister_class(MustardUI_Physics_OutfitsSetup_Clear)
+    bpy.utils.unregister_class(MustardUI_Physics_OutfitsSetup_IntersectingObjects)
+    bpy.utils.unregister_class(MustardUI_Physics_OutfitsSetup)

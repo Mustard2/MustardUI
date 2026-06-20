@@ -1,4 +1,4 @@
-# Function to add a option to the object, if not already there
+# Function to add an option to the object, if not already there
 def mustardui_add_morph(
     collection, item, custom_property=True, custom_property_source="ARMATURE_OBJ"
 ):

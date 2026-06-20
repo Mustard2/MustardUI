@@ -30,9 +30,13 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
         # Configuration button
         col = layout.column(align=True)
         col.prop(settings, "advanced")
+
         if not arm.MustardUI_created:
             col.prop(settings, "viewport_model_selection_after_configuration")
-        layout.operator("mustardui.configuration", text="End the configuration")
+
+        row = layout.row()
+        row.scale_y = 1.4
+        row.operator("mustardui.configuration", text="End the configuration")
 
 
 def register():

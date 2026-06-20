@@ -29,7 +29,7 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
         for link in arm.MustardUI_Links:
             if link != "":
                 layout.operator(
-                    "mustardui.openlink", text=link.name, icon="URL"
+                    "wm.url_open", text=link.name, icon="URL"
                 ).url = link.url
 
 

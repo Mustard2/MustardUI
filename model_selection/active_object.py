@@ -5,6 +5,17 @@ import bpy
 def mustardui_active_object(context, config=0):
     settings = bpy.context.scene.MustardUI_Settings
 
+    # Quick Setup mode: always use the viewport active object, returns True only if
+    # the armature has never been configured with MustardUI (MustardUI_created=False).
+    if config == 2:
+        if context.active_object is None:
+            return False, None
+        obj = context.active_object
+        if obj.type != "ARMATURE" or obj.data is None:
+            return False, None
+        arm = obj.data
+        return not arm.MustardUI_created and settings.viewport_model_selection, arm
+
     # If Viewport Model Selection is enabled, the active object will be the active
     # object only if it is an armature
     # If not an Armature, additional checks are made to determine the active object:

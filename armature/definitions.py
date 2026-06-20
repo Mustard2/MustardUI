@@ -166,6 +166,16 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         " type of the rig.\nSupported rigs: MHX",
     )
 
+    # IK/FK Snapper
+    ikfk_snapper_enable: bpy.props.BoolProperty(
+        default=False,
+        name="IK/FK Snapper",
+        description="Enable the IK/FK Snapper.\nAllows snapping between IK and FK "
+        "for defined bone chains on a generic rig.\nCan be enabled only if the rig"
+        "is not a supported one which already has its own vender provided panel "
+        "(i.e. not MHX, Rigify or ARP)",
+    )
+
     # Show in Viewport
     def show_viewport_update(self, context):
         poll, arm = mustardui_active_object(context, config=0)

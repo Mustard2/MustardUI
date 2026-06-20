@@ -11,9 +11,12 @@ from . import (
     ops_link_shape_keys,
     ops_naming,
     ops_optimize_mods,
+    ops_optimize_shaders,
+    ops_optimize_sk,
     ops_pack_rgba,
     ops_rename,
     ops_rename_images,
+    ops_select_preview_texture,
     ops_spline_ik,
     ops_transfer_vertex_groups,
     ops_transformations,
@@ -38,9 +41,15 @@ def register():
     ops_transfer_vertex_groups.register()
     ops_pack_rgba.register()
     ops_optimize_mods.register()
+    ops_optimize_shaders.register()
+    ops_select_preview_texture.register()
+    ops_optimize_sk.register()
 
 
 def unregister():
+    ops_optimize_sk.unregister()
+    ops_select_preview_texture.unregister()
+    ops_optimize_shaders.unregister()
     ops_optimize_mods.unregister()
     ops_pack_rgba.unregister()
     ops_transfer_vertex_groups.unregister()

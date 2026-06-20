@@ -48,7 +48,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
             box.label(text=version, icon=icon)
             if rig_settings.model_changelog_link != "":
                 box.operator(
-                    "mustardui.openlink", text="Changelog", icon="URL"
+                    "wm.url_open", text="Changelog", icon="URL"
                 ).url = rig_settings.model_changelog_link
 
         # Left for old compatibility (Deprecated in MustardUI 2025.8)

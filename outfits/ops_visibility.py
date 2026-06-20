@@ -3,7 +3,12 @@ import bpy
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
-from .helper_functions import outfits_update_armature_collections
+from .helper_functions import (
+    find_layer_collection,
+    outfits_update_armature_collections,
+    update_global_body_mask,
+    update_outfit_body_masks,
+)
 
 
 class MustardUI_OutfitVisibility(bpy.types.Operator):
@@ -59,17 +64,17 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             # Shape Keys and their drivers
             if (
                 rig_settings.outfit_switch_shape_keys_disable
-                and obj.type == "MESH"
-                and obj.data
-                and obj.data.shape_keys
+                and o.type == "MESH"
+                and o.data
+                and o.data.shape_keys
             ):
-                for key in obj.data.shape_keys.key_blocks:
+                for key in o.data.shape_keys.key_blocks:
                     set_bool(key, "mute", visible)
                 if (
-                    obj.data.shape_keys.animation_data
-                    and obj.data.shape_keys.animation_data.drivers
+                    o.data.shape_keys.animation_data
+                    and o.data.shape_keys.animation_data.drivers
                 ):
-                    for fcurve in obj.data.shape_keys.animation_data.drivers:
+                    for fcurve in o.data.shape_keys.animation_data.drivers:
                         set_bool(fcurve, "mute", visible)
 
             # Modifier visibility
@@ -169,28 +174,61 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
             # Body mask modifiers
             body = rig_settings.model_body
-            if body:
-                for mod in body.modifiers:
-                    if (
-                        mod.type in ["MASK", "VERTEX_WEIGHT_MIX"]
-                        and self.obj in mod.name.split("|")
-                        and rig_settings.outfits_global_mask
-                    ):
-                        set_bool(mod, "show_viewport", not o.hide_viewport)
-                        set_bool(mod, "show_render", not o.hide_viewport)
-            else:
-                self.report(
-                    {"WARNING"}, "MustardUI - Outfit Body has not been specified."
-                )
+            if body and rig_settings.outfits_global_mask:
+                update_outfit_body_masks(context, body, self.obj, not o.hide_viewport)
+                update_global_body_mask(body)
 
         # Apply to main object
         apply_visibility(obj)
 
         # Apply to children if shift is pressed
         if self.shift:
-            for child in obj.children:
-                if child.hide_viewport != obj.hide_viewport:
-                    apply_visibility(child)
+
+            def apply_visibility_recursive(parent, depth=0):
+                if depth >= 3:
+                    return
+                for child in parent.children:
+                    if child.hide_viewport != obj.hide_viewport:
+                        apply_visibility(child)
+                    apply_visibility_recursive(child, depth + 1)
+
+            apply_visibility_recursive(obj)
+
+        # ------------------- GLOBAL UPDATES ------------------- #
+        # Physics update
+        if physics_settings.enable_ui:
+            enable_physics_update(physics_settings, context)
+
+        # Update tags
+        if rig_settings.outfits_update_tag_on_switch:
+            arm.update_tag()
+
+            def update_tags_recursive(parent, depth=0):
+                if depth >= 3:
+                    return
+                parent.update_tag()
+                for child in parent.children:
+                    update_tags_recursive(child, depth + 1)
+
+            update_tags_recursive(obj)
+
+        # Extras
+        extras = rig_settings.extras_collection
+        hidden = None
+        if extras:
+            items = (
+                extras.all_objects
+                if rig_settings.outfit_config_subcollections
+                else extras.objects
+            )
+            hidden = all(x.hide_render for x in items)
+            set_bool(extras, "hide_viewport", hidden)
+            set_bool(extras, "hide_render", hidden)
+
+            # Exclude the Collection
+            lc = find_layer_collection(context.view_layer.layer_collection, extras)
+            if lc is not None:
+                set_bool(lc, "exclude", hidden)
 
         # ------------------- GLOBAL UPDATES ------------------- #
         # Physics update
@@ -203,19 +241,6 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             obj.update_tag()
             for child in obj.children:
                 child.update_tag()
-
-        # Extras collection visibility
-        extras = rig_settings.extras_collection
-        hidden = None
-        if extras:
-            items = (
-                extras.all_objects
-                if rig_settings.outfit_config_subcollections
-                else extras.objects
-            )
-            hidden = all(x.hide_render for x in items)
-            set_bool(extras, "hide_viewport", hidden)
-            set_bool(extras, "hide_render", hidden)
 
         # Armature collections
         if armature_settings.outfits:

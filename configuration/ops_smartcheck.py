@@ -2,12 +2,11 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
+from ..tools_creators.ops_optimize_mods import mask_vg_name
 
 
 def smartcheck_body_mask_from_vg(self, context, rig_settings):
     warnings = 0
-
-    mask_vg_name = "MustardUI - Mask"
 
     outfit_colls = [
         x.collection for x in rig_settings.outfits_collections if x.collection
@@ -458,10 +457,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                     elif m.type == "TRIANGULATE":
                         rig_settings.outfits_enable_global_triangulate = True
 
-            # Auto-create VERTEX_WEIGHT_MIX from body VGs matching outfit objects
-            if self.smartcheck_body_mask_from_vg:
-                warnings += smartcheck_body_mask_from_vg(self, context, rig_settings)
-
             # Hair
             if rig_settings.hair_collection is not None:
                 objects = []
@@ -487,6 +482,10 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                             rig_settings.hair_enable_global_solidify = True
                         elif m.type == "PARTICLE_SYSTEM":
                             rig_settings.hair_enable_global_particles = True
+
+        # Auto-create VERTEX_WEIGHT_MIX from body VGs matching outfit objects
+        if self.smartcheck_body_mask_from_vg:
+            warnings += smartcheck_body_mask_from_vg(self, context, rig_settings)
 
         # End of debug messages
         if addon_prefs.debug:
@@ -525,6 +524,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         row.prop(self, "reset_current_collections")
 
         col.prop(self, "smartcheck_settings")
+        col.prop(self, "smartcheck_custom_properties")
 
         box = layout.box()
         box.label(text="Mask", icon="MOD_MASK")

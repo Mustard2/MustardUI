@@ -100,11 +100,6 @@ def detect_material_zone(material_name, image_name, node_name):
     return ""
 
 
-# -------------------------
-# BASE EXTRACTION (CLEAN)
-# -------------------------
-
-
 def extract_base_name(image_name: str, tex_type: str, zone: str):
     # Remove .001 etc
     name = re.sub(r"\.\d+$", "", image_name).lower()

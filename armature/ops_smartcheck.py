@@ -138,6 +138,79 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
 
             found_type = "MHX"
 
+        # Generic keyword-based auto-selection for unrecognised rigs
+        else:
+            # Keywords that flag internal/infrastructure collections to skip
+            _SKIP = ("rig_bones", "detail_layer", "base_layer", "detail")
+            # (keyword, icon, default) — FK-only names are caught by the IK check below
+            _RULES = [
+                ("face", "USER", True),
+                ("jiggle", "", True),
+                ("ik", "", True),
+                ("fk", "", False),
+                ("spine", "", True),
+                ("hand", "", True),
+                ("root", "", True),
+                ("base", "", True),
+            ]
+            import re as _re
+
+            _MIRROR_RE = _re.compile(
+                r"(^[LR][_.]|[_.][LR]$|[_.][LR][_.]"
+                r"|\bright\b|\bleft\b"
+                r"|_right|_left|right_|left_)",
+                _re.IGNORECASE,
+            )
+            for coll in obj.collections_all:
+                n = coll.name.lower()
+                if any(kw in n for kw in _SKIP):
+                    continue
+                for keyword, icon, default in _RULES:
+                    if keyword in n:
+                        # FK-only collections default off even if spine/hand also
+                        # matches
+                        resolved_default = (
+                            False if ("fk" in n and "ik" not in n) else default
+                        )
+                        preset_bone_collections.append(
+                            (coll.name, "", icon, resolved_default)
+                        )
+                        if addon_prefs.debug:
+                            print(
+                                f"\nMustardUI - Smart Check - Keyword '{keyword}' "
+                                f"matched '{coll.name}'."
+                            )
+                        break
+
+            # Sort: face/head → arms → legs → rest
+            def _sort_key(entry):
+                n = entry[0].lower()
+                if any(kw in n for kw in ("face", "head")):
+                    return 0
+                if any(
+                    kw in n
+                    for kw in ("arm", "hand", "finger", "elbow", "shoulder", "wrist")
+                ):
+                    return 1
+                if any(
+                    kw in n
+                    for kw in ("spine", "torso", "chest", "back", "abdomen", "waist")
+                ):
+                    return 2
+                if any(
+                    kw in n
+                    for kw in ("leg", "foot", "feet", "toe", "knee", "hip", "thigh")
+                ):
+                    return 3
+                if any(kw in n for kw in ("root", "base")):
+                    return 4
+                return 5
+
+            preset_bone_collections.sort(key=_sort_key)
+
+            if any(_MIRROR_RE.search(c.name) for c in obj.collections_all):
+                obj.MustardUI_ArmatureSettings.mirror = True
+
         # Apply preset
         if len(preset_bone_collections) > 0:
             obj.MustardUI_ArmatureSettings.mirror = True
@@ -207,6 +280,12 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
                     f"MustardUI - Smart Check found a '{found_type}' armature but no "
                     f"viable collection.",
                 )
+        elif found_type == "" and found_colls > 0 and not outfits:
+            self.report(
+                {"INFO"},
+                f"MustardUI - Smart Check auto-selected {found_colls} bone "
+                f"collection(s) for an unknown Armature type.",
+            )
         elif outfits:
             self.report(
                 {"INFO"}, "MustardUI - Outfits Switcher bone collections were added."
