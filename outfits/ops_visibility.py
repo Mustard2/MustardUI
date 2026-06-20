@@ -217,10 +217,12 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         if rig_settings.outfits_update_tag_on_switch:
             arm.update_tag()
 
-            def update_tags_recursive(parent):
+            def update_tags_recursive(parent, depth=0):
+                if depth >= 3:
+                    return
                 parent.update_tag()
                 for child in parent.children:
-                    update_tags_recursive(child)
+                    update_tags_recursive(child, depth + 1)
 
             update_tags_recursive(obj)
 
