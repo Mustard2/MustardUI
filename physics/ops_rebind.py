@@ -334,7 +334,10 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
         objects = [rig_settings.model_body]
         outfit_colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
         for c in outfit_colls:
-            for obj in [x for x in c.objects if x.type == "MESH"]:
+            outfit_objects = (
+                c.all_objects if rig_settings.outfit_config_subcollections else c.objects
+            )
+            for obj in [x for x in outfit_objects if x.type == "MESH"]:
                 objects.append(obj)
         if rig_settings.extras_collection is not None:
             extras_objects = (
