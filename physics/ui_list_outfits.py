@@ -19,8 +19,7 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
             res
             and arm.mustardui_physics_items_outfits_uilist_index > -1
             and len(physics_settings.items) > 0
-            and physics_settings.items[arm.mustardui_physics_items_uilist_index].object
-            is not None
+            and physics_settings.items[arm.mustardui_physics_items_uilist_index].object is not None
         )
 
     def execute(self, context):
@@ -51,9 +50,7 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
 class MUSTARDUI_UL_PhysicsItems_Outfits_UIList(bpy.types.UIList):
     """UIList for Physics Items"""
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.object:
             layout.prop(item.object, "name", text="", emboss=False, translate=False)
         else:

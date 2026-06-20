@@ -7,9 +7,7 @@ from .settings_morph import MustardUI_Morph, cp_source
 class MustardUI_Morph_Section(bpy.types.PropertyGroup):
     # UI Settings
     name: bpy.props.StringProperty(name="Name")
-    icon: bpy.props.EnumProperty(
-        items=mustardui_icon_list, name="Icon", description="Section Icon"
-    )
+    icon: bpy.props.EnumProperty(items=mustardui_icon_list, name="Icon", description="Section Icon")
 
     # Collection for storing Morphs
     morphs: bpy.props.CollectionProperty(type=MustardUI_Morph)

@@ -30,16 +30,13 @@ class MustardUI_CleanModel(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     remove_body_cp: BoolProperty(default=False, name="Remove Body Custom Properties")
-    remove_outfit_cp: BoolProperty(
-        default=False, name="Remove Outfit Custom Properties"
-    )
+    remove_outfit_cp: BoolProperty(default=False, name="Remove Outfit Custom Properties")
     remove_hair_cp: BoolProperty(default=False, name="Remove Hair Custom Properties")
 
     remove_unselected_outfits: BoolProperty(
         default=False,
         name="Delete Unselected Outfits",
-        description="Remove all the outfits that are not selected in the UI ("
-        "Outfits list)",
+        description="Remove all the outfits that are not selected in the UI (Outfits list)",
     )
     remove_unselected_extras: BoolProperty(
         default=False,
@@ -82,9 +79,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         name="Remove Shape Keys",
         description="Remove selected morphs shape keys",
     )
-    remove_morphs_jcms: BoolProperty(
-        default=False, name="Remove JCMs", description="Remove JCMs"
-    )
+    remove_morphs_jcms: BoolProperty(default=False, name="Remove JCMs", description="Remove JCMs")
     remove_morphs_facs: BoolProperty(
         default=False, name="Remove FACS", description="Remove FACS (Advanced Emotions)"
     )
@@ -141,18 +136,12 @@ class MustardUI_CleanModel(bpy.types.Operator):
         check_pJCM = "pJCM" not in string_cmp or self.remove_morphs_jcms
         check_facs = "facs" not in string_cmp or self.remove_morphs_facs
 
-        return (
-            (string == string_cmp or check_eCTRL or check_eJCM)
-            and check_pJCM
-            and check_facs
-        )
+        return (string == string_cmp or check_eCTRL or check_eJCM) and check_pJCM and check_facs
 
     def locked_outfits_collections(self, rig_settings):
 
         locked_objects = set()
-        for coll in [
-            x for x in rig_settings.outfits_collections if x.collection is not None
-        ]:
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 coll.collection.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -212,10 +201,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 if obj.animation_data is not None:
                     drivers = obj.animation_data.drivers
                     for driver in drivers:
-                        if (
-                            driver.driver.expression == "0.0"
-                            or driver.driver.expression == "-0.0"
-                        ):
+                        if driver.driver.expression == "0.0" or driver.driver.expression == "-0.0":
                             drivers.remove(driver)
                             null_drivers_removed = null_drivers_removed + 1
                 if obj.data.shape_keys is not None:
@@ -301,11 +287,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             for collection in [
                 x
-                for x in [
-                    y
-                    for y in rig_settings.outfits_collections
-                    if y.collection is not None
-                ]
+                for x in [y for y in rig_settings.outfits_collections if y.collection is not None]
                 if x.collection is not None
             ]:
                 items = (
@@ -326,10 +308,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     if obj.type == "MESH":
                         objects.append(obj)
             for obj in context.scene.objects:
-                if (
-                    obj.find_armature() == rig_settings.model_armature_object
-                    and obj.type == "MESH"
-                ):
+                if obj.find_armature() == rig_settings.model_armature_object and obj.type == "MESH":
                     objects.append(obj)
 
             # Add Children to Objects
@@ -348,9 +327,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         for driver in drivers:
                             words = driver.data_path.split('"')
                             for cp in props_removed:
-                                if words[0] == "key_blocks[" and self.check_removal(
-                                    cp, words[1]
-                                ):
+                                if words[0] == "key_blocks[" and self.check_removal(cp, words[1]):
                                     drivers.remove(driver)
                                     morphs_drivers_removed = morphs_drivers_removed + 1
                                     break
@@ -359,9 +336,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                             for cp in props_removed:
                                 if self.check_removal(cp, sk.name):
                                     obj.shape_key_remove(sk)
-                                    morphs_shapekeys_removed = (
-                                        morphs_shapekeys_removed + 1
-                                    )
+                                    morphs_shapekeys_removed = morphs_shapekeys_removed + 1
                                     break
 
                 obj.update_tag()
@@ -394,9 +369,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             # Remove drivers from bones
             for bone in [
-                x
-                for x in rig_settings.model_armature_object.pose.bones
-                if "(drv)" in x.name
+                x for x in rig_settings.model_armature_object.pose.bones if "(drv)" in x.name
             ]:
                 bone.driver_remove("location")
                 bone.driver_remove("rotation_euler")
@@ -438,9 +411,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             objects = [rig_settings.model_body, rig_settings.model_body.data]
 
             dd_colls = [
-                x.collection
-                for x in rig_settings.outfits_collections
-                if x.collection is not None
+                x.collection for x in rig_settings.outfits_collections if x.collection is not None
             ]
             if rig_settings.extras_collection is not None:
                 dd_colls.append(rig_settings.extras_collection)
@@ -449,9 +420,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             for col in dd_colls:
                 items = (
-                    col.all_objects
-                    if rig_settings.outfit_config_subcollections
-                    else col.objects
+                    col.all_objects if rig_settings.outfit_config_subcollections else col.objects
                 )
                 for obj in [x for x in items if x is not None]:
                     objects.append(obj)
@@ -465,16 +434,12 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         items_to_remove.append(k)
                 for k in items_to_remove:
                     diffeomorphic_data_deleted = (
-                        diffeomorphic_data_deleted
-                        + remove_diffeomorphic_data_result(obj, k)
+                        diffeomorphic_data_deleted + remove_diffeomorphic_data_result(obj, k)
                     )
                 obj.update_tag()
 
             if addon_prefs.debug:
-                print(
-                    "  Diffeomorphic Data Blocks removed: "
-                    + str(diffeomorphic_data_deleted)
-                )
+                print("  Diffeomorphic Data Blocks removed: " + str(diffeomorphic_data_deleted))
 
         # Remove unselected outfits
         if self.remove_unselected_outfits:
@@ -538,9 +503,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     i += 1
 
                 context.scene.mustardui_outfits_uilist_index = i
-                bpy.ops.mustardui.delete_outfit(
-                    is_config=True, delete_cp=self.remove_dangling_cp
-                )
+                bpy.ops.mustardui.delete_outfit(is_config=True, delete_cp=self.remove_dangling_cp)
                 outfits_deleted = outfits_deleted + 1
 
             rig_settings.outfits_list = current_outfit
@@ -577,10 +540,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             # Firstly set the custom property to their default value
             for i, cp in enumerate(outfit_cp):
-                if (
-                    cp.outfit == rig_settings.extras_collection
-                    and cp.outfit_piece in objs
-                ):
+                if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
                     mustardui_reassign_default(arm, outfit_cp, i, addon_prefs)
 
             # Update everything
@@ -592,10 +552,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if self.remove_dangling_cp:
                 to_remove = []
                 for i, cp in enumerate(outfit_cp):
-                    if (
-                        cp.outfit == rig_settings.extras_collection
-                        and cp.outfit_piece in objs
-                    ):
+                    if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
                         mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
                         to_remove.append(i)
                 for i in reversed(to_remove):
@@ -629,11 +586,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         # Remove unselected hair
         if rig_settings.hair_collection is not None and self.remove_unselected_hair:
             current_hair = rig_settings.hair_list
-            objs = [
-                x
-                for x in rig_settings.hair_collection.objects
-                if current_hair not in x.name
-            ]
+            objs = [x for x in rig_settings.hair_collection.objects if current_hair not in x.name]
 
             # Remove dangling Physics Items first
             if self.remove_dangling_pi:
@@ -752,13 +705,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
         col = box.column(align=True)
         col.label(text="Notes:")
         col.label(
-            text="Read the descriptions of all buttons (keep the mouse on the "
-            "buttons).",
+            text="Read the descriptions of all buttons (keep the mouse on the buttons).",
             icon="DOT",
         )
         col.label(
-            text="Do not use while producing, but before starting a project with "
-            "the model.",
+            text="Do not use while producing, but before starting a project with the model.",
             icon="DOT",
         )
         col.label(
@@ -838,8 +789,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if self.remove_diffeomorphic_data:
                 col2 = col.column(align=True)
                 col2.label(
-                    text="After cleaning, Diffeomorphic tools might now work for this "
-                    "model!",
+                    text="After cleaning, Diffeomorphic tools might now work for this model!",
                     icon="ERROR",
                 )
                 col2.label(

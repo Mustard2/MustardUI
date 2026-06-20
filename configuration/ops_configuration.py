@@ -44,10 +44,7 @@ class MustardUI_Configuration(bpy.types.Operator):
 
             # Allocate the armature object
             if not obj.MustardUI_created:
-                if (
-                    context.active_object is not None
-                    and context.active_object.type == "ARMATURE"
-                ):
+                if context.active_object is not None and context.active_object.type == "ARMATURE":
                     rig_settings.model_armature_object = context.active_object
                 else:
                     self.report(
@@ -112,12 +109,8 @@ class MustardUI_Configuration(bpy.types.Operator):
                     and tools_settings.autoeyelid_driver_type == "MORPH"
                 ):
                     try:
-                        rig_settings.model_armature_object[
-                            tools_settings.autoeyelid_morph
-                        ] = float(
-                            rig_settings.model_armature_object[
-                                tools_settings.autoeyelid_morph
-                            ]
+                        rig_settings.model_armature_object[tools_settings.autoeyelid_morph] = float(
+                            rig_settings.model_armature_object[tools_settings.autoeyelid_morph]
                         )
                     except Exception:
                         self.report(
@@ -131,20 +124,12 @@ class MustardUI_Configuration(bpy.types.Operator):
             rig_settings.model_rig_type = mustardui_detect_rig_type(
                 obj, rig_settings.model_armature_object
             )
-            print(
-                "MustardUI - The rig has been recognized as "
-                + rig_settings.model_rig_type
-            )
+            print("MustardUI - The rig has been recognized as " + rig_settings.model_rig_type)
 
             # Check for errors in the list selection
-            if (
-                len(rig_settings.outfits_list_make(context)) > 0
-                and rig_settings.outfits_list == ""
-            ):
+            if len(rig_settings.outfits_list_make(context)) > 0 and rig_settings.outfits_list == "":
                 try:
-                    rig_settings.hair_list = rig_settings.outfits_list_make(context)[0][
-                        0
-                    ]
+                    rig_settings.hair_list = rig_settings.outfits_list_make(context)[0][0]
                     warnings = warnings + 1
                     print("MustardUI - Configuration Warning - Fixed outfit_list index")
                 except Exception:
@@ -156,10 +141,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                             "the UI and re-add it"
                         )
 
-            if (
-                rig_settings.hair_collection is not None
-                and rig_settings.hair_list == ""
-            ):
+            if rig_settings.hair_collection is not None and rig_settings.hair_list == "":
                 if (
                     len(
                         [
@@ -173,9 +155,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                     try:
                         object_active = store_current_hair(rig_settings)
                         set_selected_hair(context, rig_settings, object_active)
-                        print(
-                            "MustardUI - Configuration Warning - Fixed hair_list index"
-                        )
+                        print("MustardUI - Configuration Warning - Fixed hair_list index")
                     except Exception:
                         warnings = warnings + 1
                         if addon_prefs.debug:

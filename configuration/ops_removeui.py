@@ -25,8 +25,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
     delete_objects: BoolProperty(
         default=False,
         name="Delete Objects",
-        description="All Objects are deleted from the file, including the main "
-        "Armature",
+        description="All Objects are deleted from the file, including the main Armature",
     )
     delete_bones_custom_shapes: BoolProperty(
         default=True,
@@ -149,8 +148,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         self.report(
             {"INFO"},
-            "MustardUI - MustardUI deletion complete. Switched to Viewport Model "
-            "Selection",
+            "MustardUI - MustardUI deletion complete. Switched to Viewport Model Selection",
         )
 
         return {"FINISHED"}

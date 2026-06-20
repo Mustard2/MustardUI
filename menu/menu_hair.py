@@ -80,18 +80,12 @@ def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
     # Hair custom properties
     if rig_settings.outfit_custom_properties_name_order:
         custom_properties_obj = sorted(
-            [
-                x
-                for x in arm.MustardUI_CustomPropertiesHair
-                if x.hair == obj and not x.hidden
-            ],
+            [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj and not x.hidden],
             key=lambda x: x.name,
         )
     else:
         custom_properties_obj = [
-            x
-            for x in arm.MustardUI_CustomPropertiesHair
-            if x.hair == obj and not x.hidden
+            x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj and not x.hidden
         ]
 
     if len(custom_properties_obj) > 0:
@@ -192,11 +186,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
         if rig_settings.hair_collection is not None:
             hair_num = len(
-                [
-                    x
-                    for x in rig_settings.hair_collection.objects
-                    if x.type in {"MESH", "CURVES"}
-                ]
+                [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
             )
 
             if hair_num > 1:
@@ -252,27 +242,19 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                                 obj.MustardUI_OutfitSettings,
                                 "physics",
                                 text="",
-                                icon="PHYSICS"
-                                if mtype != "COLLISION"
-                                else "MOD_PHYSICS",
+                                icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS",
                             )
                             break
 
                 if hair_num > 0:
                     if rig_settings.hair_custom_properties_name_order:
                         custom_properties_obj = sorted(
-                            [
-                                x
-                                for x in arm.MustardUI_CustomPropertiesHair
-                                if x.hair == obj
-                            ],
+                            [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj],
                             key=lambda x: x.name,
                         )
                     else:
                         custom_properties_obj = [
-                            x
-                            for x in arm.MustardUI_CustomPropertiesHair
-                            if x.hair == obj
+                            x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj
                         ]
                     if len(custom_properties_obj) > 0:
                         row.prop(
@@ -294,9 +276,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 box.label(text="An error occurred.", icon="ERROR")
                 box.label(text="The UI Hair data seems corrupted.", icon="BLANK1")
                 if addon_prefs.developer:
-                    box.label(
-                        text="Enter and exit Configuration mode to fix.", icon="BLANK1"
-                    )
+                    box.label(text="Enter and exit Configuration mode to fix.", icon="BLANK1")
                     box.operator(
                         "mustardui.configuration",
                         text="Enter Configuration Mode",
@@ -351,9 +331,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.enabled = rig_settings.hair_show
         if any("Dynamic" in x.particle_system.name for x in mod_particle_system):
-            status = any(
-                x.particle_system.use_hair_dynamics for x in mod_particle_system
-            )
+            status = any(x.particle_system.use_hair_dynamics for x in mod_particle_system)
             op = row.operator(
                 "mustardui.physics_particlehair_switch",
                 text="",
@@ -411,9 +389,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
             row.label(text=format_dynamic_name(mod), icon="PARTICLES")
             row2 = row.row(align=True)
             if "Dynamic" in mod.particle_system.name:
-                row2.prop(
-                    mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS"
-                )
+                row2.prop(mod.particle_system, "use_hair_dynamics", text="", icon="PHYSICS")
             row2.prop(mod, "show_viewport", text="")
             row2.prop(mod, "show_render", text="")
 
@@ -472,19 +448,13 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
 
             for obj in eitems:
                 row = col.row(align=True)
-                if not draw_hair_piece(
-                    row, obj, arm, rig_settings, physics_settings, settings
-                ):
+                if not draw_hair_piece(row, obj, arm, rig_settings, physics_settings, settings):
                     row.label(text="", icon="BLANK1")
 
         # Particle systems
         if rig_settings.particle_systems_enable:
             mod_particle_system = sorted(
-                [
-                    x
-                    for x in rig_settings.model_body.modifiers
-                    if x.type == "PARTICLE_SYSTEM"
-                ],
+                [x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"],
                 key=lambda x: x.particle_system.name,
             )
             if len(mod_particle_system) > 0 and not box_already_allocated:
@@ -533,9 +503,7 @@ class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = rig_settings.hair_show
 
-        hair_global_properties = [
-            x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None
-        ]
+        hair_global_properties = [x for x in arm.MustardUI_CustomPropertiesHair if x.hair is None]
         mustardui_custom_properties_print(
             arm,
             settings,
@@ -568,11 +536,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
         )
         if rig_settings.hair_collection is not None:
             hair_num = len(
-                [
-                    x
-                    for x in rig_settings.hair_collection.objects
-                    if x.type in {"MESH", "CURVES"}
-                ]
+                [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
             )
             return res if (global_settings_avail and hair_num) else False
 

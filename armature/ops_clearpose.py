@@ -52,9 +52,7 @@ class MustardUI_Armature_ClearPose(bpy.types.Operator):
         if warnings < 1:
             self.report({"INFO"}, "MustardUI - Pose cleared successfully")
         else:
-            self.report(
-                {"ERROR"}, "MustardUI - An error occurred while clearing the pose"
-            )
+            self.report({"ERROR"}, "MustardUI - An error occurred while clearing the pose")
 
         return {"FINISHED"}
 

@@ -48,16 +48,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "outfit_switch_shape_keys_disable")
         col.prop(rig_settings, "outfits_update_tag_on_switch")
 
-        if (
-            len(
-                [
-                    x
-                    for x in rig_settings.outfits_collections
-                    if x.collection is not None
-                ]
-            )
-            > 0
-        ):
+        if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
             box = layout.box()
             row = box.row()
             row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
@@ -82,9 +73,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             opup = col2.operator("mustardui.outfits_switch", icon="TRIA_UP", text="")
             opup.direction = "UP"
 
-            opdown = col2.operator(
-                "mustardui.outfits_switch", icon="TRIA_DOWN", text=""
-            )
+            opdown = col2.operator("mustardui.outfits_switch", icon="TRIA_DOWN", text="")
             opdown.direction = "DOWN"
 
             col.separator()
@@ -102,9 +91,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             ).right_click_call = False
 
             col2 = col.column(align=True)
-            op = col2.operator(
-                "mustardui.physics_outfits_setup", icon="PHYSICS", text=""
-            )
+            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
 
             outfit_collection = rig_settings.outfits_collections[
                 scene.mustardui_outfits_uilist_index
@@ -127,9 +114,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
 
             if rig_settings.hair_collection is not None:
                 box.prop(
-                    rig_settings.outfits_collections[
-                        scene.mustardui_outfits_uilist_index
-                    ],
+                    rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index],
                     "hair",
                 )
 
@@ -167,20 +152,14 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
                 ).type = "OUTFIT"
                 col.separator()
                 col2 = col.column(align=True)
-                opup = col2.operator(
-                    "mustardui.property_switch", icon="TRIA_UP", text=""
-                )
+                opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
                 opup.direction = "UP"
                 opup.type = "OUTFIT"
-                opdown = col2.operator(
-                    "mustardui.property_switch", icon="TRIA_DOWN", text=""
-                )
+                opdown = col2.operator("mustardui.property_switch", icon="TRIA_DOWN", text="")
                 opdown.direction = "DOWN"
                 opdown.type = "OUTFIT"
                 col.separator()
-                col.operator(
-                    "mustardui.property_remove", icon="X", text=""
-                ).type = "OUTFIT"
+                col.operator("mustardui.property_remove", icon="X", text="").type = "OUTFIT"
 
                 col = box.column(align=True)
                 col.prop(rig_settings, "outfit_custom_properties_icons")
@@ -201,9 +180,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         row = box.row()
         row.prop(rig_settings, "extras_collection", text="")
         row2 = row.row(align=True)
-        row2.enabled = (
-            rig_settings.extras_collection is not None and physics_settings.enable_ui
-        )
+        row2.enabled = rig_settings.extras_collection is not None and physics_settings.enable_ui
         op = row2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
         if rig_settings.extras_collection:
             op.single_outfit = rig_settings.extras_collection.name

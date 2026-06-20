@@ -14,9 +14,7 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return (
-            res and morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
-        )
+        return res and morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
 
     def execute(self, context):
         poll, arm = mustardui_active_object(context, config=0)
@@ -32,8 +30,7 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
             has_key_blocks = True if obj.data.shape_keys.key_blocks else False
             has_animation_data = (
                 True
-                if obj.data.shape_keys.animation_data
-                and obj.data.shape_keys.animation_data.drivers
+                if obj.data.shape_keys.animation_data and obj.data.shape_keys.animation_data.drivers
                 else False
             )
 
@@ -48,11 +45,7 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
 
                 for morph in section.morphs:
                     # Skip Diffeomorphic emotion units and correctives
-                    if (
-                        "facs" in morph.path
-                        or "jcm" in morph.path
-                        or "body_cbs" in morph.path
-                    ):
+                    if "facs" in morph.path or "jcm" in morph.path or "body_cbs" in morph.path:
                         continue
 
                     # Shape Keys
@@ -65,15 +58,11 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
                     # Drivers
                     if has_animation_data:
                         for fcurve in obj.data.shape_keys.animation_data.drivers:
-                            if (
-                                not fcurve.data_path
-                                == f'key_blocks["{morph.path}"].value'
-                            ):
+                            if not fcurve.data_path == f'key_blocks["{morph.path}"].value':
                                 continue
-                            if (
-                                has_key_blocks
-                                and abs(key_block[morph.path].value) < 0.001
-                            ) or (not has_key_blocks):
+                            if (has_key_blocks and abs(key_block[morph.path].value) < 0.001) or (
+                                not has_key_blocks
+                            ):
                                 set_bool(fcurve, "mute", enable)
 
         morphs_settings.morphs_optimized = enable

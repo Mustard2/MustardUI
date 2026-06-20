@@ -118,16 +118,13 @@ class MustardUI_QuickSetup_SmartCheck(bpy.types.Operator):
         if not settings.viewport_model_selection:
             settings.panel_model_selection_armature = arm
         try:
-            bpy.ops.mustardui.armature_smartcheck(
-                "EXEC_DEFAULT", reset_current_collections=True
-            )
+            bpy.ops.mustardui.armature_smartcheck("EXEC_DEFAULT", reset_current_collections=True)
         except RuntimeError:
             pass
 
         self.report(
             {"INFO"},
-            f"MustardUI - Found {len(collections)} collection(s), "
-            f"{len(hair_objs)} hair object(s).",
+            f"MustardUI - Found {len(collections)} collection(s), {len(hair_objs)} hair object(s).",
         )
         return {"FINISHED"}
 
@@ -169,8 +166,7 @@ class MustardUI_QuickSetup(bpy.types.Operator):
         if rig_settings.model_body is None:
             self.report(
                 {"ERROR"},
-                "MustardUI - No body mesh found. Select one in the Body field and "
-                "try again.",
+                "MustardUI - No body mesh found. Select one in the Body field and try again.",
             )
             return {"FINISHED"}
 
@@ -203,9 +199,7 @@ class MustardUI_QuickSetup(bpy.types.Operator):
                 entry.collection = item.collection
                 existing.append(item.collection)
 
-            lc = find_layer_collection(
-                context.view_layer.layer_collection, item.collection
-            )
+            lc = find_layer_collection(context.view_layer.layer_collection, item.collection)
             if lc and lc.exclude:
                 lc.exclude = False
 
@@ -231,9 +225,7 @@ class MustardUI_QuickSetup(bpy.types.Operator):
                         hair_coll.objects.link(obj)
 
                 rig_settings.hair_collection = hair_coll
-                lc = find_layer_collection(
-                    context.view_layer.layer_collection, hair_coll
-                )
+                lc = find_layer_collection(context.view_layer.layer_collection, hair_coll)
                 if lc and lc.exclude:
                     lc.exclude = False
 

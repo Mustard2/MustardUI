@@ -68,17 +68,13 @@ class MustardUI_ToolsCreators_Naming(bpy.types.Operator):
 
         # Physics items
         for pi in [
-            x
-            for x in physics_settings.items
-            if x.object is not None and x.object.data is not None
+            x for x in physics_settings.items if x.object is not None and x.object.data is not None
         ]:
             rename_object(pi.object)
 
         # Outfits
         for coll in [
-            x.collection
-            for x in rig_settings.outfits_collections
-            if x.collection is not None
+            x.collection for x in rig_settings.outfits_collections if x.collection is not None
         ]:
             items = coll.all_objects
             for obj in [x for x in items if x is not None and x.data is not None]:

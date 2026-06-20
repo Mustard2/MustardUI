@@ -58,9 +58,7 @@ class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
             # Ensure the object is a mesh
             if obj.type == "MESH":
                 # List to hold the names of the cloth modifiers to be removed
-                cloth_modifiers = [
-                    mod.name for mod in obj.modifiers if mod.type == "CLOTH"
-                ]
+                cloth_modifiers = [mod.name for mod in obj.modifiers if mod.type == "CLOTH"]
                 # Remove each cloth modifier
                 for mod_name in cloth_modifiers:
                     obj.modifiers.remove(obj.modifiers[mod_name])
@@ -285,9 +283,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             return name
 
         # Assign names
-        base_name = (
-            generate_unique_name(self.name) if self.name != "" else "Physics_Proxy"
-        )
+        base_name = generate_unique_name(self.name) if self.name != "" else "Physics_Proxy"
         corrective_name = base_name
         surfdef_name = base_name + " Deform"
 
@@ -428,17 +424,13 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Create a vertex group for this region
             group_name = f"Jiggle Region {idx + 1}"
             region_vertex_group = create_vertex_group(obj, group_name, island)
-            region_vertex_groups.append(
-                region_vertex_group.name
-            )  # Store the group name
+            region_vertex_groups.append(region_vertex_group.name)  # Store the group name
             # Add vertices from this island to the combined group
             combined_group_verts.update(island)
 
         # Create the combined vertex group for all regions
         combined_group_name = "Combined Jiggle Groups"
-        combined_vertex_group = create_vertex_group(
-            obj, combined_group_name, combined_group_verts
-        )
+        combined_vertex_group = create_vertex_group(obj, combined_group_name, combined_group_verts)
 
         # Clean up the bmesh
         bm.free()
@@ -456,9 +448,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             bpy.ops.object.join()
             merged_proxy = bpy.context.object
             # Add a single Surface Deform modifier targeting the merged proxy
-            add_surface_deform_modifier(
-                obj, merged_proxy, combined_vertex_group.name, surfdef_name
-            )
+            add_surface_deform_modifier(obj, merged_proxy, combined_vertex_group.name, surfdef_name)
             # Select the merged proxy
             bpy.ops.object.select_all(action="DESELECT")
             merged_proxy.select_set(True)
@@ -466,12 +456,8 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Add a Surface Deform modifier for each individual proxy using the
             # correct vertex group for each
             for idx, proxy in enumerate(created_proxies):
-                group_name = region_vertex_groups[
-                    idx
-                ]  # Use the dynamically created vertex group
-                add_surface_deform_modifier(
-                    obj, proxy, group_name, f"{surfdef_name} {idx + 1}"
-                )
+                group_name = region_vertex_groups[idx]  # Use the dynamically created vertex group
+                add_surface_deform_modifier(obj, proxy, group_name, f"{surfdef_name} {idx + 1}")
             # Select all proxies
             bpy.ops.object.select_all(action="DESELECT")
             for proxy in created_proxies:
@@ -512,15 +498,11 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     )
                     new_modifier.object = armature_modifier.object
                     new_modifier.use_vertex_groups = armature_modifier.use_vertex_groups
-                    new_modifier.use_bone_envelopes = (
-                        armature_modifier.use_bone_envelopes
-                    )
+                    new_modifier.use_bone_envelopes = armature_modifier.use_bone_envelopes
                     new_modifier.use_deform_preserve_volume = (
                         armature_modifier.use_deform_preserve_volume
                     )
-                    new_modifier.use_multi_modifier = (
-                        armature_modifier.use_multi_modifier
-                    )
+                    new_modifier.use_multi_modifier = armature_modifier.use_multi_modifier
                     # Move the new modifier to the top of the stack
                     bpy.context.view_layer.objects.active = target
                     for _ in range(len(target.modifiers)):
@@ -578,9 +560,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             all_vertex_weights = []
             for island_verts in all_islands:
                 # Collect world coordinates and vertex indices for the current island
-                world_coords = [
-                    (v.index, obj.matrix_world @ v.co) for v in island_verts
-                ]
+                world_coords = [(v.index, obj.matrix_world @ v.co) for v in island_verts]
                 # Calculate min and max Y coordinates in world space for this island
                 if self.object_direction in ["+Y", "-Y"]:
                     bbox_min = min(world_coords, key=lambda vc: vc[1].y)[1].y
@@ -669,9 +649,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         initial_selected_objects = bpy.context.selected_objects
         initial_active_object = bpy.context.view_layer.objects.active
 
-        selected_objects = [
-            obj for obj in bpy.context.selected_objects if obj.type == "MESH"
-        ]
+        selected_objects = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
         active_object = bpy.context.view_layer.objects.active
 
         if selected_objects:
@@ -691,9 +669,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                         )
 
         # Restore the original selection and mode
-        restore_selection_and_mode(
-            initial_mode, initial_selected_objects, initial_active_object
-        )
+        restore_selection_and_mode(initial_mode, initial_selected_objects, initial_active_object)
 
         # Restore Armature Pose States
         for obj in bpy.context.scene.objects:
@@ -750,9 +726,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     )
             else:
                 if addon_prefs.debug:
-                    print(
-                        f"Cloth or Corrective Smooth modifier not found for {obj.name}."
-                    )
+                    print(f"Cloth or Corrective Smooth modifier not found for {obj.name}.")
 
         # Move Cloth for selected Objects
         selected_objects = bpy.context.selected_objects
@@ -778,10 +752,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                 add_item = physics_settings.items.add()
                 add_item.object = obj
                 add_item.type = "CAGE"
-                if (
-                    self.parent_to_model
-                    and rig_settings.model_armature_object is not None
-                ):
+                if self.parent_to_model and rig_settings.model_armature_object is not None:
                     parent = rig_settings.model_armature_object
                     obj.parent = parent
                     obj.matrix_parent_inverse = parent.matrix_world.inverted()

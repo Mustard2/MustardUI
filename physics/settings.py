@@ -29,9 +29,7 @@ def update_frame(self, context):
         context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
 
     # Update all objects linked to physics items
-    for pi in [
-        x for x in self.items if x.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]
-    ]:
+    for pi in [x for x in self.items if x.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]]:
         obj = pi.object
         update_modifiers(self, obj)
 
@@ -42,9 +40,7 @@ def update_frame(self, context):
     rig_settings = arm.MustardUI_RigSettings
 
     if rig_settings.outfit_physics_support:
-        for coll in [
-            x for x in rig_settings.outfits_collections if x.collection is not None
-        ]:
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 coll.collection.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -54,15 +50,11 @@ def update_frame(self, context):
                 update_modifiers(self, obj)
 
         if rig_settings.extras_collection is not None:
-            for obj in [
-                x for x in rig_settings.extras_collection.objects if x.type == "MESH"
-            ]:
+            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
                 update_modifiers(self, obj)
 
     if rig_settings.hair_collection is not None:
-        for obj in [
-            x for x in rig_settings.hair_collection.objects if x.type == "MESH"
-        ]:
+        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
             update_modifiers(self, obj)
 
     return

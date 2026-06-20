@@ -11,11 +11,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         if not self.developer:
             self.debug = False
         for arm in [x for x in bpy.data.armatures]:
-            if (
-                not arm.MustardUI_enable
-                and arm.MustardUI_created
-                and not self.developer
-            ):
+            if not arm.MustardUI_enable and arm.MustardUI_created and not self.developer:
                 arm.MustardUI_enable = True
 
     # Maintenance tools
@@ -77,9 +73,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
         row = layout.row(align=True)
         row.operator("wm.url_open", text="GitHub", icon="URL").url = self.url_MustardUI
-        row.operator(
-            "wm.url_open", text="User Guide", icon="URL"
-        ).url = self.url_MustardUI_Tutorial
+        row.operator("wm.url_open", text="User Guide", icon="URL").url = self.url_MustardUI_Tutorial
         row.operator(
             "wm.url_open", text="Report Bug", icon="URL"
         ).url = self.url_MustardUI_ReportBug
@@ -89,9 +83,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             box.label(text="Debug", icon="QUESTION_LARGE")
             col = box.column(align=True)
             col.operator("mustardui.fix_missing_ui", icon="GHOST_ENABLED")
-            col.operator(
-                "mustardui.debug_log", text="Create Log file", icon="FILE_TEXT"
-            )
+            col.operator("mustardui.debug_log", text="Create Log file", icon="FILE_TEXT")
 
 
 def register():

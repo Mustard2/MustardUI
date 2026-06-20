@@ -16,9 +16,7 @@ def set_object_visibility(obj, visible, rig_settings):
     set_bool(obj, "hide_viewport", not visible)
     set_bool(obj, "hide_render", not visible)
 
-    for mod in [
-        x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]
-    ]:
+    for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]]:
         if mod.type in ["PARTICLE_SYSTEM", "NODES"]:
             set_bool(mod, "show_viewport", visible)
             set_bool(mod, "show_render", visible)
@@ -96,9 +94,7 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         hair_name = self.obj_name
 
         if not hair_extras_collection:
-            self.report(
-                {"WARNING"}, "Hair Extras collection not defined in Rig Settings."
-            )
+            self.report({"WARNING"}, "Hair Extras collection not defined in Rig Settings.")
             return {"CANCELLED"}
 
         obj = context.scene.objects[hair_name]
@@ -113,9 +109,7 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         hair_extras_collection.hide_render = hidden
 
         # Exclude the Collection
-        lc = find_layer_collection(
-            context.view_layer.layer_collection, hair_extras_collection
-        )
+        lc = find_layer_collection(context.view_layer.layer_collection, hair_extras_collection)
         if lc is not None:
             set_bool(lc, "exclude", hidden)
 

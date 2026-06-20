@@ -105,9 +105,7 @@ class MustardUI_Link_Add(bpy.types.Operator):
 class MUSTARDUI_UL_Links_UIList(bpy.types.UIList):
     """UIList for links"""
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row()
         row.prop(item, "name", text="", emboss=False, translate=False)
         row.prop(item, "url", text="", emboss=False, translate=False)

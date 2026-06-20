@@ -6,9 +6,7 @@ from ..model_selection.active_object import mustardui_active_object
 # Outfit information
 class MustardUI_Outfit(bpy.types.PropertyGroup):
     # Collection storing the outfit pieces
-    collection: bpy.props.PointerProperty(
-        name="Outfit Collection", type=bpy.types.Collection
-    )
+    collection: bpy.props.PointerProperty(name="Outfit Collection", type=bpy.types.Collection)
 
     def poll_hair(self, object):
         context = bpy.context
@@ -18,11 +16,7 @@ class MustardUI_Outfit(bpy.types.PropertyGroup):
         if rig_settings.hair_collection is None:
             return False
 
-        objects = [
-            x
-            for x in rig_settings.hair_collection.objects
-            if x.type in {"MESH", "CURVES"}
-        ]
+        objects = [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
         return object in objects
 
     hair: bpy.props.PointerProperty(
@@ -112,9 +106,7 @@ def register():
         type=MustardUI_OutfitSettings
     )
 
-    bpy.types.Object.MustardUI_outfit_visibility = bpy.props.BoolProperty(
-        default=False, name=""
-    )
+    bpy.types.Object.MustardUI_outfit_visibility = bpy.props.BoolProperty(default=False, name="")
 
     bpy.types.Object.MustardUI_outfit_lock = bpy.props.BoolProperty(
         default=False, name="", description="Lock/unlock the outfit"

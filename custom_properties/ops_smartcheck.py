@@ -40,9 +40,7 @@ def add_driver(obj, rna, path, prop_name):
             var.name = "mustardui_var"
             var.targets[0].id_type = "ARMATURE"
             var.targets[0].id = obj
-            var.targets[
-                0
-            ].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"][{str(i)}]'
+            var.targets[0].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"][{str(i)}]'
 
     return
 
@@ -106,9 +104,7 @@ def add_custom_property(obj, rna, path, name, type, custom_props, sections_to_re
         rna_idprop_ui_create(
             obj,
             prop_name,
-            default=int(evaluate_path(rna, path))
-            if type == "INT"
-            else evaluate_path(rna, path),
+            default=int(evaluate_path(rna, path)) if type == "INT" else evaluate_path(rna, path),
             min=0 if type == "INT" else 0.0,
             max=1 if type == "INT" else 1.0,
             overridable=True,
@@ -299,9 +295,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         # Update the drivers
         obj.update_tag()
 
-        self.report(
-            {"INFO"}, "MustardUI - Smart Check found " + str(k) + " properties."
-        )
+        self.report({"INFO"}, "MustardUI - Smart Check found " + str(k) + " properties.")
 
         return {"FINISHED"}
 

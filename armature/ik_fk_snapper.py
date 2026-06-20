@@ -35,9 +35,7 @@ def ikfk_snapper_available(arm):
 def ikfk_chain_is_complete(chain):
     """A chain is usable only if it has the vital fields: IK bones, FK bones and
     an IK control."""
-    return bool(
-        _split_bones(chain.ik_bones) and _split_bones(chain.fk_bones) and chain.ik_ctrl
-    )
+    return bool(_split_bones(chain.ik_bones) and _split_bones(chain.fk_bones) and chain.ik_ctrl)
 
 
 def ikfk_has_complete_chains(arm):
@@ -287,9 +285,9 @@ def detect_chains(arm_obj):
             ik_candidates = _collections_of(
                 arm_obj, [ik_ctrl, pole_ctrl] + [b.name for b in ik_chain]
             )
-            ik_collection = next(
-                (n for n in ik_candidates if "ik" in n.lower()), ""
-            ) or (ik_candidates[0] if ik_candidates else "")
+            ik_collection = next((n for n in ik_candidates if "ik" in n.lower()), "") or (
+                ik_candidates[0] if ik_candidates else ""
+            )
 
             coll_names = {c.name for c in _all_collections(arm_obj.data)}
             fk_collection = ""
@@ -298,9 +296,7 @@ def detect_chains(arm_obj):
             if not fk_collection:
                 # Fall back to a collection the FK counterpart bones live in.
                 fk_candidates = _collections_of(arm_obj, [n for n in fk_names if n])
-                fk_collection = next(
-                    (n for n in fk_candidates if "fk" in n.lower()), ""
-                )
+                fk_collection = next((n for n in fk_candidates if "fk" in n.lower()), "")
 
             results.append(
                 {
@@ -451,10 +447,7 @@ class MUSTARDUI_OT_IKFKDetect(bpy.types.Operator):
         fk_missing = sum(1 for d in found if d["fk_found"] == 0)
         msg = f"Found {len(found)} IK chain(s)"
         if fk_missing:
-            msg += (
-                f"; {fk_missing} chain(s) have no FK counterparts "
-                f"(IK→FK snap unavailable)"
-            )
+            msg += f"; {fk_missing} chain(s) have no FK counterparts (IK→FK snap unavailable)"
         self.report({"INFO"}, msg)
         return {"FINISHED"}
 
@@ -561,10 +554,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
             for cns in pb.constraints:
                 drives_from_ik = (
                     cns.type == "IK" and getattr(cns, "subtarget", "") == chain.ik_ctrl
-                ) or (
-                    cns.type in _copy_types
-                    and getattr(cns, "subtarget", "") in _ik_side
-                )
+                ) or (cns.type in _copy_types and getattr(cns, "subtarget", "") in _ik_side)
                 if drives_from_ik and cns.influence != 0.0:
                     _fk_read_saved.append((cns, cns.influence))
                     cns.influence = 0.0
@@ -672,9 +662,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         return True
 
     @staticmethod
-    def _match_pole(
-        arm_obj, chain, ik_list, pole_bone, base, axis, radial_len, desired_dir
-    ):
+    def _match_pole(arm_obj, chain, ik_list, pole_bone, base, axis, radial_len, desired_dir):
         """Place the pole so the IK solve reproduces the FK bend.
 
         Rotating the pole around the chain axis rotates the IK bend plane — and so
@@ -759,10 +747,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
         for pb in arm_obj.pose.bones:
             for cns in pb.constraints:
-                if (
-                    cns.type in copy_types
-                    and getattr(cns, "subtarget", "") == chain.ik_ctrl
-                ):
+                if cns.type in copy_types and getattr(cns, "subtarget", "") == chain.ik_ctrl:
                     saved.append((cns, cns.influence))
                     cns.influence = 1.0
 
@@ -837,8 +822,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
                 cnss = [
                     c
                     for c in pb.constraints
-                    if c.type in _companion_types
-                    and getattr(c, "subtarget", "") == chain.ik_ctrl
+                    if c.type in _companion_types and getattr(c, "subtarget", "") == chain.ik_ctrl
                 ]
                 if cnss:
                     companions.append((pb, pb.matrix.copy(), cnss))

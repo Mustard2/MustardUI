@@ -261,9 +261,7 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
         # Remove duplicate shader groups
         if self.remove_duplicate_groups:
-            groups = [
-                ng for ng in bpy.data.node_groups if ng.bl_idname == "ShaderNodeTree"
-            ]
+            groups = [ng for ng in bpy.data.node_groups if ng.bl_idname == "ShaderNodeTree"]
 
             signature_map = {}
             duplicate_map = {}
@@ -433,10 +431,7 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                 print(f"Duplicate Images Data Removed: {total_image_removed}")
 
         total = (
-            total_group_replaced
-            + total_group_removed
-            + total_image_replaced
-            + total_image_removed
+            total_group_replaced + total_group_removed + total_image_replaced + total_image_removed
         )
 
         if total == 0:

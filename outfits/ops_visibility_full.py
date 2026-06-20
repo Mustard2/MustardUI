@@ -75,9 +75,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 and rig_settings.hair_list != col_entry.hair.name
             ):
                 hair_objects = [
-                    x
-                    for x in rig_settings.hair_collection.objects
-                    if x.type in {"MESH", "CURVES"}
+                    x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}
                 ]
                 if col_entry.hair in hair_objects:
                     rig_settings.hair_list = col_entry.hair.name
@@ -104,8 +102,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                     rig_settings.hair_collection is not None
                     and obj.type in ["MESH", "ARMATURE"]
                     and rig_settings.hair_switch_collection is not None
-                    and obj.name
-                    in rig_settings.hair_switch_collection.all_objects.keys()
+                    and obj.name in rig_settings.hair_switch_collection.all_objects.keys()
                 ):
                     hair_switcher_seen = True
                     if show_obj:
@@ -115,12 +112,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                     any_object_visible = True
 
                 # Shape Keys and their drivers
-                if (
-                    sk_disable
-                    and obj.type == "MESH"
-                    and obj.data
-                    and obj.data.shape_keys
-                ):
+                if sk_disable and obj.type == "MESH" and obj.data and obj.data.shape_keys:
                     for key in obj.data.shape_keys.key_blocks:
                         set_bool(key, "mute", not show_obj)
                     if (
@@ -140,11 +132,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                             # If the collection has locked objects but this obj is
                             # not the active one
                             elif locked_collection and not is_active:
-                                desired = (
-                                    not obj.MustardUI_outfit_visibility
-                                    if locked
-                                    else locked
-                                )
+                                desired = not obj.MustardUI_outfit_visibility if locked else locked
                             # All other outfits
                             else:
                                 desired = False
@@ -187,9 +175,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 else rig_settings.extras_collection.objects
             )
             for obj in extras_items:
-                update_outfit_body_masks(
-                    context, body, obj.name, not obj.hide_viewport and mask
-                )
+                update_outfit_body_masks(context, body, obj.name, not obj.hide_viewport and mask)
 
         # Refresh the combined global mask once, after every outfit piece has been
         # processed, so it reflects the final state of all Vertex Weight Mix modifiers.
@@ -252,11 +238,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                     ):
                         desired = ui["max"]
                     elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                        desired = (
-                            ui["max"]
-                            if piece_locked and piece_visible
-                            else ui["default"]
-                        )
+                        desired = ui["max"] if piece_locked and piece_visible else ui["default"]
                 else:
                     if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
                         desired = ui["max"]

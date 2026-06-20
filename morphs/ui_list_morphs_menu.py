@@ -12,9 +12,7 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
         res, obj = mustardui_active_object(context, config=0)
         return res if obj is not None else False
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
         settings = context.scene.MustardUI_Settings
 
@@ -38,8 +36,7 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
                 )
             elif (
                 item.shape_key
-                and item.path
-                in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+                and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
             ):
                 layout.prop(
                     rig_settings.model_body.data.shape_keys.key_blocks[item.path],
@@ -70,8 +67,7 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
                 )
             elif (
                 item.shape_key
-                and item.path
-                in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+                and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
             ):
                 layout.prop(
                     rig_settings.model_body.data.shape_keys.key_blocks[item.path],
@@ -92,9 +88,7 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
 def register():
     bpy.utils.register_class(MUSTARDUI_UL_Morphs_UIList_Menu)
 
-    bpy.types.Armature.mustardui_morphs_uilist_menu_index = IntProperty(
-        name="", default=0
-    )
+    bpy.types.Armature.mustardui_morphs_uilist_menu_index = IntProperty(name="", default=0)
 
 
 def unregister():

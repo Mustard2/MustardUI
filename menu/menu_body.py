@@ -77,9 +77,7 @@ def draw_section(
             for prop in custom_properties_section:
                 row = box.row()
                 if rig_settings.body_custom_properties_icons:
-                    row.label(
-                        text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT"
-                    )
+                    row.label(text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT")
                 else:
                     row.label(text=prop.name)
                 if not prop.is_animatable:
@@ -147,19 +145,10 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 and rig_settings.body_enable_geometry_nodes_support
             ):
                 geometry_nodes_support = (
-                    len(
-                        [
-                            x
-                            for x in rig_settings.model_body.modifiers
-                            if x.type == "NODES"
-                        ]
-                    )
-                    > 0
+                    len([x for x in rig_settings.model_body.modifiers if x.type == "NODES"]) > 0
                 )
 
-            return res and (
-                prop_to_show or len(custom_props) > 0 or geometry_nodes_support
-            )
+            return res and (prop_to_show or len(custom_props) > 0 or geometry_nodes_support)
 
         return False
 
@@ -208,10 +197,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
                 row = col.row(align=True)
                 row.scale_x = 0.94
-                if (
-                    context.scene.render.engine == "CYCLES"
-                    and settings.material_normal_nodes
-                ):
+                if context.scene.render.engine == "CYCLES" and settings.material_normal_nodes:
                     row.alert = True
                 row.prop(settings, "material_normal_nodes", text="")
                 row.label(text="Eevee Optimized Normals")
@@ -280,9 +266,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
             sec_num = len(rig_settings.body_custom_properties_sections)
             id = 0
-            for section_id, section in enumerate(
-                rig_settings.body_custom_properties_sections
-            ):
+            for section_id, section in enumerate(rig_settings.body_custom_properties_sections):
                 # Subsections are drawn inside standard sections
                 if section.is_subsection:
                     continue
@@ -337,9 +321,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     row.prop(
                         m.node_group,
                         "MustardUI_collapse",
-                        icon="TRIA_DOWN"
-                        if not m.node_group.MustardUI_collapse
-                        else "TRIA_RIGHT",
+                        icon="TRIA_DOWN" if not m.node_group.MustardUI_collapse else "TRIA_RIGHT",
                         icon_only=True,
                         emboss=False,
                     )
@@ -349,9 +331,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     row2.prop(m, "show_viewport", text="")
                     row2.prop(m, "show_render", text="")
                     if not m.node_group.MustardUI_collapse:
-                        for i in [
-                            x for x in gndi.items() if hasattr(gndi[x[0]], "identifier")
-                        ]:
+                        for i in [x for x in gndi.items() if hasattr(gndi[x[0]], "identifier")]:
                             if i[1].identifier in m.keys():
                                 box.prop(m, f'["{i[1].identifier}"]', text=i[0])
 

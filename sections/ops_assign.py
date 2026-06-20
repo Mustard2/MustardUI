@@ -30,9 +30,7 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
             if prop.add_section:
                 prop.section = uilist[index].name
             else:
-                prop.section = (
-                    "" if prop.section == uilist[index].name else prop.section
-                )
+                prop.section = "" if prop.section == uilist[index].name else prop.section
 
         return {"FINISHED"}
 

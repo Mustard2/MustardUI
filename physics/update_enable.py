@@ -78,9 +78,7 @@ def set_modifiers(physics_item, obj, status, mtype=""):
                 modifier.show_viewport = status
                 modifier.show_render = status
             vg_a = modifier.vertex_group_a
-            weight_mix_active[vg_a] = (
-                weight_mix_active.get(vg_a, False) or modifier.show_viewport
-            )
+            weight_mix_active[vg_a] = weight_mix_active.get(vg_a, False) or modifier.show_viewport
 
     for vg, mod in smooth_mods.items():
         if vg in weight_mix_active:
@@ -108,9 +106,7 @@ def enable_physics_update(self, context):
                 # (Blender bug)
                 pi.object.hide_viewport = not status
         if pi.type == "CAGE":
-            set_cage_modifiers(
-                pi, rig_settings.model_body.modifiers, status, None, body
-            )
+            set_cage_modifiers(pi, rig_settings.model_body.modifiers, status, None, body)
             set_modifiers(pi, rig_settings.model_body, status)
         elif pi.type == "BONES_DRIVER":
             pi.bone_influence = status
@@ -151,9 +147,7 @@ def enable_physics_update(self, context):
             set_cage_modifiers(pi, obj.modifiers, status, obj, body)
             set_modifiers(pi, obj, status)
 
-    for coll in [
-        x for x in rig_settings.outfits_collections if x.collection is not None
-    ]:
+    for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = (
             coll.collection.all_objects
             if rig_settings.outfit_config_subcollections
@@ -171,9 +165,7 @@ def enable_physics_update(self, context):
                 set_modifiers(pi, obj, status)
 
     if rig_settings.hair_collection is not None:
-        for obj in [
-            x for x in rig_settings.hair_collection.objects if x.type == "MESH"
-        ]:
+        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
             for pi in pi_cages:
                 status = (
                     self.enable_physics
@@ -185,9 +177,7 @@ def enable_physics_update(self, context):
                 set_modifiers(pi, obj, status)
 
     if rig_settings.extras_collection is not None:
-        for obj in [
-            x for x in rig_settings.extras_collection.objects if x.type == "MESH"
-        ]:
+        for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
             for pi in pi_cages:
                 status = (
                     self.enable_physics
@@ -199,9 +189,7 @@ def enable_physics_update(self, context):
                 set_modifiers(pi, obj, status)
 
     if rig_settings.hair_extras_collection is not None:
-        for obj in [
-            x for x in rig_settings.hair_extras_collection.objects if x.type == "MESH"
-        ]:
+        for obj in [x for x in rig_settings.hair_extras_collection.objects if x.type == "MESH"]:
             for pi in pi_cages:
                 status = (
                     self.enable_physics
@@ -260,27 +248,19 @@ def enable_physics_update_single(self, context):
             set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
             set_modifiers(self, obj, status_int)
 
-        for coll in [
-            x for x in rig_settings.outfits_collections if x.collection is not None
-        ]:
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 coll.collection.all_objects
                 if rig_settings.outfit_config_subcollections
                 else coll.collection.objects
             )
             for obj in [x for x in items if x.type == "MESH"]:
-                status_int = (
-                    status
-                    and not coll.collection.hide_viewport
-                    and not obj.hide_viewport
-                )
+                status_int = status and not coll.collection.hide_viewport and not obj.hide_viewport
                 set_cage_modifiers(self, obj.modifiers, status_int, obj, body)
                 set_modifiers(self, obj, status_int)
 
         if rig_settings.extras_collection is not None:
-            for obj in [
-                x for x in rig_settings.extras_collection.objects if x.type == "MESH"
-            ]:
+            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.extras_collection.hide_viewport
@@ -290,9 +270,7 @@ def enable_physics_update_single(self, context):
                 set_modifiers(self, obj, status_int)
 
         if rig_settings.hair_collection is not None:
-            for obj in [
-                x for x in rig_settings.hair_collection.objects if x.type == "MESH"
-            ]:
+            for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.hair_collection.hide_viewport
@@ -302,11 +280,7 @@ def enable_physics_update_single(self, context):
                 set_modifiers(self, obj, status_int)
 
         if rig_settings.hair_extras_collection is not None:
-            for obj in [
-                x
-                for x in rig_settings.hair_extras_collection.objects
-                if x.type == "MESH"
-            ]:
+            for obj in [x for x in rig_settings.hair_extras_collection.objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.hair_extras_collection.hide_viewport
@@ -361,9 +335,7 @@ def enable_physics_update_single_smooth_corrective(self, context):
             status_int = status and not obj.hide_viewport and self.smooth_corrective
             set_modifiers(self, obj, status_int, "CORRECTIVE_SMOOTH")
 
-        for coll in [
-            x for x in rig_settings.outfits_collections if x.collection is not None
-        ]:
+        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 coll.collection.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -379,9 +351,7 @@ def enable_physics_update_single_smooth_corrective(self, context):
                 set_modifiers(self, obj, status_int, "CORRECTIVE_SMOOTH")
 
         if rig_settings.extras_collection is not None:
-            for obj in [
-                x for x in rig_settings.extras_collection.objects if x.type == "MESH"
-            ]:
+            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.extras_collection.hide_viewport
@@ -391,9 +361,7 @@ def enable_physics_update_single_smooth_corrective(self, context):
                 set_modifiers(self, obj, status_int, "CORRECTIVE_SMOOTH")
 
         if rig_settings.hair_collection is not None:
-            for obj in [
-                x for x in rig_settings.hair_collection.objects if x.type == "MESH"
-            ]:
+            for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.hair_collection.hide_viewport
@@ -403,11 +371,7 @@ def enable_physics_update_single_smooth_corrective(self, context):
                 set_modifiers(self, obj, status_int, "CORRECTIVE_SMOOTH")
 
         if rig_settings.hair_extras_collection is not None:
-            for obj in [
-                x
-                for x in rig_settings.hair_extras_collection.objects
-                if x.type == "MESH"
-            ]:
+            for obj in [x for x in rig_settings.hair_extras_collection.objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.hair_extras_collection.hide_viewport
@@ -450,9 +414,7 @@ def cage_influence_update(self, context):
 
     influence_cage_modifiers(self, rig_settings.model_body.modifiers, influence)
 
-    for coll in [
-        x for x in rig_settings.outfits_collections if x.collection is not None
-    ]:
+    for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
         items = (
             coll.collection.all_objects
             if rig_settings.outfit_config_subcollections
@@ -481,9 +443,7 @@ def bone_influence_update(self, context):
     status = influence > 0.001
     for bone in parent.pose.bones:
         for constraint in [
-            x
-            for x in bone.constraints
-            if hasattr(x, "target") and x.target == self.object
+            x for x in bone.constraints if hasattr(x, "target") and x.target == self.object
         ]:
             if hasattr(constraint, "influence"):
                 constraint.influence = influence

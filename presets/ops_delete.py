@@ -28,9 +28,7 @@ class MustardUI_PresetDelete(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=0)
 
         try:
-            settings, presets, preset, index, index_prop = get_preset_context(
-                arm, self.preset_type
-            )
+            settings, presets, preset, index, index_prop = get_preset_context(arm, self.preset_type)
         except ValueError as e:
             self.report({"ERROR"}, str(e))
             return {"CANCELLED"}

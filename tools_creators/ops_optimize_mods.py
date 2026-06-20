@@ -43,9 +43,7 @@ def optimize_modifiers(
     for mod in obj.modifiers:
         if mod.type == "ARMATURE":
             arm = (
-                mod.object.data
-                if mod.object is not None and mod.object.data is not None
-                else None
+                mod.object.data if mod.object is not None and mod.object.data is not None else None
             )
     if arm is not None:
         pose_position = arm.pose_position
@@ -160,8 +158,7 @@ class MustardUI_ToolsCreators_OptimizeModifiers(bpy.types.Operator):
     preserve_modifiers: bpy.props.BoolProperty(
         default=False,
         name="Preserve Smooth Corrective modifiers",
-        description="Disable existent Smooth Corrective modifiers instead "
-        "of removing them",
+        description="Disable existent Smooth Corrective modifiers instead of removing them",
     )
 
     smooth_corrective: bpy.props.BoolProperty(

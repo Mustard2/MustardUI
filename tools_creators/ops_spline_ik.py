@@ -23,8 +23,7 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         min=1,
         max=64,
         name="Resolution",
-        description="Resolution of the spline.\nSubdivision performed on each segment "
-        "of the curve",
+        description="Resolution of the spline.\nSubdivision performed on each segment of the curve",
     )
     ik_spline_bendy: bpy.props.BoolProperty(
         name="Bendy Bones",
@@ -182,9 +181,7 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         # Enable bendy bones if the option has been selected
         if self.ik_spline_bendy:
             for bone in chain_bones:
-                arm.data.edit_bones[
-                    bone.name
-                ].bbone_segments = self.ik_spline_bendy_segments
+                arm.data.edit_bones[bone.name].bbone_segments = self.ik_spline_bendy_segments
 
             # Switch to B-Bone view for the Armature bones
             arm.data.display_type = "BBONE"
@@ -403,9 +400,7 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
                     bpy.context.collection.objects.unlink(IKCurve)
                     bpy.data.objects.remove(IKCurve)
                     if addon_prefs.debug:
-                        print(
-                            "MustardUI IK Spline - Curve " + IKCurve_name + " removed."
-                        )
+                        print("MustardUI IK Spline - Curve " + IKCurve_name + " removed.")
 
                     bpy.ops.object.mode_set(mode="POSE")
 
@@ -433,9 +428,7 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
         else:
             self.report(
                 {"INFO"},
-                "MustardUI - "
-                + str(removed_constr)
-                + " IK constraints successfully removed.",
+                "MustardUI - " + str(removed_constr) + " IK constraints successfully removed.",
             )
 
         return {"FINISHED"}
@@ -466,9 +459,7 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
         box.label(text="Will be removed:", icon="ERROR")
         box.label(text="        - " + str(IK_num) + " Spline IK constraints.")
         box.label(
-            text="        - "
-            + str(IK_num_nMUI)
-            + " of which are not Mustard Tools generated."
+            text="        - " + str(IK_num_nMUI) + " of which are not Mustard Tools generated."
         )
 
 

@@ -170,9 +170,7 @@ def apply_lips_shrinkwrap(props, armature):
         # Friction
         cf = cm.ensure(pbone, "friction", "CHILD_OF")
 
-        cf.target = (
-            props.bone_shrinkwrap_target_friction or props.bone_shrinkwrap_target
-        )
+        cf.target = props.bone_shrinkwrap_target_friction or props.bone_shrinkwrap_target
 
         if props.bone_shrinkwrap_target_friction_subtarget:
             cf.subtarget = props.bone_shrinkwrap_target_friction_subtarget

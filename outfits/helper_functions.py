@@ -16,9 +16,7 @@ def find_layer_collection(layer_coll, collection):
 
 def update_outfit_body_masks(context, body, obj_name, visible):
     for mod in body.modifiers:
-        if mod.type in ("MASK", "VERTEX_WEIGHT_MIX") and obj_name in mod.name.split(
-            "|"
-        ):
+        if mod.type in ("MASK", "VERTEX_WEIGHT_MIX") and obj_name in mod.name.split("|"):
             # Shared modifier (names joined by "|"): keep it on if another
             # piece using it is still visible.
             should_show = visible
@@ -36,9 +34,7 @@ def update_outfit_body_masks(context, body, obj_name, visible):
 
 def update_global_body_mask(body):
     activate = any(
-        mod.type == "VERTEX_WEIGHT_MIX"
-        and mod.vertex_group_a == mask_vg_name
-        and mod.show_viewport
+        mod.type == "VERTEX_WEIGHT_MIX" and mod.vertex_group_a == mask_vg_name and mod.show_viewport
         for mod in body.modifiers
     )
     for mod in body.modifiers:
@@ -73,8 +69,7 @@ def outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=None
                 is_extras_item = False
                 if rig_settings.extras_collection:
                     is_extras_item = any(
-                        ob == extra
-                        for extra in rig_settings.extras_collection.all_objects
+                        ob == extra for extra in rig_settings.extras_collection.all_objects
                     )
 
                 if is_extras_item:

@@ -19,8 +19,7 @@ def morph_filter(morph, rig_settings, morphs_settings):
     ):
         val = cp_source[bpy.utils.escape_identifier(morph.path)]
     elif (
-        morph.shape_key
-        and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+        morph.shape_key and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
     ):
         val = rig_settings.model_body.data.shape_keys.key_blocks[morph.path].value
 
@@ -59,9 +58,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
         morphs_settings = arm.MustardUI_MorphsSettings
 
         if morphs_settings.type == "GENERIC":
-            return (
-                res and morphs_settings.enable_ui and morphs_settings.morphs_number > 0
-            )
+            return res and morphs_settings.enable_ui and morphs_settings.morphs_number > 0
 
         if not get_section_by_diffeomorphic_id(morphs_settings, 0):
             return False
@@ -75,12 +72,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
             or get_section_by_diffeomorphic_id(morphs_settings, 4).morphs
         )
 
-        return (
-            res
-            and morphs_settings.enable_ui
-            and panels
-            and morphs_settings.morphs_number > 0
-        )
+        return res and morphs_settings.enable_ui and panels and morphs_settings.morphs_number > 0
 
     def draw_header(self, context):
 
@@ -105,9 +97,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
             row = layout.row()
             row.prop(morphs_settings, "diffeomorphic_search", icon="VIEWZOOM")
             row2 = row.row(align=True)
-            row2.prop(
-                morphs_settings, "diffeomorphic_filter_null", icon="FILTER", text=""
-            )
+            row2.prop(morphs_settings, "diffeomorphic_filter_null", icon="FILTER", text="")
             row2.operator("mustardui.morphs_defaultvalues", icon="LOOP_BACK", text="")
             row2.prop(
                 morphs_settings,
@@ -139,9 +129,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 )
         # Generic panel
         else:
-            sections = [
-                x for x in morphs_settings.sections if x.morphs and not x.hidden
-            ]
+            sections = [x for x in morphs_settings.sections if x.morphs and not x.hidden]
 
             row = layout.row()
             if morphs_settings.enable_freeze_morphs:
@@ -156,25 +144,17 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 row2 = row.row(align=True)
                 row2.operator(
                     "mustardui.morphs_defaultvalues",
-                    text=""
-                    if morphs_settings.enable_freeze_morphs
-                    else "Restore Default Values",
+                    text="" if morphs_settings.enable_freeze_morphs else "Restore Default Values",
                     icon="LOOP_BACK",
                 )
                 row2.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
 
-            sections = [
-                x for x in morphs_settings.sections if x.morphs and not x.hidden
-            ]
+            sections = [x for x in morphs_settings.sections if x.morphs and not x.hidden]
             for section in sections:
-                if ui_collapse_prop(
-                    layout, section, "collapse", section.name, icon=section.icon
-                ):
+                if ui_collapse_prop(layout, section, "collapse", section.name, icon=section.icon):
                     row = layout.row()
                     row.enabled = (
-                        not morphs_settings.morphs_optimized
-                        if section.freezable
-                        else True
+                        not morphs_settings.morphs_optimized if section.freezable else True
                     )
                     row.template_list(
                         "MUSTARDUI_UL_Morphs_UIList_Menu",
@@ -322,8 +302,7 @@ class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
 
         layout = self.layout
         layout.enabled = (
-            morphs_settings.diffeomorphic_enable
-            and not morphs_settings.morphs_optimized
+            morphs_settings.diffeomorphic_enable and not morphs_settings.morphs_optimized
         )
 
         emotion_morphs = [
@@ -491,8 +470,7 @@ class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
 
         layout = self.layout
         layout.enabled = (
-            morphs_settings.diffeomorphic_enable
-            and not morphs_settings.morphs_optimized
+            morphs_settings.diffeomorphic_enable and not morphs_settings.morphs_optimized
         )
 
         facs_emotion_morphs = [
@@ -577,8 +555,7 @@ class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
 
         layout = self.layout
         layout.enabled = (
-            morphs_settings.diffeomorphic_enable
-            and not morphs_settings.morphs_optimized
+            morphs_settings.diffeomorphic_enable and not morphs_settings.morphs_optimized
         )
 
         # Body Morphs
@@ -648,15 +625,9 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
 
         layout = self.layout
         count = 0
-        for section in [
-            x for x in morphs_settings.sections if x.morphs and not x.is_internal
-        ]:
+        for section in [x for x in morphs_settings.sections if x.morphs and not x.is_internal]:
             count += len(
-                [
-                    x
-                    for x in section.morphs
-                    if morph_filter(x, rig_settings, morphs_settings)
-                ]
+                [x for x in section.morphs if morph_filter(x, rig_settings, morphs_settings)]
             )
         layout.label(text="(" + str(count) + ")")
 
@@ -672,31 +643,19 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
         layout.enabled = morphs_settings.diffeomorphic_enable
 
         for section in [
-            x
-            for x in morphs_settings.sections
-            if x.morphs and not x.is_internal and not x.hidden
+            x for x in morphs_settings.sections if x.morphs and not x.is_internal and not x.hidden
         ]:
             box = layout.box()
-            box.enabled = (
-                not morphs_settings.morphs_optimized if section.freezable else True
-            )
-            if ui_collapse_prop(
-                box, section, "collapse", section.name, icon=section.icon
-            ):
+            box.enabled = not morphs_settings.morphs_optimized if section.freezable else True
+            if ui_collapse_prop(box, section, "collapse", section.name, icon=section.icon):
                 for morph in [
-                    x
-                    for x in section.morphs
-                    if morph_filter(x, rig_settings, morphs_settings)
+                    x for x in section.morphs if morph_filter(x, rig_settings, morphs_settings)
                 ]:
-                    cp_source = get_cp_source(
-                        morph.custom_property_source, rig_settings
-                    )
+                    cp_source = get_cp_source(morph.custom_property_source, rig_settings)
                     if (
                         cp_source
                         and morph.custom_property
-                        and hasattr(
-                            cp_source, f'["{bpy.utils.escape_identifier(morph.path)}"]'
-                        )
+                        and hasattr(cp_source, f'["{bpy.utils.escape_identifier(morph.path)}"]')
                     ):
                         box.prop(
                             cp_source,
@@ -705,13 +664,10 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
                         )
                     elif (
                         morph.shape_key
-                        and morph.path
-                        in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+                        and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
                     ):
                         box.prop(
-                            rig_settings.model_body.data.shape_keys.key_blocks[
-                                morph.path
-                            ],
+                            rig_settings.model_body.data.shape_keys.key_blocks[morph.path],
                             "value",
                             text=morph.name,
                         )

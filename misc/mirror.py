@@ -3,48 +3,18 @@
 def check_mirror(name1, name2, left=True):
     if left:
         return (
-            (
-                name1.lower().endswith(".l")
-                and name2.lower() == name1[:-2].lower() + ".r"
-            )
-            or (
-                name1.lower().startswith("l_")
-                and name2.lower() == "r_" + name1[2:].lower()
-            )
-            or (
-                name1.lower().endswith("_l")
-                and name2.lower() == name1[:-2].lower() + "_r"
-            )
-            or (
-                name1.lower().startswith("left")
-                and name2.lower() == "right" + name1[4:].lower()
-            )
-            or (
-                name1.lower().endswith("left")
-                and name2.lower() == name1[:-4].lower() + "right"
-            )
+            (name1.lower().endswith(".l") and name2.lower() == name1[:-2].lower() + ".r")
+            or (name1.lower().startswith("l_") and name2.lower() == "r_" + name1[2:].lower())
+            or (name1.lower().endswith("_l") and name2.lower() == name1[:-2].lower() + "_r")
+            or (name1.lower().startswith("left") and name2.lower() == "right" + name1[4:].lower())
+            or (name1.lower().endswith("left") and name2.lower() == name1[:-4].lower() + "right")
         )
 
     else:
         return (
-            (
-                name1.lower().endswith(".r")
-                and name2.lower() == name1[:-2].lower() + ".l"
-            )
-            or (
-                name1.lower().startswith("r_")
-                and name2.lower() == "l_" + name1[2:].lower()
-            )
-            or (
-                name1.lower().endswith("_r")
-                and name2.lower() == name1[:-2].lower() + "_l"
-            )
-            or (
-                name1.lower().startswith("right")
-                and name2.lower() == "left" + name1[5:].lower()
-            )
-            or (
-                name1.lower().endswith("right")
-                and name2.lower() == name1[:-5].lower() + "left"
-            )
+            (name1.lower().endswith(".r") and name2.lower() == name1[:-2].lower() + ".l")
+            or (name1.lower().startswith("r_") and name2.lower() == "l_" + name1[2:].lower())
+            or (name1.lower().endswith("_r") and name2.lower() == name1[:-2].lower() + "_l")
+            or (name1.lower().startswith("right") and name2.lower() == "left" + name1[5:].lower())
+            or (name1.lower().endswith("right") and name2.lower() == name1[:-5].lower() + "left")
         )

@@ -39,37 +39,27 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
         prop = context.button_prop
 
         if not hasattr(context, "button_prop") or not hasattr(prop, "array_length"):
-            self.report(
-                {"ERROR"}, "MustardUI - Can not link this property to anything."
-            )
+            self.report({"ERROR"}, "MustardUI - Can not link this property to anything.")
             return {"FINISHED"}
 
         if not prop.is_animatable:
-            self.report(
-                {"ERROR"}, "MustardUI - Can not link a 'non animatable' property."
-            )
+            self.report({"ERROR"}, "MustardUI - Can not link a 'non animatable' property.")
             return {"FINISHED"}
 
         found = False
         for parent_prop in custom_props:
-            if (
-                parent_prop.rna == self.parent_rna
-                and parent_prop.path == self.parent_path
-            ):
+            if parent_prop.rna == self.parent_rna and parent_prop.path == self.parent_path:
                 found = True
 
                 try:
-                    parent_prop_length = len(
-                        evaluate_path(parent_prop.rna, parent_prop.path)
-                    )
+                    parent_prop_length = len(evaluate_path(parent_prop.rna, parent_prop.path))
                 except Exception:
                     parent_prop_length = 0
 
                 if prop.array_length != parent_prop_length:
                     self.report(
                         {"ERROR"},
-                        "MustardUI - Can not link properties with different array "
-                        "length.",
+                        "MustardUI - Can not link properties with different array length.",
                     )
                     return {"FINISHED"}
 
@@ -99,15 +89,11 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                     path, rem = path.rsplit("[", 1)
 
                 if parent_prop.rna == rna and parent_prop.path == path:
-                    self.report(
-                        {"ERROR"}, "MustardUI - Can not link a property with itself."
-                    )
+                    self.report({"ERROR"}, "MustardUI - Can not link a property with itself.")
                     return {"FINISHED"}
 
                 if not mustardui_check_cp(obj, rna, path):
-                    self.report(
-                        {"ERROR"}, "MustardUI - Can not link a property already added."
-                    )
+                    self.report({"ERROR"}, "MustardUI - Can not link a property already added.")
                     return {"FINISHED"}
 
                 switched_warning = False
@@ -125,9 +111,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                     mustardui_add_driver(obj, rna, path, prop, parent_prop.prop_name)
 
                 # Add linked property to list
-                if (rna, path) not in [
-                    (x.rna, x.path) for x in parent_prop.linked_properties
-                ]:
+                if (rna, path) not in [(x.rna, x.path) for x in parent_prop.linked_properties]:
                     lp = parent_prop.linked_properties.add()
                     lp.rna = rna
                     lp.path = path

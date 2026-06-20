@@ -48,9 +48,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
     bl_label = ""
     bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
-    url_MustardUI_ToolsGuide = (
-        "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Armature"
-    )
+    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Armature"
 
     @classmethod
     def poll(cls, context):
@@ -65,18 +63,14 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
         layout = self.layout
         layout.label(text="Armature", icon="OUTLINER_DATA_ARMATURE")
-        layout.operator(
-            "wm.url_open", text="", icon="QUESTION"
-        ).url = self.url_MustardUI_ToolsGuide
+        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout
 
         row = layout.row(align=True)
         row.operator("mustardui.tools_creators_face_controller", icon="USER")
-        row.operator(
-            "mustardui.tools_creators_face_controller_remove", text="", icon="X"
-        )
+        row.operator("mustardui.tools_creators_face_controller_remove", text="", icon="X")
 
         row = layout.row(align=True)
         row.operator(
@@ -92,9 +86,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
             text="Affect Transform on Bone Constraints",
             icon="CONSTRAINT_BONE",
         ).enable = True
-        row.operator(
-            "mustardui.tools_creators_affect_transform", text="", icon="X"
-        ).enable = False
+        row.operator("mustardui.tools_creators_affect_transform", text="", icon="X").enable = False
 
 
 class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
@@ -120,9 +112,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.operator(
-            "mustardui.tool_naming", icon="SMALL_CAPS", text="Enforce Naming on Data"
-        )
+        row.operator("mustardui.tool_naming", icon="SMALL_CAPS", text="Enforce Naming on Data")
         row = layout.row(align=True)
         row.operator("mustardui.rename_image_nodes", icon="IMAGE_DATA")
         row = layout.row(align=True)
@@ -152,14 +142,10 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.operator(
-            "mustardui.tools_creators_link_shape_keys", icon="DRIVER_TRANSFORM"
-        )
+        row.operator("mustardui.tools_creators_link_shape_keys", icon="DRIVER_TRANSFORM")
 
         row = layout.row(align=True)
-        row.operator(
-            "mustardui.tools_creators_transfer_vertex_groups", icon="GROUP_VERTEX"
-        )
+        row.operator("mustardui.tools_creators_transfer_vertex_groups", icon="GROUP_VERTEX")
 
 
 class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
@@ -167,9 +153,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
     bl_label = ""
     bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
-    url_MustardUI_ToolsGuide = (
-        "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Physics"
-    )
+    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Physics"
 
     @classmethod
     def poll(cls, context):
@@ -184,9 +168,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
         layout = self.layout
         layout.label(text="Physics", icon="PHYSICS")
-        layout.operator(
-            "wm.url_open", text="", icon="QUESTION"
-        ).url = self.url_MustardUI_ToolsGuide
+        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout
@@ -210,9 +192,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
             text="Create Hair Cage",
             icon="OUTLINER_OB_CURVES",
         )
-        row.operator(
-            "mustardui.tools_creators_add_cloth_to_hair", text="", icon="MOD_CLOTH"
-        )
+        row.operator("mustardui.tools_creators_add_cloth_to_hair", text="", icon="MOD_CLOTH")
         row = layout.row(align=True)
         row.operator(
             "mustardui.tools_creators_create_collision_cage",
@@ -243,9 +223,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
     def draw_header(self, context):
         layout = self.layout
         layout.label(text="Optimizations", icon="FORCE_WIND")
-        layout.operator(
-            "wm.url_open", text="", icon="QUESTION"
-        ).url = self.url_MustardUI_ToolsGuide
+        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout

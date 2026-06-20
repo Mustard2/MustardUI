@@ -57,9 +57,7 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
                 box = layout.box()
                 row = box.row()
                 row.label(text="Custom properties", icon="PRESET_NEW")
-                row.operator(
-                    "mustardui.property_fix_path", text="", icon="DECORATE_DRIVER"
-                )
+                row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
 
                 if len(arm.MustardUI_CustomPropertiesHair) > 0:
                     row = box.row()
@@ -77,20 +75,14 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
                     ).type = "HAIR"
                     col.separator()
                     col2 = col.column(align=True)
-                    opup = col2.operator(
-                        "mustardui.property_switch", icon="TRIA_UP", text=""
-                    )
+                    opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
                     opup.direction = "UP"
                     opup.type = "HAIR"
-                    opdown = col2.operator(
-                        "mustardui.property_switch", icon="TRIA_DOWN", text=""
-                    )
+                    opdown = col2.operator("mustardui.property_switch", icon="TRIA_DOWN", text="")
                     opdown.direction = "DOWN"
                     opdown.type = "HAIR"
                     col.separator()
-                    col.operator(
-                        "mustardui.property_remove", icon="X", text=""
-                    ).type = "HAIR"
+                    col.operator("mustardui.property_remove", icon="X", text="").type = "HAIR"
 
                     col = box.column(align=True)
                     col.prop(rig_settings, "hair_custom_properties_icons")

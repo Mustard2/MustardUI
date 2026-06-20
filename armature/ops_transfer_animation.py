@@ -104,8 +104,7 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
 
         self.report(
             {"INFO"},
-            f"MustardUI - Animation transferred from '{source.name}' "
-            f"to '{target.name}'",
+            f"MustardUI - Animation transferred from '{source.name}' to '{target.name}'",
         )
         return {"FINISHED"}
 

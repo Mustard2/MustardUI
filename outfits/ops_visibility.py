@@ -70,10 +70,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             ):
                 for key in o.data.shape_keys.key_blocks:
                     set_bool(key, "mute", visible)
-                if (
-                    o.data.shape_keys.animation_data
-                    and o.data.shape_keys.animation_data.drivers
-                ):
+                if o.data.shape_keys.animation_data and o.data.shape_keys.animation_data.drivers:
                     for fcurve in o.data.shape_keys.animation_data.drivers:
                         set_bool(fcurve, "mute", visible)
 
@@ -83,10 +80,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                 or rig_settings.outfit_switch_modifiers_disable
             ):
                 for mod in o.modifiers:
-                    if (
-                        mod.type == "ARMATURE"
-                        and rig_settings.outfit_switch_armature_disable
-                    ):
+                    if mod.type == "ARMATURE" and rig_settings.outfit_switch_armature_disable:
                         set_bool(mod, "show_viewport", not visible)
                         continue
 
@@ -98,30 +92,14 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                         and rig_settings.outfits_enable_global_smoothcorrection
                     ):
                         desired = (
-                            not visible
-                            if rig_settings.outfits_global_smoothcorrection
-                            else False
+                            not visible if rig_settings.outfits_global_smoothcorrection else False
                         )
                         set_bool(mod, "show_viewport", desired)
-                    elif (
-                        mod.type == "SHRINKWRAP"
-                        and rig_settings.outfits_enable_global_shrinkwrap
-                    ):
-                        desired = (
-                            not visible
-                            if rig_settings.outfits_global_shrinkwrap
-                            else False
-                        )
+                    elif mod.type == "SHRINKWRAP" and rig_settings.outfits_enable_global_shrinkwrap:
+                        desired = not visible if rig_settings.outfits_global_shrinkwrap else False
                         set_bool(mod, "show_viewport", desired)
-                    elif (
-                        mod.type == "SUBSURF"
-                        and rig_settings.outfits_enable_global_subsurface
-                    ):
-                        desired = (
-                            not visible
-                            if rig_settings.outfits_global_subsurface
-                            else False
-                        )
+                    elif mod.type == "SUBSURF" and rig_settings.outfits_enable_global_subsurface:
+                        desired = not visible if rig_settings.outfits_global_subsurface else False
                         set_bool(mod, "show_viewport", desired)
 
             # Hair visibility — toggle direct children of hair_collection
@@ -217,9 +195,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         hidden = None
         if extras:
             items = (
-                extras.all_objects
-                if rig_settings.outfit_config_subcollections
-                else extras.objects
+                extras.all_objects if rig_settings.outfit_config_subcollections else extras.objects
             )
             hidden = all(x.hide_render for x in items)
             set_bool(extras, "hide_viewport", hidden)
@@ -244,9 +220,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         # Armature collections
         if armature_settings.outfits:
-            outfits_update_armature_collections(
-                rig_settings, arm, is_extras_hidden=hidden
-            )
+            outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=hidden)
 
         self.shift = False
         return {"FINISHED"}

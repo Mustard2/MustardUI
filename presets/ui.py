@@ -35,9 +35,7 @@ class MustardUI_PresetsUI(bpy.types.Operator):
     def draw(self, context):
         res, arm = mustardui_active_object(context, config=0)
 
-        settings, presets, preset, index, index_prop = get_preset_context(
-            arm, self.preset_type
-        )
+        settings, presets, preset, index, index_prop = get_preset_context(arm, self.preset_type)
 
         definition = get_preset_definition(self.preset_type)
         presets = settings.presets

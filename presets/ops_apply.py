@@ -30,9 +30,7 @@ class MustardUI_PresetApply(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
 
-        settings, presets, preset, index, index_prop = get_preset_context(
-            arm, self.preset_type
-        )
+        settings, presets, preset, index, index_prop = get_preset_context(arm, self.preset_type)
 
         if not preset:
             self.report({"ERROR"}, "MustardUI - Select a valid Preset")
@@ -46,8 +44,7 @@ class MustardUI_PresetApply(bpy.types.Operator):
         except Exception:
             self.report(
                 {"ERROR"},
-                "MustardUI - Preset data not valid or incompatible to this MustardUI "
-                "version",
+                "MustardUI - Preset data not valid or incompatible to this MustardUI version",
             )
             return {"CANCELLED"}
 
@@ -102,9 +99,7 @@ class MustardUI_PresetApply(bpy.types.Operator):
         if errors == 0:
             self.report({"INFO"}, f"MustardUI - {preset.name} applied")
         else:
-            self.report(
-                {"WARNING"}, f"MustardUI - {preset.name} applied with {errors} issues"
-            )
+            self.report({"WARNING"}, f"MustardUI - {preset.name} applied with {errors} issues")
 
         return {"FINISHED"}
 

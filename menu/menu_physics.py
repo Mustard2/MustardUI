@@ -37,9 +37,7 @@ def cloth_panel(layout, pi, mod):
         col.prop(cloth, "shear_damping", text="Shear")
         col.prop(cloth, "bending_damping", text="Bending")
 
-    if ui_collapse_prop(
-        layout, pi, "collapse_cloth_internal_springs", "Internal Springs"
-    ):
+    if ui_collapse_prop(layout, pi, "collapse_cloth_internal_springs", "Internal Springs"):
         col = layout.column(align=True)
         col.prop(cloth, "internal_tension_stiffness", text="Tension")
         col.prop(cloth, "internal_compression_stiffness", text="Compression")
@@ -190,9 +188,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
             row.prop(pi, "cage_influence")
 
         layout.separator()
-        layout.operator(
-            "mustardui.physics_rebind", text="Re-bind All Cages", icon="FILE_REFRESH"
-        )
+        layout.operator("mustardui.physics_rebind", text="Re-bind All Cages", icon="FILE_REFRESH")
 
 
 class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
@@ -282,9 +278,7 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
         if pi.object and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
-            soft_body = next(
-                (m for m in pi.object.modifiers if m.type == "SOFT_BODY"), None
-            )
+            soft_body = next((m for m in pi.object.modifiers if m.type == "SOFT_BODY"), None)
             return res and soft_body
 
         return False
@@ -323,9 +317,7 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
-        soft_body = next(
-            (m for m in pi.object.modifiers if m.type == "SOFT_BODY"), None
-        )
+        soft_body = next((m for m in pi.object.modifiers if m.type == "SOFT_BODY"), None)
 
         layout.enabled = physics_settings.enable_physics and pi.enable
 
@@ -354,9 +346,7 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
         if pi.object and pi.type in ["COLLISION"]:
-            cloth = next(
-                (m for m in pi.object.modifiers if m.type == "COLLISION"), None
-            )
+            cloth = next((m for m in pi.object.modifiers if m.type == "COLLISION"), None)
             return res and cloth
 
         return False
@@ -380,9 +370,7 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
-        collision = next(
-            (m for m in pi.object.modifiers if m.type == "COLLISION"), None
-        )
+        collision = next((m for m in pi.object.modifiers if m.type == "COLLISION"), None)
 
         layout.enabled = physics_settings.enable_physics and pi.enable
 
@@ -421,9 +409,7 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(physics_settings, "frame_start")
         row.prop(physics_settings, "frame_end")
-        row.operator(
-            "mustardui.physics_bake_syncframes", text="", icon="UV_SYNC_SELECT"
-        )
+        row.operator("mustardui.physics_bake_syncframes", text="", icon="UV_SYNC_SELECT")
         row = layout.row(align=True)
         row.operator("mustardui.physics_bake_all", text="Bake All").bake = True
         row.operator("ptcache.free_bake_all", text="Delete All Bake")

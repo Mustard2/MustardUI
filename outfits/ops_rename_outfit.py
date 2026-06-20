@@ -70,10 +70,7 @@ class MustardUI_RenameOutfit_Update(bpy.types.Operator):
         for i, pp in enumerate(rename_outfits_class):
             pp.name = strings[i]
 
-        if (
-            rig_settings.model_MustardUI_naming_convention
-            and rig_settings.model_name != ""
-        ):
+        if rig_settings.model_MustardUI_naming_convention and rig_settings.model_name != "":
             for pp in rename_outfits_class:
                 pp.name = rig_settings.model_name + " " + name + " - " + pp.name
 
@@ -134,9 +131,7 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
 
         rename_outfits_class.clear()
 
-        self.report(
-            {"INFO"}, "MustardUI - Collection Objects renamed with MustardUI convention"
-        )
+        self.report({"INFO"}, "MustardUI - Collection Objects renamed with MustardUI convention")
 
         return {"FINISHED"}
 

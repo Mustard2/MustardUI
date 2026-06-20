@@ -25,9 +25,7 @@ def mustardui_property_menuadd(self, context):
         op.outfit_piece = ""
         op.hair = ""
 
-        for collection in [
-            x for x in rig_settings.outfits_collections if x.collection is not None
-        ]:
+        for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 collection.collection.all_objects
                 if rig_settings.outfit_config_subcollections
@@ -69,9 +67,7 @@ def mustardui_property_menuadd(self, context):
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
                 for object in [
-                    x
-                    for x in rig_settings.hair_collection.objects
-                    if x.type in {"MESH", "CURVES"}
+                    x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}
                 ]:
                     if object == context.active_object:
                         op = layout.operator(
@@ -90,24 +86,11 @@ def mustardui_property_menuadd(self, context):
 
         if len(rig_settings.body_custom_properties_sections) > 0:
             layout.menu(OUTLINER_MT_MustardUI_PropertySectionMenu.bl_idname)
-        if (
-            len(
-                [
-                    x
-                    for x in rig_settings.outfits_collections
-                    if x.collection is not None
-                ]
-            )
-            > 0
-        ):
-            layout.menu(
-                OUTLINER_MT_MustardUI_PropertyOutfitMenu.bl_idname, icon="MOD_CLOTH"
-            )
+        if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
+            layout.menu(OUTLINER_MT_MustardUI_PropertyOutfitMenu.bl_idname, icon="MOD_CLOTH")
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
-                layout.menu(
-                    OUTLINER_MT_MustardUI_PropertyHairMenu.bl_idname, icon="STRANDS"
-                )
+                layout.menu(OUTLINER_MT_MustardUI_PropertyHairMenu.bl_idname, icon="STRANDS")
 
 
 def mustardui_property_link(self, context):

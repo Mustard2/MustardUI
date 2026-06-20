@@ -33,9 +33,7 @@ class PANEL_PT_MustardUI_Development(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        layout.operator(
-            "mustardui.configuration", text="UI Configuration", icon="PREFERENCES"
-        )
+        layout.operator("mustardui.configuration", text="UI Configuration", icon="PREFERENCES")
 
         layout.separator()
         layout.operator(
@@ -53,9 +51,7 @@ class PANEL_PT_MustardUI_Development(MainPanel, bpy.types.Panel):
 
         if platform.system() == "Windows" and addon_prefs.debug:
             layout.separator()
-            layout.operator(
-                "wm.console_toggle", text="Toggle System Console", icon="CONSOLE"
-            )
+            layout.operator("wm.console_toggle", text="Toggle System Console", icon="CONSOLE")
 
 
 def register():

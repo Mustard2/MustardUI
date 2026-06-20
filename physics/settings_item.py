@@ -48,8 +48,7 @@ mustardui_physics_item_type = [
     (
         "SINGLE_ITEM",
         "Single Item",
-        "An item that does not need Mesh or Surface Deform modifiers on the Body or "
-        "the Outfits",
+        "An item that does not need Mesh or Surface Deform modifiers on the Body or the Outfits",
         "OBJECT_ORIGIN",
         3,
     ),
@@ -89,9 +88,7 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
 
     object: bpy.props.PointerProperty(type=bpy.types.Object, poll=poll_mesh)
 
-    type: bpy.props.EnumProperty(
-        default="NONE", items=mustardui_physics_item_type, name="Type"
-    )
+    type: bpy.props.EnumProperty(default="NONE", items=mustardui_physics_item_type, name="Type")
 
     # Outfits support
     outfit_enable: bpy.props.BoolProperty(
@@ -163,9 +160,7 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     collapse_softbody_cache: bpy.props.BoolProperty(default=True, name="")
 
     # Intersecting Objects for Outfits
-    intersecting_objects: bpy.props.CollectionProperty(
-        type=MustardUI_PhysicsItem_Intersecting
-    )
+    intersecting_objects: bpy.props.CollectionProperty(type=MustardUI_PhysicsItem_Intersecting)
 
     # Internal
     visibility_pre_disable: bpy.props.BoolProperty(default=True)

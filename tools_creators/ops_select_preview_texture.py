@@ -58,10 +58,8 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
             if not node.node_tree:
                 continue
 
-            result = (
-                MustardUI_ToolsCreators_SelectPreviewTexture.find_principled_recursive(
-                    node.node_tree, node, visited
-                )
+            result = MustardUI_ToolsCreators_SelectPreviewTexture.find_principled_recursive(
+                node.node_tree, node, visited
             )
 
             if result:
@@ -70,9 +68,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
         return None
 
     @staticmethod
-    def find_node_from_socket(
-        socket, current_tree, root_tree, parent_group=None, visited=None
-    ):
+    def find_node_from_socket(socket, current_tree, root_tree, parent_group=None, visited=None):
 
         if visited is None:
             visited = set()
@@ -96,9 +92,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
             # RGB image found — only accept if at the root (level 0) tree.
             # Images inside groups are ignored so we keep traversing GROUP_INPUT
             # back out to the top-level node tree.
-            if MustardUI_ToolsCreators_SelectPreviewTexture.is_rgb_image_node(
-                from_node
-            ):
+            if MustardUI_ToolsCreators_SelectPreviewTexture.is_rgb_image_node(from_node):
                 if current_tree is root_tree:
                     return from_node
                 # Inside a group: fall through and let GROUP_INPUT handling
@@ -106,10 +100,8 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
             # Traverse normally inside same tree
             for input_socket in from_node.inputs:
-                result = (
-                    MustardUI_ToolsCreators_SelectPreviewTexture.find_node_from_socket(
-                        input_socket, current_tree, root_tree, parent_group, visited
-                    )
+                result = MustardUI_ToolsCreators_SelectPreviewTexture.find_node_from_socket(
+                    input_socket, current_tree, root_tree, parent_group, visited
                 )
 
                 if result:

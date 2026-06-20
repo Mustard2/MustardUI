@@ -35,15 +35,11 @@ def register():
     MustardUI_RigSettings.quick_setup_outfit_collections = bpy.props.CollectionProperty(
         type=MustardUI_QuickSetupOutfit
     )
-    MustardUI_RigSettings.quick_setup_outfit_index = bpy.props.IntProperty(
-        name="", default=0
-    )
+    MustardUI_RigSettings.quick_setup_outfit_index = bpy.props.IntProperty(name="", default=0)
     MustardUI_RigSettings.quick_setup_hair_objects = bpy.props.CollectionProperty(
         type=MustardUI_QuickSetupHairObject
     )
-    MustardUI_RigSettings.quick_setup_hair_index = bpy.props.IntProperty(
-        name="", default=0
-    )
+    MustardUI_RigSettings.quick_setup_hair_index = bpy.props.IntProperty(name="", default=0)
 
 
 def unregister():

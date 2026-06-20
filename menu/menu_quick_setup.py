@@ -24,9 +24,7 @@ def _is_scanned(context):
 
 
 class MUSTARDUI_UL_QuickSetup_Outfits(bpy.types.UIList):
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.collection:
             row = layout.row(align=True)
             row.prop(item, "enabled", text="")
@@ -36,15 +34,9 @@ class MUSTARDUI_UL_QuickSetup_Outfits(bpy.types.UIList):
 
 
 class MUSTARDUI_UL_QuickSetup_Hair(bpy.types.UIList):
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.object:
-            obj_icon = (
-                "OUTLINER_OB_CURVES"
-                if item.object.type == "CURVES"
-                else "OUTLINER_OB_MESH"
-            )
+            obj_icon = "OUTLINER_OB_CURVES" if item.object.type == "CURVES" else "OUTLINER_OB_MESH"
             row = layout.row(align=True)
             row.prop(item, "enabled", text="")
             row.label(text=item.object.name, icon=obj_icon)
@@ -153,9 +145,7 @@ class PANEL_PT_MustardUI_QuickSetup_Hair(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config=2)
         rig_settings = arm.MustardUI_RigSettings
         count = sum(
-            1
-            for item in rig_settings.quick_setup_hair_objects
-            if item.enabled and item.object
+            1 for item in rig_settings.quick_setup_hair_objects if item.enabled and item.object
         )
 
         row = layout.row(align=True)
@@ -172,9 +162,7 @@ class PANEL_PT_MustardUI_QuickSetup_Hair(MainPanel, bpy.types.Panel):
         if len(hair_objs):
             col = layout.column(align=True)
             col.label(text="Add the Hair to be added to the Hair List.", icon="INFO")
-            col.label(
-                text="Objects should contain the string 'Hair' to be", icon="BLANK1"
-            )
+            col.label(text="Objects should contain the string 'Hair' to be", icon="BLANK1")
             col.label(text="added in this list during the Scan.", icon="BLANK1")
 
             layout.template_list(
@@ -202,11 +190,7 @@ class PANEL_PT_MustardUI_QuickSetup_Armature(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         res, arm = mustardui_active_object(context, config=2)
-        count = sum(
-            1
-            for c in arm.collections_all
-            if c.MustardUI_ArmatureBoneCollection.is_in_UI
-        )
+        count = sum(1 for c in arm.collections_all if c.MustardUI_ArmatureBoneCollection.is_in_UI)
 
         row = layout.row(align=True)
         row.label(text=f"({count})")
@@ -255,27 +239,20 @@ class PANEL_PT_MustardUI_QuickSetup_Armature(MainPanel, bpy.types.Panel):
         col.separator()
         sub = col.column(align=True)
         sub.enabled = active_bcoll is not None
-        sub.operator(
-            "armature.collection_move", icon="TRIA_UP", text=""
-        ).direction = "UP"
-        sub.operator(
-            "armature.collection_move", icon="TRIA_DOWN", text=""
-        ).direction = "DOWN"
+        sub.operator("armature.collection_move", icon="TRIA_UP", text="").direction = "UP"
+        sub.operator("armature.collection_move", icon="TRIA_DOWN", text="").direction = "DOWN"
         col.separator()
 
         # Add a warning if the bone collection visibility is driven by a driver
         arm_obj = rig_settings.model_armature_object
         _selected_names = {
-            c.name
-            for c in arm.collections_all
-            if c.MustardUI_ArmatureBoneCollection.is_in_UI
+            c.name for c in arm.collections_all if c.MustardUI_ArmatureBoneCollection.is_in_UI
         }
         _anim_sources = [arm.animation_data]
         if arm_obj is not None:
             _anim_sources.append(arm_obj.animation_data)
         has_driven_colls = any(
-            any(name in fc.data_path for name in _selected_names)
-            and "is_visible" in fc.data_path
+            any(name in fc.data_path for name in _selected_names) and "is_visible" in fc.data_path
             for src in _anim_sources
             if src is not None
             for fc in src.drivers
@@ -283,9 +260,7 @@ class PANEL_PT_MustardUI_QuickSetup_Armature(MainPanel, bpy.types.Panel):
         if has_driven_colls:
             col = layout.column(align=True)
             col.label(text="Some layers may appear purple (driven).", icon="ERROR")
-            col.label(
-                text="Right-click on those and select Delete Driver", icon="BLANK1"
-            )
+            col.label(text="Right-click on those and select Delete Driver", icon="BLANK1")
             col.label(text="to make them functional in MustardUI.", icon="BLANK1")
 
 
@@ -304,12 +279,8 @@ class PANEL_PT_MustardUI_QuickSetup_Complete(MainPanel, bpy.types.Panel):
         # --- Info ---
         box = layout.box()
         col = box.column(align=True)
-        col.label(
-            text="Additional features can be configured in Developer", icon="INFO"
-        )
-        col.label(
-            text="mode (enable it in Blender's Add-on Preferences).", icon="BLANK1"
-        )
+        col.label(text="Additional features can be configured in Developer", icon="INFO")
+        col.label(text="mode (enable it in Blender's Add-on Preferences).", icon="BLANK1")
         col.separator()
         col.label(text="For more information check the Documentation.", icon="BLANK1")
         col.separator()

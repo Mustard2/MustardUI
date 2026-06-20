@@ -58,13 +58,9 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(
                 text="Sections and Morphs",
-                icon="SHAPEKEY_DATA"
-                if morphs_settings.type != "GENERIC"
-                else "LINENUMBERS_OFF",
+                icon="SHAPEKEY_DATA" if morphs_settings.type != "GENERIC" else "LINENUMBERS_OFF",
             )
-            box.operator(
-                "mustardui.morphs_section_add", text="Add a Section", icon="ADD"
-            )
+            box.operator("mustardui.morphs_section_add", text="Add a Section", icon="ADD")
 
         if morphs_settings.sections:
             box = layout.box()
@@ -92,9 +88,7 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                 "mustardui.morphs_section_items_switch", icon="TRIA_DOWN", text=""
             ).direction = "DOWN"
 
-            section = morphs_settings.sections[
-                arm.mustardui_morphs_section_uilist_index
-            ]
+            section = morphs_settings.sections[arm.mustardui_morphs_section_uilist_index]
 
             col = box.column(align=True)
             col.enabled = not section.is_internal
@@ -124,9 +118,7 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
 
             if (
                 arm.mustardui_morphs_section_uilist_index > -1
-                and morphs_settings.sections[
-                    arm.mustardui_morphs_section_uilist_index
-                ].morphs
+                and morphs_settings.sections[arm.mustardui_morphs_section_uilist_index].morphs
             ):
                 box = layout.box()
                 box.label(text="Morphs", icon="SHAPEKEY_DATA")

@@ -106,9 +106,7 @@ class MUSTARDUI_UL_Morphs_Presets_UIList(bpy.types.UIList):
         res, obj = mustardui_active_object(context, config=0)
         return res if obj is not None else False
 
-    def draw_item(
-        self, context, layout, data, item, icon, active_data, active_propname, index
-    ):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         row.prop(
             item,

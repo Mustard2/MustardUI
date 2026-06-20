@@ -21,9 +21,7 @@ class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
         layout = self.layout
 
         for sec in rig_settings.body_custom_properties_sections:
-            op = layout.operator(
-                MustardUI_Property_MenuAdd.bl_idname, text=sec.name, icon=sec.icon
-            )
+            op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, text=sec.name, icon=sec.icon)
             op.section = sec.name
             op.outfit_is_nude = False
             op.outfit = ""
@@ -253,9 +251,7 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
         if len(outfit_props) > 0 and len(body_props) > 0:
             layout.separator()
             layout.label(text="Outfits", icon="MOD_CLOTH")
-        for prop in sorted(
-            sorted(outfit_props, key=lambda x: x.name), key=lambda x: x.outfit.name
-        ):
+        for prop in sorted(sorted(outfit_props, key=lambda x: x.name), key=lambda x: x.outfit.name):
             outfit_name = (
                 prop.outfit.name[len(rig_settings.model_name + " ") :]
                 if rig_settings.model_MustardUI_naming_convention
