@@ -92,7 +92,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
 class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_ToolsCreators"
     bl_label = "Model"
-    bl_options = {"DEFAULT_CLOSED"}
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
     @classmethod
     def poll(cls, context):
@@ -122,7 +122,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
 class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_ToolsCreators"
     bl_label = "Mesh"
-    bl_options = {"DEFAULT_CLOSED"}
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
     @classmethod
     def poll(cls, context):
