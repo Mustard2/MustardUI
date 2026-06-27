@@ -10,6 +10,8 @@ def outfit_poll_collection(self, object):
     ]
     if rig_settings.extras_collection is not None:
         collections.append(rig_settings.extras_collection)
+        if rig_settings.extras_config_subcollections:
+            collections.extend(rig_settings.extras_collection.children_recursive)
     if rig_settings.hair_collection is not None:
         collections.append(rig_settings.hair_collection)
     return object in collections

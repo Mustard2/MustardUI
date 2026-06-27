@@ -128,7 +128,7 @@ def simplify_extras(rig_settings, enable):
 
     items = (
         rig_settings.extras_collection.all_objects
-        if rig_settings.outfit_config_subcollections
+        if rig_settings.extras_config_subcollections
         else rig_settings.extras_collection.objects
     )
     for obj in items:
@@ -321,7 +321,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
         if rig_settings.extras_collection:
             items = (
                 rig_settings.extras_collection.all_objects
-                if rig_settings.outfit_config_subcollections
+                if rig_settings.extras_config_subcollections
                 else rig_settings.extras_collection.objects
             )
             for obj in [x for x in items if x in child_all]:

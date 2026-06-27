@@ -4,8 +4,8 @@ from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
-    find_layer_collection,
     outfits_update_armature_collections,
+    update_extras_visibility,
     update_global_body_mask,
     update_outfit_body_masks,
 )
@@ -191,20 +191,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             update_tags_recursive(obj)
 
         # Extras
-        extras = rig_settings.extras_collection
-        hidden = None
-        if extras:
-            items = (
-                extras.all_objects if rig_settings.outfit_config_subcollections else extras.objects
-            )
-            hidden = all(x.hide_render for x in items)
-            set_bool(extras, "hide_viewport", hidden)
-            set_bool(extras, "hide_render", hidden)
-
-            # Exclude the Collection
-            lc = find_layer_collection(context.view_layer.layer_collection, extras)
-            if lc is not None:
-                set_bool(lc, "exclude", hidden)
+        hidden = update_extras_visibility(context, rig_settings)
 
         # ------------------- GLOBAL UPDATES ------------------- #
         # Physics update

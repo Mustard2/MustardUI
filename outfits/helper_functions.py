@@ -14,6 +14,30 @@ def find_layer_collection(layer_coll, collection):
     return None
 
 
+def update_extras_visibility(context, rig_settings):
+    """Recursively hide/exclude each Extras (sub-)collection only when all its
+    objects are hidden.
+    Returns True if the whole tree is hidden, None if no Extras collection."""
+    extras = rig_settings.extras_collection
+    if extras is None:
+        return None
+
+    def _update(coll):
+        children_hidden = [_update(child) for child in coll.children]
+        all_hidden = all(obj.hide_render for obj in coll.objects) and all(children_hidden)
+
+        set_bool(coll, "hide_viewport", all_hidden)
+        set_bool(coll, "hide_render", all_hidden)
+
+        lc = find_layer_collection(context.view_layer.layer_collection, coll)
+        if lc is not None:
+            set_bool(lc, "exclude", all_hidden)
+
+        return all_hidden
+
+    return _update(extras)
+
+
 def update_outfit_body_masks(context, body, obj_name, visible):
     for mod in body.modifiers:
         if mod.type in ("MASK", "VERTEX_WEIGHT_MIX") and obj_name in mod.name.split("|"):
@@ -46,8 +70,6 @@ def update_global_body_mask(body):
 def outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=None):
     """Update visibility of armature bone collections like the outfit operator"""
 
-    use_subcollections = rig_settings.outfit_config_subcollections
-
     for bcoll in arm.collections_all:
         bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
         if not bcoll_settings.outfit_switcher_enable:
@@ -55,10 +77,15 @@ def outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=None
         if not bcoll_settings.outfit_switcher_collection:
             continue
 
+        switcher_collection = bcoll_settings.outfit_switcher_collection
+        use_subcollections = (
+            rig_settings.extras_config_subcollections
+            if switcher_collection == rig_settings.extras_collection
+            else rig_settings.outfit_config_subcollections
+        )
+
         items = (
-            bcoll_settings.outfit_switcher_collection.all_objects
-            if use_subcollections
-            else bcoll_settings.outfit_switcher_collection.objects
+            switcher_collection.all_objects if use_subcollections else switcher_collection.objects
         )
 
         visible = False

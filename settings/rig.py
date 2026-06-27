@@ -168,9 +168,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             collections.append(self.extras_collection)
 
         for collection in collections:
-            items = (
-                collection.all_objects if self.outfit_config_subcollections else collection.objects
+            use_sub = (
+                self.extras_config_subcollections
+                if collection == self.extras_collection
+                else self.outfit_config_subcollections
             )
+            items = collection.all_objects if use_sub else collection.objects
             for obj in items:
                 for modifier in obj.modifiers:
                     if modifier.type == "ARMATURE":
@@ -363,9 +366,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             collections.append(self.extras_collection)
 
         for collection in collections:
-            items = (
-                collection.all_objects if self.outfit_config_subcollections else collection.objects
+            use_sub = (
+                self.extras_config_subcollections
+                if collection == self.extras_collection
+                else self.outfit_config_subcollections
             )
+            items = collection.all_objects if use_sub else collection.objects
             for obj in items:
                 for modifier in obj.modifiers:
                     if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
@@ -405,9 +411,12 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         }
 
         for collection in collections:
-            items = (
-                collection.all_objects if self.outfit_config_subcollections else collection.objects
+            use_sub = (
+                self.extras_config_subcollections
+                if collection == self.extras_collection
+                else self.outfit_config_subcollections
             )
+            items = collection.all_objects if use_sub else collection.objects
 
             for obj in items:
                 # Update object modifiers
@@ -573,22 +582,31 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Extras
     def poll_collection_extras(self, object):
-        if self.hair_collection is not None:
-            return (
-                object not in [x.collection for x in self.outfits_collections]
-                and object != self.hair_collection
-            )
-        return object not in [x.collection for x in self.outfits_collections]
+        return (
+            object not in [x.collection for x in self.outfits_collections]
+            and object != self.hair_collection
+        )
 
     extras_collection: bpy.props.PointerProperty(
         name="Extras Collection", type=bpy.types.Collection, poll=poll_collection_extras
+    )
+
+    extras_config_subcollections: bpy.props.BoolProperty(
+        default=False,
+        name="Group by Sub-collections",
+        description="Show Extras Objects grouped by sub-collection, each with its own "
+        "visibility toggle in the UI",
     )
 
     # Show in Viewport
     def show_viewport_extras_update(self, context):
         if self.extras_collection is None:
             return
-        extras_objects = self.extras_collection.objects
+        extras_objects = (
+            self.extras_collection.all_objects
+            if self.extras_config_subcollections
+            else self.extras_collection.objects
+        )
 
         if any(not obj.hide_viewport for obj in extras_objects):
             hidden = not self.show_viewport_extras
@@ -618,6 +636,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         collections = [x.collection for x in self.outfits_collections]
         if self.extras_collection is not None:
             collections.append(self.extras_collection)
+            if self.extras_config_subcollections:
+                collections.extend(self.extras_collection.children_recursive)
         return object not in collections
 
     hair_collection: bpy.props.PointerProperty(
@@ -635,6 +655,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         collections = [x.collection for x in self.outfits_collections]
         if self.extras_collection is not None:
             collections.append(self.extras_collection)
+            if self.extras_config_subcollections:
+                collections.extend(self.extras_collection.children_recursive)
         if self.hair_collection is not None:
             collections.append(self.hair_collection)
         if self.hair_extras_collection is not None:
@@ -657,6 +679,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         collections = [x.collection for x in self.outfits_collections]
         if self.extras_collection is not None:
             collections.append(self.extras_collection)
+            if self.extras_config_subcollections:
+                collections.extend(self.extras_collection.children_recursive)
         if self.hair_collection is not None:
             collections.append(self.hair_collection)
         if self.hair_switch_collection is not None:

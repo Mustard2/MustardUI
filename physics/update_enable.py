@@ -177,7 +177,12 @@ def enable_physics_update(self, context):
                 set_modifiers(pi, obj, status)
 
     if rig_settings.extras_collection is not None:
-        for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+        extras_objects = (
+            rig_settings.extras_collection.all_objects
+            if rig_settings.extras_config_subcollections
+            else rig_settings.extras_collection.objects
+        )
+        for obj in [x for x in extras_objects if x.type == "MESH"]:
             for pi in pi_cages:
                 status = (
                     self.enable_physics
@@ -260,7 +265,12 @@ def enable_physics_update_single(self, context):
                 set_modifiers(self, obj, status_int)
 
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            extras_objects = (
+                rig_settings.extras_collection.all_objects
+                if rig_settings.extras_config_subcollections
+                else rig_settings.extras_collection.objects
+            )
+            for obj in [x for x in extras_objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.extras_collection.hide_viewport
@@ -351,7 +361,12 @@ def enable_physics_update_single_smooth_corrective(self, context):
                 set_modifiers(self, obj, status_int, "CORRECTIVE_SMOOTH")
 
         if rig_settings.extras_collection is not None:
-            for obj in [x for x in rig_settings.extras_collection.objects if x.type == "MESH"]:
+            extras_objects = (
+                rig_settings.extras_collection.all_objects
+                if rig_settings.extras_config_subcollections
+                else rig_settings.extras_collection.objects
+            )
+            for obj in [x for x in extras_objects if x.type == "MESH"]:
                 status_int = (
                     status
                     and not rig_settings.extras_collection.hide_viewport
