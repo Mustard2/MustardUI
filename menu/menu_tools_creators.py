@@ -94,6 +94,8 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
     bl_label = "Model"
     bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
+    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Model"
+
     @classmethod
     def poll(cls, context):
         if can_draw_ui():
@@ -107,6 +109,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
         layout = self.layout
         layout.label(text="", icon="ARMATURE_DATA")
+        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout
@@ -124,6 +127,8 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
     bl_label = "Mesh"
     bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
+    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Mesh"
+
     @classmethod
     def poll(cls, context):
         if can_draw_ui():
@@ -137,6 +142,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
         layout = self.layout
         layout.label(text="", icon="MESH_DATA")
+        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
 
     def draw(self, context):
         layout = self.layout
