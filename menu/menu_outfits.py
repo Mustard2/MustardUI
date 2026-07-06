@@ -2,6 +2,7 @@ import re
 
 import bpy
 
+from ..configuration.naming_convention import strip_naming_convention
 from ..misc.outfits import outfit_extract_items_from_collection
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
@@ -198,7 +199,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             if rig_settings.extras_collection is not None:
                 items = (
                     rig_settings.extras_collection.all_objects
-                    if rig_settings.outfit_config_subcollections
+                    if rig_settings.extras_config_subcollections
                     else rig_settings.extras_collection.objects
                 )
                 extras_avail = len(items) > 0
@@ -389,7 +390,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
 
         items = (
             rig_settings.extras_collection.all_objects
-            if rig_settings.outfit_config_subcollections
+            if rig_settings.extras_config_subcollections
             else rig_settings.extras_collection.objects
         )
         extras_avail = len(items) > 0
@@ -426,8 +427,58 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         # or the Outfits are simplified
         layout.enabled = rig_settings.outfits_show and rig_settings.show_viewport_extras
 
+        extras = rig_settings.extras_collection
+
+        # When sub-collections are enabled and present, draw each sub-collection as
+        # its own collapsible group with a dedicated show/hide (+ exclude) toggle.
+        if rig_settings.extras_config_subcollections and len(extras.children) > 0:
+            # Objects directly in the Extras collection (not in any sub-collection)
+            loose_items = outfit_extract_items_from_collection(extras, False)
+            for obj in sorted(loose_items, key=lambda x: x.name):
+                draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, 2, 0)
+
+            for child in sorted(extras.children, key=lambda x: x.name):
+                citems = outfit_extract_items_from_collection(child, True)
+                if len(citems) == 0:
+                    continue
+
+                child_label = strip_naming_convention(
+                    child.name,
+                    extras.name,
+                    rig_settings.model_MustardUI_naming_convention,
+                )
+
+                row = layout.row(align=True)
+                expanded = ui_collapse_prop(
+                    row,
+                    child,
+                    "MustardUI_extras_collapse",
+                    child_label,
+                    icon="OUTLINER_COLLECTION",
+                    use_layout=True,
+                    invert_checkbox=True,
+                )
+
+                row.operator(
+                    "mustardui.extras_collection_visibility",
+                    text="",
+                    icon=(
+                        "RESTRICT_VIEW_OFF" if child.MustardUI_extras_show else "RESTRICT_VIEW_ON"
+                    ),
+                    depress=child.MustardUI_extras_show,
+                ).collection = child.name
+
+                if expanded:
+                    col = layout.column()
+                    col.enabled = child.MustardUI_extras_show
+                    for obj in sorted(citems, key=lambda x: x.name):
+                        draw_outfit_piece(
+                            col, obj, arm, rig_settings, physics_settings, settings, 2, 0
+                        )
+            return
+
         eitems = outfit_extract_items_from_collection(
-            rig_settings.extras_collection, rig_settings.outfit_config_subcollections
+            extras, rig_settings.extras_config_subcollections
         )
 
         for obj in sorted(eitems, key=lambda x: x.name):

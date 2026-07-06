@@ -147,7 +147,8 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                     text="" if morphs_settings.enable_freeze_morphs else "Restore Default Values",
                     icon="LOOP_BACK",
                 )
-                row2.operator("mustardui.morphs_presets_ui", text="", icon="PRESET")
+                op = row2.operator("mustardui.presets_ui", text="", icon="PRESET")
+                op.preset_type = "MORPHS"
 
             sections = [x for x in morphs_settings.sections if x.morphs and not x.hidden]
             for section in sections:

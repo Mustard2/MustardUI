@@ -112,8 +112,20 @@ def register():
         default=False, name="", description="Lock/unlock the outfit"
     )
 
+    # Collapse state of an Extras sub-collection group in the UI
+    bpy.types.Collection.MustardUI_extras_collapse = bpy.props.BoolProperty(
+        default=False, name="", description="Collapse/expand the Extras sub-collection"
+    )
+
+    # Show/hide intent of an Extras sub-collection
+    bpy.types.Collection.MustardUI_extras_show = bpy.props.BoolProperty(
+        default=True, name="", description="Show/hide the Extras sub-collection"
+    )
+
 
 def unregister():
+    del bpy.types.Collection.MustardUI_extras_show
+    del bpy.types.Collection.MustardUI_extras_collapse
     del bpy.types.Object.MustardUI_outfit_visibility
     del bpy.types.Object.MustardUI_OutfitSettings
 

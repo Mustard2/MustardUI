@@ -22,9 +22,14 @@ class MustardUI_AddOutfit(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
 
-        if bpy.context.collection == rig_settings.extras_collection:
-            self.report({"ERROR"}, "MustardUI - Collection already added as Extras.")
-            return {"FINISHED"}
+        extras = rig_settings.extras_collection
+        if extras is not None:
+            extras_colls = [extras]
+            if rig_settings.extras_config_subcollections:
+                extras_colls.extend(extras.children_recursive)
+            if bpy.context.collection in extras_colls:
+                self.report({"ERROR"}, "MustardUI - Collection already added as Extras.")
+                return {"FINISHED"}
         if bpy.context.collection == rig_settings.hair_collection:
             self.report({"ERROR"}, "MustardUI - Collection already added as Hair.")
             return {"FINISHED"}

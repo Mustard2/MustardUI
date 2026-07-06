@@ -187,6 +187,10 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         else:
             op.single_outfit = ""
 
+        row = box.row()
+        row.enabled = rig_settings.extras_collection is not None
+        row.prop(rig_settings, "extras_config_subcollections")
+
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_InitPanel_Outfit)

@@ -125,7 +125,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
         if rig_settings.extras_collection is not None:
             items = (
                 rig_settings.extras_collection.all_objects
-                if rig_settings.outfit_config_subcollections
+                if rig_settings.extras_config_subcollections
                 else rig_settings.extras_collection.objects
             )
             if len(items) > 0:

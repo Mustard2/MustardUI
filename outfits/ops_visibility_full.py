@@ -171,7 +171,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         if body and enable_mask and rig_settings.extras_collection is not None:
             extras_items = (
                 rig_settings.extras_collection.all_objects
-                if use_subcollections
+                if rig_settings.extras_config_subcollections
                 else rig_settings.extras_collection.objects
             )
             for obj in extras_items:
