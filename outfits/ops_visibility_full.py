@@ -46,7 +46,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         shrink = rig_settings.outfits_global_shrinkwrap
         enable_subsurf = rig_settings.outfits_enable_global_subsurface
         subsurf = rig_settings.outfits_global_subsurface
-        enable_mask = rig_settings.outfits_enable_global_mask
         mask = rig_settings.outfits_global_mask
 
         # Collections, objects, modifiers, masks
@@ -151,7 +150,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                             set_bool(mod, "show_viewport", show_obj and subsurf)
 
                 # Body masks
-                if body and enable_mask:
+                if body:
                     mask_visible = (is_active or locked) and show_obj and mask
                     update_outfit_body_masks(context, body, obj.name, mask_visible)
 
@@ -168,7 +167,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         # Extras are independent of the outfit switcher: their visibility is not
         # changed here, but their body masks are refreshed to follow each piece's own
         # visibility so they stay consistent on outfit switches.
-        if body and enable_mask and rig_settings.extras_collection is not None:
+        if body and rig_settings.extras_collection is not None:
             extras_items = (
                 rig_settings.extras_collection.all_objects
                 if rig_settings.extras_config_subcollections
@@ -179,7 +178,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
 
         # Refresh the combined global mask once, after every outfit piece has been
         # processed, so it reflects the final state of all Vertex Weight Mix modifiers.
-        if body and enable_mask:
+        if body:
             update_global_body_mask(body)
 
         # Apply hair switching once, toggling direct children of
