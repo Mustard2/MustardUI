@@ -88,8 +88,11 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         for bcoll in collections:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if bcoll_settings.outfit_switcher_enable:
-                outfit_switcher_object = bcoll_settings.outfit_switcher_object
                 outfit_switcher_collection = bcoll_settings.outfit_switcher_collection
+                if outfit_switcher_collection == rig_settings.hair_collection:
+                    continue
+
+                outfit_switcher_object = bcoll_settings.outfit_switcher_object
                 check_coll = (
                     bpy.data.collections[rig_settings.outfits_list] == outfit_switcher_collection
                     if rig_settings.outfits_list != "Nude"
@@ -137,8 +140,11 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         for bcoll in collections:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if bcoll_settings.outfit_switcher_enable:
-                outfit_switcher_object = bcoll_settings.outfit_switcher_object
                 outfit_switcher_collection = bcoll_settings.outfit_switcher_collection
+                if outfit_switcher_collection != rig_settings.hair_collection:
+                    continue
+
+                outfit_switcher_object = bcoll_settings.outfit_switcher_object
                 check_coll = rig_settings.hair_collection == outfit_switcher_collection
                 if rig_settings.hair_extras_collection is not None:
                     check_coll = (
