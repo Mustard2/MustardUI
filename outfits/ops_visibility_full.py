@@ -198,7 +198,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
 
         # Armature layers
         if arm_settings.outfits:
-            outfits_update_armature_collections(rig_settings, arm)
+            outfits_update_armature_collections(rig_settings, arm, outfits=True)
 
         # Custom properties
         ui_cache = {}

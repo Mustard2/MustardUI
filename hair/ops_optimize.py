@@ -5,6 +5,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ..outfits.helper_functions import outfits_update_armature_collections
 from ..tools.simplify import simplify_hair
 
 
@@ -67,6 +68,7 @@ class MustardUI_Hair_DisableViewport(bpy.types.Operator):
                 }
 
         simplify_hair(rig_settings, self.enable)
+        outfits_update_armature_collections(rig_settings, arm, hair=True)
 
         if not self.enable:
             if "mustardui_hair_show" in arm:

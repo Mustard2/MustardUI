@@ -155,7 +155,11 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                 if outfit_switcher_object is None:
                     bcoll.is_visible = armature_settings.hair and check_coll
                 else:
-                    bcoll.is_visible = armature_settings.hair and check_coll
+                    bcoll.is_visible = (
+                        armature_settings.hair
+                        and check_coll
+                        and not outfit_switcher_object.hide_viewport
+                    )
 
     hair: bpy.props.BoolProperty(
         default=True,
