@@ -126,14 +126,16 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         rig_settings = arm.MustardUI_RigSettings
         armature_settings = arm.MustardUI_ArmatureSettings
 
+        if rig_settings.hair_collection is None:
+            return
+
         # Hair Armatures in the hair collection
-        if rig_settings.hair_collection is not None:
-            for obj in [
-                x
-                for x in rig_settings.hair_collection.objects
-                if x.type == "ARMATURE" and rig_settings.hair_list in x.name
-            ]:
-                obj.hide_viewport = not armature_settings.hair
+        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]:
+            for child in [x for x in obj.children if x.modifiers]:
+                if any(x.type == "ARMATURE" and x.object == obj for x in child.modifiers):
+                    obj.hide_viewport = (
+                        not armature_settings.hair if not child.hide_viewport else True
+                    )
 
         # Bone Collections Hair as Outfits
         collections = arm.collections_all
