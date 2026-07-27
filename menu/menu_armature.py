@@ -93,7 +93,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             return res
 
         rig_settings = obj.MustardUI_RigSettings
-        armature_settings = obj.MustardUI_ArmatureSettings
         bcolls = obj.collections_all
 
         if len(bcolls) < 1:
@@ -107,7 +106,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 or (
                     len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])
                     > 1
-                    and armature_settings.enable_automatic_hair
                 )
             )
         else:
@@ -127,6 +125,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         rig_settings = obj.MustardUI_RigSettings
 
         bcolls = obj.collections
+        bcolls_all = obj.collections_all
 
         enabled_colls = [x for x in bcolls if x.MustardUI_ArmatureBoneCollection.is_in_UI]
         is_solo_enabled = not any([x.is_solo for x in bcolls])
@@ -136,14 +135,27 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         col = layout.column()
         col.enabled = is_solo_enabled
         draw_separator = False
-        if rig_settings.hair_collection is not None and armature_settings.enable_automatic_hair:
-            if len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]) > 0:
+        if rig_settings.hair_collection is not None:
+            if len(
+                [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]
+            ) > 0 or [
+                x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection
+                == rig_settings.hair_collection
+                for x in bcolls_all
+            ]:
                 col.prop(armature_settings, "hair", toggle=True, icon="CURVES")
                 draw_separator = True
 
         if len(rig_settings.outfits_list) > 0:
             if len(
-                [x for x in bcolls if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable]
+                [
+                    x
+                    for x in bcolls_all
+                    if x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
+                    and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection is not None
+                    and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection
+                    != rig_settings.hair_collection
+                ]
             ):
                 col.prop(armature_settings, "outfits", toggle=True, icon="MOD_CLOTH")
                 draw_separator = True

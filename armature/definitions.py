@@ -122,6 +122,8 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
         armature_settings = arm.MustardUI_ArmatureSettings
+
+        # Hair Armatures in the hair collection
         if rig_settings.hair_collection is not None:
             for obj in [
                 x
@@ -130,14 +132,24 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
             ]:
                 obj.hide_viewport = not armature_settings.hair
 
-    # Hair armature controller
-    enable_automatic_hair: bpy.props.BoolProperty(
-        default=True,
-        name="Armature Hair detection",
-        description="Enable the automatic armature hair detection.\nIf "
-        "enabled, the UI will automatically detect armatures in "
-        "the hair collection",
-    )
+        # Bone Collections Hair as Outfits
+        collections = arm.collections_all
+        for bcoll in collections:
+            bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
+            if bcoll_settings.outfit_switcher_enable:
+                outfit_switcher_object = bcoll_settings.outfit_switcher_object
+                outfit_switcher_collection = bcoll_settings.outfit_switcher_collection
+                check_coll = rig_settings.hair_collection == outfit_switcher_collection
+                if rig_settings.hair_extras_collection is not None:
+                    check_coll = (
+                        check_coll
+                        or outfit_switcher_collection == rig_settings.hair_extras_collection
+                    )
+
+                if outfit_switcher_object is None:
+                    bcoll.is_visible = armature_settings.hair and check_coll
+                else:
+                    bcoll.is_visible = armature_settings.hair and check_coll
 
     hair: bpy.props.BoolProperty(
         default=True,
