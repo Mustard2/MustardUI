@@ -105,7 +105,13 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 len(enabled_colls) > 0
                 or (
                     len([x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"])
-                    > 1
+                    > 0
+                )
+                or any(
+                    x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
+                    and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection
+                    == rig_settings.hair_collection
+                    for x in bcolls
                 )
             )
         else:
@@ -138,11 +144,12 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         if rig_settings.hair_collection is not None:
             if len(
                 [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]
-            ) > 0 or [
-                x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection
+            ) > 0 or any(
+                x.MustardUI_ArmatureBoneCollection.outfit_switcher_enable
+                and x.MustardUI_ArmatureBoneCollection.outfit_switcher_collection
                 == rig_settings.hair_collection
                 for x in bcolls_all
-            ]:
+            ):
                 col.prop(armature_settings, "hair", toggle=True, icon="CURVES")
                 draw_separator = True
 
