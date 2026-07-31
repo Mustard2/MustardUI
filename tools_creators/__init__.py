@@ -17,6 +17,7 @@ from . import (
     ops_rename,
     ops_rename_images,
     ops_select_preview_texture,
+    ops_selection_cage,
     ops_spline_ik,
     ops_transfer_vertex_groups,
     ops_transformations,
@@ -30,6 +31,7 @@ def register():
     ops_hair_cage_add_cloth.register()
     ops_hair_cage.register()
     ops_collision_cage.register()
+    ops_selection_cage.register()
     ops_spline_ik.register()
     ops_jiggle.register()
     ops_bone_physics.register()
@@ -61,6 +63,7 @@ def unregister():
     ops_bone_physics.unregister()
     ops_jiggle.unregister()
     ops_spline_ik.unregister()
+    ops_selection_cage.unregister()
     ops_collision_cage.unregister()
     ops_hair_cage.unregister()
     ops_hair_cage_add_cloth.unregister()

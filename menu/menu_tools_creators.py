@@ -194,6 +194,13 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
         row.operator("mustardui.tools_creators_bone_physics_clean", text="", icon="X")
         row = layout.row(align=True)
         row.operator(
+            "mustardui.tools_creators_selection_cage",
+            text="Create Cage from Selection",
+            icon="MOD_MESHDEFORM",
+        )
+
+        row = layout.row(align=True)
+        row.operator(
             "mustardui.tools_creators_hair_cage",
             text="Create Hair Cage",
             icon="OUTLINER_OB_CURVES",
