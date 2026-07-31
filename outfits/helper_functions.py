@@ -67,7 +67,9 @@ def update_global_body_mask(body):
             set_bool(mod, "show_render", activate)
 
 
-def outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=None):
+def outfits_update_armature_collections(
+    rig_settings, arm, is_extras_hidden=None, outfits=False, hair=False
+):
     """Update visibility of armature bone collections like the outfit operator"""
 
     for bcoll in arm.collections_all:
@@ -78,6 +80,19 @@ def outfits_update_armature_collections(rig_settings, arm, is_extras_hidden=None
             continue
 
         switcher_collection = bcoll_settings.outfit_switcher_collection
+
+        if (
+            outfits
+            and rig_settings.hair_collection is not None
+            and switcher_collection == rig_settings.hair_collection
+        ):
+            continue
+        if hair and switcher_collection not in {
+            rig_settings.hair_collection,
+            rig_settings.hair_extras_collection,
+        }:
+            continue
+
         use_subcollections = (
             rig_settings.extras_config_subcollections
             if switcher_collection == rig_settings.extras_collection
