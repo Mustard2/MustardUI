@@ -2,7 +2,6 @@ import bpy
 from bpy.props import IntProperty
 
 from ..model_selection.active_object import mustardui_active_object
-from .definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP
 from .settings_item import mustardui_physics_item_type_dict
 
 
@@ -66,12 +65,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
             found = True
             if item.type == "CAGE":
                 found = any(
-                    mod.type in ["CLOTH", "SOFT_BODY"]
-                    or (
-                        mod.type == "NODES"
-                        and mod.node_group
-                        and mod.node_group.name.startswith(CLOTH_DYNAMICS_NODE_GROUP)
-                    )
+                    mod.type in ["CLOTH", "SOFT_BODY"] or (mod.type == "NODES" and mod.node_group)
                     for mod in item.object.modifiers
                 )
             elif item.type == "COLLISION":
