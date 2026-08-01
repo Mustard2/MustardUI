@@ -119,6 +119,7 @@ def cloth_dynamics_panel(layout, pi, mod):
         ("bendiness", "Bendiness"),
         ("friction", "Friction"),
         ("collision_radius", "Collision Radius"),
+        ("effectors_collection", "Collider Collection"),
         ("linear_damping", "Linear Damping"),
     ]
     CLOTH_DYNAMICS_UI_ADVANCED_FIELDS = [
@@ -146,8 +147,8 @@ def cloth_dynamics_panel(layout, pi, mod):
                 continue
             col.prop(entry, "value", text=label)
 
-    # Collisions and Pin Group are not exposed here: they are creator-side, set
-    # when the physics is added by a Creator Tool
+    # Pin Group is not exposed here: it is creator-side, set when the physics is
+    # added by a Creator Tool
 
 
 def soft_body_panel(layout, pi, mod):

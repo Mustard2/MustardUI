@@ -23,6 +23,7 @@ CLOTH_DYNAMICS_SOCKETS = {
     "collision_radius": "Socket_24",
     "linear_damping": "Socket_8",
     "gravity": "Socket_5",
+    "effectors_collection": "Socket_7",
 }
 
 
