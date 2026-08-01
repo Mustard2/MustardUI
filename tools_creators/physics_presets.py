@@ -412,16 +412,19 @@ def _apply_nodes(obj, preset, pin_group_name):
     dynamics = obj.modifiers.new(name="Cloth Dynamics", type="NODES")
     dynamics.node_group = node_group
 
-    # Every input of the modifier is a group of properties holding the value, and
-    # the name of the attribute when the input is driven by one
+    # Every input of the modifier is its own struct holding 'value', and the name
+    # of the attribute when the input is driven by one instead ('type' switches
+    # between the two)
     modifier_inputs = dynamics.properties.inputs
     for key, value in inputs.items():
         socket = CLOTH_DYNAMICS_SOCKETS.get(key)
         if socket is not None:
-            modifier_inputs[socket]["value"] = value
+            getattr(modifier_inputs, socket).value = value
 
     if pin_group_name:
-        modifier_inputs[CLOTH_DYNAMICS_SOCKETS["pin_group"]]["attribute_name"] = pin_group_name
+        pin_input = getattr(modifier_inputs, CLOTH_DYNAMICS_SOCKETS["pin_group"])
+        pin_input.type = "ATTRIBUTE"
+        pin_input.attribute_name = pin_group_name
 
     return dynamics
 

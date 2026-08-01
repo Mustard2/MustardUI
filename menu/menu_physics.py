@@ -3,6 +3,7 @@ import bpy
 from ..misc.mirror import check_mirror
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
+from ..tools_creators import physics_presets
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -97,6 +98,43 @@ def cloth_panel(layout, pi, mod):
         col.prop(collisions, "self_impulse_clamp", slider=True, text="Impulse Clamping")
 
     # Add all settings inserted here also in the mirror operator
+
+
+def cloth_dynamics_panel(layout, pi, mod):
+    CLOTH_DYNAMICS_UI_FIELDS = [
+        ("mass", "Vertex Mass"),
+        ("stretchiness", "Stretchiness"),
+        ("bendiness", "Bendiness"),
+        ("friction", "Friction"),
+        ("collision_radius", "Collision Radius"),
+        ("linear_damping", "Linear Damping"),
+    ]
+    CLOTH_DYNAMICS_UI_ADVANCED_FIELDS = [
+        ("substeps", "Substeps"),
+        ("constraint_steps", "Constraint Steps"),
+    ]
+
+    inputs = mod.properties.inputs
+
+    col = layout.column(align=True)
+    for key, label in CLOTH_DYNAMICS_UI_FIELDS:
+        socket = physics_presets.CLOTH_DYNAMICS_SOCKETS.get(key)
+        entry = getattr(inputs, socket, None) if socket else None
+        if entry is None:
+            continue
+        col.prop(entry, "value", text=label)
+
+    if ui_collapse_prop(layout, pi, "collapse_cloth_dynamics_advanced", "Advanced"):
+        col = layout.column(align=True)
+        for key, label in CLOTH_DYNAMICS_UI_ADVANCED_FIELDS:
+            socket = physics_presets.CLOTH_DYNAMICS_SOCKETS.get(key)
+            entry = getattr(inputs, socket, None) if socket else None
+            if entry is None:
+                continue
+            col.prop(entry, "value", text=label)
+
+    # Collisions and Pin Group are not exposed here: they are creator-side, set
+    # when the physics is added by a Creator Tool
 
 
 def soft_body_panel(layout, pi, mod):
@@ -259,6 +297,68 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
         cloth_panel(layout, pi, cloth)
 
 
+def find_cloth_dynamics_modifier(obj):
+    return next(
+        (
+            m
+            for m in obj.modifiers
+            if m.type == "NODES"
+               and m.node_group
+               and m.node_group.name.startswith(physics_presets.CLOTH_DYNAMICS_NODE_GROUP)
+        ),
+        None,
+    )
+
+class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Panel):
+    bl_label = ""
+    bl_parent_id = "PANEL_PT_MustardUI_Physics"
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
+
+    @classmethod
+    def poll(cls, context):
+        if can_draw_ui():
+            return False
+
+        res, obj = mustardui_active_object(context, config=0)
+
+        if obj is None:
+            return False
+
+        physics_settings = obj.MustardUI_PhysicsSettings
+        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+
+        if pi.object and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
+            return res and find_cloth_dynamics_modifier(pi.object) is not None
+
+        return False
+
+    def draw_header(self, context):
+        poll, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+
+        layout = self.layout
+
+        layout.label(text="Cloth Dynamics Settings")
+        layout.enabled = physics_settings.enable_physics
+
+    def draw(self, context):
+
+        poll, obj = mustardui_active_object(context, config=0)
+        physics_settings = obj.MustardUI_PhysicsSettings
+
+        layout = self.layout
+
+        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        cloth_dynamics = find_cloth_dynamics_modifier(pi.object)
+
+        layout.enabled = physics_settings.enable_physics and pi.enable
+
+        if cloth_dynamics is None:
+            return
+
+        cloth_dynamics_panel(layout, pi, cloth_dynamics)
+
+
 class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
     bl_label = ""
     bl_parent_id = "PANEL_PT_MustardUI_Physics"
@@ -418,6 +518,7 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Physics)
     bpy.utils.register_class(PANEL_PT_MustardUI_Physics_ClothSettings)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Physics_ClothDynamicsSettings)
     bpy.utils.register_class(PANEL_PT_MustardUI_Physics_SoftBodySettings)
     bpy.utils.register_class(PANEL_PT_MustardUI_Physics_CollisionSettings)
     bpy.utils.register_class(PANEL_PT_MustardUI_Physics_Cache)
@@ -427,5 +528,6 @@ def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics_Cache)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics_CollisionSettings)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics_SoftBodySettings)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics_ClothDynamicsSettings)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics_ClothSettings)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Physics)

@@ -156,6 +156,9 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
     collapse_cloth_collisions: bpy.props.BoolProperty(default=True, name="")
     collapse_cloth_self_collisions: bpy.props.BoolProperty(default=True, name="")
 
+    # Cloth Dynamics (Geometry Nodes)
+    collapse_cloth_dynamics_advanced: bpy.props.BoolProperty(default=True, name="")
+
     # Soft Body
     collapse_softbody_cache: bpy.props.BoolProperty(default=True, name="")
 

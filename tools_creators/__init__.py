@@ -3,11 +3,11 @@ from bpy.props import BoolProperty
 
 from . import (
     ops_bone_physics,
-    ops_jiggle_accurate,
     ops_collision_cage,
     ops_face_controller,
     ops_hair_cage,
     ops_jiggle,
+    ops_jiggle_accurate,
     ops_link_shape_keys,
     ops_naming,
     ops_optimize_mods,

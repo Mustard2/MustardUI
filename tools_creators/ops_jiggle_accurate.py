@@ -24,7 +24,8 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                 "CLOSED",
                 "Closed",
                 "Simplify the surface of the selection and close its border, to "
-                "obtain a single closed cage.\nBest for volume parts (breasts, belly, hair clumps, ears)",
+                "obtain a single closed cage.\nBest for volume parts (breasts, "
+                "belly, hair clumps, ears)",
                 "MESH_UVSPHERE",
                 0,
             ),
@@ -85,7 +86,8 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
     structural_stiffness: bpy.props.FloatProperty(
         name="Stiffness",
         description="How much the cage resists being stretched where the model is "
-        "dense.\nCan be useful when some parts are extruding from the main mesh (for instance the tip of a breast)",
+        "dense.\nCan be useful when some parts are extruding from the main mesh "
+        "(for instance the tip of a breast)",
         default=1.0,
         min=0.0,
         max=1.0,
