@@ -32,168 +32,97 @@ import bpy
 from mathutils import Vector
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import (
-    active_object_operator_poll,
-    mustardui_active_object,
-)
+from ..model_selection.active_object import mustardui_active_object
+from . import physics_presets
 
 
-class MustardUI_ToolsCreators_CreateJiggle_Preset(bpy.types.Operator):
-    bl_idname = "mustardui.tools_creators_create_jiggle_preset"
-    bl_label = "Jiggle Preset"
-    bl_description = "Adds cloth jiggle physics to the mesh. Uses active vtx group as 'Pin Group' in object mode. If in edit mode then it creates a new vtx group from selection and uses it instead. Applies to active and selected"  # noqa: E501
-    bl_options = {"REGISTER", "UNDO", "INTERNAL"}
+def _apply_jiggle_physics(operator):
+    """Apply the physics preset selected on 'operator' to every selected mesh.
 
-    @classmethod
-    def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+    Uses the active vertex group as the Pin group in Object Mode; in Edit Mode a
+    new group is created from the selected vertices instead.
+    """
 
-    def execute(self, context):
+    # Function to handle vertex group creation and assignment in Edit Mode
+    def create_vertex_group(obj, base_name="ClothPinGroup"):
+        # Switch to Object Mode temporarily to update the vertex group
+        bpy.ops.object.mode_set(mode="OBJECT")
 
-        # Set the playback sync mode to 'NONE' (Play Every Frame)
-        bpy.context.scene.sync_mode = "NONE"
+        # Create a unique vertex group name
+        i = 1
+        new_name = base_name
+        while new_name in obj.vertex_groups:
+            new_name = f"{base_name}_{i}"
+            i += 1
 
-        # Remove cloth modifiers
-        for obj in bpy.context.selected_objects:
-            # Ensure the object is a mesh
-            if obj.type == "MESH":
-                # List to hold the names of the cloth modifiers to be removed
-                cloth_modifiers = [mod.name for mod in obj.modifiers if mod.type == "CLOTH"]
-                # Remove each cloth modifier
-                for mod_name in cloth_modifiers:
-                    obj.modifiers.remove(obj.modifiers[mod_name])
+        # Create a new vertex group
+        vertex_group = obj.vertex_groups.new(name=new_name)
 
-        # Ensure that the context is correct for adding modifiers
-        bpy.context.view_layer.update()
+        # Get the selected vertices
+        selected_verts = [v.index for v in obj.data.vertices if v.select]
 
-        # Function to handle vertex group creation and assignment in Edit Mode
-        def create_vertex_group(obj, base_name="ClothPinGroup"):
-            # Switch to Object Mode temporarily to update the vertex group
-            bpy.ops.object.mode_set(mode="OBJECT")
+        # Add selected vertices to the vertex group with weight 1.0
+        vertex_group.add(selected_verts, 1.0, "ADD")
 
-            # Create a unique vertex group name
-            i = 1
-            new_name = base_name
-            while new_name in obj.vertex_groups:
-                new_name = f"{base_name}_{i}"
-                i += 1
+        # Return to Edit Mode
+        bpy.ops.object.mode_set(mode="EDIT")
 
-            # Create a new vertex group
-            vertex_group = obj.vertex_groups.new(name=new_name)
+        return new_name
 
-            # Get the selected vertices
-            selected_verts = [v.index for v in obj.data.vertices if v.select]
+    engine, preset = physics_presets.selected_preset(operator)
 
-            # Add selected vertices to the vertex group with weight 1.0
-            vertex_group.add(selected_verts, 1.0, "ADD")
+    for obj in [x for x in bpy.context.selected_objects if x.type == "MESH"]:
+        # Set the object as active
+        bpy.context.view_layer.objects.active = obj
 
-            # Return to Edit Mode
-            bpy.ops.object.mode_set(mode="EDIT")
+        # Check current mode and handle vertex groups
+        current_mode = bpy.context.object.mode
+        vertex_group_name = None
+        if current_mode == "EDIT":
+            vertex_group_name = create_vertex_group(obj)
+        elif current_mode == "OBJECT" and obj.vertex_groups.active:
+            vertex_group_name = obj.vertex_groups.active.name
 
-            return new_name
+        # The settings are not written here: every Creator Tool goes through the
+        # same presets, so that they are defined in a single place
+        if (
+            physics_presets.apply_physics(
+                obj,
+                engine=engine,
+                preset=preset,
+                pin_group_name=vertex_group_name or "",
+            )
+            is None
+        ):
+            operator.report(
+                {"WARNING"},
+                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "Cloth modifier was used instead.",
+            )
+            physics_presets.apply_physics(
+                obj,
+                engine="CLOTH",
+                preset=operator.cloth_preset,
+                pin_group_name=vertex_group_name or "",
+            )
 
-        for obj in [x for x in bpy.context.selected_objects if x.type == "MESH"]:
-            # Set the object as active
-            bpy.context.view_layer.objects.active = obj
+    # Toggle Edit Mode
+    if bpy.context.active_object and bpy.context.active_object.type == "MESH":
+        # Store the current mode
+        current_mode = bpy.context.object.mode
 
-            # Add or get the existing Cloth modifier
-            cloth_modifier = obj.modifiers.get("Cloth")
-            if not cloth_modifier:
-                cloth_modifier = obj.modifiers.new(name="Cloth", type="CLOTH")
+        # Switch to Edit Mode
+        bpy.ops.object.mode_set(mode="EDIT")
 
-            # Check current mode and handle vertex groups
-            current_mode = bpy.context.object.mode
-            vertex_group_name = None
-            if current_mode == "EDIT":
-                if obj.vertex_groups:
-                    if cloth_modifier.settings.vertex_group_mass:
-                        # Replace the existing vertex group
-                        vertex_group_name = create_vertex_group(obj)
-                    else:
-                        vertex_group_name = create_vertex_group(obj)
-                else:
-                    vertex_group_name = create_vertex_group(obj)
-            elif current_mode == "OBJECT" and obj.vertex_groups.active:
-                vertex_group_name = obj.vertex_groups.active.name
-
-            # Modify specific cloth settings with the new values
-            cloth_modifier.settings.quality = 7
-            cloth_modifier.settings.time_scale = 0.240
-            cloth_modifier.settings.mass = 0.3
-            cloth_modifier.settings.air_damping = 1
-            cloth_modifier.settings.bending_model = "ANGULAR"
-            cloth_modifier.settings.tension_stiffness = 1
-            cloth_modifier.settings.compression_stiffness = 0.1
-            cloth_modifier.settings.shear_stiffness = 0.02
-            cloth_modifier.settings.bending_stiffness = 0.02
-            cloth_modifier.settings.tension_damping = 1
-            cloth_modifier.settings.compression_damping = 0.1
-            cloth_modifier.settings.shear_damping = 0.02
-            cloth_modifier.settings.bending_damping = 0.02
-            cloth_modifier.settings.use_internal_springs = True
-            cloth_modifier.settings.use_pressure = True
-            cloth_modifier.settings.internal_spring_max_length = 0
-            cloth_modifier.settings.internal_spring_max_diversion = 0.785398
-            cloth_modifier.settings.internal_spring_normal_check = True
-            cloth_modifier.settings.internal_tension_stiffness = 0.1
-            cloth_modifier.settings.internal_compression_stiffness = 0.1
-            cloth_modifier.settings.internal_tension_stiffness_max = 0.3
-            cloth_modifier.settings.internal_compression_stiffness_max = 0.3
-            cloth_modifier.settings.uniform_pressure_force = 0.06
-            cloth_modifier.settings.use_pressure_volume = False
-            cloth_modifier.settings.target_volume = 0
-            cloth_modifier.settings.pressure_factor = 1
-            cloth_modifier.settings.fluid_density = 0
-            cloth_modifier.settings.pin_stiffness = 1
-            cloth_modifier.settings.use_sewing_springs = False
-            cloth_modifier.settings.sewing_force_max = 0
-            cloth_modifier.settings.shrink_min = 0
-            cloth_modifier.settings.use_dynamic_mesh = False
-            cloth_modifier.collision_settings.collision_quality = 2
-            cloth_modifier.collision_settings.use_collision = False
-            cloth_modifier.collision_settings.distance_min = 0.015
-            cloth_modifier.collision_settings.impulse_clamp = 0
-            cloth_modifier.collision_settings.use_self_collision = False
-            cloth_modifier.collision_settings.self_friction = 5
-            cloth_modifier.collision_settings.self_distance_min = 0.015
-            cloth_modifier.collision_settings.self_impulse_clamp = 0
-            cloth_modifier.settings.tension_stiffness_max = 15
-            cloth_modifier.settings.compression_stiffness_max = 15
-            cloth_modifier.settings.shear_stiffness_max = 5
-            cloth_modifier.settings.bending_stiffness_max = 0.5
-            cloth_modifier.settings.shrink_max = 0
-
-            # Set the vertex group as the pin group if applicable
-            if vertex_group_name:
-                cloth_modifier.settings.vertex_group_mass = vertex_group_name
-
-            # Set simulation start and end to the same start and end frame values of
-            # the scene
-            cloth_modifier.point_cache.frame_start = bpy.context.scene.frame_start
-            cloth_modifier.point_cache.frame_end = bpy.context.scene.frame_end
-
-        # Toggle Edit Mode
-        if bpy.context.active_object and bpy.context.active_object.type == "MESH":
-            # Store the current mode
-            current_mode = bpy.context.object.mode
-
-            # Switch to Edit Mode
-            bpy.ops.object.mode_set(mode="EDIT")
-
-            # Switch back to the previous mode (typically Object Mode)
-            bpy.ops.object.mode_set(mode=current_mode)
-
-        return {"FINISHED"}
-
-    def invoke(self, context, event):
-        return self.execute(context)
+        # Switch back to the previous mode (typically Object Mode)
+        bpy.ops.object.mode_set(mode=current_mode)
 
 
 class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_create_jiggle"
-    bl_label = "Create Jiggle"
+    bl_label = "Create Jiggle Cage (Low-resolution)"
     bl_description = "Needs to select vertices in Edit Mode.\nCreates a jiggle cage using the selected regions in Edit Mode and attaches it to the active mesh"  # noqa: E501
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     merge_proxies: bpy.props.BoolProperty(
         name="Merge Cages",
@@ -240,6 +169,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         description="Assign a name to the Cage and the associated modifiers",
         default="",
     )
+    physics_engine: physics_presets.physics_engine_property()
+    cloth_preset: physics_presets.cloth_preset_property(default="JIGGLE")
+    nodes_preset: physics_presets.nodes_preset_property(default="JIGGLE")
 
     @classmethod
     def poll(cls, context):
@@ -698,10 +630,8 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Perform the vertex group levels operation with the specified gain
             bpy.ops.object.vertex_group_levels(gain=gain_value)
 
-        # Apply Default Preset
-        bpy.ops.mustardui.tools_creators_create_jiggle_preset(
-            "INVOKE_DEFAULT",
-        )
+        # Apply the selected Preset
+        _apply_jiggle_physics(self)
 
         def move_cloth_above_corrective_smooth(obj):
             cloth_modifier = None
@@ -773,26 +703,36 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
     def draw(self, context):
 
         layout = self.layout
-        layout.prop(self, "proxy_subdivisions")
-        layout.prop(self, "merge_proxies")
-        layout.prop(self, "object_direction")
-
-        layout.prop(self, "name")
 
         layout.separator()
 
-        layout.prop(self, "add_to_panel")
-        layout.prop(self, "parent_to_model")
+        box = layout.box()
+        box.label(text="Cage Generation Settings", icon="SPHERE")
+        box.prop(self, "proxy_subdivisions")
+        box.prop(self, "object_direction")
+        box.prop(self, "merge_proxies", text="Merge Cages (Disconnected Vertex Islands)")
+
+        layout.separator()
+
+        box = layout.box()
+        box.label(text="Physics Settings", icon="PHYSICS")
+        physics_presets.draw_physics_presets(box, self)
+
+        layout.separator()
+
+        layout.prop(self, "name")
+
+        col = layout.column(align=True)
+        col.prop(self, "parent_to_model")
+        col.prop(self, "add_to_panel")
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=300)
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_CreateJiggle_Preset)
     bpy.utils.register_class(MustardUI_ToolsCreators_CreateJiggle)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_ToolsCreators_CreateJiggle)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_CreateJiggle_Preset)

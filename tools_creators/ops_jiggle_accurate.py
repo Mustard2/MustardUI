@@ -1,5 +1,3 @@
-import os
-
 import bmesh
 import bpy
 from mathutils.bvhtree import BVHTree
@@ -8,166 +6,15 @@ from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
-
-# Node group bundled with the Essentials assets of Blender 5.2, and the identifiers
-# of the inputs used here. The identifiers are the ones of the group interface, and
-# they are stable: the names shown in the UI are not
-CLOTH_DYNAMICS_NODE_GROUP = "Cloth Dynamics (Experimental)"
-CLOTH_DYNAMICS_PIN_GROUP = "Socket_2"
-CLOTH_DYNAMICS_MASS = "Socket_31"
+from . import physics_presets
 
 
-def add_cloth_physics(obj, pin_group_name, structural_group_name=""):
-    """Add Cloth Physics to the cage, with the same settings of the Jiggle Cage."""
-
-    # Play every frame: the simulation is not evaluated correctly on skipped frames
-    bpy.context.scene.sync_mode = "NONE"
-
-    for modifier in [x for x in obj.modifiers if x.type == "CLOTH"]:
-        obj.modifiers.remove(modifier)
-
-    cloth = obj.modifiers.new(name="Cloth", type="CLOTH")
-
-    settings = cloth.settings
-    settings.quality = 7
-    settings.time_scale = 0.340
-    settings.mass = 0.3
-    settings.air_damping = 1
-    settings.bending_model = "ANGULAR"
-    settings.tension_stiffness = 1
-    settings.compression_stiffness = 0.1
-    settings.shear_stiffness = 0.02
-    settings.bending_stiffness = 0.02
-    settings.tension_damping = 1
-    settings.compression_damping = 0.1
-    settings.shear_damping = 0.02
-    settings.bending_damping = 0.02
-    settings.use_internal_springs = True
-    settings.use_pressure = True
-    settings.internal_spring_max_length = 0
-    settings.internal_spring_max_diversion = 0.785398
-    settings.internal_spring_normal_check = True
-    settings.internal_tension_stiffness = 0.1
-    settings.internal_compression_stiffness = 0.1
-    settings.internal_tension_stiffness_max = 0.3
-    settings.internal_compression_stiffness_max = 0.3
-    settings.uniform_pressure_force = 0.06
-    settings.use_pressure_volume = False
-    settings.target_volume = 0
-    settings.pressure_factor = 10000
-    settings.fluid_density = 0
-    settings.pin_stiffness = 1
-    settings.use_sewing_springs = False
-    settings.sewing_force_max = 0
-    settings.shrink_min = 0
-    settings.use_dynamic_mesh = False
-    settings.tension_stiffness_max = 15
-    settings.compression_stiffness_max = 15
-    settings.shear_stiffness_max = 5
-    settings.bending_stiffness_max = 0.5
-    settings.shrink_max = 0
-
-    collision_settings = cloth.collision_settings
-    collision_settings.collision_quality = 2
-    collision_settings.use_collision = False
-    collision_settings.distance_min = 0.015
-    collision_settings.impulse_clamp = 0
-    collision_settings.use_self_collision = False
-    collision_settings.self_friction = 5
-    collision_settings.self_distance_min = 0.015
-    collision_settings.self_impulse_clamp = 0
-
-    settings.vertex_group_mass = pin_group_name
-
-    # Assigning a structural group is what brings 'tension_stiffness_max' and
-    # 'compression_stiffness_max' above into play: without one the cage only ever
-    # uses the base values, and it is free to stretch. The maxima are left as the
-    # Jiggle Cage sets them, the group only decides how much of them is used
-    if structural_group_name:
-        settings.vertex_group_structural_stiffness = structural_group_name
-
-    cloth.point_cache.frame_start = bpy.context.scene.frame_start
-    cloth.point_cache.frame_end = bpy.context.scene.frame_end
-
-    move_before_corrective_smooth(obj, cloth)
-
-    return cloth
-
-
-def move_before_corrective_smooth(obj, modifier):
-    """The simulation has to be evaluated before the Corrective Smooth."""
-    corrective = [
-        obj.modifiers.find(x.name) for x in obj.modifiers if x.type == "CORRECTIVE_SMOOTH"
-    ]
-    if corrective:
-        bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.modifier_move_to_index(modifier=modifier.name, index=min(corrective))
-
-
-def cloth_dynamics_asset():
-    """Path of the Blender asset holding the Cloth Dynamics node group."""
-    return os.path.join(
-        bpy.utils.resource_path("LOCAL"),
-        "datafiles",
-        "assets",
-        "nodes",
-        "geometry_nodes_dynamics_assets.blend",
-    )
-
-
-def cloth_dynamics_available():
-    """Whether this Blender ships the Cloth Dynamics node group.
-
-    The node group is bundled with the Essentials assets of Blender 5.2, together
-    with the solver it is built on: on any earlier version the Geometry Nodes
-    Physics cannot be used at all.
-    """
-    return bpy.app.version >= (5, 2, 0) and os.path.isfile(cloth_dynamics_asset())
-
-
-def add_cloth_dynamics_physics(obj, pin_group_name):
-    """Add the Cloth Dynamics (Experimental) Geometry Nodes to the cage.
-
-    This is the simulation Blender 5.2 added on top of the new XPBD solver. It is
-    an alternative to the Cloth modifier, not an addition: only one of the two is
-    added to a cage.
-    """
-
-    bpy.context.scene.sync_mode = "NONE"
-
-    for modifier in [x for x in obj.modifiers if x.type == "CLOTH"]:
-        obj.modifiers.remove(modifier)
-
-    # The node group is appended once and then shared by every cage of the file
-    node_group = bpy.data.node_groups.get(CLOTH_DYNAMICS_NODE_GROUP)
-    if node_group is None:
-        with bpy.data.libraries.load(cloth_dynamics_asset(), link=False) as (source, target):
-            target.node_groups = [n for n in source.node_groups if n == CLOTH_DYNAMICS_NODE_GROUP]
-        node_group = target.node_groups[0] if target.node_groups else None
-
-    if node_group is None:
-        return None
-
-    dynamics = obj.modifiers.new(name="Cloth Dynamics", type="NODES")
-    dynamics.node_group = node_group
-
-    # Every input of the modifier is a group of properties holding the value, and
-    # the name of the attribute when the input is driven by one
-    inputs = dynamics.properties.inputs
-    inputs[CLOTH_DYNAMICS_PIN_GROUP]["attribute_name"] = pin_group_name
-    inputs[CLOTH_DYNAMICS_MASS]["value"] = 0.3
-
-    move_before_corrective_smooth(obj, dynamics)
-
-    return dynamics
-
-
-class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
+class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
     """Needs to select vertices in Edit Mode.\nCreates a simplified cage from the selected vertices and binds the selection to it, so that the cage can drive the Physics of that specific part of the mesh"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_selection_cage"
-    bl_label = "Create Cage from Selection"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = "mustardui.tools_creators_create_jiggle_accurate"
+    bl_label = "Create Jiggle Cage (High-resolution)"
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     cage_type: bpy.props.EnumProperty(
         name="Cage Type",
@@ -177,8 +24,7 @@ class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
                 "CLOSED",
                 "Closed",
                 "Simplify the surface of the selection and close its border, to "
-                "obtain a single closed cage (a dome over a breast, for "
-                "instance).\nBest for rounded parts (breasts, belly, hair clumps, ears)",
+                "obtain a single closed cage.\nBest for volume parts (breasts, belly, hair clumps, ears)",
                 "MESH_UVSPHERE",
                 0,
             ),
@@ -196,9 +42,8 @@ class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
 
     cage_faces: bpy.props.IntProperty(
         name="Cage Faces",
-        description="Number of faces of the generated cage.\nThis is a target, and "
-        "not an exact count.\nSince it does not depend on how dense the selection "
-        "is, the same value gives a cage of similar complexity on any model",
+        description="Number of faces of the generated cage.\nNote: This is a target, and "
+        "not an exact count",
         default=500,
         min=20,
         soft_max=2000,
@@ -216,10 +61,7 @@ class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
     )
     cage_offset: bpy.props.FloatProperty(
         name="Offset",
-        description="Distance kept between the cage and the original mesh.\nThe "
-        "cage follows the mesh, so this is what keeps the two from touching: a "
-        "value of 0 makes them overlap, and the Surface Deform cannot bind on a "
-        "cage lying on the vertices it has to move",
+        description="Distance kept between the cage and the original mesh",
         default=0.005,
         min=0.0,
         soft_max=0.1,
@@ -229,48 +71,21 @@ class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
         unit="LENGTH",
     )
 
-    physics_engine: bpy.props.EnumProperty(
-        name="Physics",
-        description="Simulation added to the cage",
-        items=[
-            (
-                "CLOTH",
-                "Cloth",
-                "Use the Cloth modifier, with the same settings of the Jiggle Cage.\n"
-                "Available on every supported version of Blender",
-                "MOD_CLOTH",
-                0,
-            ),
-            (
-                "NODES",
-                "Cloth Dynamics",
-                "Use the Cloth Dynamics (Experimental) Geometry Nodes, built on the "
-                "solver added in Blender 5.2.\nNot available on Blender 5.1 and "
-                "earlier, which do not ship it",
-                "GEOMETRY_NODES",
-                1,
-            ),
-        ],
-        default="CLOTH",
-    )
+    physics_engine: physics_presets.physics_engine_property()
+    cloth_preset: physics_presets.cloth_preset_property(default="CAGE")
+    nodes_preset: physics_presets.nodes_preset_property(default="CAGE")
 
     structural_enable: bpy.props.BoolProperty(
         name="Structural Stiffness",
         description="Stiffen the cage where the model is dense, so that the "
         "detailed parts are carried around rigidly instead of being stretched.\n"
-        "When disabled the cage uses the same stiffness everywhere, as the Jiggle "
-        "Cage does",
+        "When disabled the cage uses the same stiffness everywhere",
         default=False,
     )
     structural_stiffness: bpy.props.FloatProperty(
         name="Stiffness",
         description="How much the cage resists being stretched where the model is "
-        "dense.\nA soft cage lets its faces stretch, and the details of the mesh "
-        "bound to them (the tip of a breast, for instance) are stretched with it "
-        "instead of being carried around rigidly. The detailed parts of a model are "
-        "the ones with more vertices, so the stiffness is applied following the "
-        "density of the model, and this is the value it reaches on the densest "
-        "areas.\nThis does not affect how much the cage bends, so it keeps jiggling",
+        "dense.\nCan be useful when some parts are extruding from the main mesh (for instance the tip of a breast)",
         default=1.0,
         min=0.0,
         max=1.0,
@@ -283,10 +98,7 @@ class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
         description="How concentrated the structural stiffness is on the dense "
         "areas of the model.\nWith a low value the stiffness stays on the detailed "
         "parts and drops to zero right after them; with a high one it fades out "
-        "slowly and reaches the rest of the cage, up to stiffening it uniformly.\n"
-        "It is also the number of vertex rings of the cage the stiffness is carried "
-        "over, since the density of the model lands on single vertices and the "
-        "simulation handles a gradient better than isolated stiff spots",
+        "slowly and reaches the rest of the cage, up to stiffening it uniformly",
         default=2,
         min=0,
         max=20,
@@ -1070,22 +882,29 @@ class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
         cage.select_set(True)
         context.view_layer.objects.active = cage
 
-        if self.physics_engine == "NODES" and cloth_dynamics_available():
-            if add_cloth_dynamics_physics(cage, pin_name) is None:
-                self.report(
-                    {"WARNING"},
-                    "MustardUI - The Cloth Dynamics node group could not be loaded: "
-                    "the Cloth modifier was used instead.",
-                )
-                add_cloth_physics(cage, pin_name, structural_group_name)
-        else:
-            if self.physics_engine == "NODES":
-                self.report(
-                    {"WARNING"},
-                    "MustardUI - Cloth Dynamics needs Blender 5.2 or later: the "
-                    "Cloth modifier was used instead.",
-                )
-            add_cloth_physics(cage, pin_name, structural_group_name)
+        engine, preset = physics_presets.selected_preset(self)
+        if (
+            physics_presets.apply_physics(
+                cage,
+                engine=engine,
+                preset=preset,
+                pin_group_name=pin_name,
+                structural_group_name=structural_group_name,
+            )
+            is None
+        ):
+            self.report(
+                {"WARNING"},
+                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "Cloth modifier was used instead.",
+            )
+            physics_presets.apply_physics(
+                cage,
+                engine="CLOTH",
+                preset=self.cloth_preset,
+                pin_group_name=pin_name,
+                structural_group_name=structural_group_name,
+            )
 
         self.report({"INFO"}, "MustardUI - Cage created.")
 
@@ -1095,48 +914,48 @@ class MustardUI_ToolsCreators_SelectionCage(bpy.types.Operator):
 
         layout = self.layout
 
+        layout.separator()
+
         layout.prop(self, "cage_type")
 
-        col = layout.column(align=True)
+        box = layout.box()
+        box.label(text="Cage Generation Settings", icon="SPHERE")
+        col = box.column(align=True)
         col.prop(self, "cage_faces")
         col.prop(self, "relax_iterations")
 
-        col = layout.column(align=True)
+        col = box.column(align=True)
         col.prop(self, "cage_offset")
 
-        layout.separator()
+        box.prop(self, "falloff_rings")
 
-        available = cloth_dynamics_available()
-        row = layout.row()
-        row.enabled = available
-        row.prop(self, "physics_engine", expand=True)
-        if not available:
-            layout.label(text="Cloth Dynamics needs Blender 5.2", icon="INFO")
+        box = layout.box()
+        box.label(text="Physics Settings", icon="PHYSICS")
+        physics_presets.draw_physics_presets(box, self)
 
-        col = layout.column(align=True)
-        col.active = self.physics_engine == "CLOTH"
+        col = box.column(align=True)
+        col.enabled = self.physics_engine == "CLOTH"
         col.prop(self, "structural_enable")
         sub = col.column(align=True)
         sub.active = self.structural_enable and self.physics_engine == "CLOTH"
         sub.prop(self, "structural_stiffness", slider=True)
         sub.prop(self, "structural_spread")
 
-        layout.prop(self, "falloff_rings")
+        layout.separator()
 
         layout.prop(self, "name")
 
-        layout.separator()
-
-        layout.prop(self, "add_to_panel")
-        layout.prop(self, "parent_to_model")
+        col = layout.column(align=True)
+        col.prop(self, "parent_to_model")
+        col.prop(self, "add_to_panel")
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=300)
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_SelectionCage)
+    bpy.utils.register_class(MustardUI_ToolsCreators_CreateJiggleAccurate)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_SelectionCage)
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_CreateJiggleAccurate)

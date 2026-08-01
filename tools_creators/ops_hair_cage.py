@@ -34,6 +34,7 @@ from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
+from . import physics_presets
 
 
 def update_voxel_res(self, context):
@@ -64,7 +65,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_hair_cage"
     bl_label = "Hair Cage"
     bl_description = "Create a Hair Cage on a Mesh"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     max_density: bpy.props.BoolProperty(
         name="Increase Density",
@@ -88,6 +89,9 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         precision=3,
         update=update_voxel_res,
     )
+    physics_engine: physics_presets.physics_engine_property()
+    cloth_preset: physics_presets.cloth_preset_property(default="HAIR")
+    nodes_preset: physics_presets.nodes_preset_property(default="HAIR")
     add_to_panel: bpy.props.BoolProperty(
         name="Add to Physics Panel",
         description="Add the Collision item to Physics Panel",
@@ -609,10 +613,24 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         # Flag the mesh as Cage
         obj.MustardUI_tools_creators_is_created = True
 
-        # Call function to add physics
-        bpy.ops.mustardui.tools_creators_add_cloth_to_hair(
-            "INVOKE_DEFAULT",
-        )
+        # Add the physics inline, with the preset chosen in this same dialog: the
+        # cage is the active object and its Pin group is the active vertex group
+        engine, preset = physics_presets.selected_preset(self)
+        pin_group = obj.vertex_groups.active.name if obj.vertex_groups.active else ""
+        if (
+            physics_presets.apply_physics(
+                obj, engine=engine, preset=preset, pin_group_name=pin_group
+            )
+            is None
+        ):
+            self.report(
+                {"WARNING"},
+                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "Cloth modifier was used instead.",
+            )
+            physics_presets.apply_physics(
+                obj, engine="CLOTH", preset=self.cloth_preset, pin_group_name=pin_group
+            )
 
         # Add the object to the Physics Panel
         if self.add_to_panel:
@@ -637,11 +655,20 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         settings = context.scene.MustardUI_Settings
 
         layout = self.layout
-        layout.prop(self, "voxel_res")
+
+        layout.separator()
+
+        box = layout.box()
+        box.prop(self, "voxel_res")
 
         if settings.advanced:
-            layout.prop(self, "max_density")
-            layout.prop(self, "attempt_tight_bind")
+            col = box.column(align=True)
+            col.prop(self, "max_density")
+            col.prop(self, "attempt_tight_bind")
+
+        box = layout.box()
+        box.label(text="Physics Settings", icon="PHYSICS")
+        physics_presets.draw_physics_presets(box, self)
 
         layout.separator()
 
