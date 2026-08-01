@@ -1,5 +1,4 @@
 from ..misc.set_bool import set_bool
-from ..tools_creators.ops_optimize_mods import mask_vg_name
 
 
 def find_layer_collection(layer_coll, collection):
@@ -57,6 +56,8 @@ def update_outfit_body_masks(context, body, obj_name, visible):
 
 
 def update_global_body_mask(body):
+    from ..tools_creators.ops_optimize_mods import mask_vg_name
+
     activate = any(
         mod.type == "VERTEX_WEIGHT_MIX" and mod.vertex_group_a == mask_vg_name and mod.show_viewport
         for mod in body.modifiers
