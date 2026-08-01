@@ -116,6 +116,15 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
     )
 
     # Common settings
+    multiple_pin_boundaries: bpy.props.BoolProperty(
+        name="Multiple Pin Boundaries",
+        description="Pin every open border of the cage.\nUseful for a part which is "
+        "open on several sides and has to stay attached on all of them, like a "
+        "sleeve held at the shoulder and at the wrist.\nWhen disabled a single "
+        "border is pinned, the widest of the ones touching the rest of the model, "
+        "and the part hangs from it",
+        default=False,
+    )
     falloff_rings: bpy.props.IntProperty(
         name="Pin Falloff Rings",
         description="Number of vertex rings of the cage used to fade the Pin group "
@@ -232,6 +241,53 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             """The vertices of an island which touch the rest of the mesh."""
             return {i for i in island if any(n not in island for n in neighbors[i])}
 
+        def pinned_border(loops, border_indices, ring_length):
+            """The borders of a cage the Pin group is built on.
+
+            A part open on several sides is held by a single one of them by default:
+            a leg hangs from the hip, a lock of hair from the scalp, and pinning the
+            far end as well would keep the whole cage from moving. Multiple Pin
+            Boundaries pins every border instead, for the parts which really are
+            attached on all of their sides, like a sleeve held at the shoulder and
+            at the wrist.
+            """
+            if not loops:
+                return []
+
+            if self.multiple_pin_boundaries:
+                return list(loops)
+
+            candidates = loops
+
+            if border_indices:
+                # Borders which touch the rest of the model are preferred over the
+                # ones which were already open on it: the hem of a skirt can be
+                # wider than its waist, and pinning it would hang the skirt upside
+                # down.
+                # The border of the cage is a simplified copy of the border of the
+                # selection, lifted by the Offset, so it stays within about an edge
+                # of the vertices it was built from
+                kd = KDTree(len(border_indices))
+                for index in border_indices:
+                    kd.insert(source.data.vertices[index].co, index)
+                kd.balance()
+
+                threshold = ring_length * 2.0 + self.cage_offset * 2.0
+
+                attached = []
+                for loop in loops:
+                    distances = sorted(kd.find(position)[2] for position in loop["positions"])
+                    # The median, and not the closest vertex: a free border passing
+                    # next to the rest of the model must not count as attached to it
+                    if distances[len(distances) // 2] <= threshold:
+                        attached.append(loop)
+
+                if attached:
+                    candidates = attached
+
+            # The widest border is the one which looks like the base of the part
+            return [max(candidates, key=lambda loop: loop["perimeter"])]
+
         # ------------------------------------------------------------------
         # Cage generation
         # ------------------------------------------------------------------
@@ -343,6 +399,44 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             bm.free()
             obj.data.update()
 
+        def border_loops(bm):
+            """The open borders of the cage, one list of edges per loop.
+
+            A selection is open on as many sides as the part it was taken from: a
+            leg is a tube open at the hip and at the ankle, a sleeve at the shoulder
+            and at the wrist. Each of those borders has to be handled on its own,
+            because they can be of very different sizes.
+            """
+            loops = []
+            visited = set()
+
+            for edge in bm.edges:
+                if len(edge.link_faces) != 1 or edge in visited:
+                    continue
+
+                loop = []
+                stack = [edge]
+                while stack:
+                    current = stack.pop()
+                    if current in visited:
+                        continue
+                    visited.add(current)
+                    loop.append(current)
+                    for vert in current.verts:
+                        stack.extend(
+                            e
+                            for e in vert.link_edges
+                            if len(e.link_faces) == 1 and e not in visited
+                        )
+
+                loops.append(loop)
+
+            return loops
+
+        # A border thinner than this is left alone: it is already as simple as a
+        # hole can be, and collapsing it further closes it
+        MINIMUM_BORDER_EDGES = 8
+
         def simplify_border(bm):
             """Bring the border loops down to the density of the rest of the cage.
 
@@ -350,6 +444,14 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             border loops untouched. Closing a border which is still as dense as the
             original mesh gives a fan of hundreds of sliver triangles, which the
             Surface Deform refuses to bind and the simulation handles badly.
+
+            Two precautions keep a border from being collapsed out of existence,
+            which used to close the narrow end of a tapered part (the ankle of a
+            leg, the wrist of a sleeve) and leave it unpinned:
+            the edges are picked loop by loop, so that a small border is not judged
+            against the size of a large one, and they are picked without ever taking
+            two edges sharing a vertex, because 'collapse' welds a connected run of
+            edges to a single point and would zip a whole loop shut in one call.
             """
             interior = [e.calc_length() for e in bm.edges if len(e.link_faces) > 1]
             if not interior:
@@ -360,17 +462,32 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             # Collapsing changes the border, so the shortest edges are collapsed a
             # few times over instead of all at once
             for _ in range(12):
-                short = [
-                    e
-                    for e in bm.edges
-                    if len(e.link_faces) == 1 and e.calc_length() < target * 0.75
-                ]
+                short = []
+
+                for loop in border_loops(bm):
+                    room = len(loop) - MINIMUM_BORDER_EDGES
+                    if room <= 0:
+                        continue
+
+                    used = set()
+                    taken = 0
+                    for edge in sorted(loop, key=lambda e: e.calc_length()):
+                        if taken >= room:
+                            break
+                        if edge.calc_length() >= target * 0.75:
+                            break
+                        if any(v in used for v in edge.verts):
+                            continue
+                        short.append(edge)
+                        used.update(edge.verts)
+                        taken += 1
+
                 if not short:
                     break
                 bmesh.ops.collapse(bm, edges=short, uvs=False)
                 bmesh.ops.dissolve_degenerate(bm, dist=1e-6, edges=bm.edges[:])
 
-        def finalize_border(obj, border_positions):
+        def finalize_border(obj, recorded_loops):
             """Simplify the border of the cage, record it, and close it if needed.
 
             bmesh is used instead of the fill_holes operator: the latter works on
@@ -382,12 +499,19 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
             simplify_border(bm)
 
-            # The border is where the cage is attached to the rest of the model, and
-            # it is recorded here, once it is not going to move any more, to build
-            # the Pin group out of it further down
-            border_positions.extend(
-                v.co.copy()
-                for v in {v for e in bm.edges if len(e.link_faces) == 1 for v in e.verts}
+            # The borders are where the cage meets the rest of the model, and they
+            # are recorded here, once they are not going to move any more, to build
+            # the Pin group out of them further down.
+            # They are kept apart, one entry per loop: which of them the cage is
+            # pinned on is decided later, and a closed cage has none of them left by
+            # the time this function returns. The perimeter is measured here, while
+            # the edges are still there to be measured
+            recorded_loops.extend(
+                {
+                    "positions": [v.co.copy() for v in {v for e in loop for v in e.verts}],
+                    "perimeter": sum(e.calc_length() for e in loop),
+                }
+                for loop in border_loops(bm)
             )
 
             if self.cage_type == "CLOSED":
@@ -591,10 +715,11 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             item_name = base_name if len(islands) == 1 else f"{base_name} {position + 1}"
             pin_name = f"{item_name} Pin"
 
-            # Filled by the cage generation with the border of the cage itself
-            cage_border_positions = []
+            # Filled by the cage generation with the borders of the cage itself,
+            # one list of positions per open loop
+            cage_border_loops = []
 
-            cage = create_cage(island, item_name, cage_border_positions)
+            cage = create_cage(island, item_name, cage_border_loops)
 
             # An island left without a single face has nothing to build a cage
             # with. The other islands are still processed: the whole selection is
@@ -635,6 +760,22 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                 mix_factor=1.0,
             )
 
+            # Length of a step from one vertex ring of the cage to the next, which
+            # turns the Falloff Rings into a distance.
+            # It is measured on the cage and not on the model: the two have nothing
+            # to do with each other, and taking it from the model made the same
+            # number of rings cover the whole cage on a low poly model and barely
+            # leave the border on a dense one
+            cage_edges = sorted(
+                (cage.data.vertices[a].co - cage.data.vertices[b].co).length
+                for a, b in (e.vertices for e in cage.data.edges)
+            )
+            ring_length = cage_edges[len(cage_edges) // 2] if cage_edges else 0.0
+
+            border_indices = selection_border(island)
+            pinned_loops = pinned_border(cage_border_loops, border_indices, ring_length)
+            pinned_positions = [position for loop in pinned_loops for position in loop["positions"]]
+
             # Build the Pin group from the distance of each cage vertex to the border
             # of the cage itself.
             # The weights are not looked up on the closest vertex of the source mesh:
@@ -644,23 +785,11 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             # cage move. Measuring the distance to the border gives exactly 1 on it
             pin_group = cage.vertex_groups.new(name=pin_name)
 
-            if cage_border_positions:
-                kd = KDTree(len(cage_border_positions))
-                for border_index, coordinates in enumerate(cage_border_positions):
+            if pinned_positions:
+                kd = KDTree(len(pinned_positions))
+                for border_index, coordinates in enumerate(pinned_positions):
                     kd.insert(coordinates, border_index)
                 kd.balance()
-
-                # Length of a step from one vertex ring of the cage to the next, which
-                # turns the Falloff Rings into a distance.
-                # It is measured on the cage and not on the model: the two have
-                # nothing to do with each other, and taking it from the model made the
-                # same number of rings cover the whole cage on a low poly model and
-                # barely leave the border on a dense one
-                cage_edges = sorted(
-                    (cage.data.vertices[a].co - cage.data.vertices[b].co).length
-                    for a, b in (e.vertices for e in cage.data.edges)
-                )
-                ring_length = cage_edges[len(cage_edges) // 2] if cage_edges else 0.0
 
                 falloff_distance = ring_length * self.falloff_rings
                 # Vertices this close to the border are considered to be on it: the
@@ -767,7 +896,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
             cage.vertex_groups.active_index = pin_group.index
 
-            if not cage_border_positions:
+            if not pinned_positions:
                 self.report(
                     {"WARNING"},
                     f"MustardUI - '{cage.name}' has no border: its Pin group is empty.",
@@ -780,7 +909,9 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                     "name": item_name,
                     "pin_name": pin_name,
                     "structural_group_name": structural_group_name,
-                    "border_indices": selection_border(island),
+                    "border_indices": border_indices,
+                    "border_loops": len(cage_border_loops),
+                    "pinned_loops": len(pinned_loops),
                 }
             )
 
@@ -960,7 +1091,8 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                     f"MustardUI - Cage '{cage.name}' created from "
                     f"{len(item['island'])} vertices of '{source.name}' "
                     f"({len(cage.data.vertices)} cage vertices, "
-                    f"{len(item['border_indices'])} pinned border vertices)."
+                    f"{len(item['border_indices'])} border vertices on the selection, "
+                    f"{item['pinned_loops']} of {item['border_loops']} borders pinned)."
                 )
 
         # Restore the Armature pose states. Every cage has been generated and bound
@@ -1023,7 +1155,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
         box = layout.box()
         box.label(text="Cage Generation Settings", icon="SPHERE")
-        box.prop(self, "merge_cages")
+
         col = box.column(align=True)
         col.prop(self, "cage_faces")
         col.prop(self, "relax_iterations")
@@ -1031,7 +1163,12 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
         col = box.column(align=True)
         col.prop(self, "cage_offset")
 
-        box.prop(self, "falloff_rings")
+        col = box.column(align=True)
+        col.prop(self, "falloff_rings")
+
+        col = box.column(align=True)
+        col.prop(self, "multiple_pin_boundaries")
+        col.prop(self, "merge_cages")
 
         box = layout.box()
         box.label(text="Physics Settings", icon="PHYSICS")
