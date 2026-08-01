@@ -320,6 +320,9 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         if can_draw_ui():
             return False
 
+        if not physics_presets.cloth_dynamics_available():
+            return False
+
         res, obj = mustardui_active_object(context, config=0)
 
         if obj is None:
