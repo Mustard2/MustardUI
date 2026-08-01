@@ -2,7 +2,7 @@ import bpy
 from bpy.props import IntProperty
 
 from ..model_selection.active_object import mustardui_active_object
-from ..tools_creators import physics_presets
+from .definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP
 from .settings_item import mustardui_physics_item_type_dict
 
 
@@ -70,9 +70,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
                     or (
                         mod.type == "NODES"
                         and mod.node_group
-                        and mod.node_group.name.startswith(
-                            physics_presets.CLOTH_DYNAMICS_NODE_GROUP
-                        )
+                        and mod.node_group.name.startswith(CLOTH_DYNAMICS_NODE_GROUP)
                     )
                     for mod in item.object.modifiers
                 )

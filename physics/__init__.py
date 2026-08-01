@@ -1,4 +1,5 @@
 from . import (
+    definitions_nodes,
     menu,
     ops_add,
     ops_cache,
@@ -17,6 +18,7 @@ from . import (
 
 
 def register():
+    definitions_nodes.register()
     settings_item.register()
     settings_presets.register()
     settings.register()
@@ -48,3 +50,4 @@ def unregister():
     settings.unregister()
     settings_presets.unregister()
     settings_item.unregister()
+    definitions_nodes.unregister()

@@ -7,7 +7,7 @@ from ..misc.geometry_nodes import (
 from ..misc.mirror import check_mirror
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
-from ..tools_creators import physics_presets
+from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -106,9 +106,7 @@ def cloth_panel(layout, pi, mod):
 
 def cloth_dynamics_panel(layout, pi, mod):
     # Generic Nodes
-    if not (
-        mod.node_group and mod.node_group.name.startswith(physics_presets.CLOTH_DYNAMICS_NODE_GROUP)
-    ):
+    if not (mod.node_group and mod.node_group.name.startswith(CLOTH_DYNAMICS_NODE_GROUP)):
         col = layout.column(align=True)
         draw_geometry_nodes_modifier_inputs(col, geometry_nodes_modifier_inputs(mod))
         return
@@ -138,7 +136,7 @@ def cloth_dynamics_panel(layout, pi, mod):
         if key == "separator":
             col.separator()
             continue
-        socket = physics_presets.CLOTH_DYNAMICS_SOCKETS.get(key)
+        socket = CLOTH_DYNAMICS_SOCKETS.get(key)
         entry = getattr(inputs, socket, None) if socket else None
         if entry is None:
             continue
@@ -147,7 +145,7 @@ def cloth_dynamics_panel(layout, pi, mod):
     if ui_collapse_prop(layout, pi, "collapse_cloth_dynamics_advanced", "Advanced"):
         col = layout.column(align=True)
         for key, label in CLOTH_DYNAMICS_UI_ADVANCED_FIELDS:
-            socket = physics_presets.CLOTH_DYNAMICS_SOCKETS.get(key)
+            socket = CLOTH_DYNAMICS_SOCKETS.get(key)
             entry = getattr(inputs, socket, None) if socket else None
             if entry is None:
                 continue
@@ -356,9 +354,7 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         if (
             cloth_dynamics is not None
             and cloth_dynamics.node_group
-            and not cloth_dynamics.node_group.name.startswith(
-                physics_presets.CLOTH_DYNAMICS_NODE_GROUP
-            )
+            and not cloth_dynamics.node_group.name.startswith(CLOTH_DYNAMICS_NODE_GROUP)
         ):
             layout.label(text=f"{cloth_dynamics.node_group.name} Settings")
         else:
