@@ -336,12 +336,14 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     )
                     row.label(text=m.node_group.name)
                     row.label(icon="GEOMETRY_NODES")
+
                     row2 = row.row(align=True)
                     row2.prop(m, "show_viewport", text="")
                     row2.prop(m, "show_render", text="")
+
+                    drawable = geometry_nodes_modifier_inputs(m)
+                    arrow.enabled = bool(drawable)
                     if not m.node_group.MustardUI_collapse:
-                        drawable = geometry_nodes_modifier_inputs(m)
-                        arrow.enabled = bool(drawable)
                         if drawable:
                             box = layout.box()
                             draw_geometry_nodes_modifier_inputs(box, drawable)

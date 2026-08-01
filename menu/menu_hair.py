@@ -3,6 +3,7 @@ import bpy
 from .. import __package__ as base_package
 from ..configuration.naming_convention import strip_naming_convention
 from ..model_selection.active_object import mustardui_active_object
+from ..tools_creators.physics_presets import find_physics_modifier
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .misc import mustardui_custom_properties_print
@@ -65,17 +66,15 @@ def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
                 text="",
                 icon="MOD_PHYSICS",
             )
-    elif rig_settings.outfit_physics_support:
-        for m in obj.modifiers:
-            mtype = m.type
-            if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
-                row.prop(
-                    obj.MustardUI_OutfitSettings,
-                    "physics",
-                    text="",
-                    icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS",
-                )
-                break
+    elif rig_settings.hair_physics_support:
+        m = find_physics_modifier(obj)
+        if m is not None:
+            row.prop(
+                obj.MustardUI_OutfitSettings,
+                "physics",
+                text="",
+                icon="PHYSICS" if m.type != "COLLISION" else "MOD_PHYSICS",
+            )
 
     # Hair custom properties
     if rig_settings.outfit_custom_properties_name_order:
@@ -234,17 +233,15 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                             text="",
                             icon="MOD_PHYSICS",
                         )
-                elif rig_settings.outfit_physics_support:
-                    for m in obj.modifiers:
-                        mtype = m.type
-                        if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
-                            row.prop(
-                                obj.MustardUI_OutfitSettings,
-                                "physics",
-                                text="",
-                                icon="PHYSICS" if mtype != "COLLISION" else "MOD_PHYSICS",
-                            )
-                            break
+                elif rig_settings.hair_physics_support:
+                    m = find_physics_modifier(obj)
+                    if m is not None:
+                        row.prop(
+                            obj.MustardUI_OutfitSettings,
+                            "physics",
+                            text="",
+                            icon="PHYSICS" if m.type != "COLLISION" else "MOD_PHYSICS",
+                        )
 
                 if hair_num > 0:
                     if rig_settings.hair_custom_properties_name_order:

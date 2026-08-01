@@ -631,6 +631,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Hair properties
     # ------------------------------------------------------------------------
 
+    hair_physics_support: bpy.props.BoolProperty(
+        default=True,
+        name="Enable Hair Physics support",
+        description="If enabled, a button near hair pieces with Physics "
+        "modifiers is added to enable/disable physics",
+    )
+
     # Hair collection
     def poll_collection_hair(self, object):
         collections = [x.collection for x in self.outfits_collections]

@@ -115,11 +115,14 @@ def cloth_dynamics_panel(layout, pi, mod):
 
     CLOTH_DYNAMICS_UI_FIELDS = [
         ("mass", "Vertex Mass"),
+        ("separator", ""),
         ("stretchiness", "Stretchiness"),
         ("bendiness", "Bendiness"),
         ("friction", "Friction"),
+        ("separator", ""),
         ("collision_radius", "Collision Radius"),
         ("effectors_collection", "Collider Collection"),
+        ("separator", ""),
         ("linear_damping", "Linear Damping"),
     ]
     CLOTH_DYNAMICS_UI_ADVANCED_FIELDS = [
@@ -132,6 +135,9 @@ def cloth_dynamics_panel(layout, pi, mod):
 
     col = layout.column(align=True)
     for key, label in CLOTH_DYNAMICS_UI_FIELDS:
+        if key == "separator":
+            col.separator()
+            continue
         socket = physics_presets.CLOTH_DYNAMICS_SOCKETS.get(key)
         entry = getattr(inputs, socket, None) if socket else None
         if entry is None:

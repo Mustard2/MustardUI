@@ -11,6 +11,8 @@ def geometry_nodes_modifier_inputs(modifier):
         item
         for key, item in interface.items()
         if isinstance(getattr(interface[key], "identifier", None), str)
+        and not item.hide_in_modifier
+        and not item.socket_type == "NodeSocketMenu"
     ]
 
     drawable = []

@@ -224,7 +224,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                 # If these modifiers are available, most probably the item does not
                 # need to be driven by Surface Deform
                 if not self.override_physics_check:
-                    if any(x.type in ["CLOTH", "SOFT_BODY"] for x in obj.modifiers):
+                    if any(x.type in ["CLOTH", "SOFT_BODY", "NODES"] for x in obj.modifiers):
                         continue
 
                 pi_found = False
@@ -574,7 +574,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
                 # If these modifiers are available, most probably the item does not
                 # need to be driven by Surface Deform
                 if not self.override_physics_check:
-                    if any(x.type in ["CLOTH", "SOFT_BODY"] for x in obj.modifiers):
+                    if any(x.type in ["CLOTH", "SOFT_BODY", "NODES"] for x in obj.modifiers):
                         continue
 
                 if self.unique:

@@ -3,14 +3,10 @@ import os
 import bpy
 
 # ----------------------------------------------------------------------------
-# Cloth Dynamics (Experimental) node group
+# Cloth Dynamics (Experimental) node group (Blender 5.2)
 # ----------------------------------------------------------------------------
 
-# Node group bundled with the Essentials assets of Blender 5.2. The socket
-# identifiers are the ones of the group interface, and are stable: the names shown
-# in the UI are not
 CLOTH_DYNAMICS_NODE_GROUP = "Cloth Dynamics (Experimental)"
-
 CLOTH_DYNAMICS_SOCKETS = {
     "pin_group": "Socket_2",
     "invert_pin_group": "Socket_23",
@@ -28,7 +24,6 @@ CLOTH_DYNAMICS_SOCKETS = {
 
 
 def cloth_dynamics_asset():
-    """Path of the Blender asset holding the Cloth Dynamics node group."""
     return os.path.join(
         bpy.utils.resource_path("LOCAL"),
         "datafiles",
@@ -39,13 +34,15 @@ def cloth_dynamics_asset():
 
 
 def cloth_dynamics_available():
-    """Whether this Blender ships the Cloth Dynamics node group.
-
-    The node group is bundled with the Essentials assets of Blender 5.2, together
-    with the solver it is built on: on any earlier version the Geometry Nodes
-    physics cannot be used at all.
-    """
     return bpy.app.version >= (5, 2, 0) and os.path.isfile(cloth_dynamics_asset())
+
+
+# ----------------------------------------------------------------------------
+# Hair Dynamics node group
+# ----------------------------------------------------------------------------
+
+HAIR_DYNAMICS_NODE_GROUP = "Hair Dynamics"
+hair_dynamics_available = cloth_dynamics_available
 
 
 # ----------------------------------------------------------------------------
@@ -205,6 +202,7 @@ NODES_PRESETS = [
             "substeps": 5,
             "constraint_steps": 15,
             "bendiness": 0.0,
+            "stretchiness": 0.05,
             "linear_damping": 1.0,
         },
     ),
@@ -218,6 +216,7 @@ NODES_PRESETS = [
             "substeps": 5,
             "constraint_steps": 25,
             "bendiness": 0.0,
+            "stretchiness": 0.05,
             "linear_damping": 1.0,
         },
     ),
@@ -473,6 +472,17 @@ def apply_physics(
         move_before_corrective_smooth(obj, modifier)
 
     return modifier
+
+
+def find_physics_modifier(obj):
+    return next(
+        (
+            m
+            for m in obj.modifiers
+            if m.type in ("CLOTH", "SOFT_BODY", "COLLISION") or (m.type == "NODES" and m.node_group)
+        ),
+        None,
+    )
 
 
 def preset_name(engine, preset):
