@@ -1,5 +1,9 @@
 import bpy
 
+from ..misc.geometry_nodes import (
+    draw_geometry_nodes_modifier_inputs,
+    geometry_nodes_modifier_inputs,
+)
 from ..misc.mirror import check_mirror
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
@@ -101,6 +105,14 @@ def cloth_panel(layout, pi, mod):
 
 
 def cloth_dynamics_panel(layout, pi, mod):
+    # Generic Nodes
+    if not (
+        mod.node_group and mod.node_group.name.startswith(physics_presets.CLOTH_DYNAMICS_NODE_GROUP)
+    ):
+        col = layout.column(align=True)
+        draw_geometry_nodes_modifier_inputs(col, geometry_nodes_modifier_inputs(mod))
+        return
+
     CLOTH_DYNAMICS_UI_FIELDS = [
         ("mass", "Vertex Mass"),
         ("stretchiness", "Stretchiness"),
@@ -114,6 +126,7 @@ def cloth_dynamics_panel(layout, pi, mod):
         ("constraint_steps", "Constraint Steps"),
     ]
 
+    # Default Blender CLoth Physics nodes
     inputs = mod.properties.inputs
 
     col = layout.column(align=True)
@@ -297,17 +310,8 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
         cloth_panel(layout, pi, cloth)
 
 
-def find_cloth_dynamics_modifier(obj):
-    return next(
-        (
-            m
-            for m in obj.modifiers
-            if m.type == "NODES"
-            and m.node_group
-            and m.node_group.name.startswith(physics_presets.CLOTH_DYNAMICS_NODE_GROUP)
-        ),
-        None,
-    )
+def find_geometry_nodes_physics_modifier(obj):
+    return next((m for m in obj.modifiers if m.type == "NODES" and m.node_group), None)
 
 
 class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Panel):
@@ -320,9 +324,6 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         if can_draw_ui():
             return False
 
-        if not physics_presets.cloth_dynamics_available():
-            return False
-
         res, obj = mustardui_active_object(context, config=0)
 
         if obj is None:
@@ -332,7 +333,7 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
 
         if pi.object and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
-            return res and find_cloth_dynamics_modifier(pi.object) is not None
+            return res and find_geometry_nodes_physics_modifier(pi.object) is not None
 
         return False
 
@@ -342,7 +343,19 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
 
         layout = self.layout
 
-        layout.label(text="Cloth Dynamics Settings")
+        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        cloth_dynamics = find_geometry_nodes_physics_modifier(pi.object)
+
+        if (
+            cloth_dynamics is not None
+            and cloth_dynamics.node_group
+            and not cloth_dynamics.node_group.name.startswith(
+                physics_presets.CLOTH_DYNAMICS_NODE_GROUP
+            )
+        ):
+            layout.label(text=f"{cloth_dynamics.node_group.name} Settings")
+        else:
+            layout.label(text="Cloth Dynamics Settings")
         layout.active = physics_settings.enable_physics
 
     def draw(self, context):
@@ -353,7 +366,7 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         layout = self.layout
 
         pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
-        cloth_dynamics = find_cloth_dynamics_modifier(pi.object)
+        cloth_dynamics = find_geometry_nodes_physics_modifier(pi.object)
 
         layout.active = physics_settings.enable_physics and pi.enable
 
