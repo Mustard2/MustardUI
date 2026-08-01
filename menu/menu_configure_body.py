@@ -34,7 +34,16 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         box = layout.box()
-        box.label(text="Global properties", icon="MODIFIER")
+        box.label(text="General Settings", icon="MODIFIER")
+        col = box.column(align=True)
+        col.prop(
+            rig_settings,
+            "body_enable_geometry_nodes_support",
+            text="Add Geometry Nodes as Sections",
+        )
+
+        box = layout.box()
+        box.label(text="Global Properties", icon="PROPERTIES")
         col = box.column(align=True)
         col.prop(rig_settings, "body_enable_subdiv")
         col.prop(rig_settings, "body_enable_smoothcorr")
@@ -85,7 +94,6 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         # Sections
         box = layout.box()
         box.label(text="Sections", icon="LINENUMBERS_OFF")
-        box.prop(rig_settings, "body_enable_geometry_nodes_support")
         if len(arm.MustardUI_CustomProperties) > 0:
             row = box.row()
             row.template_list(

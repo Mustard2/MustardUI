@@ -120,7 +120,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
 
             # Outfit properties
             box = layout.box()
-            box.label(text="Global properties", icon="MODIFIER")
+            box.label(text="Global Properties", icon="PROPERTIES")
             col = box.column(align=True)
             col.prop(rig_settings, "outfits_enable_global_subsurface")
             col.prop(rig_settings, "outfits_enable_global_smoothcorrection")

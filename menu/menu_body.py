@@ -311,17 +311,22 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
         if len(gnm) > 0 and rig_settings.body_enable_geometry_nodes_support:
             for m in gnm:
+                if m.node_group is None:
+                    continue
+
                 gndi = m.node_group.interface.items_tree
                 if gndi is None:
                     continue
 
                 if len(gndi.keys()):
-                    box = layout.box()
-                    row = box.row()
-                    row.prop(
+                    row = layout.row()
+                    arrow = row.column(align=True)
+                    arrow.prop(
                         m.node_group,
                         "MustardUI_collapse",
-                        icon="TRIA_DOWN" if not m.node_group.MustardUI_collapse else "TRIA_RIGHT",
+                        icon=(
+                            "DOWNARROW_HLT" if not m.node_group.MustardUI_collapse else "RIGHTARROW"
+                        ),
                         icon_only=True,
                         emboss=False,
                     )
@@ -331,9 +336,36 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     row2.prop(m, "show_viewport", text="")
                     row2.prop(m, "show_render", text="")
                     if not m.node_group.MustardUI_collapse:
-                        for i in [x for x in gndi.items() if hasattr(gndi[x[0]], "identifier")]:
-                            if i[1].identifier in m.keys():
-                                box.prop(m, f'["{i[1].identifier}"]', text=i[0])
+                        items = [
+                            x
+                            for x in gndi.items()
+                            if isinstance(getattr(gndi[x[0]], "identifier", None), str)
+                        ]
+                        if tuple(bpy.app.version) >= (5, 2, 0):
+                            modifier_inputs = m.properties.inputs
+                            drawable = [
+                                (i[0], getattr(modifier_inputs, i[1].identifier, None))
+                                for i in items
+                            ]
+                            drawable = [
+                                (label, entry)
+                                for label, entry in drawable
+                                if entry is not None
+                                and hasattr(entry, "bl_rna")
+                                and "value" in entry.bl_rna.properties
+                            ]
+                            arrow.enabled = bool(drawable)
+                            if drawable:
+                                box = layout.box()
+                                for label, entry in drawable:
+                                    box.prop(entry, "value", text=label)
+                        else:
+                            drawable = [i for i in items if i[1].identifier in m.keys()]
+                            arrow.enabled = bool(drawable)
+                            if drawable:
+                                box = layout.box()
+                                for i in drawable:
+                                    box.prop(m, f'["{i[1].identifier}"]', text=i[0])
 
 
 def register():

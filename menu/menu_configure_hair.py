@@ -46,7 +46,7 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
 
                 # Global properties
                 box = layout.box()
-                box.label(text="Global properties", icon="MODIFIER")
+                box.label(text="Global properties", icon="PROPERTIES")
                 col = box.column(align=True)
                 col.prop(rig_settings, "hair_enable_global_subsurface")
                 col.prop(rig_settings, "hair_enable_global_smoothcorrection")

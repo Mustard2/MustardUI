@@ -2,6 +2,7 @@ import bpy
 from bpy.props import IntProperty
 
 from ..model_selection.active_object import mustardui_active_object
+from ..tools_creators import physics_presets
 from .settings_item import mustardui_physics_item_type_dict
 
 
@@ -64,7 +65,17 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
             # Show a Warning if no Physics modifier is found on the Physics Item
             found = True
             if item.type == "CAGE":
-                found = any(mod.type in ["CLOTH", "SOFT_BODY"] for mod in item.object.modifiers)
+                found = any(
+                    mod.type in ["CLOTH", "SOFT_BODY"]
+                    or (
+                        mod.type == "NODES"
+                        and mod.node_group
+                        and mod.node_group.name.startswith(
+                            physics_presets.CLOTH_DYNAMICS_NODE_GROUP
+                        )
+                    )
+                    for mod in item.object.modifiers
+                )
             elif item.type == "COLLISION":
                 found = any(mod.type in ["COLLISION"] for mod in item.object.modifiers)
 
