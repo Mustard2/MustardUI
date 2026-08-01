@@ -303,11 +303,12 @@ def find_cloth_dynamics_modifier(obj):
             m
             for m in obj.modifiers
             if m.type == "NODES"
-               and m.node_group
-               and m.node_group.name.startswith(physics_presets.CLOTH_DYNAMICS_NODE_GROUP)
+            and m.node_group
+            and m.node_group.name.startswith(physics_presets.CLOTH_DYNAMICS_NODE_GROUP)
         ),
         None,
     )
+
 
 class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Panel):
     bl_label = ""
