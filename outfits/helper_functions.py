@@ -57,48 +57,73 @@ def outfits_get_collection_items(rig_settings, collection):
     return collection.all_objects if use_sub else collection.objects
 
 
+def get_mask_pieces(rig_settings):
+    """(piece, mask switch) for every piece which can drive or host masks."""
+    outfits_mask = rig_settings.outfits_global_mask
+    hair_mask = (
+        rig_settings.hair_global_mask if rig_settings.hair_enable_global_mask else outfits_mask
+    )
+
+    for collection in outfits_get_collections(rig_settings):
+        for obj in outfits_get_collection_items(rig_settings, collection):
+            yield obj, outfits_mask
+
+    for collection in (rig_settings.hair_collection, rig_settings.hair_extras_collection):
+        if collection is not None:
+            for obj in collection.all_objects:
+                yield obj, hair_mask
+
+
 def get_mask_objects(rig_settings):
-    """Meshes that can host masks: the body, plus every Outfit, Extras and Hair."""
+    """[(mesh, mask switch)] for every Object which can host masks."""
     objects = []
     seen = set()
 
     body = rig_settings.model_body
     if body is not None:
-        objects.append(body)
+        objects.append(
+            (
+                body,
+                rig_settings.body_global_mask
+                if rig_settings.body_enable_mask
+                else rig_settings.outfits_global_mask,
+            )
+        )
         seen.add(body)
 
-    items = []
-    for collection in outfits_get_collections(rig_settings):
-        items.extend(outfits_get_collection_items(rig_settings, collection))
-    for collection in (rig_settings.hair_collection, rig_settings.hair_extras_collection):
-        if collection is not None:
-            items.extend(collection.all_objects)
-
-    for obj in items:
+    for obj, mask in get_mask_pieces(rig_settings):
         if obj is None or obj.type != "MESH" or obj in seen:
             continue
-        objects.append(obj)
+        objects.append((obj, mask))
         seen.add(obj)
 
     return objects
 
 
-def update_outfit_obj_masks(context, obj, visibility):
+def get_mask_visibility(rig_settings):
+    """{piece name: visible} for every piece which can drive masks."""
+    return {obj.name: not obj.hide_viewport for obj, _ in get_mask_pieces(rig_settings)}
+
+
+def update_obj_masks(context, obj, visibility, mask=True):
     """Update the mask modifiers hosted by obj which are driven by the pieces in
     visibility ({piece name: visible})."""
     for mod in obj.modifiers:
         if mod.type not in ("MASK", "VERTEX_WEIGHT_MIX"):
             continue
 
-        # Modifiers named after the host object itself belong to the object and are
-        # handled by the global modifiers options, not by the outfit pieces.
         names = [x for x in mod.name.split("|") if x != obj.name]
+
+        # Mask modifiers not associated to Outfits/Hair
         driving = [x for x in names if x in visibility]
         if not driving:
+            if not mask and mod.type == "MASK":
+                set_bool(mod, "show_viewport", False)
+                set_bool(mod, "show_render", False)
             continue
 
-        should_show = any(visibility[x] for x in driving)
-        if not should_show:
+        should_show = mask and any(visibility[x] for x in driving)
+        if mask and not should_show:
             # Shared modifier (names joined by "|"): keep it on if another
             # piece using it is still visible.
             for other_name in names:
@@ -126,14 +151,17 @@ def update_global_obj_mask(obj):
             set_bool(mod, "show_render", activate)
 
 
-def update_outfit_masks(context, objects, visibility):
-    """Update the masks driven by the pieces in visibility ({piece name: visible})."""
-    for obj in objects:
-        update_outfit_obj_masks(context, obj, visibility)
+def update_masks(context, rig_settings, visibility=None):
+    """Update every mask of the model."""
+    mask_objects = get_mask_objects(rig_settings)
+    if not mask_objects:
+        return
 
+    if visibility is None:
+        visibility = get_mask_visibility(rig_settings)
 
-def update_global_masks(objects):
-    for obj in objects:
+    for obj, mask in mask_objects:
+        update_obj_masks(context, obj, visibility, mask)
         update_global_obj_mask(obj)
 
 

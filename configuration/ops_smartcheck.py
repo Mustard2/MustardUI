@@ -370,6 +370,8 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 print("\nMustardUI - Smart Check - Searching for Global Settings to enable.")
 
             # Body
+            # Mask is deliberately not added to silently switch to the new mask behavior
+            # (masks controlled by the Body global button rather than the Outfit one)
             if rig_settings.model_body is not None:
                 rig_settings.body_enable_subdiv = False
                 rig_settings.body_enable_smoothcorr = False
@@ -453,7 +455,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                         elif m.type == "PARTICLE_SYSTEM":
                             rig_settings.hair_enable_global_particles = True
                         elif m.type == "MASK":
-                            rig_settings.hair_enable_global_particles = True
+                            rig_settings.hair_enable_global_mask = True
 
         # Auto-create VERTEX_WEIGHT_MIX from body VGs matching outfit objects
         if self.smartcheck_body_mask_from_vg:

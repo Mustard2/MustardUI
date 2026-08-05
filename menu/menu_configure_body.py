@@ -47,6 +47,7 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         col = box.column(align=True)
         col.prop(rig_settings, "body_enable_subdiv")
         col.prop(rig_settings, "body_enable_smoothcorr")
+        col.prop(rig_settings, "body_enable_mask")
         col.prop(rig_settings, "body_enable_geometry_nodes")
         col.prop(rig_settings, "body_enable_solidify")
         col.separator()

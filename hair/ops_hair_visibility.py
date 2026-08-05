@@ -8,12 +8,12 @@ from ..model_selection.active_object import (
 from ..outfits.helper_functions import (
     find_layer_collection,
     outfits_update_armature_collections,
+    update_masks,
 )
 from .helper_functions import (
     apply_hair_visibility,
     hair_switcher_active,
     set_object_visibility,
-    update_hair_masks,
 )
 
 
@@ -43,8 +43,8 @@ class MustardUI_HairVisibility(bpy.types.Operator):
         # and it is restored as soon as that Outfit piece is disabled
         apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
 
-        # Masks named after the Hair Objects
-        update_hair_masks(context, rig_settings)
+        # Masks
+        update_masks(context, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)
@@ -98,8 +98,8 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         if lc is not None:
             set_bool(lc, "exclude", hidden)
 
-        # Masks named after the Hair Objects
-        update_hair_masks(context, rig_settings)
+        # Masks
+        update_masks(context, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)

@@ -1,15 +1,13 @@
 import bpy
 
-from ..hair.helper_functions import apply_hair_visibility, get_hair_mask_visibility
+from ..hair.helper_functions import apply_hair_visibility
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     find_layer_collection,
-    get_mask_objects,
     outfits_update_armature_collections,
-    update_global_masks,
-    update_outfit_masks,
+    update_masks,
 )
 
 
@@ -30,9 +28,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         arm_settings = arm.MustardUI_ArmatureSettings
         physics = arm.MustardUI_PhysicsSettings
 
-        # Objects that can host masks (body, Outfits, Extras and Hair pieces)
-        mask_objects = get_mask_objects(rig_settings)
-
         outfits_list = rig_settings.outfits_list
         use_subcollections = rig_settings.outfit_config_subcollections
 
@@ -50,15 +45,10 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         shrink = rig_settings.outfits_global_shrinkwrap
         enable_subsurf = rig_settings.outfits_enable_global_subsurface
         subsurf = rig_settings.outfits_global_subsurface
-        mask = rig_settings.outfits_global_mask
 
         # Collections, objects, modifiers, masks
         hair_switcher_seen = False
         hair_switcher_active = False
-
-        # {piece name: mask visibility}, applied once every piece visibility has been
-        # set: masks shared between pieces need the final state of all of them
-        mask_visibility = {}
 
         for col_entry in rig_settings.outfits_collections:
             col = col_entry.collection
@@ -157,9 +147,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                         elif mod.type == "SUBSURF" and enable_subsurf:
                             set_bool(mod, "show_viewport", show_obj and subsurf)
 
-                # Masks
-                mask_visibility[obj.name] = (is_active or locked) and show_obj and mask
-
             # Collection visibility AFTER objects
             col_visible = is_active or locked_collection or any_object_visible
             set_bool(col, "hide_viewport", not col_visible)
@@ -170,34 +157,14 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             if lc is not None:
                 set_bool(lc, "exclude", not col_visible)
 
-        # Extras are independent of the outfit switcher: their visibility is not
-        # changed here, but their masks are refreshed to follow each piece's own
-        # visibility so they stay consistent on outfit switches.
-        if rig_settings.extras_collection is not None:
-            extras_items = (
-                rig_settings.extras_collection.all_objects
-                if rig_settings.extras_config_subcollections
-                else rig_settings.extras_collection.objects
-            )
-            for obj in extras_items:
-                mask_visibility[obj.name] = not obj.hide_viewport and mask
-
         # Apply hair switching once, toggling direct children of
         # hair_collection so nested sub-collections aren't cascade-hidden.
         # When no switch piece is active, restore the hair_list selection.
         if hair_switcher_seen:
             apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active)
 
-        # Masks are applied after the hair switch, since Hair pieces can drive masks
-        # as well and their visibility is only final at this point.
-        mask_visibility.update(
-            get_hair_mask_visibility(rig_settings, rig_settings.hair_global_mask)
-        )
-        update_outfit_masks(context, mask_objects, mask_visibility)
-
-        # Refresh the combined global mask once, after every piece has been
-        # processed, so it reflects the final state of all Vertex Weight Mix modifiers.
-        update_global_masks(mask_objects)
+        # Masks
+        update_masks(context, rig_settings)
 
         # Armature layers
         if arm_settings.outfits:

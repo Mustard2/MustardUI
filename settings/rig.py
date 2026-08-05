@@ -3,17 +3,14 @@ import re
 import bpy
 from bpy.props import StringProperty
 
-from ..hair.helper_functions import get_hair_mask_visibility, update_hair_masks
 from ..misc.icons import get_hair_icon
 from ..misc.set_bool import set_bool
 from ..outfits.definitions import MustardUI_Outfit
 from ..outfits.helper_functions import (
     find_layer_collection,
-    get_mask_objects,
     outfits_get_collection_items,
     outfits_get_collections,
-    update_global_masks,
-    update_outfit_masks,
+    update_masks,
 )
 from ..sections.definitions import MustardUI_SectionItem
 
@@ -159,6 +156,26 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Solidify modifiers",
         description="Creates a switcher on the UI to enable/disable all "
         "modifiers of this type on the Body",
+    )
+
+    # Mask
+    # Masks are also driven by the visibility of the piece they are named after, and
+    # they can not be updated with a simple modifiers loop like the properties above
+    def body_mask_update(self, context):
+        update_masks(context, self)
+
+    body_global_mask: bpy.props.BoolProperty(
+        default=True,
+        name="Mask",
+        description="Enable/disable the Mask modifiers on the Body",
+        update=body_mask_update,
+    )
+    body_enable_mask: bpy.props.BoolProperty(
+        default=False,
+        name="Mask modifiers",
+        description="Creates a switcher on the UI to enable/disable all "
+        "modifiers of this type on the Body.\nWithout this switcher, "
+        "the masks of the Body follow the Outfits one",
     )
 
     # Volume Preserve
@@ -440,35 +457,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     set_bool(mod, "show_viewport", value)
                     set_bool(mod, "show_render", value)
 
-        if not self.outfits_enable_global_mask:
-            return
-
-        # Update mask modifiers after the blanket modifiers pass above, which would
-        # otherwise overwrite the masks hosted by the Outfits/Extras pieces themselves
-        mask_objects = get_mask_objects(self)
-        if not mask_objects:
-            return
-
-        mask_visibility = {}
-        for collection in collections:
-            for obj in outfits_get_collection_items(self, collection):
-                # Extras are independent of the outfit switcher, so their masks follow
-                # the piece's own visibility rather than the active outfit.
-                is_extras = collection == self.extras_collection
-                mask_visibility[obj.name] = (
-                    (is_extras or collection.name == self.outfits_list or obj.MustardUI_outfit_lock)
-                    and not obj.hide_viewport
-                    and self.outfits_global_mask
-                )
-
-        # Hair pieces can drive masks as well, and they follow their own visibility
-        # and their own global mask switch
-        mask_visibility.update(get_hair_mask_visibility(self, self.hair_global_mask))
-
-        update_outfit_masks(context, mask_objects, mask_visibility)
-
-        # Refresh the combined global mask once all outfit pieces are processed.
-        update_global_masks(mask_objects)
+        # Masks
+        if self.outfits_enable_global_mask:
+            update_masks(context, self)
 
     # List of the collections from which to extract the outfits
     outfits_collections: bpy.props.CollectionProperty(
@@ -866,8 +857,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     hair_enable_global_mask: bpy.props.BoolProperty(
         default=False,
         description="Creates a switcher on the UI to enable/disable the Mask "
-        "modifiers driven by the Hair Objects (i.e. the Mask modifiers "
-        "named after a Hair Object)",
+        "modifiers on the Hair Objects",
         name="Mask modifiers",
     )
 
@@ -938,15 +928,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         update=hair_global_options_update,
     )
 
-    # Masks driven by the Hair Objects are not modifiers of the Hair Objects: they are
-    # hosted by the Body/Outfits, therefore they need their own update function
     def hair_global_mask_update(self, context):
-        update_hair_masks(context, self)
+        update_masks(context, self)
 
     hair_global_mask: bpy.props.BoolProperty(
         default=True,
         name="Mask",
-        description="Enable/disable the Mask modifiers driven by the Hair",
+        description="Enable/disable the Mask modifiers on the Hair",
         update=hair_global_mask_update,
     )
 

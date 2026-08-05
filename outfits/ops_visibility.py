@@ -1,19 +1,14 @@
 import bpy
 
-from ..hair.helper_functions import (
-    apply_hair_visibility,
-    get_hair_mask_visibility,
-    hair_switcher_active,
-)
+from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
-    get_mask_objects,
+    get_mask_visibility,
     outfits_update_armature_collections,
     update_extras_visibility,
-    update_global_masks,
-    update_outfit_masks,
+    update_masks,
 )
 
 
@@ -49,8 +44,9 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
         hair_collection = rig_settings.hair_collection
         hair_switch_collection = rig_settings.hair_switch_collection
 
-        # Objects that can host masks (body, Outfits, Extras and Hair pieces)
-        mask_objects = get_mask_objects(rig_settings)
+        # {piece name: visible} of the pieces switched here, to complete the model one
+        # when the masks are updated
+        switched = {}
 
         # ------------------- PER-OBJECT UPDATES ------------------- #
         def apply_visibility(o):
@@ -134,15 +130,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                     if arm[prop] != ui_data["default"]:
                         arm[prop] = ui_data["default"]
 
-            # Mask modifiers. The Hair pieces are included since toggling this piece
-            # may have switched the Hair off (or back on) just above.
-            if mask_objects:
-                mask_visibility = get_hair_mask_visibility(
-                    rig_settings, rig_settings.hair_global_mask
-                )
-                mask_visibility[o.name] = not o.hide_viewport and rig_settings.outfits_global_mask
-                update_outfit_masks(context, mask_objects, mask_visibility)
-                update_global_masks(mask_objects)
+            switched[o.name] = not o.hide_viewport
 
         # Apply to main object
         apply_visibility(obj)
@@ -159,6 +147,11 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                     apply_visibility_recursive(child, depth + 1)
 
             apply_visibility_recursive(obj)
+
+        # Masks
+        visibility = get_mask_visibility(rig_settings)
+        visibility.update(switched)
+        update_masks(context, rig_settings, visibility)
 
         # ------------------- GLOBAL UPDATES ------------------- #
         # Physics update
