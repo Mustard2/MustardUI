@@ -136,7 +136,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 rig_settings.body_enable_subdiv
                 or rig_settings.body_enable_smoothcorr
                 or rig_settings.body_enable_solidify
-                or rig_settings.body_enable_mask
                 or rig_settings.body_enable_material_normal_nodes
                 or rig_settings.body_enable_preserve_volume
                 or rig_settings.body_enable_geometry_nodes
@@ -170,7 +169,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
         if (
             rig_settings.body_enable_smoothcorr
             or rig_settings.body_enable_solidify
-            or rig_settings.body_enable_mask
             or rig_settings.body_enable_material_normal_nodes
             or rig_settings.body_enable_preserve_volume
             or rig_settings.body_enable_geometry_nodes
@@ -183,7 +181,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                 or rig_settings.body_enable_geometry_nodes
                 or rig_settings.body_enable_solidify
                 or rig_settings.body_enable_smoothcorr
-                or rig_settings.body_enable_mask
             ):
                 col = box.column(align=True)
 
@@ -192,9 +189,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
                 if rig_settings.body_enable_smoothcorr:
                     col.prop(rig_settings, "body_smooth_corr")
-
-                if rig_settings.body_enable_mask:
-                    col.prop(rig_settings, "body_global_mask")
 
                 if rig_settings.body_enable_geometry_nodes:
                     col.prop(rig_settings, "body_geometry_nodes")

@@ -158,26 +158,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "modifiers of this type on the Body",
     )
 
-    # Mask
-    # Masks are also driven by the visibility of the piece they are named after, and
-    # they can not be updated with a simple modifiers loop like the properties above
-    def body_mask_update(self, context):
-        update_masks(context, self)
-
-    body_global_mask: bpy.props.BoolProperty(
-        default=True,
-        name="Mask",
-        description="Enable/disable the Mask modifiers on the Body",
-        update=body_mask_update,
-    )
-    body_enable_mask: bpy.props.BoolProperty(
-        default=False,
-        name="Mask modifiers",
-        description="Creates a switcher on the UI to enable/disable all "
-        "modifiers of this type on the Body.\nWithout this switcher, "
-        "the masks of the Body follow the Outfits one",
-    )
-
     # Volume Preserve
     def update_volume_preserve(self, context):
 

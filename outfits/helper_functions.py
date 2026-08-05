@@ -81,14 +81,7 @@ def get_mask_objects(rig_settings):
 
     body = rig_settings.model_body
     if body is not None:
-        objects.append(
-            (
-                body,
-                rig_settings.body_global_mask
-                if rig_settings.body_enable_mask
-                else rig_settings.outfits_global_mask,
-            )
-        )
+        objects.append((body, rig_settings.outfits_global_mask))
         seen.add(body)
 
     for obj, mask in get_mask_pieces(rig_settings):

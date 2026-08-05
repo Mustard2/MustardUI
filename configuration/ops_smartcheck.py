@@ -370,8 +370,6 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                 print("\nMustardUI - Smart Check - Searching for Global Settings to enable.")
 
             # Body
-            # Mask is deliberately not added to silently switch to the new mask behavior
-            # (masks controlled by the Body global button rather than the Outfit one)
             if rig_settings.model_body is not None:
                 rig_settings.body_enable_subdiv = False
                 rig_settings.body_enable_smoothcorr = False

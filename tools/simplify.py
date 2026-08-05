@@ -210,7 +210,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 body_smooth_corr = rig_settings.body_smooth_corr
                 body_geometry_nodes = rig_settings.body_geometry_nodes
                 body_solidify = rig_settings.body_solidify
-                body_global_mask = rig_settings.body_global_mask
                 outfits_global_subsurface = rig_settings.outfits_global_subsurface
                 outfits_global_mask = rig_settings.outfits_global_mask
                 outfits_global_smoothcorrection = rig_settings.outfits_global_smoothcorrection
@@ -228,7 +227,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     "body_smooth_corr": body_smooth_corr,
                     "body_geometry_nodes": body_geometry_nodes,
                     "body_solidify": body_solidify,
-                    "body_global_mask": body_global_mask,
                     "outfits_global_subsurface": outfits_global_subsurface,
                     "outfits_global_mask": outfits_global_mask,
                     "outfits_global_smoothcorrection": outfits_global_smoothcorrection,
@@ -270,10 +268,6 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 rig_settings.body_geometry_nodes = not simplify_settings.simplify_enable
             if rig_settings.body_enable_solidify:
                 rig_settings.body_solidify = not simplify_settings.simplify_enable
-            # The Body masks are disabled with the Outfits ones, since Simplify can
-            # switch the model to Nude and the Body would be left with holes
-            if rig_settings.body_enable_mask:
-                rig_settings.body_global_mask = not simplify_settings.simplify_enable
 
         # Outfits
         simplify_outfits(
