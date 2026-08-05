@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..configuration.naming_convention import strip_naming_convention
+from ..hair.helper_functions import hair_switcher_active
 from ..misc.geometry_nodes import (
     draw_geometry_nodes_modifier_inputs,
     geometry_nodes_modifier_inputs,
@@ -194,10 +195,15 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
             )
 
+            # An Outfit piece brings its own Hair: the Hair selection is locked to avoid
+            # showing a second Hair on top of it
+            switcher_active = hair_switcher_active(rig_settings)
+
             if hair_num > 1:
                 row = layout.row(align=True)
-                row.prop(rig_settings, "hair_list", text="")
-
+                sub = row.row(align=True)
+                sub.enabled = not switcher_active
+                sub.prop(rig_settings, "hair_list", text="")
             elif hair_num > 0 and rig_settings.hair_collection.objects[0] is not None:
                 obj = rig_settings.hair_collection.objects[0]
                 row = layout.row(align=True)
@@ -209,8 +215,9 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     ),
                     icon="OUTLINER_OB_" + obj.type,
                 )
-                row.prop(rig_settings.hair_collection, "hide_viewport", text="")
-                row.prop(rig_settings.hair_collection, "hide_render", text="")
+
+            if switcher_active and hair_num > 0:
+                layout.label(text="Hair disabled by an Outfit piece.", icon="INFO")
 
             try:
                 obj = context.scene.objects[rig_settings.hair_list]

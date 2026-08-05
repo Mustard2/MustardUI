@@ -1,5 +1,6 @@
 import bpy
 
+from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
@@ -42,15 +43,6 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         hair_collection = rig_settings.hair_collection
         hair_switch_collection = rig_settings.hair_switch_collection
-
-        def hair_switcher_is_active():
-            if hair_collection is None or hair_switch_collection is None:
-                return False
-
-            return any(
-                obj.type in {"MESH", "ARMATURE"} and not obj.hide_viewport
-                for obj in hair_switch_collection.all_objects
-            )
 
         # ------------------- PER-OBJECT UPDATES ------------------- #
         def apply_visibility(o):
@@ -105,29 +97,13 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             # Hair visibility — toggle direct children of hair_collection
             # individually so nested sub-collections (extras, switcher) are
             # not cascade-hidden by Blender's collection visibility.
-            # When the switch piece is being hidden, only restore the hair_list
-            # selection if no other hair switcher object is still visible.
             if (
                 hair_collection is not None
                 and o.type in ["MESH", "ARMATURE"]
                 and hair_switch_collection is not None
                 and o.name in hair_switch_collection.all_objects.keys()
             ):
-                if visible:
-                    # Outfit piece is being hidden.
-                    if not hair_switcher_is_active():
-                        for hair_obj in hair_collection.objects:
-                            if hair_obj.type not in {"MESH", "CURVES"}:
-                                continue
-                            is_selected = hair_obj.name == rig_settings.hair_list
-                            hair_obj.hide_viewport = not is_selected
-                            hair_obj.hide_render = not is_selected
-                else:
-                    # Outfit piece is being shown — hide all main hair
-                    for hair_obj in hair_collection.objects:
-                        if hair_obj.type in {"MESH", "CURVES"}:
-                            hair_obj.hide_viewport = True
-                            hair_obj.hide_render = True
+                apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
 
             # Custom properties
             ui_data_cache = {}

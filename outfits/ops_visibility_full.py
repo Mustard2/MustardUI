@@ -1,5 +1,6 @@
 import bpy
 
+from ..hair.helper_functions import apply_hair_visibility
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
@@ -185,16 +186,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         # hair_collection so nested sub-collections aren't cascade-hidden.
         # When no switch piece is active, restore the hair_list selection.
         if hair_switcher_seen:
-            for hair_obj in rig_settings.hair_collection.objects:
-                if hair_obj.type not in {"MESH", "CURVES"}:
-                    continue
-                if hair_switcher_active:
-                    hair_obj.hide_viewport = True
-                    hair_obj.hide_render = True
-                else:
-                    is_selected = hair_obj.name == rig_settings.hair_list
-                    hair_obj.hide_viewport = not is_selected
-                    hair_obj.hide_render = not is_selected
+            apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active)
 
         # Armature layers
         if arm_settings.outfits:
