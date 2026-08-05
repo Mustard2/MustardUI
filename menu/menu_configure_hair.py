@@ -55,6 +55,7 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
                 col = box.column(align=True)
                 col.prop(rig_settings, "hair_enable_global_subsurface")
                 col.prop(rig_settings, "hair_enable_global_smoothcorrection")
+                col.prop(rig_settings, "hair_enable_global_mask")
                 col.prop(rig_settings, "hair_enable_global_solidify")
                 col.prop(rig_settings, "hair_enable_global_particles")
 

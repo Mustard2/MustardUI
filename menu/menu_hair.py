@@ -648,6 +648,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
             or rig_settings.hair_enable_global_smoothcorrection
             or rig_settings.hair_enable_global_solidify
             or rig_settings.hair_enable_global_particles
+            or rig_settings.hair_enable_global_mask
         )
         if rig_settings.hair_collection is not None:
             hair_num = len(
@@ -687,6 +688,8 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
             col.prop(rig_settings, "hair_global_subsurface")
         if rig_settings.hair_enable_global_smoothcorrection:
             col.prop(rig_settings, "hair_global_smoothcorrection")
+        if rig_settings.hair_enable_global_mask:
+            col.prop(rig_settings, "hair_global_mask")
         if rig_settings.hair_enable_global_solidify:
             col.prop(rig_settings, "hair_global_solidify")
         if rig_settings.hair_enable_global_particles:

@@ -452,6 +452,8 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
                             rig_settings.hair_enable_global_solidify = True
                         elif m.type == "PARTICLE_SYSTEM":
                             rig_settings.hair_enable_global_particles = True
+                        elif m.type == "MASK":
+                            rig_settings.hair_enable_global_particles = True
 
         # Auto-create VERTEX_WEIGHT_MIX from body VGs matching outfit objects
         if self.smartcheck_body_mask_from_vg:

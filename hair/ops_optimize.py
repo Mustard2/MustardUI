@@ -33,6 +33,8 @@ class MustardUI_Hair_SwitchGlobal(bpy.types.Operator):
             rig_settings.hair_global_solidify = self.enable
         if rig_settings.hair_enable_global_particles:
             rig_settings.hair_global_particles = self.enable
+        if rig_settings.hair_enable_global_mask:
+            rig_settings.hair_global_mask = self.enable
 
         return {"FINISHED"}
 
@@ -60,11 +62,13 @@ class MustardUI_Hair_DisableViewport(bpy.types.Operator):
                 hair_global_smoothcorrection = rig_settings.hair_global_smoothcorrection
                 hair_global_solidify = rig_settings.hair_global_solidify
                 hair_global_particles = rig_settings.hair_global_particles
+                hair_global_mask = rig_settings.hair_global_mask
                 arm["mustardui_hair_show"] = {
                     "hair_global_subsurface": hair_global_subsurface,
                     "hair_global_smoothcorrection": hair_global_smoothcorrection,
                     "hair_global_solidify": hair_global_solidify,
                     "hair_global_particles": hair_global_particles,
+                    "hair_global_mask": hair_global_mask,
                 }
 
         simplify_hair(rig_settings, self.enable)

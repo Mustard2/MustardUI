@@ -1,14 +1,19 @@
 import bpy
 
-from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
+from ..hair.helper_functions import (
+    apply_hair_visibility,
+    get_hair_mask_visibility,
+    hair_switcher_active,
+)
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
+    get_mask_objects,
     outfits_update_armature_collections,
     update_extras_visibility,
-    update_global_obj_mask,
-    update_outfit_obj_masks,
+    update_global_masks,
+    update_outfit_masks,
 )
 
 
@@ -43,6 +48,9 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         hair_collection = rig_settings.hair_collection
         hair_switch_collection = rig_settings.hair_switch_collection
+
+        # Objects that can host masks (body, Outfits, Extras and Hair pieces)
+        mask_objects = get_mask_objects(rig_settings)
 
         # ------------------- PER-OBJECT UPDATES ------------------- #
         def apply_visibility(o):
@@ -126,11 +134,15 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                     if arm[prop] != ui_data["default"]:
                         arm[prop] = ui_data["default"]
 
-            # Body mask modifiers
-            body = rig_settings.model_body
-            if body and rig_settings.outfits_global_mask:
-                update_outfit_obj_masks(context, body, self.obj, not o.hide_viewport)
-                update_global_obj_mask(body)
+            # Mask modifiers. The Hair pieces are included since toggling this piece
+            # may have switched the Hair off (or back on) just above.
+            if mask_objects:
+                mask_visibility = get_hair_mask_visibility(
+                    rig_settings, rig_settings.hair_global_mask
+                )
+                mask_visibility[o.name] = not o.hide_viewport and rig_settings.outfits_global_mask
+                update_outfit_masks(context, mask_objects, mask_visibility)
+                update_global_masks(mask_objects)
 
         # Apply to main object
         apply_visibility(obj)

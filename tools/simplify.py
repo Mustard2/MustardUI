@@ -172,6 +172,8 @@ def simplify_hair(
             rig_settings.hair_global_solidify = not enable
         if rig_settings.hair_enable_global_particles:
             rig_settings.hair_global_particles = not enable
+        if rig_settings.hair_enable_global_mask:
+            rig_settings.hair_global_mask = not enable
 
 
 class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
@@ -219,6 +221,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                 hair_global_smoothcorrection = rig_settings.hair_global_smoothcorrection
                 hair_global_solidify = rig_settings.hair_global_solidify
                 hair_global_particles = rig_settings.hair_global_particles
+                hair_global_mask = rig_settings.hair_global_mask
                 arm["mustardui_pre_simplify"] = {
                     "body_subdiv_view": body_subdiv_view,
                     "body_smooth_corr": body_smooth_corr,
@@ -235,6 +238,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     "hair_global_smoothcorrection": hair_global_smoothcorrection,
                     "hair_global_solidify": hair_global_solidify,
                     "hair_global_particles": hair_global_particles,
+                    "hair_global_mask": hair_global_mask,
                 }
             if "mustardui_pre_simplify" not in scene:
                 scene["mustardui_pre_simplify"] = {

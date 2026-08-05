@@ -1,4 +1,9 @@
 from ..misc.set_bool import set_bool
+from ..outfits.helper_functions import (
+    get_mask_objects,
+    update_global_masks,
+    update_outfit_masks,
+)
 
 
 def set_object_visibility(obj, visible, rig_settings):
@@ -33,6 +38,27 @@ def apply_hair_visibility(rig_settings, force_hidden=False):
         parent_armature = obj.find_armature()
         if parent_armature is not None and parent_armature in hair_collection_objs:
             set_object_visibility(parent_armature, visible, rig_settings)
+
+
+def get_hair_mask_visibility(rig_settings, mask=True):
+    """{Hair piece name: mask visibility} for the Hair and Hair Extras collections."""
+    visibility = {}
+    for collection in (rig_settings.hair_collection, rig_settings.hair_extras_collection):
+        if collection is None:
+            continue
+        for obj in collection.all_objects:
+            visibility[obj.name] = not obj.hide_viewport and mask
+    return visibility
+
+
+def update_hair_masks(context, rig_settings):
+    """Refresh the masks driven by the Hair pieces on every object hosting them."""
+    mask_objects = get_mask_objects(rig_settings)
+    if not mask_objects:
+        return
+    visibility = get_hair_mask_visibility(rig_settings, rig_settings.hair_global_mask)
+    update_outfit_masks(context, mask_objects, visibility)
+    update_global_masks(mask_objects)
 
 
 def hair_switcher_active(rig_settings):

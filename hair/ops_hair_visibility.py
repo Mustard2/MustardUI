@@ -13,6 +13,7 @@ from .helper_functions import (
     apply_hair_visibility,
     hair_switcher_active,
     set_object_visibility,
+    update_hair_masks,
 )
 
 
@@ -41,6 +42,9 @@ class MustardUI_HairVisibility(bpy.types.Operator):
         # hidden to avoid loading a Hair on top of it. The selection is still stored,
         # and it is restored as soon as that Outfit piece is disabled
         apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
+
+        # Masks named after the Hair Objects
+        update_hair_masks(context, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)
@@ -93,6 +97,9 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         lc = find_layer_collection(context.view_layer.layer_collection, hair_extras_collection)
         if lc is not None:
             set_bool(lc, "exclude", hidden)
+
+        # Masks named after the Hair Objects
+        update_hair_masks(context, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)
