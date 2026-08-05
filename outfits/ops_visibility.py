@@ -150,7 +150,8 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
         # Masks
         visibility = get_mask_visibility(rig_settings)
-        visibility.update(switched)
+        for name, visible in switched.items():
+            visibility.setdefault(name, visible and rig_settings.outfits_global_mask)
         update_masks(context, rig_settings, visibility)
 
         # ------------------- GLOBAL UPDATES ------------------- #

@@ -94,13 +94,13 @@ def get_mask_objects(rig_settings):
 
 
 def get_mask_visibility(rig_settings):
-    """{piece name: visible} for every piece which can drive masks."""
-    return {obj.name: not obj.hide_viewport for obj, _ in get_mask_pieces(rig_settings)}
+    """{piece name: mask visibility} for every piece which can drive masks."""
+    return {obj.name: not obj.hide_viewport and mask for obj, mask in get_mask_pieces(rig_settings)}
 
 
 def update_obj_masks(context, obj, visibility, mask=True):
     """Update the mask modifiers hosted by obj which are driven by the pieces in
-    visibility ({piece name: visible})."""
+    visibility ({piece name: mask visibility})."""
     for mod in obj.modifiers:
         if mod.type not in ("MASK", "VERTEX_WEIGHT_MIX"):
             continue
@@ -115,7 +115,7 @@ def update_obj_masks(context, obj, visibility, mask=True):
                 set_bool(mod, "show_render", False)
             continue
 
-        should_show = mask and any(visibility[x] for x in driving)
+        should_show = any(visibility[x] for x in driving)
         if mask and not should_show:
             # Shared modifier (names joined by "|"): keep it on if another
             # piece using it is still visible.
