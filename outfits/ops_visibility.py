@@ -7,8 +7,8 @@ from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     outfits_update_armature_collections,
     update_extras_visibility,
-    update_global_body_mask,
-    update_outfit_body_masks,
+    update_global_obj_mask,
+    update_outfit_obj_masks,
 )
 
 
@@ -129,8 +129,8 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             # Body mask modifiers
             body = rig_settings.model_body
             if body and rig_settings.outfits_global_mask:
-                update_outfit_body_masks(context, body, self.obj, not o.hide_viewport)
-                update_global_body_mask(body)
+                update_outfit_obj_masks(context, body, self.obj, not o.hide_viewport)
+                update_global_obj_mask(body)
 
         # Apply to main object
         apply_visibility(obj)

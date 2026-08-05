@@ -37,8 +37,8 @@ def update_extras_visibility(context, rig_settings):
     return _update(extras)
 
 
-def update_outfit_body_masks(context, body, obj_name, visible):
-    for mod in body.modifiers:
+def update_outfit_obj_masks(context, obj, obj_name, visible):
+    for mod in obj.modifiers:
         if mod.type in ("MASK", "VERTEX_WEIGHT_MIX") and obj_name in mod.name.split("|"):
             # Shared modifier (names joined by "|"): keep it on if another
             # piece using it is still visible.
@@ -55,14 +55,14 @@ def update_outfit_body_masks(context, body, obj_name, visible):
             set_bool(mod, "show_render", should_show)
 
 
-def update_global_body_mask(body):
+def update_global_obj_mask(obj):
     from ..tools_creators.ops_optimize_mods import mask_vg_name
 
     activate = any(
         mod.type == "VERTEX_WEIGHT_MIX" and mod.vertex_group_a == mask_vg_name and mod.show_viewport
-        for mod in body.modifiers
+        for mod in obj.modifiers
     )
-    for mod in body.modifiers:
+    for mod in obj.modifiers:
         if mod.type == "MASK" and mod.vertex_group == mask_vg_name:
             set_bool(mod, "show_viewport", activate)
             set_bool(mod, "show_render", activate)

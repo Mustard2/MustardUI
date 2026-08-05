@@ -8,8 +8,8 @@ from ..misc.set_bool import set_bool
 from ..outfits.definitions import MustardUI_Outfit
 from ..outfits.helper_functions import (
     find_layer_collection,
-    update_global_body_mask,
-    update_outfit_body_masks,
+    update_global_obj_mask,
+    update_outfit_obj_masks,
 )
 from ..sections.definitions import MustardUI_SectionItem
 
@@ -457,11 +457,11 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     and not obj.hide_viewport
                     and self.outfits_global_mask
                 )
-                update_outfit_body_masks(context, self.model_body, obj.name, visible)
+                update_outfit_obj_masks(context, self.model_body, obj.name, visible)
 
         # Refresh the combined global mask once all outfit pieces are processed.
         if self.model_body is not None and self.outfits_enable_global_mask:
-            update_global_body_mask(self.model_body)
+            update_global_obj_mask(self.model_body)
 
     # List of the collections from which to extract the outfits
     outfits_collections: bpy.props.CollectionProperty(
