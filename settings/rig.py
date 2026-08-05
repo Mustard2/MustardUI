@@ -160,24 +160,40 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Volume Preserve
     def update_volume_preserve(self, context):
 
-        for modifier in [x for x in self.model_body.modifiers if x.type == "ARMATURE"]:
-            modifier.use_deform_preserve_volume = self.body_preserve_volume
+        # Gather the objects first, so that objects belonging to more than one
+        # collection (or also parented to the armature) are only visited once
+        objects = set()
 
-        collections = [x.collection for x in self.outfits_collections]
-        if self.extras_collection is not None:
-            collections.append(self.extras_collection)
+        if self.model_body is not None:
+            objects.add(self.model_body)
 
-        for collection in collections:
-            use_sub = (
-                self.extras_config_subcollections
-                if collection == self.extras_collection
-                else self.outfit_config_subcollections
+        # Outfits
+        for el in self.outfits_collections:
+            if el.collection is None:
+                continue
+            objects.update(
+                el.collection.all_objects
+                if self.outfit_config_subcollections
+                else el.collection.objects
             )
-            items = collection.all_objects if use_sub else collection.objects
-            for obj in items:
-                for modifier in obj.modifiers:
-                    if modifier.type == "ARMATURE":
-                        modifier.use_deform_preserve_volume = self.body_preserve_volume
+
+        # Extras
+        if self.extras_collection is not None:
+            objects.update(
+                self.extras_collection.all_objects
+                if self.extras_config_subcollections
+                else self.extras_collection.objects
+            )
+
+        # Any remaining object parented directly to the armature
+        if self.model_armature_object is not None:
+            objects.update(self.model_armature_object.children)
+
+        value = self.body_preserve_volume
+        for obj in objects:
+            for modifier in obj.modifiers:
+                if modifier.type == "ARMATURE":
+                    modifier.use_deform_preserve_volume = value
 
     # Armature volume preserve
     body_preserve_volume: bpy.props.BoolProperty(
