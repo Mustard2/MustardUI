@@ -204,6 +204,10 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 sub = row.row(align=True)
                 sub.enabled = not switcher_active
                 sub.prop(rig_settings, "hair_list", text="")
+
+                if switcher_active:
+                    layout.label(text="Hair disabled by an Outfit piece.", icon="INFO")
+
             elif hair_num > 0 and rig_settings.hair_collection.objects[0] is not None:
                 obj = rig_settings.hair_collection.objects[0]
                 row = layout.row(align=True)
@@ -215,9 +219,6 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     ),
                     icon="OUTLINER_OB_" + obj.type,
                 )
-
-            if switcher_active and hair_num > 0:
-                layout.label(text="Hair disabled by an Outfit piece.", icon="INFO")
 
             try:
                 obj = context.scene.objects[rig_settings.hair_list]
