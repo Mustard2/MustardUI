@@ -161,13 +161,21 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     bl_label = "Smart Check"
     bl_options = {"UNDO"}
 
+    url_MustardUI_CustomProperties = (
+        "https://github.com/Mustard2/MustardUI/wiki/Creator-Body#custom-properties-smart-check"
+    )
+
     smartcheck_custom_properties: bpy.props.BoolProperty(
         name="Body Custom Properties",
         default=True,
-        description="Search for Body Custom Properties that respects "
-        "MustardUI Naming Convention.\nThis will "
-        "overwrite previous manual modifications of "
-        "custom properties found with this tool.",
+        description="Search for Body Custom Properties that respects MustardUI Naming Convention.",
+    )
+    smartcheck_custom_properties_preserve: bpy.props.BoolProperty(
+        name="Preserve Existing Properties",
+        default=True,
+        description="Skip the custom properties already added to the UI, preserving "
+        "their settings.\nIf disabled, all the properties found are "
+        "re-created from scratch and their settings are reset",
     )
     smartcheck_outfits: bpy.props.BoolProperty(
         name="Outfits",
@@ -250,7 +258,9 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
             if addon_prefs.debug:
                 print("MustardUI - Smart Check - Searching for body additional options\n")
             # Check for body additional properties
-            bpy.ops.mustardui.property_smartcheck()
+            bpy.ops.mustardui.property_smartcheck(
+                skip_existing=self.smartcheck_custom_properties_preserve
+            )
 
         # Search for outfit collections
         if self.smartcheck_outfits:
@@ -495,7 +505,15 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
         row.prop(self, "reset_current_collections")
 
         col.prop(self, "smartcheck_settings")
-        col.prop(self, "smartcheck_custom_properties")
+
+        row = col.row(align=True)
+        row.prop(self, "smartcheck_custom_properties")
+        op = row.operator("wm.url_open", text="", icon="QUESTION")
+        op.url = self.url_MustardUI_CustomProperties
+        row = col.row(align=True)
+        row.enabled = self.smartcheck_custom_properties
+        row.label(text="", icon="BLANK1")
+        row.prop(self, "smartcheck_custom_properties_preserve")
 
         box = layout.box()
         box.label(text="Mask", icon="MOD_MASK")
