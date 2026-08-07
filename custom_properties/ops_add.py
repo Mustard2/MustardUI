@@ -68,17 +68,25 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
         # dump(prop, 'button_prop')
 
-        # Copy the path of the selected property
-        try:
-            bpy.ops.ui.copy_data_path_button(full_path=True)
-        except Exception:
-            self.report({"ERROR"}, "MustardUI - Invalid selection.")
+        result = bpy.ops.ui.copy_data_path_button(full_path=True)
+        if "CANCELLED" in result:
+            self.report(
+                {"ERROR"},
+                "MustardUI - This property does not support being added "
+                "to MustardUI (no valid data path could be found).",
+            )
             return {"FINISHED"}
 
-        # Adjust the property path to be exported
         clipboard = context.window_manager.clipboard
         blender_custom_property = "][" in clipboard
         if not blender_custom_property:
+            if "." not in clipboard:
+                self.report(
+                    {"ERROR"},
+                    "MustardUI - This property does not support being added "
+                    "to MustardUI (no valid data path could be found).",
+                )
+                return {"FINISHED"}
             rna, path = clipboard.rsplit(".", 1)
         else:
             path = clipboard
