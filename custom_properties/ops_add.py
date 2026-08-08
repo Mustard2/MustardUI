@@ -68,7 +68,12 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
         # dump(prop, 'button_prop')
 
-        result = bpy.ops.ui.copy_data_path_button(full_path=True)
+        try:
+            result = bpy.ops.ui.copy_data_path_button(full_path=True)
+        except Exception:
+            self.report({"ERROR"}, "MustardUI - Invalid selection.")
+            return {"FINISHED"}
+
         if "CANCELLED" in result:
             self.report(
                 {"ERROR"},
