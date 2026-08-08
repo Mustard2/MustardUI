@@ -34,7 +34,16 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         rig_settings = arm.MustardUI_RigSettings
 
         box = layout.box()
-        box.label(text="Global properties", icon="MODIFIER")
+        box.label(text="General Settings", icon="MODIFIER")
+        col = box.column(align=True)
+        col.prop(
+            rig_settings,
+            "body_enable_geometry_nodes_support",
+            text="Add Geometry Nodes as Sections",
+        )
+
+        box = layout.box()
+        box.label(text="Global Properties", icon="PROPERTIES")
         col = box.column(align=True)
         col.prop(rig_settings, "body_enable_subdiv")
         col.prop(rig_settings, "body_enable_smoothcorr")
@@ -44,48 +53,9 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "body_enable_preserve_volume")
         col.prop(rig_settings, "body_enable_material_normal_nodes")
 
-        # Custom properties
-        box = layout.box()
-        row = box.row()
-        row.label(text="Custom properties", icon="PRESET_NEW")
-        row.operator("mustardui.property_smartcheck", text="", icon="SHADERFX")
-        row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
-
-        if len(arm.MustardUI_CustomProperties) > 0:
-            row = box.row()
-            row.template_list(
-                "MUSTARDUI_UL_Property_UIList",
-                "The_List",
-                arm,
-                "MustardUI_CustomProperties",
-                scene,
-                "mustardui_property_uilist_index",
-            )
-            col = row.column()
-            col.operator("mustardui.property_settings", icon="PREFERENCES", text="").type = "BODY"
-            col.separator()
-            col2 = col.column(align=True)
-            opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
-            opup.direction = "UP"
-            opup.type = "BODY"
-            opdown = col2.operator("mustardui.property_switch", icon="TRIA_DOWN", text="")
-            opdown.direction = "DOWN"
-            opdown.type = "BODY"
-            col.separator()
-            col.operator("mustardui.property_remove", icon="X", text="").type = "BODY"
-
-            col = box.column(align=True)
-            col.prop(rig_settings, "body_custom_properties_icons")
-            col.prop(rig_settings, "body_custom_properties_name_order")
-
-        else:
-            box = box.box()
-            box.label(text="No property added yet", icon="ERROR")
-
         # Sections
         box = layout.box()
         box.label(text="Sections", icon="LINENUMBERS_OFF")
-        box.prop(rig_settings, "body_enable_geometry_nodes_support")
         if len(arm.MustardUI_CustomProperties) > 0:
             row = box.row()
             row.template_list(
@@ -148,6 +118,44 @@ class PANEL_PT_MustardUI_InitPanel_Body(MainPanel, bpy.types.Panel):
 
                 row = col.row()
                 row.prop(sec, "collapsable")
+        else:
+            box = box.box()
+            box.label(text="No property added yet", icon="ERROR")
+
+        # Custom properties
+        box = layout.box()
+        row = box.row()
+        row.label(text="Custom properties", icon="PRESET_NEW")
+        row.operator("mustardui.property_smartcheck", text="", icon="SHADERFX")
+        row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
+
+        if len(arm.MustardUI_CustomProperties) > 0:
+            row = box.row()
+            row.template_list(
+                "MUSTARDUI_UL_Property_UIList",
+                "The_List",
+                arm,
+                "MustardUI_CustomProperties",
+                scene,
+                "mustardui_property_uilist_index",
+            )
+            col = row.column()
+            col.operator("mustardui.property_settings", icon="PREFERENCES", text="").type = "BODY"
+            col.separator()
+            col2 = col.column(align=True)
+            opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
+            opup.direction = "UP"
+            opup.type = "BODY"
+            opdown = col2.operator("mustardui.property_switch", icon="TRIA_DOWN", text="")
+            opdown.direction = "DOWN"
+            opdown.type = "BODY"
+            col.separator()
+            col.operator("mustardui.property_remove", icon="X", text="").type = "BODY"
+
+            col = box.column(align=True)
+            col.prop(rig_settings, "body_custom_properties_icons")
+            col.prop(rig_settings, "body_custom_properties_name_order")
+
         else:
             box = box.box()
             box.label(text="No property added yet", icon="ERROR")

@@ -93,7 +93,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
     elif rig_settings.outfit_physics_support:
         for m in obj.modifiers:
             mtype = m.type
-            if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"]:
+            if mtype in ["CLOTH", "SOFT_BODY", "COLLISION"] or (mtype == "NODES" and m.node_group):
                 row.prop(
                     obj.MustardUI_OutfitSettings,
                     "physics",

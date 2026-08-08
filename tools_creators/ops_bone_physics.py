@@ -48,7 +48,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
     bl_idname = "mustardui.tools_creators_bone_physics"
     bl_label = "Bone Physics"
     bl_description = "Add physics to a set of selected bones in Pose Mode"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     curve_width: bpy.props.FloatProperty(
         default=0.01,
@@ -299,6 +299,9 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         settings = context.scene.MustardUI_Settings
 
         layout = self.layout
+
+        layout.separator()
+
         layout.prop(self, "pinned_bones", emboss=True)
         layout.prop(self, "merge_chains", emboss=True)
         if settings.advanced:

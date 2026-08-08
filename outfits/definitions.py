@@ -34,7 +34,7 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
             return
 
         for m in self.id_data.modifiers:
-            if m.type in ["CLOTH", "SOFT_BODY"]:
+            if m.type in ["CLOTH", "SOFT_BODY"] or (m.type == "NODES" and m.node_group):
                 m.show_viewport = self.physics
                 m.show_render = self.physics
             elif m.type in ["COLLISION"]:

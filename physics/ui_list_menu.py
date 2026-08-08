@@ -7,6 +7,12 @@ from .settings_item import mustardui_physics_item_type_dict
 class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
     """UIList for Physics Items"""
 
+    filter_show_outfit_items: bpy.props.BoolProperty(
+        name="Show Outfit Items",
+        description="Show Physics Items assigned to an outfit or outfit piece",
+        default=True,
+    )
+
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if not item.object:
             layout.label(text="Object not found!", icon="ERROR")
@@ -45,6 +51,64 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
         if settings.advanced and item.object is not None:
             op = row.operator("mustardui.physics_rebind_single_cage", text="", icon="FILE_REFRESH")
             op.cage_name = item.object.name
+
+    def draw_filter(self, context, layout):
+        row = layout.row()
+        sub = row.row(align=True)
+        sub.prop(self, "filter_name", text="", icon="VIEWZOOM")
+        sub.prop(self, "use_filter_invert", text="", icon="ARROW_LEFTRIGHT")
+
+        sub = row.row(align=True)
+        sub.prop(self, "use_filter_sort_alpha", text="", icon="SORTALPHA")
+        sub.prop(
+            self,
+            "use_filter_sort_reverse",
+            text="",
+            icon="SORT_DESC" if self.use_filter_sort_reverse else "SORT_ASC",
+        )
+
+        sub = row.row(align=True)
+        sub.prop(
+            self,
+            "filter_show_outfit_items",
+            text="",
+            icon="MOD_CLOTH",
+            toggle=True,
+        )
+
+    def filter_items(self, context, data, propname):
+        items = getattr(data, propname)
+        helper_funcs = bpy.types.UI_UL_list
+
+        flt_flags = [self.bitflag_filter_item] * len(items)
+
+        if self.filter_name:
+            search = self.filter_name.lower()
+            for i, item in enumerate(items):
+                name = item.object.name if item.object else ""
+                if search not in name.lower():
+                    flt_flags[i] &= ~self.bitflag_filter_item
+
+        if self.use_filter_invert:
+            for i in range(len(flt_flags)):
+                flt_flags[i] ^= self.bitflag_filter_item
+
+        if self.use_filter_sort_alpha:
+            sort_data = [
+                (i, item.object.name.lower() if item.object else "") for i, item in enumerate(items)
+            ]
+            flt_neworder = helper_funcs.sort_items_helper(
+                sort_data, lambda e: e[1], self.use_filter_sort_reverse
+            )
+        else:
+            flt_neworder = []
+
+        if not self.filter_show_outfit_items:
+            for i, item in enumerate(items):
+                if item.outfit_enable:
+                    flt_flags[i] &= ~self.bitflag_filter_item
+
+        return flt_flags, flt_neworder
 
 
 def register():

@@ -8,24 +8,13 @@ from ..model_selection.active_object import (
 from ..outfits.helper_functions import (
     find_layer_collection,
     outfits_update_armature_collections,
+    update_masks,
 )
-
-
-def set_object_visibility(obj, visible, rig_settings):
-    """Set object and relevant modifiers visibility"""
-    set_bool(obj, "hide_viewport", not visible)
-    set_bool(obj, "hide_render", not visible)
-
-    for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]]:
-        if mod.type in ["PARTICLE_SYSTEM", "NODES"]:
-            set_bool(mod, "show_viewport", visible)
-            set_bool(mod, "show_render", visible)
-        else:  # ARMATURE
-            set_bool(
-                mod,
-                "show_viewport",
-                visible if rig_settings.hair_switch_armature_disable else True,
-            )
+from .helper_functions import (
+    apply_hair_visibility,
+    hair_switcher_active,
+    set_object_visibility,
+)
 
 
 class MustardUI_HairVisibility(bpy.types.Operator):
@@ -45,21 +34,17 @@ class MustardUI_HairVisibility(bpy.types.Operator):
 
         rig_settings = arm.MustardUI_RigSettings
         hair_collection = rig_settings.hair_collection
-        hair_list = rig_settings.hair_list
         if not hair_collection:
-            self.report({"WARNING"}, "Hair collection not defined in Rig Settings.")
+            self.report({"WARNING"}, "MustardUI - Hair collection not defined in Rig Settings.")
             return {"CANCELLED"}
 
-        # Loop through hair objects
-        hair_collection_objs = [x for x in hair_collection.objects]
-        for obj in [x for x in hair_collection_objs if x.type in {"MESH", "CURVES"}]:
-            visible = hair_list == obj.name
+        # An Outfit piece with a dedicated Hair is enabled: keep every Hair Object
+        # hidden to avoid loading a Hair on top of it. The selection is still stored,
+        # and it is restored as soon as that Outfit piece is disabled
+        apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
 
-            set_object_visibility(obj, visible, rig_settings)
-
-            parent_armature = obj.find_armature()
-            if parent_armature is not None and parent_armature in hair_collection_objs:
-                set_object_visibility(parent_armature, visible, rig_settings)
+        # Masks
+        update_masks(context, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)
@@ -112,6 +97,9 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
         lc = find_layer_collection(context.view_layer.layer_collection, hair_extras_collection)
         if lc is not None:
             set_bool(lc, "exclude", hidden)
+
+        # Masks
+        update_masks(context, rig_settings)
 
         # Update armature collections visibility using the outfit-style logic
         outfits_update_armature_collections(rig_settings, arm)

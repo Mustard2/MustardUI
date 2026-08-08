@@ -1,13 +1,13 @@
 import bpy
 
+from ..hair.helper_functions import apply_hair_visibility
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     find_layer_collection,
     outfits_update_armature_collections,
-    update_global_body_mask,
-    update_outfit_body_masks,
+    update_masks,
 )
 
 
@@ -27,7 +27,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         arm_settings = arm.MustardUI_ArmatureSettings
         physics = arm.MustardUI_PhysicsSettings
-        body = rig_settings.model_body
 
         outfits_list = rig_settings.outfits_list
         use_subcollections = rig_settings.outfit_config_subcollections
@@ -46,7 +45,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         shrink = rig_settings.outfits_global_shrinkwrap
         enable_subsurf = rig_settings.outfits_enable_global_subsurface
         subsurf = rig_settings.outfits_global_subsurface
-        mask = rig_settings.outfits_global_mask
 
         # Collections, objects, modifiers, masks
         hair_switcher_seen = False
@@ -149,11 +147,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                         elif mod.type == "SUBSURF" and enable_subsurf:
                             set_bool(mod, "show_viewport", show_obj and subsurf)
 
-                # Body masks
-                if body:
-                    mask_visible = (is_active or locked) and show_obj and mask
-                    update_outfit_body_masks(context, body, obj.name, mask_visible)
-
             # Collection visibility AFTER objects
             col_visible = is_active or locked_collection or any_object_visible
             set_bool(col, "hide_viewport", not col_visible)
@@ -164,37 +157,14 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             if lc is not None:
                 set_bool(lc, "exclude", not col_visible)
 
-        # Extras are independent of the outfit switcher: their visibility is not
-        # changed here, but their body masks are refreshed to follow each piece's own
-        # visibility so they stay consistent on outfit switches.
-        if body and rig_settings.extras_collection is not None:
-            extras_items = (
-                rig_settings.extras_collection.all_objects
-                if rig_settings.extras_config_subcollections
-                else rig_settings.extras_collection.objects
-            )
-            for obj in extras_items:
-                update_outfit_body_masks(context, body, obj.name, not obj.hide_viewport and mask)
-
-        # Refresh the combined global mask once, after every outfit piece has been
-        # processed, so it reflects the final state of all Vertex Weight Mix modifiers.
-        if body:
-            update_global_body_mask(body)
-
         # Apply hair switching once, toggling direct children of
         # hair_collection so nested sub-collections aren't cascade-hidden.
         # When no switch piece is active, restore the hair_list selection.
         if hair_switcher_seen:
-            for hair_obj in rig_settings.hair_collection.objects:
-                if hair_obj.type not in {"MESH", "CURVES"}:
-                    continue
-                if hair_switcher_active:
-                    hair_obj.hide_viewport = True
-                    hair_obj.hide_render = True
-                else:
-                    is_selected = hair_obj.name == rig_settings.hair_list
-                    hair_obj.hide_viewport = not is_selected
-                    hair_obj.hide_render = not is_selected
+            apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active)
+
+        # Masks
+        update_masks(context, rig_settings)
 
         # Armature layers
         if arm_settings.outfits:

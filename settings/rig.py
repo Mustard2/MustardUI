@@ -8,8 +8,9 @@ from ..misc.set_bool import set_bool
 from ..outfits.definitions import MustardUI_Outfit
 from ..outfits.helper_functions import (
     find_layer_collection,
-    update_global_body_mask,
-    update_outfit_body_masks,
+    outfits_get_collection_items,
+    outfits_get_collections,
+    update_masks,
 )
 from ..sections.definitions import MustardUI_SectionItem
 
@@ -160,24 +161,40 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Volume Preserve
     def update_volume_preserve(self, context):
 
-        for modifier in [x for x in self.model_body.modifiers if x.type == "ARMATURE"]:
-            modifier.use_deform_preserve_volume = self.body_preserve_volume
+        # Gather the objects first, so that objects belonging to more than one
+        # collection (or also parented to the armature) are only visited once
+        objects = set()
 
-        collections = [x.collection for x in self.outfits_collections]
-        if self.extras_collection is not None:
-            collections.append(self.extras_collection)
+        if self.model_body is not None:
+            objects.add(self.model_body)
 
-        for collection in collections:
-            use_sub = (
-                self.extras_config_subcollections
-                if collection == self.extras_collection
-                else self.outfit_config_subcollections
+        # Outfits
+        for el in self.outfits_collections:
+            if el.collection is None:
+                continue
+            objects.update(
+                el.collection.all_objects
+                if self.outfit_config_subcollections
+                else el.collection.objects
             )
-            items = collection.all_objects if use_sub else collection.objects
-            for obj in items:
-                for modifier in obj.modifiers:
-                    if modifier.type == "ARMATURE":
-                        modifier.use_deform_preserve_volume = self.body_preserve_volume
+
+        # Extras
+        if self.extras_collection is not None:
+            objects.update(
+                self.extras_collection.all_objects
+                if self.extras_config_subcollections
+                else self.extras_collection.objects
+            )
+
+        # Any remaining object parented directly to the armature
+        if self.model_armature_object is not None:
+            objects.update(self.model_armature_object.children)
+
+        value = self.body_preserve_volume
+        for obj in objects:
+            for modifier in obj.modifiers:
+                if modifier.type == "ARMATURE":
+                    modifier.use_deform_preserve_volume = value
 
     # Armature volume preserve
     body_preserve_volume: bpy.props.BoolProperty(
@@ -381,9 +398,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         """Update global outfit options for all collections and their modifiers."""
 
         # Gather all collections (outfits + extras)
-        collections = [x.collection for x in self.outfits_collections if x.collection is not None]
-        if self.extras_collection is not None:
-            collections.append(self.extras_collection)
+        collections = outfits_get_collections(self)
 
         # Mapping: modifier type → (enabled_flag, value)
         mod_settings = {
@@ -410,16 +425,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             ),
         }
 
+        # Update object modifiers
         for collection in collections:
-            use_sub = (
-                self.extras_config_subcollections
-                if collection == self.extras_collection
-                else self.outfit_config_subcollections
-            )
-            items = collection.all_objects if use_sub else collection.objects
-
-            for obj in items:
-                # Update object modifiers
+            for obj in outfits_get_collection_items(self, collection):
                 for mod in obj.modifiers:
                     if mod.type not in mod_settings:
                         continue
@@ -429,23 +437,9 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
                     set_bool(mod, "show_viewport", value)
                     set_bool(mod, "show_render", value)
 
-                # Update body mask modifiers
-                if self.model_body is None or not self.outfits_enable_global_mask:
-                    continue
-
-                # Extras are independent of the outfit switcher, so their masks follow
-                # the piece's own visibility rather than the active outfit.
-                is_extras = collection == self.extras_collection
-                visible = (
-                    (is_extras or collection.name == self.outfits_list or obj.MustardUI_outfit_lock)
-                    and not obj.hide_viewport
-                    and self.outfits_global_mask
-                )
-                update_outfit_body_masks(context, self.model_body, obj.name, visible)
-
-        # Refresh the combined global mask once all outfit pieces are processed.
-        if self.model_body is not None and self.outfits_enable_global_mask:
-            update_global_body_mask(self.model_body)
+        # Masks
+        if self.outfits_enable_global_mask:
+            update_masks(context, self)
 
     # List of the collections from which to extract the outfits
     outfits_collections: bpy.props.CollectionProperty(
@@ -630,6 +624,15 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
     #    Hair properties
     # ------------------------------------------------------------------------
+
+    hair_physics_support: bpy.props.BoolProperty(
+        default=True,
+        name="Enable Hair Physics support",
+        description="If enabled, a button near hair pieces with Physics "
+        "modifiers is added to enable/disable physics",
+    )
+
+    collapse_hair_dynamics_advanced: bpy.props.BoolProperty(default=True, name="")
 
     # Hair collection
     def poll_collection_hair(self, object):
@@ -831,6 +834,13 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Particle Hair modifiers",
     )
 
+    hair_enable_global_mask: bpy.props.BoolProperty(
+        default=False,
+        description="Creates a switcher on the UI to enable/disable the Mask "
+        "modifiers on the Hair Objects",
+        name="Mask modifiers",
+    )
+
     # Function to update the global hair properties
     def hair_global_options_subsurf_update(self, context):
 
@@ -896,6 +906,16 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Particle Hair",
         description="Enable/disable the Particle Hair modifiers on the Hair",
         update=hair_global_options_update,
+    )
+
+    def hair_global_mask_update(self, context):
+        update_masks(context, self)
+
+    hair_global_mask: bpy.props.BoolProperty(
+        default=True,
+        name="Mask",
+        description="Enable/disable the Mask modifiers on the Hair",
+        update=hair_global_mask_update,
     )
 
     hair_update_tag_on_switch: bpy.props.BoolProperty(

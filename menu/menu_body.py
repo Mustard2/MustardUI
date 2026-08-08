@@ -1,5 +1,9 @@
 import bpy
 
+from ..misc.geometry_nodes import (
+    draw_geometry_nodes_modifier_inputs,
+    geometry_nodes_modifier_inputs,
+)
 from ..misc.prop_utils import evaluate_rna
 from ..misc.ui_multiline import label_multiline
 from ..model_selection.active_object import mustardui_active_object
@@ -311,29 +315,38 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
         if len(gnm) > 0 and rig_settings.body_enable_geometry_nodes_support:
             for m in gnm:
+                if m.node_group is None:
+                    continue
+
                 gndi = m.node_group.interface.items_tree
                 if gndi is None:
                     continue
 
                 if len(gndi.keys()):
-                    box = layout.box()
-                    row = box.row()
-                    row.prop(
+                    row = layout.row()
+                    arrow = row.column(align=True)
+                    arrow.prop(
                         m.node_group,
                         "MustardUI_collapse",
-                        icon="TRIA_DOWN" if not m.node_group.MustardUI_collapse else "TRIA_RIGHT",
+                        icon=(
+                            "DOWNARROW_HLT" if not m.node_group.MustardUI_collapse else "RIGHTARROW"
+                        ),
                         icon_only=True,
                         emboss=False,
                     )
                     row.label(text=m.node_group.name)
                     row.label(icon="GEOMETRY_NODES")
+
                     row2 = row.row(align=True)
                     row2.prop(m, "show_viewport", text="")
                     row2.prop(m, "show_render", text="")
+
+                    drawable = geometry_nodes_modifier_inputs(m)
+                    arrow.enabled = bool(drawable)
                     if not m.node_group.MustardUI_collapse:
-                        for i in [x for x in gndi.items() if hasattr(gndi[x[0]], "identifier")]:
-                            if i[1].identifier in m.keys():
-                                box.prop(m, f'["{i[1].identifier}"]', text=i[0])
+                        if drawable:
+                            box = layout.box()
+                            draw_geometry_nodes_modifier_inputs(box, drawable)
 
 
 def register():

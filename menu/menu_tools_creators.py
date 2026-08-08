@@ -182,9 +182,24 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.operator(
             "mustardui.tools_creators_create_jiggle",
-            text="Add Jiggle Cage",
+            text="Create Jiggle Cage (Quick)",
             icon="OUTLINER_OB_FORCE_FIELD",
         )
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_create_jiggle_accurate",
+            text="Create Jiggle Cage (Accurate)",
+            icon="SPHERE",
+        )
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_hair_cage",
+            text="Create Hair Cage",
+            icon="OUTLINER_OB_CURVES",
+        )
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.tools_creators_bone_physics",
@@ -192,18 +207,20 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
             icon="BONE_DATA",
         )
         row.operator("mustardui.tools_creators_bone_physics_clean", text="", icon="X")
-        row = layout.row(align=True)
-        row.operator(
-            "mustardui.tools_creators_hair_cage",
-            text="Create Hair Cage",
-            icon="OUTLINER_OB_CURVES",
-        )
-        row.operator("mustardui.tools_creators_add_cloth_to_hair", text="", icon="MOD_CLOTH")
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.tools_creators_create_collision_cage",
             text="Create Collision Cage",
             icon="MESH_UVSPHERE",
+        )
+
+        layout.separator()
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_assign_physics",
+            text="Assign Physics",
+            icon="PHYSICS",
         )
 
 

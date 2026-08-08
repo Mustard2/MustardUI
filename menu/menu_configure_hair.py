@@ -39,6 +39,11 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
         if rig_settings.hair_collection is not None:
             if len(rig_settings.hair_collection.objects) > 0:
                 box = layout.box()
+                box.label(text="General Settings", icon="MODIFIER")
+                col = box.column(align=True)
+                col.prop(rig_settings, "hair_physics_support", text="Physics Support")
+
+                box = layout.box()
                 box.label(text="Optimization Settings", icon="FORCE_WIND")
                 col = box.column(align=True)
                 col.prop(rig_settings, "hair_switch_armature_disable")
@@ -46,10 +51,11 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
 
                 # Global properties
                 box = layout.box()
-                box.label(text="Global properties", icon="MODIFIER")
+                box.label(text="Global properties", icon="PROPERTIES")
                 col = box.column(align=True)
                 col.prop(rig_settings, "hair_enable_global_subsurface")
                 col.prop(rig_settings, "hair_enable_global_smoothcorrection")
+                col.prop(rig_settings, "hair_enable_global_mask")
                 col.prop(rig_settings, "hair_enable_global_solidify")
                 col.prop(rig_settings, "hair_enable_global_particles")
 

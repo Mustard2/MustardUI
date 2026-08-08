@@ -214,7 +214,7 @@ class MustardUI_RenameImageNodes_Update(bpy.types.Operator):
         else:
             model_name = sanitize_name(context.object.name) if context.object else ""
 
-        for item in [x for x in collection if x.enabled]:
+        for item in [x for x in collection if x.enabled and x.image is not None]:
             if item.image.filepath:
                 filename = bpy.path.basename(item.image.filepath)
                 original = os.path.splitext(filename)[0]
@@ -279,7 +279,20 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
         return active_object_operator_poll(context, config=1)
 
     def invoke(self, context, event):
-        mat = context.object.active_material
+        obj = context.object
+        mat = obj.active_material if obj is not None else None
+
+        if mat is None:
+            self.report(
+                {"ERROR"},
+                "MustardUI - Select an Object with an active Material to rename its Image nodes.",
+            )
+            return {"CANCELLED"}
+
+        if not mat.use_nodes or mat.node_tree is None:
+            self.report({"ERROR"}, "MustardUI - The active Material does not use nodes.")
+            return {"CANCELLED"}
+
         collection = context.scene.mustardui_rename_images
         collection.clear()
 
@@ -291,11 +304,18 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                 item.image = node.image
                 item.name = node.image.name
 
+        if not len(collection):
+            self.report({"WARNING"}, "MustardUI - No Image node found in the active Material.")
+            return {"CANCELLED"}
+
         return context.window_manager.invoke_props_dialog(self, width=600)
 
     def execute(self, context):
         for item in context.scene.mustardui_rename_images:
             if not item.enabled:
+                continue
+
+            if item.material is None or item.material.node_tree is None:
                 continue
 
             node = item.material.node_tree.nodes.get(item.node_name)

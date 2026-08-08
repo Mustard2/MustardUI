@@ -51,6 +51,7 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
     def draw(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
 
         layout = self.layout
@@ -64,6 +65,10 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
                 text=prop.name,
                 icon="SHAPEKEY_DATA" if prop.type in [0, 1] else "MATERIAL",
             )
+            row.scale_x = 0.75
+            if prop.section != "":
+                section = rig_settings.body_custom_properties_sections.get(prop.section)
+                row.label(text=prop.section, icon=section.icon if section else "LINENUMBERS_OFF")
 
 
 def register():

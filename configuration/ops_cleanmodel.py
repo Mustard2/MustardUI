@@ -27,7 +27,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
     bl_idname = "mustardui.cleanmodel"
     bl_label = "Clean Model"
-    bl_options = {"UNDO"}
+    bl_options = {"UNDO", "PRESET"}
 
     remove_body_cp: BoolProperty(default=False, name="Remove Body Custom Properties")
     remove_outfit_cp: BoolProperty(default=False, name="Remove Outfit Custom Properties")
@@ -700,6 +700,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
+
+        layout.separator()
 
         box = layout.box()
         col = box.column(align=True)

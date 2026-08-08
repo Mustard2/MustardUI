@@ -15,6 +15,17 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
         default=True,
     )
 
+    # Enum options for Normals node
+    NORMAL_MAP_CONVENTIONS = ["OPENGL", "DIRECTX"]
+    NORMAL_MAP_SPACES = [
+        "TANGENT",
+        "OBJECT",
+        "WORLD",
+        "BLENDER_OBJECT",
+        "BLENDER_WORLD",
+    ]
+    NORMAL_MAP_BASES = ["ORIGINAL", "DISPLACED"]
+
     @classmethod
     def poll(self, context):
         return bpy.data.materials or bpy.data.node_groups
@@ -76,6 +87,24 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
                     mirror(new, node)
 
                     if isinstance(node, bpy.types.ShaderNodeNormalMap):
+                        # Save the space of the Normal Map node
+                        socket = new.inputs.get("Space")
+                        if socket and node.space in self.NORMAL_MAP_SPACES:
+                            socket.default_value = self.NORMAL_MAP_SPACES.index(node.space)
+
+                        if bpy.app.version >= (5, 1, 0):
+                            socket = new.inputs.get("Convention")
+                            if socket and node.convention in self.NORMAL_MAP_CONVENTIONS:
+                                socket.default_value = self.NORMAL_MAP_CONVENTIONS.index(
+                                    node.convention
+                                )
+
+                            # Base is available in tangent space only
+                            if node.space == "TANGENT":
+                                socket = new.inputs.get("Base")
+                                if socket and node.base in self.NORMAL_MAP_BASES:
+                                    socket.default_value = self.NORMAL_MAP_BASES.index(node.base)
+
                         uvNode = nodes.new("ShaderNodeUVMap")
                         uvNode.uv_map = node.uv_map
                         uvNode.name = node.name + " UV"
@@ -86,6 +115,23 @@ class MustardUI_Material_NormalMap_Nodes(bpy.types.Operator):
                         uvNode.location = Vector((new.location.x, new.location.y - 150.0))
                         uvNode.id_data.links.new(uvNode.outputs["UV"], new.inputs["UV"])
                     else:
+                        # Restore the space of the Normal Map node
+                        socket = node.inputs.get("Space")
+                        if socket and socket.default_value < len(self.NORMAL_MAP_SPACES):
+                            new.space = self.NORMAL_MAP_SPACES[socket.default_value]
+
+                        # Restore the convention of the Normal Map node
+                        if bpy.app.version >= (5, 1, 0):
+                            socket = node.inputs.get("Convention")
+                            if socket and socket.default_value < len(self.NORMAL_MAP_CONVENTIONS):
+                                new.convention = self.NORMAL_MAP_CONVENTIONS[socket.default_value]
+
+                            # Base is available in tangent space only
+                            if new.space == "TANGENT":
+                                socket = node.inputs.get("Base")
+                                if socket and socket.default_value < len(self.NORMAL_MAP_BASES):
+                                    new.base = self.NORMAL_MAP_BASES[socket.default_value]
+
                         try:
                             try:
                                 uvNode = nodes[node.name + " UV"]
@@ -140,6 +186,29 @@ def default_custom_nodes():
 
     # Input UV as Backup
     input = group.interface.new_socket("UV", in_out="INPUT", socket_type="NodeSocketVector")
+
+    # Input Space as Backup
+    input = group.interface.new_socket("Space", in_out="INPUT", socket_type="NodeSocketInt")
+    spaces = MustardUI_Material_NormalMap_Nodes.NORMAL_MAP_SPACES
+    input.default_value = spaces.index("TANGENT")
+    input.min_value = 0
+    input.max_value = len(spaces) - 1
+
+    # Input Convention and Base as Backup
+    if bpy.app.version >= (5, 1, 0):
+        input = group.interface.new_socket(
+            "Convention", in_out="INPUT", socket_type="NodeSocketInt"
+        )
+        conventions = MustardUI_Material_NormalMap_Nodes.NORMAL_MAP_CONVENTIONS
+        input.default_value = conventions.index("OPENGL")
+        input.min_value = 0
+        input.max_value = len(conventions) - 1
+
+        input = group.interface.new_socket("Base", in_out="INPUT", socket_type="NodeSocketInt")
+        bases = MustardUI_Material_NormalMap_Nodes.NORMAL_MAP_BASES
+        input.default_value = bases.index("DISPLACED")
+        input.min_value = 0
+        input.max_value = len(bases) - 1
 
     # Output
     group.interface.new_socket("Normal", in_out="OUTPUT", socket_type="NodeSocketVector")

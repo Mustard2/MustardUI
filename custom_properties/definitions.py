@@ -48,7 +48,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     linked_properties: CollectionProperty(type=MustardUI_LinkedProperty)
 
     # Section settings
-    section: StringProperty(default="")
+    section: StringProperty(default="", name="Section")
     add_section: BoolProperty(
         default=False,
         name="Add to section",

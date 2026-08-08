@@ -75,15 +75,18 @@ def link_property(obj, rna, path, parent_prop, custom_props):
     return
 
 
-def add_custom_property(obj, rna, path, name, type, custom_props, sections_to_recover):
+# Add a custom property to the model
+def add_custom_property(
+    obj, rna, path, name, type, custom_props, sections_to_recover, skip_existing=False
+):
     # Check if the property was already added. If yes, link it to the one already added
     for cp in custom_props:
         if cp.rna == rna and cp.path == path:
-            if cp.prop_name in obj.keys():
-                return
+            if skip_existing or cp.prop_name in obj.keys():
+                return skip_existing
         if cp.name == name:
             link_property(obj, rna, path, cp, custom_props)
-            return
+            return False
 
     # Add custom property to the object
     prop_name = name
@@ -117,7 +120,7 @@ def add_custom_property(obj, rna, path, name, type, custom_props, sections_to_re
     except Exception as e:
         print("MustardUI - Could not add a driver for " + prop_name + ":" + str(e))
         del obj[prop_name]
-        return
+        return False
 
     # Add property to the collection of properties
     if (rna, path) not in [(x.rna, x.path) for x in custom_props]:
@@ -161,7 +164,7 @@ def add_custom_property(obj, rna, path, name, type, custom_props, sections_to_re
 
     obj.property_overridable_library_set(f'["{prop_name}"]', True)
 
-    return
+    return False
 
 
 class MustardUI_Property_SmartCheck(bpy.types.Operator):
@@ -170,6 +173,18 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
     bl_idname = "mustardui.property_smartcheck"
     bl_label = "Properties Smart Check"
     bl_options = {"UNDO"}
+
+    url_MustardUI_CustomProperties = (
+        "https://github.com/Mustard2/MustardUI/wiki/Creator-Body#custom-properties-smart-check"
+    )
+
+    skip_existing: bpy.props.BoolProperty(
+        name="Preserve Existing Properties",
+        default=True,
+        description="Skip the custom properties already added to the UI, preserving "
+        "their settings.\nIf disabled, all the properties found are "
+        "re-created from scratch and their settings are reset",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -182,6 +197,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         addon_prefs = context.preferences.addons[base_package].preferences
 
         k = 0
+        preserved = 0
 
         index_to_remove = []
         sections_to_recover = []
@@ -202,9 +218,11 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                     )
                 index_to_remove.append(i)
 
-        for i in reversed(index_to_remove):
-            mustardui_clean_prop(obj, custom_props, i, addon_prefs)
-            custom_props.remove(i)
+        # Remove properties if the user does not ask to preserve them
+        if not self.skip_existing:
+            for i in reversed(index_to_remove):
+                mustardui_clean_prop(obj, custom_props, i, addon_prefs)
+                custom_props.remove(i)
 
         # Materials
         for mat in [x for x in rig_settings.model_body.data.materials if x is not None]:
@@ -213,7 +231,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                     "MustardUI Float" in mat.node_tree.nodes[j].name
                     and mat.node_tree.nodes[j].type == "VALUE"
                 ):
-                    add_custom_property(
+                    preserved += add_custom_property(
                         obj,
                         f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
                         "default_value",
@@ -221,13 +239,14 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         "FLOAT",
                         custom_props,
                         sections_to_recover,
+                        self.skip_existing,
                     )
                     k = k + 1
                 elif (
                     "MustardUI Bool" in mat.node_tree.nodes[j].name
                     and mat.node_tree.nodes[j].type == "VALUE"
                 ):
-                    add_custom_property(
+                    preserved += add_custom_property(
                         obj,
                         f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
                         "default_value",
@@ -235,13 +254,14 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         "BOOLEAN",
                         custom_props,
                         sections_to_recover,
+                        self.skip_existing,
                     )
                     k = k + 1
                 elif (
                     "MustardUI Int" in mat.node_tree.nodes[j].name
                     and mat.node_tree.nodes[j].type == "VALUE"
                 ):
-                    add_custom_property(
+                    preserved += add_custom_property(
                         obj,
                         f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
                         "default_value",
@@ -249,13 +269,14 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         "INT",
                         custom_props,
                         sections_to_recover,
+                        self.skip_existing,
                     )
                     k = k + 1
                 elif (
                     "MustardUI" in mat.node_tree.nodes[j].name
                     and mat.node_tree.nodes[j].type == "RGB"
                 ):
-                    add_custom_property(
+                    preserved += add_custom_property(
                         obj,
                         f'bpy.data.materials["{bpy.utils.escape_identifier(mat.name)}"].node_tree.nodes["{bpy.utils.escape_identifier(mat.node_tree.nodes[j].name)}"].outputs[0]',
                         "default_value",
@@ -263,6 +284,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         "COLOR",
                         custom_props,
                         sections_to_recover,
+                        self.skip_existing,
                     )
                     k = k + 1
 
@@ -270,7 +292,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         if rig_settings.model_body.data.shape_keys is not None:
             for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
-                    add_custom_property(
+                    preserved += add_custom_property(
                         obj,
                         f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
@@ -278,10 +300,11 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         "FLOAT",
                         custom_props,
                         sections_to_recover,
+                        self.skip_existing,
                     )
                     k = k + 1
                 elif "MustardUI Bool" in shape_key.name:
-                    add_custom_property(
+                    preserved += add_custom_property(
                         obj,
                         f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
@@ -289,15 +312,42 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         "BOOL",
                         custom_props,
                         sections_to_recover,
+                        self.skip_existing,
                     )
                     k = k + 1
 
         # Update the drivers
         obj.update_tag()
 
-        self.report({"INFO"}, "MustardUI - Smart Check found " + str(k) + " properties.")
+        message = "MustardUI - Smart Check found " + str(k) + " properties"
+        if preserved > 0:
+            message += " (" + str(preserved) + " preserved)"
+
+        self.report({"INFO"}, message + ".")
 
         return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=400)
+
+    def draw(self, context):
+
+        layout = self.layout
+
+        box = layout.box()
+        col = box.column(align=True)
+        row = col.row(align=True)
+        row.label(
+            text="The tool searches for Body properties following the MustardUI",
+            icon="INFO",
+        )
+        op = row.operator("wm.url_open", text="", icon="QUESTION")
+        op.url = self.url_MustardUI_CustomProperties
+        col.label(text="naming convention, and adds them to the UI.", icon="BLANK1")
+
+        box = layout.box()
+        col = box.column(align=True)
+        col.prop(self, "skip_existing")
 
 
 def register():

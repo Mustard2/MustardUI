@@ -62,42 +62,24 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
             row = layout.row(align=True)
 
             # Show a Warning if no Physics modifier is found on the Physics Item
+            found = True
             if item.type == "CAGE":
-                found_cloth = False
-                found_soft = False
-                for mod in item.object.modifiers:
-                    if mod.type in ["CLOTH"]:
-                        found_cloth = True
-                        break
-                    elif mod.type in ["SOFT_BODY"]:
-                        found_soft = True
-                        break
-
-                if not found_soft and not found_cloth:
-                    row.prop(
-                        self,
-                        "warning",
-                        icon="ERROR",
-                        text="",
-                        icon_only=True,
-                        emboss=False,
-                    )
+                found = any(
+                    mod.type in ["CLOTH", "SOFT_BODY"] or (mod.type == "NODES" and mod.node_group)
+                    for mod in item.object.modifiers
+                )
             elif item.type == "COLLISION":
-                found = False
-                for mod in item.object.modifiers:
-                    if mod.type in ["COLLISION"]:
-                        found = True
-                        break
+                found = any(mod.type in ["COLLISION"] for mod in item.object.modifiers)
 
-                if not found:
-                    row.prop(
-                        self,
-                        "warning",
-                        icon="ERROR",
-                        text="",
-                        icon_only=True,
-                        emboss=False,
-                    )
+            if not found:
+                row.prop(
+                    self,
+                    "warning",
+                    icon="ERROR",
+                    text="",
+                    icon_only=True,
+                    emboss=False,
+                )
 
             row.label(text="", icon=mustardui_physics_item_type_dict[item.type])
             row.label(
