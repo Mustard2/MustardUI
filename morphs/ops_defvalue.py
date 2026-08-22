@@ -37,7 +37,8 @@ class MustardUI_DazMorphs_DefaultValues(bpy.types.Operator):
                     elif isinstance(val, bool):
                         cp_source[morph.path] = True
                 elif morph.shape_key:
-                    kb = rig_settings.data.shape_keys.key_blocks.get(morph.path)
+                    shape_keys = rig_settings.model_body.data.shape_keys
+                    kb = shape_keys.key_blocks.get(morph.path) if shape_keys is not None else None
                     if kb is not None:
                         kb.value = 0.0
 
