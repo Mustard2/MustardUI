@@ -30,6 +30,7 @@ the scope of MustardUI
 import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
+from ..misc import mesh_cleanup
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -47,6 +48,13 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         name="Decimate Cage",
         description="Decrease the density of the cage mesh.\nThis considerably improve "
         "performance, and it usually lead to similar results to un-decimated cages",
+        default=True,
+    )
+    clear_attributes: bpy.props.BoolProperty(
+        name="Clear Attributes",
+        description="Remove the UV Maps and the attributes inherited from the mesh the "
+        "cage is generated from.\nThey are not used by the collisions, and they only "
+        "increase the size of the file",
         default=True,
     )
     add_to_panel: bpy.props.BoolProperty(
@@ -284,6 +292,11 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         # Print a message to confirm completion
         print("All materials removed from selected objects.")
 
+        # Remove the UV Maps and the attributes copied over from the original mesh.
+        if self.clear_attributes:
+            for obj in [x for x in bpy.context.selected_objects if x.type == "MESH"]:
+                mesh_cleanup.clear_attributes(obj)
+
         if self.decimate_proxy:
             # Set the decimation ratio as a variable
             decimation_ratio = 0.25  # You can change this value later
@@ -322,11 +335,12 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(self, "decimate_proxy", icon_value=0, emboss=True)
+        layout.prop(self, "decimate_proxy")
+        layout.prop(self, "clear_attributes")
 
         layout.separator()
 
-        layout.prop(self, "add_to_panel", icon_value=0, emboss=True)
+        layout.prop(self, "add_to_panel")
 
     def invoke(self, context, event):
         self.decimate_proxy = True
