@@ -5,6 +5,7 @@ from . import (
     ops_link,
     ops_menu_settings,
     ops_rebuild,
+    ops_set_section,
     ops_smartcheck,
     ui_list,
 )
@@ -17,6 +18,7 @@ def register():
     menus.register()
     ui_list.register()
     ops_menu_settings.register()
+    ops_set_section.register()
     ops_rebuild.register()
     ops_smartcheck.register()
 
@@ -24,6 +26,7 @@ def register():
 def unregister():
     ops_smartcheck.unregister()
     ops_rebuild.unregister()
+    ops_set_section.unregister()
     ops_menu_settings.unregister()
     ui_list.unregister()
     menus.unregister()
