@@ -518,6 +518,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         auto_fallback = []
 
         PIN_AXIS_FALLBACK = "+Y"
+
         def pin_direction(world_coords):
             """The direction the weights of a single cage island decrease along."""
 
