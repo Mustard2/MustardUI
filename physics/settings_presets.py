@@ -109,7 +109,7 @@ def apply_settings(target, data, errors, debug):
     return errors
 
 
-def apply_physics_preset(context, arm, settings, data, force=False):
+def apply_physics_preset(context, arm, settings, data):
     obj = settings.items[arm.mustardui_physics_items_uilist_index].object
     errors = 0
 

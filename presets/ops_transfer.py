@@ -46,6 +46,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
 
     preset_type: bpy.props.EnumProperty(
         items=preset_type_items,
+        options={"HIDDEN"},
     )
 
     @classmethod

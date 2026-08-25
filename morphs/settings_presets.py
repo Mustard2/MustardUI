@@ -38,7 +38,7 @@ def morphs_to_json(morph_settings, rig_settings):
     return data
 
 
-def apply_morphs_preset(context, arm, settings, data, force=False):
+def apply_morphs_preset(context, arm, settings, data):
     rig_settings = arm.MustardUI_RigSettings
     errors = 0
 

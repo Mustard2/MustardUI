@@ -18,9 +18,15 @@ class MustardUI_PresetApply(bpy.types.Operator):
     bl_label = "Apply Preset"
     bl_options = {"UNDO"}
 
-    preset_type: bpy.props.EnumProperty(items=preset_type_items)
+    preset_type: bpy.props.EnumProperty(items=preset_type_items, options={"HIDDEN"})
 
-    force_modifiers_creation: bpy.props.BoolProperty(default=False)
+    reset_preset: bpy.props.BoolProperty(
+        name="Reset Values on Apply",
+        description="Reset the current values before applying the Preset.\nIf disabled, the "
+        "Preset is applied on top of the current values, and the values which are not stored "
+        "in the Preset keep their current value",
+        default=False,
+    )
 
     @classmethod
     def poll(cls, context):
@@ -76,12 +82,20 @@ class MustardUI_PresetApply(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - No applier function defined")
             return {"CANCELLED"}
 
+        resetter = definition.get("resetter")
+
+        if self.reset_preset and resetter is not None:
+            resetter(
+                context=context,
+                arm=arm,
+                settings=settings,
+            )
+
         errors = applier(
             context=context,
             arm=arm,
             settings=settings,
             data=data,
-            force=self.force_modifiers_creation,
         )
 
         # Update everything
