@@ -19,8 +19,6 @@ class MustardUI_PresetsUI(bpy.types.Operator):
 
     new_preset_name: bpy.props.StringProperty(default="Preset")
 
-    force_modifiers_creation: bpy.props.BoolProperty(default=False)
-
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=0)
@@ -38,12 +36,10 @@ class MustardUI_PresetsUI(bpy.types.Operator):
         settings, presets, preset, index, index_prop = get_preset_context(arm, self.preset_type)
 
         definition = get_preset_definition(self.preset_type)
-        presets = settings.presets
 
         layout = self.layout
 
         ui_list = definition["ui_list"]
-        index_prop = definition["index_prop"]
 
         if presets:
             row = layout.row()
