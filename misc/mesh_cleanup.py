@@ -14,13 +14,10 @@ try:
 except ImportError:
     USE_NUMPY = False
 
-# Weights below this do not deform anything: transferring the groups of a model
-# on a cage leaves a trail of them on the bones which are far from it
+# Weights below this do not deform anything
 WEIGHT_THRESHOLD = 1e-4
 
-# Distance below which two shapes are considered to be the same one. A shape key
-# is stored in single precision, so the coordinates of a key which was copied
-# from another shape can differ from it by the last digits
+# Distance below which two shapes are considered to be the same one
 SHAPE_KEY_THRESHOLD = 1e-6
 
 
@@ -63,11 +60,7 @@ def _same_coordinates(first, second):
 
 
 def shape_key_is_void(key_block):
-    """True when 'key_block' does not move a single vertex of its mesh.
-
-    A key is compared to the shape it is relative to: a key which is a copy of it
-    deforms nothing, while it still costs a full set of coordinates.
-    """
+    """True when 'key_block' does not move a single vertex of its mesh."""
 
     shape_keys = key_block.id_data
 
@@ -90,12 +83,7 @@ def shape_key_is_void(key_block):
 
 
 def remove_shape_key(obj, key_block):
-    """Remove 'key_block' from 'obj', together with the drivers pointing at it.
-
-    Blender does not clean up after a Shape Key which is removed: every driver of
-    the key, on its Value as much as on its Mute, is left on the Key datablock as
-    an F-Curve pointing at a Shape Key which is not there any more.
-    """
+    """Remove 'key_block' from 'obj', together with the drivers pointing at it."""
 
     shape_keys = key_block.id_data
     animation_data = shape_keys.animation_data
@@ -112,12 +100,7 @@ def remove_shape_key(obj, key_block):
 
 
 def clear_shape_keys(obj, void_only=False):
-    """Remove the shape keys of the mesh 'obj'.
-
-    With 'void_only', only the keys which do not move a single vertex are removed:
-    a key which is a copy of the shape it is relative to deforms nothing, while it
-    still costs a full set of coordinates. Returns the number of removed keys.
-    """
+    """Remove the shape keys of the mesh 'obj'."""
 
     shape_keys = obj.data.shape_keys
     if shape_keys is None:
@@ -136,9 +119,6 @@ def clear_shape_keys(obj, void_only=False):
             remove_shape_key(obj, key_block)
             removed += 1
 
-    # A lone Basis deforms nothing, and it holds a full copy of the coordinates.
-    # It is only dropped when it is the shape the mesh itself is in: removing the
-    # keys of a mesh whose Basis was edited away from its vertices moves it back
     shape_keys = obj.data.shape_keys
     if shape_keys is not None and len(shape_keys.key_blocks) == 1:
         basis = shape_keys.key_blocks[0]
@@ -152,12 +132,7 @@ def clear_shape_keys(obj, void_only=False):
 
 
 def clear_unused_vertex_groups(obj, keep=()):
-    """Remove the vertex groups of 'obj' which do not weight a single vertex.
-
-    'keep' are the names of the groups to preserve even when they are empty: a
-    group a modifier points at has to exist, or the modifier silently changes
-    what it does (an empty Pin group is not the same as no Pin group at all).
-    """
+    """Remove the vertex groups of 'obj' which do not weight a single vertex."""
 
     used = set()
     for vertex in obj.data.vertices:
@@ -165,7 +140,6 @@ def clear_unused_vertex_groups(obj, keep=()):
             if element.weight > WEIGHT_THRESHOLD:
                 used.add(element.group)
 
-    # On top of the requested ones, the groups the modifiers are pointing at
     preserved = set(keep)
     for modifier in obj.modifiers:
         name = getattr(modifier, "vertex_group", "")
