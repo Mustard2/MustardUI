@@ -150,6 +150,8 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
+        if self.revert:
+            self.add_shape_key_mute_driver = True
         return context.window_manager.invoke_props_dialog(self, width=250)
 
     def draw(self, context):
