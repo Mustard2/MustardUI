@@ -11,6 +11,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from .misc import mustardui_choose_cp, mustardui_cp_path
+from .ops_set_section import SECTION_NONE, sections_enum
 
 float_subtype_items = (
     ("NONE", "Plain Data", ""),
@@ -56,6 +57,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
     )
     subtype: bpy.props.EnumProperty(default="NONE", items=float_subtype_items)
+    section: bpy.props.EnumProperty(
+        name="Section", description="Section of the property", items=sections_enum
+    )
 
     step_float: bpy.props.FloatProperty(name="Step")
 
@@ -133,6 +137,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         custom_prop.name = self.name
         custom_prop.icon = self.icon
+
+        if custom_prop.cp_type == "BODY":
+            custom_prop.section = "" if self.section == SECTION_NONE else self.section
 
         if custom_prop.is_animatable:
             prop_name = custom_prop.prop_name
@@ -258,6 +265,12 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         self.description = custom_prop.description
         self.default_array = "[]"
 
+        try:
+            self.section = custom_prop.section if custom_prop.section != "" else SECTION_NONE
+        except TypeError:
+            # The stored section does not exist anymore
+            self.section = SECTION_NONE
+
         self.change_rna = False
         self.change_rna_linked = False
 
@@ -334,6 +347,12 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         row.label(text="Name:")
         row.scale_x = scale
         row.prop(self, "name", text="")
+
+        if prop_cp_type == "BODY":
+            row = box.row()
+            row.label(text="Section:")
+            row.scale_x = scale
+            row.prop(self, "section", text="")
 
         row = box.row()
         row.label(text="Icon:")

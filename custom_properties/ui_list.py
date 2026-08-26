@@ -44,7 +44,7 @@ def draw_item_by_type(
             section = rig_settings.body_custom_properties_sections.get(item.section)
             icon = "RECORD_OFF"
             if section is not None:
-                icon = section.icon if section not in {"", "NONE"} else "DOT"
+                icon = section.icon if section.icon not in {"", "NONE"} else "DOT"
             op = row.operator_menu_enum(
                 MustardUI_Property_SetSection.bl_idname,
                 "section",
