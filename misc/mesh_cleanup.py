@@ -6,6 +6,8 @@ group per bone of the Armature. None of this is read by the simulation, and it
 is only carried around in the file.
 """
 
+import bpy
+
 # Try NumPy
 try:
     import numpy as np
@@ -19,6 +21,13 @@ WEIGHT_THRESHOLD = 1e-4
 
 # Distance below which two shapes are considered to be the same one
 SHAPE_KEY_THRESHOLD = 1e-6
+
+# A vertex group is not always read through a property called 'vertex_group': the
+# name of every property holding one contains it, though
+VERTEX_GROUP_KEYWORD = "vertex_group"
+
+# Collections longer than this are data, not settings, and are not searched
+MAX_WALKED_COLLECTION = 32
 
 
 def clear_attributes(obj):
@@ -131,6 +140,97 @@ def clear_shape_keys(obj, void_only=False):
     return removed
 
 
+def _vertex_group_properties(data, names, depth=3):
+    """Fill 'names' with the value of every 'vertex_group' property found in 'data'."""
+
+    if data is None or depth < 0:
+        return
+
+    for prop in data.bl_rna.properties:
+        identifier = prop.identifier
+
+        if identifier == "rna_type":
+            continue
+
+        if prop.type == "STRING":
+            if VERTEX_GROUP_KEYWORD in identifier:
+                value = getattr(data, identifier, "")
+                if value:
+                    names.add(value)
+            continue
+
+        if depth <= 0:
+            continue
+
+        value = getattr(data, identifier, None)
+
+        # Datablocks are never walked: a vertex group belongs to the object owning
+        # the settings, so the search never has to leave it
+        if prop.type == "POINTER":
+            if value is not None and not isinstance(value, bpy.types.ID):
+                _vertex_group_properties(value, names, depth - 1)
+
+        elif prop.type == "COLLECTION" and value is not None:
+            # Only the small settings collections are walked: the data ones
+            # (particles, points, ...) can not hold a vertex group name
+            if len(value) <= MAX_WALKED_COLLECTION:
+                for entry in value:
+                    if not isinstance(entry, bpy.types.ID):
+                        _vertex_group_properties(entry, names, depth - 1)
+
+
+def _constraint_subtargets(constraint, obj, names):
+    """Fill 'names' with the subtargets of 'constraint' pointing at the mesh 'obj'."""
+
+    # The Armature constraint holds a list of targets, the others a single one
+    targets = getattr(constraint, "targets", None)
+
+    for entry in list(targets) if targets is not None else [constraint]:
+        if getattr(entry, "target", None) is obj:
+            subtarget = getattr(entry, "subtarget", "")
+            if subtarget:
+                names.add(subtarget)
+
+
+def collect_used_vertex_groups(obj):
+    """The names of the vertex groups of 'obj' which are read by something."""
+
+    names = set()
+
+    for modifier in obj.modifiers:
+        _vertex_group_properties(modifier, names)
+
+        # Geometry Nodes read the groups as named attributes, whose names are stored
+        # as custom properties of the modifier
+        for value in modifier.values():
+            if isinstance(value, str) and value:
+                names.add(value)
+
+    for particle_system in obj.particle_systems:
+        _vertex_group_properties(particle_system, names)
+
+    _vertex_group_properties(obj.soft_body, names)
+
+    shape_keys = obj.data.shape_keys
+    if shape_keys is not None:
+        for key_block in shape_keys.key_blocks:
+            if key_block.vertex_group:
+                names.add(key_block.vertex_group)
+
+    # A constraint whose target is a mesh uses one of its vertex groups as the
+    # subtarget, and it can live on any object, or on any bone, of the file
+    for other in bpy.data.objects:
+        for constraint in other.constraints:
+            _constraint_subtargets(constraint, obj, names)
+
+        if other.pose is not None:
+            for bone in other.pose.bones:
+                for constraint in bone.constraints:
+                    _constraint_subtargets(constraint, obj, names)
+
+    return names
+
+
 def clear_unused_vertex_groups(obj, keep=()):
     """Remove the vertex groups of 'obj' which do not weight a single vertex."""
 
@@ -140,11 +240,7 @@ def clear_unused_vertex_groups(obj, keep=()):
             if element.weight > WEIGHT_THRESHOLD:
                 used.add(element.group)
 
-    preserved = set(keep)
-    for modifier in obj.modifiers:
-        name = getattr(modifier, "vertex_group", "")
-        if name:
-            preserved.add(name)
+    preserved = set(keep) | collect_used_vertex_groups(obj)
 
     removed = [x for x in obj.vertex_groups if x.index not in used and x.name not in preserved]
     for group in removed:
