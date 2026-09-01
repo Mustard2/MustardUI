@@ -1,3 +1,4 @@
+from ..morphs.ops_defvalue import set_morphs_default_values
 from ..morphs.settings_presets import (
     apply_morphs_preset,
     morphs_to_json,
@@ -38,6 +39,7 @@ from ..physics.settings_presets import (
 #   * file_prefix
 #   * builder: function to create the JSON string to store when a preset is created
 #   * applier: function to read and apply preset from JSON string
+#   * resetter: function to restore the default values before a preset is applied
 #
 # - Add an entry in get_context.py with the new preset settings.
 #
@@ -57,6 +59,7 @@ MUSTARDUI_PRESETS = {
         "poll": None,
         "builder": morphs_to_json,
         "applier": apply_morphs_preset,
+        "resetter": set_morphs_default_values,
         "preset_set": None,
         "warnings": None,
         "post_import_set": None,
@@ -70,6 +73,7 @@ MUSTARDUI_PRESETS = {
         "poll": physics_preset_poll,
         "builder": physics_to_json,
         "applier": apply_physics_preset,
+        "resetter": None,
         "preset_set": set_physics_preset,
         "warnings": warning_physics_preset,
         "post_import_set": physics_post_import,

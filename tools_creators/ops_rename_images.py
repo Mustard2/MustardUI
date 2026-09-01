@@ -17,6 +17,38 @@ def sanitize_name(name: str):
     return name.strip("_")
 
 
+def strip_image_extension(name: str):
+    # Extensions Blender can load as images: used to strip them from file names on disk
+    IMAGE_EXTENSIONS = {
+        ".avif",
+        ".bmp",
+        ".bw",
+        ".cin",
+        ".dds",
+        ".dpx",
+        ".exr",
+        ".hdr",
+        ".j2c",
+        ".jp2",
+        ".jpeg",
+        ".jpg",
+        ".png",
+        ".psd",
+        ".rgb",
+        ".rgba",
+        ".sgi",
+        ".tga",
+        ".tif",
+        ".tiff",
+        ".webp",
+    }
+
+    # Remove the Blender duplicate suffix (.001) and any image extension left in the name
+    name = re.sub(r"\.\d{3}$", "", name)
+    root, ext = os.path.splitext(name)
+    return root if ext.lower() in IMAGE_EXTENSIONS else name
+
+
 def make_node_label(name: str):
     parts = name.split("_")
     return " ".join(p.upper() if p.upper() in {"AO", "UV"} else p.capitalize() for p in parts)
@@ -347,7 +379,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                     if os.path.exists(abs_path):
                         directory = os.path.dirname(abs_path)
                         ext = os.path.splitext(abs_path)[1]
-                        new_path = os.path.join(directory, new_name + ext)
+                        new_path = os.path.join(directory, strip_image_extension(new_name) + ext)
 
                         if abs_path != new_path:
                             os.rename(abs_path, new_path)

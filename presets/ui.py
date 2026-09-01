@@ -15,11 +15,17 @@ class MustardUI_PresetsUI(bpy.types.Operator):
     bl_space_type = "OUTLINER"
     bl_region_type = "WINDOW"
 
-    preset_type: bpy.props.EnumProperty(items=preset_type_items)
+    preset_type: bpy.props.EnumProperty(items=preset_type_items, options={"HIDDEN"})
 
     new_preset_name: bpy.props.StringProperty(default="Preset")
 
-    force_modifiers_creation: bpy.props.BoolProperty(default=False)
+    reset_preset: bpy.props.BoolProperty(
+        name="Reset Values on Apply",
+        description="Reset the current values before applying the Preset.\nIf disabled, the "
+        "Preset is applied on top of the current values, and the values which are not stored "
+        "in the Preset keep their current value",
+        default=False,
+    )
 
     @classmethod
     def poll(cls, context):
@@ -38,12 +44,10 @@ class MustardUI_PresetsUI(bpy.types.Operator):
         settings, presets, preset, index, index_prop = get_preset_context(arm, self.preset_type)
 
         definition = get_preset_definition(self.preset_type)
-        presets = settings.presets
 
         layout = self.layout
 
         ui_list = definition["ui_list"]
-        index_prop = definition["index_prop"]
 
         if presets:
             row = layout.row()
@@ -63,6 +67,7 @@ class MustardUI_PresetsUI(bpy.types.Operator):
             # Apply
             op = col.operator("mustardui.preset_apply", text="", icon="PLAY")
             op.preset_type = self.preset_type
+            op.reset_preset = self.reset_preset
 
             col.separator()
 
@@ -90,6 +95,9 @@ class MustardUI_PresetsUI(bpy.types.Operator):
             # Delete
             op = col.operator("mustardui.preset_delete", text="", icon="X")
             op.preset_type = self.preset_type
+
+            if definition.get("resetter") is not None:
+                layout.prop(self, "reset_preset")
 
         else:
             row = layout.row(align=True)

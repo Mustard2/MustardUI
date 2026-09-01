@@ -145,6 +145,11 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         description="Direction where to create the Pin group weights.\nThe direction "
         "in global coordinates is the direction in which the weights decreases",
         items=[
+            (
+                "AUTO",
+                "Automatic",
+                "Infer the direction from the border of the selection",
+            ),
             ("+X", "+X", "+X"),
             ("-X", "-X", "-X"),
             ("+Y", "+Y", "+Y"),
@@ -152,7 +157,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             ("+Z", "+Z", "+Z"),
             ("-Z", "-Z", "-Z"),
         ],
-        default="+Y",
+        default="AUTO",
     )
     parent_to_model: bpy.props.BoolProperty(
         name="Parent to Model",
@@ -315,8 +320,32 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                                 stack.append(neighbor)
                 islands.append(island)
 
+        def island_pin_direction(island):
+            """The direction the Pin weights of a region of the model decrease along."""
+            border = [v for v in island if any(not e.other_vert(v).select for e in v.link_edges)]
+            if not border:
+                return None
+
+            island_center = sum((v.co for v in island), Vector()) / len(island)
+            border_center = sum((v.co for v in border), Vector()) / len(border)
+
+            # The direction is used against the world coordinates of the cage
+            direction = obj.matrix_world.to_3x3() @ (island_center - border_center)
+
+            # A region centred on its own border (a belt, a ring) has no side to
+            # hang from, as much as one which is attached all around
+            if direction.length < 1e-6:
+                return None
+
+            return direction.normalized()
+
         # List to store created proxy objects
         created_proxies = []
+
+        # Pin direction of each region, and where the region is, to match the cages
+        # back to the region they were built on when Automatic is used
+        island_directions = []
+        island_centers = []
 
         # Create a combined vertex group for all regions
         combined_group_verts = set()
@@ -353,6 +382,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             )
             # Add the proxy object to the list of created proxies
             created_proxies.append(proxy)
+            # Store the direction the Pin group of this region hangs from
+            island_directions.append(island_pin_direction(island))
+            island_centers.append(obj.matrix_world @ center)
             # Create a vertex group for this region
             group_name = f"Jiggle Region {idx + 1}"
             region_vertex_group = create_vertex_group(obj, group_name, island)
@@ -482,8 +514,41 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     return new_name
                 index += 1
 
+        # Regions whose Pin direction could not be inferred, reported once at the end
+        auto_fallback = []
+
+        PIN_AXIS_FALLBACK = "+Y"
+
+        def pin_direction(world_coords):
+            """The direction the weights of a single cage island decrease along."""
+
+            PIN_AXES = {
+                "+X": Vector((1.0, 0.0, 0.0)),
+                "-X": Vector((-1.0, 0.0, 0.0)),
+                "+Y": Vector((0.0, 1.0, 0.0)),
+                "-Y": Vector((0.0, -1.0, 0.0)),
+                "+Z": Vector((0.0, 0.0, 1.0)),
+                "-Z": Vector((0.0, 0.0, -1.0)),
+            }
+
+            if self.object_direction != "AUTO":
+                return PIN_AXES[self.object_direction]
+
+            center = sum((co for _, co in world_coords), Vector()) / len(world_coords)
+            nearest = min(
+                range(len(island_centers)),
+                key=lambda i: (island_centers[i] - center).length_squared,
+            )
+
+            direction = island_directions[nearest]
+            if direction is None:
+                auto_fallback.append(nearest)
+                return PIN_AXES[PIN_AXIS_FALLBACK]
+
+            return direction
+
         def create_gradient_vertex_group(obj, group_name, all_islands):
-            """Creates a vertex group with a gradient weight based on the Y position of vertices for all islands."""  # noqa: E501
+            """Creates a vertex group with a gradient weight along the Pin direction for all islands."""  # noqa: E501
             # Create a unique name for the vertex group if needed
             unique_group_name = create_unique_vertex_group_name(obj, group_name)
             # Create the vertex group
@@ -493,54 +558,22 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             for island_verts in all_islands:
                 # Collect world coordinates and vertex indices for the current island
                 world_coords = [(v.index, obj.matrix_world @ v.co) for v in island_verts]
-                # Calculate min and max Y coordinates in world space for this island
-                if self.object_direction in ["+Y", "-Y"]:
-                    bbox_min = min(world_coords, key=lambda vc: vc[1].y)[1].y
-                    bbox_max = max(world_coords, key=lambda vc: vc[1].y)[1].y
-                elif self.object_direction in ["+X", "-X"]:
-                    bbox_min = min(world_coords, key=lambda vc: vc[1].x)[1].x
-                    bbox_max = max(world_coords, key=lambda vc: vc[1].x)[1].x
-                else:
-                    bbox_min = min(world_coords, key=lambda vc: vc[1].z)[1].z
-                    bbox_max = max(world_coords, key=lambda vc: vc[1].z)[1].z
+                # Where each vertex stands along the direction the weights decrease
+                # along: a signed axis is the direction itself, so the same
+                # projection covers the manual directions and the inferred ones
+                direction = pin_direction(world_coords)
+                projections = [(v_idx, world_co.dot(direction)) for v_idx, world_co in world_coords]
+                bbox_min = min(projection for _, projection in projections)
+                bbox_max = max(projection for _, projection in projections)
                 bbox_depth = (
                     bbox_max - bbox_min if bbox_max != bbox_min else 1
                 )  # Avoid division by zero
-                # Collect vertex weights for this island
-                invert = self.object_direction in ["-X", "-Y", "-Z"]
-                if invert:
-                    if self.object_direction in ["+Y", "-Y"]:
-                        vertex_weights = [
-                            (v_idx, (world_co.y - bbox_min) / bbox_depth)
-                            for v_idx, world_co in world_coords
-                        ]
-                    elif self.object_direction in ["+X", "-X"]:
-                        vertex_weights = [
-                            (v_idx, (world_co.x - bbox_min) / bbox_depth)
-                            for v_idx, world_co in world_coords
-                        ]
-                    else:
-                        vertex_weights = [
-                            (v_idx, (world_co.z - bbox_min) / bbox_depth)
-                            for v_idx, world_co in world_coords
-                        ]
-                else:
-                    if self.object_direction in ["+Y", "-Y"]:
-                        vertex_weights = [
-                            (v_idx, 1 - (world_co.y - bbox_min) / bbox_depth)
-                            for v_idx, world_co in world_coords
-                        ]
-                    elif self.object_direction in ["+X", "-X"]:
-                        vertex_weights = [
-                            (v_idx, 1 - (world_co.x - bbox_min) / bbox_depth)
-                            for v_idx, world_co in world_coords
-                        ]
-                    else:
-                        vertex_weights = [
-                            (v_idx, 1 - (world_co.z - bbox_min) / bbox_depth)
-                            for v_idx, world_co in world_coords
-                        ]
-                all_vertex_weights.extend(vertex_weights)
+                # Collect vertex weights for this island: 1 at the start of the
+                # direction, 0 at its end
+                all_vertex_weights.extend(
+                    (v_idx, 1 - (projection - bbox_min) / bbox_depth)
+                    for v_idx, projection in projections
+                )
             # Apply weights to the vertex group in object mode
             bpy.ops.object.mode_set(mode="OBJECT")
             for index, weight in all_vertex_weights:
@@ -602,6 +635,13 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
         # Restore the original selection and mode
         restore_selection_and_mode(initial_mode, initial_selected_objects, initial_active_object)
+
+        if auto_fallback:
+            self.report(
+                {"WARNING"},
+                f"MustardUI - The Pin direction of {len(set(auto_fallback))} regions could "
+                f"not be inferred: {PIN_AXIS_FALLBACK} was used for them.",
+            )
 
         # Restore Armature Pose States
         for obj in bpy.context.scene.objects:

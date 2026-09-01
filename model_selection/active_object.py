@@ -1,9 +1,6 @@
-import bpy
-
-
 # Function to decide the active object for showing properties in the UI
 def mustardui_active_object(context, config=0):
-    settings = bpy.context.scene.MustardUI_Settings
+    settings = context.scene.MustardUI_Settings
 
     # Quick Setup mode: always use the viewport active object, returns True only if
     # the armature has never been configured with MustardUI (MustardUI_created=False).

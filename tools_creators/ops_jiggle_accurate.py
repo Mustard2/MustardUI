@@ -5,6 +5,7 @@ from mathutils.kdtree import KDTree
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
+from ..misc import mesh_cleanup
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -133,6 +134,13 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
         default=3,
         min=0,
         max=20,
+    )
+    clear_data: bpy.props.BoolProperty(
+        name="Clear Unused Data",
+        description="Remove the UV Maps, the attributes and the shape keys and vertex "
+        "groups which are empty, inherited by the cage from the model.\nNone of them is "
+        "used by the cage, and they only increase the size of the file",
+        default=True,
     )
     add_to_panel: bpy.props.BoolProperty(
         name="Add to Physics Panel",
@@ -1095,6 +1103,20 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                     f"{item['pinned_loops']} of {item['border_loops']} borders pinned)."
                 )
 
+        # Drop what the cage copied from the model and does not use.
+        if self.clear_data:
+            for item in cages:
+                cage = item["object"]
+                mesh_cleanup.clear_shape_keys(cage, void_only=True)
+                mesh_cleanup.clear_attributes(cage)
+                # The Pin group can legitimately be empty
+                removed = mesh_cleanup.clear_unused_vertex_groups(
+                    cage,
+                    keep=[x for x in (item["pin_name"], item["structural_group_name"]) if x],
+                )
+                if addon_prefs.debug:
+                    print(f"MustardUI - {removed} empty vertex groups removed from '{cage.name}'.")
+
         # Restore the Armature pose states. Every cage has been generated and bound
         # by now: what follows does not depend on the shape of the model any more
         for name, pose_position in stored_pose_states.items():
@@ -1169,6 +1191,9 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
         col = box.column(align=True)
         col.prop(self, "multiple_pin_boundaries")
         col.prop(self, "merge_cages")
+
+        col = box.column(align=True)
+        col.prop(self, "clear_data")
 
         box = layout.box()
         box.label(text="Physics Settings", icon="PHYSICS")

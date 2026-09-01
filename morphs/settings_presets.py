@@ -17,7 +17,8 @@ def morphs_to_json(morph_settings, rig_settings):
                 if cp is not None:
                     val = cp
             elif morph.shape_key:
-                kb = rig_settings.data.shape_keys.key_blocks.get(morph.path)
+                shape_keys = rig_settings.model_body.data.shape_keys
+                kb = shape_keys.key_blocks.get(morph.path) if shape_keys is not None else None
                 if kb:
                     val = kb.value
 
@@ -37,7 +38,7 @@ def morphs_to_json(morph_settings, rig_settings):
     return data
 
 
-def apply_morphs_preset(context, arm, settings, data, force=False):
+def apply_morphs_preset(context, arm, settings, data):
     rig_settings = arm.MustardUI_RigSettings
     errors = 0
 
@@ -61,7 +62,7 @@ def apply_morphs_preset(context, arm, settings, data, force=False):
             else:
                 cp_source[m["path"]] = val
 
-        elif m.get("shape_key") and rig_settings.data and rig_settings.data.shape_keys:
+        elif m.get("shape_key") and rig_settings.model_body.data.shape_keys:
             kb = rig_settings.model_body.data.shape_keys.key_blocks.get(m.get("path"))
             if kb is None:
                 errors += 1

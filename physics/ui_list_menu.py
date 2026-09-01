@@ -45,10 +45,16 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
             if item.type == "CAGE":
                 row2.prop(item, "smooth_corrective", text="", icon="MOD_SMOOTH")
             row2.prop(item, "collisions", text="", icon="MOD_PHYSICS")
+        else:
+            row2.label(text="", icon="BLANK1")
 
         row.prop(item.object, "hide_viewport", text="", emboss=False)
 
-        if settings.advanced and item.object is not None:
+        if settings.advanced:
+            op = row.operator("mustardui.physics_select", text="", icon="RESTRICT_SELECT_OFF")
+            op.object_name = item.object.name
+            op.item_index = index
+
             op = row.operator("mustardui.physics_rebind_single_cage", text="", icon="FILE_REFRESH")
             op.cage_name = item.object.name
 

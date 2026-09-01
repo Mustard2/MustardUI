@@ -4,6 +4,7 @@ from bpy.props import BoolProperty, IntProperty, PointerProperty
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import mustardui_active_object
+from .ops_set_section import MustardUI_Property_SetSection
 
 
 def draw_item_by_type(
@@ -15,7 +16,7 @@ def draw_item_by_type(
     _icon,
     _active_data,
     _active_propname,
-    _index,
+    index,
     cptype=0,
 ):
     res, obj = mustardui_active_object(context, config=1)
@@ -41,15 +42,16 @@ def draw_item_by_type(
 
         if cptype == 0:
             section = rig_settings.body_custom_properties_sections.get(item.section)
-            row.scale_x = 0.8
-            row.prop_search(
-                item,
+            icon = "RECORD_OFF"
+            if section is not None:
+                icon = section.icon if section.icon not in {"", "NONE"} else "DOT"
+            op = row.operator_menu_enum(
+                MustardUI_Property_SetSection.bl_idname,
                 "section",
-                rig_settings,
-                "body_custom_properties_sections",
-                text="",
-                icon=section.icon if section else "LINENUMBERS_OFF",
+                text=item.section if item.section not in {"", "NONE"} else "No Section",
+                icon=icon,
             )
+            op.index = index
         elif cptype == 1:
             if item.outfit is not None and item.outfit_piece is None:
                 if rig_settings.model_MustardUI_naming_convention:

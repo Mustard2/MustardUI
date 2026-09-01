@@ -70,6 +70,108 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Remove(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def mustardui_transfer_vertex_groups_add_items(scene, vg_names):
+    """Add the vertex group names to the transfer list, skipping the ones already added"""
+
+    items = scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
+    already_added = {item.group_name for item in items}
+
+    added = 0
+    for vg_name in vg_names:
+        if vg_name in already_added:
+            continue
+        items.add().group_name = vg_name
+        already_added.add(vg_name)
+        added += 1
+
+    scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = max(0, len(items) - 1)
+
+    return added
+
+
+def mustardui_transfer_vertex_groups_armatures(obj):
+    """Find the Armatures deforming the object"""
+
+    armatures = []
+
+    for modifier in obj.modifiers:
+        if modifier.type == "ARMATURE" and modifier.object is not None:
+            if modifier.object not in armatures:
+                armatures.append(modifier.object)
+
+    if obj.parent is not None and obj.parent.type == "ARMATURE" and obj.parent not in armatures:
+        armatures.append(obj.parent)
+
+    return armatures
+
+
+class MustardUI_ToolsCreators_TransferVertexGroups_AddAll(bpy.types.Operator):
+    """Add all the Vertex Groups of the Active Object to the list"""
+
+    bl_idname = "mustardui.tools_creators_transfer_vertex_groups_add_all"
+    bl_label = "All Groups"
+
+    def execute(self, context):
+        obj = context.active_object
+
+        if obj is None or obj.type != "MESH":
+            self.report({"WARNING"}, "MustardUI - Active Object must be a Mesh")
+            return {"CANCELLED"}
+
+        added = mustardui_transfer_vertex_groups_add_items(
+            context.scene, [vg.name for vg in obj.vertex_groups]
+        )
+
+        if not added:
+            self.report({"WARNING"}, "MustardUI - No Vertex Group to add")
+            return {"CANCELLED"}
+
+        self.report({"INFO"}, f"MustardUI - {added} Vertex Groups added")
+
+        return {"FINISHED"}
+
+
+class MustardUI_ToolsCreators_TransferVertexGroups_AddSelectedBones(bpy.types.Operator):
+    """Add the Vertex Groups of the Active Object corresponding to the selected bones"""
+
+    bl_idname = "mustardui.tools_creators_transfer_vertex_groups_add_bones"
+    bl_label = "From Bones"
+
+    def execute(self, context):
+        obj = context.active_object
+
+        if obj is None or obj.type != "MESH":
+            self.report({"WARNING"}, "MustardUI - Active Object must be a Mesh")
+            return {"CANCELLED"}
+
+        armatures = mustardui_transfer_vertex_groups_armatures(obj)
+        if not armatures:
+            self.report({"WARNING"}, "MustardUI - No Armature found for the Active Object")
+            return {"CANCELLED"}
+
+        vg_names = {vg.name for vg in obj.vertex_groups}
+
+        selected_bones = []
+        for armature in armatures:
+            for bone in armature.data.bones:
+                if bone.select and bone.name in vg_names and bone.name not in selected_bones:
+                    selected_bones.append(bone.name)
+
+        if not selected_bones:
+            self.report({"WARNING"}, "MustardUI - No Vertex Group found for the selected bones")
+            return {"CANCELLED"}
+
+        added = mustardui_transfer_vertex_groups_add_items(context.scene, selected_bones)
+
+        if not added:
+            self.report({"WARNING"}, "MustardUI - No Vertex Group to add")
+            return {"CANCELLED"}
+
+        self.report({"INFO"}, f"MustardUI - {added} Vertex Groups added")
+
+        return {"FINISHED"}
+
+
 class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
     """Transfer selected vertex groups from active object to other selected objects"""
 
@@ -131,6 +233,17 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
             "mustardui.tools_creators_transfer_vertex_groups_add", text="", icon="ADD"
         )
         op.vg_name = self.search_group
+
+        # Bulk add buttons
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_transfer_vertex_groups_add_all",
+            icon="GROUP_VERTEX",
+        )
+        row.operator(
+            "mustardui.tools_creators_transfer_vertex_groups_add_bones",
+            icon="BONE_DATA",
+        )
 
     def execute(self, context):
         scene = context.scene
@@ -219,6 +332,8 @@ def register():
     bpy.utils.register_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Add)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_Remove)
+    bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_AddAll)
+    bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_AddSelectedBones)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups)
 
     bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_Items = (
@@ -234,6 +349,8 @@ def unregister():
     del bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex
 
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups)
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_AddSelectedBones)
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_AddAll)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Remove)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_Add)
     bpy.utils.unregister_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups)
