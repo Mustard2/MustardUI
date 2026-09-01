@@ -3,7 +3,7 @@ import platform
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import active_object_operator_poll
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -15,17 +15,10 @@ class PANEL_PT_MustardUI_Development(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
         addon_prefs = context.preferences.addons[base_package].preferences
-
         if can_draw_ui():
             return False
-
-        res, obj = mustardui_active_object(context, config=0)
-
-        if obj is not None:
-            return res and addon_prefs.developer
-        return False
+        return active_object_operator_poll(context, config=0) and addon_prefs.developer
 
     def draw(self, context):
 
@@ -41,13 +34,6 @@ class PANEL_PT_MustardUI_Development(MainPanel, bpy.types.Panel):
             icon="MOD_BUILD",
             text="Re-build Custom Properties",
         )
-
-        op = layout.operator("mustardui.update_ui", text="UI Update", icon="SORT_DESC")
-        op.force = True
-        op.ignore = False
-
-        layout.operator("mustardui.cleanmodel", text="Clean model", icon="BRUSH_DATA")
-        layout.operator("mustardui.remove", text="UI Removal", icon="X")
 
         if platform.system() == "Windows" and addon_prefs.debug:
             layout.separator()
