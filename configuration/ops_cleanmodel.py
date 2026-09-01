@@ -680,6 +680,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
         )
 
         if operations > 0:
+            bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+
             self.report({"INFO"}, "MustardUI - Model cleaned.")
             rig_settings.model_cleaned = True
         else:
