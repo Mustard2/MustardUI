@@ -146,7 +146,6 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
         ]
         if len(unsorted_props) > 0:
             box = layout.box()
-            box.label(text="Un-sorted properties", icon="LIBRARY_DATA_BROKEN")
             for prop in unsorted_props:
                 draw_property(box, obj, settings, rig_settings, prop)
 
