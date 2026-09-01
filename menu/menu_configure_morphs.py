@@ -23,7 +23,7 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="", icon="EXPORT")
+        layout.label(text="", icon="SHAPEKEY_DATA")
 
     def draw(self, context):
 

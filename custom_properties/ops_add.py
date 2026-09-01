@@ -19,10 +19,10 @@ from .misc import (
 
 
 class MustardUI_Property_MenuAdd(bpy.types.Operator):
-    """Add the property to the menu"""
+    """Add the property to the UI"""
 
     bl_idname = "mustardui.property_menuadd"
-    bl_label = "Add to MustardUI (Un-sorted)"
+    bl_label = "Add to MustardUI Properties"
     bl_options = {"UNDO"}
 
     section: StringProperty(default="")

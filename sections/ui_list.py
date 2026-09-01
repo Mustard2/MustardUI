@@ -72,6 +72,10 @@ class MustardUI_Section_Delete(bpy.types.Operator):
         if len(uilist) <= index:
             return {"FINISHED"}
 
+        # Clean the Section of the custom properties
+        for cp in [x for x in obj.MustardUI_CustomProperties if x.section == uilist[index].name]:
+            cp.section = ""
+
         uilist.remove(index)
         index = min(max(0, index - 1), len(uilist) - 1)
         context.scene.mustardui_section_uilist_index = index

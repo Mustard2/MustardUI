@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, CollectionProperty, EnumProperty, IntProperty
 
 from .. import __package__ as base_package
 from ..custom_properties.misc import (
@@ -22,6 +22,25 @@ def remove_diffeomorphic_data_result(obj, attr):
         return 0
 
 
+class MustardUI_CleanModel_OutfitItem(bpy.types.PropertyGroup):
+    """Outfit entry of the Clean Model Outfits selection list"""
+
+    remove: BoolProperty(
+        default=False, name="Remove", description="Remove this Outfit from the model"
+    )
+    locked: BoolProperty(default=False)
+
+
+class MUSTARDUI_UL_CleanModel_Outfits_UIList(bpy.types.UIList):
+    """UIList to choose the Outfits to remove with the Clean Model tool"""
+
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        row = layout.row(align=True)
+        row.enabled = not item.locked
+        row.prop(item, "remove", text="")
+        row.label(text=item.name, icon="LOCKED" if item.locked else "MOD_CLOTH")
+
+
 class MustardUI_CleanModel(bpy.types.Operator):
     """Clean the model to get better performance, at the cost of deleting some features/shape keys/morphs/outfits"""  # noqa: E501
 
@@ -35,9 +54,30 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
     remove_unselected_outfits: BoolProperty(
         default=False,
-        name="Delete Unselected Outfits",
-        description="Remove all the outfits that are not selected in the UI (Outfits list)",
+        name="Delete Outfits",
+        description="Remove outfits from the model, as chosen with the mode below",
     )
+    outfits_removal_mode: EnumProperty(
+        default="UNSELECTED",
+        name="Outfits to Remove",
+        description="Choose which outfits are removed",
+        items=(
+            (
+                "UNSELECTED",
+                "Unselected",
+                "Remove all the outfits that are not selected in the UI (Outfits list)",
+            ),
+            (
+                "LIST",
+                "From List",
+                "Remove only the outfits checked in the list",
+            ),
+        ),
+    )
+    outfits_to_remove: CollectionProperty(
+        type=MustardUI_CleanModel_OutfitItem, options={"SKIP_SAVE"}
+    )
+    outfits_to_remove_index: IntProperty(default=0, options={"SKIP_SAVE"})
     remove_unselected_extras: BoolProperty(
         default=False,
         name="Delete Unselected Extras",
@@ -151,6 +191,35 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 if obj.MustardUI_outfit_lock:
                     locked_objects.add(coll)
         return list(locked_objects)
+
+    def update_outfits_to_remove(self, rig_settings):
+        """Rebuild the Outfits selection list from the outfits of the model"""
+
+        locked = self.locked_outfits_collections(rig_settings)
+
+        self.outfits_to_remove.clear()
+        for coll in rig_settings.outfits_collections:
+            if coll.collection is None:
+                continue
+            item = self.outfits_to_remove.add()
+            item.name = coll.collection.name
+            item.locked = coll in locked
+
+    def outfits_to_delete(self, rig_settings):
+        """Return the Outfit collections to delete, depending on the removal mode"""
+
+        locked = self.locked_outfits_collections(rig_settings)
+        available = [
+            x
+            for x in rig_settings.outfits_collections
+            if x.collection is not None and x not in locked
+        ]
+
+        if self.outfits_removal_mode == "LIST":
+            selected = [x.name for x in self.outfits_to_remove if x.remove]
+            return [x.collection for x in available if x.collection.name in selected]
+
+        return [x.collection for x in available if x.collection.name != rig_settings.outfits_list]
 
     @classmethod
     def poll(cls, context):
@@ -445,16 +514,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         if self.remove_unselected_outfits:
             current_outfit = rig_settings.outfits_list
 
-            to_remove = [
-                x.collection
-                for x in [
-                    y
-                    for y in rig_settings.outfits_collections
-                    if y.collection is not None
-                    and y not in self.locked_outfits_collections(rig_settings)
-                ]
-                if x.collection.name != current_outfit
-            ]
+            to_remove = self.outfits_to_delete(rig_settings)
 
             # Remove dangling Physics Items first
             if self.remove_dangling_pi:
@@ -506,7 +566,20 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 bpy.ops.mustardui.delete_outfit(is_config=True, delete_cp=self.remove_dangling_cp)
                 outfits_deleted = outfits_deleted + 1
 
-            rig_settings.outfits_list = current_outfit
+            # The selected outfit can be deleted in List mode: in that case, fall back
+            # to the first outfit still available
+            available_outfits = [
+                x.collection.name
+                for x in rig_settings.outfits_collections
+                if x.collection is not None
+            ]
+            if rig_settings.outfit_nude:
+                available_outfits = ["Nude"] + available_outfits
+
+            if current_outfit in available_outfits:
+                rig_settings.outfits_list = current_outfit
+            elif available_outfits:
+                rig_settings.outfits_list = available_outfits[0]
 
             if addon_prefs.debug:
                 print("  Outfits deleted: " + str(outfits_deleted))
@@ -680,6 +753,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
         )
 
         if operations > 0:
+            bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+
             self.report({"INFO"}, "MustardUI - Model cleaned.")
             rig_settings.model_cleaned = True
         else:
@@ -691,6 +766,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
+
+        res, arm = mustardui_active_object(context, config=0)
+        if arm is not None:
+            self.update_outfits_to_remove(arm.MustardUI_RigSettings)
+
         return context.window_manager.invoke_props_dialog(self, width=500)
 
     def draw(self, context):
@@ -722,11 +802,35 @@ class MustardUI_CleanModel(bpy.types.Operator):
         # Body/Outfits/Extras
         box = layout.box()
         box.label(text="Outfits and Hair", icon="MOD_CLOTH")
-        col = box.column(align=True)
 
-        row = col.row()
+        col = box.column()
+
+        row = col.row(align=True)
         row.enabled = len(rig_settings.outfits_collections) > 0
         row.prop(self, "remove_unselected_outfits")
+
+        row = col.row(align=True)
+        row.enabled = self.remove_unselected_outfits and len(rig_settings.outfits_collections) > 0
+        row.prop(self, "outfits_removal_mode", expand=True)
+
+        row = col.row(align=True)
+        row.enabled = (
+            self.remove_unselected_outfits
+            and len(rig_settings.outfits_collections) > 0
+            and self.outfits_removal_mode == "LIST"
+        )
+        row.template_list(
+            "MUSTARDUI_UL_CleanModel_Outfits_UIList",
+            "",
+            self,
+            "outfits_to_remove",
+            self,
+            "outfits_to_remove_index",
+            rows=5,
+        )
+
+        col = box.column(align=True)
+
         row = col.row()
         row.enabled = rig_settings.extras_collection is not None
         row.prop(self, "remove_unselected_extras")
@@ -811,8 +915,12 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
 
 def register():
+    bpy.utils.register_class(MustardUI_CleanModel_OutfitItem)
+    bpy.utils.register_class(MUSTARDUI_UL_CleanModel_Outfits_UIList)
     bpy.utils.register_class(MustardUI_CleanModel)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_CleanModel)
+    bpy.utils.unregister_class(MUSTARDUI_UL_CleanModel_Outfits_UIList)
+    bpy.utils.unregister_class(MustardUI_CleanModel_OutfitItem)
