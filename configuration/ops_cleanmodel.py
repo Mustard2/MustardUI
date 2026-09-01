@@ -814,7 +814,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
         row.prop(self, "outfits_removal_mode", expand=True)
 
         row = col.row(align=True)
-        row.enabled = self.remove_unselected_outfits and len(rig_settings.outfits_collections) > 0 and self.outfits_removal_mode == "LIST"
+        row.enabled = (
+            self.remove_unselected_outfits
+            and len(rig_settings.outfits_collections) > 0
+            and self.outfits_removal_mode == "LIST"
+        )
         row.template_list(
             "MUSTARDUI_UL_CleanModel_Outfits_UIList",
             "",
