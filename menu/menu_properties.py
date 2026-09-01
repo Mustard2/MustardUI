@@ -146,8 +146,9 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
         ]
         if len(unsorted_props) > 0:
             box = layout.box()
+            col = box.column(align=True)
             for prop in unsorted_props:
-                draw_property(box, obj, settings, rig_settings, prop)
+                draw_property(col, obj, settings, rig_settings, prop)
 
         sec_num = len(rig_settings.body_custom_properties_sections)
         id = 0

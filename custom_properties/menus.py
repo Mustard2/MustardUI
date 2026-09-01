@@ -12,13 +12,25 @@ from .ops_link import MustardUI_Property_MenuLink
 
 class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
     bl_idname = "OUTLINER_MT_MustardUI_PropertySectionMenu"
-    bl_label = "Add to MustardUI (Section)"
+    bl_label = "Add to MustardUI Properties"
 
     def draw(self, context):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
+
+        op = layout.operator(
+            MustardUI_Property_MenuAdd.bl_idname, text="Add without Section", icon="ADD"
+        )
+        op.section = ""
+        op.outfit_is_nude = False
+        op.outfit = ""
+        op.outfit_piece = ""
+        op.hair_global = False
+        op.hair = ""
+
+        layout.separator()
 
         for sec in rig_settings.body_custom_properties_sections:
             op = layout.operator(MustardUI_Property_MenuAdd.bl_idname, text=sec.name, icon=sec.icon)
@@ -208,6 +220,79 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
                 op.hair = obj.name
 
 
+# Sub-menu with the Body properties of a single Section, used by the Link menu
+class MUSTARDUI_MT_Property_LinkMenu_Section(bpy.types.Menu):
+    bl_idname = "MUSTARDUI_MT_Property_LinkMenu_Section"
+    bl_label = "Link to Property"
+
+    def draw(self, context):
+
+        res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
+
+        layout = self.layout
+
+        section = getattr(context, "mustardui_propertylinkmenu_section", None)
+
+        body_props = [x for x in obj.MustardUI_CustomProperties if x.is_animatable]
+        if section is not None:
+            props = [x for x in body_props if x.section == section.name]
+        else:
+            section_names = [x.name for x in rig_settings.body_custom_properties_sections]
+            props = [x for x in body_props if x.section not in section_names]
+
+        for prop in sorted(props, key=lambda x: x.name):
+            op = layout.operator(
+                MustardUI_Property_MenuLink.bl_idname, text=prop.name, icon=prop.icon
+            )
+            op.parent_rna = prop.rna
+            op.parent_path = prop.path
+            op.type = "BODY"
+
+
+# Sub-menu with the properties of a single Outfit (or of the Extras collection), used by
+# the Link menu
+class MUSTARDUI_MT_Property_LinkMenu_Outfit(bpy.types.Menu):
+    bl_idname = "MUSTARDUI_MT_Property_LinkMenu_Outfit"
+    bl_label = "Link to Property"
+
+    def draw(self, context):
+
+        res, obj = mustardui_active_object(context, config=1)
+        rig_settings = obj.MustardUI_RigSettings
+
+        layout = self.layout
+
+        outfit = getattr(context, "mustardui_propertylinkmenu_outfit", None)
+
+        props = [
+            x
+            for x in obj.MustardUI_CustomPropertiesOutfit
+            if x.is_animatable and x.outfit == outfit
+        ]
+
+        for prop in sorted(
+            sorted(props, key=lambda x: x.name),
+            key=lambda x: x.outfit_piece.name if x.outfit_piece is not None else "",
+        ):
+            if prop.outfit_piece is not None:
+                name = (
+                    strip_naming_convention(
+                        prop.outfit_piece.name,
+                        prop.outfit.name,
+                        rig_settings.model_MustardUI_naming_convention,
+                    )
+                    + " - "
+                    + prop.name
+                )
+            else:
+                name = prop.name
+            op = layout.operator(MustardUI_Property_MenuLink.bl_idname, text=name, icon=prop.icon)
+            op.parent_rna = prop.rna
+            op.parent_path = prop.path
+            op.type = "OUTFIT"
+
+
 # Operator to create the list of sections when right-clicking on the property ->
 # Link to property
 class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
@@ -229,18 +314,33 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
 
         no_prop = True
 
+        # Body properties, one sub-menu for each Section
         body_props = [x for x in obj.MustardUI_CustomProperties if x.is_animatable]
         if len(body_props) > 0:
-            layout.label(text="Body", icon="OUTLINER_OB_ARMATURE")
-        for prop in sorted(body_props, key=lambda x: x.name):
-            op = layout.operator(
-                MustardUI_Property_MenuLink.bl_idname, text=prop.name, icon=prop.icon
-            )
-            op.parent_rna = prop.rna
-            op.parent_path = prop.path
-            op.type = "BODY"
+            layout.label(text="Properties", icon="PROPERTIES")
             no_prop = False
 
+            sections = rig_settings.body_custom_properties_sections
+            section_names = [x.name for x in sections]
+
+            if len([x for x in body_props if x.section not in section_names]) > 0:
+                layout.menu(
+                    MUSTARDUI_MT_Property_LinkMenu_Section.bl_idname,
+                    text="No Section",
+                    icon="DOT",
+                )
+
+            for sec in sections:
+                if len([x for x in body_props if x.section == sec.name]) < 1:
+                    continue
+                layout.context_pointer_set("mustardui_propertylinkmenu_section", sec)
+                layout.menu(
+                    MUSTARDUI_MT_Property_LinkMenu_Section.bl_idname,
+                    text=sec.name,
+                    icon=sec.icon,
+                )
+
+        # Outfit properties, one sub-menu for each Outfit
         outfit_props = [
             x
             for x in obj.MustardUI_CustomPropertiesOutfit
@@ -248,60 +348,64 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             and x.outfit != rig_settings.extras_collection
             and x.outfit is not None
         ]
-        if len(outfit_props) > 0 and len(body_props) > 0:
-            layout.separator()
+        extras_props = (
+            [
+                x
+                for x in obj.MustardUI_CustomPropertiesOutfit
+                if x.is_animatable and x.outfit == rig_settings.extras_collection
+            ]
+            if rig_settings.extras_collection is not None
+            else []
+        )
+
+        if len(outfit_props) > 0 or len(extras_props) > 0:
+            if not no_prop:
+                layout.separator()
             layout.label(text="Outfits", icon="MOD_CLOTH")
-        for prop in sorted(sorted(outfit_props, key=lambda x: x.name), key=lambda x: x.outfit.name):
-            outfit_name = (
-                prop.outfit.name[len(rig_settings.model_name + " ") :]
-                if rig_settings.model_MustardUI_naming_convention
-                else prop.outfit.name
-            )
-            if prop.outfit_piece is not None:
-                outfit_piece_name = strip_naming_convention(
-                    prop.outfit_piece.name,
-                    prop.outfit.name,
-                    rig_settings.model_MustardUI_naming_convention,
+            no_prop = False
+
+            outfit_collections = [
+                x.collection for x in rig_settings.outfits_collections if x.collection is not None
+            ]
+            for prop in outfit_props:
+                if prop.outfit not in outfit_collections:
+                    outfit_collections.append(prop.outfit)
+
+            for collection in outfit_collections:
+                if len([x for x in outfit_props if x.outfit == collection]) < 1:
+                    continue
+                layout.context_pointer_set("mustardui_propertylinkmenu_outfit", collection)
+                layout.menu(
+                    MUSTARDUI_MT_Property_LinkMenu_Outfit.bl_idname,
+                    text=strip_naming_convention_collection(
+                        collection.name,
+                        rig_settings.model_name,
+                        rig_settings.model_MustardUI_naming_convention,
+                    ),
+                    icon="MOD_CLOTH",
                 )
-                outfit_name = outfit_name + " - " + outfit_piece_name
-            op = layout.operator(
-                MustardUI_Property_MenuLink.bl_idname,
-                text=outfit_name + " - " + prop.name,
-                icon=prop.icon,
-            )
-            op.parent_rna = prop.rna
-            op.parent_path = prop.path
-            op.type = "OUTFIT"
-            no_prop = False
 
-        extras_props = [
-            x
-            for x in obj.MustardUI_CustomPropertiesOutfit
-            if x.is_animatable and x.outfit == rig_settings.extras_collection
-        ]
-        if len(extras_props) > 0 and len(body_props) > 0:
-            layout.separator()
-            layout.label(text="Extras", icon="PLUS")
-        for prop in sorted(extras_props, key=lambda x: x.name):
-            outfit_name = strip_naming_convention(
-                prop.outfit_piece.name,
-                rig_settings.extras_collection.name,
-                rig_settings.model_MustardUI_naming_convention,
-            )
-            op = layout.operator(
-                MustardUI_Property_MenuLink.bl_idname,
-                text=outfit_name + " - " + prop.name,
-                icon=prop.icon,
-            )
-            op.parent_rna = prop.rna
-            op.parent_path = prop.path
-            op.type = "OUTFIT"
-            no_prop = False
+            if len(extras_props) > 0:
+                layout.context_pointer_set(
+                    "mustardui_propertylinkmenu_outfit", rig_settings.extras_collection
+                )
+                layout.menu(
+                    MUSTARDUI_MT_Property_LinkMenu_Outfit.bl_idname,
+                    text=strip_naming_convention_collection(
+                        rig_settings.extras_collection.name,
+                        rig_settings.model_name,
+                        rig_settings.model_MustardUI_naming_convention,
+                    ),
+                    icon="PLUS",
+                )
 
+        # Hair properties
         hair_props = [x for x in obj.MustardUI_CustomPropertiesHair if x.is_animatable]
-        if len(hair_props) > 0 and (len(outfit_props) > 0 or len(body_props) > 0):
-            layout.separator()
+        if len(hair_props) > 0:
+            if not no_prop:
+                layout.separator()
             layout.label(text="Hair", icon="STRANDS")
+            no_prop = False
         for prop in sorted(hair_props, key=lambda x: x.name):
             if prop.hair is not None:
                 hair_name = strip_naming_convention(
@@ -323,7 +427,6 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             op.parent_rna = prop.rna
             op.parent_path = prop.path
             op.type = "HAIR"
-            no_prop = False
 
         if no_prop:
             layout.label(text="No properties found")
@@ -334,6 +437,8 @@ menus = (
     OUTLINER_MT_MustardUI_PropertyOutfitMenu,
     OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu,
     OUTLINER_MT_MustardUI_PropertyHairMenu,
+    MUSTARDUI_MT_Property_LinkMenu_Section,
+    MUSTARDUI_MT_Property_LinkMenu_Outfit,
     MUSTARDUI_MT_Property_LinkMenu,
 )
 
