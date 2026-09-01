@@ -8,6 +8,7 @@ from . import (
     ops_outfits_setup,
     ops_rebind,
     ops_remove,
+    ops_select,
     settings,
     settings_item,
     settings_presets,
@@ -30,6 +31,7 @@ def register():
     ops_remove.register()
     ops_delete.register()
     ops_rebind.register()
+    ops_select.register()
     ui_list.register()
     ui_list_outfits.register()
     ui_list_menu.register()
@@ -39,6 +41,7 @@ def unregister():
     ui_list_menu.unregister()
     ui_list_outfits.unregister()
     ui_list.unregister()
+    ops_select.unregister()
     ops_rebind.unregister()
     ops_delete.unregister()
     ops_remove.unregister()
