@@ -35,6 +35,7 @@ def mustardui_property_menuadd(self, context):
                     op.outfit_is_nude = False
                     op.outfit = collection.collection.name
                     op.outfit_piece = object.name
+                    op.hair_global = False
                     op.hair = ""
                     break
         if rig_settings.extras_collection is not None:
@@ -55,6 +56,7 @@ def mustardui_property_menuadd(self, context):
                         op.outfit_is_nude = False
                         op.outfit = rig_settings.extras_collection.name
                         op.outfit_piece = object.name
+                        op.hair_global = False
                         op.hair = ""
                         break
         if rig_settings.hair_collection is not None:
@@ -72,6 +74,7 @@ def mustardui_property_menuadd(self, context):
                         op.outfit_is_nude = False
                         op.outfit = ""
                         op.outfit_piece = ""
+                        op.hair_global = False
                         op.hair = object.name
                         break
 
