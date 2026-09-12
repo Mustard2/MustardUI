@@ -36,71 +36,65 @@ class PANEL_PT_MustardUI_InitPanel_Properties(MainPanel, bpy.types.Panel):
         # Sections
         box = layout.box()
         box.label(text="Sections", icon="LINENUMBERS_OFF")
-        if len(arm.MustardUI_CustomProperties) > 0:
+        row = box.row()
+        row.template_list(
+            "MUSTARDUI_UL_Section_UIList",
+            "The_List",
+            rig_settings,
+            "body_custom_properties_sections",
+            scene,
+            "mustardui_section_uilist_index",
+        )
+        col = row.column()
+        col2 = col.column(align=True)
+        col2.operator("mustardui.section_property_assign", text="", icon="PRESET")
+        col.separator()
+        col2 = col.column(align=True)
+        col2.operator("mustardui.section_add", text="", icon="ADD")
+        col2.operator("mustardui.section_delete", text="", icon="REMOVE")
+        col.separator()
+        col2 = col.column(align=True)
+        opup = col2.operator("mustardui.section_switch", icon="TRIA_UP", text="")
+        opup.direction = "UP"
+        opdown = col2.operator("mustardui.section_switch", icon="TRIA_DOWN", text="")
+        opdown.direction = "DOWN"
+
+        if (
+            scene.mustardui_section_uilist_index > -1
+            and len(rig_settings.body_custom_properties_sections) > 0
+        ):
+            sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
+
             row = box.row()
-            row.template_list(
-                "MUSTARDUI_UL_Section_UIList",
-                "The_List",
-                rig_settings,
-                "body_custom_properties_sections",
-                scene,
-                "mustardui_section_uilist_index",
-            )
-            col = row.column()
-            col2 = col.column(align=True)
-            col2.operator("mustardui.section_property_assign", text="", icon="PRESET")
-            col.separator()
-            col2 = col.column(align=True)
-            col2.operator("mustardui.section_add", text="", icon="ADD")
-            col2.operator("mustardui.section_delete", text="", icon="REMOVE")
-            col.separator()
-            col2 = col.column(align=True)
-            opup = col2.operator("mustardui.section_switch", icon="TRIA_UP", text="")
-            opup.direction = "UP"
-            opdown = col2.operator("mustardui.section_switch", icon="TRIA_DOWN", text="")
-            opdown.direction = "DOWN"
+            row.label(text="Icon")
+            row.scale_x = row_scale
+            row.prop(sec, "icon", text="")
 
-            if (
-                scene.mustardui_section_uilist_index > -1
-                and len(rig_settings.body_custom_properties_sections) > 0
-            ):
-                sec = rig_settings.body_custom_properties_sections[
-                    scene.mustardui_section_uilist_index
-                ]
+            col = box.column(align=True)
 
-                row = box.row()
-                row.label(text="Icon")
-                row.scale_x = row_scale
-                row.prop(sec, "icon", text="")
+            row = col.row()
+            row.label(text="Description")
+            row.scale_x = row_scale
+            row.prop(sec, "description", text="")
 
-                col = box.column(align=True)
+            row = col.row()
+            row.enabled = sec.description != ""
+            row.label(text="Icon")
+            row.scale_x = row_scale
+            row.prop(sec, "description_icon", text="")
 
-                row = col.row()
-                row.label(text="Description")
-                row.scale_x = row_scale
-                row.prop(sec, "description", text="")
+            col = box.column(align=True)
+            row = col.row()
+            row.enabled = scene.mustardui_section_uilist_index != 0
+            row.prop(sec, "is_subsection")
 
-                row = col.row()
-                row.enabled = sec.description != ""
-                row.label(text="Icon")
-                row.scale_x = row_scale
-                row.prop(sec, "description_icon", text="")
+            col = box.column(align=True)
 
-                col = box.column(align=True)
-                row = col.row()
-                row.enabled = scene.mustardui_section_uilist_index != 0
-                row.prop(sec, "is_subsection")
+            row = col.row()
+            row.prop(sec, "advanced")
 
-                col = box.column(align=True)
-
-                row = col.row()
-                row.prop(sec, "advanced")
-
-                row = col.row()
-                row.prop(sec, "collapsable")
-        else:
-            box = box.box()
-            box.label(text="No property added yet", icon="ERROR")
+            row = col.row()
+            row.prop(sec, "collapsable")
 
         # Custom properties
         box = layout.box()
