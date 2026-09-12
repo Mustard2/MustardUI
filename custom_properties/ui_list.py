@@ -114,6 +114,7 @@ def filter_items_by_type(self, context, data, propname, cptype=0):
     items = getattr(data, propname)
     helper_funcs = bpy.types.UI_UL_list
     scene = context.scene
+    res, arm = mustardui_active_object(context, config=1)
 
     if self.filter_name:
         flt_flags = helper_funcs.filter_items_by_name(
@@ -131,7 +132,6 @@ def filter_items_by_type(self, context, data, propname, cptype=0):
     )
 
     if cptype == 0 and self.filter_by_active_section:
-        res, arm = mustardui_active_object(context, config=1)
         active_section = None
         if res:
             rig_settings = arm.MustardUI_RigSettings
@@ -143,15 +143,15 @@ def filter_items_by_type(self, context, data, propname, cptype=0):
             if item.section != active_section:
                 flt_flags[i] &= ~self.bitflag_filter_item
 
-    elif cptype == 1 and scene.mustardui_property_uilist_outfits_filter_outfit:
-        outfit = scene.mustardui_property_uilist_outfits_filter_outfit
-        piece = scene.mustardui_property_uilist_outfits_filter_piece
+    elif cptype == 1 and res and arm.mustardui_property_uilist_outfits_filter_outfit:
+        outfit = arm.mustardui_property_uilist_outfits_filter_outfit
+        piece = arm.mustardui_property_uilist_outfits_filter_piece
         for i, item in enumerate(items):
             if item.outfit != outfit or (piece and item.outfit_piece != piece):
                 flt_flags[i] &= ~self.bitflag_filter_item
 
-    elif cptype == 2 and scene.mustardui_property_uilist_hair_filter_object:
-        hair_object = scene.mustardui_property_uilist_hair_filter_object
+    elif cptype == 2 and res and arm.mustardui_property_uilist_hair_filter_object:
+        hair_object = arm.mustardui_property_uilist_hair_filter_object
         for i, item in enumerate(items):
             if item.hair != hair_object:
                 flt_flags[i] &= ~self.bitflag_filter_item
@@ -160,12 +160,7 @@ def filter_items_by_type(self, context, data, propname, cptype=0):
 
 
 def poll_filter_outfit(self, collection):
-    context = bpy.context
-    res, arm = mustardui_active_object(context, config=1)
-    if not res:
-        return False
-
-    rig_settings = arm.MustardUI_RigSettings
+    rig_settings = self.MustardUI_RigSettings
 
     return (
         collection
@@ -183,12 +178,7 @@ def poll_filter_outfit_piece(self, obj):
 
 
 def poll_filter_hair_object(self, obj):
-    context = bpy.context
-    res, arm = mustardui_active_object(context, config=1)
-    if not res:
-        return False
-
-    rig_settings = arm.MustardUI_RigSettings
+    rig_settings = self.MustardUI_RigSettings
     if obj.type not in {"MESH", "CURVES"}:
         return False
 
@@ -295,14 +285,18 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
             icon="SORT_DESC" if self.use_filter_sort_reverse else "SORT_ASC",
         )
 
+        res, arm = mustardui_active_object(context, config=1)
+        if not res:
+            return
+
         row = layout.row(align=True)
         row.prop(
-            context.scene,
+            arm,
             "mustardui_property_uilist_outfits_filter_outfit",
             text="",
             icon="MOD_CLOTH",
         )
-        row.prop(context.scene, "mustardui_property_uilist_outfits_filter_piece", text="")
+        row.prop(arm, "mustardui_property_uilist_outfits_filter_piece", text="")
 
     def filter_items(self, context, data, propname):
         return filter_items_by_type(self, context, data, propname, cptype=1)
@@ -350,10 +344,12 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
             icon="SORT_DESC" if self.use_filter_sort_reverse else "SORT_ASC",
         )
 
+        res, arm = mustardui_active_object(context, config=1)
+        if not res:
+            return
+
         row = layout.row(align=True)
-        row.prop(
-            context.scene, "mustardui_property_uilist_hair_filter_object", text="", icon="CURVES"
-        )
+        row.prop(arm, "mustardui_property_uilist_hair_filter_object", text="", icon="CURVES")
 
     def filter_items(self, context, data, propname):
         return filter_items_by_type(self, context, data, propname, cptype=2)
@@ -374,20 +370,20 @@ def register():
     bpy.types.Scene.mustardui_property_uilist_outfits_index = IntProperty(name="", default=0)
     bpy.types.Scene.mustardui_property_uilist_hair_index = IntProperty(name="", default=0)
 
-    bpy.types.Scene.mustardui_property_uilist_outfits_filter_outfit = PointerProperty(
+    bpy.types.Armature.mustardui_property_uilist_outfits_filter_outfit = PointerProperty(
         name="Outfit",
         description="Show only the properties of this outfit",
         type=bpy.types.Collection,
         poll=poll_filter_outfit,
     )
-    bpy.types.Scene.mustardui_property_uilist_outfits_filter_piece = PointerProperty(
+    bpy.types.Armature.mustardui_property_uilist_outfits_filter_piece = PointerProperty(
         name="Piece",
         description="Show only the properties of this outfit piece.\n"
         "Leave empty to show the properties of the whole outfit",
         type=bpy.types.Object,
         poll=poll_filter_outfit_piece,
     )
-    bpy.types.Scene.mustardui_property_uilist_hair_filter_object = PointerProperty(
+    bpy.types.Armature.mustardui_property_uilist_hair_filter_object = PointerProperty(
         name="Hair",
         description="Show only the properties of this hair object",
         type=bpy.types.Object,
@@ -396,9 +392,9 @@ def register():
 
 
 def unregister():
-    del bpy.types.Scene.mustardui_property_uilist_hair_filter_object
-    del bpy.types.Scene.mustardui_property_uilist_outfits_filter_piece
-    del bpy.types.Scene.mustardui_property_uilist_outfits_filter_outfit
+    del bpy.types.Armature.mustardui_property_uilist_hair_filter_object
+    del bpy.types.Armature.mustardui_property_uilist_outfits_filter_piece
+    del bpy.types.Armature.mustardui_property_uilist_outfits_filter_outfit
 
     del bpy.types.Scene.mustardui_property_uilist_hair_index
     del bpy.types.Scene.mustardui_property_uilist_outfits_index
