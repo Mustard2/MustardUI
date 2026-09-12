@@ -36,9 +36,9 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         custom_props, nu = mustardui_choose_cp(obj, self.type, context.scene)
 
-        prop = context.button_prop
+        prop = getattr(context, "button_prop", None)
 
-        if not hasattr(context, "button_prop") or not hasattr(prop, "array_length"):
+        if prop is None or not hasattr(prop, "array_length"):
             self.report({"ERROR"}, "MustardUI - Can not link this property to anything.")
             return {"FINISHED"}
 
