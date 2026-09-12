@@ -215,86 +215,74 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             force_non_animatable = True
 
         # Add property to the collection of properties
-        if (rna, path) not in [(x.rna, x.path) for x in custom_props]:
-            cp = custom_props.add()
-            cp.rna = rna
-            cp.path = path
-            cp.name = prop_name_ui
-            cp.prop_name = prop_name
-            cp.type = prop.type
-            if hasattr(prop, "array_length"):
-                cp.array_length = prop.array_length
-            cp.subtype = prop.subtype
+        cp = custom_props.add()
+        cp.rna = rna
+        cp.path = path
+        cp.name = prop_name_ui
+        cp.prop_name = prop_name
+        cp.type = prop.type
+        if hasattr(prop, "array_length"):
+            cp.array_length = prop.array_length
+        cp.subtype = prop.subtype
 
-            # Try to find icon
-            if "materials" in rna:
-                cp.icon = "MATERIAL"
-            elif "key_blocks" in rna:
-                cp.icon = "SHAPEKEY_DATA"
+        # Try to find icon
+        if "materials" in rna:
+            cp.icon = "MATERIAL"
+        elif "key_blocks" in rna:
+            cp.icon = "SHAPEKEY_DATA"
 
-            cp.is_animatable = (
-                prop.is_animatable if not force_non_animatable else False
-            ) or blender_custom_property
+        cp.is_animatable = (
+            prop.is_animatable if not force_non_animatable else False
+        ) or blender_custom_property
 
-            cp.section = self.section
+        cp.section = self.section
 
-            # Assign type
-            if self.outfit != "" or self.outfit_is_nude:
-                cp.cp_type = "OUTFIT"
-            elif self.hair != "" or self.hair_global:
-                cp.cp_type = "HAIR"
-            else:
-                cp.cp_type = "BODY"
-
-            # Outfit and hair properties
-            if self.outfit != "":
-                cp.outfit = bpy.data.collections[self.outfit]
-                if self.outfit_piece != "":
-                    cp.outfit_piece = context.scene.objects[self.outfit_piece]
-            elif self.hair != "":
-                cp.hair = context.scene.objects[self.hair]
-
-            # Get the type and assign the pointer
-            assign_ptr(cp, rna, addon_prefs)
-
-            if cp.is_animatable:
-                ui_data_dict = obj.id_properties_ui(prop_name).as_dict()
-
-                if "step" in ui_data_dict:
-                    cp.step_float = ui_data_dict["step"]
-
-                if hasattr(prop, "description"):
-                    cp.description = ui_data_dict["description"]
-                if hasattr(prop, "default"):
-                    if prop.array_length == 0:
-                        if prop.type == "FLOAT":
-                            cp.default_float = prop.default
-                        elif prop.type == "BOOLEAN":
-                            cp.default_bool = prop.default
-                        elif prop.type == "INT":
-                            cp.default_int = prop.default
-                    else:
-                        cp.default_array = str(ui_data_dict["default"])
-
-                if (
-                    hasattr(prop, "hard_min")
-                    and hasattr(prop, "hard_max")
-                    and prop.type != "BOOLEAN"
-                ):
-                    prop_min, prop_max = mustardui_prop_limits(prop, addon_prefs)
-                    if prop.type == "FLOAT":
-                        cp.min_float = prop_min
-                        cp.max_float = prop_max
-                    elif prop.type == "INT":
-                        cp.min_int = prop_min
-                        cp.max_int = prop_max
+        # Assign type
+        if self.outfit != "" or self.outfit_is_nude:
+            cp.cp_type = "OUTFIT"
+        elif self.hair != "" or self.hair_global:
+            cp.cp_type = "HAIR"
         else:
-            self.report(
-                {"ERROR"},
-                "MustardUI - An error occurred while adding the property to the "
-                "custom properties list.",
-            )
-            return {"FINISHED"}
+            cp.cp_type = "BODY"
+
+        # Outfit and hair properties
+        if self.outfit != "":
+            cp.outfit = bpy.data.collections[self.outfit]
+            if self.outfit_piece != "":
+                cp.outfit_piece = context.scene.objects[self.outfit_piece]
+        elif self.hair != "":
+            cp.hair = context.scene.objects[self.hair]
+
+        # Get the type and assign the pointer
+        assign_ptr(cp, rna, addon_prefs)
+
+        if cp.is_animatable:
+            ui_data_dict = obj.id_properties_ui(prop_name).as_dict()
+
+            if "step" in ui_data_dict:
+                cp.step_float = ui_data_dict["step"]
+
+            if hasattr(prop, "description"):
+                cp.description = ui_data_dict["description"]
+            if hasattr(prop, "default"):
+                if prop.array_length == 0:
+                    if prop.type == "FLOAT":
+                        cp.default_float = prop.default
+                    elif prop.type == "BOOLEAN":
+                        cp.default_bool = prop.default
+                    elif prop.type == "INT":
+                        cp.default_int = prop.default
+                else:
+                    cp.default_array = str(ui_data_dict["default"])
+
+            if hasattr(prop, "hard_min") and hasattr(prop, "hard_max") and prop.type != "BOOLEAN":
+                prop_min, prop_max = mustardui_prop_limits(prop, addon_prefs)
+                if prop.type == "FLOAT":
+                    cp.min_float = prop_min
+                    cp.max_float = prop_max
+                elif prop.type == "INT":
+                    cp.min_int = prop_min
+                    cp.max_int = prop_max
 
         # Update the drivers
         obj.update_tag()
