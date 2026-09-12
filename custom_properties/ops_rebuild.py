@@ -394,21 +394,23 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             overridable=True,
                         )
 
+                    self.add_driver(
+                        obj,
+                        custom_prop.rna,
+                        custom_prop.path,
+                        custom_prop.prop_name,
+                    )
+                    for linked_custom_prop in custom_prop.linked_properties:
                         self.add_driver(
                             obj,
-                            custom_prop.rna,
-                            custom_prop.path,
+                            linked_custom_prop.rna,
+                            linked_custom_prop.path,
                             custom_prop.prop_name,
                         )
-                        for linked_custom_prop in custom_prop.linked_properties:
-                            self.add_driver(
-                                obj,
-                                linked_custom_prop.rna,
-                                linked_custom_prop.path,
-                                custom_prop.prop_name,
-                            )
+
                     if evaluate_path(custom_prop.rna, custom_prop.path) is None:
                         raise Exception("Property not found after rebuilding")
+
                 except Exception:
                     errors += 1
 
