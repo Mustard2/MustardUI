@@ -15,7 +15,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
     bl_idname = "mustardui.remove"
     bl_label = "Remove UI and Model"
-    bl_options = {"UNDO"}
+    bl_options = {"PRESET", "UNDO"}
 
     delete_settings: BoolProperty(
         default=False,
