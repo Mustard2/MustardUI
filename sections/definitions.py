@@ -2,7 +2,6 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty, StringProperty
 
 from ..misc.icons import mustardui_icon_list
-from ..model_selection.active_object import mustardui_active_object
 
 
 # Section for body properties
@@ -15,8 +14,11 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
     old_name: StringProperty(default="")
 
     def name_update(self, context):
-        res, arm = mustardui_active_object(context, config=1)
-        custom_props = arm.MustardUI_CustomProperties
+        if not self.old_name:
+            self.old_name = self.name
+            return
+
+        custom_props = self.id_data.MustardUI_CustomProperties
 
         for cp in custom_props:
             if cp.section == self.old_name:
