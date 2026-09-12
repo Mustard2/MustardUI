@@ -54,7 +54,7 @@ class MustardUI_Outfits_RenderPreview(bpy.types.Operator):
     )
 
     resolution: IntProperty(
-        default=1024,
+        default=512,
         min=32,
         max=1024,
         name="Resolution",
