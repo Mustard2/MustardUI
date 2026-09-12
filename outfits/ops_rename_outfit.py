@@ -97,13 +97,11 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=1):
+            return False
+
         res, arm = mustardui_active_object(context, config=1)
-        rig_settings = arm.MustardUI_RigSettings
-
-        if arm is not None:
-            return res and rig_settings.model_name != ""
-
-        return False
+        return arm.MustardUI_RigSettings.model_name != ""
 
     def execute(self, context):
 
