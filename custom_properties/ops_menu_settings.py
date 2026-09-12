@@ -309,7 +309,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     obj, prop_name, current_value, int, self.min_int, self.max_int
                 )
             else:
-                ui_data.update(description=custom_prop.description)
+                ui_data.update(description=self.description)
                 custom_prop.description = self.description
 
         obj.update_tag()

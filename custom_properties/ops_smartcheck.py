@@ -198,6 +198,11 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         custom_props = obj.MustardUI_CustomProperties
         addon_prefs = context.preferences.addons[base_package].preferences
 
+        model_body = rig_settings.model_body
+        if model_body is None or model_body.data is None:
+            self.report({"ERROR"}, "MustardUI - A body mesh should be selected.")
+            return {"FINISHED"}
+
         k = 0
         preserved = 0
 
@@ -227,7 +232,9 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 custom_props.remove(i)
 
         # Materials
-        for mat in [x for x in rig_settings.model_body.data.materials if x is not None]:
+        for mat in [
+            x for x in model_body.data.materials if x is not None and x.node_tree is not None
+        ]:
             for j in range(len(mat.node_tree.nodes)):
                 if (
                     "MustardUI Float" in mat.node_tree.nodes[j].name
@@ -291,8 +298,8 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                     k = k + 1
 
         # Shape Keys
-        if rig_settings.model_body.data.shape_keys is not None:
-            for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
+        if model_body.data.shape_keys is not None:
+            for shape_key in model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
                     preserved += add_custom_property(
                         obj,
