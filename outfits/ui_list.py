@@ -53,7 +53,17 @@ class MUSTARDUI_UL_Outfits_UIList(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.collection:
-            layout.prop(item.collection, "name", text="", emboss=False, translate=False)
+            icon_value = 0
+            if data.outfits_list_mode == "THUMBNAILS" and item.preview:
+                icon_value = item.preview.preview_ensure().icon_id
+            layout.prop(
+                item.collection,
+                "name",
+                text="",
+                emboss=False,
+                translate=False,
+                icon_value=icon_value,
+            )
         else:
             layout.label(text="Outfit not found!", icon="ERROR")
 

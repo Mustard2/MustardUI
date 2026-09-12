@@ -10,9 +10,13 @@ from ..outfits.helper_functions import (
     find_layer_collection,
     outfits_get_collection_items,
     outfits_get_collections,
+    set_full_resolution_preview,
     update_masks,
 )
 from ..sections.definitions import MustardUI_SectionItem
+
+# Strings returned by outfits_list_make
+_outfits_list_strings = {}
 
 
 # Main class to store model settings
@@ -353,6 +357,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     def outfits_list_make(self, context):
         items = []
         prefix_len = len(self.model_name + " ") if self.model_MustardUI_naming_convention else 0
+        previews = self.outfits_list_mode == "THUMBNAILS"
 
         for el in self.outfits_collections:
             coll = el.collection
@@ -368,12 +373,28 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             else:
                 nname = re.sub(r"\.\d{3}$", "", nname)  # fallback regex for safety
 
-            items.append((coll.name, nname, coll.name))
+            if previews:
+                icon = el.preview.preview_ensure().icon_id if el.preview else "MOD_CLOTH"
+                items.append((coll.name, nname, coll.name, icon))
+            else:
+                items.append((coll.name, nname, coll.name))
 
         if self.outfit_nude:
-            items = [("Nude", "Nude", "Nude")] + items
+            nude_item = ("Nude", "Nude", "Nude")
+            if previews:
+                image = self.outfit_nude_preview
+                nude_item += (image.preview_ensure().icon_id if image else "USER",)
+            items.insert(0, nude_item)
 
-        return items
+        # Icon items need an explicit number, which must match the implicit index
+        if previews:
+            items = [(*item, i) for i, item in enumerate(items)]
+
+        strings = _outfits_list_strings
+        return [
+            tuple(strings.setdefault(x, x) if isinstance(x, str) else x for x in item)
+            for item in items
+        ]
 
     # Function to update the visibility of the outfits/masks/armature layers when an
     # outfit is changed
@@ -463,6 +484,42 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         description="Enable Nude 'outfit' choice.\nThis will turn on/off the Nude "
         "'outfit' in the Outfits list, which can be useful for SFW "
         "models",
+    )
+
+    # Outfits list display mode
+    outfits_list_mode: bpy.props.EnumProperty(
+        default="DROPDOWN",
+        items=(
+            ("DROPDOWN", "List", "Show the Outfits list as a dropdown menu", "LONGDISPLAY", 0),
+            (
+                "THUMBNAILS",
+                "Thumbnails",
+                "Show the Outfits list as image previews.\nSet the preview image of each "
+                "outfit in the Outfits list below",
+                "IMGDISPLAY",
+                1,
+            ),
+        ),
+        name="Outfits List",
+        description="How the Outfits list is shown in the UI",
+    )
+
+    outfits_list_previews_scale: bpy.props.FloatProperty(
+        default=6.0,
+        min=1.0,
+        max=20.0,
+        name="Preview Scale",
+        description="Size of the outfit preview in the UI",
+    )
+
+    def update_outfit_nude_preview(self, context):
+        set_full_resolution_preview(self.outfit_nude_preview)
+
+    outfit_nude_preview: bpy.props.PointerProperty(
+        name="Nude Preview",
+        description="Image used as preview for the Nude outfit",
+        type=bpy.types.Image,
+        update=update_outfit_nude_preview,
     )
 
     # Global outfit properties

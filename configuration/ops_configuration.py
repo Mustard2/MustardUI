@@ -78,7 +78,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                     index_to_delete.append(x)
                     if addon_prefs.debug:
                         print("MustardUI - A ghost outfit collection has been removed.")
-            for x in index_to_delete:
+            for x in reversed(index_to_delete):
                 rig_settings.outfits_collections.remove(x)
 
             if tools_settings.autoeyelid_enable:

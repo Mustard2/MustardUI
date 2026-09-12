@@ -235,7 +235,16 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         layout.enabled = rig_settings.outfits_show
 
         row = layout.row(align=True)
-        row.prop(rig_settings, "outfits_list", text="")
+        if rig_settings.outfits_list_mode == "THUMBNAILS":
+            row.template_icon_view(
+                rig_settings,
+                "outfits_list",
+                show_labels=True,
+                scale=rig_settings.outfits_list_previews_scale,
+                scale_popup=rig_settings.outfits_list_previews_scale,
+            )
+        else:
+            row.prop(rig_settings, "outfits_list", text="")
 
         if rig_settings.hair_collection is not None and any(
             x.hair is not None for x in rig_settings.outfits_collections
