@@ -170,13 +170,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             return {"FINISHED"}
 
         prop_type = custom_prop.type
-        if prop_type == "FLOAT" and (
-            isinstance(self.max_float, int)
-            or isinstance(self.min_float, int)
-            or isinstance(self.default_float, int)
-        ):
-            self.report({"ERROR"}, "MustardUI - Can not change type of the custom property.")
-            return {"FINISHED"}
 
         if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR":
             try:
