@@ -10,7 +10,11 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import mustardui_choose_cp, mustardui_cp_path
+from .misc import (
+    mustardui_choose_cp,
+    mustardui_cp_path,
+    mustardui_cp_supports_on_switch,
+)
 from .ops_set_section import SECTION_NONE, sections_enum
 
 float_subtype_items = (
@@ -376,7 +380,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.scale_x = scale
             row.prop(custom_prop, "outfit_piece", text="")
 
-            if prop_type == "FLOAT" and custom_prop.subtype != "COLOR":
+            if mustardui_cp_supports_on_switch(custom_prop):
                 row = box.row()
                 row.label(text="Actions on switch:")
                 row.scale_x = scale / 2

@@ -105,14 +105,14 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     outfit_enable_on_switch: BoolProperty(
         default=False,
         name="Enable on Outfit Switch",
-        description="Set the value of this property to the max value when you "
-        "enable the outfit/outfit piece",
+        description="Set the value of this property to the max value (True for Bool "
+        "properties) when you enable the outfit",
     )
     outfit_disable_on_switch: BoolProperty(
         default=False,
         name="Disable on Outfit Switch",
         description="Set the value of this property to the default value when you "
-        "disable the outfit/outfit piece",
+        "disable the outfit",
     )
 
     # Hair

@@ -1,5 +1,6 @@
 import bpy
 
+from ..custom_properties.misc import mustardui_cp_supports_on_switch
 from ..hair.helper_functions import apply_hair_visibility
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
@@ -177,6 +178,8 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         for cp in arm.MustardUI_CustomPropertiesOutfit:
             if not (cp.outfit_enable_on_switch or cp.outfit_disable_on_switch):
                 continue
+            if not mustardui_cp_supports_on_switch(cp):
+                continue
             if not outfit_nude and not cp.outfit:
                 continue
             # Skip Extras evaluation
@@ -190,6 +193,8 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             ui = ui_cache.get(prop)
             if ui is None:
                 ui = arm.id_properties_ui(prop).as_dict()
+                # Bool properties have no max: they are enabled with True
+                ui.setdefault("max", True)
                 ui_cache[prop] = ui
 
             desired = None

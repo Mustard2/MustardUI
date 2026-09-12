@@ -28,6 +28,17 @@ def mustardui_check_cp(obj, rna, path):
     return True
 
 
+# Check if a custom property supports the "Actions on switch"
+def mustardui_cp_supports_on_switch(custom_prop):
+    if not custom_prop.is_animatable:
+        return False
+    if custom_prop.array_length > 0 or custom_prop.subtype == "COLOR":
+        return False
+    if custom_prop.force_type in ["Int", "Bool"]:
+        return True
+    return custom_prop.type in ["FLOAT", "INT", "BOOLEAN"]
+
+
 # Function to choose correct custom properties list
 def mustardui_choose_cp(obj, type, scene):
     if type == "BODY":
