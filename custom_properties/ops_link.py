@@ -165,9 +165,7 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
-        res, obj = mustardui_active_object(context, config=1)
-        return obj is not None
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
 

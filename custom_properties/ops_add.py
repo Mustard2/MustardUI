@@ -318,8 +318,7 @@ class MustardUI_Property_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
-        return obj is not None
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
         res, obj = mustardui_active_object(context, config=1)
@@ -361,8 +360,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
-        return obj is not None
+        return active_object_operator_poll(context, config=1)
 
     def move_index(self, uilist, index):
         """Move index of an item render queue while clamping it."""
