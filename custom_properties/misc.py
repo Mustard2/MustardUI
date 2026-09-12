@@ -95,7 +95,7 @@ def mustardui_cp_on_switch_value(custom_prop, ui_data, show):
     if choice == "MIN":
         return ui_data.get("min", False)
     if choice == "DEFAULT":
-        return ui_data["default"]
+        return ui_data.get("default")
 
     value = getattr(custom_prop, mustardui_cp_on_switch_custom_field(custom_prop, show))
 
