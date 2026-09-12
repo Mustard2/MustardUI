@@ -53,6 +53,11 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     model_mustardui_version: bpy.props.IntVectorProperty(name="", size=3, min=0, default=(0, 0, 0))
 
+    # MustardUI version of last COnfiguration
+    model_mustardui_version_saved: bpy.props.IntVectorProperty(
+        name="", size=3, min=0, default=(0, 0, 0)
+    )
+
     # ------------------------------------------------------------------------
     #    Body properties
     # ------------------------------------------------------------------------

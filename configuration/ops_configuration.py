@@ -196,6 +196,9 @@ class MustardUI_Configuration(bpy.types.Operator):
             else:
                 rig_settings.model_version_date = ""
 
+            # Save the version with which the model configuration has been completed
+            rig_settings.model_mustardui_version_saved = bl_info["version"]
+
             # Clean the model temporary settings
             settings.rename_outfits_temp_class.clear()
 
