@@ -144,11 +144,13 @@ def add_custom_property(
 
         if "description" in ui_data_dict.keys():
             cp.description = ui_data_dict["description"]
-        if "default" in ui_data_dict.keys() and type != "BOOLEAN":
+        if "default" in ui_data_dict.keys():
             if type == "FLOAT":
                 cp.default_float = ui_data_dict["default"]
             elif type == "INT":
                 cp.default_int = ui_data_dict["default"]
+            elif type == "BOOLEAN":
+                cp.default_bool = ui_data_dict["default"]
             else:
                 cp.default_array = str(ui_data_dict["default"])
         if "min" in ui_data_dict.keys() and type != "BOOLEAN":

@@ -334,18 +334,12 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                         del obj[prop_name]
 
                     if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
-                        try:
-                            default_bool = bool(evaluate_path(custom_prop.rna, custom_prop.path))
-                        except Exception:
-                            print(
-                                "MustardUI - Can not find the property "
-                                + mustardui_cp_path(custom_prop.rna, custom_prop.path)
-                            )
-                            default_bool = True
                         rna_idprop_ui_create(
                             obj,
                             prop_name,
-                            default=default_bool,
+                            default=bool(custom_prop.default_bool)
+                            if custom_prop.array_length == 0
+                            else ast.literal_eval(custom_prop.default_array),
                             description=custom_prop.description,
                             overridable=True,
                         )
