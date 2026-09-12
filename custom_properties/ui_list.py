@@ -117,11 +117,7 @@ def filter_items_by_type(self, context, data, propname, cptype=0):
 
     if self.filter_name:
         flt_flags = helper_funcs.filter_items_by_name(
-            self.filter_name,
-            self.bitflag_filter_item,
-            items,
-            "name",
-            reverse=self.use_filter_sort_reverse,
+            self.filter_name, self.bitflag_filter_item, items, "name"
         )
     else:
         flt_flags = [self.bitflag_filter_item] * len(items)
