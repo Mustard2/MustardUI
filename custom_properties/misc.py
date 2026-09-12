@@ -1,6 +1,50 @@
+import math
+
 import bpy
 
 from ..misc.prop_utils import evaluate_rna
+
+# hard_min/hard_max of an RNA property with no limits: FLT_MAX for Float, INT_MAX for Int
+FLOAT_UNBOUNDED = 1e30
+INT_UNBOUNDED = 2**31 - 1
+
+
+# Check if a limit of an RNA property is the sentinel used when the property has no limit
+def mustardui_prop_limit_is_unbounded(limit, is_int):
+    if is_int:
+        return abs(limit) >= INT_UNBOUNDED
+    return not math.isfinite(limit) or abs(limit) >= FLOAT_UNBOUNDED
+
+
+# Minimum and maximum assigned to a Float or Int custom property when it is added
+# Unbounded limits make for a property impossible to use in the UI, so, depending on
+# the addon preferences, they fall back to 0 and 1
+def mustardui_prop_limits(prop, addon_prefs):
+    is_int = prop.type == "INT"
+    zero, one = (0, 1) if is_int else (0.0, 1.0)
+
+    # Colors are always normalized
+    if prop.subtype == "COLOR":
+        return zero, one
+
+    limits = addon_prefs.new_property_limits
+    if limits == "NORMALIZED":
+        return zero, one
+
+    prop_min, prop_max = prop.hard_min, prop.hard_max
+    if limits == "PROPERTY":
+        return prop_min, prop_max
+
+    if mustardui_prop_limit_is_unbounded(prop_min, is_int):
+        prop_min = zero
+    if mustardui_prop_limit_is_unbounded(prop_max, is_int):
+        prop_max = one
+
+    # Keep the limits usable when only one of the two was unbounded
+    if prop_min >= prop_max:
+        prop_max = prop_min + one
+
+    return prop_min, prop_max
 
 
 # Function to check keys of custom properties (only for debug)

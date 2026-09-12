@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, EnumProperty
 
 from .. import __package__ as base_package
 
@@ -35,6 +35,29 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         "already have a UI configured.\n"
         "The full Configuration can still be used afterwards "
         "(enable it with Developer Tools).",
+    )
+
+    # Limits of new custom properties
+    new_property_limits: EnumProperty(
+        name="Limits of new Properties",
+        default="AUTO",
+        items=(
+            (
+                "AUTO",
+                "Automatic",
+                "Use the limits of the property, falling back to 0 and 1 when the "
+                "property has no limits",
+            ),
+            ("NORMALIZED", "0 to 1", "Always use 0 and 1"),
+            (
+                "PROPERTY",
+                "From Property",
+                "Always use the limits of the property, even when it has none",
+            ),
+        ),
+        description="Minimum and maximum values assigned to Float and Int custom "
+        "properties when they are added to the UI.\nThe limits can always be changed "
+        "later in the property settings",
     )
 
     # Debug mode
@@ -77,6 +100,11 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         row.operator(
             "wm.url_open", text="Report Bug", icon="URL"
         ).url = self.url_MustardUI_ReportBug
+
+        if self.developer:
+            box = layout.box()
+            box.label(text="Developer Settings", icon="PREFERENCES")
+            box.prop(self, "new_property_limits")
 
         if self.debug:
             box = layout.box()

@@ -14,6 +14,7 @@ from .misc import (
     mustardui_check_cp,
     mustardui_choose_cp,
     mustardui_clean_prop,
+    mustardui_prop_limits,
     mustardui_update_index_cp,
 )
 
@@ -167,13 +168,14 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                     if ("node_tree.nodes" not in rna and "shape_keys" not in rna)
                     else ""
                 )
+                prop_min, prop_max = mustardui_prop_limits(prop, addon_prefs)
                 try:
                     rna_idprop_ui_create(
                         obj,
                         prop_name,
                         default=evaluate_path(rna, path),
-                        min=prop.hard_min if prop.subtype != "COLOR" else 0.0,
-                        max=prop.hard_max if prop.subtype != "COLOR" else 1.0,
+                        min=prop_min,
+                        max=prop_max,
                         description=description,
                         overridable=True,
                         subtype=prop.subtype if prop.subtype != "FACTOR" else None,
@@ -190,8 +192,8 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                         obj,
                         prop_name,
                         default=def_array,
-                        min=prop.hard_min if prop.subtype != "COLOR" else 0.0,
-                        max=prop.hard_max if prop.subtype != "COLOR" else 1.0,
+                        min=prop_min,
+                        max=prop_max,
                         description=description,
                         overridable=True,
                         subtype=prop.subtype if prop.subtype != "FACTOR" else None,
@@ -273,16 +275,18 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                     else:
                         cp.default_array = str(ui_data_dict["default"])
 
-                if hasattr(prop, "hard_min") and prop.type != "BOOLEAN":
+                if (
+                    hasattr(prop, "hard_min")
+                    and hasattr(prop, "hard_max")
+                    and prop.type != "BOOLEAN"
+                ):
+                    prop_min, prop_max = mustardui_prop_limits(prop, addon_prefs)
                     if prop.type == "FLOAT":
-                        cp.min_float = prop.hard_min
+                        cp.min_float = prop_min
+                        cp.max_float = prop_max
                     elif prop.type == "INT":
-                        cp.min_int = prop.hard_min
-                if hasattr(prop, "hard_max") and prop.type != "BOOLEAN":
-                    if prop.type == "FLOAT":
-                        cp.max_float = prop.hard_max
-                    elif prop.type == "INT":
-                        cp.max_int = prop.hard_max
+                        cp.min_int = prop_min
+                        cp.max_int = prop_max
         else:
             self.report(
                 {"ERROR"},
