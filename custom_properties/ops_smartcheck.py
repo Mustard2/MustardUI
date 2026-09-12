@@ -309,7 +309,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Bool - ") :],
-                        "BOOL",
+                        "BOOLEAN",
                         custom_props,
                         sections_to_recover,
                         self.skip_existing,
