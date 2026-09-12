@@ -21,10 +21,12 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
 
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
+        index = arm.mustardui_physics_items_uilist_index
+
         return (
             arm.mustardui_physics_items_outfits_uilist_index > -1
-            and len(physics_settings.items) > 0
-            and physics_settings.items[arm.mustardui_physics_items_uilist_index].object is not None
+            and 0 <= index < len(physics_settings.items)
+            and physics_settings.items[index].object is not None
         )
 
     def execute(self, context):
