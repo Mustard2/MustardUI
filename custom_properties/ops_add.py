@@ -362,10 +362,11 @@ class MustardUI_Property_Switch(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
-        if not 0 <= index < len(uilist):
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
             return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         mustardui_update_index_cp(self.type, context.scene, index)

@@ -89,10 +89,11 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
         uilist = morphs_settings.sections[obj.mustardui_morphs_section_uilist_index].morphs
         index = obj.mustardui_morphs_uilist_index
 
-        if len(uilist) <= index:
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
             return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         obj.mustardui_morphs_uilist_index = index

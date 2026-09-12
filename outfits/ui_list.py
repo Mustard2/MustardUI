@@ -36,10 +36,11 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
         uilist = rig_settings.outfits_collections
         index = context.scene.mustardui_outfits_uilist_index
 
-        if len(uilist) <= index:
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
             return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         context.scene.mustardui_outfits_uilist_index = index
