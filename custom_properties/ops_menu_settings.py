@@ -31,6 +31,23 @@ float_subtype_items = (
 )
 
 
+# Restore the value of a custom property after it has been re-created
+def mustardui_cp_restore_value(obj, prop_name, value, cast, prop_min=None, prop_max=None):
+    if value is None:
+        return
+
+    def convert(single_value):
+        single_value = cast(single_value)
+        if prop_min is not None and prop_max is not None:
+            single_value = min(max(single_value, prop_min), prop_max)
+        return single_value
+
+    try:
+        obj[prop_name] = [convert(x) for x in value] if isinstance(value, list) else convert(value)
+    except Exception:
+        print(f"MustardUI - Could not restore the value of the custom property {prop_name}")
+
+
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings"""
 
@@ -152,6 +169,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
             ui_data = obj.id_properties_ui(prop_name)
 
+            # Store current value to be restored after changing settings
+            current_value = obj.get(prop_name)
+            if hasattr(current_value, "to_list"):
+                current_value = current_value.to_list()
+
             if prop_type == "FLOAT":
                 custom_prop.force_type = self.force_type
 
@@ -183,7 +205,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
                 if custom_prop.array_length == 0:
                     custom_prop.default_float = self.default_float
-                    obj[prop_name] = float(obj[prop_name])
                     custom_prop.subtype = self.subtype
                 else:
                     if prop_subtype != "COLOR":
@@ -200,6 +221,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                             + str(self.default_color[3])
                             + ")"
                         )
+
+                if prop_subtype != "COLOR":
+                    mustardui_cp_restore_value(
+                        obj, prop_name, current_value, float, self.min_float, self.max_float
+                    )
+                else:
+                    mustardui_cp_restore_value(obj, prop_name, current_value, float, 0.0, 1.0)
+
                 custom_prop.step_float = self.step_float
 
             elif prop_type == "BOOLEAN" or self.force_type == "Bool":
@@ -221,6 +250,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     custom_prop.default_bool = self.default_bool
                 else:
                     custom_prop.default_array = self.default_array
+
+                mustardui_cp_restore_value(obj, prop_name, current_value, bool)
 
             elif prop_type == "INT" or self.force_type == "Int":
                 ui_data.clear()
@@ -244,9 +275,12 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 custom_prop.max_int = self.max_int
                 if custom_prop.array_length == 0:
                     custom_prop.default_int = self.default_int
-                    obj[prop_name] = int(obj[prop_name])
                 else:
                     custom_prop.default_array = self.default_array
+
+                mustardui_cp_restore_value(
+                    obj, prop_name, current_value, int, self.min_int, self.max_int
+                )
             else:
                 ui_data.update(description=custom_prop.description)
                 custom_prop.description = self.description
