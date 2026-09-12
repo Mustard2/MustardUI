@@ -314,14 +314,14 @@ class MustardUI_Property_Remove(bpy.types.Operator):
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        if len(uilist) <= index:
+        if not 0 <= index < len(uilist):
             return {"FINISHED"}
 
         # Remove custom property and driver
         mustardui_clean_prop(obj, uilist, index, addon_prefs)
 
         uilist.remove(index)
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         mustardui_update_index_cp(self.type, context.scene, index)
 
         obj.update_tag()
@@ -362,7 +362,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
-        if len(uilist) <= index:
+        if not 0 <= index < len(uilist):
             return {"FINISHED"}
 
         neighbour = index + (-1 if self.direction == "UP" else 1)

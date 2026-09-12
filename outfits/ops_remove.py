@@ -81,7 +81,7 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
             if len(rig_settings.outfits_list_make(context)) > 0:
                 rig_settings.outfits_list = rig_settings.outfits_list_make(context)[0][0]
 
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         context.scene.mustardui_outfits_uilist_index = index
 
         arm.update_tag()

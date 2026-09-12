@@ -147,6 +147,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
+
+        if not 0 <= index < len(custom_props):
+            return {"FINISHED"}
+
         custom_prop = custom_props[index]
 
         if self.name == "":
@@ -305,7 +309,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
 
-        if len(custom_props) <= index:
+        if not 0 <= index < len(custom_props):
             return {"FINISHED"}
 
         custom_prop = custom_props[index]
@@ -382,6 +386,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
+
+        if not 0 <= index < len(custom_props):
+            return
+
         custom_prop = custom_props[index]
         prop_type = custom_prop.type
         prop_cp_type = custom_prop.cp_type

@@ -71,7 +71,7 @@ class MustardUI_Morphs_Section_Remove(bpy.types.Operator):
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
 
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         arm.mustardui_morphs_section_uilist_index = index
 
         arm.update_tag()

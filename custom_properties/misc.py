@@ -214,6 +214,9 @@ def mustardui_add_driver(obj, rna, path, prop, prop_name):
 
 
 def mustardui_reassign_default(obj, uilist, index, addon_prefs):
+    if not 0 <= index < len(uilist):
+        return
+
     # Assign default before removing the associated drivers
     try:
         prop = uilist[index]
@@ -231,6 +234,9 @@ def mustardui_reassign_default(obj, uilist, index, addon_prefs):
 
 
 def mustardui_clean_prop(obj, uilist, index, addon_prefs):
+    if not 0 <= index < len(uilist):
+        return
+
     # Delete custom property and drivers
     try:
         ui_data = obj.id_properties_ui(uilist[index].prop_name)

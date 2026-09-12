@@ -67,7 +67,7 @@ class MustardUI_Link_Remove(bpy.types.Operator):
             return {"FINISHED"}
 
         uilist.remove(index)
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         context.scene.mustardui_links_uilist_index = index
 
         obj.update_tag()

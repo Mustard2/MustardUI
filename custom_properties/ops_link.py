@@ -172,6 +172,9 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
+        if not 0 <= index < len(uilist):
+            return {"FINISHED"}
+
         # Remove custom property and driver
         driver_removed = self.clean_prop()
 

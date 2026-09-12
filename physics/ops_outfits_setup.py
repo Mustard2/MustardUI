@@ -526,7 +526,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         items = physics_settings.items
 
         if self.unique:
-            if arm.mustardui_physics_items_uilist_index < 0:
+            if not 0 <= arm.mustardui_physics_items_uilist_index < len(items):
                 return {"FINISHED"}
             if physics_settings.items[arm.mustardui_physics_items_uilist_index].object is None:
                 return {"FINISHED"}

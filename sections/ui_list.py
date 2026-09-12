@@ -77,11 +77,11 @@ class MustardUI_Section_Delete(bpy.types.Operator):
             cp.section = ""
 
         uilist.remove(index)
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         context.scene.mustardui_section_uilist_index = index
 
         # Remove the subsection status if there is no new parent section
-        if index == 0:
+        if index == 0 and len(uilist) > 0:
             uilist[index].is_subsection = False
 
         obj.update_tag()

@@ -716,7 +716,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         # Reset the Physics Items index
         index = arm.mustardui_physics_items_uilist_index
-        index = min(max(0, index - 1), len(physics_settings.items) - 1)
+        index = max(0, min(index - 1, len(physics_settings.items) - 1))
         arm.mustardui_physics_items_uilist_index = index
 
         # Remove custom properties
