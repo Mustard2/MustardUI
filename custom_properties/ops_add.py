@@ -260,6 +260,9 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             if cp.is_animatable:
                 ui_data_dict = obj.id_properties_ui(prop_name).as_dict()
 
+                if "step" in ui_data_dict:
+                    cp.step_float = ui_data_dict["step"]
+
                 if hasattr(prop, "description"):
                     cp.description = ui_data_dict["description"]
                 if hasattr(prop, "default"):
