@@ -5,13 +5,14 @@ import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
-from ..misc.prop_utils import evaluate_path, evaluate_rna
+from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
 from .misc import (
     assign_pointers,
+    mustardui_add_driver,
     mustardui_clean_prop,
     mustardui_cp_path,
     mustardui_cp_restore_value,
@@ -269,41 +270,6 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         "to their default value",
     )
 
-    def add_driver(self, obj, rna, path, prop_name):
-
-        driver_object = evaluate_rna(rna)
-        driver_object.driver_remove(path)
-        driver = driver_object.driver_add(path)
-
-        try:
-            array_length = len(evaluate_path(rna, path))
-        except Exception:
-            array_length = 0
-
-        # No array property
-        if array_length == 0:
-            driver = driver.driver
-            driver.type = "AVERAGE"
-            var = driver.variables.new()
-            var.name = "mustardui_var"
-            var.targets[0].id_type = "ARMATURE"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'["{prop_name}"]'
-
-        # Array property
-        else:
-            for i in range(0, array_length):
-                driver[i] = driver[i].driver
-                driver[i].type = "AVERAGE"
-
-                var = driver[i].variables.new()
-                var.name = "mustardui_var"
-                var.targets[0].id_type = "ARMATURE"
-                var.targets[0].id = obj
-                var.targets[0].data_path = f'["{prop_name}"][{str(i)}]'
-
-        return
-
     @classmethod
     def poll(cls, context):
         return active_object_operator_poll(context, config=0)
@@ -429,14 +395,11 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                                 custom_prop.max_int,
                             )
 
-                    self.add_driver(
-                        obj,
-                        custom_prop.rna,
-                        custom_prop.path,
-                        custom_prop.prop_name,
+                    mustardui_add_driver(
+                        obj, custom_prop.rna, custom_prop.path, custom_prop.prop_name
                     )
                     for linked_custom_prop in custom_prop.linked_properties:
-                        self.add_driver(
+                        mustardui_add_driver(
                             obj,
                             linked_custom_prop.rna,
                             linked_custom_prop.path,

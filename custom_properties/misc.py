@@ -2,7 +2,7 @@ import math
 
 import bpy
 
-from ..misc.prop_utils import evaluate_rna
+from ..misc.prop_utils import evaluate_path, evaluate_rna
 
 # hard_min/hard_max of an RNA property with no limits: FLT_MAX for Float, INT_MAX for Int
 FLOAT_UNBOUNDED = 1e30
@@ -183,34 +183,39 @@ def mustardui_update_index_cp(type, scene, index):
         scene.mustardui_property_uilist_hair_index = index
 
 
-def mustardui_add_driver(obj, rna, path, prop, prop_name):
+# Add the driver that links the property at rna.path to the custom property prop_name of
+# the Armature. array_length is the number of elements of the driven property, and it is
+# evaluated from the property itself when it is not provided
+def mustardui_add_driver(obj, rna, path, prop_name, array_length=None):
     driver_object = evaluate_rna(rna)
     driver_object.driver_remove(path)
     driver = driver_object.driver_add(path)
 
-    # No array property
-    if prop.array_length == 0:
-        driver = driver.driver
-        driver.type = "AVERAGE"
-        var = driver.variables.new()
+    if array_length is None:
+        try:
+            array_length = len(evaluate_path(rna, path))
+        except Exception:
+            array_length = 0
+
+    # The name should be escaped, or a name containing quotes breaks the driver
+    data_path = f'["{bpy.utils.escape_identifier(prop_name)}"]'
+
+    def add_variable(fcurve, target_path):
+        fcurve.driver.type = "AVERAGE"
+        var = fcurve.driver.variables.new()
         var.name = "mustardui_var"
         var.targets[0].id_type = "ARMATURE"
         var.targets[0].id = obj
-        var.targets[0].data_path = f'["{prop_name}"]'
+        var.targets[0].data_path = target_path
+
+    # No array property
+    if array_length == 0:
+        add_variable(driver, data_path)
 
     # Array property
     else:
-        for i in range(0, prop.array_length):
-            driver[i] = driver[i].driver
-            driver[i].type = "AVERAGE"
-
-            var = driver[i].variables.new()
-            var.name = "mustardui_var"
-            var.targets[0].id_type = "ARMATURE"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'["{prop_name}"][{str(i)}]'
-
-    return
+        for i in range(0, array_length):
+            add_variable(driver[i], f"{data_path}[{i}]")
 
 
 def mustardui_reassign_default(obj, uilist, index, addon_prefs):

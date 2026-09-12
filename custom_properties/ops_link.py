@@ -106,7 +106,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
                 # Add driver
                 if prop.is_animatable:
-                    mustardui_add_driver(obj, rna, path, prop, parent_prop.prop_name)
+                    mustardui_add_driver(obj, rna, path, parent_prop.prop_name, prop.array_length)
 
                 # Add linked property to list
                 if (rna, path) not in [(x.rna, x.path) for x in parent_prop.linked_properties]:

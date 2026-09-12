@@ -2,47 +2,12 @@ import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
-from ..misc.prop_utils import evaluate_path, evaluate_rna
+from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import mustardui_clean_prop
-
-
-def add_driver(obj, rna, path, prop_name):
-    driver_object = evaluate_rna(rna)
-    driver_object.driver_remove(path)
-    driver = driver_object.driver_add(path)
-
-    try:
-        array_length = len(evaluate_path(rna, path))
-    except Exception:
-        array_length = 0
-
-    # No array property
-    if array_length == 0:
-        driver = driver.driver
-        driver.type = "AVERAGE"
-        var = driver.variables.new()
-        var.name = "mustardui_var"
-        var.targets[0].id_type = "ARMATURE"
-        var.targets[0].id = obj
-        var.targets[0].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"]'
-
-    # Array property
-    else:
-        for i in range(0, array_length):
-            driver[i] = driver[i].driver
-            driver[i].type = "AVERAGE"
-
-            var = driver[i].variables.new()
-            var.name = "mustardui_var"
-            var.targets[0].id_type = "ARMATURE"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"][{str(i)}]'
-
-    return
+from .misc import mustardui_add_driver, mustardui_clean_prop
 
 
 def link_property(obj, rna, path, parent_prop, custom_props):
@@ -60,7 +25,7 @@ def link_property(obj, rna, path, parent_prop, custom_props):
 
     # Add driver
     try:
-        add_driver(obj, rna, path, parent_prop.prop_name)
+        mustardui_add_driver(obj, rna, path, parent_prop.prop_name)
     except Exception:
         print("MustardUI - Could not link property to " + parent_prop.prop_name)
 
@@ -116,7 +81,7 @@ def add_custom_property(
 
     # Add driver
     try:
-        add_driver(obj, rna, path, prop_name)
+        mustardui_add_driver(obj, rna, path, prop_name)
     except Exception as e:
         print("MustardUI - Could not add a driver for " + prop_name + ":" + str(e))
         del obj[prop_name]
@@ -164,7 +129,7 @@ def add_custom_property(
             elif type == "INT":
                 cp.max_int = ui_data_dict["max"]
 
-    obj.property_overridable_library_set(f'["{prop_name}"]', True)
+    obj.property_overridable_library_set(f'["{bpy.utils.escape_identifier(prop_name)}"]', True)
 
     return False
 
