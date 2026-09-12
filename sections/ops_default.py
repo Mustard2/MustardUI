@@ -1,6 +1,9 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Section_PropertyDefault(bpy.types.Operator):
@@ -14,9 +17,11 @@ class MustardUI_Section_PropertyDefault(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=0):
+            return False
+
         res, obj = mustardui_active_object(context, config=0)
-        rig_settings = obj.MustardUI_RigSettings
-        return res and len(rig_settings.body_custom_properties_sections)
+        return len(obj.MustardUI_RigSettings.body_custom_properties_sections) > 0
 
     def execute(self, context):
 
