@@ -63,7 +63,7 @@ class MustardUI_Outfits_RenderPreview(bpy.types.Operator):
     )
 
     use_camera: BoolProperty(
-        default=False,
+        default=True,
         name="Use Scene Camera",
         description="Render from the scene Camera instead of the 3D Viewport view",
     )

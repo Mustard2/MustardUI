@@ -64,7 +64,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
                 box2 = box.box()
                 row = box2.row()
                 row.template_ID(
-                    rig_settings, "outfit_nude_preview", open="image.open", text="Nude Preview"
+                    rig_settings, "outfit_nude_preview", open="image.open", text="Nude Thumbnail"
                 )
                 row.operator(
                     "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
