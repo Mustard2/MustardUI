@@ -27,7 +27,7 @@ class MustardUI_Section_PropertyDefault(bpy.types.Operator):
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
 
-        if self.section_id > len(rig_settings.body_custom_properties_sections):
+        if self.section_id >= len(rig_settings.body_custom_properties_sections):
             return {"FINISHED"}
 
         section = rig_settings.body_custom_properties_sections[self.section_id]
