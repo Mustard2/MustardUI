@@ -176,7 +176,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                         max=prop_max,
                         description=description,
                         overridable=True,
-                        subtype=prop.subtype if prop.subtype != "FACTOR" else None,
+                        subtype=prop.subtype,
                     )
                 except Exception:
                     def_array = (
@@ -194,7 +194,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                         max=prop_max,
                         description=description,
                         overridable=True,
-                        subtype=prop.subtype if prop.subtype != "FACTOR" else None,
+                        subtype=prop.subtype,
                     )
             elif hasattr(prop, "description"):
                 rna_idprop_ui_create(

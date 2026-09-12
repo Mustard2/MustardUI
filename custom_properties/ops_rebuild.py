@@ -358,9 +358,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             max=custom_prop.max_int,
                             description=custom_prop.description,
                             overridable=True,
-                            subtype=custom_prop.subtype
-                            if custom_prop.subtype != "FACTOR"
-                            else None,
+                            subtype=custom_prop.subtype,
                         )
 
                     else:

@@ -209,9 +209,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     step=self.step_float,
                     description=self.description,
                     overridable=True,
-                    subtype=self.subtype
-                    if custom_prop.array_length == 0
-                    else (custom_prop.subtype if prop_subtype != "FACTOR" else None),
+                    subtype=self.subtype if custom_prop.array_length == 0 else custom_prop.subtype,
                 )
 
                 custom_prop.description = self.description
@@ -282,7 +280,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     max=self.max_int,
                     description=self.description,
                     overridable=True,
-                    subtype=custom_prop.subtype if prop_subtype != "FACTOR" else None,
+                    subtype=custom_prop.subtype,
                 )
 
                 custom_prop.description = self.description
