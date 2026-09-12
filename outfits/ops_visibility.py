@@ -1,9 +1,6 @@
 import bpy
 
-from ..custom_properties.misc import (
-    mustardui_cp_on_switch_value,
-    mustardui_cp_supports_on_switch,
-)
+from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
@@ -113,33 +110,12 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             ):
                 apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
 
-            # Custom properties
-            ui_data_cache = {}
-            for cp in outfit_cp:
-                if cp.outfit_piece != o:
-                    continue
-                if not (cp.outfit_enable_on_switch or cp.outfit_disable_on_switch):
-                    continue
-                if not mustardui_cp_supports_on_switch(cp):
-                    continue
-
-                prop = cp.prop_name
-                if prop not in arm.keys():
-                    continue
-
-                ui_data = ui_data_cache.get(prop)
-                if ui_data is None:
-                    ui_data = arm.id_properties_ui(prop).as_dict()
-                    ui_data_cache[prop] = ui_data
-
-                desired = None
-                if not visible and cp.outfit_enable_on_switch:
-                    desired = mustardui_cp_on_switch_value(cp, ui_data, True)
-                elif visible and cp.outfit_disable_on_switch:
-                    desired = mustardui_cp_on_switch_value(cp, ui_data, False)
-
-                if desired is not None and arm[prop] != desired:
-                    arm[prop] = desired
+            # Custom Properties/Actions on Switch
+            mustardui_cp_apply_on_switch(
+                arm,
+                outfit_cp,
+                lambda cp: not visible if cp.outfit_piece == o else None,
+            )
 
             switched[o.name] = not o.hide_viewport
 

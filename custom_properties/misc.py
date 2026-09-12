@@ -106,6 +106,41 @@ def mustardui_cp_on_switch_value(custom_prop, ui_data, show):
     return value
 
 
+# Apply the "Actions on switch" of the given custom properties
+def mustardui_cp_apply_on_switch(arm, custom_props, shown, value_shown=None):
+    ui_data_cache = {}
+
+    for cp in custom_props:
+        if not (cp.outfit_enable_on_switch or cp.outfit_disable_on_switch):
+            continue
+        if not mustardui_cp_supports_on_switch(cp):
+            continue
+
+        is_shown = shown(cp)
+        if is_shown is None:
+            continue
+
+        # The action of the switch direction should be enabled
+        if not (cp.outfit_enable_on_switch if is_shown else cp.outfit_disable_on_switch):
+            continue
+
+        prop = cp.prop_name
+        if prop not in arm.keys():
+            continue
+
+        ui_data = ui_data_cache.get(prop)
+        if ui_data is None:
+            ui_data = arm.id_properties_ui(prop).as_dict()
+            ui_data_cache[prop] = ui_data
+
+        desired = mustardui_cp_on_switch_value(
+            cp, ui_data, is_shown if value_shown is None else value_shown(cp)
+        )
+
+        if desired is not None and arm[prop] != desired:
+            arm[prop] = desired
+
+
 # Function to choose correct custom properties list
 def mustardui_choose_cp(obj, type, scene):
     if type == "BODY":

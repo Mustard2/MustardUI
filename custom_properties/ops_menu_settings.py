@@ -48,6 +48,40 @@ def mustardui_cp_restore_value(obj, prop_name, value, cast, prop_min=None, prop_
         print(f"MustardUI - Could not restore the value of the custom property {prop_name}")
 
 
+# Actions on Switch menu part
+def draw_on_switch_actions(box, custom_prop, scale):
+    def draw_action(show):
+        prefix = "outfit_enable" if show else "outfit_disable"
+        label = "On show:" if show else "On hide:"
+        field = mustardui_cp_on_switch_custom_field(custom_prop, show)
+        action_enabled = getattr(custom_prop, prefix + "_on_switch")
+        is_custom = getattr(custom_prop, prefix + "_value") == "CUSTOM"
+        is_bool = custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool"
+
+        row = box.row()
+        row.prop(custom_prop, prefix + "_on_switch", text=label)
+        row.scale_x = scale
+
+        values = row.row(align=True)
+        values.enabled = action_enabled
+        values.prop(custom_prop, prefix + "_value", text="")
+
+        custom = values.row(align=True)
+        custom.enabled = action_enabled and is_custom
+        if is_bool:
+            custom_value = getattr(custom_prop, field)
+            custom.prop(custom_prop, field, text=str(custom_value), toggle=True)
+        else:
+            custom.prop(custom_prop, field, text="")
+
+    box.separator()
+
+    row = box.row()
+    row.label(text="Actions on switch", icon="CON_ACTION")
+    draw_action(True)
+    draw_action(False)
+
+
 class MustardUI_Property_Settings(bpy.types.Operator):
     """Modify the property settings"""
 
@@ -424,36 +458,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.prop(custom_prop, "outfit_piece", text="")
 
             if mustardui_cp_supports_on_switch(custom_prop):
-                box.separator()
-
-                def draw_on_switch_action(box, custom_prop, show, scale):
-                    prefix = "outfit_enable" if show else "outfit_disable"
-                    label = "On show:" if show else "On hide:"
-                    field = mustardui_cp_on_switch_custom_field(custom_prop, show)
-                    action_enabled = getattr(custom_prop, prefix + "_on_switch")
-                    is_custom = getattr(custom_prop, prefix + "_value") == "CUSTOM"
-                    is_bool = custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool"
-
-                    row = box.row()
-                    row.prop(custom_prop, prefix + "_on_switch", text=label)
-                    row.scale_x = scale
-
-                    values = row.row(align=True)
-                    values.enabled = action_enabled
-                    values.prop(custom_prop, prefix + "_value", text="")
-
-                    custom = values.row(align=True)
-                    custom.enabled = action_enabled and is_custom
-                    if is_bool:
-                        custom_value = getattr(custom_prop, field)
-                        custom.prop(custom_prop, field, text=str(custom_value), toggle=True)
-                    else:
-                        custom.prop(custom_prop, field, text="")
-
-                row = box.row()
-                row.label(text="Actions on switch", icon="CON_ACTION")
-                draw_on_switch_action(box, custom_prop, True, scale)
-                draw_on_switch_action(box, custom_prop, False, scale)
+                draw_on_switch_actions(box, custom_prop, scale)
 
         if prop_cp_type == "HAIR":
             layout.label(text="Hair", icon="CURVES")
@@ -463,6 +468,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.label(text="Hair:")
             row.scale_x = scale
             row.prop(custom_prop, "hair", text="")
+
+            if custom_prop.hair is not None and mustardui_cp_supports_on_switch(custom_prop):
+                draw_on_switch_actions(box, custom_prop, scale)
 
         if custom_prop.is_animatable:
             layout.label(text="Data", icon="MODIFIER_DATA")

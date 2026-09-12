@@ -112,14 +112,14 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     outfit_enable_on_switch: BoolProperty(
         default=False,
-        name="Action on Outfit Show",
-        description="Set the value of this property when you enable the outfit",
+        name="Action on Show",
+        description="Set the value of this property when you show the Outfit or the Hair",
     )
     outfit_enable_value: EnumProperty(
         name="Value on Show",
         default="MAX",
         items=on_switch_value_items,
-        description="Value assigned to this property when you enable the outfit",
+        description="Value assigned to this property when you show the Outfit or the Hair",
     )
     outfit_enable_custom_float: FloatProperty(name="Value on Show")
     outfit_enable_custom_int: IntProperty(name="Value on Show")
@@ -127,15 +127,15 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
 
     outfit_disable_on_switch: BoolProperty(
         default=False,
-        name="Action on Outfit Hide",
-        description="Set the value of this property when you disable the outfit",
+        name="Action on Hide",
+        description="Set the value of this property when you hide the Outfit or the Hair",
     )
     outfit_disable_value: EnumProperty(
         name="Value on Hide",
         default="DEFAULT",
         items=on_switch_value_items,
-        description="Value assigned to this property when you disable the outfit.\n"
-        "A locked piece that stays visible keeps its Value on Show instead",
+        description="Value assigned to this property when you hide the Outfit or the Hair.\n"
+        "A locked Outfit piece that stays visible keeps its Value on Show instead",
     )
     outfit_disable_custom_float: FloatProperty(name="Value on Hide")
     outfit_disable_custom_int: IntProperty(name="Value on Hide")
