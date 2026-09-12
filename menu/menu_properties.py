@@ -145,6 +145,12 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
             x for x in visible_custom_properties(settings, custom_props) if x.section == ""
         ]
         if len(unsorted_props) > 0:
+            row = layout.row(align=False)
+            row.alignment = "RIGHT"
+            row.operator(
+                "mustardui.section_property_default", text="", icon="LOOP_BACK"
+            ).section_id = -1
+
             box = layout.box()
             col = box.column(align=True)
             for prop in unsorted_props:
