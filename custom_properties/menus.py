@@ -408,11 +408,21 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
             no_prop = False
         for prop in sorted(hair_props, key=lambda x: x.name):
             if prop.hair is not None:
-                hair_name = strip_naming_convention(
-                    prop.hair.name,
-                    rig_settings.hair_collection.name,
-                    rig_settings.model_MustardUI_naming_convention,
-                )
+                # The Hair Object can belong to the Hair collection or to the Hair
+                # Extras one, and neither of them is guaranteed to be set
+                hair_name = prop.hair.name
+                for collection in (
+                    rig_settings.hair_collection,
+                    rig_settings.hair_extras_collection,
+                ):
+                    if collection is not None and prop.hair in list(collection.objects):
+                        hair_name = strip_naming_convention(
+                            prop.hair.name,
+                            collection.name,
+                            rig_settings.model_MustardUI_naming_convention,
+                        )
+                        break
+
                 op = layout.operator(
                     MustardUI_Property_MenuLink.bl_idname,
                     text=hair_name + " - " + prop.name,
