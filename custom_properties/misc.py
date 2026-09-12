@@ -47,14 +47,6 @@ def mustardui_prop_limits(prop, addon_prefs):
     return prop_min, prop_max
 
 
-# Function to check keys of custom properties (only for debug)
-def dump(obj, text):
-    print("-" * 40, text, "-" * 40)
-    for attr in dir(obj):
-        if hasattr(obj, attr):
-            print("obj.%s = %s" % (attr, getattr(obj, attr)))
-
-
 # Function to check over all custom properties
 def mustardui_check_cp(obj, rna, path):
     for cp in obj.MustardUI_CustomProperties:

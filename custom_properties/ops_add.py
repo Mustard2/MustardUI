@@ -67,8 +67,6 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
         prop = context.button_prop
 
-        # dump(prop, 'button_prop')
-
         try:
             result = bpy.ops.ui.copy_data_path_button(full_path=True)
         except Exception:

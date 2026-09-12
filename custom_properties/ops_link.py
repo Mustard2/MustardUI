@@ -70,8 +70,6 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                     )
                     return {"FINISHED"}
 
-                # dump(prop, 'button_prop')
-
                 # Copy the path of the selected property
                 try:
                     bpy.ops.ui.copy_data_path_button(full_path=True)
@@ -156,8 +154,7 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
     )
 
-    def clean_prop(self, obj, uilist, index):
-
+    def clean_prop(self):
         # Remove linked property driver
         try:
             driver_object = evaluate_rna(self.rna)
@@ -178,7 +175,7 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         # Remove custom property and driver
-        driver_removed = self.clean_prop(obj, uilist, index)
+        driver_removed = self.clean_prop()
 
         # Find the linked property index to remove it from the list
         i = -1
