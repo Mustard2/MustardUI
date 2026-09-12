@@ -1,7 +1,10 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .misc import (
     diffeomorphic_facs_bones_loc,
     diffeomorphic_facs_bones_rot,
@@ -19,9 +22,12 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=0):
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui
+        return morphs_settings.enable_ui
 
     # Function to prevent the DisableDriver operator to switch off custom
     # properties drivers
@@ -133,9 +139,12 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=0):
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui
+        return morphs_settings.enable_ui
 
     def execute(self, context):
 

@@ -1,7 +1,10 @@
 import bpy
 
 from ..misc.set_bool import set_bool
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Morphs_Optimize(bpy.types.Operator):
@@ -12,9 +15,12 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=0):
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
+        return morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
 
     def execute(self, context):
         poll, arm = mustardui_active_object(context, config=0)

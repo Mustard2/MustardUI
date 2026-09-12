@@ -5,7 +5,10 @@ import bpy
 
 from .. import __package__ as base_package
 from ..menu.menu_configure import row_scale
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .misc import get_cp_source, mustardui_add_morph, mustardui_add_section
 
 
@@ -45,10 +48,13 @@ class MustardUI_Morphs_Clear(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=1):
+            return False
+
         res, arm = mustardui_active_object(context, config=1)
         morphs_settings = arm.MustardUI_MorphsSettings
 
-        return res and morphs_settings.enable_ui and morphs_settings.sections
+        return morphs_settings.enable_ui and morphs_settings.sections
 
     def execute(self, context):
 
@@ -117,13 +123,16 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=1):
+            return False
 
         res, arm = mustardui_active_object(context, config=1)
         morphs_settings = arm.MustardUI_MorphsSettings
 
         if morphs_settings.type == "GENERIC":
-            return res and morphs_settings.enable_ui and morphs_settings.sections
-        return res and morphs_settings.enable_ui
+            return morphs_settings.enable_ui and morphs_settings.sections
+
+        return morphs_settings.enable_ui
 
     def execute(self, context):
 
