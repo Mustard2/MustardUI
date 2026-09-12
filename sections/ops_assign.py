@@ -61,10 +61,7 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
         for prop in sorted(custom_props, key=lambda x: x.name):
             row = col.row(align=False)
             row.prop(prop, "add_section", text="")
-            row.label(
-                text=prop.name,
-                icon="SHAPEKEY_DATA" if prop.type in [0, 1] else "MATERIAL",
-            )
+            row.label(text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT")
             row.scale_x = 0.75
             if prop.section != "":
                 section = rig_settings.body_custom_properties_sections.get(prop.section)
