@@ -141,6 +141,23 @@ def mustardui_cp_apply_on_switch(arm, custom_props, shown, value_shown=None):
             arm[prop] = desired
 
 
+# Restore the value of a custom property after it has been re-created
+def mustardui_cp_restore_value(obj, prop_name, value, cast, prop_min=None, prop_max=None):
+    if value is None:
+        return
+
+    def convert(single_value):
+        single_value = cast(single_value)
+        if prop_min is not None and prop_max is not None:
+            single_value = min(max(single_value, prop_min), prop_max)
+        return single_value
+
+    try:
+        obj[prop_name] = [convert(x) for x in value] if isinstance(value, list) else convert(value)
+    except Exception:
+        print(f"MustardUI - Could not restore the value of the custom property {prop_name}")
+
+
 # Function to choose correct custom properties list
 def mustardui_choose_cp(obj, type, scene):
     if type == "BODY":

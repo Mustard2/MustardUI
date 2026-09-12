@@ -14,6 +14,7 @@ from .misc import (
     mustardui_choose_cp,
     mustardui_cp_on_switch_custom_field,
     mustardui_cp_path,
+    mustardui_cp_restore_value,
     mustardui_cp_supports_on_switch,
 )
 from .ops_set_section import SECTION_NONE, sections_enum
@@ -29,23 +30,6 @@ float_subtype_items = (
     ("POWER", "Power", ""),
     ("TEMPERATURE", "Temperature", ""),
 )
-
-
-# Restore the value of a custom property after it has been re-created
-def mustardui_cp_restore_value(obj, prop_name, value, cast, prop_min=None, prop_max=None):
-    if value is None:
-        return
-
-    def convert(single_value):
-        single_value = cast(single_value)
-        if prop_min is not None and prop_max is not None:
-            single_value = min(max(single_value, prop_min), prop_max)
-        return single_value
-
-    try:
-        obj[prop_name] = [convert(x) for x in value] if isinstance(value, list) else convert(value)
-    except Exception:
-        print(f"MustardUI - Could not restore the value of the custom property {prop_name}")
 
 
 # Actions on Switch menu part

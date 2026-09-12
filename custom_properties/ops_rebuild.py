@@ -10,7 +10,12 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import assign_pointers, mustardui_clean_prop, mustardui_cp_path
+from .misc import (
+    assign_pointers,
+    mustardui_clean_prop,
+    mustardui_cp_path,
+    mustardui_cp_restore_value,
+)
 
 
 def replace_id_block(rna_path, id_type, new_name):
@@ -256,6 +261,13 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         " their path.\nThis only affects future custom properties rebuild, "
         "not the current",
     )
+    keep_values: bpy.props.BoolProperty(
+        name="Keep Current Values",
+        default=True,
+        description="Restore the current value of the custom properties after the "
+        "rebuild, clamped to their limits.\nIf disabled, all the properties are reset "
+        "to their default value",
+    )
 
     def add_driver(self, obj, rna, path, prop_name):
 
@@ -330,6 +342,12 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
                     prop_name = custom_prop.prop_name
 
+                    # The property is deleted and re-created below, which resets it to its
+                    # default value: store the current one to restore it afterwards
+                    current_value = obj.get(prop_name)
+                    if hasattr(current_value, "to_list"):
+                        current_value = current_value.to_list()
+
                     if prop_name in obj.keys():
                         del obj[prop_name]
 
@@ -387,6 +405,29 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             description=custom_prop.description,
                             overridable=True,
                         )
+
+                    if self.keep_values:
+                        if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
+                            mustardui_cp_restore_value(obj, prop_name, current_value, bool)
+                        elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
+                            is_color = custom_prop.subtype == "COLOR"
+                            mustardui_cp_restore_value(
+                                obj,
+                                prop_name,
+                                current_value,
+                                float,
+                                0.0 if is_color else float(custom_prop.min_float),
+                                1.0 if is_color else float(custom_prop.max_float),
+                            )
+                        elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
+                            mustardui_cp_restore_value(
+                                obj,
+                                prop_name,
+                                current_value,
+                                int,
+                                custom_prop.min_int,
+                                custom_prop.max_int,
+                            )
 
                     self.add_driver(
                         obj,
@@ -482,6 +523,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
         box = layout.box()
         col = box.column(align=True)
+        col.prop(self, "keep_values")
         col.prop(self, "attempt_fix_paths")
         col.prop(self, "remove_invalid_properties")
 
