@@ -107,8 +107,7 @@ class MustardUI_Section_Add(bpy.types.Operator):
         uilist = rig_settings.body_custom_properties_sections
 
         a = uilist.add()
-        a.old_name = "Section " + str(len(uilist))
-        a.name = a.old_name
+        a.name = "Section " + str(len(uilist))
         index = len(uilist) - 1
         context.scene.mustardui_section_uilist_index = index
 

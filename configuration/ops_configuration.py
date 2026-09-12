@@ -231,10 +231,6 @@ class MustardUI_Configuration(bpy.types.Operator):
 
         obj.MustardUI_created = True
 
-        # Fix for #148 - https://github.com/Mustard2/MustardUI/issues/148
-        for sec in rig_settings.body_custom_properties_sections:
-            sec.old_name = sec.name
-
         # Force Physics update
         enable_physics_update(physics_settings, context)
 
