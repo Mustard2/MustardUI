@@ -1,6 +1,9 @@
 import bpy
 
-from ..custom_properties.misc import mustardui_cp_supports_on_switch
+from ..custom_properties.misc import (
+    mustardui_cp_on_switch_value,
+    mustardui_cp_supports_on_switch,
+)
 from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
@@ -127,16 +130,16 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                 ui_data = ui_data_cache.get(prop)
                 if ui_data is None:
                     ui_data = arm.id_properties_ui(prop).as_dict()
-                    # Bool properties have no max: they are enabled with True
-                    ui_data.setdefault("max", True)
                     ui_data_cache[prop] = ui_data
 
+                desired = None
                 if not visible and cp.outfit_enable_on_switch:
-                    if arm[prop] != ui_data["max"]:
-                        arm[prop] = ui_data["max"]
+                    desired = mustardui_cp_on_switch_value(cp, ui_data, True)
                 elif visible and cp.outfit_disable_on_switch:
-                    if arm[prop] != ui_data["default"]:
-                        arm[prop] = ui_data["default"]
+                    desired = mustardui_cp_on_switch_value(cp, ui_data, False)
+
+                if desired is not None and arm[prop] != desired:
+                    arm[prop] = desired
 
             switched[o.name] = not o.hide_viewport
 

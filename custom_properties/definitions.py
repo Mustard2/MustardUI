@@ -102,18 +102,44 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         name="Outfit Piece", type=bpy.types.Object, poll=outfit_switcher_poll_mesh
     )
 
+    # Actions on Switch
+    on_switch_value_items = (
+        ("MAX", "Max", "The maximum value of the property (True for Bool properties)"),
+        ("MIN", "Min", "The minimum value of the property (False for Bool properties)"),
+        ("DEFAULT", "Default", "The default value of the property"),
+        ("CUSTOM", "Custom", "A custom value, clamped to the limits of the property"),
+    )
+
     outfit_enable_on_switch: BoolProperty(
         default=False,
-        name="Enable on Outfit Switch",
-        description="Set the value of this property to the max value (True for Bool "
-        "properties) when you enable the outfit",
+        name="Action on Outfit Show",
+        description="Set the value of this property when you enable the outfit",
     )
+    outfit_enable_value: EnumProperty(
+        name="Value on Show",
+        default="MAX",
+        items=on_switch_value_items,
+        description="Value assigned to this property when you enable the outfit",
+    )
+    outfit_enable_custom_float: FloatProperty(name="Value on Show")
+    outfit_enable_custom_int: IntProperty(name="Value on Show")
+    outfit_enable_custom_bool: BoolProperty(name="Value on Show")
+
     outfit_disable_on_switch: BoolProperty(
         default=False,
-        name="Disable on Outfit Switch",
-        description="Set the value of this property to the default value when you "
-        "disable the outfit",
+        name="Action on Outfit Hide",
+        description="Set the value of this property when you disable the outfit",
     )
+    outfit_disable_value: EnumProperty(
+        name="Value on Hide",
+        default="DEFAULT",
+        items=on_switch_value_items,
+        description="Value assigned to this property when you disable the outfit.\n"
+        "A locked piece that stays visible keeps its Value on Show instead",
+    )
+    outfit_disable_custom_float: FloatProperty(name="Value on Hide")
+    outfit_disable_custom_int: IntProperty(name="Value on Hide")
+    outfit_disable_custom_bool: BoolProperty(name="Value on Hide")
 
     # Hair
     hair: PointerProperty(name="Hair Style", type=bpy.types.Object, poll=poll_mesh)

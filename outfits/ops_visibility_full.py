@@ -1,6 +1,9 @@
 import bpy
 
-from ..custom_properties.misc import mustardui_cp_supports_on_switch
+from ..custom_properties.misc import (
+    mustardui_cp_on_switch_value,
+    mustardui_cp_supports_on_switch,
+)
 from ..hair.helper_functions import apply_hair_visibility
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
@@ -193,8 +196,6 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
             ui = ui_cache.get(prop)
             if ui is None:
                 ui = arm.id_properties_ui(prop).as_dict()
-                # Bool properties have no max: they are enabled with True
-                ui.setdefault("max", True)
                 ui_cache[prop] = ui
 
             desired = None
@@ -210,20 +211,22 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                         and piece_visible
                         and cp.outfit_enable_on_switch
                     ):
-                        desired = ui["max"]
+                        desired = mustardui_cp_on_switch_value(cp, ui, True)
                     elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                        desired = ui["max"] if piece_locked and piece_visible else ui["default"]
+                        desired = mustardui_cp_on_switch_value(
+                            cp, ui, piece_locked and piece_visible
+                        )
                 else:
                     if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
-                        desired = ui["max"]
+                        desired = mustardui_cp_on_switch_value(cp, ui, True)
                     elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                        desired = ui["default"]
+                        desired = mustardui_cp_on_switch_value(cp, ui, False)
 
             elif outfit_nude:
                 if outfits_list == "Nude" and cp.outfit_enable_on_switch:
-                    desired = ui["max"]
+                    desired = mustardui_cp_on_switch_value(cp, ui, True)
                 elif outfits_list != "Nude" and cp.outfit_disable_on_switch:
-                    desired = ui["default"]
+                    desired = mustardui_cp_on_switch_value(cp, ui, False)
 
             if desired is not None and arm[prop] != desired:
                 arm[prop] = desired

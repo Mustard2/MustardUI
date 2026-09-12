@@ -39,6 +39,37 @@ def mustardui_cp_supports_on_switch(custom_prop):
     return custom_prop.type in ["FLOAT", "INT", "BOOLEAN"]
 
 
+# Name of the field storing the custom value of an "Actions on switch" action
+def mustardui_cp_on_switch_custom_field(custom_prop, show):
+    prefix = "outfit_enable" if show else "outfit_disable"
+
+    if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
+        return prefix + "_custom_bool"
+    if custom_prop.type == "INT" or custom_prop.force_type == "Int":
+        return prefix + "_custom_int"
+    return prefix + "_custom_float"
+
+
+# Value assigned by an "Actions on switch" action, on show (show=True) or on hide
+def mustardui_cp_on_switch_value(custom_prop, ui_data, show):
+    choice = getattr(custom_prop, "outfit_enable_value" if show else "outfit_disable_value")
+
+    if choice == "MAX":
+        return ui_data.get("max", True)
+    if choice == "MIN":
+        return ui_data.get("min", False)
+    if choice == "DEFAULT":
+        return ui_data["default"]
+
+    value = getattr(custom_prop, mustardui_cp_on_switch_custom_field(custom_prop, show))
+
+    # Keep the custom value inside the limits of the property
+    if not isinstance(value, bool):
+        value = min(max(value, ui_data.get("min", value)), ui_data.get("max", value))
+
+    return value
+
+
 # Function to choose correct custom properties list
 def mustardui_choose_cp(obj, type, scene):
     if type == "BODY":
