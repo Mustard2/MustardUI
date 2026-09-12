@@ -66,7 +66,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         hc = rig_settings.hair_collection
         hec = rig_settings.hair_extras_collection
 
-        return (hc and obj in hc.objects) or (hec and obj in hec.objects)
+        return (hc and obj in list(hc.objects)) or (hec and obj in list(hec.objects))
 
     # Poll function for the selection of mesh belonging to an outfit in
     # pointer properties
@@ -91,7 +91,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
             else self.outfit.objects
         )
 
-        return obj.type == "MESH" and obj in items
+        return obj.type == "MESH" and obj in list(items)
 
     outfit: PointerProperty(
         name="Outfit Collection",
