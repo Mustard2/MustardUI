@@ -27,7 +27,7 @@ def mustardui_custom_properties_print(
                     emboss=False,
                 )
         else:
-            if prop.prop_name in arm.keys():
+            if prop.prop_name in arm:
                 row.prop(arm, f'["{prop.prop_name}"]', text="")
             else:
                 row.prop(

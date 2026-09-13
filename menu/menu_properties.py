@@ -35,7 +35,7 @@ def draw_property(layout, obj, settings, rig_settings, prop):
                 icon_only=True,
                 emboss=False,
             )
-    elif prop.prop_name in obj.keys():
+    elif prop.prop_name in obj:
         row.prop(obj, f'["{bpy.utils.escape_identifier(prop.prop_name)}"]', text="")
     else:
         row.prop(

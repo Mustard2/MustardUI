@@ -125,7 +125,7 @@ def mustardui_cp_apply_on_switch(arm, custom_props, shown, value_shown=None):
             continue
 
         prop = cp.prop_name
-        if prop not in arm.keys():
+        if prop not in arm:
             continue
 
         ui_data = ui_data_cache.get(prop)
