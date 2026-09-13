@@ -18,10 +18,11 @@ def morph_filter(morph, rig_settings, morphs_settings):
         and hasattr(cp_source, f'["{bpy.utils.escape_identifier(morph.path)}"]')
     ):
         val = cp_source[bpy.utils.escape_identifier(morph.path)]
-    elif (
-        morph.shape_key and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
-    ):
-        val = rig_settings.model_body.data.shape_keys.key_blocks[morph.path].value
+    elif morph.shape_key:
+        body = rig_settings.model_body
+        shape_keys = body.data.shape_keys if body is not None and body.data else None
+        if shape_keys is not None and morph.path in shape_keys.key_blocks:
+            val = shape_keys.key_blocks[morph.path].value
 
     check1 = False
     if isinstance(val, float):
@@ -643,6 +644,9 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
         layout = self.layout
         layout.enabled = morphs_settings.diffeomorphic_enable
 
+        body = rig_settings.model_body
+        shape_keys = body.data.shape_keys if body is not None and body.data else None
+
         for section in [
             x for x in morphs_settings.sections if x.morphs and not x.is_internal and not x.hidden
         ]:
@@ -665,10 +669,11 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
                         )
                     elif (
                         morph.shape_key
-                        and morph.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+                        and shape_keys is not None
+                        and morph.path in shape_keys.key_blocks
                     ):
                         box.prop(
-                            rig_settings.model_body.data.shape_keys.key_blocks[morph.path],
+                            shape_keys.key_blocks[morph.path],
                             "value",
                             text=morph.name,
                         )

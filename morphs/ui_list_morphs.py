@@ -130,9 +130,7 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
             cp_source
             and item.custom_property
             and hasattr(cp_source, f'["{bpy.utils.escape_identifier(item.path)}"]')
-        ) or (
-            item.shape_key and shape_keys is not None and item.path in shape_keys.key_blocks.keys()
-        ):
+        ) or (item.shape_key and shape_keys is not None and item.path in shape_keys.key_blocks):
             layout.prop(item, "name", text="", emboss=False, translate=False, icon=icon)
         else:
             layout.prop(item, "name", text="", emboss=False, translate=False, icon="ERROR")

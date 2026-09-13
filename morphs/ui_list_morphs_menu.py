@@ -37,11 +37,7 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
                     icon=icon,
                     text=item.name,
                 )
-            elif (
-                item.shape_key
-                and shape_keys is not None
-                and item.path in shape_keys.key_blocks.keys()
-            ):
+            elif item.shape_key and shape_keys is not None and item.path in shape_keys.key_blocks:
                 layout.prop(
                     shape_keys.key_blocks[item.path],
                     "value",
@@ -69,11 +65,7 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
                     f'["{bpy.utils.escape_identifier(item.path)}"]',
                     text=item.name,
                 )
-            elif (
-                item.shape_key
-                and shape_keys is not None
-                and item.path in shape_keys.key_blocks.keys()
-            ):
+            elif item.shape_key and shape_keys is not None and item.path in shape_keys.key_blocks:
                 layout.prop(
                     shape_keys.key_blocks[item.path],
                     "value",
