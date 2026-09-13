@@ -1,3 +1,19 @@
+# Armature data of the only item (modifier or constraint) of item_type targeting an
+# Armature, or None if there is no such item or more than one
+def single_armature_data(items, item_type, target_attr):
+    found = None
+    for item in items:
+        if item.type != item_type:
+            continue
+        target = getattr(item, target_attr)
+        if target is None or target.type != "ARMATURE" or target.data is None:
+            continue
+        if found is not None:
+            return None
+        found = target.data
+    return found
+
+
 # Function to decide the active object for showing properties in the UI
 def mustardui_active_object(context, config=0):
     settings = context.scene.MustardUI_Settings
@@ -35,23 +51,9 @@ def mustardui_active_object(context, config=0):
             if parent is not None and parent.type == "ARMATURE" and parent.data is not None:
                 arm = parent.data
             if arm is None:
-                modifiers = [
-                    x
-                    for x in obj.modifiers
-                    if x.type == "ARMATURE" and x.object is not None and x.object.data is not None
-                ]
-                if len(modifiers) == 1:
-                    for m in modifiers:
-                        arm = m.object.data
+                arm = single_armature_data(obj.modifiers, "ARMATURE", "object")
             if arm is None:
-                constraints = [
-                    x
-                    for x in obj.constraints
-                    if x.type == "CHILD_OF" and x.target is not None and x.target.data is not None
-                ]
-                if len(constraints) == 1:
-                    for c in constraints:
-                        arm = c.target.data
+                arm = single_armature_data(obj.constraints, "CHILD_OF", "target")
 
         if arm is None:
             return False, None
