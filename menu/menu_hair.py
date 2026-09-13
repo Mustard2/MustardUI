@@ -410,19 +410,15 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
 
         rig_settings = arm.MustardUI_RigSettings
 
-        if rig_settings.hair_list == "":
+        hair = rig_settings.hair_list
+        if hair == "":
             return False
 
-        obj = context.scene.objects.get(rig_settings.hair_list)
+        obj = context.scene.objects.get(hair)
         if obj is None:
             return False
 
-        mod_particle_system = sorted(
-            [x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
-            key=format_dynamic_name,
-        )
-
-        return res if len(mod_particle_system) > 0 else False
+        return res if len(obj.particle_systems) > 0 else False
 
     def draw_header(self, context):
         res, arm = mustardui_active_object(context, config=0)
