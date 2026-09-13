@@ -1,13 +1,35 @@
 import bpy
 
 from ..armature.ik_fk_snapper import ikfk_snapper_available
-from ..misc.mirror import check_mirror
+from ..misc.mirror import mirror_candidates
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
-def draw_armature_button(bcoll, bcoll_settings, bcolls, armature_settings, layout, is_solo_enabled):
+# Mirror partner of each collection
+def mirror_partners(bcolls):
+    first_index = {}
+    for index, b in enumerate(bcolls):
+        first_index.setdefault(b.name.lower(), index)
+
+    partners = {}
+    for bcoll in bcolls:
+        found = None
+        for left in (True, False):
+            for candidate in mirror_candidates(bcoll.name, left):
+                index = first_index.get(candidate)
+                if index is not None and (found is None or index < found[0]):
+                    found = (index, left)
+        if found is not None:
+            partners[bcoll.name] = (bcolls[found[0]], found[1])
+
+    return partners
+
+
+def draw_armature_button(
+    bcoll, bcoll_settings, partner, armature_settings, layout, is_solo_enabled
+):
 
     def draw_with_icon(layout, prop, prop_name, name, icon, enabled=True):
 
@@ -46,28 +68,30 @@ def draw_armature_button(bcoll, bcoll_settings, bcolls, armature_settings, layou
         draw_children(layout, bcoll)
         return
 
-    for b in bcolls:
-        if check_mirror(bcoll.name, b.name, left=True):
-            col = layout.column()
-            row = col.row(align=True)
-            draw_with_icon(
-                row,
-                bcoll,
-                "is_visible",
-                bcoll.name,
-                bcoll_settings.icon,
-                is_solo_enabled,
-            )
-            draw_with_icon(row, bcoll, "is_solo", "", "SOLO_ON" if bcoll.is_solo else "SOLO_OFF")
-
-            row.separator()
-
-            r_icon = b.MustardUI_ArmatureBoneCollection.icon
-            draw_with_icon(row, b, "is_visible", b.name, r_icon, is_solo_enabled)
-            draw_with_icon(row, b, "is_solo", "", "SOLO_ON" if b.is_solo else "SOLO_OFF")
+    if partner is not None:
+        b, is_left = partner
+        # The right collection is drawn next to the left one
+        if not is_left:
             return
-        elif check_mirror(bcoll.name, b.name, left=False):
-            return
+
+        col = layout.column()
+        row = col.row(align=True)
+        draw_with_icon(
+            row,
+            bcoll,
+            "is_visible",
+            bcoll.name,
+            bcoll_settings.icon,
+            is_solo_enabled,
+        )
+        draw_with_icon(row, bcoll, "is_solo", "", "SOLO_ON" if bcoll.is_solo else "SOLO_OFF")
+
+        row.separator()
+
+        r_icon = b.MustardUI_ArmatureBoneCollection.icon
+        draw_with_icon(row, b, "is_visible", b.name, r_icon, is_solo_enabled)
+        draw_with_icon(row, b, "is_solo", "", "SOLO_ON" if b.is_solo else "SOLO_OFF")
+        return
 
     row = layout.row(align=True)
     draw_with_icon(row, bcoll, "is_visible", bcoll.name, bcoll_settings.icon, is_solo_enabled)
@@ -173,13 +197,15 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         layout.use_property_split = False
         layout.use_property_decorate = True
 
+        partners = mirror_partners(enabled_colls) if armature_settings.mirror else {}
+
         for bcoll in enabled_colls:
             bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
             if (bcoll_settings.advanced and settings.advanced) or not bcoll_settings.advanced:
                 draw_armature_button(
                     bcoll,
                     bcoll_settings,
-                    enabled_colls,
+                    partners.get(bcoll.name),
                     armature_settings,
                     layout,
                     is_solo_enabled,
