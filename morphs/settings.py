@@ -85,6 +85,12 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         name="Filter morphs",
         description="Filter used morphs.\nOnly non null morphs will be shown",
     )
+    diffeomorphic_show_count: bpy.props.BoolProperty(
+        default=False,
+        name="Show Morphs Count",
+        description="Show the number of morphs matching the search in the header of each "
+        "morphs panel.\nThis slows down the UI on models with many morphs",
+    )
 
     # Settings panel for switching on/off morphs
     diffeomorphic_enable_settings: bpy.props.BoolProperty(

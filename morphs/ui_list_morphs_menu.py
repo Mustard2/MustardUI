@@ -2,7 +2,7 @@ import bpy
 from bpy.props import IntProperty
 
 from ..model_selection.active_object import mustardui_active_object
-from .misc import get_cp_source
+from .misc import get_cp_source, morph_filter_function
 
 
 class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
@@ -80,6 +80,34 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
                     emboss=False,
                     icon_only=True,
                 )
+
+    def filter_items(self, context, data, propname):
+        items = getattr(data, propname)
+        helper_funcs = bpy.types.UI_UL_list
+
+        # Name filter and sorting of the list options
+        flt_flags = helper_funcs.filter_items_by_name(
+            self.filter_name,
+            self.bitflag_filter_item,
+            items,
+            "name",
+            reverse=self.use_filter_invert,
+        ) or [self.bitflag_filter_item] * len(items)
+        flt_neworder = (
+            helper_funcs.sort_items_by_name(items, "name") if self.use_filter_sort_alpha else []
+        )
+
+        # Search and null filters of the Morphs panel, shared by all the lists
+        poll, obj = mustardui_active_object(context, config=0)
+        if obj is not None:
+            morph_filter = morph_filter_function(
+                obj.MustardUI_RigSettings, obj.MustardUI_MorphsSettings
+            )
+            for i, morph in enumerate(items):
+                if flt_flags[i] and not morph_filter(morph):
+                    flt_flags[i] &= ~self.bitflag_filter_item
+
+        return flt_flags, flt_neworder
 
 
 def register():

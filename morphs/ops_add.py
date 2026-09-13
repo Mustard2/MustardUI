@@ -86,6 +86,7 @@ class MustardUI_Morphs_Clear(bpy.types.Operator):
         morphs_settings.sections.clear()
         morphs_settings.diffeomorphic_genesis_version = -1
         morphs_settings.morphs_number = 0
+        morphs_settings.use_shape_key_mute_drivers = False
 
         # Reset UI List indices
         arm.mustardui_morphs_section_uilist_index = -1
@@ -461,7 +462,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 # button which is now blocked by the driver
                 # Note: Enable Freeze Morphs might still be enabled for Diffeomorphic
                 # Morphs
-                if not section.is_internal:
+                if self.add_shape_key_mute_driver and not section.is_internal:
                     section.freezable = False
 
                 for sk in sks:
