@@ -585,7 +585,9 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Clean drivers
-        for dr in model_armature.data.animation_data.drivers:
+        animation_data = model_armature.data.animation_data
+        empty_drivers = []
+        for dr in animation_data.drivers if animation_data is not None else []:
             driver = dr.driver
 
             if driver is None:
@@ -646,7 +648,11 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
 
             # After removing variables, check if any variables remain
             if len(driver.variables) == 0:
-                model_armature.data.animation_data.drivers.remove(driver)
+                empty_drivers.append(dr)
+
+        # Remove drivers left without variables
+        for dr in empty_drivers:
+            animation_data.drivers.remove(dr)
 
         bpy.context.view_layer.objects.active = model_armature
         bpy.ops.object.mode_set(mode="EDIT")
