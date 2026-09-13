@@ -40,7 +40,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
         res, arm = mustardui_active_object(context, config=1)
         if arm is None:
             return False
@@ -62,7 +61,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         return res and not abort_aa
 
     def execute(self, context):
-
         addon_prefs = context.preferences.addons[base_package].preferences
 
         name_prefix = "MustardUI"
@@ -270,7 +268,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         return {"FINISHED"}
 
     def draw(self, context):
-
         settings = context.scene.MustardUI_Settings
 
         layout = self.layout
@@ -330,7 +327,6 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
                 return not abort_aa
 
     def execute(self, context):
-
         addon_prefs = context.preferences.addons[base_package].preferences
 
         arm = bpy.context.object
@@ -432,11 +428,9 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-
         layout = self.layout
 
         chain_bones = bpy.context.selected_pose_bones
