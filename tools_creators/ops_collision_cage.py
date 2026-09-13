@@ -205,6 +205,10 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
             bpy.ops.object.mode_set(mode="OBJECT")
 
         selected_objs = bpy.context.selected_objects
+        if not any(obj.type == "MESH" for obj in selected_objs):
+            self.report({"ERROR"}, "MustardUI - Select at least one mesh to create a Collision Cage.")
+            return {"CANCELLED"}
+
         active_obj = bpy.context.active_object
         vertex_selection_required = False
         edit_mode_with_selection = False
@@ -309,25 +313,22 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
             # Exit edit mode
             bpy.ops.object.editmode_toggle()
 
-        # Add the object to the Physics Panel
-        if self.add_to_panel:
-            add_item = physics_settings.items.add()
-            add_item.object = bpy.context.object
-            if rig_settings.model_name != "":
-                add_item.object.name = (
-                    f"{add_item.object.name}"
-                    if rig_settings.model_name in add_item.object.name
-                    else f"{rig_settings.model_name} {add_item.object.name}"
-                )
-            add_item.type = "COLLISION"
+        # Add created cages to the Physics Panel
+        for cage in proxy_map.values():
+            if self.add_to_panel:
+                add_item = physics_settings.items.add()
+                add_item.object = cage
+                if rig_settings.model_name != "" and rig_settings.model_name not in cage.name:
+                    cage.name = f"{rig_settings.model_name} {cage.name}"
+                add_item.type = "COLLISION"
 
-        # Disable shadows for viewport/render
-        bpy.context.object.visible_camera = False
-        bpy.context.object.visible_shadow = False
-        bpy.context.object.visible_diffuse = False
-        bpy.context.object.visible_glossy = False
-        bpy.context.object.visible_transmission = False
-        bpy.context.object.visible_volume_scatter = False
+            # Disable shadows for viewport/render
+            cage.visible_camera = False
+            cage.visible_shadow = False
+            cage.visible_diffuse = False
+            cage.visible_glossy = False
+            cage.visible_transmission = False
+            cage.visible_volume_scatter = False
 
         self.report({"INFO"}, "MustardUI - Collision Cage created.")
 
