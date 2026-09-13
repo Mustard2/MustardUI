@@ -40,154 +40,168 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "outfit_physics_support", text="Physics Support")
         col.prop(rig_settings, "outfit_config_subcollections")
 
-        if len([x for x in rig_settings.outfits_collections if x.collection is not None]) <= 0:
-            box = layout.box()
-            box.label(text="No Outfits added yet.", icon="ERROR")
-            return
-
+        # Optimization settings
         box = layout.box()
-        row = box.row()
-        row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
-        row.operator("mustardui.outfits_smartcheck", text="", icon="SHADERFX")
-
+        box.label(text="Optimization Settings", icon="FORCE_WIND")
         col = box.column(align=True)
-        col.row(align=True).prop(rig_settings, "outfits_list_mode", expand=True)
-        if rig_settings.outfits_list_mode == "THUMBNAILS":
-            col.prop(rig_settings, "outfits_list_previews_scale")
-            col.operator(
-                "mustardui.outfits_render_preview",
-                text="Render All Thumbnails",
-                icon="RENDER_STILL",
-            ).outfit = ""
+        col.prop(rig_settings, "outfit_switch_armature_disable")
+        col.prop(rig_settings, "outfit_switch_modifiers_disable")
+        col.prop(rig_settings, "outfit_switch_shape_keys_disable")
+        col.prop(rig_settings, "outfits_update_tag_on_switch")
 
-            if rig_settings.outfits_list_mode == "THUMBNAILS" and rig_settings.outfit_nude:
+        if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
+            box = layout.box()
+            row = box.row()
+            row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
+            row.operator("mustardui.outfits_smartcheck", text="", icon="SHADERFX")
+
+            col = box.column(align=True)
+            col.row(align=True).prop(rig_settings, "outfits_list_mode", expand=True)
+            if rig_settings.outfits_list_mode == "THUMBNAILS":
+                col.prop(rig_settings, "outfits_list_previews_scale")
+                col.operator(
+                    "mustardui.outfits_render_preview",
+                    text="Render All Thumbnails",
+                    icon="RENDER_STILL",
+                ).outfit = ""
+
+                if rig_settings.outfits_list_mode == "THUMBNAILS" and rig_settings.outfit_nude:
+                    box2 = box.box()
+                    row = box2.row()
+                    row.template_ID(
+                        rig_settings,
+                        "outfit_nude_preview",
+                        open="image.open",
+                        text="Nude Thumbnail",
+                    )
+                    row.operator(
+                        "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
+                    ).outfit = "Nude"
+                    if rig_settings.outfit_nude_preview is not None:
+                        box2.template_icon(
+                            icon_value=rig_settings.outfit_nude_preview.preview_ensure().icon_id,
+                            scale=rig_settings.outfits_list_previews_scale,
+                        )
+
+            # Outfits list panel
+            box = box.box()
+            row = box.row()
+            row.template_list(
+                "MUSTARDUI_UL_Outfits_UIList",
+                "The_List",
+                rig_settings,
+                "outfits_collections",
+                scene,
+                "mustardui_outfits_uilist_index",
+                rows=8,
+            )
+
+            col = row.column()
+
+            col2 = col.column(align=True)
+            opup = col2.operator("mustardui.outfits_switch", icon="TRIA_UP", text="")
+            opup.direction = "UP"
+
+            opdown = col2.operator("mustardui.outfits_switch", icon="TRIA_DOWN", text="")
+            opdown.direction = "DOWN"
+
+            col.separator()
+
+            col.operator(
+                "mustardui.outfits_select_in_configuration",
+                text="",
+                icon="RESTRICT_SELECT_OFF",
+            )
+
+            col.separator()
+
+            col.operator(
+                "mustardui.rename_outfit", text="", icon="GREASEPENCIL"
+            ).right_click_call = False
+
+            col2 = col.column(align=True)
+            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
+
+            outfit_collection = rig_settings.outfits_collections[
+                scene.mustardui_outfits_uilist_index
+            ].collection
+            if outfit_collection is not None:
+                op.single_outfit = outfit_collection.name
+            else:
+                op.single_outfit = ""
+
+            col.separator()
+
+            col2 = col.column(align=True)
+            op = col2.operator("mustardui.remove_outfit", text="", icon="X")
+            op.is_config = True
+            op.delete_cp = True
+
+            op = col2.operator("mustardui.delete_outfit", text="", icon="TRASH")
+            op.is_config = True
+            op.delete_cp = True
+
+            outfit = rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index]
+
+            if rig_settings.hair_collection is not None:
+                box.prop(outfit, "hair")
+
+            if rig_settings.outfits_list_mode == "THUMBNAILS":
                 box2 = box.box()
                 row = box2.row()
-                row.template_ID(
-                    rig_settings, "outfit_nude_preview", open="image.open", text="Nude Thumbnail"
-                )
-                row.operator(
-                    "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
-                ).outfit = "Nude"
-                if rig_settings.outfit_nude_preview is not None:
+                row.template_ID(outfit, "preview", open="image.open", text="Thumbnail")
+                if outfit.collection is not None:
+                    row.operator(
+                        "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
+                    ).outfit = outfit.collection.name
+                if outfit.preview is not None:
                     box2.template_icon(
-                        icon_value=rig_settings.outfit_nude_preview.preview_ensure().icon_id,
+                        icon_value=outfit.preview.preview_ensure().icon_id,
                         scale=rig_settings.outfits_list_previews_scale,
                     )
 
-        # Outfits list panel
-        box = box.box()
-        row = box.row()
-        row.template_list(
-            "MUSTARDUI_UL_Outfits_UIList",
-            "The_List",
-            rig_settings,
-            "outfits_collections",
-            scene,
-            "mustardui_outfits_uilist_index",
-            rows=8,
-        )
-
-        col = row.column()
-
-        col2 = col.column(align=True)
-        opup = col2.operator("mustardui.outfits_switch", icon="TRIA_UP", text="")
-        opup.direction = "UP"
-
-        opdown = col2.operator("mustardui.outfits_switch", icon="TRIA_DOWN", text="")
-        opdown.direction = "DOWN"
-
-        col.separator()
-
-        col.operator(
-            "mustardui.outfits_select_in_configuration",
-            text="",
-            icon="RESTRICT_SELECT_OFF",
-        )
-
-        col.separator()
-
-        col.operator(
-            "mustardui.rename_outfit", text="", icon="GREASEPENCIL"
-        ).right_click_call = False
-
-        col2 = col.column(align=True)
-        op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
-
-        outfit_collection = rig_settings.outfits_collections[
-            scene.mustardui_outfits_uilist_index
-        ].collection
-        if outfit_collection is not None:
-            op.single_outfit = outfit_collection.name
-        else:
-            op.single_outfit = ""
-
-        col.separator()
-
-        col2 = col.column(align=True)
-        op = col2.operator("mustardui.remove_outfit", text="", icon="X")
-        op.is_config = True
-        op.delete_cp = True
-
-        op = col2.operator("mustardui.delete_outfit", text="", icon="TRASH")
-        op.is_config = True
-        op.delete_cp = True
-
-        outfit = rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index]
-
-        if rig_settings.hair_collection is not None:
-            box.prop(outfit, "hair")
-
-        if rig_settings.outfits_list_mode == "THUMBNAILS":
-            box2 = box.box()
-            row = box2.row()
-            row.template_ID(outfit, "preview", open="image.open", text="Thumbnail")
-            if outfit.collection is not None:
-                row.operator(
-                    "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
-                ).outfit = outfit.collection.name
-            if outfit.preview is not None:
-                box2.template_icon(
-                    icon_value=outfit.preview.preview_ensure().icon_id,
-                    scale=rig_settings.outfits_list_previews_scale,
-                )
-
-        # Custom properties
-        box = layout.box()
-        row = box.row()
-        row.label(text="Custom properties", icon="PRESET_NEW")
-        row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
-
-        if len(arm.MustardUI_CustomPropertiesOutfit) > 0:
+            # Custom properties
+            box = layout.box()
             row = box.row()
-            row.template_list(
-                "MUSTARDUI_UL_Property_UIListOutfits",
-                "The_List",
-                arm,
-                "MustardUI_CustomPropertiesOutfit",
-                scene,
-                "mustardui_property_uilist_outfits_index",
-            )
-            col = row.column()
-            col.operator("mustardui.property_settings", icon="PREFERENCES", text="").type = "OUTFIT"
-            col.separator()
-            col2 = col.column(align=True)
-            opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
-            opup.direction = "UP"
-            opup.type = "OUTFIT"
-            opdown = col2.operator("mustardui.property_switch", icon="TRIA_DOWN", text="")
-            opdown.direction = "DOWN"
-            opdown.type = "OUTFIT"
-            col.separator()
-            col.operator("mustardui.property_remove", icon="X", text="").type = "OUTFIT"
+            row.label(text="Custom properties", icon="PRESET_NEW")
+            row.operator("mustardui.property_fix_path", text="", icon="DECORATE_DRIVER")
 
-            col = box.column(align=True)
-            col.prop(rig_settings, "outfit_custom_properties_icons")
-            col.prop(rig_settings, "outfit_custom_properties_name_order")
+            if len(arm.MustardUI_CustomPropertiesOutfit) > 0:
+                row = box.row()
+                row.template_list(
+                    "MUSTARDUI_UL_Property_UIListOutfits",
+                    "The_List",
+                    arm,
+                    "MustardUI_CustomPropertiesOutfit",
+                    scene,
+                    "mustardui_property_uilist_outfits_index",
+                )
+                col = row.column()
+                col.operator(
+                    "mustardui.property_settings", icon="PREFERENCES", text=""
+                ).type = "OUTFIT"
+                col.separator()
+                col2 = col.column(align=True)
+                opup = col2.operator("mustardui.property_switch", icon="TRIA_UP", text="")
+                opup.direction = "UP"
+                opup.type = "OUTFIT"
+                opdown = col2.operator("mustardui.property_switch", icon="TRIA_DOWN", text="")
+                opdown.direction = "DOWN"
+                opdown.type = "OUTFIT"
+                col.separator()
+                col.operator("mustardui.property_remove", icon="X", text="").type = "OUTFIT"
+
+                col = box.column(align=True)
+                col.prop(rig_settings, "outfit_custom_properties_icons")
+                col.prop(rig_settings, "outfit_custom_properties_name_order")
+
+            else:
+                box = box.box()
+                box.label(text="No property added yet", icon="ERROR")
 
         else:
-            box = box.box()
-            box.label(text="No property added yet", icon="ERROR")
+            box = layout.box()
+            box.label(text="No Outfits added yet.", icon="ERROR")
 
         # Extras list
         box = layout.box()
@@ -216,15 +230,6 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "outfits_enable_global_mask")
         col.prop(rig_settings, "outfits_enable_global_solidify")
         col.prop(rig_settings, "outfits_enable_global_triangulate")
-
-        # Optimization settings
-        box = layout.box()
-        box.label(text="Optimization Settings", icon="FORCE_WIND")
-        col = box.column(align=True)
-        col.prop(rig_settings, "outfit_switch_armature_disable")
-        col.prop(rig_settings, "outfit_switch_modifiers_disable")
-        col.prop(rig_settings, "outfit_switch_shape_keys_disable")
-        col.prop(rig_settings, "outfits_update_tag_on_switch")
 
 
 def register():

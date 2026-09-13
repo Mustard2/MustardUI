@@ -39,11 +39,10 @@ class MustardUI_RemoveUI(bpy.types.Operator):
     delete_model_collections: BoolProperty(
         default=False,
         name="Delete Model Collections",
-        description="Also delete the Collections containing the Armature, the bones custom "
-        "shapes and the Physics Items, with their parent Collections, all their Objects and "
-        "sub-collections.\nCollections containing Objects of other MustardUI models are kept.\n"
-        "Warning: this might delete Objects not related to the model (e.g. Objects not "
-        "registered in MustardUI)",
+        description="Also delete the Collections containing the Armature and the Physics Items, "
+        "with their parents, Objects and sub-collections.\nCollections with Objects of other "
+        "MustardUI models, or with Shared Data if not deleted, are kept.\n"
+        "Warning: this might delete Objects not related to the model",
     )
 
     def remove_data_col(self, context, col, remove_subcoll=False):
@@ -120,11 +119,20 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
         # Store the leftover collections
         model_collections = set()
+        skipped_collections = set()
         if self.delete_objects and self.delete_model_collections:
+            custom_shapes = {
+                x.custom_shape for x in arm_obj.pose.bones if x.custom_shape is not None
+            }
             objects = [arm_obj]
-            objects += [x.custom_shape for x in arm_obj.pose.bones if x.custom_shape is not None]
             objects += [x.object for x in physics_settings.items if x.object is not None]
-            other_objects = self.other_models_objects(arm)
+            # Keep the Objects of other MustardUI models and, if shared data is kept,
+            # the bones custom shapes
+            protected_objects = self.other_models_objects(arm)
+            if self.delete_shared:
+                objects += custom_shapes
+            else:
+                protected_objects |= custom_shapes
 
             parent_collections = {}
             for col in bpy.data.collections:
@@ -133,7 +141,6 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
             to_check = [col for obj in objects for col in obj.users_collection]
             checked_collections = set()
-            skipped_collections = set()
             while to_check:
                 col = to_check.pop()
                 # Skip scene master collections and linked collections (can not be deleted)
@@ -142,23 +149,16 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                 if col.name in checked_collections:
                     continue
                 checked_collections.add(col.name)
-                # Skip collections containing Objects of other MustardUI models
-                if any(x in other_objects for x in col.all_objects):
+                # Skip collections containing Objects of other MustardUI models or kept shared data
+                if any(x in protected_objects for x in col.all_objects):
                     skipped_collections.add(col.name)
                     continue
                 model_collections.add(col.name)
                 to_check += parent_collections.get(col.name, [])
 
-            if skipped_collections:
-                self.report(
-                    {"WARNING"},
-                    "MustardUI - Collections shared with other models were not deleted: "
-                    + ", ".join(sorted(skipped_collections)),
-                )
-
         # Store the collision collections set in the physics items
         collision_collections = set()
-        if self.delete_objects and self.delete_shared:
+        if self.delete_objects and (self.delete_shared or self.delete_model_collections):
             for item in physics_settings.items:
                 if item.object is None:
                     continue
@@ -294,12 +294,23 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
             # Remove the leftover collections (including their parent collections) containing
             # - model Armature
-            # - bones custom shapes
+            # - bones custom shapes (if shared data is deleted)
             # - physics items
             if self.delete_model_collections:
+                # Keep the collision collections if shared data is kept
+                kept_cols = set()
+                if not self.delete_shared:
+                    kept_cols = {bpy.data.collections.get(x) for x in collision_collections}
+                    kept_cols.discard(None)
+                kept_objs = {obj for col in kept_cols for obj in col.all_objects}
+
                 for col_name in model_collections:
                     col = bpy.data.collections.get(col_name)
                     if col is None:
+                        continue
+                    shared_cols = kept_cols & {col, *col.children_recursive}
+                    if shared_cols or not kept_objs.isdisjoint(col.all_objects):
+                        skipped_collections.add(col_name)
                         continue
                     children = [x.name for x in col.children_recursive]
                     self.remove_data_col(context, col, remove_subcoll=True)
@@ -307,6 +318,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                         child = bpy.data.collections.get(child_name)
                         if child is not None:
                             bpy.data.collections.remove(child)
+
+                if skipped_collections:
+                    self.report(
+                        {"WARNING"},
+                        "MustardUI - Collections containing shared data were not deleted: "
+                        + ", ".join(sorted(skipped_collections)),
+                    )
 
             # Purge the data left without users
             bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)

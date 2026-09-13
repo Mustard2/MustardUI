@@ -195,10 +195,10 @@ class MustardUI_Outfits_RenderPreview(bpy.types.Operator):
                     rig_settings.outfits_list = name
 
                 with context.temp_override(area=area, region=region):
-                    bpy.ops.render.opengl(view_context=True)
+                    result = bpy.ops.render.opengl(view_context=True)
 
                 render_result = bpy.data.images.get("Render Result")
-                if render_result is None:
+                if "FINISHED" not in result or render_result is None:
                     self.report({"ERROR"}, "MustardUI - The Viewport render failed.")
                     return {"CANCELLED"}
 
