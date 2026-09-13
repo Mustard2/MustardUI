@@ -114,18 +114,19 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         # Find disconnected bone chains
         bone_chains = find_bone_chains(bones)
 
+        # Check every chain before creating anything, to not leave partial results behind
+        if any(self.pinned_bones >= len(chain) for chain in bone_chains):
+            self.report(
+                {"WARNING"},
+                "MustardUI - The number of pinned bones can not be bigger than the "
+                "number of available bones.",
+            )
+            return {"CANCELLED"}
+
         chain_objects = []
         chain_bone_constraints = []
 
         for chain_idx, chain in enumerate(bone_chains):
-            if self.pinned_bones >= len(chain):
-                self.report(
-                    {"WARNING"},
-                    "MustardUI - The number of pinned bones can not be bigger than the "
-                    "number of available bones.",
-                )
-                return {"CANCELLED"}
-
             # Create a curve to represent the path through the bone tips
             curve_data = bpy.data.curves.new("MustardUI Bone Physics", type="CURVE")
             curve_data.dimensions = "3D"
