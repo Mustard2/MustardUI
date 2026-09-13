@@ -1,5 +1,6 @@
 import bpy
 
+from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -46,9 +47,7 @@ class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
 
         # Delete the Objects
         try:
-            data = pi_obj.data
-            bpy.data.objects.remove(pi_obj)
-            bpy.data.meshes.remove(data)
+            remove_objects([pi_obj])
         except Exception:
             self.report(
                 {"ERROR"},
