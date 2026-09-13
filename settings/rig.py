@@ -403,22 +403,14 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
 
     # Function to update the global outfit properties
     def outfits_global_options_subsurf_update(self, context):
+        if not self.outfits_enable_global_subsurface:
+            return
 
-        collections = [x.collection for x in self.outfits_collections]
-        if self.extras_collection is not None:
-            collections.append(self.extras_collection)
-
-        for collection in collections:
-            use_sub = (
-                self.extras_config_subcollections
-                if collection == self.extras_collection
-                else self.outfit_config_subcollections
-            )
-            items = collection.all_objects if use_sub else collection.objects
-            for obj in items:
+        for collection in outfits_get_collections(self):
+            for obj in outfits_get_collection_items(self, collection):
                 for modifier in obj.modifiers:
-                    if modifier.type == "SUBSURF" and self.outfits_enable_global_subsurface:
-                        modifier.show_viewport = self.outfits_global_subsurface
+                    if modifier.type == "SUBSURF":
+                        set_bool(modifier, "show_viewport", self.outfits_global_subsurface)
 
     def outfits_global_options_update(self, context):
         """Update global outfit options for all collections and their modifiers."""
