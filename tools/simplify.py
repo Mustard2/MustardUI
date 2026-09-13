@@ -385,16 +385,13 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
 
         # Morphs
         if morphs_settings and morphs_settings.enable_ui:
-            if simplify_settings.simplify_morphs_freeze and morphs_settings.enable_freeze_morphs:
-                if (
-                    not simplify_settings.simplify_morphs or morphs_settings.type == "GENERIC"
-                ) and (
-                    (not morphs_settings.morphs_optimized and simplify_settings.simplify_enable)
-                    or (morphs_settings.morphs_optimized and not simplify_settings.simplify_enable)
+            if simplify_settings.simplify_morphs and "DIFFEO_GENESIS" in morphs_settings.type:
+                morphs_settings.diffeomorphic_enable = not simplify_settings.simplify_enable
+            elif simplify_settings.simplify_morphs_freeze and morphs_settings.enable_freeze_morphs:
+                if (not morphs_settings.morphs_optimized and simplify_settings.simplify_enable) or (
+                    morphs_settings.morphs_optimized and not simplify_settings.simplify_enable
                 ):
                     bpy.ops.mustardui.morphs_optimize()
-            elif simplify_settings.simplify_morphs and "DIFFEO_GENESIS" in morphs_settings.type:
-                morphs_settings.diffeomorphic_enable = not simplify_settings.simplify_enable
 
         # Physics
         if (
