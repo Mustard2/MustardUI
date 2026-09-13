@@ -89,7 +89,7 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         default=False,
         name="Show Morphs Count",
         description="Show the number of morphs matching the search in the header of each "
-        "morphs panel.\nThis slows down the UI on models with many morphs",
+        "morphs section.\nThis slows down the UI on models with many morphs",
     )
 
     # Settings panel for switching on/off morphs

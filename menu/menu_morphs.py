@@ -139,12 +139,26 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
         # Generic panel
         else:
             has_morphs = any(x.morphs and not x.hidden for x in morphs_settings.sections)
-            draw_morphs_buttons(layout, morphs_settings, has_morphs)
+            draw_morphs_buttons(layout, morphs_settings, has_morphs, settings_button=True)
+
+            if has_morphs and morphs_settings.diffeomorphic_enable_settings:
+                box = layout.box()
+                box.prop(morphs_settings, "diffeomorphic_show_count")
+
+            morph_filter = (
+                morph_filter_function(obj.MustardUI_RigSettings, morphs_settings)
+                if morphs_settings.diffeomorphic_show_count
+                else None
+            )
 
             for index, section in enumerate(morphs_settings.sections):
                 if not section.morphs or section.hidden:
                     continue
-                if ui_collapse_prop(layout, section, "collapse", section.name, icon=section.icon):
+                # Count before the name, as in the Diffeomorphic panel headers
+                label = section.name
+                if morph_filter is not None:
+                    label = f"({sum(1 for x in section.morphs if morph_filter(x))}) {label}"
+                if ui_collapse_prop(layout, section, "collapse", label, icon=section.icon):
                     row = layout.row()
                     row.enabled = (
                         not morphs_settings.morphs_optimized if section.freezable else True
