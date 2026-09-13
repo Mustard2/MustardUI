@@ -148,6 +148,9 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             visibility.setdefault(name, visible and rig_settings.outfits_global_mask)
         update_masks(context, rig_settings, visibility)
 
+        # Extras
+        hidden = update_extras_visibility(context, rig_settings)
+
         # ------------------- GLOBAL UPDATES ------------------- #
         # Physics update
         if physics_settings.enable_ui:
@@ -165,21 +168,6 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                     update_tags_recursive(child, depth + 1)
 
             update_tags_recursive(obj)
-
-        # Extras
-        hidden = update_extras_visibility(context, rig_settings)
-
-        # ------------------- GLOBAL UPDATES ------------------- #
-        # Physics update
-        if physics_settings.enable_ui:
-            enable_physics_update(physics_settings, context)
-
-        # Update tags
-        if rig_settings.outfits_update_tag_on_switch:
-            arm.update_tag()
-            obj.update_tag()
-            for child in obj.children:
-                child.update_tag()
 
         # Armature collections
         if armature_settings.outfits:
