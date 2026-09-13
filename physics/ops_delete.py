@@ -31,6 +31,12 @@ class MustardUI_PhysicsItem_Delete(bpy.types.Operator):
 
         item = uilist[index]
         pi_obj = item.object
+
+        if pi_obj is None:
+            bpy.ops.mustardui.physics_item_remove()
+            self.report({"INFO"}, "MustardUI - Physics Item without an Object removed.")
+            return {"FINISHED"}
+
         obj_name = pi_obj.name
 
         # Remove the associated modifiers in the scene
