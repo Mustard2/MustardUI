@@ -116,9 +116,11 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
                         else:
                             driver.mute = False
 
-        for driver in rig_settings.model_armature_object.animation_data.drivers:
-            if "evalMorphs" in driver.driver.expression:
-                driver.mute = self.check_driver(arm, driver.data_path)
+        animation_data = rig_settings.model_armature_object.animation_data
+        if animation_data is not None:
+            for driver in animation_data.drivers:
+                if "evalMorphs" in driver.driver.expression:
+                    driver.mute = self.check_driver(arm, driver.data_path)
 
         context.view_layer.objects.active = aobj
 
@@ -216,13 +218,15 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                         ):
                             driver.mute = False
 
-        for driver in rig_settings.model_armature_object.animation_data.drivers:
-            if (
-                "evalMorphs" in driver.driver.expression
-                or driver.driver.expression == "0.0"
-                or driver.driver.expression == "-0.0"
-            ):
-                driver.mute = False
+        animation_data = rig_settings.model_armature_object.animation_data
+        if animation_data is not None:
+            for driver in animation_data.drivers:
+                if (
+                    "evalMorphs" in driver.driver.expression
+                    or driver.driver.expression == "0.0"
+                    or driver.driver.expression == "-0.0"
+                ):
+                    driver.mute = False
 
         context.view_layer.objects.active = aobj
 

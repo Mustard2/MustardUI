@@ -20,6 +20,9 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
 
+        body = rig_settings.model_body
+        shape_keys = body.data.shape_keys if body is not None and body.data else None
+
         if morphs_settings.type == "GENERIC" and morphs_settings.show_type_icon:
             icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
             cp_source = get_cp_source(item.custom_property_source, rig_settings)
@@ -36,10 +39,11 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
                 )
             elif (
                 item.shape_key
-                and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+                and shape_keys is not None
+                and item.path in shape_keys.key_blocks.keys()
             ):
                 layout.prop(
-                    rig_settings.model_body.data.shape_keys.key_blocks[item.path],
+                    shape_keys.key_blocks[item.path],
                     "value",
                     icon=icon,
                     text=item.name,
@@ -67,10 +71,11 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
                 )
             elif (
                 item.shape_key
-                and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+                and shape_keys is not None
+                and item.path in shape_keys.key_blocks.keys()
             ):
                 layout.prop(
-                    rig_settings.model_body.data.shape_keys.key_blocks[item.path],
+                    shape_keys.key_blocks[item.path],
                     "value",
                     text=item.name,
                 )

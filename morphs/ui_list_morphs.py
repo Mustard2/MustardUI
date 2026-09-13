@@ -120,15 +120,18 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
+
+        body = rig_settings.model_body
+        shape_keys = body.data.shape_keys if body is not None and body.data else None
         icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
         cp_source = get_cp_source(item.custom_property_source, rig_settings)
+
         if (
             cp_source
             and item.custom_property
             and hasattr(cp_source, f'["{bpy.utils.escape_identifier(item.path)}"]')
         ) or (
-            item.shape_key
-            and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
+            item.shape_key and shape_keys is not None and item.path in shape_keys.key_blocks.keys()
         ):
             layout.prop(item, "name", text="", emboss=False, translate=False, icon=icon)
         else:
