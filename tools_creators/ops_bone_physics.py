@@ -346,7 +346,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
 
         # Remove all Damped Track constraints from the bones of the armature
         armature = curve_obj.parent  # Assuming the armature is the active object
-        if armature.type != "ARMATURE":
+        if armature is None or armature.type != "ARMATURE":
             self.report(
                 {"WARNING"},
                 "MustardUI - Removal was not possible: the mesh is not parented to any Armature.",
