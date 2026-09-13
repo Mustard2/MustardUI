@@ -3,6 +3,10 @@ import bpy
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
 from ..outfits.helper_functions import find_layer_collection
+from ..outfits.ops_visibility import (
+    switch_outfit_piece,
+    update_model_after_pieces_switch,
+)
 
 
 class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
@@ -126,7 +130,20 @@ def simplify_extras(rig_settings, enable):
     if rig_settings.extras_collection is None:
         return
 
-    items = (
+    arm = rig_settings.id_data
+    scene_objects = bpy.context.scene.objects
+
+    # The objects are switched one by one, then the whole model is updated once
+    switched = {}
+    switched_objects = []
+
+    def switch(obj):
+        if obj.name not in scene_objects:
+            return
+        switched.update(switch_outfit_piece(arm, obj))
+        switched_objects.append(obj)
+
+    items = list(
         rig_settings.extras_collection.all_objects
         if rig_settings.extras_config_subcollections
         else rig_settings.extras_collection.objects
@@ -135,12 +152,15 @@ def simplify_extras(rig_settings, enable):
         if enable:
             status = obj.MustardUI_outfit_visibility != enable
             if status:
-                bpy.ops.mustardui.object_visibility(obj=obj.name)
+                switch(obj)
             obj.MustardUI_OutfitSettings.simplify_status = status
         elif not enable and obj.MustardUI_OutfitSettings.simplify_status:
             if obj.MustardUI_outfit_visibility != enable:
-                bpy.ops.mustardui.object_visibility(obj=obj.name)
+                switch(obj)
             obj.MustardUI_OutfitSettings.simplify_status = False
+
+    if switched_objects:
+        update_model_after_pieces_switch(bpy.context, arm, switched_objects, switched)
 
 
 def simplify_hair(
