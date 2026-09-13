@@ -368,10 +368,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             nname = coll.name[prefix_len:] if prefix_len else coll.name
 
             # Remove trailing .### if present
-            if nname[-4:0:-1].isdigit() and nname[-4] == ".":
-                nname = nname[:-4]
-            else:
-                nname = re.sub(r"\.\d{3}$", "", nname)  # fallback regex for safety
+            nname = re.sub(r"\.\d{3}$", "", nname)
 
             if previews:
                 icon = el.preview.preview_ensure().icon_id if el.preview else "MOD_CLOTH"
