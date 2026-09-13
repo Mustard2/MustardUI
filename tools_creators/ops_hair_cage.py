@@ -570,10 +570,10 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                 obj,
                 "Inflate",
                 default=0.0,
-                min=0.0,
-                soft_min=0.0,
+                min=-1.0,
+                soft_min=-1.0,
                 max=1.0,
-                soft_max=0.0,
+                soft_max=1.0,
                 overridable=True,
             )
 

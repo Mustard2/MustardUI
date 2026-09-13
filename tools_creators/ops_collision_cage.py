@@ -123,18 +123,18 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
             duplicate_obj.name = f"{obj.name} Collision Cage"
 
             # Clear existing custom property
-            if "Inflate" in obj.keys():
-                del obj["Inflate"]
+            if "Inflate" in duplicate_obj.keys():
+                del duplicate_obj["Inflate"]
 
-            # Add custom property and set its range
+            # Add custom property
             rna_idprop_ui_create(
-                obj,
+                duplicate_obj,
                 "Inflate",
                 default=0.0,
-                min=0.0,
-                soft_min=0.0,
+                min=-1.0,
+                soft_min=-1.0,
                 max=1.0,
-                soft_max=0.0,
+                soft_max=1.0,
                 overridable=True,
             )
 
