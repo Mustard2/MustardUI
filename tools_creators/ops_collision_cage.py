@@ -206,7 +206,9 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
         selected_objs = bpy.context.selected_objects
         if not any(obj.type == "MESH" for obj in selected_objs):
-            self.report({"ERROR"}, "MustardUI - Select at least one mesh to create a Collision Cage.")
+            self.report(
+                {"ERROR"}, "MustardUI - Select at least one mesh to create a Collision Cage."
+            )
             return {"CANCELLED"}
 
         active_obj = bpy.context.active_object
