@@ -36,7 +36,7 @@ class MustardUI_ExtrasCollectionVisibility(bpy.types.Operator):
         # Master show/hide for the sub-collection
         show = not collection.MustardUI_extras_show
         collection.MustardUI_extras_show = show
-        for obj in collection.all_objects:
+        for obj in list(collection.all_objects):
             obj.hide_viewport = not show
             obj.hide_render = not show
 
