@@ -47,14 +47,13 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
         # Remove the custom properties
         outfit_cp = arm.MustardUI_CustomPropertiesOutfit
 
-        to_remove = []
+        # The pointers are compared, as the custom properties might have no Outfit
+        collection = uilist[index].collection
+        to_remove = [i for i, cp in enumerate(outfit_cp) if cp.outfit == collection]
 
         # Firstly set the custom property to their default value
-        for i, cp in enumerate(outfit_cp):
-            if (not uilist[index].collection and not cp.outfit) or (
-                uilist[index].collection and cp.outfit.name == uilist[index].collection.name
-            ):
-                mustardui_reassign_default(arm, outfit_cp, i, addon_prefs)
+        for i in to_remove:
+            mustardui_reassign_default(arm, outfit_cp, i, addon_prefs)
 
         # Update everything
         if rig_settings.model_armature_object:
@@ -63,12 +62,8 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
         # And then delete data
         if self.delete_cp:
-            for i, cp in enumerate(outfit_cp):
-                if (not uilist[index].collection and not cp.outfit) or (
-                    uilist[index].collection and cp.outfit.name == uilist[index].collection.name
-                ):
-                    mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
-                    to_remove.append(i)
+            for i in to_remove:
+                mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
             for i in reversed(to_remove):
                 outfit_cp.remove(i)
 
