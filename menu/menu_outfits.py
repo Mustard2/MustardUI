@@ -12,7 +12,17 @@ from .misc import mustardui_custom_properties_print
 
 
 # Type: 0 - Standard, 1 - Locked Objects, 2 - Extras
-def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, otype=0, level=0):
+def draw_outfit_piece(
+    layout,
+    obj,
+    arm,
+    rig_settings,
+    physics_settings,
+    settings,
+    otype=0,
+    level=0,
+    outfit_collection=None,
+):
     if otype < 0 or otype > 3:
         return
 
@@ -43,7 +53,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
 
     if rig_settings.model_MustardUI_naming_convention:
         if otype == 0:
-            coll_name = rig_settings.outfits_list + " - "
+            coll_name = outfit_collection.name + " - "
         elif otype == 1:
             coll_name = rig_settings.model_name + " "
         else:
@@ -105,7 +115,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
     # Outfit custom properties
     co_coll = None
     if otype == 0:
-        co_coll = bpy.data.collections[rig_settings.outfits_list]
+        co_coll = outfit_collection
     elif otype == 2:
         co_coll = rig_settings.extras_collection
 
@@ -172,6 +182,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
                 settings,
                 otype,
                 level + 1,
+                outfit_collection,
             )
 
 
@@ -251,8 +262,10 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         ):
             row.prop(rig_settings, "hair_switch_with_outfit", text="", icon="CURVES")
 
-        if rig_settings.outfits_list != "Nude":
-            collection = bpy.data.collections[rig_settings.outfits_list]
+        outfits_list = rig_settings.outfits_list
+
+        if outfits_list != "Nude":
+            collection = bpy.data.collections[outfits_list]
             items = outfit_extract_items_from_collection(
                 collection, rig_settings.outfit_config_subcollections
             )
@@ -264,7 +277,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         [
                             x
                             for x in arm.MustardUI_CustomPropertiesOutfit
-                            if x.outfit == bpy.data.collections[rig_settings.outfits_list]
+                            if x.outfit == collection
                             and x.outfit_piece is None
                             and not x.hidden
                             and (not x.advanced if not settings.advanced else True)
@@ -275,7 +288,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     custom_properties = [
                         x
                         for x in arm.MustardUI_CustomPropertiesOutfit
-                        if x.outfit == bpy.data.collections[rig_settings.outfits_list]
+                        if x.outfit == collection
                         and x.outfit_piece is None
                         and not x.hidden
                         and (not x.advanced if not settings.advanced else True)
@@ -306,22 +319,20 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                             text="",
                             icon="FILE_REFRESH",
                         )
-                        op.outfit = rig_settings.outfits_list
+                        op.outfit = outfits_list
                     op = row.operator("mustardui.delete_outfit", text="", icon="TRASH")
                     op.is_config = False
                     op.delete_cp = True
 
                 for obj in sorted(items, key=lambda x: x.name):
                     draw_outfit_piece(
-                        layout, obj, arm, rig_settings, physics_settings, settings, 0, 0
+                        layout, obj, arm, rig_settings, physics_settings, settings, 0, 0, collection
                     )
 
             else:
                 layout.label(text="This Collection seems empty", icon="ERROR")
 
-        elif (
-            rig_settings.outfit_nude and rig_settings.outfits_list == "Nude"
-        ):  # Outfit is nude below
+        elif rig_settings.outfit_nude and outfits_list == "Nude":  # Outfit is nude below
             if rig_settings.outfit_custom_properties_name_order:
                 custom_properties = sorted(
                     [
