@@ -842,13 +842,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     )
 
     def hair_particle_hide_viewport_update(self, context):
-        hair_obj = context.scene.objects[self.hair_list]
+        hair_obj = context.scene.objects.get(self.hair_list)
+        if hair_obj is None:
+            return
         for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
             mod.show_viewport = self.hair_particle_hide_viewport
         hair_obj.hide_viewport = not self.hair_particle_hide_viewport
 
     def hair_particle_hide_render_update(self, context):
-        hair_obj = context.scene.objects[self.hair_list]
+        hair_obj = context.scene.objects.get(self.hair_list)
+        if hair_obj is None:
+            return
         for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
             mod.show_render = self.hair_particle_hide_render
         hair_obj.hide_render = not self.hair_particle_hide_render

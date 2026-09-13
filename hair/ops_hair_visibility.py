@@ -95,7 +95,10 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
             self.report({"WARNING"}, "Hair Extras collection not defined in Rig Settings.")
             return {"CANCELLED"}
 
-        obj = context.scene.objects[hair_name]
+        obj = context.scene.objects.get(hair_name)
+        if obj is None:
+            self.report({"WARNING"}, f'MustardUI - Object "{hair_name}" not found.')
+            return {"CANCELLED"}
         visibility = obj.hide_viewport
 
         # Loop through hair objects
@@ -147,7 +150,10 @@ class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
         return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
-        obj = context.scene.objects[self.obj_name]
+        obj = context.scene.objects.get(self.obj_name)
+        if obj is None:
+            self.report({"WARNING"}, f'MustardUI - Object "{self.obj_name}" not found.')
+            return {"CANCELLED"}
 
         # Loop through hair objects
         for mod in obj.modifiers:
