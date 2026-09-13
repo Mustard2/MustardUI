@@ -129,7 +129,7 @@ class MustardUI_Configuration(bpy.types.Operator):
             # Check for errors in the list selection
             if len(rig_settings.outfits_list_make(context)) > 0 and rig_settings.outfits_list == "":
                 try:
-                    rig_settings.hair_list = rig_settings.outfits_list_make(context)[0][0]
+                    rig_settings.outfits_list = rig_settings.outfits_list_make(context)[0][0]
                     warnings = warnings + 1
                     print("MustardUI - Configuration Warning - Fixed outfit_list index")
                 except Exception:
