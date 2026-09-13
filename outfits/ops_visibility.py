@@ -3,7 +3,10 @@ import bpy
 from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
 from ..misc.set_bool import set_bool
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     get_mask_visibility,
@@ -22,6 +25,10 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
     obj: bpy.props.StringProperty()
     shift: bpy.props.BoolProperty(default=False)
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
 
     def invoke(self, context, event):
         if not self.shift:

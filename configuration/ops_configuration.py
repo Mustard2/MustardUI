@@ -5,7 +5,10 @@ import bpy
 from .. import __package__ as base_package
 from .. import bl_info
 from ..hair.helper_functions import set_selected_hair, store_current_hair
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..physics.update_enable import enable_physics_update
 from .definitions import mustardui_detect_rig_type
 
@@ -16,6 +19,10 @@ class MustardUI_Configuration(bpy.types.Operator):
     bl_idname = "mustardui.configuration"
     bl_label = "Configure MustardUI"
     bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
 
     def execute(self, context):
 

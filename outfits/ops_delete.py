@@ -1,7 +1,10 @@
 import bpy
 
 from ..misc.remove_objects import remove_objects
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_DeleteOutfit(bpy.types.Operator):
@@ -13,6 +16,10 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
 
     is_config: bpy.props.BoolProperty(default=True)
     delete_cp: bpy.props.BoolProperty(default=True)
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
 
     def execute(self, context):
 

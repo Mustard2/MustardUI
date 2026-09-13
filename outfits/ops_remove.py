@@ -2,7 +2,10 @@ import bpy
 
 from .. import __package__ as base_package
 from ..custom_properties.misc import mustardui_clean_prop, mustardui_reassign_default
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_RemoveOutfit(bpy.types.Operator):
@@ -14,6 +17,10 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
     is_config: bpy.props.BoolProperty(default=True)
     delete_cp: bpy.props.BoolProperty(default=True)
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
 
     def execute(self, context):
 
