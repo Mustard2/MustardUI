@@ -28,7 +28,8 @@ def draw_morphs_count(layout, arm, diffeomorphic_id=None):
     if diffeomorphic_id is None:
         sections = [x for x in morphs_settings.sections if not x.is_internal and not x.hidden]
     else:
-        sections = [get_section_by_diffeomorphic_id(morphs_settings, diffeomorphic_id)]
+        section = get_section_by_diffeomorphic_id(morphs_settings, diffeomorphic_id)
+        sections = [section] if section is not None else []
 
     morph_filter = morph_filter_function(arm.MustardUI_RigSettings, morphs_settings)
     count = sum(1 for section in sections for morph in section.morphs if morph_filter(morph))
@@ -92,13 +93,8 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
             return False
 
         # Check if at least one panel is available in the Diffeomorphic case
-        panels = (
-            get_section_by_diffeomorphic_id(morphs_settings, 0).morphs
-            or get_section_by_diffeomorphic_id(morphs_settings, 1).morphs
-            or get_section_by_diffeomorphic_id(morphs_settings, 2).morphs
-            or get_section_by_diffeomorphic_id(morphs_settings, 3).morphs
-            or get_section_by_diffeomorphic_id(morphs_settings, 4).morphs
-        )
+        sections = [get_section_by_diffeomorphic_id(morphs_settings, i) for i in range(5)]
+        panels = any(section is not None and section.morphs for section in sections)
 
         return res and morphs_settings.enable_ui and panels and morphs_settings.morphs_number > 0
 
@@ -185,15 +181,11 @@ class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
-        if not get_section_by_diffeomorphic_id(morphs_settings, 0).morphs:
+        section = get_section_by_diffeomorphic_id(morphs_settings, 0)
+        if section is None or not section.morphs:
             return False
 
-        return (
-            res
-            and morphs_settings.enable_ui
-            and morphs_settings.diffeomorphic_emotions_units
-            and get_section_by_diffeomorphic_id(morphs_settings, 0).morphs
-        )
+        return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions_units
 
     def draw_header(self, context):
         poll, obj = mustardui_active_object(context, config=0)
@@ -230,15 +222,11 @@ class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
-        if not get_section_by_diffeomorphic_id(morphs_settings, 1).morphs:
+        section = get_section_by_diffeomorphic_id(morphs_settings, 1)
+        if section is None or not section.morphs:
             return False
 
-        return (
-            res
-            and morphs_settings.enable_ui
-            and morphs_settings.diffeomorphic_emotions
-            and get_section_by_diffeomorphic_id(morphs_settings, 1).morphs
-        )
+        return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions
 
     def draw_header(self, context):
         poll, obj = mustardui_active_object(context, config=0)
@@ -277,14 +265,12 @@ class PANEL_PT_MustardUI_Morphs_FACSUnits(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
-        if not get_section_by_diffeomorphic_id(morphs_settings, 2).morphs:
+        section = get_section_by_diffeomorphic_id(morphs_settings, 2)
+        if section is None or not section.morphs:
             return False
 
         return (
-            res
-            and morphs_settings.enable_ui
-            and morphs_settings.diffeomorphic_facs_emotions_units
-            and get_section_by_diffeomorphic_id(morphs_settings, 2).morphs
+            res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_facs_emotions_units
         )
 
     def draw_header(self, context):
@@ -322,15 +308,11 @@ class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
-        if not get_section_by_diffeomorphic_id(morphs_settings, 3).morphs:
+        section = get_section_by_diffeomorphic_id(morphs_settings, 3)
+        if section is None or not section.morphs:
             return False
 
-        return (
-            res
-            and morphs_settings.enable_ui
-            and morphs_settings.diffeomorphic_facs_emotions
-            and get_section_by_diffeomorphic_id(morphs_settings, 3).morphs
-        )
+        return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_facs_emotions
 
     def draw_header(self, context):
         poll, obj = mustardui_active_object(context, config=0)
@@ -369,15 +351,11 @@ class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
         if morphs_settings.type == "GENERIC":
             return False
 
-        if not get_section_by_diffeomorphic_id(morphs_settings, 4).morphs:
+        section = get_section_by_diffeomorphic_id(morphs_settings, 4)
+        if section is None or not section.morphs:
             return False
 
-        return (
-            res
-            and morphs_settings.enable_ui
-            and morphs_settings.diffeomorphic_body_morphs
-            and get_section_by_diffeomorphic_id(morphs_settings, 4).morphs
-        )
+        return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_body_morphs
 
     def draw_header(self, context):
         poll, obj = mustardui_active_object(context, config=0)

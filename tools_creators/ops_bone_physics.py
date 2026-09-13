@@ -361,9 +361,15 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
                     bone.constraints.remove(constraint)
 
         # Remove the item from the list if available
-        for i, pi in enumerate(physics_settings.items):
-            if pi.object == curve_obj:
+        for i in reversed(range(len(physics_settings.items))):
+            if physics_settings.items[i].object == curve_obj:
                 physics_settings.items.remove(i)
+
+        # Keep the index of the Physics Items list in range
+        index = obj.mustardui_physics_items_uilist_index
+        obj.mustardui_physics_items_uilist_index = max(
+            0, min(index, len(physics_settings.items) - 1)
+        )
 
         # Delete the curve object
         if curve_obj and curve_obj.name in bpy.data.objects:
