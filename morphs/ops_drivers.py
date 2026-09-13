@@ -203,14 +203,14 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                 if obj.type == "MESH":
                     objects.append(obj)
 
-        # Disable Shape Keys
+        # Enable Shape Keys drivers
         for obj in objects:
             if obj.data.shape_keys:
                 if obj.data.shape_keys.animation_data:
                     for driver in obj.data.shape_keys.animation_data.drivers:
                         if (
-                            not ("pJCM" in driver.data_path or mutepJCM)
-                            and not ("facs" in driver.data_path or mutefacs)
+                            ("pJCM" not in driver.data_path or mutepJCM)
+                            and ("facs" not in driver.data_path or mutefacs)
                             and muteDazFcurves_exceptionscheck(
                                 muteexceptions, driver.data_path, exceptions
                             )
