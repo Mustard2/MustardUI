@@ -1115,9 +1115,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     #    Deprecated stuffs (support for warnings/fixes/etc..)
     # ------------------------------------------------------------------------
 
-    # Old versioning
-    model_version: bpy.props.StringProperty(default="")
-
     # Old hair curves support
     curves_hair_enable: bpy.props.BoolProperty(default=False)
 
