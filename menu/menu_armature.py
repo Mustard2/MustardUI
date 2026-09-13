@@ -177,7 +177,9 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
                 col.prop(armature_settings, "hair", toggle=True, icon="CURVES")
                 draw_separator = True
 
-        if len(rig_settings.outfits_list) > 0:
+        if rig_settings.outfit_nude or any(
+            x.collection is not None for x in rig_settings.outfits_collections
+        ):
             if len(
                 [
                     x
