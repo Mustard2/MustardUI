@@ -17,13 +17,9 @@ def set_morphs_default_values(context, arm, settings):
                 val = cp_source.get(morph.path)
                 if val is None:
                     continue
-
-                if isinstance(val, float):
-                    cp_source[morph.path] = 0.0
-                if isinstance(val, int):
-                    cp_source[morph.path] = 0
-                elif isinstance(val, bool):
-                    cp_source[morph.path] = True
+                if isinstance(val, (bool, int, float)):
+                    ui_data = cp_source.id_properties_ui(morph.path).as_dict()
+                    cp_source[morph.path] = type(val)(ui_data.get("default", 0))
             elif morph.shape_key:
                 shape_keys = rig_settings.model_body.data.shape_keys
                 kb = shape_keys.key_blocks.get(morph.path) if shape_keys is not None else None
