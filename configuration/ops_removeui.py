@@ -241,7 +241,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                 self.remove_data_col(
                     context,
                     rig_settings.extras_collection,
-                    rig_settings.outfit_config_subcollections,
+                    rig_settings.extras_config_subcollections,
                 )
             if self.delete_shared:
                 for col_name in collision_collections:
