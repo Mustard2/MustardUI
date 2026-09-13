@@ -51,6 +51,14 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         hair_switcher_seen = False
         hair_switcher_active = False
 
+        # Names of the Hair Switch objects, checked for each outfit object
+        hair_switch_names = (
+            {x.name for x in rig_settings.hair_switch_collection.all_objects}
+            if rig_settings.hair_collection is not None
+            and rig_settings.hair_switch_collection is not None
+            else set()
+        )
+
         for col_entry in rig_settings.outfits_collections:
             col = col_entry.collection
             if not col:
@@ -96,12 +104,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 # Collect hair-switcher flags — the actual toggle happens
                 # once after all outfits are processed so we can also
                 # restore the hair_list selection correctly on deactivation.
-                if (
-                    rig_settings.hair_collection is not None
-                    and obj.type in ["MESH", "ARMATURE"]
-                    and rig_settings.hair_switch_collection is not None
-                    and obj.name in rig_settings.hair_switch_collection.all_objects.keys()
-                ):
+                if obj.type in ["MESH", "ARMATURE"] and obj.name in hair_switch_names:
                     hair_switcher_seen = True
                     if show_obj:
                         hair_switcher_active = True

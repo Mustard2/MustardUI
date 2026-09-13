@@ -113,7 +113,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
                 hair_collection is not None
                 and o.type in ["MESH", "ARMATURE"]
                 and hair_switch_collection is not None
-                and o.name in hair_switch_collection.all_objects.keys()
+                and o.name in hair_switch_collection.all_objects
             ):
                 apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
 

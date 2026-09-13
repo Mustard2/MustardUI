@@ -7,12 +7,14 @@ from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
-def visible_custom_properties(settings, custom_props):
-    return [
-        x
-        for x in custom_props
-        if not x.hidden and (not x.advanced if not settings.advanced else True)
-    ]
+# Visible custom properties grouped by section name, "" for the ones with no section
+def custom_properties_by_section(settings, custom_props):
+    advanced = settings.advanced
+    by_section = {}
+    for prop in custom_props:
+        if not prop.hidden and (advanced or not prop.advanced):
+            by_section.setdefault(prop.section, []).append(prop)
+    return by_section
 
 
 def draw_property(layout, obj, settings, rig_settings, prop):
@@ -54,14 +56,12 @@ def draw_section(
     obj,
     settings,
     rig_settings,
-    custom_props,
+    props_by_section,
     section,
     section_id,
     draw_sub=True,
 ):
-    custom_properties_section = [
-        x for x in visible_custom_properties(settings, custom_props) if x.section == section.name
-    ]
+    custom_properties_section = props_by_section.get(section.name, [])
 
     if rig_settings.body_custom_properties_name_order:
         custom_properties_section = sorted(custom_properties_section, key=lambda x: x.name)
@@ -126,8 +126,11 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
         res, arm = mustardui_active_object(context, config=0)
 
         if arm is not None:
-            custom_props = visible_custom_properties(settings, arm.MustardUI_CustomProperties)
-            return res and len(custom_props) > 0
+            advanced = settings.advanced
+            return res and any(
+                not x.hidden and (advanced or not x.advanced)
+                for x in arm.MustardUI_CustomProperties
+            )
 
         return False
 
@@ -137,13 +140,11 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
 
         poll, obj = mustardui_active_object(context, config=0)
         rig_settings = obj.MustardUI_RigSettings
-        custom_props = obj.MustardUI_CustomProperties
+        props_by_section = custom_properties_by_section(settings, obj.MustardUI_CustomProperties)
 
         layout = self.layout
 
-        unsorted_props = [
-            x for x in visible_custom_properties(settings, custom_props) if x.section == ""
-        ]
+        unsorted_props = props_by_section.get("", [])
         if len(unsorted_props) > 0:
             row = layout.row(align=False)
             row.alignment = "RIGHT"
@@ -170,7 +171,7 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
                 obj,
                 settings,
                 rig_settings,
-                custom_props,
+                props_by_section,
                 section,
                 section_id,
             )
@@ -188,7 +189,7 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
                     obj,
                     settings,
                     rig_settings,
-                    custom_props,
+                    props_by_section,
                     subsec,
                     section_id,
                     subcollapse,
