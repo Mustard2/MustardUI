@@ -7,6 +7,7 @@ from ..custom_properties.misc import (
     mustardui_delete_all_custom_properties,
     mustardui_reassign_default,
 )
+from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -632,15 +633,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     outfit_cp.remove(i)
 
             # Delete the Objects
-            for obj in objs:
-                data = obj.data
-                obj_type = obj.type
-                bpy.data.objects.remove(obj)
-                if obj_type == "MESH":
-                    bpy.data.meshes.remove(data)
-                elif obj_type == "ARMATURE":
-                    bpy.data.armatures.remove(data)
-                extras_deleted = extras_deleted + 1
+            remove_objects(objs)
+            extras_deleted = extras_deleted + len(objs)
 
             # Delete the collection if now empty
             items = (
@@ -699,15 +693,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 for i in reversed(to_remove):
                     hair_cp.remove(i)
 
-            for obj in objs:
-                data = obj.data
-                obj_type = obj.type
-                bpy.data.objects.remove(obj)
-                if obj_type == "MESH":
-                    bpy.data.meshes.remove(data)
-                elif obj_type == "ARMATURE":
-                    bpy.data.armatures.remove(data)
-                hair_deleted = hair_deleted + 1
+            remove_objects(objs)
+            hair_deleted = hair_deleted + len(objs)
 
             rig_settings.hair_list = current_hair
 

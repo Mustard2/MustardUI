@@ -1,5 +1,6 @@
 import bpy
 
+from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import mustardui_active_object
 
 
@@ -56,14 +57,7 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
                 arm.mustardui_physics_items_uilist_index = pi_id
                 bpy.ops.mustardui.physics_item_delete()
 
-        for _, obj in reversed(items.items()):
-            data = obj.data
-            obj_type = obj.type
-            bpy.data.objects.remove(obj)
-            if obj_type == "MESH":
-                bpy.data.meshes.remove(data)
-            elif obj_type == "ARMATURE":
-                bpy.data.armatures.remove(data)
+        remove_objects(list(items.values()))
 
         bpy.data.collections.remove(col)
 

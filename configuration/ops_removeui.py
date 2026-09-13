@@ -3,6 +3,7 @@ from bpy.props import BoolProperty
 
 from .. import __package__ as base_package
 from ..custom_properties.misc import mustardui_delete_all_custom_properties
+from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -54,19 +55,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         return
 
     def remove_data_list(self, context, ll):
-        for obj in ll:
-            data = obj.data
-            obj_type = obj.type
-            bpy.data.objects.remove(obj)
-
-            # Remove the data only if not shared with other objects
-            if data is None or data.users > 0:
-                continue
-            if obj_type == "MESH":
-                bpy.data.meshes.remove(data)
-            elif obj_type == "ARMATURE":
-                bpy.data.armatures.remove(data)
-        return
+        remove_objects(ll)
 
     def remove_property(self, obj, name):
         try:
