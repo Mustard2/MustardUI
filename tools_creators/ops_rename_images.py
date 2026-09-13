@@ -55,6 +55,17 @@ def strip_image_extension(name: str):
         name = stripped
 
 
+def available_file_path(directory: str, stem: str, ext: str, current_path: str):
+    # Path for a renamed file: a number is added to the name if another file already has
+    # it, so that no file is overwritten
+    path = os.path.join(directory, stem + ext)
+    index = 1
+    while os.path.exists(path) and not os.path.samefile(path, current_path):
+        path = os.path.join(directory, f"{stem}_{index:03d}{ext}")
+        index += 1
+    return path
+
+
 def make_node_label(name: str):
     parts = name.split("_")
     return " ".join(p.upper() if p.upper() in {"AO", "UV"} else p.capitalize() for p in parts)
@@ -404,7 +415,9 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                     if os.path.exists(abs_path):
                         directory = os.path.dirname(abs_path)
                         ext = os.path.splitext(abs_path)[1]
-                        new_path = os.path.join(directory, strip_image_extension(new_name) + ext)
+                        new_path = available_file_path(
+                            directory, strip_image_extension(new_name), ext, abs_path
+                        )
 
                         if abs_path != new_path:
                             os.rename(abs_path, new_path)
