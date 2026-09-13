@@ -12,6 +12,15 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
     bl_label = "Remove Morphs"
     bl_options = {"UNDO"}
 
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=1)
+        if arm is None:
+            return False
+
+        sections = arm.MustardUI_MorphsSettings.sections
+        return res and 0 <= arm.mustardui_morphs_section_uilist_index < len(sections)
+
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=1)
@@ -23,7 +32,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
         uilist = section.morphs
         index = arm.mustardui_morphs_uilist_index
 
-        if len(uilist) <= index:
+        if not 0 <= index < len(uilist):
             return {"FINISHED"}
 
         # Remove the mute driver if available
