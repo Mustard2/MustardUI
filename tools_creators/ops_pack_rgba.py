@@ -14,12 +14,17 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
     bl_label = "Pack Grayscale to RGBA"
     bl_options = {"REGISTER", "UNDO"}
 
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        return space is not None and space.type == "NODE_EDITOR" and space.node_tree is not None
+
     def execute(self, context):
         node_tree = context.space_data.node_tree
         nodes = node_tree.nodes
         links = node_tree.links
 
-        selected = [n for n in nodes if n.select and n.type == "TEX_IMAGE"]
+        selected = [n for n in nodes if n.select and n.type == "TEX_IMAGE" and n.image is not None]
 
         if not selected:
             self.report({"ERROR"}, "MustardUI - Select up to 4 image nodes")
@@ -47,6 +52,17 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
         packed = bpy.data.images.new("Packed_RGBA", width=w, height=h, alpha=True)
         packed.colorspace_settings.name = "Non-Color"
 
+        # Float images are converted from their color space when loaded
+        restore_colorspaces = []
+        for img in images:
+            if (
+                img.is_float
+                and img.source == "FILE"
+                and img.colorspace_settings.name != "Non-Color"
+            ):
+                restore_colorspaces.append((img, img.colorspace_settings.name))
+                img.colorspace_settings.name = "Non-Color"
+
         channels = []
 
         # -------------------------
@@ -54,8 +70,6 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
         # -------------------------
         if USE_NUMPY:
             for img in images:
-                img.colorspace_settings.name = "Non-Color"
-
                 pixels = np.empty(num_pixels * 4, dtype=np.float32)
                 img.pixels.foreach_get(pixels)
                 pixels = pixels.reshape(-1, 4)
@@ -78,8 +92,6 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
         # -------------------------
         else:
             for img in images:
-                img.colorspace_settings.name = "Non-Color"
-
                 pixels = list(img.pixels[:])
                 gray = []
 
@@ -108,6 +120,9 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
 
             packed.pixels = result_pixels
 
+        for img, colorspace in restore_colorspaces:
+            img.colorspace_settings.name = colorspace
+
         packed.update()
 
         # Create Image node
@@ -127,8 +142,9 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
         # Store links BEFORE deleting nodes
         original_links = []
         for i, node in enumerate(selected):
-            for link in node.outputs["Color"].links:
-                original_links.append((i, link.to_socket))
+            for output in ("Color", "Alpha"):
+                for link in node.outputs[output].links:
+                    original_links.append((i, link.to_socket))
 
         # Reconnect channels
         for i, to_socket in original_links:
