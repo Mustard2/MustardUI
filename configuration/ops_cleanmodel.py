@@ -605,6 +605,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         and item.object is not None
                     ):
                         items_to_remove.append(pi_id)
+                # The Physics Items Objects are deleted with the items
+                pi_objects = {physics_settings.items[i].object for i in items_to_remove}
+                objs = [x for x in objs if x not in pi_objects]
                 for pi_id in reversed(items_to_remove):
                     arm.mustardui_physics_items_uilist_index = pi_id
                     bpy.ops.mustardui.physics_item_delete()
@@ -666,6 +669,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
                         and item.object is not None
                     ):
                         items_to_remove.append(pi_id)
+                # The Physics Items Objects are deleted with the items
+                pi_objects = {physics_settings.items[i].object for i in items_to_remove}
+                objs = [x for x in objs if x not in pi_objects]
                 for pi_id in reversed(items_to_remove):
                     arm.mustardui_physics_items_uilist_index = pi_id
                     bpy.ops.mustardui.physics_item_delete()

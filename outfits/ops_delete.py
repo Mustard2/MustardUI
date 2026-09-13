@@ -39,25 +39,23 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
 
         outfit_name = col.name
 
-        # Remove Objects
-        items = {}
-        for obj in col.all_objects if rig_settings.outfit_config_subcollections else col.objects:
-            items[obj.name] = obj
-
-            # Remove linked Physics Objects
-            items_to_remove = []
-            for pi_id, item in enumerate(physics_settings.items):
-                if (
-                    item.outfit_enable
-                    and item.outfit_collection is not None
-                    and item.outfit_collection == col
-                ):
-                    items_to_remove.append(pi_id)
-            for pi_id in reversed(items_to_remove):
-                arm.mustardui_physics_items_uilist_index = pi_id
+        # Remove linked Physics Items
+        items_to_remove = [
+            pi_id
+            for pi_id, item in enumerate(physics_settings.items)
+            if item.outfit_enable and item.outfit_collection == col
+        ]
+        for pi_id in reversed(items_to_remove):
+            arm.mustardui_physics_items_uilist_index = pi_id
+            if physics_settings.items[pi_id].object is not None:
                 bpy.ops.mustardui.physics_item_delete()
+            else:
+                bpy.ops.mustardui.physics_item_remove()
 
-        remove_objects(list(items.values()))
+        # Remove Objects
+        remove_objects(
+            list(col.all_objects if rig_settings.outfit_config_subcollections else col.objects)
+        )
 
         bpy.data.collections.remove(col)
 
