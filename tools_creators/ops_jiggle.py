@@ -195,6 +195,13 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         physics_settings = obj.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
+        # Check if vertices are selected before continuing
+        bpy.ops.object.mode_set(mode="OBJECT")
+        if not any(v.select for v in bpy.context.object.data.vertices):
+            bpy.ops.object.mode_set(mode="EDIT")
+            self.report({"ERROR"}, "MustardUI - No vertex selected.")
+            return {"CANCELLED"}
+
         # Store Armature Pose states
         stored_pose_states = {}
         for obj in bpy.context.scene.objects:
