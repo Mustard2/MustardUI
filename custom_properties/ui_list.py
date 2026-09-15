@@ -40,6 +40,20 @@ def draw_item_by_type(
 
         row = layout.row(align=True)
 
+        try:
+            error = False
+            if item.is_animatable:
+                obj.id_properties_ui(item.prop_name)
+            if evaluate_path(item.rna, item.path) is None:
+                error = True
+            if error:
+                row.label(text="", icon="ERROR")
+            else:
+                row.label(text="", icon="BLANK1")
+        except Exception:
+            row.label(text="", icon="ERROR")
+        row.separator()
+
         if cptype == 0:
             section = rig_settings.body_custom_properties_sections.get(item.section)
             icon = "RECORD_OFF"
@@ -69,17 +83,6 @@ def draw_item_by_type(
                     row.label(text=item.hair.name[len(rig_settings.model_name) + 1 :])
                 else:
                     row.label(text=item.hair.name)
-
-        try:
-            error = False
-            if item.is_animatable:
-                obj.id_properties_ui(item.prop_name)
-            if evaluate_path(item.rna, item.path) is None:
-                error = True
-            if error:
-                row.label(text="", icon="ERROR")
-        except Exception:
-            row.label(text="", icon="ERROR")
 
         if addon_prefs.debug:
             if item.is_animatable:
