@@ -1,0 +1,5 @@
+# Normalize all text files to LF in the repository
+* text=auto eol=lf
+
+# Binary resources must never be line-ending converted
+*.blend binary

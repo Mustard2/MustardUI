@@ -31,7 +31,6 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         res, arm = mustardui_active_object(context, config=1)
-        context.preferences.addons[base_package].preferences
         physics_settings = arm.MustardUI_PhysicsSettings
 
         box = layout.box()

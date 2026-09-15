@@ -36,9 +36,9 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         custom_props, nu = mustardui_choose_cp(obj, self.type, context.scene)
 
-        prop = context.button_prop
+        prop = getattr(context, "button_prop", None)
 
-        if not hasattr(context, "button_prop") or not hasattr(prop, "array_length"):
+        if prop is None or not hasattr(prop, "array_length"):
             self.report({"ERROR"}, "MustardUI - Can not link this property to anything.")
             return {"FINISHED"}
 
@@ -69,8 +69,6 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                         "MustardUI - Can not link properties with different type.",
                     )
                     return {"FINISHED"}
-
-                # dump(prop, 'button_prop')
 
                 # Copy the path of the selected property
                 try:
@@ -108,7 +106,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
                 # Add driver
                 if prop.is_animatable:
-                    mustardui_add_driver(obj, rna, path, prop, parent_prop.prop_name)
+                    mustardui_add_driver(obj, rna, path, parent_prop.prop_name, prop.array_length)
 
                 # Add linked property to list
                 if (rna, path) not in [(x.rna, x.path) for x in parent_prop.linked_properties]:
@@ -156,8 +154,7 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         items=(("BODY", "Body", ""), ("OUTFIT", "Outfit", ""), ("HAIR", "Hair", "")),
     )
 
-    def clean_prop(self, obj, uilist, index):
-
+    def clean_prop(self):
         # Remove linked property driver
         try:
             driver_object = evaluate_rna(self.rna)
@@ -168,17 +165,18 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
-        res, obj = mustardui_active_object(context, config=1)
-        return obj is not None
+        return active_object_operator_poll(context, config=1)
 
     def execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
+        if not 0 <= index < len(uilist):
+            return {"FINISHED"}
+
         # Remove custom property and driver
-        driver_removed = self.clean_prop(obj, uilist, index)
+        driver_removed = self.clean_prop()
 
         # Find the linked property index to remove it from the list
         i = -1

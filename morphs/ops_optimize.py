@@ -1,7 +1,10 @@
 import bpy
 
 from ..misc.set_bool import set_bool
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Morphs_Optimize(bpy.types.Operator):
@@ -12,9 +15,12 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=0):
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
+        return morphs_settings.enable_ui and morphs_settings.enable_freeze_morphs
 
     def execute(self, context):
         poll, arm = mustardui_active_object(context, config=0)
@@ -38,6 +44,12 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
             if has_key_blocks:
                 key_block = obj.data.shape_keys.key_blocks
 
+            # Drivers by data path, to avoid scanning all the drivers for every morph
+            drivers = {}
+            if has_animation_data:
+                for fcurve in obj.data.shape_keys.animation_data.drivers:
+                    drivers.setdefault(fcurve.data_path, []).append(fcurve)
+
             for section in sections:
                 # Collapse Frozen sections to avoid UI clutter
                 if enable:
@@ -56,14 +68,11 @@ class MustardUI_Morphs_Optimize(bpy.types.Operator):
                             set_bool(key_block[morph.path], "mute", enable)
 
                     # Drivers
-                    if has_animation_data:
-                        for fcurve in obj.data.shape_keys.animation_data.drivers:
-                            if not fcurve.data_path == f'key_blocks["{morph.path}"].value':
-                                continue
-                            if (has_key_blocks and abs(key_block[morph.path].value) < 0.001) or (
-                                not has_key_blocks
-                            ):
-                                set_bool(fcurve, "mute", enable)
+                    for fcurve in drivers.get(f'key_blocks["{morph.path}"].value', []):
+                        if (has_key_blocks and abs(key_block[morph.path].value) < 0.001) or (
+                            not has_key_blocks
+                        ):
+                            set_bool(fcurve, "mute", enable)
 
         morphs_settings.morphs_optimized = enable
 

@@ -4,7 +4,10 @@ import random
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
@@ -13,6 +16,10 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
     bl_idname = "mustardui.tools_autoeyelid"
     bl_label = "Auto Blink"
     bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
 
     def blinkFrame(self, frame, value, blink_driver, obj, type):
 

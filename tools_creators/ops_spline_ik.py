@@ -40,7 +40,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-
         res, arm = mustardui_active_object(context, config=1)
         if arm is None:
             return False
@@ -62,7 +61,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         return res and not abort_aa
 
     def execute(self, context):
-
         addon_prefs = context.preferences.addons[base_package].preferences
 
         name_prefix = "MustardUI"
@@ -270,7 +268,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         return {"FINISHED"}
 
     def draw(self, context):
-
         settings = context.scene.MustardUI_Settings
 
         layout = self.layout
@@ -330,13 +327,10 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
                 return not abort_aa
 
     def execute(self, context):
-
         addon_prefs = context.preferences.addons[base_package].preferences
 
         arm = bpy.context.object
         chain_bones = bpy.context.selected_pose_bones
-
-        e = []
 
         removed_constr = 0
         removed_bones = 0
@@ -353,68 +347,68 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="POSE", toggle=False)
 
         for bone in chain_bones:
-            for constraint in bone.constraints:
-                if constraint.type == "SPLINE_IK":
-                    bpy.ops.object.mode_set(mode="EDIT", toggle=False)
+            for constraint in [x for x in bone.constraints if x.type == "SPLINE_IK"]:
+                e = []
+                bpy.ops.object.mode_set(mode="EDIT", toggle=False)
 
-                    if constraint.target:
-                        IKCurve = constraint.target
-                        for hook_mod in IKCurve.modifiers:
-                            if hook_mod.object:
-                                IKEmpty = hook_mod.object
-                                e.append(IKEmpty.name)
-
-                                if self.delete_bones:
-                                    for e_constraint in IKEmpty.constraints:
-                                        if e_constraint.type == "COPY_TRANSFORMS":
-                                            if (
-                                                e_constraint.target
-                                                and e_constraint.subtarget
-                                                and e_constraint.subtarget != ""
-                                            ):
-                                                IKArm = e_constraint.target
-                                                IKBone = IKArm.data.edit_bones[
-                                                    e_constraint.subtarget
-                                                ]
-                                                IKBone_name = IKBone.name
-                                                IKArm.data.edit_bones.remove(IKBone)
-                                                if addon_prefs.debug:
-                                                    print(
-                                                        "MustardUI IK Spline - Bone "
-                                                        + IKBone_name
-                                                        + " removed from Armature "
-                                                        + IKArm.name
-                                                    )
-                                                removed_bones = removed_bones + 1
-
-                    bpy.ops.object.mode_set(mode="OBJECT")
-                    bpy.ops.object.select_all(action="DESELECT")
-                    for empty_name in e:
-                        empty = bpy.data.objects[empty_name]
-                        bpy.context.collection.objects.unlink(empty)
-                        bpy.data.objects.remove(empty)
-
-                    bpy.ops.object.select_all(action="DESELECT")
+                if constraint.target:
                     IKCurve = constraint.target
+                    for hook_mod in IKCurve.modifiers:
+                        if hook_mod.object:
+                            IKEmpty = hook_mod.object
+                            e.append(IKEmpty.name)
+
+                            if self.delete_bones:
+                                for e_constraint in IKEmpty.constraints:
+                                    if e_constraint.type == "COPY_TRANSFORMS":
+                                        if (
+                                            e_constraint.target
+                                            and e_constraint.subtarget
+                                            and e_constraint.subtarget != ""
+                                        ):
+                                            IKArm = e_constraint.target
+                                            IKBone = IKArm.data.edit_bones[e_constraint.subtarget]
+                                            IKBone_name = IKBone.name
+                                            IKArm.data.edit_bones.remove(IKBone)
+                                            if addon_prefs.debug:
+                                                print(
+                                                    "MustardUI IK Spline - Bone "
+                                                    + IKBone_name
+                                                    + " removed from Armature "
+                                                    + IKArm.name
+                                                )
+                                            removed_bones = removed_bones + 1
+
+                bpy.ops.object.mode_set(mode="OBJECT")
+                bpy.ops.object.select_all(action="DESELECT")
+
+                # Removed from every collection, whichever collection is the active one
+                for empty_name in e:
+                    empty = bpy.data.objects.get(empty_name)
+                    if empty is not None:
+                        bpy.data.objects.remove(empty, do_unlink=True)
+
+                bpy.ops.object.select_all(action="DESELECT")
+                IKCurve = constraint.target
+                if IKCurve is not None:
                     IKCurve_name = IKCurve.name
-                    bpy.context.collection.objects.unlink(IKCurve)
-                    bpy.data.objects.remove(IKCurve)
+                    bpy.data.objects.remove(IKCurve, do_unlink=True)
                     if addon_prefs.debug:
                         print("MustardUI IK Spline - Curve " + IKCurve_name + " removed.")
 
-                    bpy.ops.object.mode_set(mode="POSE")
+                bpy.ops.object.mode_set(mode="POSE")
 
-                    IKConstr_name = constraint.name
-                    bone.constraints.remove(constraint)
-                    removed_constr = removed_constr + 1
-                    if addon_prefs.debug:
-                        print(
-                            "MustardUI IK Spline - Constraint "
-                            + IKConstr_name
-                            + " removed from "
-                            + bone.name
-                            + "."
-                        )
+                IKConstr_name = constraint.name
+                bone.constraints.remove(constraint)
+                removed_constr = removed_constr + 1
+                if addon_prefs.debug:
+                    print(
+                        "MustardUI IK Spline - Constraint "
+                        + IKConstr_name
+                        + " removed from "
+                        + bone.name
+                        + "."
+                    )
 
         if self.delete_bones:
             self.report(
@@ -434,11 +428,9 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-
         layout = self.layout
 
         chain_bones = bpy.context.selected_pose_bones

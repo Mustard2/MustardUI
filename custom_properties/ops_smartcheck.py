@@ -2,47 +2,12 @@ import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
-from ..misc.prop_utils import evaluate_path, evaluate_rna
+from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import mustardui_clean_prop
-
-
-def add_driver(obj, rna, path, prop_name):
-    driver_object = evaluate_rna(rna)
-    driver_object.driver_remove(path)
-    driver = driver_object.driver_add(path)
-
-    try:
-        array_length = len(evaluate_path(rna, path))
-    except Exception:
-        array_length = 0
-
-    # No array property
-    if array_length == 0:
-        driver = driver.driver
-        driver.type = "AVERAGE"
-        var = driver.variables.new()
-        var.name = "mustardui_var"
-        var.targets[0].id_type = "ARMATURE"
-        var.targets[0].id = obj
-        var.targets[0].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"]'
-
-    # Array property
-    else:
-        for i in range(0, array_length):
-            driver[i] = driver[i].driver
-            driver[i].type = "AVERAGE"
-
-            var = driver[i].variables.new()
-            var.name = "mustardui_var"
-            var.targets[0].id_type = "ARMATURE"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'["{bpy.utils.escape_identifier(prop_name)}"][{str(i)}]'
-
-    return
+from .misc import mustardui_add_driver, mustardui_clean_prop
 
 
 def link_property(obj, rna, path, parent_prop, custom_props):
@@ -60,7 +25,7 @@ def link_property(obj, rna, path, parent_prop, custom_props):
 
     # Add driver
     try:
-        add_driver(obj, rna, path, parent_prop.prop_name)
+        mustardui_add_driver(obj, rna, path, parent_prop.prop_name)
     except Exception:
         print("MustardUI - Could not link property to " + parent_prop.prop_name)
 
@@ -116,7 +81,7 @@ def add_custom_property(
 
     # Add driver
     try:
-        add_driver(obj, rna, path, prop_name)
+        mustardui_add_driver(obj, rna, path, prop_name)
     except Exception as e:
         print("MustardUI - Could not add a driver for " + prop_name + ":" + str(e))
         del obj[prop_name]
@@ -144,11 +109,13 @@ def add_custom_property(
 
         if "description" in ui_data_dict.keys():
             cp.description = ui_data_dict["description"]
-        if "default" in ui_data_dict.keys() and type != "BOOLEAN":
+        if "default" in ui_data_dict.keys():
             if type == "FLOAT":
                 cp.default_float = ui_data_dict["default"]
             elif type == "INT":
                 cp.default_int = ui_data_dict["default"]
+            elif type == "BOOLEAN":
+                cp.default_bool = ui_data_dict["default"]
             else:
                 cp.default_array = str(ui_data_dict["default"])
         if "min" in ui_data_dict.keys() and type != "BOOLEAN":
@@ -162,7 +129,7 @@ def add_custom_property(
             elif type == "INT":
                 cp.max_int = ui_data_dict["max"]
 
-    obj.property_overridable_library_set(f'["{prop_name}"]', True)
+    obj.property_overridable_library_set(f'["{bpy.utils.escape_identifier(prop_name)}"]', True)
 
     return False
 
@@ -196,6 +163,11 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         custom_props = obj.MustardUI_CustomProperties
         addon_prefs = context.preferences.addons[base_package].preferences
 
+        model_body = rig_settings.model_body
+        if model_body is None or model_body.data is None:
+            self.report({"ERROR"}, "MustardUI - A body mesh should be selected.")
+            return {"FINISHED"}
+
         k = 0
         preserved = 0
 
@@ -225,7 +197,9 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 custom_props.remove(i)
 
         # Materials
-        for mat in [x for x in rig_settings.model_body.data.materials if x is not None]:
+        for mat in [
+            x for x in model_body.data.materials if x is not None and x.node_tree is not None
+        ]:
             for j in range(len(mat.node_tree.nodes)):
                 if (
                     "MustardUI Float" in mat.node_tree.nodes[j].name
@@ -289,8 +263,8 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                     k = k + 1
 
         # Shape Keys
-        if rig_settings.model_body.data.shape_keys is not None:
-            for shape_key in rig_settings.model_body.data.shape_keys.key_blocks:
+        if model_body.data.shape_keys is not None:
+            for shape_key in model_body.data.shape_keys.key_blocks:
                 if "MustardUI Float" in shape_key.name:
                     preserved += add_custom_property(
                         obj,
@@ -309,7 +283,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                         f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Bool - ") :],
-                        "BOOL",
+                        "BOOLEAN",
                         custom_props,
                         sections_to_recover,
                         self.skip_existing,

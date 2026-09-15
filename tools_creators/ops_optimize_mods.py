@@ -38,6 +38,12 @@ def get_index(obj, name):
 def optimize_modifiers(
     context, obj, mod_type, mod_vg_name, sm_influence=True, preserve_modifiers=True
 ):
+    # Check if there is something to convert
+    if not any(
+        mod.type == mod_type and mod.vertex_group not in ("", mod_vg_name) for mod in obj.modifiers
+    ):
+        return 0
+
     arm = None
     pose_position = None
     for mod in obj.modifiers:
@@ -100,9 +106,6 @@ def optimize_modifiers(
             modifier=mod.name,
             index=lst_index,
         )
-
-    if len(mods) < 1:
-        return 0
 
     if mod_type == "CORRECTIVE_SMOOTH" and sm_influence and max_iterations > 0:
         for mod, iterations, scale in [x for x in mods if x is not None]:

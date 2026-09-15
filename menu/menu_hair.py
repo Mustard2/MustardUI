@@ -13,7 +13,7 @@ from ..physics.definitions_nodes import HAIR_DYNAMICS_NODE_GROUP, HAIR_DYNAMICS_
 from ..tools_creators.physics_presets import find_physics_modifier
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
-from .misc import mustardui_custom_properties_print
+from .misc import PieceDrawCache, mustardui_custom_properties_print
 
 
 # Function to format dynamic name
@@ -30,8 +30,11 @@ def hair_extras_list_make(rig_settings):
     return [obj for obj in objects if obj.type in {"MESH", "CURVES"}]
 
 
-def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
-    if obj in [x.object for x in physics_settings.items]:
+def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings, cache=None):
+    if cache is None:
+        cache = PieceDrawCache(arm)
+
+    if obj in cache.physics_objects:
         return
 
     col = layout.column()
@@ -50,11 +53,7 @@ def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
     op.obj_name = obj.name
 
     # Physics
-    pi = None
-    for pii in [x for x in physics_settings.items]:
-        if pii.outfit_object == obj:
-            pi = pii
-            break
+    pi = cache.physics_items.get(obj)
     if pi is not None:
         col2 = row.column(align=True)
         col2.enabled = physics_settings.enable_physics
@@ -84,15 +83,9 @@ def draw_hair_piece(layout, obj, arm, rig_settings, physics_settings, settings):
             )
 
     # Hair custom properties
+    custom_properties_obj = list(cache.hair_custom_properties.get(obj, ()))
     if rig_settings.outfit_custom_properties_name_order:
-        custom_properties_obj = sorted(
-            [x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj and not x.hidden],
-            key=lambda x: x.name,
-        )
-    else:
-        custom_properties_obj = [
-            x for x in arm.MustardUI_CustomPropertiesHair if x.hair == obj and not x.hidden
-        ]
+        custom_properties_obj.sort(key=lambda x: x.name)
 
     if len(custom_properties_obj) > 0:
         row.prop(
@@ -417,16 +410,15 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
 
         rig_settings = arm.MustardUI_RigSettings
 
-        if rig_settings.hair_list == "":
+        hair = rig_settings.hair_list
+        if hair == "":
             return False
 
-        obj = context.scene.objects[rig_settings.hair_list]
-        mod_particle_system = sorted(
-            [x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"],
-            key=format_dynamic_name,
-        )
+        obj = context.scene.objects.get(hair)
+        if obj is None:
+            return False
 
-        return res if obj is not None and len(mod_particle_system) > 0 else False
+        return res if len(obj.particle_systems) > 0 else False
 
     def draw_header(self, context):
         res, arm = mustardui_active_object(context, config=0)
@@ -552,6 +544,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
         layout.enabled = rig_settings.hair_show
 
         settings = bpy.context.scene.MustardUI_Settings
+        cache = PieceDrawCache(arm)
 
         box_already_allocated = False
         col = None
@@ -563,7 +556,9 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
 
             for obj in eitems:
                 row = col.row(align=True)
-                if not draw_hair_piece(row, obj, arm, rig_settings, physics_settings, settings):
+                if not draw_hair_piece(
+                    row, obj, arm, rig_settings, physics_settings, settings, cache
+                ):
                     row.label(text="", icon="BLANK1")
 
         # Particle systems

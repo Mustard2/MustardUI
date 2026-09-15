@@ -167,6 +167,7 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
 
     # Internal
     visibility_pre_disable: bpy.props.BoolProperty(default=True)
+    visibility_pre_disable_stored: bpy.props.BoolProperty(default=False)
 
 
 def register():

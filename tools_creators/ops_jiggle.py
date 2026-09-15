@@ -195,6 +195,13 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         physics_settings = obj.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
+        # Check if vertices are selected before continuing
+        bpy.ops.object.mode_set(mode="OBJECT")
+        if not any(v.select for v in bpy.context.object.data.vertices):
+            bpy.ops.object.mode_set(mode="EDIT")
+            self.report({"ERROR"}, "MustardUI - No vertex selected.")
+            return {"CANCELLED"}
+
         # Store Armature Pose states
         stored_pose_states = {}
         for obj in bpy.context.scene.objects:
@@ -716,16 +723,18 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             # Switch back to the previous mode (typically Object Mode)
             bpy.ops.object.mode_set(mode=current_mode)
 
-        # Add the object to the Physics Panel
-        if self.add_to_panel:
-            for obj in bpy.context.selected_objects:
+        for obj in bpy.context.selected_objects:
+            # Add the object to the Physics Panel
+            if self.add_to_panel:
                 add_item = physics_settings.items.add()
                 add_item.object = obj
                 add_item.type = "CAGE"
-                if self.parent_to_model and rig_settings.model_armature_object is not None:
-                    parent = rig_settings.model_armature_object
-                    obj.parent = parent
-                    obj.matrix_parent_inverse = parent.matrix_world.inverted()
+
+            # Parent the object to the Model Armature
+            if self.parent_to_model and rig_settings.model_armature_object is not None:
+                parent = rig_settings.model_armature_object
+                obj.parent = parent
+                obj.matrix_parent_inverse = parent.matrix_world.inverted()
 
         # Disable shadows for viewport/render
         for obj in bpy.context.selected_objects:

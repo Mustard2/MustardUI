@@ -41,7 +41,7 @@ class MustardUI_PresetDelete(bpy.types.Operator):
 
         presets.remove(index)
 
-        new_index = min(max(0, index - 1), len(presets) - 1)
+        new_index = max(0, min(index - 1, len(presets) - 1))
         setattr(arm, index_prop, new_index)
 
         self.report({"INFO"}, f"MustardUI - Preset '{preset_name}' deleted")

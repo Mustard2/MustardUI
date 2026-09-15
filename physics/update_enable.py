@@ -86,8 +86,13 @@ def set_physics_item(physics_item, status):
         obj.hide_viewport = not status
     elif status:
         obj.hide_viewport = physics_item.visibility_pre_disable
+        physics_item.visibility_pre_disable_stored = False
     else:
-        physics_item.visibility_pre_disable = obj.hide_viewport
+        # Store the visibility only when the item gets disabled: the following updates
+        # would store the hidden state set here instead
+        if not physics_item.visibility_pre_disable_stored:
+            physics_item.visibility_pre_disable = obj.hide_viewport
+            physics_item.visibility_pre_disable_stored = True
         obj.hide_viewport = True
 
 

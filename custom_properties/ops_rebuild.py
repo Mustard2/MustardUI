@@ -5,12 +5,18 @@ import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
-from ..misc.prop_utils import evaluate_path, evaluate_rna
+from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import assign_pointers, mustardui_clean_prop, mustardui_cp_path
+from .misc import (
+    assign_pointers,
+    mustardui_add_driver,
+    mustardui_clean_prop,
+    mustardui_cp_path,
+    mustardui_cp_restore_value,
+)
 
 
 def replace_id_block(rna_path, id_type, new_name):
@@ -256,41 +262,13 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
         " their path.\nThis only affects future custom properties rebuild, "
         "not the current",
     )
-
-    def add_driver(self, obj, rna, path, prop_name):
-
-        driver_object = evaluate_rna(rna)
-        driver_object.driver_remove(path)
-        driver = driver_object.driver_add(path)
-
-        try:
-            array_length = len(evaluate_path(rna, path))
-        except Exception:
-            array_length = 0
-
-        # No array property
-        if array_length == 0:
-            driver = driver.driver
-            driver.type = "AVERAGE"
-            var = driver.variables.new()
-            var.name = "mustardui_var"
-            var.targets[0].id_type = "ARMATURE"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'["{prop_name}"]'
-
-        # Array property
-        else:
-            for i in range(0, array_length):
-                driver[i] = driver[i].driver
-                driver[i].type = "AVERAGE"
-
-                var = driver[i].variables.new()
-                var.name = "mustardui_var"
-                var.targets[0].id_type = "ARMATURE"
-                var.targets[0].id = obj
-                var.targets[0].data_path = f'["{prop_name}"][{str(i)}]'
-
-        return
+    keep_values: bpy.props.BoolProperty(
+        name="Keep Current Values",
+        default=True,
+        description="Restore the current value of the custom properties after the "
+        "rebuild, clamped to their limits.\nIf disabled, all the properties are reset "
+        "to their default value",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -330,22 +308,22 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
                     prop_name = custom_prop.prop_name
 
+                    # The property is deleted and re-created below, which resets it to its
+                    # default value: store the current one to restore it afterwards
+                    current_value = obj.get(prop_name)
+                    if hasattr(current_value, "to_list"):
+                        current_value = current_value.to_list()
+
                     if prop_name in obj.keys():
                         del obj[prop_name]
 
                     if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
-                        try:
-                            default_bool = bool(evaluate_path(custom_prop.rna, custom_prop.path))
-                        except Exception:
-                            print(
-                                "MustardUI - Can not find the property "
-                                + mustardui_cp_path(custom_prop.rna, custom_prop.path)
-                            )
-                            default_bool = True
                         rna_idprop_ui_create(
                             obj,
                             prop_name,
-                            default=default_bool,
+                            default=bool(custom_prop.default_bool)
+                            if custom_prop.array_length == 0
+                            else ast.literal_eval(custom_prop.default_array),
                             description=custom_prop.description,
                             overridable=True,
                         )
@@ -380,9 +358,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             max=custom_prop.max_int,
                             description=custom_prop.description,
                             overridable=True,
-                            subtype=custom_prop.subtype
-                            if custom_prop.subtype != "FACTOR"
-                            else None,
+                            subtype=custom_prop.subtype,
                         )
 
                     else:
@@ -394,21 +370,43 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
                             overridable=True,
                         )
 
-                        self.add_driver(
+                    if self.keep_values:
+                        if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
+                            mustardui_cp_restore_value(obj, prop_name, current_value, bool)
+                        elif custom_prop.type == "FLOAT" and custom_prop.force_type == "None":
+                            is_color = custom_prop.subtype == "COLOR"
+                            mustardui_cp_restore_value(
+                                obj,
+                                prop_name,
+                                current_value,
+                                float,
+                                0.0 if is_color else float(custom_prop.min_float),
+                                1.0 if is_color else float(custom_prop.max_float),
+                            )
+                        elif custom_prop.type == "INT" or custom_prop.force_type == "Int":
+                            mustardui_cp_restore_value(
+                                obj,
+                                prop_name,
+                                current_value,
+                                int,
+                                custom_prop.min_int,
+                                custom_prop.max_int,
+                            )
+
+                    mustardui_add_driver(
+                        obj, custom_prop.rna, custom_prop.path, custom_prop.prop_name
+                    )
+                    for linked_custom_prop in custom_prop.linked_properties:
+                        mustardui_add_driver(
                             obj,
-                            custom_prop.rna,
-                            custom_prop.path,
+                            linked_custom_prop.rna,
+                            linked_custom_prop.path,
                             custom_prop.prop_name,
                         )
-                        for linked_custom_prop in custom_prop.linked_properties:
-                            self.add_driver(
-                                obj,
-                                linked_custom_prop.rna,
-                                linked_custom_prop.path,
-                                custom_prop.prop_name,
-                            )
+
                     if evaluate_path(custom_prop.rna, custom_prop.path) is None:
                         raise Exception("Property not found after rebuilding")
+
                 except Exception:
                     errors += 1
 
@@ -486,6 +484,7 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
         box = layout.box()
         col = box.column(align=True)
+        col.prop(self, "keep_values")
         col.prop(self, "attempt_fix_paths")
         col.prop(self, "remove_invalid_properties")
 

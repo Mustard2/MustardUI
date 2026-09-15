@@ -48,6 +48,37 @@ def get_section_by_diffeomorphic_id(morphs_settings, did):
     return None
 
 
+# Function checking if a morph passes the search and null filters of the Morphs panel
+def morph_filter_function(rig_settings, morphs_settings):
+    search = morphs_settings.diffeomorphic_search.lower()
+    filter_null = morphs_settings.diffeomorphic_filter_null
+    body = rig_settings.model_body
+    shape_keys = body.data.shape_keys if body is not None and body.data else None
+    cp_sources = {}
+
+    def morph_value(morph):
+        if morph.custom_property:
+            source = morph.custom_property_source
+            if source not in cp_sources:
+                cp_sources[source] = get_cp_source(source, rig_settings)
+            cp_source = cp_sources[source]
+            if cp_source is not None and morph.path in cp_source:
+                return cp_source[morph.path]
+        if morph.shape_key and shape_keys is not None and morph.path in shape_keys.key_blocks:
+            return shape_keys.key_blocks[morph.path].value
+        return None
+
+    def morph_filter(morph):
+        if search not in morph.name.lower():
+            return False
+        if not filter_null:
+            return True
+        value = morph_value(morph)
+        return isinstance(value, (bool, int, float)) and value != 0
+
+    return morph_filter
+
+
 diffeomorphic_facs_bones_rot = [
     "lowerJaw",
     "EyelidOuter",

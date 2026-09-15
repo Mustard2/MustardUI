@@ -8,18 +8,32 @@ from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
-from .misc import mustardui_custom_properties_print
+from .misc import PieceDrawCache, mustardui_custom_properties_print
 
 
 # Type: 0 - Standard, 1 - Locked Objects, 2 - Extras
-def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, otype=0, level=0):
+def draw_outfit_piece(
+    layout,
+    obj,
+    arm,
+    rig_settings,
+    physics_settings,
+    settings,
+    otype=0,
+    level=0,
+    outfit_collection=None,
+    cache=None,
+):
     if otype < 0 or otype > 3:
         return
 
     if level > rig_settings.outfits_max_hierarchy_level:
         return
 
-    if obj in [x.object for x in physics_settings.items]:
+    if cache is None:
+        cache = PieceDrawCache(arm)
+
+    if obj in cache.physics_objects:
         return
 
     col = layout.column(align=True)
@@ -27,8 +41,9 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
     for lvl in range(level):
         row.label(text="", icon="BLANK1")
 
+    children = cache.children.get(obj, ())
     collapse = False
-    if obj.children:
+    if children:
         collapse = not ui_collapse_prop(
             row,
             obj.MustardUI_OutfitSettings,
@@ -43,7 +58,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
 
     if rig_settings.model_MustardUI_naming_convention:
         if otype == 0:
-            coll_name = rig_settings.outfits_list + " - "
+            coll_name = outfit_collection.name + " - "
         elif otype == 1:
             coll_name = rig_settings.model_name + " "
         else:
@@ -67,11 +82,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
         ).obj = obj.name
 
     # Physics
-    pi = None
-    for pii in [x for x in physics_settings.items]:
-        if pii.outfit_object == obj:
-            pi = pii
-            break
+    pi = cache.physics_items.get(obj)
     if pi is not None:
         col2 = row.column(align=True)
         col2.enabled = physics_settings.enable_physics
@@ -105,29 +116,17 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
     # Outfit custom properties
     co_coll = None
     if otype == 0:
-        co_coll = bpy.data.collections[rig_settings.outfits_list]
+        co_coll = outfit_collection
     elif otype == 2:
         co_coll = rig_settings.extras_collection
 
+    custom_properties_obj = [
+        x
+        for x in cache.outfit_custom_properties.get(obj, ())
+        if (x.outfit == co_coll if otype != 1 else True)
+    ]
     if rig_settings.outfit_custom_properties_name_order:
-        custom_properties_obj = sorted(
-            [
-                x
-                for x in arm.MustardUI_CustomPropertiesOutfit
-                if (x.outfit == co_coll if otype != 1 else True)
-                and x.outfit_piece == obj
-                and not x.hidden
-            ],
-            key=lambda x: x.name,
-        )
-    else:
-        custom_properties_obj = [
-            x
-            for x in arm.MustardUI_CustomPropertiesOutfit
-            if (x.outfit == co_coll if otype != 1 else True)
-            and x.outfit_piece == obj
-            and not x.hidden
-        ]
+        custom_properties_obj.sort(key=lambda x: x.name)
 
     if len(custom_properties_obj) > 0:
         row.prop(
@@ -162,7 +161,7 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
         )
 
     if not collapse:
-        for c in obj.children:
+        for c in children:
             draw_outfit_piece(
                 layout,
                 c,
@@ -172,6 +171,8 @@ def draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings
                 settings,
                 otype,
                 level + 1,
+                outfit_collection,
+                cache,
             )
 
 
@@ -230,20 +231,32 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             return
 
         physics_settings = arm.MustardUI_PhysicsSettings
+        cache = PieceDrawCache(arm)
 
         layout = self.layout
         layout.enabled = rig_settings.outfits_show
 
         row = layout.row(align=True)
-        row.prop(rig_settings, "outfits_list", text="")
+        if rig_settings.outfits_list_mode == "THUMBNAILS":
+            row.template_icon_view(
+                rig_settings,
+                "outfits_list",
+                show_labels=True,
+                scale=rig_settings.outfits_list_previews_scale,
+                scale_popup=rig_settings.outfits_list_previews_scale,
+            )
+        else:
+            row.prop(rig_settings, "outfits_list", text="")
 
         if rig_settings.hair_collection is not None and any(
             x.hair is not None for x in rig_settings.outfits_collections
         ):
             row.prop(rig_settings, "hair_switch_with_outfit", text="", icon="CURVES")
 
-        if rig_settings.outfits_list != "Nude":
-            collection = bpy.data.collections[rig_settings.outfits_list]
+        outfits_list = rig_settings.outfits_list
+
+        if outfits_list != "Nude":
+            collection = bpy.data.collections[outfits_list]
             items = outfit_extract_items_from_collection(
                 collection, rig_settings.outfit_config_subcollections
             )
@@ -255,7 +268,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                         [
                             x
                             for x in arm.MustardUI_CustomPropertiesOutfit
-                            if x.outfit == bpy.data.collections[rig_settings.outfits_list]
+                            if x.outfit == collection
                             and x.outfit_piece is None
                             and not x.hidden
                             and (not x.advanced if not settings.advanced else True)
@@ -266,7 +279,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                     custom_properties = [
                         x
                         for x in arm.MustardUI_CustomPropertiesOutfit
-                        if x.outfit == bpy.data.collections[rig_settings.outfits_list]
+                        if x.outfit == collection
                         and x.outfit_piece is None
                         and not x.hidden
                         and (not x.advanced if not settings.advanced else True)
@@ -297,22 +310,29 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
                             text="",
                             icon="FILE_REFRESH",
                         )
-                        op.outfit = rig_settings.outfits_list
+                        op.outfit = outfits_list
                     op = row.operator("mustardui.delete_outfit", text="", icon="TRASH")
                     op.is_config = False
                     op.delete_cp = True
 
                 for obj in sorted(items, key=lambda x: x.name):
                     draw_outfit_piece(
-                        layout, obj, arm, rig_settings, physics_settings, settings, 0, 0
+                        layout,
+                        obj,
+                        arm,
+                        rig_settings,
+                        physics_settings,
+                        settings,
+                        0,
+                        0,
+                        collection,
+                        cache,
                     )
 
             else:
                 layout.label(text="This Collection seems empty", icon="ERROR")
 
-        elif (
-            rig_settings.outfit_nude and rig_settings.outfits_list == "Nude"
-        ):  # Outfit is nude below
+        elif rig_settings.outfit_nude and outfits_list == "Nude":  # Outfit is nude below
             if rig_settings.outfit_custom_properties_name_order:
                 custom_properties = sorted(
                     [
@@ -368,7 +388,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
             layout.separator()
             layout.label(text="Locked objects:", icon="LOCKED")
             for obj in locked_objects:
-                draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, 1, 0)
+                draw_outfit_piece(
+                    layout, obj, arm, rig_settings, physics_settings, settings, 1, 0, cache=cache
+                )
 
 
 class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
@@ -421,6 +443,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         poll, arm = mustardui_active_object(context, config=0)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
+        cache = PieceDrawCache(arm)
 
         layout = self.layout
         # Gray out the Extras pieces when the collection is excluded
@@ -435,7 +458,9 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
             # Objects directly in the Extras collection (not in any sub-collection)
             loose_items = outfit_extract_items_from_collection(extras, False)
             for obj in sorted(loose_items, key=lambda x: x.name):
-                draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, 2, 0)
+                draw_outfit_piece(
+                    layout, obj, arm, rig_settings, physics_settings, settings, 2, 0, cache=cache
+                )
 
             for child in sorted(extras.children, key=lambda x: x.name):
                 citems = outfit_extract_items_from_collection(child, True)
@@ -473,7 +498,15 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
                     col.enabled = child.MustardUI_extras_show
                     for obj in sorted(citems, key=lambda x: x.name):
                         draw_outfit_piece(
-                            col, obj, arm, rig_settings, physics_settings, settings, 2, 0
+                            col,
+                            obj,
+                            arm,
+                            rig_settings,
+                            physics_settings,
+                            settings,
+                            2,
+                            0,
+                            cache=cache,
                         )
             return
 
@@ -482,7 +515,9 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         )
 
         for obj in sorted(eitems, key=lambda x: x.name):
-            draw_outfit_piece(layout, obj, arm, rig_settings, physics_settings, settings, 2, 0)
+            draw_outfit_piece(
+                layout, obj, arm, rig_settings, physics_settings, settings, 2, 0, cache=cache
+            )
 
 
 class PANEL_PT_MustardUI_Outfits_Optimize(MainPanel, bpy.types.Panel):

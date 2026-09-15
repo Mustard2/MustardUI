@@ -1,6 +1,7 @@
 import bpy
 
 from ..model_selection.active_object import mustardui_active_object
+from .helper_functions import set_full_resolution_preview
 
 
 # Outfit information
@@ -24,6 +25,18 @@ class MustardUI_Outfit(bpy.types.PropertyGroup):
         description="Hair Object to be used when the Outfit is shown",
         type=bpy.types.Object,
         poll=poll_hair,
+    )
+
+    # Image shown in the Outfits list in Thumbnails mode
+    def update_preview(self, context):
+        set_full_resolution_preview(self.preview)
+
+    preview: bpy.props.PointerProperty(
+        name="Preview",
+        description="Image used as preview in the Outfits list.\nPack the image in the "
+        ".blend file to distribute it with the model",
+        type=bpy.types.Image,
+        update=update_preview,
     )
 
 

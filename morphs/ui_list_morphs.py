@@ -12,6 +12,15 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
     bl_label = "Remove Morphs"
     bl_options = {"UNDO"}
 
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=1)
+        if arm is None:
+            return False
+
+        sections = arm.MustardUI_MorphsSettings.sections
+        return res and 0 <= arm.mustardui_morphs_section_uilist_index < len(sections)
+
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=1)
@@ -23,7 +32,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
         uilist = section.morphs
         index = arm.mustardui_morphs_uilist_index
 
-        if len(uilist) <= index:
+        if not 0 <= index < len(uilist):
             return {"FINISHED"}
 
         # Remove the mute driver if available
@@ -47,7 +56,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
 
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         arm.mustardui_morphs_uilist_index = index
 
         arm.update_tag()
@@ -89,10 +98,11 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
         uilist = morphs_settings.sections[obj.mustardui_morphs_section_uilist_index].morphs
         index = obj.mustardui_morphs_uilist_index
 
-        if len(uilist) <= index:
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
             return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         obj.mustardui_morphs_uilist_index = index
@@ -110,16 +120,17 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
+
+        body = rig_settings.model_body
+        shape_keys = body.data.shape_keys if body is not None and body.data else None
         icon = "OBJECT_DATA" if item.custom_property else "SHAPEKEY_DATA"
         cp_source = get_cp_source(item.custom_property_source, rig_settings)
+
         if (
             cp_source
             and item.custom_property
             and hasattr(cp_source, f'["{bpy.utils.escape_identifier(item.path)}"]')
-        ) or (
-            item.shape_key
-            and item.path in rig_settings.model_body.data.shape_keys.key_blocks.keys()
-        ):
+        ) or (item.shape_key and shape_keys is not None and item.path in shape_keys.key_blocks):
             layout.prop(item, "name", text="", emboss=False, translate=False, icon=icon)
         else:
             layout.prop(item, "name", text="", emboss=False, translate=False, icon="ERROR")

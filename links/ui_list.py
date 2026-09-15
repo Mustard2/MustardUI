@@ -35,10 +35,11 @@ class MustardUI_Links_UIList_Switch(bpy.types.Operator):
         uilist = obj.MustardUI_Links
         index = context.scene.mustardui_links_uilist_index
 
-        if len(uilist) <= index:
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
             return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         context.scene.mustardui_links_uilist_index = index
@@ -67,7 +68,7 @@ class MustardUI_Link_Remove(bpy.types.Operator):
             return {"FINISHED"}
 
         uilist.remove(index)
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         context.scene.mustardui_links_uilist_index = index
 
         obj.update_tag()

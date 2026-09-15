@@ -2,6 +2,7 @@ import bpy
 
 from ..model_selection.active_object import mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
+from ..warnings.check_addon_version import check_addon_version
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
 from ..warnings.ops_update_ui import is_ui_update
 from . import MainPanel
@@ -16,6 +17,9 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_Warnings"
     bl_label = "Warnings"
     bl_icon = "ERROR"
+
+    url_MustardUI_Extensions = "https://extensions.blender.org/add-ons/mustardui/"
+    url_MustardUI_LatestRelease = "https://github.com/Mustard2/MustardUI/releases/latest"
 
     @classmethod
     def poll(cls, context):
@@ -34,6 +38,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
                 check_eevee_normals(context.scene, settings)
                 or not is_ui_update(rig_settings)
                 or check_blender_version(rig_settings)
+                or check_addon_version(rig_settings)
             )
 
         return poll
@@ -84,6 +89,31 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             op = row.operator("mustardui.update_ui", icon="TRIA_DOWN_BAR")
             op.force = False
             op.ignore = False
+
+        # Emit warning if the model has been configured with a more recent version of
+        # MustardUI than the installed one
+        if check_addon_version(rig_settings):
+            box = layout.box()
+            col = box.column(align=True)
+            muv = rig_settings.model_mustardui_version_saved
+            col.label(
+                text="Model MustardUI version: "
+                + str(muv[0])
+                + "."
+                + str(muv[1])
+                + "."
+                + str(muv[2]),
+                icon="MOD_BUILD",
+            )
+            col.label(text="The model might not work properly.", icon="BLANK1")
+            col.label(text="Update MustardUI to the latest version.", icon="BLANK1")
+            row = box.row(align=True)
+            row.operator(
+                "wm.url_open", text="Update", icon="URL"
+            ).url = self.url_MustardUI_Extensions
+            row.operator(
+                "wm.url_open", text="Manual", icon="URL"
+            ).url = self.url_MustardUI_LatestRelease
 
         # Emit warning if the model is used on a different Blender version than
         # requested by the model creator

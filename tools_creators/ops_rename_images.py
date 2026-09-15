@@ -17,36 +17,53 @@ def sanitize_name(name: str):
     return name.strip("_")
 
 
-def strip_image_extension(name: str):
-    # Extensions Blender can load as images: used to strip them from file names on disk
-    IMAGE_EXTENSIONS = {
-        ".avif",
-        ".bmp",
-        ".bw",
-        ".cin",
-        ".dds",
-        ".dpx",
-        ".exr",
-        ".hdr",
-        ".j2c",
-        ".jp2",
-        ".jpeg",
-        ".jpg",
-        ".png",
-        ".psd",
-        ".rgb",
-        ".rgba",
-        ".sgi",
-        ".tga",
-        ".tif",
-        ".tiff",
-        ".webp",
-    }
+# Extensions Blender can load as images: used to strip them from names and files on disk
+IMAGE_EXTENSIONS = {
+    ".avif",
+    ".bmp",
+    ".bw",
+    ".cin",
+    ".dds",
+    ".dpx",
+    ".exr",
+    ".hdr",
+    ".j2c",
+    ".jp2",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".psd",
+    ".rgb",
+    ".rgba",
+    ".sgi",
+    ".tga",
+    ".tif",
+    ".tiff",
+    ".webp",
+}
 
-    # Remove the Blender duplicate suffix (.001) and any image extension left in the name
-    name = re.sub(r"\.\d{3}$", "", name)
-    root, ext = os.path.splitext(name)
-    return root if ext.lower() in IMAGE_EXTENSIONS else name
+
+def strip_image_extension(name: str):
+    # Remove the Blender duplicate suffixes (.001) and any image extension left in the name
+    while True:
+        stripped = re.sub(r"\.\d{3}$", "", name)
+        root, ext = os.path.splitext(stripped)
+        if root and ext.lower() in IMAGE_EXTENSIONS:
+            stripped = root
+        if stripped == name:
+            return name
+        name = stripped
+
+
+def available_file_path(directory: str, stem: str, ext: str, current_path: str):
+    # Path for a renamed file: a number is added to the name if another file already has
+    # it, so that no file is overwritten
+    path = os.path.join(directory, stem + ext)
+    index = 1
+    while os.path.exists(path) and not os.path.samefile(path, current_path):
+        path = os.path.join(directory, f"{stem}_{index:03d}{ext}")
+        index += 1
+    return path
 
 
 def make_node_label(name: str):
@@ -297,6 +314,25 @@ class MustardUI_RenameImageNodes_SelectAll(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class MustardUI_RenameImageNodes_StripExtensions(bpy.types.Operator):
+    bl_idname = "mustardui.rename_image_nodes_strip_extensions"
+    bl_label = "Remove Extensions"
+    bl_description = "Remove the image file extensions from the names in the list"
+    bl_options = {"UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=1)
+
+    def execute(self, context):
+        for item in context.scene.mustardui_rename_images:
+            stripped = strip_image_extension(item.name)
+            # Assign only if needed, to avoid enabling items whose name is already clean
+            if stripped and stripped != item.name:
+                item.name = stripped
+        return {"FINISHED"}
+
+
 class MustardUI_RenameImageNodes(bpy.types.Operator):
     bl_idname = "mustardui.rename_image_nodes"
     bl_label = "Rename Image Nodes"
@@ -379,7 +415,9 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                     if os.path.exists(abs_path):
                         directory = os.path.dirname(abs_path)
                         ext = os.path.splitext(abs_path)[1]
-                        new_path = os.path.join(directory, strip_image_extension(new_name) + ext)
+                        new_path = available_file_path(
+                            directory, strip_image_extension(new_name), ext, abs_path
+                        )
 
                         if abs_path != new_path:
                             os.rename(abs_path, new_path)
@@ -395,8 +433,9 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
         col = context.scene.mustardui_rename_images
 
         box = layout.box()
-        row = box.row()
+        row = box.row(align=True)
         row.operator("mustardui.rename_image_nodes_update", icon="LOOP_FORWARDS")
+        row.operator("mustardui.rename_image_nodes_strip_extensions", icon="X")
 
         row = box.row(align=True)
         row.operator("mustardui.rename_image_nodes_select_all", text="Select All").value = True
@@ -429,6 +468,7 @@ def register():
     bpy.utils.register_class(MustardUI_RenameImageNodes_Item)
     bpy.utils.register_class(MustardUI_RenameImageNodes_Update)
     bpy.utils.register_class(MustardUI_RenameImageNodes_SelectAll)
+    bpy.utils.register_class(MustardUI_RenameImageNodes_StripExtensions)
     bpy.utils.register_class(MustardUI_RenameImageNodes)
 
     bpy.types.Scene.mustardui_rename_images = bpy.props.CollectionProperty(
@@ -440,6 +480,7 @@ def unregister():
     del bpy.types.Scene.mustardui_rename_images
 
     bpy.utils.unregister_class(MustardUI_RenameImageNodes)
+    bpy.utils.unregister_class(MustardUI_RenameImageNodes_StripExtensions)
     bpy.utils.unregister_class(MustardUI_RenameImageNodes_SelectAll)
     bpy.utils.unregister_class(MustardUI_RenameImageNodes_Update)
     bpy.utils.unregister_class(MustardUI_RenameImageNodes_Item)

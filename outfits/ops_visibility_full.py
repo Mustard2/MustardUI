@@ -1,5 +1,6 @@
 import bpy
 
+from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..hair.helper_functions import apply_hair_visibility
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
@@ -50,6 +51,14 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         hair_switcher_seen = False
         hair_switcher_active = False
 
+        # Names of the Hair Switch objects, checked for each outfit object
+        hair_switch_names = (
+            {x.name for x in rig_settings.hair_switch_collection.all_objects}
+            if rig_settings.hair_collection is not None
+            and rig_settings.hair_switch_collection is not None
+            else set()
+        )
+
         for col_entry in rig_settings.outfits_collections:
             col = col_entry.collection
             if not col:
@@ -95,12 +104,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
                 # Collect hair-switcher flags — the actual toggle happens
                 # once after all outfits are processed so we can also
                 # restore the hair_list selection correctly on deactivation.
-                if (
-                    rig_settings.hair_collection is not None
-                    and obj.type in ["MESH", "ARMATURE"]
-                    and rig_settings.hair_switch_collection is not None
-                    and obj.name in rig_settings.hair_switch_collection.all_objects.keys()
-                ):
+                if obj.type in ["MESH", "ARMATURE"] and obj.name in hair_switch_names:
                     hair_switcher_seen = True
                     if show_obj:
                         hair_switcher_active = True
@@ -170,58 +174,34 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         if arm_settings.outfits:
             outfits_update_armature_collections(rig_settings, arm, outfits=True)
 
-        # Custom properties
-        ui_cache = {}
+        # Custom Properties/Actions on Switch
         outfit_nude = rig_settings.outfit_nude
+        extras_collection = rig_settings.extras_collection
 
-        for cp in arm.MustardUI_CustomPropertiesOutfit:
-            if not (cp.outfit_enable_on_switch or cp.outfit_disable_on_switch):
-                continue
-            if not outfit_nude and not cp.outfit:
-                continue
-            # Skip Extras evaluation
-            if cp.outfit is not None and cp.outfit == rig_settings.extras_collection:
-                continue
+        # None leaves untouched the Extras, the Nude properties when there is no Nude
+        # "outfit", and the pieces of the shown Outfit that stay hidden, which are
+        # switched by MustardUI_OutfitVisibility instead
+        def outfit_shown(cp):
+            if cp.outfit is None:
+                return outfits_list == "Nude" if outfit_nude else None
+            if cp.outfit == extras_collection:
+                return None
+            if cp.outfit.name != outfits_list:
+                return False
+            if cp.outfit_piece is not None and cp.outfit_piece.hide_viewport:
+                return None
+            return True
 
-            prop = cp.prop_name
-            if prop not in arm.keys():
-                continue
+        # A locked piece that stays visible keeps its Value on Show
+        def outfit_value_shown(cp):
+            piece = cp.outfit_piece
+            if piece is not None and cp.outfit is not None and cp.outfit.name != outfits_list:
+                return piece.MustardUI_outfit_lock and not piece.hide_viewport
+            return outfit_shown(cp)
 
-            ui = ui_cache.get(prop)
-            if ui is None:
-                ui = arm.id_properties_ui(prop).as_dict()
-                ui_cache[prop] = ui
-
-            desired = None
-
-            if cp.outfit:
-                if cp.outfit_piece:
-                    piece = cp.outfit_piece
-                    piece_visible = not piece.hide_viewport
-                    piece_locked = piece.MustardUI_outfit_lock
-
-                    if (
-                        cp.outfit.name == outfits_list
-                        and piece_visible
-                        and cp.outfit_enable_on_switch
-                    ):
-                        desired = ui["max"]
-                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                        desired = ui["max"] if piece_locked and piece_visible else ui["default"]
-                else:
-                    if cp.outfit.name == outfits_list and cp.outfit_enable_on_switch:
-                        desired = ui["max"]
-                    elif cp.outfit.name != outfits_list and cp.outfit_disable_on_switch:
-                        desired = ui["default"]
-
-            elif outfit_nude:
-                if outfits_list == "Nude" and cp.outfit_enable_on_switch:
-                    desired = ui["max"]
-                elif outfits_list != "Nude" and cp.outfit_disable_on_switch:
-                    desired = ui["default"]
-
-            if desired is not None and arm[prop] != desired:
-                arm[prop] = desired
+        mustardui_cp_apply_on_switch(
+            arm, arm.MustardUI_CustomPropertiesOutfit, outfit_shown, outfit_value_shown
+        )
 
         # Physics & update tag
         if physics.enable_ui:

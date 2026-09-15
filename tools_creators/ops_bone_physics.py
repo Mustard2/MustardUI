@@ -114,18 +114,19 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         # Find disconnected bone chains
         bone_chains = find_bone_chains(bones)
 
+        # Check every chain before creating anything, to not leave partial results behind
+        if any(self.pinned_bones >= len(chain) for chain in bone_chains):
+            self.report(
+                {"WARNING"},
+                "MustardUI - The number of pinned bones can not be bigger than the "
+                "number of available bones.",
+            )
+            return {"CANCELLED"}
+
         chain_objects = []
         chain_bone_constraints = []
 
         for chain_idx, chain in enumerate(bone_chains):
-            if self.pinned_bones >= len(chain):
-                self.report(
-                    {"WARNING"},
-                    "MustardUI - The number of pinned bones can not be bigger than the "
-                    "number of available bones.",
-                )
-                return {"CANCELLED"}
-
             # Create a curve to represent the path through the bone tips
             curve_data = bpy.data.curves.new("MustardUI Bone Physics", type="CURVE")
             curve_data.dimensions = "3D"
@@ -346,7 +347,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
 
         # Remove all Damped Track constraints from the bones of the armature
         armature = curve_obj.parent  # Assuming the armature is the active object
-        if armature.type != "ARMATURE":
+        if armature is None or armature.type != "ARMATURE":
             self.report(
                 {"WARNING"},
                 "MustardUI - Removal was not possible: the mesh is not parented to any Armature.",
@@ -360,9 +361,15 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
                     bone.constraints.remove(constraint)
 
         # Remove the item from the list if available
-        for i, pi in enumerate(physics_settings.items):
-            if pi.object == curve_obj:
+        for i in reversed(range(len(physics_settings.items))):
+            if physics_settings.items[i].object == curve_obj:
                 physics_settings.items.remove(i)
+
+        # Keep the index of the Physics Items list in range
+        index = obj.mustardui_physics_items_uilist_index
+        obj.mustardui_physics_items_uilist_index = max(
+            0, min(index, len(physics_settings.items) - 1)
+        )
 
         # Delete the curve object
         if curve_obj and curve_obj.name in bpy.data.objects:

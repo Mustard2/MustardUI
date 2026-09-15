@@ -18,13 +18,6 @@ def mustardui_property_menuadd(self, context):
 
         layout.separator()
 
-        op = layout.operator(MustardUI_Property_MenuAdd.bl_idname)
-        op.section = ""
-        op.outfit_is_nude = False
-        op.outfit = ""
-        op.outfit_piece = ""
-        op.hair = ""
-
         for collection in [x for x in rig_settings.outfits_collections if x.collection is not None]:
             items = (
                 collection.collection.all_objects
@@ -42,6 +35,7 @@ def mustardui_property_menuadd(self, context):
                     op.outfit_is_nude = False
                     op.outfit = collection.collection.name
                     op.outfit_piece = object.name
+                    op.hair_global = False
                     op.hair = ""
                     break
         if rig_settings.extras_collection is not None:
@@ -62,6 +56,7 @@ def mustardui_property_menuadd(self, context):
                         op.outfit_is_nude = False
                         op.outfit = rig_settings.extras_collection.name
                         op.outfit_piece = object.name
+                        op.hair_global = False
                         op.hair = ""
                         break
         if rig_settings.hair_collection is not None:
@@ -79,13 +74,13 @@ def mustardui_property_menuadd(self, context):
                         op.outfit_is_nude = False
                         op.outfit = ""
                         op.outfit_piece = ""
+                        op.hair_global = False
                         op.hair = object.name
                         break
 
         layout.separator()
 
-        if len(rig_settings.body_custom_properties_sections) > 0:
-            layout.menu(OUTLINER_MT_MustardUI_PropertySectionMenu.bl_idname)
+        layout.menu(OUTLINER_MT_MustardUI_PropertySectionMenu.bl_idname, icon="PROPERTIES")
         if len([x for x in rig_settings.outfits_collections if x.collection is not None]) > 0:
             layout.menu(OUTLINER_MT_MustardUI_PropertyOutfitMenu.bl_idname, icon="MOD_CLOTH")
         if rig_settings.hair_collection is not None:

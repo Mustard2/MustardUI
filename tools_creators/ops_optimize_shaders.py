@@ -33,9 +33,9 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
         description="Remove duplicate datablocks left without users",
     )
 
-    # Image hashing — reads only the first and last 8 KB of each file for
-    # performance. Two images with identical metadata and boundary chunks but
-    # different middle content would be incorrectly treated as duplicates.
+    # Quick image signature, from the metadata, the color settings and the first and last
+    # 8 KB of the file. Different images can share it (e.g. uncompressed textures with the
+    # same empty borders), so the images sharing it are then compared on the whole file
     def image_signature(self, image):
 
         if image.source != "FILE":
@@ -57,6 +57,8 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
                 image.size[1],
                 image.channels,
                 stat.st_size,
+                image.colorspace_settings.name,
+                image.alpha_mode,
             )
 
             CHUNK_SIZE = 8192
@@ -76,6 +78,17 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
             return hasher.hexdigest()
 
+        except Exception:
+            return None
+
+    # Hash of the whole file, only computed for the images sharing a quick signature
+    def image_file_hash(self, image):
+        try:
+            hasher = hashlib.sha256()
+            with open(bpy.path.abspath(image.filepath), "rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                    hasher.update(chunk)
+            return hasher.hexdigest()
         except Exception:
             return None
 
@@ -344,23 +357,33 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
         # Remove duplicate images
         if self.remove_duplicate_images:
-            image_map = {}
             duplicate_images = {}
 
+            # Images grouped by the quick signature
+            candidates = {}
             for image in bpy.data.images:
                 signature = self.image_signature(image)
+                if signature is not None:
+                    candidates.setdefault(signature, []).append(image)
 
-                if signature is None:
-                    continue
+            # Only the images sharing it are duplicates candidates, and they are compared
+            # on the whole file content
+            for group in [x for x in candidates.values() if len(x) > 1]:
+                image_map = {}
+                for image in group:
+                    file_hash = self.image_file_hash(image)
 
-                if signature not in image_map:
-                    image_map[signature] = image
-                else:
-                    original = image_map[signature]
-                    duplicate_images[image] = original
+                    if file_hash is None:
+                        continue
 
-                    if addon_prefs.debug:
-                        print(f"Image duplicate found: {image.name}")
+                    if file_hash not in image_map:
+                        image_map[file_hash] = image
+                    else:
+                        original = image_map[file_hash]
+                        duplicate_images[image] = original
+
+                        if addon_prefs.debug:
+                            print(f"Image duplicate found: {image.name}")
 
             # Replace image texture nodes in materials
             for material in bpy.data.materials:
