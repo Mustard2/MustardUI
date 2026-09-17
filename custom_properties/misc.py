@@ -1,14 +1,50 @@
+import math
+
 import bpy
 
-from ..misc.prop_utils import evaluate_rna
+from ..misc.prop_utils import evaluate_path, evaluate_rna
+
+# hard_min/hard_max of an RNA property with no limits: FLT_MAX for Float, INT_MAX for Int
+FLOAT_UNBOUNDED = 1e30
+INT_UNBOUNDED = 2**31 - 1
 
 
-# Function to check keys of custom properties (only for debug)
-def dump(obj, text):
-    print("-" * 40, text, "-" * 40)
-    for attr in dir(obj):
-        if hasattr(obj, attr):
-            print("obj.%s = %s" % (attr, getattr(obj, attr)))
+# Check if a limit of an RNA property is the sentinel used when the property has no limit
+def mustardui_prop_limit_is_unbounded(limit, is_int):
+    if is_int:
+        return abs(limit) >= INT_UNBOUNDED
+    return not math.isfinite(limit) or abs(limit) >= FLOAT_UNBOUNDED
+
+
+# Minimum and maximum assigned to a Float or Int custom property when it is added
+# Unbounded limits make for a property impossible to use in the UI, so, depending on
+# the addon preferences, they fall back to 0 and 1
+def mustardui_prop_limits(prop, addon_prefs):
+    is_int = prop.type == "INT"
+    zero, one = (0, 1) if is_int else (0.0, 1.0)
+
+    # Colors are always normalized
+    if prop.subtype == "COLOR":
+        return zero, one
+
+    limits = addon_prefs.new_property_limits
+    if limits == "NORMALIZED":
+        return zero, one
+
+    prop_min, prop_max = prop.hard_min, prop.hard_max
+    if limits == "PROPERTY":
+        return prop_min, prop_max
+
+    if mustardui_prop_limit_is_unbounded(prop_min, is_int):
+        prop_min = zero
+    if mustardui_prop_limit_is_unbounded(prop_max, is_int):
+        prop_max = one
+
+    # Keep the limits usable when only one of the two was unbounded
+    if prop_min >= prop_max:
+        prop_max = prop_min + one
+
+    return prop_min, prop_max
 
 
 # Function to check over all custom properties
@@ -26,6 +62,100 @@ def mustardui_check_cp(obj, rna, path):
             return False
 
     return True
+
+
+# Check if a custom property supports the "Actions on switch"
+def mustardui_cp_supports_on_switch(custom_prop):
+    if not custom_prop.is_animatable:
+        return False
+    if custom_prop.array_length > 0 or custom_prop.subtype == "COLOR":
+        return False
+    if custom_prop.force_type in ["Int", "Bool"]:
+        return True
+    return custom_prop.type in ["FLOAT", "INT", "BOOLEAN"]
+
+
+# Name of the field storing the custom value of an "Actions on switch" action
+def mustardui_cp_on_switch_custom_field(custom_prop, show):
+    prefix = "outfit_enable" if show else "outfit_disable"
+
+    if custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool":
+        return prefix + "_custom_bool"
+    if custom_prop.type == "INT" or custom_prop.force_type == "Int":
+        return prefix + "_custom_int"
+    return prefix + "_custom_float"
+
+
+# Value assigned by an "Actions on switch" action, on show (show=True) or on hide
+def mustardui_cp_on_switch_value(custom_prop, ui_data, show):
+    choice = getattr(custom_prop, "outfit_enable_value" if show else "outfit_disable_value")
+
+    if choice == "MAX":
+        return ui_data.get("max", True)
+    if choice == "MIN":
+        return ui_data.get("min", False)
+    if choice == "DEFAULT":
+        return ui_data.get("default")
+
+    value = getattr(custom_prop, mustardui_cp_on_switch_custom_field(custom_prop, show))
+
+    # Keep the custom value inside the limits of the property
+    if not isinstance(value, bool):
+        value = min(max(value, ui_data.get("min", value)), ui_data.get("max", value))
+
+    return value
+
+
+# Apply the "Actions on switch" of the given custom properties
+def mustardui_cp_apply_on_switch(arm, custom_props, shown, value_shown=None):
+    ui_data_cache = {}
+
+    for cp in custom_props:
+        if not (cp.outfit_enable_on_switch or cp.outfit_disable_on_switch):
+            continue
+        if not mustardui_cp_supports_on_switch(cp):
+            continue
+
+        is_shown = shown(cp)
+        if is_shown is None:
+            continue
+
+        # The action of the switch direction should be enabled
+        if not (cp.outfit_enable_on_switch if is_shown else cp.outfit_disable_on_switch):
+            continue
+
+        prop = cp.prop_name
+        if prop not in arm:
+            continue
+
+        ui_data = ui_data_cache.get(prop)
+        if ui_data is None:
+            ui_data = arm.id_properties_ui(prop).as_dict()
+            ui_data_cache[prop] = ui_data
+
+        desired = mustardui_cp_on_switch_value(
+            cp, ui_data, is_shown if value_shown is None else value_shown(cp)
+        )
+
+        if desired is not None and arm[prop] != desired:
+            arm[prop] = desired
+
+
+# Restore the value of a custom property after it has been re-created
+def mustardui_cp_restore_value(obj, prop_name, value, cast, prop_min=None, prop_max=None):
+    if value is None:
+        return
+
+    def convert(single_value):
+        single_value = cast(single_value)
+        if prop_min is not None and prop_max is not None:
+            single_value = min(max(single_value, prop_min), prop_max)
+        return single_value
+
+    try:
+        obj[prop_name] = [convert(x) for x in value] if isinstance(value, list) else convert(value)
+    except Exception:
+        print(f"MustardUI - Could not restore the value of the custom property {prop_name}")
 
 
 # Function to choose correct custom properties list
@@ -53,37 +183,45 @@ def mustardui_update_index_cp(type, scene, index):
         scene.mustardui_property_uilist_hair_index = index
 
 
-def mustardui_add_driver(obj, rna, path, prop, prop_name):
+# Add the driver that links the property at rna.path to the custom property prop_name of
+# the Armature. array_length is the number of elements of the driven property, and it is
+# evaluated from the property itself when it is not provided
+def mustardui_add_driver(obj, rna, path, prop_name, array_length=None):
     driver_object = evaluate_rna(rna)
     driver_object.driver_remove(path)
     driver = driver_object.driver_add(path)
 
-    # No array property
-    if prop.array_length == 0:
-        driver = driver.driver
-        driver.type = "AVERAGE"
-        var = driver.variables.new()
+    if array_length is None:
+        try:
+            array_length = len(evaluate_path(rna, path))
+        except Exception:
+            array_length = 0
+
+    # The name should be escaped, or a name containing quotes breaks the driver
+    data_path = f'["{bpy.utils.escape_identifier(prop_name)}"]'
+
+    def add_variable(fcurve, target_path):
+        fcurve.driver.type = "AVERAGE"
+        var = fcurve.driver.variables.new()
         var.name = "mustardui_var"
         var.targets[0].id_type = "ARMATURE"
         var.targets[0].id = obj
-        var.targets[0].data_path = f'["{prop_name}"]'
+        var.targets[0].data_path = target_path
+
+    # No array property
+    if array_length == 0:
+        add_variable(driver, data_path)
 
     # Array property
     else:
-        for i in range(0, prop.array_length):
-            driver[i] = driver[i].driver
-            driver[i].type = "AVERAGE"
-
-            var = driver[i].variables.new()
-            var.name = "mustardui_var"
-            var.targets[0].id_type = "ARMATURE"
-            var.targets[0].id = obj
-            var.targets[0].data_path = f'["{prop_name}"][{str(i)}]'
-
-    return
+        for i in range(0, array_length):
+            add_variable(driver[i], f"{data_path}[{i}]")
 
 
 def mustardui_reassign_default(obj, uilist, index, addon_prefs):
+    if not 0 <= index < len(uilist):
+        return
+
     # Assign default before removing the associated drivers
     try:
         prop = uilist[index]
@@ -101,6 +239,9 @@ def mustardui_reassign_default(obj, uilist, index, addon_prefs):
 
 
 def mustardui_clean_prop(obj, uilist, index, addon_prefs):
+    if not 0 <= index < len(uilist):
+        return
+
     # Delete custom property and drivers
     try:
         ui_data = obj.id_properties_ui(uilist[index].prop_name)

@@ -1,5 +1,6 @@
 import bpy
 
+from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import (
     active_object_operator_poll,
@@ -43,6 +44,18 @@ class MustardUI_HairVisibility(bpy.types.Operator):
         # and it is restored as soon as that Outfit piece is disabled
         apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
 
+        # Custom Properties/Actions on Switch
+        hair_names = {x.name for x in hair_collection.objects}
+        mustardui_cp_apply_on_switch(
+            arm,
+            arm.MustardUI_CustomPropertiesHair,
+            lambda cp: (
+                None
+                if cp.hair is None or cp.hair.name not in hair_names
+                else not cp.hair.hide_viewport
+            ),
+        )
+
         # Masks
         update_masks(context, rig_settings)
 
@@ -82,12 +95,22 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
             self.report({"WARNING"}, "Hair Extras collection not defined in Rig Settings.")
             return {"CANCELLED"}
 
-        obj = context.scene.objects[hair_name]
+        obj = context.scene.objects.get(hair_name)
+        if obj is None:
+            self.report({"WARNING"}, f'MustardUI - Object "{hair_name}" not found.')
+            return {"CANCELLED"}
         visibility = obj.hide_viewport
 
         # Loop through hair objects
         for obj in [x for x in hair_extras_collection.objects if hair_name == x.name]:
             set_object_visibility(obj, visibility, rig_settings)
+
+        # Custom Properties/Actions on Switch
+        mustardui_cp_apply_on_switch(
+            arm,
+            arm.MustardUI_CustomPropertiesHair,
+            lambda cp: visibility if cp.hair is not None and cp.hair.name == hair_name else None,
+        )
 
         hidden = all(x.hide_viewport for x in hair_extras_collection.objects)
         hair_extras_collection.hide_viewport = hidden
@@ -127,7 +150,10 @@ class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
         return active_object_operator_poll(context, config=0)
 
     def execute(self, context):
-        obj = context.scene.objects[self.obj_name]
+        obj = context.scene.objects.get(self.obj_name)
+        if obj is None:
+            self.report({"WARNING"}, f'MustardUI - Object "{self.obj_name}" not found.')
+            return {"CANCELLED"}
 
         # Loop through hair objects
         for mod in obj.modifiers:

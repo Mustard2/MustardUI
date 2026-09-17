@@ -71,7 +71,7 @@ class MustardUI_Morphs_Section_Remove(bpy.types.Operator):
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
 
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         arm.mustardui_morphs_section_uilist_index = index
 
         arm.update_tag()
@@ -127,12 +127,12 @@ class MustardUI_Morphs_Section_UIList_Switch(bpy.types.Operator):
         uilist = morphs_settings.sections
         index = obj.mustardui_morphs_section_uilist_index
 
-        if len(uilist) <= index:
-            return {"FINISHED"}
-
         neighbour = index + (-1 if self.direction == "UP" else 1)
 
-        if len(uilist) <= neighbour or uilist[neighbour].is_internal:
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
+            return {"FINISHED"}
+
+        if uilist[neighbour].is_internal:
             return {"FINISHED"}
 
         uilist.move(neighbour, index)

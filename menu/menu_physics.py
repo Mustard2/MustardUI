@@ -12,6 +12,14 @@ from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
+# Physics item selected in the list: None if the list index is out of range
+def selected_physics_item(physics_settings, arm):
+    index = arm.mustardui_physics_items_uilist_index
+    if 0 <= index < len(physics_settings.items):
+        return physics_settings.items[index]
+    return None
+
+
 def cloth_panel(layout, pi, mod):
     cloth = mod.settings
     col = layout.column(align=True)
@@ -232,13 +240,13 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
             "mustardui_physics_items_uilist_index",
         )
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
 
-        if pi.type == "BONES_DRIVER":
+        if pi is not None and pi.type == "BONES_DRIVER":
             row = layout.row()
             row.enabled = pi.enable
             row.prop(pi, "bone_influence")
-        elif pi.type == "CAGE":
+        elif pi is not None and pi.type == "CAGE":
             row = layout.row()
             row.enabled = pi.enable
             row.prop(pi, "cage_influence")
@@ -263,7 +271,9 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
             return False
 
         physics_settings = obj.MustardUI_PhysicsSettings
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return False
 
         if pi.object and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
             cloth = next((m for m in pi.object.modifiers if m.type == "CLOTH"), None)
@@ -277,7 +287,9 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return
 
         layout.label(text="Cloth Settings")
         layout.active = physics_settings.enable_physics
@@ -304,7 +316,9 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return
         cloth = next((m for m in pi.object.modifiers if m.type == "CLOTH"), None)
 
         layout.active = physics_settings.enable_physics and pi.enable
@@ -335,7 +349,9 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
             return False
 
         physics_settings = obj.MustardUI_PhysicsSettings
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return False
 
         if pi.object and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
             return res and find_geometry_nodes_physics_modifier(pi.object) is not None
@@ -348,7 +364,9 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
 
         layout = self.layout
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return
         cloth_dynamics = find_geometry_nodes_physics_modifier(pi.object)
 
         if (
@@ -368,7 +386,9 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
 
         layout = self.layout
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return
         cloth_dynamics = find_geometry_nodes_physics_modifier(pi.object)
 
         layout.active = physics_settings.enable_physics and pi.enable
@@ -395,7 +415,9 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
             return False
 
         physics_settings = obj.MustardUI_PhysicsSettings
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return False
 
         if pi.object and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
             soft_body = next((m for m in pi.object.modifiers if m.type == "SOFT_BODY"), None)
@@ -409,7 +431,9 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return
 
         layout.label(text="Soft Body Settings")
         layout.active = physics_settings.enable_physics
@@ -436,7 +460,9 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return
         soft_body = next((m for m in pi.object.modifiers if m.type == "SOFT_BODY"), None)
 
         layout.active = physics_settings.enable_physics and pi.enable
@@ -463,7 +489,9 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
             return False
 
         physics_settings = obj.MustardUI_PhysicsSettings
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return False
 
         if pi.object and pi.type in ["COLLISION"]:
             cloth = next((m for m in pi.object.modifiers if m.type == "COLLISION"), None)
@@ -489,7 +517,9 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        pi = physics_settings.items[obj.mustardui_physics_items_uilist_index]
+        pi = selected_physics_item(physics_settings, obj)
+        if pi is None:
+            return
         collision = next((m for m in pi.object.modifiers if m.type == "COLLISION"), None)
 
         layout.active = physics_settings.enable_physics and pi.enable

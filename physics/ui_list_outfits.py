@@ -1,7 +1,10 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
@@ -13,13 +16,17 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=1):
+            return False
+
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
+        index = arm.mustardui_physics_items_uilist_index
+
         return (
-            res
-            and arm.mustardui_physics_items_outfits_uilist_index > -1
-            and len(physics_settings.items) > 0
-            and physics_settings.items[arm.mustardui_physics_items_uilist_index].object is not None
+            arm.mustardui_physics_items_outfits_uilist_index > -1
+            and 0 <= index < len(physics_settings.items)
+            and physics_settings.items[index].object is not None
         )
 
     def execute(self, context):
@@ -37,7 +44,7 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
 
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         arm.mustardui_physics_items_outfits_uilist_index = index
 
         arm.update_tag()

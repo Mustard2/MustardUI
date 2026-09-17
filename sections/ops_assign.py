@@ -1,6 +1,9 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Section_PropertyAssign(bpy.types.Operator):
@@ -12,10 +15,11 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
-        rig_settings = obj.MustardUI_RigSettings
+        if not active_object_operator_poll(context, config=1):
+            return False
 
-        return res and len(rig_settings.body_custom_properties_sections)
+        res, obj = mustardui_active_object(context, config=1)
+        return len(obj.MustardUI_RigSettings.body_custom_properties_sections) > 0
 
     def execute(self, context):
 
@@ -61,10 +65,7 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
         for prop in sorted(custom_props, key=lambda x: x.name):
             row = col.row(align=False)
             row.prop(prop, "add_section", text="")
-            row.label(
-                text=prop.name,
-                icon="SHAPEKEY_DATA" if prop.type in [0, 1] else "MATERIAL",
-            )
+            row.label(text=prop.name, icon=prop.icon if prop.icon != "NONE" else "DOT")
             row.scale_x = 0.75
             if prop.section != "":
                 section = rig_settings.body_custom_properties_sections.get(prop.section)

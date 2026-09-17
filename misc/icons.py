@@ -28,11 +28,7 @@ mustardui_icon_list = [
 
 def get_hair_icon(obj):
     if obj.type == "MESH":
-        return (
-            "MOD_PARTICLES"
-            if any(mod.type == "PARTICLE_SYSTEM" for mod in obj.modifiers)
-            else "OUTLINER_DATA_MESH"
-        )
+        return "MOD_PARTICLES" if len(obj.particle_systems) else "OUTLINER_DATA_MESH"
     if obj.type == "CURVES":
         return "OUTLINER_DATA_CURVES"
     return "BLANK1"

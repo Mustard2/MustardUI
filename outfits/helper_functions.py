@@ -1,4 +1,28 @@
+from array import array
+
 from ..misc.set_bool import set_bool
+
+# Largest image side copied into a full resolution preview
+FULL_PREVIEW_MAX_SIZE = 1024
+
+
+def set_full_resolution_preview(image):
+    """Replace the image preview (limited to 256 pixels by Blender) with the full
+    resolution image, so that it stays sharp when drawn at large scales"""
+
+    if image is None:
+        return
+
+    width, height = image.size
+    if width == 0 or height == 0 or max(width, height) > FULL_PREVIEW_MAX_SIZE:
+        return
+
+    pixels = array("f", [0.0]) * (width * height * 4)
+    image.pixels.foreach_get(pixels)
+
+    preview = image.preview_ensure()
+    preview.image_size = (width, height)
+    preview.image_pixels_float.foreach_set(pixels)
 
 
 def find_layer_collection(layer_coll, collection):

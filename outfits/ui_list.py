@@ -36,10 +36,11 @@ class MustardUI_Outfits_UIList_Switch(bpy.types.Operator):
         uilist = rig_settings.outfits_collections
         index = context.scene.mustardui_outfits_uilist_index
 
-        if len(uilist) <= index:
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
             return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         context.scene.mustardui_outfits_uilist_index = index
@@ -52,7 +53,17 @@ class MUSTARDUI_UL_Outfits_UIList(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         if item.collection:
-            layout.prop(item.collection, "name", text="", emboss=False, translate=False)
+            icon_value = 0
+            if data.outfits_list_mode == "THUMBNAILS" and item.preview:
+                icon_value = item.preview.preview_ensure().icon_id
+            layout.prop(
+                item.collection,
+                "name",
+                text="",
+                emboss=False,
+                translate=False,
+                icon_value=icon_value,
+            )
         else:
             layout.label(text="Outfit not found!", icon="ERROR")
 

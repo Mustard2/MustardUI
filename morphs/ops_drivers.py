@@ -1,7 +1,10 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .misc import (
     diffeomorphic_facs_bones_loc,
     diffeomorphic_facs_bones_rot,
@@ -19,9 +22,12 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=0):
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui
+        return morphs_settings.enable_ui
 
     # Function to prevent the DisableDriver operator to switch off custom
     # properties drivers
@@ -110,9 +116,11 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
                         else:
                             driver.mute = False
 
-        for driver in rig_settings.model_armature_object.animation_data.drivers:
-            if "evalMorphs" in driver.driver.expression:
-                driver.mute = self.check_driver(arm, driver.data_path)
+        animation_data = rig_settings.model_armature_object.animation_data
+        if animation_data is not None:
+            for driver in animation_data.drivers:
+                if "evalMorphs" in driver.driver.expression:
+                    driver.mute = self.check_driver(arm, driver.data_path)
 
         context.view_layer.objects.active = aobj
 
@@ -133,9 +141,12 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=0):
+            return False
+
         res, arm = mustardui_active_object(context, config=0)
         morphs_settings = arm.MustardUI_MorphsSettings
-        return res and morphs_settings.enable_ui
+        return morphs_settings.enable_ui
 
     def execute(self, context):
 
@@ -192,14 +203,14 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                 if obj.type == "MESH":
                     objects.append(obj)
 
-        # Disable Shape Keys
+        # Enable Shape Keys drivers
         for obj in objects:
             if obj.data.shape_keys:
                 if obj.data.shape_keys.animation_data:
                     for driver in obj.data.shape_keys.animation_data.drivers:
                         if (
-                            not ("pJCM" in driver.data_path or mutepJCM)
-                            and not ("facs" in driver.data_path or mutefacs)
+                            ("pJCM" not in driver.data_path or mutepJCM)
+                            and ("facs" not in driver.data_path or mutefacs)
                             and muteDazFcurves_exceptionscheck(
                                 muteexceptions, driver.data_path, exceptions
                             )
@@ -207,13 +218,15 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                         ):
                             driver.mute = False
 
-        for driver in rig_settings.model_armature_object.animation_data.drivers:
-            if (
-                "evalMorphs" in driver.driver.expression
-                or driver.driver.expression == "0.0"
-                or driver.driver.expression == "-0.0"
-            ):
-                driver.mute = False
+        animation_data = rig_settings.model_armature_object.animation_data
+        if animation_data is not None:
+            for driver in animation_data.drivers:
+                if (
+                    "evalMorphs" in driver.driver.expression
+                    or driver.driver.expression == "0.0"
+                    or driver.driver.expression == "-0.0"
+                ):
+                    driver.mute = False
 
         context.view_layer.objects.active = aobj
 

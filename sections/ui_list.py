@@ -36,10 +36,11 @@ class MustardUI_Section_UIList_Switch(bpy.types.Operator):
         uilist = rig_settings.body_custom_properties_sections
         index = context.scene.mustardui_section_uilist_index
 
-        if len(uilist) <= index:
+        neighbour = index + (-1 if self.direction == "UP" else 1)
+
+        if not 0 <= index < len(uilist) or not 0 <= neighbour < len(uilist):
             return {"FINISHED"}
 
-        neighbour = index + (-1 if self.direction == "UP" else 1)
         uilist.move(neighbour, index)
         index = self.move_index(uilist, index)
         context.scene.mustardui_section_uilist_index = index
@@ -72,12 +73,16 @@ class MustardUI_Section_Delete(bpy.types.Operator):
         if len(uilist) <= index:
             return {"FINISHED"}
 
+        # Clean the Section of the custom properties
+        for cp in [x for x in obj.MustardUI_CustomProperties if x.section == uilist[index].name]:
+            cp.section = ""
+
         uilist.remove(index)
-        index = min(max(0, index - 1), len(uilist) - 1)
+        index = max(0, min(index - 1, len(uilist) - 1))
         context.scene.mustardui_section_uilist_index = index
 
         # Remove the subsection status if there is no new parent section
-        if index == 0:
+        if index == 0 and len(uilist) > 0:
             uilist[index].is_subsection = False
 
         obj.update_tag()
@@ -104,7 +109,6 @@ class MustardUI_Section_Add(bpy.types.Operator):
 
         a = uilist.add()
         a.name = "Section " + str(len(uilist))
-        a.old_name = a.name
         index = len(uilist) - 1
         context.scene.mustardui_section_uilist_index = index
 

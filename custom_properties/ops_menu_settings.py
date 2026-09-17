@@ -10,7 +10,13 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import mustardui_choose_cp, mustardui_cp_path
+from .misc import (
+    mustardui_choose_cp,
+    mustardui_cp_on_switch_custom_field,
+    mustardui_cp_path,
+    mustardui_cp_restore_value,
+    mustardui_cp_supports_on_switch,
+)
 from .ops_set_section import SECTION_NONE, sections_enum
 
 float_subtype_items = (
@@ -24,6 +30,40 @@ float_subtype_items = (
     ("POWER", "Power", ""),
     ("TEMPERATURE", "Temperature", ""),
 )
+
+
+# Actions on Switch menu part
+def draw_on_switch_actions(box, custom_prop, scale):
+    def draw_action(show):
+        prefix = "outfit_enable" if show else "outfit_disable"
+        label = "On show:" if show else "On hide:"
+        field = mustardui_cp_on_switch_custom_field(custom_prop, show)
+        action_enabled = getattr(custom_prop, prefix + "_on_switch")
+        is_custom = getattr(custom_prop, prefix + "_value") == "CUSTOM"
+        is_bool = custom_prop.type == "BOOLEAN" or custom_prop.force_type == "Bool"
+
+        row = box.row()
+        row.prop(custom_prop, prefix + "_on_switch", text=label)
+        row.scale_x = scale
+
+        values = row.row(align=True)
+        values.enabled = action_enabled
+        values.prop(custom_prop, prefix + "_value", text="")
+
+        custom = values.row(align=True)
+        custom.enabled = action_enabled and is_custom
+        if is_bool:
+            custom_value = getattr(custom_prop, field)
+            custom.prop(custom_prop, field, text=str(custom_value), toggle=True)
+        else:
+            custom.prop(custom_prop, field, text="")
+
+    box.separator()
+
+    row = box.row()
+    row.label(text="Actions on switch", icon="CON_ACTION")
+    draw_action(True)
+    draw_action(False)
 
 
 class MustardUI_Property_Settings(bpy.types.Operator):
@@ -107,6 +147,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
+
+        if not 0 <= index < len(custom_props):
+            return {"FINISHED"}
+
         custom_prop = custom_props[index]
 
         if self.name == "":
@@ -114,13 +158,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             return {"FINISHED"}
 
         prop_type = custom_prop.type
-        if prop_type == "FLOAT" and (
-            isinstance(self.max_float, int)
-            or isinstance(self.min_float, int)
-            or isinstance(self.default_float, int)
-        ):
-            self.report({"ERROR"}, "MustardUI - Can not change type of the custom property.")
-            return {"FINISHED"}
 
         if custom_prop.array_length > 0 and custom_prop.subtype != "COLOR":
             try:
@@ -147,6 +184,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
             ui_data = obj.id_properties_ui(prop_name)
 
+            # Store current value to be restored after changing settings
+            current_value = obj.get(prop_name)
+            if hasattr(current_value, "to_list"):
+                current_value = current_value.to_list()
+
             if prop_type == "FLOAT":
                 custom_prop.force_type = self.force_type
 
@@ -167,9 +209,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     step=self.step_float,
                     description=self.description,
                     overridable=True,
-                    subtype=self.subtype
-                    if custom_prop.array_length == 0
-                    else (custom_prop.subtype if prop_subtype != "FACTOR" else None),
+                    subtype=self.subtype if custom_prop.array_length == 0 else custom_prop.subtype,
                 )
 
                 custom_prop.description = self.description
@@ -178,7 +218,6 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
                 if custom_prop.array_length == 0:
                     custom_prop.default_float = self.default_float
-                    obj[prop_name] = float(obj[prop_name])
                     custom_prop.subtype = self.subtype
                 else:
                     if prop_subtype != "COLOR":
@@ -195,6 +234,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                             + str(self.default_color[3])
                             + ")"
                         )
+
+                if prop_subtype != "COLOR":
+                    mustardui_cp_restore_value(
+                        obj, prop_name, current_value, float, self.min_float, self.max_float
+                    )
+                else:
+                    mustardui_cp_restore_value(obj, prop_name, current_value, float, 0.0, 1.0)
+
                 custom_prop.step_float = self.step_float
 
             elif prop_type == "BOOLEAN" or self.force_type == "Bool":
@@ -217,6 +264,8 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 else:
                     custom_prop.default_array = self.default_array
 
+                mustardui_cp_restore_value(obj, prop_name, current_value, bool)
+
             elif prop_type == "INT" or self.force_type == "Int":
                 ui_data.clear()
                 del obj[prop_name]
@@ -231,7 +280,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                     max=self.max_int,
                     description=self.description,
                     overridable=True,
-                    subtype=custom_prop.subtype if prop_subtype != "FACTOR" else None,
+                    subtype=custom_prop.subtype,
                 )
 
                 custom_prop.description = self.description
@@ -239,11 +288,14 @@ class MustardUI_Property_Settings(bpy.types.Operator):
                 custom_prop.max_int = self.max_int
                 if custom_prop.array_length == 0:
                     custom_prop.default_int = self.default_int
-                    obj[prop_name] = int(obj[prop_name])
                 else:
                     custom_prop.default_array = self.default_array
+
+                mustardui_cp_restore_value(
+                    obj, prop_name, current_value, int, self.min_int, self.max_int
+                )
             else:
-                ui_data.update(description=custom_prop.description)
+                ui_data.update(description=self.description)
                 custom_prop.description = self.description
 
         obj.update_tag()
@@ -255,7 +307,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
 
-        if len(custom_props) <= index:
+        if not 0 <= index < len(custom_props):
             return {"FINISHED"}
 
         custom_prop = custom_props[index]
@@ -332,6 +384,10 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
         res, obj = mustardui_active_object(context, config=1)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
+
+        if not 0 <= index < len(custom_props):
+            return
+
         custom_prop = custom_props[index]
         prop_type = custom_prop.type
         prop_cp_type = custom_prop.cp_type
@@ -360,12 +416,20 @@ class MustardUI_Property_Settings(bpy.types.Operator):
         row.prop(self, "icon", text="")
 
         row = box.row()
+        row.label(text="Description:")
+        row.scale_x = scale
+        row.prop(self, "description", text="")
+
+        row = box.row()
         row.label(text="Visibility:")
         row.scale_x = scale / 2
         row.prop(custom_prop, "hidden", text="Hidden")
         row.prop(custom_prop, "advanced", text="Advanced")
 
         if prop_cp_type == "OUTFIT":
+            layout.label(text="Outfit", icon="MOD_CLOTH")
+            box = layout.box()
+
             row = box.row()
             row.label(text="Outfit:")
             row.scale_x = scale
@@ -376,26 +440,24 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             row.scale_x = scale
             row.prop(custom_prop, "outfit_piece", text="")
 
-            if prop_type == "FLOAT" and custom_prop.subtype != "COLOR":
-                row = box.row()
-                row.label(text="Actions on switch:")
-                row.scale_x = scale / 2
-                row.prop(custom_prop, "outfit_enable_on_switch", text="Enable")
-                row.prop(custom_prop, "outfit_disable_on_switch", text="Disable")
+            if mustardui_cp_supports_on_switch(custom_prop):
+                draw_on_switch_actions(box, custom_prop, scale)
 
         if prop_cp_type == "HAIR":
+            layout.label(text="Hair", icon="CURVES")
+            box = layout.box()
+
             row = box.row()
             row.label(text="Hair:")
             row.scale_x = scale
             row.prop(custom_prop, "hair", text="")
 
-        if custom_prop.is_animatable:
-            box = layout.box()
+            if custom_prop.hair is not None and mustardui_cp_supports_on_switch(custom_prop):
+                draw_on_switch_actions(box, custom_prop, scale)
 
-            row = box.row()
-            row.label(text="Description:")
-            row.scale_x = scale
-            row.prop(self, "description", text="")
+        if custom_prop.is_animatable:
+            layout.label(text="Data", icon="MODIFIER_DATA")
+            box = layout.box()
 
             if prop_type == "FLOAT" and custom_prop.subtype != "COLOR":
                 if custom_prop.array_length == 0:
@@ -533,9 +595,9 @@ class MustardUI_Property_Settings(bpy.types.Operator):
             )
 
         if addon_prefs.debug and custom_prop.ptr_type != "None":
+            layout.label(text="Debug", icon="INFO")
+
             box = layout.box()
-            row = box.row()
-            row.label(text="Debug", icon="INFO")
             row = box.row()
             row.enabled = False
             if custom_prop.ptr_type == "ARMATURE":

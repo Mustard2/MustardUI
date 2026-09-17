@@ -66,7 +66,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         hc = rig_settings.hair_collection
         hec = rig_settings.hair_extras_collection
 
-        return (hc and obj in hc.objects) or (hec and obj in hec.objects)
+        return (hc and obj in list(hc.objects)) or (hec and obj in list(hec.objects))
 
     # Poll function for the selection of mesh belonging to an outfit in
     # pointer properties
@@ -91,7 +91,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
             else self.outfit.objects
         )
 
-        return obj.type == "MESH" and obj in items
+        return obj.type == "MESH" and obj in list(items)
 
     outfit: PointerProperty(
         name="Outfit Collection",
@@ -102,18 +102,44 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
         name="Outfit Piece", type=bpy.types.Object, poll=outfit_switcher_poll_mesh
     )
 
+    # Actions on Switch
+    on_switch_value_items = (
+        ("MAX", "Max", "The maximum value of the property (True for Bool properties)"),
+        ("MIN", "Min", "The minimum value of the property (False for Bool properties)"),
+        ("DEFAULT", "Default", "The default value of the property"),
+        ("CUSTOM", "Custom", "A custom value, clamped to the limits of the property"),
+    )
+
     outfit_enable_on_switch: BoolProperty(
         default=False,
-        name="Enable on Outfit Switch",
-        description="Set the value of this property to the max value when you "
-        "enable the outfit/outfit piece",
+        name="Action on Show",
+        description="Set the value of this property when you show the Outfit or the Hair",
     )
+    outfit_enable_value: EnumProperty(
+        name="Value on Show",
+        default="MAX",
+        items=on_switch_value_items,
+        description="Value assigned to this property when you show the Outfit or the Hair",
+    )
+    outfit_enable_custom_float: FloatProperty(name="Value on Show")
+    outfit_enable_custom_int: IntProperty(name="Value on Show")
+    outfit_enable_custom_bool: BoolProperty(name="Value on Show")
+
     outfit_disable_on_switch: BoolProperty(
         default=False,
-        name="Disable on Outfit Switch",
-        description="Set the value of this property to the default value when you "
-        "disable the outfit/outfit piece",
+        name="Action on Hide",
+        description="Set the value of this property when you hide the Outfit or the Hair",
     )
+    outfit_disable_value: EnumProperty(
+        name="Value on Hide",
+        default="DEFAULT",
+        items=on_switch_value_items,
+        description="Value assigned to this property when you hide the Outfit or the Hair.\n"
+        "A locked Outfit piece that stays visible keeps its Value on Show instead",
+    )
+    outfit_disable_custom_float: FloatProperty(name="Value on Hide")
+    outfit_disable_custom_int: IntProperty(name="Value on Hide")
+    outfit_disable_custom_bool: BoolProperty(name="Value on Hide")
 
     # Hair
     hair: PointerProperty(name="Hair Style", type=bpy.types.Object, poll=poll_mesh)
@@ -135,7 +161,7 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
             ("Bool", "Bool", "Bool"),
         ),
     )
-    step_float: bpy.props.FloatProperty(name="Step", default=0.01)
+    step_float: FloatProperty(name="Step", default=0.01)
 
     # Properties stored to rebuild custom properties in case of troubles
     description: StringProperty()

@@ -40,6 +40,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         col.prop(rig_settings, "outfit_physics_support", text="Physics Support")
         col.prop(rig_settings, "outfit_config_subcollections")
 
+        # Optimization settings
         box = layout.box()
         box.label(text="Optimization Settings", icon="FORCE_WIND")
         col = box.column(align=True)
@@ -53,6 +54,34 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             row = box.row()
             row.label(text="Outfits List", icon="OUTLINER_COLLECTION")
             row.operator("mustardui.outfits_smartcheck", text="", icon="SHADERFX")
+
+            col = box.column(align=True)
+            col.row(align=True).prop(rig_settings, "outfits_list_mode", expand=True)
+            if rig_settings.outfits_list_mode == "THUMBNAILS":
+                col.prop(rig_settings, "outfits_list_previews_scale")
+                col.operator(
+                    "mustardui.outfits_render_preview",
+                    text="Render All Thumbnails",
+                    icon="RENDER_STILL",
+                ).outfit = ""
+
+                if rig_settings.outfits_list_mode == "THUMBNAILS" and rig_settings.outfit_nude:
+                    box2 = box.box()
+                    row = box2.row()
+                    row.template_ID(
+                        rig_settings,
+                        "outfit_nude_preview",
+                        open="image.open",
+                        text="Nude Thumbnail",
+                    )
+                    row.operator(
+                        "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
+                    ).outfit = "Nude"
+                    if rig_settings.outfit_nude_preview is not None:
+                        box2.template_icon(
+                            icon_value=rig_settings.outfit_nude_preview.preview_ensure().icon_id,
+                            scale=rig_settings.outfits_list_previews_scale,
+                        )
 
             # Outfits list panel
             box = box.box()
@@ -112,23 +141,24 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             op.is_config = True
             op.delete_cp = True
 
-            if rig_settings.hair_collection is not None:
-                box.prop(
-                    rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index],
-                    "hair",
-                )
+            outfit = rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index]
 
-            # Outfit properties
-            box = layout.box()
-            box.label(text="Global Properties", icon="PROPERTIES")
-            col = box.column(align=True)
-            col.prop(rig_settings, "outfits_enable_global_subsurface")
-            col.prop(rig_settings, "outfits_enable_global_smoothcorrection")
-            col.prop(rig_settings, "outfits_enable_global_shrinkwrap")
-            col.prop(rig_settings, "outfits_enable_global_surfacedeform")
-            col.prop(rig_settings, "outfits_enable_global_mask")
-            col.prop(rig_settings, "outfits_enable_global_solidify")
-            col.prop(rig_settings, "outfits_enable_global_triangulate")
+            if rig_settings.hair_collection is not None:
+                box.prop(outfit, "hair")
+
+            if rig_settings.outfits_list_mode == "THUMBNAILS":
+                box2 = box.box()
+                row = box2.row()
+                row.template_ID(outfit, "preview", open="image.open", text="Thumbnail")
+                if outfit.collection is not None:
+                    row.operator(
+                        "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
+                    ).outfit = outfit.collection.name
+                if outfit.preview is not None:
+                    box2.template_icon(
+                        icon_value=outfit.preview.preview_ensure().icon_id,
+                        scale=rig_settings.outfits_list_previews_scale,
+                    )
 
             # Custom properties
             box = layout.box()
@@ -173,9 +203,8 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             box = layout.box()
             box.label(text="No Outfits added yet.", icon="ERROR")
 
-        box = layout.box()
-
         # Extras list
+        box = layout.box()
         box.label(text="Extras", icon="ADD")
         row = box.row()
         row.prop(rig_settings, "extras_collection", text="")
@@ -186,10 +215,21 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             op.single_outfit = rig_settings.extras_collection.name
         else:
             op.single_outfit = ""
-
         row = box.row()
         row.enabled = rig_settings.extras_collection is not None
         row.prop(rig_settings, "extras_config_subcollections")
+
+        # Outfit global properties
+        box = layout.box()
+        box.label(text="Global Properties", icon="PROPERTIES")
+        col = box.column(align=True)
+        col.prop(rig_settings, "outfits_enable_global_subsurface")
+        col.prop(rig_settings, "outfits_enable_global_smoothcorrection")
+        col.prop(rig_settings, "outfits_enable_global_shrinkwrap")
+        col.prop(rig_settings, "outfits_enable_global_surfacedeform")
+        col.prop(rig_settings, "outfits_enable_global_mask")
+        col.prop(rig_settings, "outfits_enable_global_solidify")
+        col.prop(rig_settings, "outfits_enable_global_triangulate")
 
 
 def register():

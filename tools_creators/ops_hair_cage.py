@@ -98,22 +98,25 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         default=True,
     )
 
+    # Name of the temporary proxy created by invoke, removed by execute or cancel
+    temp_proxy: bpy.props.StringProperty(default="", options={"HIDDEN", "SKIP_SAVE"})
+
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=1)
         return res and context.active_object and context.active_object.type == "MESH"
 
-    def cancel(self, context):
-        if len(bpy.context.selected_objects) > 1 and bpy.context.active_object:
-            # Store the current active object
-            active_obj = bpy.context.active_object
-            # Deselect the active object (so it can be deleted)
-            active_obj.select_set(False)
-            # Delete the previously active object
-            bpy.data.objects.remove(active_obj)
-            # Make the new selected object the active one
-            bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
+    def remove_temp_proxy(self, context):
+        temp_proxy = bpy.data.objects.get(self.temp_proxy) if self.temp_proxy else None
+        if temp_proxy is None:
+            return
+        was_active = context.view_layer.objects.active == temp_proxy
+        bpy.data.objects.remove(temp_proxy)
+        if was_active and context.selected_objects:
+            context.view_layer.objects.active = context.selected_objects[0]
 
+    def cancel(self, context):
+        self.remove_temp_proxy(context)
         return None
 
     def execute(self, context):
@@ -122,18 +125,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         physics_settings = obj.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        # Ensure there are at least two selected objects and one active object
-        if len(bpy.context.selected_objects) > 1 and bpy.context.active_object:
-            # Store the current active object
-            active_obj = bpy.context.active_object
-            # Deselect the active object (so it can be deleted)
-            active_obj.select_set(False)
-            # Delete the previously active object
-            bpy.data.objects.remove(active_obj)
-            # Make the new selected object the active one
-            bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
-        else:
-            print("Make sure there are at least two selected objects and one active object.")
+        self.remove_temp_proxy(context)
 
         voxel_size = self.voxel_res
         voxel_size = 0.4 / (voxel_size / 5)
@@ -141,7 +133,9 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
         def create_proxy_mesh(original_obj):
             """Creates a proxy mesh using the method provided."""
-            # Duplicate the active object
+            bpy.ops.object.select_all(action="DESELECT")
+            original_obj.select_set(True)
+            bpy.context.view_layer.objects.active = original_obj
             bpy.ops.object.duplicate()
             duplicate_obj = bpy.context.active_object
 
@@ -570,10 +564,10 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                 obj,
                 "Inflate",
                 default=0.0,
-                min=0.0,
-                soft_min=0.0,
+                min=-1.0,
+                soft_min=-1.0,
                 max=1.0,
-                soft_max=0.0,
+                soft_max=1.0,
                 overridable=True,
             )
 
@@ -686,6 +680,10 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                         # Enable overlays
                         space.overlay.show_overlays = True
 
+        # Only the active mesh is used: the other selected objects are left untouched
+        bpy.ops.object.select_all(action="DESELECT")
+        context.view_layer.objects.active.select_set(True)
+
         # Ensure that there is an active object and it's a mesh
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
@@ -705,6 +703,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         bpy.ops.object.duplicate()
         duplicate_obj = bpy.context.active_object
         duplicate_obj.name = f"{bpy.context.active_object.name} Temp Hair Proxy"
+        self.temp_proxy = duplicate_obj.name
 
         # Apply scale to the duplicate
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)

@@ -5,7 +5,10 @@ import bpy
 from .. import __package__ as base_package
 from .. import bl_info
 from ..hair.helper_functions import set_selected_hair, store_current_hair
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..physics.update_enable import enable_physics_update
 from .definitions import mustardui_detect_rig_type
 
@@ -16,6 +19,10 @@ class MustardUI_Configuration(bpy.types.Operator):
     bl_idname = "mustardui.configuration"
     bl_label = "Configure MustardUI"
     bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=-1)
 
     def execute(self, context):
 
@@ -78,7 +85,7 @@ class MustardUI_Configuration(bpy.types.Operator):
                     index_to_delete.append(x)
                     if addon_prefs.debug:
                         print("MustardUI - A ghost outfit collection has been removed.")
-            for x in index_to_delete:
+            for x in reversed(index_to_delete):
                 rig_settings.outfits_collections.remove(x)
 
             if tools_settings.autoeyelid_enable:
@@ -129,7 +136,7 @@ class MustardUI_Configuration(bpy.types.Operator):
             # Check for errors in the list selection
             if len(rig_settings.outfits_list_make(context)) > 0 and rig_settings.outfits_list == "":
                 try:
-                    rig_settings.hair_list = rig_settings.outfits_list_make(context)[0][0]
+                    rig_settings.outfits_list = rig_settings.outfits_list_make(context)[0][0]
                     warnings = warnings + 1
                     print("MustardUI - Configuration Warning - Fixed outfit_list index")
                 except Exception:
@@ -196,6 +203,9 @@ class MustardUI_Configuration(bpy.types.Operator):
             else:
                 rig_settings.model_version_date = ""
 
+            # Save the version with which the model configuration has been completed
+            rig_settings.model_mustardui_version_saved = bl_info["version"]
+
             # Clean the model temporary settings
             settings.rename_outfits_temp_class.clear()
 
@@ -230,10 +240,6 @@ class MustardUI_Configuration(bpy.types.Operator):
             bpy.ops.mustardui.viewportmodelselection()
 
         obj.MustardUI_created = True
-
-        # Fix for #148 - https://github.com/Mustard2/MustardUI/issues/148
-        for sec in rig_settings.body_custom_properties_sections:
-            sec.old_name = sec.name
 
         # Force Physics update
         enable_physics_update(physics_settings, context)

@@ -30,7 +30,7 @@ class MustardUI_RemoveArmature(bpy.types.Operator):
 
         settings.viewport_model_selection = True
 
-        bpy.ops.outliner.orphans_purge()
+        bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
 
         self.report(
             {"INFO"},

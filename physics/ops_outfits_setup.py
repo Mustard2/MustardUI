@@ -1,7 +1,10 @@
 import bpy
 
 from ..misc.mesh_intersection import MeshIntersectionChecker
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..outfits.helper_functions import find_layer_collection
 from .update_enable import enable_physics_update
 
@@ -502,15 +505,16 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=1):
+            return False
+
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
         for pi in physics_settings.items:
             if len(pi.intersecting_objects) > 0:
-                return (
-                    res
-                    and physics_settings.enable_ui
-                    and [x for x in physics_settings.items if x.type == "CAGE"]
-                )
+                return physics_settings.enable_ui and [
+                    x for x in physics_settings.items if x.type == "CAGE"
+                ]
         return False
 
     def execute(self, context):
@@ -522,7 +526,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         items = physics_settings.items
 
         if self.unique:
-            if arm.mustardui_physics_items_uilist_index < 0:
+            if not 0 <= arm.mustardui_physics_items_uilist_index < len(items):
                 return {"FINISHED"}
             if physics_settings.items[arm.mustardui_physics_items_uilist_index].object is None:
                 return {"FINISHED"}
@@ -627,13 +631,14 @@ class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if not active_object_operator_poll(context, config=1):
+            return False
+
         res, arm = mustardui_active_object(context, config=1)
         physics_settings = arm.MustardUI_PhysicsSettings
-        return (
-            res
-            and physics_settings.enable_ui
-            and [x for x in physics_settings.items if x.type == "CAGE"]
-        )
+        return physics_settings.enable_ui and [
+            x for x in physics_settings.items if x.type == "CAGE"
+        ]
 
     def execute(self, context):
 

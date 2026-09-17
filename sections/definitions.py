@@ -2,7 +2,6 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty, StringProperty
 
 from ..misc.icons import mustardui_icon_list
-from ..model_selection.active_object import mustardui_active_object
 
 
 # Section for body properties
@@ -10,21 +9,23 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
     # Name of the section
 
     # Fix for #148 - https://github.com/Mustard2/MustardUI/issues/148
-    # The update function is to avoid dangling section strings on custom properties,
-    # storing the old name to check if the section name in the cp should be changed
-    old_name: StringProperty(default="")
+    # Custom properties store their Section as a name, so renaming a Section would leave
+    # them dangling. The name lives in the "name" ID property: inside the setter that
+    # still holds the previous name, which is the one to move the custom properties from
+    def name_get(self):
+        return self.get("name", "")
 
-    def name_update(self, context):
-        res, arm = mustardui_active_object(context, config=1)
-        custom_props = arm.MustardUI_CustomProperties
+    def name_set(self, value):
+        old_name = self.get("name", "")
 
-        for cp in custom_props:
-            if cp.section == self.old_name:
-                cp.section = self.name
+        if old_name and old_name != value:
+            for cp in self.id_data.MustardUI_CustomProperties:
+                if cp.section == old_name:
+                    cp.section = value
 
-        self.old_name = self.name
+        self["name"] = value
 
-    name: StringProperty(name="Section name", update=name_update)
+    name: StringProperty(name="Section name", get=name_get, set=name_set)
 
     # Section icon
     icon: EnumProperty(name="Section Icon", items=mustardui_icon_list)

@@ -1,6 +1,7 @@
 def outfit_extract_items_from_collection(collection, subcollections):
-    items = [x for x in (collection.all_objects if subcollections else collection.objects)]
-    return [x for x in items if x.parent is None or x.parent not in items]
+    items = list(collection.all_objects if subcollections else collection.objects)
+    item_set = set(items)
+    return [x for x in items if x.parent is None or x.parent not in item_set]
 
 
 def outfit_poll_collection(self, object):
