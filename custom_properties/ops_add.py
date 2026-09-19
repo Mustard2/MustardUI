@@ -108,8 +108,8 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - This property was already added.")
             return {"FINISHED"}
 
-        # Try to find a better name than default_value for material nodes
-        if "node_tree.nodes" in rna:
+        # Try to find a better name than default_value for nodes
+        if ".nodes[" in rna:
             rna_node = rna.rsplit(".", 1)
 
             # Check for .type existence
@@ -162,9 +162,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 and hasattr(prop, "subtype")
             ):
                 description = (
-                    prop.description
-                    if ("node_tree.nodes" not in rna and "shape_keys" not in rna)
-                    else ""
+                    prop.description if (".nodes[" not in rna and "shape_keys" not in rna) else ""
                 )
                 prop_min, prop_max = mustardui_prop_limits(prop, addon_prefs)
                 try:
