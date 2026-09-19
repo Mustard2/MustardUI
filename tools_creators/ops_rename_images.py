@@ -4,6 +4,7 @@ import re
 import bpy
 from bpy.props import BoolProperty, PointerProperty, StringProperty
 
+from ..misc.materials import material_uses_nodes
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -357,7 +358,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
             )
             return {"CANCELLED"}
 
-        if not mat.use_nodes or mat.node_tree is None:
+        if not material_uses_nodes(mat):
             self.report({"ERROR"}, "MustardUI - The active Material does not use nodes.")
             return {"CANCELLED"}
 

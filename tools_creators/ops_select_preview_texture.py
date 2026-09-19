@@ -1,6 +1,7 @@
 import bpy
 
 from ..misc.get_ui_objects import get_ui_mesh_objects
+from ..misc.materials import material_uses_nodes
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -147,10 +148,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
                 if not mat:
                     continue
 
-                if not mat.use_nodes:
-                    continue
-
-                if not mat.node_tree:
+                if not material_uses_nodes(mat):
                     continue
 
                 node_tree = mat.node_tree
