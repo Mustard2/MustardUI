@@ -1,5 +1,6 @@
 import bmesh
 import bpy
+from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 from rna_prop_ui import rna_idprop_ui_create
@@ -8,6 +9,30 @@ from .. import __package__ as base_package
 from ..misc import mesh_cleanup
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
+
+
+def deformed_coordinates(context, obj):
+    """The coordinates of the vertices of 'obj' as they are currently deformed."""
+    vertex_count = len(obj.data.vertices)
+    coordinates = [0.0] * (vertex_count * 3)
+
+    evaluated = obj.evaluated_get(context.evaluated_depsgraph_get()).data
+    if isinstance(evaluated, bpy.types.Mesh) and len(evaluated.vertices) == vertex_count:
+        evaluated.vertices.foreach_get("co", coordinates)
+        return coordinates
+
+    if obj.data.shape_keys is None:
+        obj.data.vertices.foreach_get("co", coordinates)
+        return coordinates
+
+    # A shape key is added from the mix, and the key blocks are not mixed by hand
+    active_index = obj.active_shape_key_index
+    mix = obj.shape_key_add(name="MustardUI Mix", from_mix=True)
+    mix.data.foreach_get("co", coordinates)
+    obj.shape_key_remove(mix)
+    obj.active_shape_key_index = active_index
+
+    return coordinates
 
 
 class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
@@ -198,6 +223,14 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                 obj.data.pose_position = "REST"
         context.view_layer.update()
 
+        # The shape of the model the cages are built on, read once the pose is at
+        # rest
+        source_coordinates = deformed_coordinates(context, source)
+        source_positions = [
+            Vector(source_coordinates[index : index + 3])
+            for index in range(0, len(source_coordinates), 3)
+        ]
+
         # ------------------------------------------------------------------
         # Islands and borders of the selection
         # ------------------------------------------------------------------
@@ -277,7 +310,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                 # of the vertices it was built from
                 kd = KDTree(len(border_indices))
                 for index in border_indices:
-                    kd.insert(source.data.vertices[index].co, index)
+                    kd.insert(source_positions[index], index)
                 kd.balance()
 
                 threshold = ring_length * 2.0 + self.cage_offset * 2.0
@@ -640,9 +673,14 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             cage.data.name = cage.name
 
             # Shape Keys and modifiers of the source mesh would prevent the
-            # generation modifiers from being applied
+            # generation modifiers from being applied. They are dropped, and the
+            # shape they were giving to the model is written in the mesh instead:
+            # the cage is generated on the model as it is seen, and the clean copy
+            # is what the Decimate and the Shrinkwrap need to work on
             cage.shape_key_clear()
             cage.modifiers.clear()
+            cage.data.vertices.foreach_set("co", source_coordinates)
+            cage.data.update()
             cage.data.materials.clear()
             cage.vertex_groups.clear()
 
@@ -838,7 +876,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                 for edge in source.data.edges:
                     a, b = edge.vertices
                     if a in island and b in island:
-                        length = (source.data.vertices[a].co - source.data.vertices[b].co).length
+                        length = (source_positions[a] - source_positions[b]).length
                         incident[a].append(length)
                         incident[b].append(length)
 
@@ -874,7 +912,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                         density = [0.0] * len(cage.data.vertices)
                         for index, value in spacing.items():
                             weight = min(1.0, max(0.0, 1.0 - (value - low) / (high - low)))
-                            nearest = cage_kd.find(source.data.vertices[index].co)[1]
+                            nearest = cage_kd.find(source_positions[index])[1]
                             density[nearest] = max(density[nearest], weight**sharpness)
 
                         # Spread the values on the neighbours: the projection lands on
