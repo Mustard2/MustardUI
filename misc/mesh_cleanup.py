@@ -202,9 +202,10 @@ def collect_used_vertex_groups(obj):
 
         # Geometry Nodes read the groups as named attributes, whose names are stored
         # as custom properties of the modifier
-        for value in modifier.values():
-            if isinstance(value, str) and value:
-                names.add(value)
+        if modifier.type == "NODES":
+            for value in modifier.values():
+                if isinstance(value, str) and value:
+                    names.add(value)
 
     for particle_system in obj.particle_systems:
         _vertex_group_properties(particle_system, names)
