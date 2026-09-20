@@ -87,20 +87,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        # Output a warning if the location has not been applied to the armature
-        warning = 0
-        if arm.location.x != 0.0 or arm.location.y != 0.0 or arm.location.z != 0.0:
-            self.report(
-                {"WARNING"},
-                "MustardUI - The Armature selected seems not to have location applied. "
-                "This might generate odd results!",
-            )
-            print(
-                "MustardUI IK Spline - Apply the location on the armature with Ctrl+A "
-                "in Object mode!"
-            )
-            warning += 1
-
         if addon_prefs.debug:
             print("MustardUI IK Spline - Armature selected: " + bpy.context.object.name)
             print("MustardUI IK Spline - Chain length: " + str(chain_length))
@@ -224,7 +210,15 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
 
         # Link the curve in the scene and use as active object
         bpy.context.collection.objects.link(curveOB)
+
+        # Parenting the curve
+        curveOB.parent = arm
+        curveOB.matrix_parent_inverse.identity()
+        curveOB.matrix_basis.identity()
+
         context.view_layer.objects.active = curveOB
+
+        context.view_layer.update()
 
         # Go in Edit mode
         bpy.ops.object.editmode_toggle()
@@ -239,6 +233,8 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
 
             bpy.ops.object.hook_assign(modifier=m[i].name)
             bpy.ops.object.hook_reset(modifier=m[i].name)
+
+            m[i].matrix_inverse = arm.pose.bones[b_name[i]].matrix.inverted()
 
             # Change the handle type to ALIGNED to enable rotations
             curveData.splines[0].bezier_points[i].handle_right_type = "ALIGNED"
@@ -261,9 +257,7 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         context.view_layer.objects.active = arm
         bpy.ops.object.mode_set(mode="POSE")
 
-        # Final message, if no warning were raised during the execution
-        if warning == 0:
-            self.report({"INFO"}, "MustardUI - IK spline rig successfully created.")
+        self.report({"INFO"}, "MustardUI - IK spline rig successfully created.")
 
         return {"FINISHED"}
 
