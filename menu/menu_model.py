@@ -2,7 +2,7 @@ import bpy
 
 from ..misc.prop_utils import evaluate_rna
 from ..misc.ui_multiline import label_multiline
-from ..model_selection.active_object import mustardui_active_object, active_object_operator_poll
+from ..model_selection.active_object import active_object_operator_poll, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
