@@ -357,12 +357,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         box = layout.box()
         col = box.column(align=True)
         col.label(
-            text="This is a highly destructive operation! Use it at your own risk!",
-            icon="ERROR",
+            text="Hover over each option to read what it removes before enabling it.",
+            icon="DOT",
         )
+        col.separator()
         col.label(
-            text="Move your cursor over a button to display its description.",
-            icon="BLANK1",
+            text="This permanently deletes the UI and model data. Save a backup first!",
+            icon="ERROR",
         )
 
         box = layout.box()

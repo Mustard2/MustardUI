@@ -778,17 +778,17 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         box = layout.box()
         col = box.column(align=True)
-        col.label(text="Notes:")
         col.label(
-            text="Read the descriptions of all buttons (keep the mouse on the buttons).",
+            text="Hover over each option to read what it removes before enabling it.",
             icon="DOT",
         )
         col.label(
-            text="Do not use while producing, but before starting a project with the model.",
+            text="Run this when setting up a project, not while working on one.",
             icon="DOT",
         )
+        col.separator()
         col.label(
-            text="This is a highly destructive operation! Use it at your own risk!",
+            text="This permanently deletes data from the model. Save a backup first!",
             icon="ERROR",
         )
 
