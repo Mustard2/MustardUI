@@ -7,7 +7,7 @@ from . import MainPanel
 
 class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_SettingsPanel"
-    bl_label = "Settings & Maintenance"
+    bl_label = "Settings"
     bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
