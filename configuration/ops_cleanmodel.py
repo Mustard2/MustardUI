@@ -778,7 +778,6 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         layout = self.layout
 
-
         layout.separator()
 
         box = layout.box()
