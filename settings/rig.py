@@ -220,18 +220,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Volume Preserve property",
         description="Creates a switcher on the UI to enable/disable "
         "the Preserve Volume option on the Armature "
-        "modifier",
-    )
-
-    # Material normals tool
-    body_enable_material_normal_nodes: bpy.props.BoolProperty(
-        default=True,
-        description="Enable the Eevee Optimized Normals "
-        "tool.\nThis tool substitutes normal nodes "
-        "with more efficient ones, which can be "
-        "useful to get better performance in Render "
-        "Viewport mode",
-        name="Eevee Optimized Normals tool",
+        "modifiers of the Body and children Objects",
     )
 
     # Custom properties

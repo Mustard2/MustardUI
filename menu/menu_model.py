@@ -2,7 +2,7 @@ import bpy
 
 from ..misc.prop_utils import evaluate_rna
 from ..misc.ui_multiline import label_multiline
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import mustardui_active_object, active_object_operator_poll
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -110,29 +110,17 @@ def draw_section(
     return layout, False
 
 
-class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
-    bl_idname = "PANEL_PT_MustardUI_Properties"
-    bl_label = "Properties"
+class PANEL_PT_MustardUI_Model(MainPanel, bpy.types.Panel):
+    bl_idname = "PANEL_PT_MustardUI_Model"
+    bl_label = "Model"
     bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
     def poll(cls, context):
-
         if can_draw_ui():
             return False
 
-        settings = bpy.context.scene.MustardUI_Settings
-
-        res, arm = mustardui_active_object(context, config=0)
-
-        if arm is not None:
-            advanced = settings.advanced
-            return res and any(
-                not x.hidden and (advanced or not x.advanced)
-                for x in arm.MustardUI_CustomProperties
-            )
-
-        return False
+        return active_object_operator_poll(context, config=0)
 
     def draw(self, context):
 
@@ -144,15 +132,32 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
+        box = layout.box()
+        box.label(text="Global Settings", icon="MODIFIER_ON")
+
+        col = box.column(align=True)
+
+        row = col.row(align=True)
+        row.scale_x = 0.94
+        if context.scene.render.engine == "CYCLES" and settings.material_normal_nodes:
+            row.alert = True
+        row.prop(settings, "material_normal_nodes", text="")
+        row.label(text="Eevee Optimized Normals")
+
+        if rig_settings.body_enable_preserve_volume:
+            col = box.column(align=True)
+            col.prop(rig_settings, "body_preserve_volume")
+
         unsorted_props = props_by_section.get("", [])
         if len(unsorted_props) > 0:
-            row = layout.row(align=False)
-            row.alignment = "RIGHT"
+            box = layout.box()
+
+            row = box.row(align=False)
+            row.label(text="Properties", icon="PROPERTIES")
             row.operator(
                 "mustardui.section_property_default", text="", icon="LOOP_BACK"
             ).section_id = -1
 
-            box = layout.box()
             col = box.column(align=True)
             for prop in unsorted_props:
                 draw_property(col, obj, settings, rig_settings, prop)
@@ -201,8 +206,8 @@ class PANEL_PT_MustardUI_Properties(MainPanel, bpy.types.Panel):
 
 
 def register():
-    bpy.utils.register_class(PANEL_PT_MustardUI_Properties)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Model)
 
 
 def unregister():
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_Properties)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Model)
