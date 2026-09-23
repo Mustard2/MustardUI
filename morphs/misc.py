@@ -154,10 +154,10 @@ def muteDazFcurves(
     muteSK=True,
     mutepJCM=False,
     mutefacs=False,
-    check_bones_rot=[],
-    check_bones_loc=[],
+    check_bones_rot=(),
+    check_bones_loc=(),
     muteexceptions=False,
-    exceptions=[],
+    exceptions="",
 ):
 
     if rig and rig.data.animation_data:

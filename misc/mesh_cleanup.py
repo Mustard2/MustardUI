@@ -65,7 +65,7 @@ def _same_coordinates(first, second):
 
     if USE_NUMPY:
         return bool(np.all(np.abs(first - second) <= SHAPE_KEY_THRESHOLD))
-    return all(abs(a - b) <= SHAPE_KEY_THRESHOLD for a, b in zip(first, second))
+    return all(abs(a - b) <= SHAPE_KEY_THRESHOLD for a, b in zip(first, second, strict=False))
 
 
 def shape_key_is_void(key_block):

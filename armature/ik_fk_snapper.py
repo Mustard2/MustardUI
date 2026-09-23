@@ -803,7 +803,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
             # a bone triggers a view_layer update that re-evaluates the IK solve and
             # can shift the remaining matrices.
             pairs = []
-            for ik_name, fk_name in zip(ik_list, fk_pairing):
+            for ik_name, fk_name in zip(ik_list, fk_pairing, strict=False):
                 if not ik_name or not fk_name:
                     continue
                 ik_b = _bone(arm_obj, ik_name)

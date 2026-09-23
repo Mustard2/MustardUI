@@ -89,21 +89,21 @@ def optimize_modifiers(
             mod.show_render = False
             mod.name = mod.name + "Disabled"
 
-        mod = obj.modifiers.new(name=name, type="VERTEX_WEIGHT_MIX")
-        mod.vertex_group_a = mod_vg_name
-        mod.vertex_group_b = vg
-        mod.mix_set = "ALL"
-        mod.mix_mode = "ADD"
-        mod.show_expanded = False
+        mix_mod = obj.modifiers.new(name=name, type="VERTEX_WEIGHT_MIX")
+        mix_mod.vertex_group_a = mod_vg_name
+        mix_mod.vertex_group_b = vg
+        mix_mod.mix_set = "ALL"
+        mix_mod.mix_mode = "ADD"
+        mix_mod.show_expanded = False
 
-        mods.append((mod, iterations, scale))
+        mods.append((mix_mod, iterations, scale))
         max_iterations = max(max_iterations, iterations)
 
-        mod.show_viewport = visibility
-        mod.show_render = visibility
+        mix_mod.show_viewport = visibility
+        mix_mod.show_render = visibility
 
         bpy.ops.object.modifier_move_to_index(
-            modifier=mod.name,
+            modifier=mix_mod.name,
             index=lst_index,
         )
 

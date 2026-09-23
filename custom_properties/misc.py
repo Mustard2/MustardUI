@@ -279,7 +279,7 @@ def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_setting
     to_remove = []
 
     # Firstly set the custom property to their default value
-    for i, cp in enumerate(uilist):
+    for i in range(len(uilist)):
         mustardui_reassign_default(arm, uilist, i, addon_prefs)
 
     # Update everything
@@ -288,7 +288,7 @@ def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_setting
     bpy.context.view_layer.update()
 
     # And then delete data
-    for i, cp in enumerate(uilist):
+    for i in range(len(uilist)):
         mustardui_clean_prop(arm, uilist, i, addon_prefs)
         to_remove.append(i)
     for i in reversed(to_remove):

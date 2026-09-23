@@ -93,8 +93,7 @@ def apply_settings(target, data, errors, debug):
 
         try:
             current = getattr(target, key)
-            value = restore_value(current, value)
-            setattr(target, key, value)
+            setattr(target, key, restore_value(current, value))
         except TypeError as e:
             msg = str(e)
             # Ignore Blender collection assignment mismatch

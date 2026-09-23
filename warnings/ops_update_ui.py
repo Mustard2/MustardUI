@@ -188,7 +188,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
                 hair_collection = rig_settings.hair_collection
 
                 # Rename the Objects in the Hair collection
-                for i, obj in enumerate([x for x in hair_collection.objects if x is not None]):
+                for obj in [x for x in hair_collection.objects if x is not None]:
                     if not obj.name.startswith(f"{hair_collection.name} - "):
                         obj_name = obj.name
                         obj_name = update_hair_name(obj_name)

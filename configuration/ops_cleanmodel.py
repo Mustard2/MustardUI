@@ -486,7 +486,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             for obj in objects:
                 items_to_remove = []
-                for k, v in obj.items():
+                for k in obj.keys():
                     if "Daz" in k:
                         items_to_remove.append(k)
                 for k in items_to_remove:

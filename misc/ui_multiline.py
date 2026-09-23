@@ -6,7 +6,7 @@ def label_multiline(context, text, parent, icon, pix=7):
     wrapper = textwrap.TextWrapper(width=chars)
     text_lines = wrapper.wrap(text=text)
     if icon in ["", "NONE"]:
-        for i, text_line in enumerate(text_lines):
+        for text_line in text_lines:
             parent.label(text=text_line)
     else:
         for i, text_line in enumerate(text_lines):

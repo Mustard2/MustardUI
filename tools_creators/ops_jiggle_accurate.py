@@ -929,7 +929,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                                 max(value, sum(density[n] for n in linked) / len(linked))
                                 if linked
                                 else value
-                                for value, linked in zip(density, neighbours)
+                                for value, linked in zip(density, neighbours, strict=False)
                             ]
 
                 structural_group = cage.vertex_groups.new(name=f"{item_name} Structural")

@@ -38,7 +38,7 @@ def detect_lip_map(armature):
         test = f"{prefix}Corner.{L}"
         if test in names:
 
-            def n(x):
+            def n(x, prefix=prefix):
                 return f"{prefix}{x}"
 
             return {

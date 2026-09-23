@@ -5,5 +5,6 @@ extend-exclude = ["./armature/external/mhx"]
 
 [tool.ruff.lint]
 # E/F are defaults; "I" adds import sorting (isort)
-select = ["E", "F", "I"]
+# B: bugbear; RUF021: and/or without parentheses; PLW2901: overwritten loop variable
+select = ["E", "F", "I", "B", "RUF021", "PLW2901"]
 # extend-select = ["ARG"]

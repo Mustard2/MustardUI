@@ -417,7 +417,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
                         sk + "(fin)" not in model_armature.data.keys()
                         and sk + "_div2(fin)" in model_armature.data.keys()
                     ):
-                        sk = sk + "_div2"
+                        sk = sk + "_div2"  # noqa: PLW2901
                     elif sk + "(fin)" not in model_armature.data.keys():
                         continue
 
