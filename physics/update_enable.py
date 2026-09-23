@@ -264,14 +264,15 @@ def collisions_physics_update_single(self, context):
 def cage_influence_update(self, context):
     res, arm = mustardui_active_object(context, config=0)
 
-    if arm is None or not res and self.type != "CAGE":
+    if arm is None or not res or self.type != "CAGE":
         return
 
     influence = self.cage_influence
 
     rig_settings = arm.MustardUI_RigSettings
 
-    influence_cage_modifiers(self, rig_settings.model_body.modifiers, influence)
+    if rig_settings.model_body is not None:
+        influence_cage_modifiers(self, rig_settings.model_body.modifiers, influence)
 
     for obj, _ in model_objects(rig_settings):
         influence_cage_modifiers(self, obj.modifiers, influence)
@@ -280,7 +281,7 @@ def cage_influence_update(self, context):
 def bone_influence_update(self, context):
     res, arm = mustardui_active_object(context, config=0)
 
-    if arm is None or not res and self.type != "BONES_DRIVER":
+    if arm is None or not res or self.type != "BONES_DRIVER" or not self.object:
         return
 
     parent = self.object.parent
