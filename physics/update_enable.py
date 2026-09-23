@@ -252,7 +252,7 @@ def collisions_physics_update_single(self, context):
         arm is None
         or not res
         or not self.object
-        and self.type not in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]
+        or self.type not in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]
     ):
         return
 
