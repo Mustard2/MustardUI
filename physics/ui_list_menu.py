@@ -2,6 +2,7 @@ import bpy
 
 from ..model_selection.active_object import mustardui_active_object
 from .settings_item import mustardui_physics_item_type_dict
+from .ui_list import physics_items_filter
 
 
 class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
@@ -84,30 +85,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
 
     def filter_items(self, context, data, propname):
         items = getattr(data, propname)
-        helper_funcs = bpy.types.UI_UL_list
-
-        flt_flags = [self.bitflag_filter_item] * len(items)
-
-        if self.filter_name:
-            search = self.filter_name.lower()
-            for i, item in enumerate(items):
-                name = item.object.name if item.object else ""
-                if search not in name.lower():
-                    flt_flags[i] &= ~self.bitflag_filter_item
-
-        if self.use_filter_invert:
-            for i in range(len(flt_flags)):
-                flt_flags[i] ^= self.bitflag_filter_item
-
-        if self.use_filter_sort_alpha:
-            sort_data = [
-                (i, item.object.name.lower() if item.object else "") for i, item in enumerate(items)
-            ]
-            flt_neworder = helper_funcs.sort_items_helper(
-                sort_data, lambda e: e[1], self.use_filter_sort_reverse
-            )
-        else:
-            flt_neworder = []
+        flt_flags, flt_neworder = physics_items_filter(self, items)
 
         if not self.filter_show_outfit_items:
             for i, item in enumerate(items):

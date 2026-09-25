@@ -5,6 +5,34 @@ from ..model_selection.active_object import mustardui_active_object
 from .settings_item import mustardui_physics_item_type_dict
 
 
+def physics_items_filter(uilist, items):
+    """Filter and sort Physics Items by object name, as items have no name"""
+    flt_flags = [uilist.bitflag_filter_item] * len(items)
+
+    if uilist.filter_name:
+        search = uilist.filter_name.lower()
+        for i, item in enumerate(items):
+            name = item.object.name if item.object else ""
+            if search not in name.lower():
+                flt_flags[i] &= ~uilist.bitflag_filter_item
+
+    if uilist.use_filter_invert:
+        for i in range(len(flt_flags)):
+            flt_flags[i] ^= uilist.bitflag_filter_item
+
+    if uilist.use_filter_sort_alpha:
+        sort_data = [
+            (i, item.object.name.lower() if item.object else "") for i, item in enumerate(items)
+        ]
+        flt_neworder = bpy.types.UI_UL_list.sort_items_helper(
+            sort_data, lambda e: e[1], uilist.use_filter_sort_reverse
+        )
+    else:
+        flt_neworder = []
+
+    return flt_flags, flt_neworder
+
+
 class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
     """Move the selected property in the list"""
 
@@ -89,6 +117,9 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
             )
         else:
             layout.label(text="Object not found!", icon="ERROR")
+
+    def filter_items(self, context, data, propname):
+        return physics_items_filter(self, getattr(data, propname))
 
 
 def register():
