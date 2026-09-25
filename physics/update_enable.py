@@ -7,15 +7,20 @@ def model_objects(rig_settings):
     """Iterate over the model objects that can be driven by the Physics Items.
 
     Yield (object, visible) tuples, where visible takes into account the visibility of
-    the collection the object belongs to.
+    the collection the object belongs to. Each object is yielded once, with the
+    visibility of the last group it was found in.
     """
-    for obj in rig_settings.model_armature_object.children:
-        yield obj, not obj.hide_viewport
+    visibility = {}
+
+    arm = rig_settings.model_armature_object
+    if arm is not None:
+        for obj in arm.children:
+            visibility[obj] = not obj.hide_viewport
 
     for coll in [x.collection for x in rig_settings.outfits_collections if x.collection]:
         objects = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
         for obj in [x for x in objects if x.type == "MESH"]:
-            yield obj, not coll.hide_viewport and not obj.hide_viewport
+            visibility[obj] = not coll.hide_viewport and not obj.hide_viewport
 
     extras = rig_settings.extras_collection
     if extras is not None:
@@ -23,13 +28,15 @@ def model_objects(rig_settings):
             extras.all_objects if rig_settings.extras_config_subcollections else extras.objects
         )
         for obj in [x for x in objects if x.type == "MESH"]:
-            yield obj, not extras.hide_viewport and not obj.hide_viewport
+            visibility[obj] = not extras.hide_viewport and not obj.hide_viewport
 
     for coll in [rig_settings.hair_collection, rig_settings.hair_extras_collection]:
         if coll is None:
             continue
         for obj in [x for x in coll.objects if x.type == "MESH"]:
-            yield obj, not coll.hide_viewport and not obj.hide_viewport
+            visibility[obj] = not coll.hide_viewport and not obj.hide_viewport
+
+    yield from visibility.items()
 
 
 def update_physics_collections_exclude(physics_settings, context):
