@@ -68,6 +68,20 @@ class MeshIntersectionChecker:
             self._cache[obj.name] = data
         return data
 
+    def prepare(self, objects):
+        """Build the trees of several objects, un-hiding the hidden ones only once, as each
+        visibility change re-evaluates the whole scene."""
+        objects = [o for o in dict.fromkeys(objects) if o.name not in self._cache]
+        hidden = [o for o in objects if o.hide_viewport]
+        for obj in hidden:
+            obj.hide_viewport = False
+        try:
+            for obj in objects:
+                self._get(obj)
+        finally:
+            for obj in hidden:
+                obj.hide_viewport = True
+
     def intersect(self, obj1, obj2):
         aabb1, bvh1 = self._get(obj1)
         aabb2, bvh2 = self._get(obj2)
