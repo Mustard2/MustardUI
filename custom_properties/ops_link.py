@@ -10,6 +10,7 @@ from .misc import (
     mustardui_add_driver,
     mustardui_check_cp,
     mustardui_choose_cp,
+    split_data_path,
 )
 
 
@@ -78,13 +79,11 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                     return {"FINISHED"}
 
                 # Adjust the property path to be exported
-                rna, path = context.window_manager.clipboard.rsplit(".", 1)
-                if "][" in path:
-                    path, rem = path.rsplit("[", 1)
-                    rna = rna + "." + path
-                    path = "[" + rem
-                elif "[" in path:
-                    path, rem = path.rsplit("[", 1)
+                split = split_data_path(context.window_manager.clipboard)
+                if split is None:
+                    self.report({"ERROR"}, "MustardUI - Invalid selection.")
+                    return {"FINISHED"}
+                rna, path = split
 
                 if parent_prop.rna == rna and parent_prop.path == path:
                     self.report({"ERROR"}, "MustardUI - Can not link a property with itself.")

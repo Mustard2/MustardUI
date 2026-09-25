@@ -16,6 +16,7 @@ from .misc import (
     mustardui_clean_prop,
     mustardui_prop_limits,
     mustardui_update_index_cp,
+    split_data_path,
 )
 
 
@@ -81,27 +82,16 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        clipboard = context.window_manager.clipboard
-        blender_custom_property = "][" in clipboard
-        if not blender_custom_property:
-            if "." not in clipboard:
-                self.report(
-                    {"ERROR"},
-                    "MustardUI - This property does not support being added "
-                    "to MustardUI (no valid data path could be found).",
-                )
-                return {"FINISHED"}
-            rna, path = clipboard.rsplit(".", 1)
-        else:
-            path = clipboard
-            rna = ""
-
-        if blender_custom_property:
-            path, rem = path.rsplit("[", 1)
-            rna = path
-            path = "[" + rem
-        elif "[" in path:
-            path, rem = path.rsplit("[", 1)
+        split = split_data_path(context.window_manager.clipboard)
+        if split is None:
+            self.report(
+                {"ERROR"},
+                "MustardUI - This property does not support being added "
+                "to MustardUI (no valid data path could be found).",
+            )
+            return {"FINISHED"}
+        rna, path = split
+        blender_custom_property = path.startswith("[")
 
         # Check if the property was already added
         if not mustardui_check_cp(obj, rna, path):
