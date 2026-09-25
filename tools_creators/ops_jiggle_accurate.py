@@ -7,6 +7,7 @@ from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
 from ..misc import mesh_cleanup
+from ..misc.move_modifier import move_modifier
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -1070,7 +1071,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
                 armature_modifier.use_deform_preserve_volume = modifier.use_deform_preserve_volume
                 armature_modifier.use_multi_modifier = modifier.use_multi_modifier
                 context.view_layer.objects.active = cage
-                bpy.ops.object.modifier_move_to_index(modifier=armature_modifier.name, index=0)
+                move_modifier(cage, armature_modifier, 0)
 
             # Inflate custom property, to adjust the cage on the mesh
             if "Inflate" in cage.keys():

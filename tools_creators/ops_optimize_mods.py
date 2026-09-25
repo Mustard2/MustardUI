@@ -1,5 +1,7 @@
 import bpy
 
+from ..misc.move_modifier import move_modifier
+
 sm_vg_name = "MustardUI - Smooth Corrective"
 mask_vg_name = "MustardUI - Mask"
 
@@ -58,7 +60,7 @@ def optimize_modifiers(
     if mod_vg_name not in obj.vertex_groups:
         obj.vertex_groups.new(name=mod_vg_name)
 
-    # Temporarily set body as active for modifier_move_to_index
+    # Temporarily set the object as active for the Corrective Smooth bind
     prev_active = context.view_layer.objects.active
     context.view_layer.objects.active = obj
 
@@ -102,10 +104,7 @@ def optimize_modifiers(
         mix_mod.show_viewport = visibility
         mix_mod.show_render = visibility
 
-        bpy.ops.object.modifier_move_to_index(
-            modifier=mix_mod.name,
-            index=lst_index,
-        )
+        move_modifier(obj, mix_mod, lst_index)
 
     if mod_type == "CORRECTIVE_SMOOTH" and sm_influence and max_iterations > 0:
         for mod, iterations, scale in [x for x in mods if x is not None]:
@@ -131,10 +130,7 @@ def optimize_modifiers(
         master_mod = add_mask_modifier(obj, mod_vg_name, mod_vg_name)
 
     master_mod.show_expanded = False
-    bpy.ops.object.modifier_move_to_index(
-        modifier=master_mod.name,
-        index=lst_index + 1,
-    )
+    move_modifier(obj, master_mod, lst_index + 1)
 
     context.view_layer.objects.active = prev_active
     if arm is not None and pose_position is not None:

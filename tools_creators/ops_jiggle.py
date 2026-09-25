@@ -32,6 +32,7 @@ import bpy
 from mathutils import Vector
 
 from .. import __package__ as base_package
+from ..misc.move_modifier import move_modifier
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -476,8 +477,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     new_modifier.use_multi_modifier = armature_modifier.use_multi_modifier
                     # Move the new modifier to the top of the stack
                     bpy.context.view_layer.objects.active = target
-                    for _ in range(len(target.modifiers)):
-                        bpy.ops.object.modifier_move_up(modifier=new_modifier.name)
+                    move_modifier(target, new_modifier, 0)
 
         # Store the initial active object and selection
         context = bpy.context
@@ -691,11 +691,10 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     last_corrective_smooth = mod
             if cloth_modifier and last_corrective_smooth:
                 # Move the Cloth modifier above the last Corrective Smooth modifier
-                while obj.modifiers.find(cloth_modifier.name) > obj.modifiers.find(
-                    last_corrective_smooth.name
-                ):
+                cs_index = obj.modifiers.find(last_corrective_smooth.name)
+                if obj.modifiers.find(cloth_modifier.name) > cs_index:
                     bpy.context.view_layer.objects.active = obj
-                    bpy.ops.object.modifier_move_up(modifier=cloth_modifier.name)
+                    move_modifier(obj, cloth_modifier, cs_index)
                 if addon_prefs.debug:
                     print(
                         f"Moved Cloth modifier above the last Corrective Smooth "

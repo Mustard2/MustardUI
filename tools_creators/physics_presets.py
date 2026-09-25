@@ -1,5 +1,6 @@
 import bpy
 
+from ..misc.move_modifier import move_modifier
 from ..physics.definitions_nodes import (
     CLOTH_DYNAMICS_NODE_GROUP,
     CLOTH_DYNAMICS_SOCKETS,
@@ -398,7 +399,7 @@ def move_before_corrective_smooth(obj, modifier):
     ]
     if corrective:
         bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.modifier_move_to_index(modifier=modifier.name, index=min(corrective))
+        move_modifier(obj, modifier, min(corrective))
 
 
 def apply_physics(

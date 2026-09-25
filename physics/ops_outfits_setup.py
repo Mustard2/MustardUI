@@ -1,6 +1,7 @@
 import bpy
 
 from ..misc.mesh_intersection import MeshIntersectionChecker
+from ..misc.move_modifier import move_modifier
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -281,12 +282,9 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                                 (i for i, m in enumerate(obj.modifiers) if m.type == "ARMATURE"),
                                 default=-1,
                             )
-                            # Index of the current modifier
-                            target_index = list(obj.modifiers).index(nm)
                             # Move the modifier up if needed
-                            while target_index > last_armature_index + 1:
-                                bpy.ops.object.modifier_move_up(modifier=nm.name)
-                                target_index -= 1
+                            if obj.modifiers.find(nm.name) > last_armature_index + 1:
+                                move_modifier(obj, nm, last_armature_index + 1)
 
                             nm.show_viewport = True
                             nm.show_render = True
