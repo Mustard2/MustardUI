@@ -189,6 +189,10 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 "facs_ctrl_Surprised",
             ]
 
+            # Custom property names, read once for all the searches below
+            arm_keys = list(rig_settings.model_armature_object.keys())
+            arm_keys_custom = [x for x in arm_keys if "Adjust Custom" not in x]
+
             # Emotions Units
             mustardui_add_section(
                 morphs_settings.sections,
@@ -202,7 +206,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             ):
                 emotions_units = [
                     x
-                    for x in rig_settings.model_armature_object.keys()
+                    for x in arm_keys
                     if ("eCTRL" in x or "ECTRL" in x)
                     and "HD" not in x
                     and "eCTRLSmile" not in x
@@ -231,7 +235,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             ):
                 emotions = [
                     x
-                    for x in rig_settings.model_armature_object.keys()
+                    for x in arm_keys
                     if "eCTRL" in x
                     and "HD" not in x
                     and "eCTRLv" not in x
@@ -244,11 +248,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     x for x in morphs_settings.diffeomorphic_emotions_custom.split(",") if x != ""
                 ]
                 for string in emotions_custom_strings:
-                    for x in [
-                        x
-                        for x in rig_settings.model_armature_object.keys()
-                        if "Adjust Custom" not in x
-                    ]:
+                    for x in arm_keys_custom:
                         if string in x:
                             emotions_custom.append(x)
 
@@ -277,21 +277,21 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 facs_emotions_units.append(
                     [
                         x
-                        for x in rig_settings.model_armature_object.keys()
+                        for x in arm_keys
                         if "facs_ctrl_" in x and x not in facs_emotions_default_list
                     ]
                 )
                 facs_emotions_units.append(
                     [
                         x
-                        for x in rig_settings.model_armature_object.keys()
+                        for x in arm_keys
                         if "facs_bs_" in x and sum(1 for c in x if c.isupper()) >= 2
                     ]
                 )
                 facs_emotions_units.append(
                     [
                         x
-                        for x in rig_settings.model_armature_object.keys()
+                        for x in arm_keys
                         if "facs_jnt_" in x and sum(1 for c in x if c.isupper()) >= 2
                     ]
                 )
@@ -315,11 +315,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 morphs_settings.sections, [sec], is_internal=True, diffeomorphic=3
             )
             if morphs_settings.diffeomorphic_facs_emotions:
-                facs_emotions = [
-                    x
-                    for x in rig_settings.model_armature_object.keys()
-                    if x in facs_emotions_default_list
-                ]
+                facs_emotions = [x for x in arm_keys if x in facs_emotions_default_list]
 
                 # For Genesis 9, add also custom emotions to the panel
                 emotions_custom = []
@@ -329,11 +325,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                 if morphs_settings.type == "DIFFEO_GENESIS_9":
                     emotions_custom = []
                     for string in emotions_custom_strings:
-                        for x in [
-                            x
-                            for x in rig_settings.model_armature_object.keys()
-                            if "Adjust Custom" not in x
-                        ]:
+                        for x in arm_keys_custom:
                             if string in x:
                                 emotions_custom.append(x)
 
@@ -359,35 +351,35 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             if morphs_settings.diffeomorphic_body_morphs:
                 body_morphs_FBM = [
                     x
-                    for x in rig_settings.model_armature_object.keys()
+                    for x in arm_keys
                     if x.startswith("FBM")
                     and sum(1 for c in x if c.isdigit()) < 1
                     and sum(1 for c in x if c.isupper()) < 6
                 ]
                 body_morphs_bs = [
                     x
-                    for x in rig_settings.model_armature_object.keys()
+                    for x in arm_keys
                     if x.startswith("body_bs_")
                     and sum(1 for c in x if c.isdigit()) < 1
                     and sum(1 for c in x if c.isupper()) < 6
                 ]
                 body_morphs_CTRLB = [
                     x
-                    for x in rig_settings.model_armature_object.keys()
+                    for x in arm_keys
                     if "CTRLBreasts" in x
                     and "pCTRLBreasts" not in x
                     and sum(1 for c in x if c.isupper()) < 10
                 ]
                 body_morphs_ctrl = [
                     x
-                    for x in rig_settings.model_armature_object.keys()
+                    for x in arm_keys
                     if x.startswith("body_ctrl_")
                     and sum(1 for c in x if c.isdigit()) < 1
                     and sum(1 for c in x if c.isupper()) < 6
                 ]
                 body_morphs_PBM = [
                     x
-                    for x in rig_settings.model_armature_object.keys()
+                    for x in arm_keys
                     if "PBMBreasts" in x and sum(1 for c in x if c.isupper()) < 10
                 ]
 
@@ -399,11 +391,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     if x != ""
                 ]
                 for string in body_morphs_custom_strings:
-                    for x in [
-                        x
-                        for x in rig_settings.model_armature_object.keys()
-                        if "Adjust Custom" not in x
-                    ]:
+                    for x in arm_keys_custom:
                         if string in x:  # and sum(1 for c in x if c.isupper()) < 6:
                             body_morphs_custom.append(x)
 
