@@ -1,6 +1,6 @@
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
-from ..outfits.helper_functions import find_layer_collection
+from ..outfits.helper_functions import find_layer_collections
 
 
 def model_objects(rig_settings):
@@ -39,19 +39,21 @@ def update_physics_collections_exclude(physics_settings, context):
         return
 
     master = context.scene.collection
-    view_layer = context.view_layer
 
     # Collections directly holding at least one physics item object
     candidate_colls = {coll for obj in physics_objects for coll in obj.users_collection}
+    # Only act on collections whose contents are exclusively physics items
+    physics_colls = [
+        coll
+        for coll in candidate_colls
+        if coll != master and all(obj in physics_objects for obj in coll.all_objects)
+    ]
+    layer_colls = find_layer_collections(context.view_layer.layer_collection, physics_colls)
 
-    for coll in candidate_colls:
-        if coll == master:
-            continue
-        # Only act on collections whose contents are exclusively physics items
-        if all(obj in physics_objects for obj in coll.all_objects):
-            lc = find_layer_collection(view_layer.layer_collection, coll)
-            if lc is not None:
-                set_bool(lc, "exclude", not physics_settings.enable_physics)
+    for coll in physics_colls:
+        lc = layer_colls.get(coll)
+        if lc is not None:
+            set_bool(lc, "exclude", not physics_settings.enable_physics)
 
 
 def set_physics_item(physics_item, status):
