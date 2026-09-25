@@ -117,6 +117,11 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         addon_prefs = context.preferences.addons[base_package].preferences
         physics_settings = arm.MustardUI_PhysicsSettings
 
+        # Objects of the other MustardUI models, which are never deleted
+        other_models_objects = set()
+        if self.delete_objects and (self.delete_shared or self.delete_model_collections):
+            other_models_objects = self.other_models_objects(arm)
+
         # Store the leftover collections
         model_collections = set()
         skipped_collections = set()
@@ -128,7 +133,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             objects += [x.object for x in physics_settings.items if x.object is not None]
             # Keep the Objects of other MustardUI models and, if shared data is kept,
             # the bones custom shapes
-            protected_objects = self.other_models_objects(arm)
+            protected_objects = set(other_models_objects)
             if self.delete_shared:
                 objects += custom_shapes
             else:
@@ -235,8 +240,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             if self.delete_shared:
                 for col_name in collision_collections:
                     col = bpy.data.collections.get(col_name)
-                    if col is not None:
-                        self.remove_data_col(context, col)
+                    if col is None:
+                        continue
+                    # Skip collections containing Objects of other MustardUI models
+                    if not other_models_objects.isdisjoint(col.all_objects):
+                        skipped_collections.add(col_name)
+                        continue
+                    self.remove_data_col(context, col)
 
         # Remove settings
         if self.delete_settings or self.delete_objects:
@@ -319,12 +329,11 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                         if child is not None:
                             bpy.data.collections.remove(child)
 
-                if skipped_collections:
-                    self.report(
-                        {"WARNING"},
-                        "MustardUI - Collections containing shared data were not deleted: "
-                        + ", ".join(sorted(skipped_collections)),
-                    )
+            if skipped_collections and addon_prefs.debug:
+                print(
+                    "MustardUI - Collections containing shared data were not deleted: "
+                    + ", ".join(sorted(skipped_collections))
+                )
 
             # Purge the data left without users
             bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
