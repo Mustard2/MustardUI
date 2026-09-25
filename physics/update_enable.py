@@ -78,7 +78,10 @@ def set_physics_item(physics_item, status):
             set_bool(obj.collision, "use", status)
 
     if physics_item.type == "BONES_DRIVER":
-        physics_item.bone_influence = status
+        # Files saved by older versions store 0 when Physics was disabled
+        if status and physics_item.bone_influence <= 0.001:
+            physics_item.bone_influence = 1.0
+        set_bone_driver_constraints(physics_item, physics_item.bone_influence if status else 0.0)
 
     # Shape Keys and their drivers
     shape_keys = obj.data.shape_keys if obj.data else None
@@ -287,25 +290,31 @@ def cage_influence_update(self, context):
         influence_cage_modifiers(self, obj.modifiers, influence)
 
 
+def set_bone_driver_constraints(physics_item, influence):
+    """Apply the influence to the bone constraints targeting a Bones Driver item (0 disables
+    them), without changing the influence stored on the item."""
+    parent = physics_item.object.parent if physics_item.object else None
+
+    if not parent or parent.type != "ARMATURE":
+        return
+
+    for bone in parent.pose.bones:
+        for constraint in [
+            x for x in bone.constraints if hasattr(x, "target") and x.target == physics_item.object
+        ]:
+            attr = "influence" if hasattr(constraint, "influence") else "strength"
+            if hasattr(constraint, attr) and getattr(constraint, attr) != influence:
+                setattr(constraint, attr, influence)
+            set_bool(constraint, "enabled", influence > 0.001)
+
+
 def bone_influence_update(self, context):
     res, arm = mustardui_active_object(context, config=0)
 
     if arm is None or not res or self.type != "BONES_DRIVER" or not self.object:
         return
 
-    parent = self.object.parent
-
-    if not parent or parent.type != "ARMATURE":
-        return
-
-    influence = self.bone_influence
-    status = influence > 0.001
-    for bone in parent.pose.bones:
-        for constraint in [
-            x for x in bone.constraints if hasattr(x, "target") and x.target == self.object
-        ]:
-            if hasattr(constraint, "influence"):
-                constraint.influence = influence
-            elif hasattr(constraint, "strength"):
-                constraint.strength = influence
-            constraint.enabled = status
+    # While the item or Physics are disabled, the new influence is only stored
+    physics_settings = arm.MustardUI_PhysicsSettings
+    status = physics_settings.enable_physics and self.enable
+    set_bone_driver_constraints(self, self.bone_influence if status else 0.0)
