@@ -65,10 +65,10 @@ def set_physics_item(physics_item, status):
     for modifier in obj.modifiers:
         if mod_types is not None and modifier.type not in mod_types:
             continue
-        modifier.show_viewport = status
-        modifier.show_render = status
+        set_bool(modifier, "show_viewport", status)
+        set_bool(modifier, "show_render", status)
         if modifier.type == "COLLISION" and physics_item.type == "COLLISION":
-            obj.collision.use = status
+            set_bool(obj.collision, "use", status)
 
     if physics_item.type == "BONES_DRIVER":
         physics_item.bone_influence = status
@@ -85,17 +85,17 @@ def set_physics_item(physics_item, status):
     # Collision items are always shown when enabled, otherwise the collisions might not
     # work (Blender bug), while the other items restore the visibility they had
     if physics_item.type == "COLLISION":
-        obj.hide_viewport = not status
+        set_bool(obj, "hide_viewport", not status)
     elif status:
-        obj.hide_viewport = physics_item.visibility_pre_disable
-        physics_item.visibility_pre_disable_stored = False
+        set_bool(obj, "hide_viewport", physics_item.visibility_pre_disable)
+        set_bool(physics_item, "visibility_pre_disable_stored", False)
     else:
         # Store the visibility only when the item gets disabled: the following updates
         # would store the hidden state set here instead
         if not physics_item.visibility_pre_disable_stored:
             physics_item.visibility_pre_disable = obj.hide_viewport
             physics_item.visibility_pre_disable_stored = True
-        obj.hide_viewport = True
+        set_bool(obj, "hide_viewport", True)
 
 
 def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
@@ -119,8 +119,8 @@ def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
                     or (modifier.target == body and obj in intersecting_objects)
                 )
             ):
-                modifier.show_viewport = status
-                modifier.show_render = status
+                set_bool(modifier, "show_viewport", status)
+                set_bool(modifier, "show_render", status)
 
     smooth_mods = {}  # vertex_group -> CORRECTIVE_SMOOTH modifier
     weight_mix_active = {}  # vertex_group_a -> whether any feeding weight mix is active
@@ -128,8 +128,8 @@ def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
     for modifier in obj.modifiers:
         name_match = cage.name in modifier.name
         if name_match and (mtype == "" or modifier.type == mtype):
-            modifier.show_viewport = status
-            modifier.show_render = status
+            set_bool(modifier, "show_viewport", status)
+            set_bool(modifier, "show_render", status)
         if modifier.type == "CORRECTIVE_SMOOTH" and modifier.vertex_group:
             smooth_mods[modifier.vertex_group] = modifier
         if modifier.type == "VERTEX_WEIGHT_MIX" and modifier.vertex_group_a:
@@ -137,15 +137,15 @@ def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
             # CORRECTIVE_SMOOTH when vertex_group_a matches the vertex_group
             # of one of the smooth modifiers
             if name_match and (mtype == "" or mtype == "CORRECTIVE_SMOOTH"):
-                modifier.show_viewport = status
-                modifier.show_render = status
+                set_bool(modifier, "show_viewport", status)
+                set_bool(modifier, "show_render", status)
             vg_a = modifier.vertex_group_a
             weight_mix_active[vg_a] = weight_mix_active.get(vg_a, False) or modifier.show_viewport
 
     for vg, mod in smooth_mods.items():
         if vg in weight_mix_active:
-            mod.show_viewport = weight_mix_active[vg]
-            mod.show_render = weight_mix_active[vg]
+            set_bool(mod, "show_viewport", weight_mix_active[vg])
+            set_bool(mod, "show_render", weight_mix_active[vg])
 
 
 def set_cage_driven_modifiers(physics_item, rig_settings, status, mtype=""):
