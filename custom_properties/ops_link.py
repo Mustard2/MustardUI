@@ -175,18 +175,23 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
         if not 0 <= index < len(uilist):
             return {"FINISHED"}
 
-        # Remove custom property and driver
+        # Find the linked property
+        linked_properties = uilist[index].linked_properties
+        i = next(
+            (
+                i
+                for i, lp in enumerate(linked_properties)
+                if lp.rna == self.rna and lp.path == self.path
+            ),
+            -1,
+        )
+        if i == -1:
+            self.report({"WARNING"}, "MustardUI - The linked property was not found.")
+            return {"CANCELLED"}
+
+        # Remove the driver and the linked property
         driver_removed = self.clean_prop()
-
-        # Find the linked property index to remove it from the list
-        i = -1
-        for lp in uilist[index].linked_properties:
-            i += 1
-            if lp.rna == self.rna and lp.path == self.path:
-                break
-
-        if i != -1:
-            uilist[index].linked_properties.remove(i)
+        linked_properties.remove(i)
 
         obj.update_tag()
 
