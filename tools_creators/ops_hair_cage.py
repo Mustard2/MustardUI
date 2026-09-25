@@ -33,6 +33,7 @@ from mathutils import Vector
 from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
+from ..misc.move_modifier import move_modifier_after_armature
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -380,12 +381,16 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
                 mix_factor=1,
             )
 
-        def apply_corrective_smooth_modifier(obj, iterations, smooth_type, rest_source):
+        def apply_corrective_smooth_modifier(
+            obj, iterations, smooth_type, rest_source, after_armature=False
+        ):
             """Applies a corrective smooth modifier with the given settings and binds it."""  # noqa: E501
             mod = obj.modifiers.new(name="Hair Corrective", type="CORRECTIVE_SMOOTH")
             mod.iterations = iterations
             mod.smooth_type = smooth_type
             mod.rest_source = rest_source
+            if after_armature:
+                move_modifier_after_armature(obj, mod)
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
 
@@ -433,6 +438,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
             name="Hair Deform", type="SURFACE_DEFORM"
         )
         surface_deform_modifier.target = duplicate_obj
+        move_modifier_after_armature(original_obj, surface_deform_modifier)
 
         # Bind the last added Surface Deform modifier
         bpy.ops.object.surfacedeform_bind(modifier=surface_deform_modifier.name)
@@ -456,6 +462,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
             iterations=10,
             smooth_type="LENGTH_WEIGHTED",
             rest_source="BIND",
+            after_armature=True,
         )
 
         # Ensure only the duplicate is selected and active

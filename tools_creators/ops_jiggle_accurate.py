@@ -7,7 +7,7 @@ from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
 from ..misc import mesh_cleanup
-from ..misc.move_modifier import move_modifier
+from ..misc.move_modifier import move_modifier, move_modifier_after_armature
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -1011,6 +1011,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             surface_deform = source.modifiers.new(name=f"{item_name} Deform", type="SURFACE_DEFORM")
             surface_deform.target = cage
             surface_deform.vertex_group = deform_group.name
+            move_modifier_after_armature(source, surface_deform)
 
             # A handful of near degenerate triangles can survive the clean up, and a
             # single one of them is enough for Blender to refuse the whole target.
@@ -1057,6 +1058,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
             corrective.smooth_type = "LENGTH_WEIGHTED"
             corrective.rest_source = "BIND"
             corrective.vertex_group = deform_group.name
+            move_modifier_after_armature(source, corrective)
             bpy.ops.object.correctivesmooth_bind(modifier=corrective.name)
 
             # Copy the Armature modifiers of the source mesh on the cage, and move

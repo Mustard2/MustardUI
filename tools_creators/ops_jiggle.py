@@ -32,7 +32,7 @@ import bpy
 from mathutils import Vector
 
 from .. import __package__ as base_package
-from ..misc.move_modifier import move_modifier
+from ..misc.move_modifier import move_modifier, move_modifier_after_armature
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -279,6 +279,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             mod = obj.modifiers.new(name=modifier_name, type="SURFACE_DEFORM")
             mod.target = target
             mod.vertex_group = group_name
+            move_modifier_after_armature(obj, mod)
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.surfacedeform_bind(modifier=mod.name)  # Bind the modifier
             return mod
@@ -295,6 +296,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             mod.rest_source = "BIND"
             if group_name:
                 mod.vertex_group = group_name
+            move_modifier_after_armature(obj, mod)
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.correctivesmooth_bind(modifier=mod.name)  # Bind the modifier
             return mod
