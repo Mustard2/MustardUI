@@ -201,7 +201,8 @@ def muteDazFcurves(
                         else:
                             fcu.mute = False
                         sname = words[1]
-                        if sname in skeys.key_blocks.keys() and muteSK:
+                        skey = skeys.key_blocks.get(sname) if muteSK else None
+                        if skey is not None:
                             if (
                                 "MustardUINotDisable" not in sname
                                 and pJCMcheck(sname, mutepJCM)
@@ -209,7 +210,6 @@ def muteDazFcurves(
                                     mutefacs, sname, check_bones_rot, check_bones_loc
                                 )
                             ):
-                                skey = skeys.key_blocks[sname]
                                 if muteDazFcurves_exceptionscheck(
                                     muteexceptions, sname, exceptions
                                 ):
