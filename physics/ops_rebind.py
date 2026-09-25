@@ -5,6 +5,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ..outfits.helper_functions import outfits_get_collection_items
 
 
 def bind_object(
@@ -208,13 +209,14 @@ class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
 
         # Gather items to re-bind cages on
         objects = [rig_settings.model_body]
-        collection = bpy.data.collections[self.outfit]
+        collection = bpy.data.collections.get(self.outfit)
+        items = outfits_get_collection_items(rig_settings, collection) if collection else []
 
-        if collection is None or len(collection.objects) < 1:
+        if len(items) < 1:
             self.report({"WARNING"}, "MustardUI - Nothing to bind.")
             return {"CANCELLED"}
 
-        for obj in [x for x in collection.objects if x.type == "MESH"]:
+        for obj in [x for x in items if x.type == "MESH"]:
             objects.append(obj)
 
         # Gather cages to check as targets of modifiers
@@ -273,7 +275,10 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
             return {"FINISHED"}
 
         # Gather items to re-bind cages on
-        obj = context.scene.objects[self.object_name]
+        obj = context.scene.objects.get(self.object_name)
+        if obj is None:
+            self.report({"WARNING"}, f'MustardUI - Object "{self.object_name}" not found.')
+            return {"CANCELLED"}
 
         # Gather cages to check as targets of modifiers
         cages = []
