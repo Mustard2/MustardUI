@@ -108,6 +108,25 @@ def set_physics_item(physics_item, status):
         set_bool(obj, "hide_viewport", True)
 
 
+def named_after_cage(name, cage_name, cage_names):
+    """True if name contains cage_name, but not only as part of a longer Cage name
+    (e.g. "Proxy.001" for the Cage "Proxy")."""
+    longer = [c for c in cage_names if len(c) > len(cage_name) and cage_name in c]
+    start = name.find(cage_name)
+    while start != -1:
+        end = start + len(cage_name)
+        covered = False
+        for c in longer:
+            j = name.find(c)
+            while j != -1 and not covered:
+                covered = j <= start and j + len(c) >= end
+                j = name.find(c, j + 1)
+        if not covered:
+            return True
+        start = name.find(cage_name, start + 1)
+    return False
+
+
 def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
     """Update the modifiers of an object driven by a Cage Physics Item.
 
@@ -132,11 +151,16 @@ def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
                 set_bool(modifier, "show_viewport", status)
                 set_bool(modifier, "show_render", status)
 
+    cage_names = [
+        x.object.name
+        for x in physics_item.id_data.MustardUI_PhysicsSettings.items
+        if x.type == "CAGE" and x.object
+    ]
     smooth_mods = {}  # vertex_group -> CORRECTIVE_SMOOTH modifier
     weight_mix_active = {}  # vertex_group_a -> whether any feeding weight mix is active
 
     for modifier in obj.modifiers:
-        name_match = cage.name in modifier.name
+        name_match = named_after_cage(modifier.name, cage.name, cage_names)
         if name_match and (mtype == "" or modifier.type == mtype):
             set_bool(modifier, "show_viewport", status)
             set_bool(modifier, "show_render", status)

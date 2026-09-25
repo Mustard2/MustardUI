@@ -5,6 +5,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from .helper_functions import get_mask_visibility, update_masks
 
 
 class MustardUI_DeleteOutfit(bpy.types.Operator):
@@ -60,18 +61,16 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
                 bpy.ops.mustardui.physics_item_remove()
 
         # Remove Objects
-        remove_objects(
-            list(col.all_objects if rig_settings.outfit_config_subcollections else col.objects)
-        )
+        pieces = list(col.all_objects if rig_settings.outfit_config_subcollections else col.objects)
+        deleted_names = [x.name for x in pieces]
+        remove_objects(pieces)
 
         bpy.data.collections.remove(col)
 
-        # Revert Mask settings
-        if rig_settings.model_body:
-            for mod in rig_settings.model_body.modifiers:
-                if mod.type == "MASK" and outfit_name in mod.name:
-                    mod.show_viewport = False
-                    mod.show_render = False
+        # Turn off the masks of the deleted pieces, matched by name as on outfit switch
+        visibility = get_mask_visibility(rig_settings)
+        visibility.update(dict.fromkeys(deleted_names, False))
+        update_masks(context, rig_settings, visibility)
 
         self.report({"INFO"}, f"MustardUI - Outfit '{outfit_name}' deleted.")
 
