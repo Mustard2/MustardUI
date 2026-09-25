@@ -30,18 +30,6 @@ def restore_collection(lc, was_excluded):
         lc.exclude = True
 
 
-def prepare_intersection_checker(checker, items, colls, rig_settings):
-    """Build the trees of the Cages and the outfit meshes at once, with their collections
-    included. Returns the collection states for restore_collection()."""
-    states = [include_collection(coll) for coll in colls]
-    objects = [x.object for x in items if x.type == "CAGE" and x.object]
-    for coll in colls:
-        objs = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
-        objects.extend(x for x in objs if x.type == "MESH")
-    checker.prepare(objects)
-    return states
-
-
 fixes = [
     ("NONE", "None", "No fix attempt if the binding fails"),
     (
@@ -213,9 +201,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         # Caches BVH trees/bounding boxes so each cage and object mesh is only
         # built once across all intersection checks below.
         intersection_checker = MeshIntersectionChecker()
-        colls_states = prepare_intersection_checker(
-            intersection_checker, items, colls, rig_settings
-        )
 
         for coll in colls:
             lc, was_excluded = include_collection(coll)
@@ -320,9 +305,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                 obj.update_tag()
 
             restore_collection(lc, was_excluded)
-
-        for coll_lc, coll_was_excluded in colls_states:
-            restore_collection(coll_lc, coll_was_excluded)
 
         # Re-enable subdivision modifiers on the body
         for m in [x for x in body.modifiers if x.type == "SUBSURF"]:
@@ -567,9 +549,6 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         # Caches BVH trees/bounding boxes so each cage and object mesh is only
         # built once across all intersection checks below.
         intersection_checker = MeshIntersectionChecker()
-        colls_states = prepare_intersection_checker(
-            intersection_checker, items, colls, rig_settings
-        )
 
         for coll in colls:
             lc, was_excluded = include_collection(coll)
@@ -615,9 +594,6 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
                             npi.object = obj
 
             restore_collection(lc, was_excluded)
-
-        for coll_lc, coll_was_excluded in colls_states:
-            restore_collection(coll_lc, coll_was_excluded)
 
         for cage_lc, cage_was_excluded in cage_states:
             restore_collection(cage_lc, cage_was_excluded)
