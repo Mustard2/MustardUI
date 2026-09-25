@@ -3,6 +3,7 @@ import re
 import bpy
 from bpy.props import StringProperty
 
+from ..misc.enum_items import keep_enum_strings
 from ..misc.icons import get_hair_icon
 from ..misc.set_bool import set_bool
 from ..outfits.definitions import MustardUI_Outfit
@@ -14,9 +15,6 @@ from ..outfits.helper_functions import (
     update_masks,
 )
 from ..sections.definitions import MustardUI_SectionItem
-
-# Strings returned by outfits_list_make
-_outfits_list_strings = {}
 
 
 # Main class to store model settings
@@ -376,11 +374,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         if previews:
             items = [(*item, i) for i, item in enumerate(items)]
 
-        strings = _outfits_list_strings
-        return [
-            tuple(strings.setdefault(x, x) if isinstance(x, str) else x for x in item)
-            for item in items
-        ]
+        return keep_enum_strings(items)
 
     # Function to update the visibility of the outfits/masks/armature layers when an
     # outfit is changed
@@ -764,7 +758,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             if obj.type in {"MESH", "CURVES"}
         ]
 
-        return sorted(items)
+        return keep_enum_strings(sorted(items))
 
     # Function to update the requested hair
     def hair_list_update(self, context):

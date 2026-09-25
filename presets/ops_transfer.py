@@ -1,5 +1,6 @@
 import bpy
 
+from ..misc.enum_items import keep_enum_strings
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -28,7 +29,7 @@ def mustardui_get_characters(self, context):
         except Exception:
             pass
 
-    return items
+    return keep_enum_strings(items)
 
 
 class MustardUI_PresetTransfer(bpy.types.Operator):

@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import EnumProperty, IntProperty
 
+from ..misc.enum_items import keep_enum_strings
 from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
@@ -9,13 +10,9 @@ from ..model_selection.active_object import (
 # Identifier used for the entry that removes the property from every section
 SECTION_NONE = "MUSTARDUI_SECTION_NONE"
 
-# Blender does not keep a reference to the strings returned by an EnumProperty items
-# callback, therefore they are stored here to avoid them being garbage collected
-sections_enum_items = []
-
 
 def sections_enum(self, context):
-    sections_enum_items.clear()
+    sections_enum_items = []
     sections_enum_items.append(
         (SECTION_NONE, "No Section", "Remove the property from any section", "RECORD_OFF", 0)
     )
@@ -34,7 +31,7 @@ def sections_enum(self, context):
                 )
             )
 
-    return sections_enum_items
+    return keep_enum_strings(sections_enum_items)
 
 
 class MustardUI_Property_SetSection(bpy.types.Operator):
