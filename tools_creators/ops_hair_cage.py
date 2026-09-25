@@ -34,6 +34,7 @@ from rna_prop_ui import rna_idprop_ui_create
 
 from .. import __package__ as base_package
 from ..misc.move_modifier import move_modifier_after_armature
+from ..misc.scene_state import execute_restoring_state
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -121,6 +122,9 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         return None
 
     def execute(self, context):
+        return execute_restoring_state(self, context)
+
+    def _execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
         physics_settings = obj.MustardUI_PhysicsSettings
@@ -142,6 +146,9 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
             # Rename the duplicated object
             duplicate_obj.name = f"{original_obj.name} Hair Proxy"
+
+            # Apply scale to the proxy only, so the sizes below are in world units
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
             # Add Displace modifier if attempt_tight_bind is True
             if self.attempt_tight_bind:
@@ -690,9 +697,6 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
         # Only the active mesh is used: the other selected objects are left untouched
         bpy.ops.object.select_all(action="DESELECT")
         context.view_layer.objects.active.select_set(True)
-
-        # Ensure that there is an active object and it's a mesh
-        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
         self.voxel_res = 100.0
         self.max_density = False

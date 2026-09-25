@@ -33,6 +33,7 @@ from mathutils import Vector
 
 from .. import __package__ as base_package
 from ..misc.move_modifier import move_modifier, move_modifier_after_armature
+from ..misc.scene_state import execute_restoring_state
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -190,6 +191,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         )
 
     def execute(self, context):
+        return execute_restoring_state(self, context)
+
+    def _execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
