@@ -11,11 +11,7 @@ class MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups(bpy.types.UIList):
 
         obj = context.active_object
         # check dynamically if VG still exists
-        if (
-            obj
-            and obj.type == "MESH"
-            and item.group_name not in {vg.name for vg in obj.vertex_groups}
-        ):
+        if obj and obj.type == "MESH" and obj.vertex_groups.get(item.group_name) is None:
             row.enabled = False  # gray out
             row.label(text=item.group_name, icon="ERROR")  # warning icon
         else:

@@ -4,6 +4,7 @@ import os
 import bpy
 
 from .. import __package__ as base_package
+from ..misc.materials import material_uses_nodes
 
 
 class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
@@ -300,7 +301,7 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
             # Replace in materials
             for material in bpy.data.materials:
-                if not material.use_nodes or not material.node_tree:
+                if not material_uses_nodes(material):
                     continue
 
                 for node in material.node_tree.nodes:
@@ -387,7 +388,7 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
             # Replace image texture nodes in materials
             for material in bpy.data.materials:
-                if not material.use_nodes or not material.node_tree:
+                if not material_uses_nodes(material):
                     continue
 
                 for node in material.node_tree.nodes:

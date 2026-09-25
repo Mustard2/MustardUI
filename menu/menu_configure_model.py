@@ -7,8 +7,8 @@ from . import MainPanel
 from .menu_configure import row_scale
 
 
-class PANEL_PT_MustardUI_InitPanel_Properties(MainPanel, bpy.types.Panel):
-    bl_label = "Properties"
+class PANEL_PT_MustardUI_InitPanel_Model(MainPanel, bpy.types.Panel):
+    bl_label = "Model"
     bl_parent_id = "PANEL_PT_MustardUI_InitPanel"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -23,7 +23,7 @@ class PANEL_PT_MustardUI_InitPanel_Properties(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="", icon="PROPERTIES")
+        layout.label(text="", icon="ARMATURE_DATA")
 
     def draw(self, context):
 
@@ -32,6 +32,10 @@ class PANEL_PT_MustardUI_InitPanel_Properties(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=1)
         rig_settings = arm.MustardUI_RigSettings
+
+        box = layout.box()
+        box.label(text="Global Properties", icon="PROPERTIES")
+        box.prop(rig_settings, "body_enable_preserve_volume")
 
         # Sections
         box = layout.box()
@@ -136,8 +140,8 @@ class PANEL_PT_MustardUI_InitPanel_Properties(MainPanel, bpy.types.Panel):
 
 
 def register():
-    bpy.utils.register_class(PANEL_PT_MustardUI_InitPanel_Properties)
+    bpy.utils.register_class(PANEL_PT_MustardUI_InitPanel_Model)
 
 
 def unregister():
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_InitPanel_Properties)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_InitPanel_Model)

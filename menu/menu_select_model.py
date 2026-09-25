@@ -110,6 +110,7 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                     armature == settings.panel_model_selection_armature
                     and not settings.viewport_model_selection
                 )
+                row2.operator("mustardui.cleanmodel", text="", icon="BRUSH_DATA")
                 row2.operator("mustardui.remove", text="", icon="TRASH")
 
 

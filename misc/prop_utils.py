@@ -21,7 +21,7 @@ def evaluate_rna(rna_path, verbose=False):
 
     path_parts = re.findall(r"\w+|\[.*?]", rna_sub_path)
 
-    for i, part in enumerate(path_parts):
+    for part in path_parts:
         if part.startswith("[") and part.endswith("]"):
             # Remove the square brackets and safely evaluate the key
             key = part[1:-1]

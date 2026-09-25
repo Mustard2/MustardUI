@@ -8,9 +8,11 @@ from .update_enable import enable_physics_update
 
 def update_frame(self, context):
 
+    unique_objects = {x.object for x in self.items if x.object and x.unique_cache_frames}
+
     def update_modifiers(s, o):
         for md in o.modifiers:
-            if md.type in ["CLOTH", "SOFT_BODY"] and not pi.unique_cache_frames:
+            if md.type in ["CLOTH", "SOFT_BODY"] and o not in unique_objects:
                 md.point_cache.frame_start = s.frame_start
                 md.point_cache.frame_end = s.frame_end
             elif md.type == "PARTICLE_SYSTEM":
@@ -29,9 +31,9 @@ def update_frame(self, context):
         context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
 
     # Update all objects linked to physics items
-    for pi in [x for x in self.items if x.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]]:
-        obj = pi.object
-        update_modifiers(self, obj)
+    for pi in self.items:
+        if pi.object is not None and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
+            update_modifiers(self, pi.object)
 
     # Also update outfits, extras, and hair
     res, arm = mustardui_active_object(context, config=0)

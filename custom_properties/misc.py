@@ -48,6 +48,18 @@ def mustardui_prop_limits(prop, addon_prefs):
 
 
 # Function to check over all custom properties
+def split_data_path(data_path):
+    """Split a full data path into (rna, path) as stored by the custom properties, keeping
+    the brackets for Blender custom properties (["name"]). None if it has no property."""
+    if "][" in data_path:
+        rna, rem = data_path.rsplit("[", 1)
+        return rna, "[" + rem
+    if "." not in data_path:
+        return None
+    rna, path = data_path.rsplit(".", 1)
+    return rna, path.split("[", 1)[0]
+
+
 def mustardui_check_cp(obj, rna, path):
     for cp in obj.MustardUI_CustomProperties:
         if cp.rna == rna and cp.path == path:
@@ -279,7 +291,7 @@ def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_setting
     to_remove = []
 
     # Firstly set the custom property to their default value
-    for i, cp in enumerate(uilist):
+    for i in range(len(uilist)):
         mustardui_reassign_default(arm, uilist, i, addon_prefs)
 
     # Update everything
@@ -288,7 +300,7 @@ def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_setting
     bpy.context.view_layer.update()
 
     # And then delete data
-    for i, cp in enumerate(uilist):
+    for i in range(len(uilist)):
         mustardui_clean_prop(arm, uilist, i, addon_prefs)
         to_remove.append(i)
     for i in reversed(to_remove):

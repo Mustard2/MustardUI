@@ -142,10 +142,13 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
         res, arm = mustardui_active_object(context, config=0)
         physics_settings = arm.MustardUI_PhysicsSettings
 
-        obj = context.scene.objects[self.obj_name]
+        obj = context.scene.objects.get(self.obj_name)
+        if obj is None:
+            self.report({"WARNING"}, f'MustardUI - Object "{self.obj_name}" not found.')
+            return {"CANCELLED"}
 
         obj_mirror = None
-        for on in [x for x in physics_settings.items if x.object != obj]:
+        for on in [x for x in physics_settings.items if x.object and x.object != obj]:
             if check_mirror(self.obj_name, on.object.name, left=True) or check_mirror(
                 self.obj_name, on.object.name, left=False
             ):
@@ -153,6 +156,7 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
                 break
         if obj_mirror is None:
             self.report({"WARNING"}, "MustardUI - No Object as target for mirror found.")
+            return {"CANCELLED"}
 
         # Cloth Settings
         cloth = mirror_cloth(obj, obj_mirror)

@@ -37,6 +37,24 @@ def find_layer_collection(layer_coll, collection):
     return None
 
 
+def find_layer_collections(layer_coll, collections):
+    """find_layer_collection for several collections in one walk, stopping when all are found."""
+    wanted = set(collections)
+    result = {}
+
+    def _walk(lc):
+        coll = lc.collection
+        if coll in wanted and coll not in result:
+            result[coll] = lc
+            if len(result) == len(wanted):
+                return True
+        return any(_walk(child) for child in lc.children)
+
+    if wanted:
+        _walk(layer_coll)
+    return result
+
+
 def update_extras_visibility(context, rig_settings):
     """Recursively hide/exclude each Extras (sub-)collection only when all its
     objects are hidden.
@@ -45,6 +63,10 @@ def update_extras_visibility(context, rig_settings):
     if extras is None:
         return None
 
+    layer_colls = find_layer_collections(
+        context.view_layer.layer_collection, [extras, *extras.children_recursive]
+    )
+
     def _update(coll):
         children_hidden = [_update(child) for child in coll.children]
         all_hidden = all(obj.hide_render for obj in coll.objects) and all(children_hidden)
@@ -52,7 +74,7 @@ def update_extras_visibility(context, rig_settings):
         set_bool(coll, "hide_viewport", all_hidden)
         set_bool(coll, "hide_render", all_hidden)
 
-        lc = find_layer_collection(context.view_layer.layer_collection, coll)
+        lc = layer_colls.get(coll)
         if lc is not None:
             set_bool(lc, "exclude", all_hidden)
 

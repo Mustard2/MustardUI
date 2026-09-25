@@ -38,7 +38,7 @@ def draw_outfit_piece(
 
     col = layout.column(align=True)
     row = col.row(align=True)
-    for lvl in range(level):
+    for _ in range(level):
         row.label(text="", icon="BLANK1")
 
     children = cache.children.get(obj, ())
@@ -142,7 +142,7 @@ def draw_outfit_piece(
         )
         if check_show:
             row2 = col.row(align=True)
-            for lvl in range(level):
+            for _ in range(level):
                 row2.label(text="", icon="BLANK1")
             mustardui_custom_properties_print(
                 arm,

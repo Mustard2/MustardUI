@@ -1,5 +1,6 @@
 import bpy
 
+from ..misc.geometry_nodes import node_group_has_simulation
 from ..model_selection.active_object import mustardui_active_object
 from .helper_functions import set_full_resolution_preview
 
@@ -46,8 +47,11 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
         if self.id_data.modifiers is None:
             return
 
+        # Only the Geometry Nodes simulations are switched
         for m in self.id_data.modifiers:
-            if m.type in ["CLOTH", "SOFT_BODY"] or (m.type == "NODES" and m.node_group):
+            if m.type in ["CLOTH", "SOFT_BODY"] or (
+                m.type == "NODES" and node_group_has_simulation(m.node_group)
+            ):
                 m.show_viewport = self.physics
                 m.show_render = self.physics
             elif m.type in ["COLLISION"]:

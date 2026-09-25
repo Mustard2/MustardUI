@@ -1,6 +1,9 @@
 import bpy
 from bpy.props import StringProperty
 
+from .. import __package__ as base_package
+from ..custom_properties.misc import assign_pointers
+from ..custom_properties.ops_rebuild import fix_custom_property_path
 from ..model_selection.active_object import mustardui_active_object
 
 
@@ -33,7 +36,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             if old_name in modifier.name:
                 modifier.name = modifier.name.replace(old_name, self.name)
 
-    def change_materials_name(self, obj, old_name):
+    def change_materials_name(self, obj, old_name, shared_materials):
         if obj.type != "MESH":
             return
         if obj.data is None:
@@ -42,8 +45,29 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             return
 
         for mat in [x for x in obj.data.materials if x is not None]:
-            if old_name in mat.name:
+            if old_name in mat.name and mat not in shared_materials:
                 mat.name = mat.name.replace(old_name, self.name)
+
+    def shared_materials(self, rig_settings, physics_settings):
+        """Materials also used by meshes outside the model, which are not renamed."""
+        arm_obj = rig_settings.model_armature_object
+        objects = set(arm_obj.children) if arm_obj else set()
+        objects.update(x.object for x in physics_settings.items if x.object)
+        for coll in [x.collection for x in rig_settings.outfits_collections] + [
+            rig_settings.extras_collection,
+            rig_settings.hair_collection,
+            rig_settings.hair_extras_collection,
+        ]:
+            if coll is not None:
+                objects.update(coll.all_objects)
+        model_meshes = {x.data for x in objects if x is not None and x.type == "MESH"}
+
+        shared = set()
+        for obj in bpy.data.objects:
+            if obj.type != "MESH" or obj.data in model_meshes:
+                continue
+            shared.update(x.material for x in obj.material_slots if x.material)
+        return shared
 
     def execute(self, context):
 
@@ -59,6 +83,18 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
         physics_settings = arm.MustardUI_PhysicsSettings
 
         old_name = rig_settings.model_name
+        addon_prefs = context.preferences.addons[base_package].preferences
+
+        # Store pointers to the IDs, to fix the custom property paths after renaming
+        custom_properties_lists = [
+            arm.MustardUI_CustomProperties,
+            arm.MustardUI_CustomPropertiesOutfit,
+            arm.MustardUI_CustomPropertiesHair,
+        ]
+        for custom_properties in custom_properties_lists:
+            assign_pointers(custom_properties, addon_prefs)
+
+        shared_materials = self.shared_materials(rig_settings, physics_settings)
 
         # Armature
         rig_settings.model_armature_object.name = rig_settings.model_armature_object.name.replace(
@@ -70,7 +106,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             if old_name in obj.name:
                 obj.name = obj.name.replace(old_name, self.name)
             self.change_modifiers_name(obj, old_name)
-            self.change_materials_name(obj, old_name)
+            self.change_materials_name(obj, old_name, shared_materials)
 
         # Physics items
         for pi in [x for x in physics_settings.items if x.object is not None]:
@@ -86,7 +122,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             for obj in [x for x in items if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
-                self.change_materials_name(obj, old_name)
+                self.change_materials_name(obj, old_name, shared_materials)
             coll.name = coll.name.replace(old_name, self.name)
 
         # Extras
@@ -94,7 +130,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             for obj in [x for x in rig_settings.extras_collection.all_objects if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
-                self.change_materials_name(obj, old_name)
+                self.change_materials_name(obj, old_name, shared_materials)
             rig_settings.extras_collection.name = rig_settings.extras_collection.name.replace(
                 old_name, self.name
             )
@@ -104,7 +140,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             for obj in [x for x in rig_settings.hair_collection.all_objects if x is not None]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
-                self.change_materials_name(obj, old_name)
+                self.change_materials_name(obj, old_name, shared_materials)
             rig_settings.hair_collection.name = rig_settings.hair_collection.name.replace(
                 old_name, self.name
             )
@@ -116,7 +152,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             ]:
                 obj.name = obj.name.replace(old_name, self.name)
                 self.change_modifiers_name(obj, old_name)
-                self.change_materials_name(obj, old_name)
+                self.change_materials_name(obj, old_name, shared_materials)
             rig_settings.hair_extras_collection.name = (
                 rig_settings.hair_extras_collection.name.replace(old_name, self.name)
             )
@@ -124,9 +160,16 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
         # Finally change the model name
         rig_settings.model_name = self.name
 
+        fixed = 0
+        for custom_properties in custom_properties_lists:
+            for custom_prop in custom_properties:
+                res = fix_custom_property_path(arm, custom_properties, custom_prop, addon_prefs)
+                fixed += res == "FIXED"
+
         self.report(
             {"INFO"},
-            f"MustardUI - Model renamed from {repr(old_name)} to {repr(rig_settings.model_name)}",
+            f"MustardUI - Model renamed from {repr(old_name)} to {repr(rig_settings.model_name)}"
+            f" ({fixed} custom property paths updated)",
         )
 
         return {"FINISHED"}

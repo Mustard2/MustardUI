@@ -9,7 +9,7 @@ from . import (  # noqa: E402, I001
     menu_development,
     menu_warnings,
     menu_configure,
-    menu_configure_properties,
+    menu_configure_model,
     menu_configure_morphs,
     menu_configure_body,
     menu_configure_outfit,
@@ -23,7 +23,7 @@ from . import (  # noqa: E402, I001
     menu_configure_complete,
     menu_tools_creators,
     menu_quick_setup,
-    menu_properties,
+    menu_model,
     menu_morphs,
     menu_body,
     menu_outfits,
@@ -43,7 +43,7 @@ def register():
     menu_development.register()
     menu_warnings.register()
     menu_configure.register()
-    menu_configure_properties.register()
+    menu_configure_model.register()
     menu_configure_morphs.register()
     menu_configure_body.register()
     menu_configure_outfit.register()
@@ -57,7 +57,7 @@ def register():
     menu_configure_complete.register()
     menu_tools_creators.register()
     menu_quick_setup.register()
-    menu_properties.register()
+    menu_model.register()
     menu_morphs.register()
     menu_body.register()
     menu_outfits.register()
@@ -83,7 +83,7 @@ def unregister():
     menu_outfits.unregister()
     menu_body.unregister()
     menu_morphs.unregister()
-    menu_properties.unregister()
+    menu_model.unregister()
     menu_quick_setup.unregister()
     menu_tools_creators.unregister()
     menu_configure_complete.unregister()
@@ -97,7 +97,7 @@ def unregister():
     menu_configure_outfit.unregister()
     menu_configure_body.unregister()
     menu_configure_morphs.unregister()
-    menu_configure_properties.unregister()
+    menu_configure_model.unregister()
     menu_configure.unregister()
     menu_warnings.unregister()
     menu_development.unregister()

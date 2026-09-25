@@ -74,11 +74,11 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
                 img.pixels.foreach_get(pixels)
                 pixels = pixels.reshape(-1, 4)
 
-                r = pixels[:, 0]
+                # The grayscale data is read from the alpha channel if the image uses
+                # it, otherwise from the red one
                 a = pixels[:, 3]
-
-                gray = np.where(a < 1.0, a, r)
-                channels.append(gray)
+                gray = a if np.any(a < 1.0) else pixels[:, 0]
+                channels.append(np.ascontiguousarray(gray))
 
             while len(channels) < 4:
                 channels.append(np.ones(num_pixels, dtype=np.float32))
@@ -93,15 +93,8 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
         else:
             for img in images:
                 pixels = list(img.pixels[:])
-                gray = []
-
-                for i in range(0, len(pixels), 4):
-                    r = pixels[i]
-                    a = pixels[i + 3]
-
-                    gray.append(a if a < 1.0 else r)
-
-                channels.append(gray)
+                alpha = pixels[3::4]
+                channels.append(alpha if any(a < 1.0 for a in alpha) else pixels[0::4])
 
             while len(channels) < 4:
                 channels.append([1.0] * num_pixels)
@@ -124,6 +117,9 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
             img.colorspace_settings.name = colorspace
 
         packed.update()
+
+        # Pack the image
+        packed.pack()
 
         # Create Image node
         img_node = nodes.new("ShaderNodeTexImage")

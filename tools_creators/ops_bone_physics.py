@@ -136,8 +136,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             spline.points.add(count=len(chain))
             spline.points[0].co = (armature.matrix_world @ chain[0].head).to_tuple() + (1,)
             spline.points[0].tilt = self.curve_tilt
-            for i, bone in enumerate(chain):
-                i += 1
+            for i, bone in enumerate(chain, start=1):
                 if i == len(chain):
                     spline.points[i].co = (armature.matrix_world @ bone.tail).to_tuple() + (1,)
                     spline.points[i].tilt = self.curve_tilt
@@ -181,7 +180,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             # Iterate over each vertex and create a vertex group for it
             idx_vg = 0
             vertex_groups = []
-            for idx, vertex in enumerate(curve_obj.data.vertices):
+            for vertex in curve_obj.data.vertices:
                 if vertex.index % 2:
                     continue
 

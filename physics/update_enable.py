@@ -1,21 +1,26 @@
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import mustardui_active_object
-from ..outfits.helper_functions import find_layer_collection
+from ..outfits.helper_functions import find_layer_collections
 
 
 def model_objects(rig_settings):
     """Iterate over the model objects that can be driven by the Physics Items.
 
     Yield (object, visible) tuples, where visible takes into account the visibility of
-    the collection the object belongs to.
+    the collection the object belongs to. Each object is yielded once, with the
+    visibility of the last group it was found in.
     """
-    for obj in rig_settings.model_armature_object.children:
-        yield obj, not obj.hide_viewport
+    visibility = {}
+
+    arm = rig_settings.model_armature_object
+    if arm is not None:
+        for obj in arm.children:
+            visibility[obj] = not obj.hide_viewport
 
     for coll in [x.collection for x in rig_settings.outfits_collections if x.collection]:
         objects = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
         for obj in [x for x in objects if x.type == "MESH"]:
-            yield obj, not coll.hide_viewport and not obj.hide_viewport
+            visibility[obj] = not coll.hide_viewport and not obj.hide_viewport
 
     extras = rig_settings.extras_collection
     if extras is not None:
@@ -23,13 +28,15 @@ def model_objects(rig_settings):
             extras.all_objects if rig_settings.extras_config_subcollections else extras.objects
         )
         for obj in [x for x in objects if x.type == "MESH"]:
-            yield obj, not extras.hide_viewport and not obj.hide_viewport
+            visibility[obj] = not extras.hide_viewport and not obj.hide_viewport
 
     for coll in [rig_settings.hair_collection, rig_settings.hair_extras_collection]:
         if coll is None:
             continue
         for obj in [x for x in coll.objects if x.type == "MESH"]:
-            yield obj, not coll.hide_viewport and not obj.hide_viewport
+            visibility[obj] = not coll.hide_viewport and not obj.hide_viewport
+
+    yield from visibility.items()
 
 
 def update_physics_collections_exclude(physics_settings, context):
@@ -39,19 +46,21 @@ def update_physics_collections_exclude(physics_settings, context):
         return
 
     master = context.scene.collection
-    view_layer = context.view_layer
 
     # Collections directly holding at least one physics item object
     candidate_colls = {coll for obj in physics_objects for coll in obj.users_collection}
+    # Only act on collections whose contents are exclusively physics items
+    physics_colls = [
+        coll
+        for coll in candidate_colls
+        if coll != master and all(obj in physics_objects for obj in coll.all_objects)
+    ]
+    layer_colls = find_layer_collections(context.view_layer.layer_collection, physics_colls)
 
-    for coll in candidate_colls:
-        if coll == master:
-            continue
-        # Only act on collections whose contents are exclusively physics items
-        if all(obj in physics_objects for obj in coll.all_objects):
-            lc = find_layer_collection(view_layer.layer_collection, coll)
-            if lc is not None:
-                set_bool(lc, "exclude", not physics_settings.enable_physics)
+    for coll in physics_colls:
+        lc = layer_colls.get(coll)
+        if lc is not None:
+            set_bool(lc, "exclude", not physics_settings.enable_physics)
 
 
 def set_physics_item(physics_item, status):
@@ -63,13 +72,16 @@ def set_physics_item(physics_item, status):
     for modifier in obj.modifiers:
         if mod_types is not None and modifier.type not in mod_types:
             continue
-        modifier.show_viewport = status
-        modifier.show_render = status
+        set_bool(modifier, "show_viewport", status)
+        set_bool(modifier, "show_render", status)
         if modifier.type == "COLLISION" and physics_item.type == "COLLISION":
-            obj.collision.use = status
+            set_bool(obj.collision, "use", status)
 
     if physics_item.type == "BONES_DRIVER":
-        physics_item.bone_influence = status
+        # Files saved by older versions store 0 when Physics was disabled
+        if status and physics_item.bone_influence <= 0.001:
+            physics_item.bone_influence = 1.0
+        set_bone_driver_constraints(physics_item, physics_item.bone_influence if status else 0.0)
 
     # Shape Keys and their drivers
     shape_keys = obj.data.shape_keys if obj.data else None
@@ -83,17 +95,36 @@ def set_physics_item(physics_item, status):
     # Collision items are always shown when enabled, otherwise the collisions might not
     # work (Blender bug), while the other items restore the visibility they had
     if physics_item.type == "COLLISION":
-        obj.hide_viewport = not status
+        set_bool(obj, "hide_viewport", not status)
     elif status:
-        obj.hide_viewport = physics_item.visibility_pre_disable
-        physics_item.visibility_pre_disable_stored = False
+        set_bool(obj, "hide_viewport", physics_item.visibility_pre_disable)
+        set_bool(physics_item, "visibility_pre_disable_stored", False)
     else:
         # Store the visibility only when the item gets disabled: the following updates
         # would store the hidden state set here instead
         if not physics_item.visibility_pre_disable_stored:
             physics_item.visibility_pre_disable = obj.hide_viewport
             physics_item.visibility_pre_disable_stored = True
-        obj.hide_viewport = True
+        set_bool(obj, "hide_viewport", True)
+
+
+def named_after_cage(name, cage_name, cage_names):
+    """True if name contains cage_name, but not only as part of a longer Cage name
+    (e.g. "Proxy.001" for the Cage "Proxy")."""
+    longer = [c for c in cage_names if len(c) > len(cage_name) and cage_name in c]
+    start = name.find(cage_name)
+    while start != -1:
+        end = start + len(cage_name)
+        covered = False
+        for c in longer:
+            j = name.find(c)
+            while j != -1 and not covered:
+                covered = j <= start and j + len(c) >= end
+                j = name.find(c, j + 1)
+        if not covered:
+            return True
+        start = name.find(cage_name, start + 1)
+    return False
 
 
 def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
@@ -117,17 +148,22 @@ def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
                     or (modifier.target == body and obj in intersecting_objects)
                 )
             ):
-                modifier.show_viewport = status
-                modifier.show_render = status
+                set_bool(modifier, "show_viewport", status)
+                set_bool(modifier, "show_render", status)
 
+    cage_names = [
+        x.object.name
+        for x in physics_item.id_data.MustardUI_PhysicsSettings.items
+        if x.type == "CAGE" and x.object
+    ]
     smooth_mods = {}  # vertex_group -> CORRECTIVE_SMOOTH modifier
     weight_mix_active = {}  # vertex_group_a -> whether any feeding weight mix is active
 
     for modifier in obj.modifiers:
-        name_match = cage.name in modifier.name
+        name_match = named_after_cage(modifier.name, cage.name, cage_names)
         if name_match and (mtype == "" or modifier.type == mtype):
-            modifier.show_viewport = status
-            modifier.show_render = status
+            set_bool(modifier, "show_viewport", status)
+            set_bool(modifier, "show_render", status)
         if modifier.type == "CORRECTIVE_SMOOTH" and modifier.vertex_group:
             smooth_mods[modifier.vertex_group] = modifier
         if modifier.type == "VERTEX_WEIGHT_MIX" and modifier.vertex_group_a:
@@ -135,15 +171,15 @@ def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
             # CORRECTIVE_SMOOTH when vertex_group_a matches the vertex_group
             # of one of the smooth modifiers
             if name_match and (mtype == "" or mtype == "CORRECTIVE_SMOOTH"):
-                modifier.show_viewport = status
-                modifier.show_render = status
+                set_bool(modifier, "show_viewport", status)
+                set_bool(modifier, "show_render", status)
             vg_a = modifier.vertex_group_a
             weight_mix_active[vg_a] = weight_mix_active.get(vg_a, False) or modifier.show_viewport
 
     for vg, mod in smooth_mods.items():
         if vg in weight_mix_active:
-            mod.show_viewport = weight_mix_active[vg]
-            mod.show_render = weight_mix_active[vg]
+            set_bool(mod, "show_viewport", weight_mix_active[vg])
+            set_bool(mod, "show_render", weight_mix_active[vg])
 
 
 def set_cage_driven_modifiers(physics_item, rig_settings, status, mtype=""):
@@ -252,7 +288,7 @@ def collisions_physics_update_single(self, context):
         arm is None
         or not res
         or not self.object
-        and self.type not in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]
+        or self.type not in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]
     ):
         return
 
@@ -264,38 +300,45 @@ def collisions_physics_update_single(self, context):
 def cage_influence_update(self, context):
     res, arm = mustardui_active_object(context, config=0)
 
-    if arm is None or not res and self.type != "CAGE":
+    if arm is None or not res or self.type != "CAGE":
         return
 
     influence = self.cage_influence
 
     rig_settings = arm.MustardUI_RigSettings
 
-    influence_cage_modifiers(self, rig_settings.model_body.modifiers, influence)
+    if rig_settings.model_body is not None:
+        influence_cage_modifiers(self, rig_settings.model_body.modifiers, influence)
 
     for obj, _ in model_objects(rig_settings):
         influence_cage_modifiers(self, obj.modifiers, influence)
 
 
-def bone_influence_update(self, context):
-    res, arm = mustardui_active_object(context, config=0)
-
-    if arm is None or not res and self.type != "BONES_DRIVER":
-        return
-
-    parent = self.object.parent
+def set_bone_driver_constraints(physics_item, influence):
+    """Apply the influence to the bone constraints targeting a Bones Driver item (0 disables
+    them), without changing the influence stored on the item."""
+    parent = physics_item.object.parent if physics_item.object else None
 
     if not parent or parent.type != "ARMATURE":
         return
 
-    influence = self.bone_influence
-    status = influence > 0.001
     for bone in parent.pose.bones:
         for constraint in [
-            x for x in bone.constraints if hasattr(x, "target") and x.target == self.object
+            x for x in bone.constraints if hasattr(x, "target") and x.target == physics_item.object
         ]:
-            if hasattr(constraint, "influence"):
-                constraint.influence = influence
-            elif hasattr(constraint, "strength"):
-                constraint.strength = influence
-            constraint.enabled = status
+            attr = "influence" if hasattr(constraint, "influence") else "strength"
+            if hasattr(constraint, attr) and getattr(constraint, attr) != influence:
+                setattr(constraint, attr, influence)
+            set_bool(constraint, "enabled", influence > 0.001)
+
+
+def bone_influence_update(self, context):
+    res, arm = mustardui_active_object(context, config=0)
+
+    if arm is None or not res or self.type != "BONES_DRIVER" or not self.object:
+        return
+
+    # While the item or Physics are disabled, the new influence is only stored
+    physics_settings = arm.MustardUI_PhysicsSettings
+    status = physics_settings.enable_physics and self.enable
+    set_bone_driver_constraints(self, self.bone_influence if status else 0.0)

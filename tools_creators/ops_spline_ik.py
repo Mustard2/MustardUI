@@ -3,6 +3,13 @@ import bpy
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
 
+# Naming convention
+IKSpline_Curve_Name = "MustardUI.IKSpline.Curve"
+IKSpline_Bone_Name = "MustardUI.IKSpline.Bone"
+IKSpline_Hook_Modifier_Name = "MustardUI.IKSpline.Hook"
+IKSpline_Empty_Name = "MustardUI.IKSpline.Empty"
+IKSpline_Constraint_Name = "MustardUI.IKSpline"
+
 
 class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
     """Create an IK spline on the selected chain.\nSelect the bones, the last one being the tip of the chain.\nThe minimum number of bones is 4"""  # noqa: E501
@@ -63,15 +70,7 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
     def execute(self, context):
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        name_prefix = "MustardUI"
         num = self.ik_spline_number
-
-        # Naming convention
-        IKSpline_Curve_Name = name_prefix + ".IKSpline.Curve"
-        IKSpline_Bone_Name = name_prefix + ".IKSpline.Bone"
-        IKSpline_Hook_Modifier_Name = name_prefix + ".IKSpline.Hook"
-        IKSpline_Empty_Name = name_prefix + ".IKSpline.Empty"
-        IKSpline_Constraint_Name = name_prefix + ".IKSpline"
 
         # Definitions
         arm = bpy.context.object
@@ -86,20 +85,6 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
                 "number of requested spline bones.",
             )
             return {"FINISHED"}
-
-        # Output a warning if the location has not been applied to the armature
-        warning = 0
-        if arm.location.x != 0.0 or arm.location.y != 0.0 or arm.location.z != 0.0:
-            self.report(
-                {"WARNING"},
-                "MustardUI - The Armature selected seems not to have location applied. "
-                "This might generate odd results!",
-            )
-            print(
-                "MustardUI IK Spline - Apply the location on the armature with Ctrl+A "
-                "in Object mode!"
-            )
-            warning += 1
 
         if addon_prefs.debug:
             print("MustardUI IK Spline - Armature selected: " + bpy.context.object.name)
@@ -224,7 +209,15 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
 
         # Link the curve in the scene and use as active object
         bpy.context.collection.objects.link(curveOB)
+
+        # Parenting the curve
+        curveOB.parent = arm
+        curveOB.matrix_parent_inverse.identity()
+        curveOB.matrix_basis.identity()
+
         context.view_layer.objects.active = curveOB
+
+        context.view_layer.update()
 
         # Go in Edit mode
         bpy.ops.object.editmode_toggle()
@@ -239,6 +232,8 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
 
             bpy.ops.object.hook_assign(modifier=m[i].name)
             bpy.ops.object.hook_reset(modifier=m[i].name)
+
+            m[i].matrix_inverse = arm.pose.bones[b_name[i]].matrix.inverted()
 
             # Change the handle type to ALIGNED to enable rotations
             curveData.splines[0].bezier_points[i].handle_right_type = "ALIGNED"
@@ -261,9 +256,7 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         context.view_layer.objects.active = arm
         bpy.ops.object.mode_set(mode="POSE")
 
-        # Final message, if no warning were raised during the execution
-        if warning == 0:
-            self.report({"INFO"}, "MustardUI - IK spline rig successfully created.")
+        self.report({"INFO"}, "MustardUI - IK spline rig successfully created.")
 
         return {"FINISHED"}
 
@@ -351,33 +344,43 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
                 e = []
                 bpy.ops.object.mode_set(mode="EDIT", toggle=False)
 
-                if constraint.target:
-                    IKCurve = constraint.target
-                    for hook_mod in IKCurve.modifiers:
-                        if hook_mod.object:
-                            IKEmpty = hook_mod.object
-                            e.append(IKEmpty.name)
+                # Only delete helpers created by the tool, never the armature or user curves
+                IKCurve = constraint.target
+                if IKCurve is not None and not IKCurve.name.startswith(IKSpline_Curve_Name):
+                    IKCurve = None
 
-                            if self.delete_bones:
-                                for e_constraint in IKEmpty.constraints:
-                                    if e_constraint.type == "COPY_TRANSFORMS":
-                                        if (
-                                            e_constraint.target
-                                            and e_constraint.subtarget
-                                            and e_constraint.subtarget != ""
-                                        ):
-                                            IKArm = e_constraint.target
-                                            IKBone = IKArm.data.edit_bones[e_constraint.subtarget]
-                                            IKBone_name = IKBone.name
-                                            IKArm.data.edit_bones.remove(IKBone)
-                                            if addon_prefs.debug:
-                                                print(
-                                                    "MustardUI IK Spline - Bone "
-                                                    + IKBone_name
-                                                    + " removed from Armature "
-                                                    + IKArm.name
-                                                )
-                                            removed_bones = removed_bones + 1
+                if IKCurve is not None:
+                    for hook_mod in IKCurve.modifiers:
+                        IKEmpty = hook_mod.object if hook_mod.type == "HOOK" else None
+                        if (
+                            IKEmpty is None
+                            or IKEmpty.type != "EMPTY"
+                            or not IKEmpty.name.startswith(IKSpline_Empty_Name)
+                        ):
+                            continue
+                        e.append(IKEmpty.name)
+
+                        if self.delete_bones:
+                            for e_constraint in IKEmpty.constraints:
+                                if (
+                                    e_constraint.type != "COPY_TRANSFORMS"
+                                    or e_constraint.target != arm
+                                    or not e_constraint.subtarget.startswith(IKSpline_Bone_Name)
+                                ):
+                                    continue
+                                IKBone = arm.data.edit_bones.get(e_constraint.subtarget)
+                                if IKBone is None:
+                                    continue
+                                IKBone_name = IKBone.name
+                                arm.data.edit_bones.remove(IKBone)
+                                if addon_prefs.debug:
+                                    print(
+                                        "MustardUI IK Spline - Bone "
+                                        + IKBone_name
+                                        + " removed from Armature "
+                                        + arm.name
+                                    )
+                                removed_bones = removed_bones + 1
 
                 bpy.ops.object.mode_set(mode="OBJECT")
                 bpy.ops.object.select_all(action="DESELECT")
@@ -389,7 +392,6 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
                         bpy.data.objects.remove(empty, do_unlink=True)
 
                 bpy.ops.object.select_all(action="DESELECT")
-                IKCurve = constraint.target
                 if IKCurve is not None:
                     IKCurve_name = IKCurve.name
                     bpy.data.objects.remove(IKCurve, do_unlink=True)

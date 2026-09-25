@@ -32,6 +32,8 @@ import bpy
 from mathutils import Vector
 
 from .. import __package__ as base_package
+from ..misc.move_modifier import move_modifier, move_modifier_after_armature
+from ..misc.scene_state import execute_restoring_state
 from ..model_selection.active_object import mustardui_active_object
 from . import physics_presets
 
@@ -189,6 +191,9 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
         )
 
     def execute(self, context):
+        return execute_restoring_state(self, context)
+
+    def _execute(self, context):
 
         res, obj = mustardui_active_object(context, config=1)
         rig_settings = obj.MustardUI_RigSettings
@@ -278,6 +283,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             mod = obj.modifiers.new(name=modifier_name, type="SURFACE_DEFORM")
             mod.target = target
             mod.vertex_group = group_name
+            move_modifier_after_armature(obj, mod)
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.surfacedeform_bind(modifier=mod.name)  # Bind the modifier
             return mod
@@ -294,6 +300,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             mod.rest_source = "BIND"
             if group_name:
                 mod.vertex_group = group_name
+            move_modifier_after_armature(obj, mod)
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.correctivesmooth_bind(modifier=mod.name)  # Bind the modifier
             return mod
@@ -476,8 +483,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     new_modifier.use_multi_modifier = armature_modifier.use_multi_modifier
                     # Move the new modifier to the top of the stack
                     bpy.context.view_layer.objects.active = target
-                    for _ in range(len(target.modifiers)):
-                        bpy.ops.object.modifier_move_up(modifier=new_modifier.name)
+                    move_modifier(target, new_modifier, 0)
 
         # Store the initial active object and selection
         context = bpy.context
@@ -691,11 +697,10 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
                     last_corrective_smooth = mod
             if cloth_modifier and last_corrective_smooth:
                 # Move the Cloth modifier above the last Corrective Smooth modifier
-                while obj.modifiers.find(cloth_modifier.name) > obj.modifiers.find(
-                    last_corrective_smooth.name
-                ):
+                cs_index = obj.modifiers.find(last_corrective_smooth.name)
+                if obj.modifiers.find(cloth_modifier.name) > cs_index:
                     bpy.context.view_layer.objects.active = obj
-                    bpy.ops.object.modifier_move_up(modifier=cloth_modifier.name)
+                    move_modifier(obj, cloth_modifier, cs_index)
                 if addon_prefs.debug:
                     print(
                         f"Moved Cloth modifier above the last Corrective Smooth "

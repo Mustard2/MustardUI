@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import BoolProperty, CollectionProperty, EnumProperty, IntProperty
+from bpy.props import BoolProperty, CollectionProperty, IntProperty
 
 from .. import __package__ as base_package
 from ..custom_properties.misc import (
@@ -53,40 +53,30 @@ class MustardUI_CleanModel(bpy.types.Operator):
     remove_outfit_cp: BoolProperty(default=False, name="Remove Outfit Custom Properties")
     remove_hair_cp: BoolProperty(default=False, name="Remove Hair Custom Properties")
 
-    remove_unselected_outfits: BoolProperty(
+    remove_outfits: BoolProperty(
         default=False,
         name="Delete Outfits",
-        description="Remove outfits from the model, as chosen with the mode below",
-    )
-    outfits_removal_mode: EnumProperty(
-        default="UNSELECTED",
-        name="Outfits to Remove",
-        description="Choose which outfits are removed",
-        items=(
-            (
-                "UNSELECTED",
-                "Unselected",
-                "Remove all the outfits that are not selected in the UI (Outfits list)",
-            ),
-            (
-                "LIST",
-                "From List",
-                "Remove only the outfits checked in the list",
-            ),
-        ),
+        description="Remove the Outfits checked in the list below",
     )
     outfits_to_remove: CollectionProperty(
         type=MustardUI_CleanModel_OutfitItem, options={"SKIP_SAVE"}
     )
     outfits_to_remove_index: IntProperty(default=0, options={"SKIP_SAVE"})
+    check_outfits_not_in_use: BoolProperty(
+        default=False,
+        name="Check Outfits Not In Use",
+        description="Check all the Outfits in the list, except the one currently "
+        "shown on the model (Outfits list)",
+        options={"SKIP_SAVE"},
+    )
     remove_unselected_extras: BoolProperty(
         default=False,
-        name="Delete Unselected Extras",
+        name="Delete Extras Not in Use",
         description="Remove all the Extras objects that are not selected in the UI",
     )
     remove_unselected_hair: BoolProperty(
         default=False,
-        name="Delete Unselected Hair",
+        name="Delete Hair Not in Use",
         description="Remove all the Hair that are not currently in use",
     )
     remove_dangling_cp: BoolProperty(
@@ -207,7 +197,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             item.locked = coll in locked
 
     def outfits_to_delete(self, rig_settings):
-        """Return the Outfit collections to delete, depending on the removal mode"""
+        """Return the Outfit collections checked for deletion in the list"""
 
         locked = self.locked_outfits_collections(rig_settings)
         available = [
@@ -216,11 +206,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if x.collection is not None and x not in locked
         ]
 
-        if self.outfits_removal_mode == "LIST":
-            selected = [x.name for x in self.outfits_to_remove if x.remove]
-            return [x.collection for x in available if x.collection.name in selected]
-
-        return [x.collection for x in available if x.collection.name != rig_settings.outfits_list]
+        selected = [x.name for x in self.outfits_to_remove if x.remove]
+        return [x.collection for x in available if x.collection.name in selected]
 
     @classmethod
     def poll(cls, context):
@@ -238,7 +225,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             self.remove_nulldrivers
             or self.remove_morphs
             or self.remove_diffeomorphic_data
-            or self.remove_unselected_outfits
+            or self.remove_outfits
             or self.remove_unselected_extras
             or self.remove_unselected_hair
             or self.remove_body_cp
@@ -499,7 +486,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
             for obj in objects:
                 items_to_remove = []
-                for k, v in obj.items():
+                for k in obj.keys():
                     if "Daz" in k:
                         items_to_remove.append(k)
                 for k in items_to_remove:
@@ -511,8 +498,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if addon_prefs.debug:
                 print("  Diffeomorphic Data Blocks removed: " + str(diffeomorphic_data_deleted))
 
-        # Remove unselected outfits
-        if self.remove_unselected_outfits:
+        # Remove the Outfits checked in the list
+        if self.remove_outfits:
             current_outfit = rig_settings.outfits_list
 
             to_remove = self.outfits_to_delete(rig_settings)
@@ -758,6 +745,23 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         return {"FINISHED"}
 
+    def check(self, context):
+        """Apply the Outfits list helper buttons, which are drawn as toggles"""
+
+        if not self.check_outfits_not_in_use:
+            return False
+
+        self.check_outfits_not_in_use = False
+
+        res, arm = mustardui_active_object(context, config=0)
+        if arm is not None:
+            current_outfit = arm.MustardUI_RigSettings.outfits_list
+            for item in self.outfits_to_remove:
+                if not item.locked:
+                    item.remove = item.name != current_outfit
+
+        return True
+
     def invoke(self, context, event):
 
         res, arm = mustardui_active_object(context, config=0)
@@ -778,17 +782,17 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         box = layout.box()
         col = box.column(align=True)
-        col.label(text="Notes:")
         col.label(
-            text="Read the descriptions of all buttons (keep the mouse on the buttons).",
+            text="Hover over each option to read what it removes before enabling it.",
             icon="DOT",
         )
         col.label(
-            text="Do not use while producing, but before starting a project with the model.",
+            text="Run this when setting up a project, not while working on one.",
             icon="DOT",
         )
+        col.separator()
         col.label(
-            text="This is a highly destructive operation! Use it at your own risk!",
+            text="This permanently deletes data from the model. Save a backup first!",
             icon="ERROR",
         )
 
@@ -796,23 +800,15 @@ class MustardUI_CleanModel(bpy.types.Operator):
         box = layout.box()
         box.label(text="Outfits and Hair", icon="MOD_CLOTH")
 
-        col = box.column()
+        col = box.column(align=True)
 
         row = col.row(align=True)
         row.enabled = len(rig_settings.outfits_collections) > 0
-        row.prop(self, "remove_unselected_outfits")
+        row.prop(self, "remove_outfits")
 
-        row = col.row(align=True)
-        row.enabled = self.remove_unselected_outfits and len(rig_settings.outfits_collections) > 0
-        row.prop(self, "outfits_removal_mode", expand=True)
-
-        row = col.row(align=True)
-        row.enabled = (
-            self.remove_unselected_outfits
-            and len(rig_settings.outfits_collections) > 0
-            and self.outfits_removal_mode == "LIST"
-        )
-        row.template_list(
+        col_outfits = col.column(align=True)
+        col_outfits.enabled = self.remove_outfits and len(rig_settings.outfits_collections) > 0
+        col_outfits.template_list(
             "MUSTARDUI_UL_CleanModel_Outfits_UIList",
             "",
             self,
@@ -821,6 +817,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
             "outfits_to_remove_index",
             rows=5,
         )
+        col_outfits.prop(self, "check_outfits_not_in_use", toggle=True, icon="CHECKBOX_HLT")
 
         col = box.column(align=True)
 
@@ -831,15 +828,13 @@ class MustardUI_CleanModel(bpy.types.Operator):
         row.enabled = rig_settings.hair_collection is not None
         row.prop(self, "remove_unselected_hair")
 
+        col.separator()
+
         additional_options_check = (
             len(rig_settings.outfits_collections) > 0
             or rig_settings.extras_collection is not None
             or rig_settings.hair_collection is not None
-        ) and (
-            self.remove_unselected_outfits
-            or self.remove_unselected_extras
-            or self.remove_unselected_hair
-        )
+        ) and (self.remove_outfits or self.remove_unselected_extras or self.remove_unselected_hair)
         row = col.row()
         row.enabled = additional_options_check
         row.prop(self, "remove_dangling_cp")

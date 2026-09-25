@@ -7,7 +7,7 @@ from . import MainPanel
 
 class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_SettingsPanel"
-    bl_label = "Settings & Maintenance"
+    bl_label = "Settings"
     bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -24,9 +24,7 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        box = layout.box()
-        box.label(text="General", icon="PREFERENCES")
-        col = box.column(align=True)
+        col = layout.column()
         col.prop(settings, "advanced")
 
         version_vector = tuple(rig_settings.model_version_vector)
@@ -53,38 +51,17 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
                     "wm.url_open", text="Changelog", icon="URL"
                 ).url = rig_settings.model_changelog_link
 
+        layout.separator()
 
-class PANEL_PT_MustardUI_SettingsPanel_Maintenance(MainPanel, bpy.types.Panel):
-    bl_idname = "PANEL_PT_MustardUI_SettingsPanel_Maintenance"
-    bl_label = "Maintenance"
-    bl_parent_id = "PANEL_PT_MustardUI_SettingsPanel"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    @classmethod
-    def poll(cls, context):
-        if can_draw_ui():
-            return False
-        return active_object_operator_poll(context, config=0)
-
-    def draw(self, context):
-
-        layout = self.layout
-
-        layout.operator("mustardui.cleanmodel", text="Clean Model", icon="BRUSH_DATA")
-
-        op = layout.operator("mustardui.update_ui", text="UI Update", icon="SORT_DESC")
+        col = layout.column()
+        op = col.operator("mustardui.update_ui", text="UI Update", icon="SORT_DESC")
         op.force = True
         op.ignore = False
-
-        layout.separator()
-        layout.operator("mustardui.remove", text="UI Removal", icon="X")
 
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_SettingsPanel)
-    bpy.utils.register_class(PANEL_PT_MustardUI_SettingsPanel_Maintenance)
 
 
 def unregister():
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_SettingsPanel_Maintenance)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_SettingsPanel)
