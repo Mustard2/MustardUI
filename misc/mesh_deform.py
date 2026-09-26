@@ -111,14 +111,22 @@ def write_vertex_group(obj, name, weights):
     return vg
 
 
-def rest_geometry(context, objects, rest_objects, use_modifiers):
-    """World-space vertices and triangles of the objects, in Rest Pose as the Shape Keys"""
+def rest_geometry(context, objects, rest_objects, use_modifiers, exclude_key=""):
+    """World-space vertices and triangles of the objects, in Rest Pose as the Shape Keys,
+    without the excluded Shape Key"""
 
     geometry = []
     state = SceneState(context)
+    muted = []
     try:
         for arm in deform_armatures(list(objects) + list(rest_objects)):
             arm.data.pose_position = "REST"
+        for obj in objects:
+            sks = getattr(obj.data, "shape_keys", None)
+            sk = sks.key_blocks.get(exclude_key) if sks is not None and exclude_key else None
+            if sk is not None and not sk.mute:
+                sk.mute = True
+                muted.append(sk)
         depsgraph = context.evaluated_depsgraph_get()
 
         for obj in objects:
@@ -127,7 +135,7 @@ def rest_geometry(context, objects, rest_objects, use_modifiers):
 
             co = None
             if not use_modifiers and obj.type == "MESH":
-                co = shape_key_mix(obj)
+                co = shape_key_mix(obj, exclude_key)
             if co is None:
                 co = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
                 mesh.vertices.foreach_get("co", co)
@@ -140,6 +148,8 @@ def rest_geometry(context, objects, rest_objects, use_modifiers):
             if len(tri):
                 geometry.append((co, tri))
     finally:
+        for sk in muted:
+            sk.mute = False
         state.restore_poses_and_frame(context)
 
     return geometry
@@ -209,6 +219,12 @@ class RigidChild:
             return self.basis
         return self.basis + rigid_translation(disp[self.anchors]) @ self.mat3_inv.T
 
+    def enabled(self, settings):
+        return settings.move_children
+
+    def shape(self, solver, settings):
+        return self.coordinates(solver.disp if self.enabled(settings) else None)
+
 
 class DeformTarget:
     """Rest data of the object receiving the Shape Key"""
@@ -261,16 +277,21 @@ class DeformTarget:
             and object_parented(child)
         ]
 
-    def weights(self, vertex_group):
-        if vertex_group not in self._weights:
-            self._weights[vertex_group] = vertex_group_weights(self.obj, vertex_group)
-        return self._weights[vertex_group]
+    def weights(self, vertex_group, invert=False):
+        key = (vertex_group, invert)
+        if key not in self._weights:
+            weights = vertex_group_weights(self.obj, vertex_group)
+            if weights is not None and vertex_group and invert:
+                weights = 1.0 - weights
+            self._weights[key] = weights
+        return self._weights[key]
 
-    def rigid_islands(self, vertex_group):
+    def rigid_islands(self, vertex_group, invert=False):
         """Connected parts of the Vertex Group vertices, None if not found"""
 
-        if vertex_group not in self._islands:
-            weights = self.weights(vertex_group)
+        key = (vertex_group, invert)
+        if key not in self._islands:
+            weights = self.weights(vertex_group, invert)
             if weights is None:
                 return None
 
@@ -307,8 +328,8 @@ class DeformTarget:
                 ]
             else:
                 islands = [(island, island[:0]) for island in islands]
-            self._islands[vertex_group] = islands
-        return self._islands[vertex_group]
+            self._islands[key] = islands
+        return self._islands[key]
 
     def rigidify(self, disp, islands):
         """Move each island with a single translation, covering the displacement of its

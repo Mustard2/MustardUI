@@ -192,6 +192,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
             text="Create Jiggle Cage (Quick)",
             icon="OUTLINER_OB_FORCE_FIELD",
         )
+        row.operator("mustardui.tools_creators_remove_jiggle", text="", icon="X")
 
         row = layout.row(align=True)
         row.operator(
@@ -199,6 +200,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
             text="Create Jiggle Cage (Accurate)",
             icon="SPHERE",
         )
+        row.operator("mustardui.tools_creators_remove_jiggle_accurate", text="", icon="X")
 
         row = layout.row(align=True)
         row.operator(
@@ -206,6 +208,15 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
             text="Create Hair Cage",
             icon="OUTLINER_OB_CURVES",
         )
+        row.operator("mustardui.tools_creators_remove_hair_cage", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.tools_creators_accessory_physics",
+            text="Create Accessory Physics",
+            icon="LINKED",
+        )
+        row.operator("mustardui.tools_creators_remove_accessory_physics", text="", icon="X")
 
         row = layout.row(align=True)
         row.operator(
@@ -221,6 +232,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
             text="Create Collision Cage",
             icon="MESH_UVSPHERE",
         )
+        row.operator("mustardui.tools_creators_remove_collision_cage", text="", icon="X")
 
         layout.separator()
         row = layout.row(align=True)

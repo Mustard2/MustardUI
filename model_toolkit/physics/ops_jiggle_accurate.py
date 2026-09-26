@@ -1133,6 +1133,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
             # Flag the mesh as Cage
             cage.MustardUI_tools_creators_is_created = True
+            cage.MustardUI_tools_creators_type = "JIGGLE_ACCURATE"
 
             if self.add_to_panel:
                 add_item = physics_settings.items.add()

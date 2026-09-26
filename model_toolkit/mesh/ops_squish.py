@@ -4,11 +4,21 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
-from ...misc.mesh_deform import DeformTarget, geometry_bvh, rest_geometry, write_vertex_group
+from ...misc.mesh_deform import (
+    DeformTarget,
+    geometry_bvh,
+    mesh_triangles,
+    mesh_vertex_normals,
+    rest_coordinates,
+    rest_geometry,
+    write_vertex_group,
+)
 from .shape_key_preview import (
     ShapeKeyPreviewOperator,
-    create_children_shape_keys,
+    create_followers_shape_keys,
     preview_draw_footer,
+    preview_draw_presets,
+    preview_preset_classes,
     preview_running,
     preview_session,
     preview_settings_update,
@@ -81,10 +91,44 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
+    invert_vertex_group: bpy.props.BoolProperty(
+        name="Invert",
+        default=False,
+        description="Invert the Vertex Group weights",
+        update=preview_settings_update,
+    )
+
     rigid_group: bpy.props.StringProperty(
         name="Rigid Vertex Group",
         description="Vertex Group of the rigid parts (e.g. buttons), which are moved without "
         "deforming them",
+        update=preview_settings_update,
+    )
+
+    invert_rigid_group: bpy.props.BoolProperty(
+        name="Invert",
+        default=False,
+        description="Invert the Rigid Vertex Group weights",
+        update=preview_settings_update,
+    )
+
+    move_squishers: bpy.props.BoolProperty(
+        name="Move Squishers",
+        default=True,
+        description="Move also the squishing objects by the Tightness, with Shape Keys driven "
+        "by the squish one, so that they stay on the squished body",
+        update=preview_settings_update,
+    )
+
+    squishers_movement: bpy.props.FloatProperty(
+        name="Squishers Movement",
+        default=0.75,
+        min=0.0,
+        max=1.0,
+        subtype="FACTOR",
+        description="Fraction of the Tightness the squishing objects are moved by.\nThe body "
+        "is squished by the whole Tightness, so lower values keep the squishing objects "
+        "slightly over the squished body, avoiding clipping",
         update=preview_settings_update,
     )
 
@@ -144,7 +188,8 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         step=0.01,
         precision=4,
         subtype="DISTANCE",
-        description="Shrink the squishing objects into the body by this distance, to squish "
+        description="Move each vertex of the squishing objects along its normal by this "
+        "distance, into the body for Surface and inflating for Volume.\nUseful to squish "
         "objects resting on the body without intersecting it (e.g. fitted clothes)",
         update=preview_settings_update,
     )
@@ -164,7 +209,7 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         name="Bulge",
         default=0.3,
         min=0.0,
-        soft_max=1.0,
+        soft_max=2.0,
         description="Push the vertices around the squished area outwards, as the flesh "
         "displaced by the squishing objects",
         update=preview_settings_update,
@@ -217,6 +262,51 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
     )
 
 
+SquishPresetsMenu, SquishPresetAdd = preview_preset_classes(
+    "Squish",
+    "Squish",
+    MustardUI_ToolsCreators_SquishSettings,
+    "MustardUI_ToolsCreators_SquishSettings",
+)
+
+
+class SquisherFollower:
+    """Squishing object moved along its normals by the Tightness"""
+
+    def __init__(self, obj, body_bvh, key_name):
+        self.obj = obj
+        self.body_bvh = body_bvh
+        self.basis, self.co, self.mat3_inv = rest_coordinates(obj, key_name)
+        self.tris = mesh_triangles(obj.data)
+        self._directions = {}
+
+    def directions(self, mode):
+        """Local directions moving the vertices into the body, or inflating the volume"""
+
+        if mode not in self._directions:
+            volume = mode == "VOLUME"
+            flipped = squisher_is_flipped(
+                self.co, self.tris, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, volume
+            )
+            normals = mesh_vertex_normals(self.co, self.tris)
+            normals *= (-1.0 if flipped else 1.0) * (1.0 if volume else -1.0)
+            self._directions[mode] = normals @ self.mat3_inv.T
+        return self._directions[mode]
+
+    def enabled(self, settings):
+        return (
+            settings.move_squishers
+            and settings.tightness > 0.0
+            and settings.squishers_movement > 0.0
+        )
+
+    def shape(self, solver, settings):
+        if not self.enabled(settings):
+            return self.basis
+        amount = settings.tightness * settings.squishers_movement * settings.factor
+        return self.basis + self.directions(settings.mode) * amount
+
+
 class SquishSolver:
     """Compute the squish Shape Key, caching the results not affected by the changed settings"""
 
@@ -224,43 +314,68 @@ class SquishSolver:
         self.body = body
         self.squishers = squishers
         self.target = DeformTarget(body, key_name)
-        self.children = self.target.rigid_children(squishers)
-        self.disp = None
         self.body_bvh = BVHTree.FromPolygons(self.target.co.tolist(), self.target.tris.tolist())
+        self.children = self.target.rigid_children(squishers)
+        self.followers = self.children + [
+            SquisherFollower(obj, self.body_bvh, key_name)
+            for obj in squishers
+            if obj.type == "MESH" and len(obj.data.vertices)
+        ]
+        self.disp = None
 
         self._geometry = {}
-        self._bvh = {}
+        self._bvh = (None, None)
+        self._flipped = {}
         self._depth = (None, None)
         self._bulge = (None, None)
+        self._covered = None
         self.influence = None
 
     def squishers_bvh(self, context, settings):
-        key = (settings.use_modifiers, settings.mode)
-        if key not in self._bvh:
-            if settings.use_modifiers not in self._geometry:
-                self._geometry[settings.use_modifiers] = rest_geometry(
-                    context, self.squishers, [self.body], settings.use_modifiers
-                )
-            geometry = self._geometry[settings.use_modifiers]
-            volume = settings.mode == "VOLUME"
-            flipped = [
+        key = (settings.use_modifiers, settings.mode, settings.tightness)
+        if self._bvh[0] == key:
+            return self._bvh[1]
+
+        if settings.use_modifiers not in self._geometry:
+            self._geometry[settings.use_modifiers] = rest_geometry(
+                context,
+                self.squishers,
+                [self.body],
+                settings.use_modifiers,
+                self.target.key_name,
+            )
+        geometry = self._geometry[settings.use_modifiers]
+        volume = settings.mode == "VOLUME"
+        flips_key = (settings.use_modifiers, settings.mode)
+        if flips_key not in self._flipped:
+            self._flipped[flips_key] = [
                 squisher_is_flipped(co, tri, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, volume)
                 for co, tri in geometry
             ]
-            self._bvh[key] = geometry_bvh(geometry, flipped)
-        return self._bvh[key]
+        flipped = self._flipped[flips_key]
+
+        # Move each vertex along its normal: into the body for surfaces, inflating volumes
+        if settings.tightness > 0.0:
+            moved = []
+            for (co, tri), flip in zip(geometry, flipped, strict=True):
+                normals = mesh_vertex_normals(co, tri) * (-1.0 if flip else 1.0)
+                moved.append((co + normals * settings.tightness * (1.0 if volume else -1.0), tri))
+            geometry = moved
+
+        self._bvh = (key, geometry_bvh(geometry, flipped))
+        return self._bvh[1]
 
     def depth(self, context, settings, weights):
         """Penetration depth along the inverted body normal"""
 
         surface = settings.mode == "SURFACE"
-        tightness = settings.tightness if surface else 0.0
         key = (
             settings.use_modifiers,
             settings.mode,
             settings.vertex_group,
+            settings.invert_vertex_group,
             settings.offset,
-            tightness,
+            settings.tightness,
             settings.max_depth,
         )
         if self._depth[0] == key:
@@ -273,7 +388,7 @@ class SquishSolver:
         # Only check the vertices close to the squishers
         co = self.target.co
         normals = self.target.normals
-        margin = settings.max_depth + tightness
+        margin = settings.max_depth
         bb_min = squishers_co.min(axis=0) - margin
         bb_max = squishers_co.max(axis=0) + margin
         candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights > 0.0))[
@@ -281,23 +396,30 @@ class SquishSolver:
         ]
 
         depth = np.zeros(self.target.n_verts)
+        covered = np.zeros(self.target.n_verts, dtype=bool)
         eps = 1e-5
-        start = eps + tightness
         for i in candidates:
             v = Vector(co[i])
             n = Vector(normals[i])
+            inside = True
             if not surface:
                 nearest, nearest_normal, _, _ = bvh.find_nearest(v)
-                if nearest is None or (v - nearest).dot(nearest_normal) > 0.0:
-                    continue
-            hit, hit_normal, _, dist = bvh.ray_cast(v + n * start, -n, settings.max_depth + start)
-            if hit is None:
+                inside = nearest is not None and (v - nearest).dot(nearest_normal) <= 0.0
+            if inside:
+                hit, hit_normal, _, dist = bvh.ray_cast(v + n * eps, -n, settings.max_depth + eps)
+                # Surface: squisher facing as the body, Volume: exit face of the squisher
+                if hit is not None:
+                    facing = hit_normal.dot(n)
+                    if (surface and facing > 0.5) or (not surface and facing < 0.0):
+                        depth[i] = max(dist - eps + settings.offset, 0.0)
+            if depth[i] > 0.0:
                 continue
-            # Surface: squisher facing as the body, Volume: exit face of the squisher
-            facing = hit_normal.dot(n)
-            if (surface and facing > 0.5) or (not surface and facing < 0.0):
-                depth[i] = max(dist - eps + settings.offset, 0.0)
 
+            # Vertices covered by the squishers are not moved outwards
+            if bvh.ray_cast(v + n * eps, n, settings.max_depth)[0] is not None:
+                covered[i] = True
+
+        self._covered = covered
         self._depth = (key, depth)
         return depth
 
@@ -333,7 +455,7 @@ class SquishSolver:
 
         target = self.target
         self.disp = None
-        weights = target.weights(settings.vertex_group)
+        weights = target.weights(settings.vertex_group, settings.invert_vertex_group)
         if weights is None:
             return target.basis, 0, "Vertex Group not found"
 
@@ -362,6 +484,10 @@ class SquishSolver:
         )
         disp = target.relax(disp, settings.relax_iterations, settings.relax_factor)
 
+        # Vertices covered by the squishers are only pushed inwards
+        outwards = np.maximum(np.einsum("ij,ij->i", disp, normals), 0.0) * self._covered
+        disp -= normals * outwards[:, None]
+
         self.influence = None
         if settings.auto_influence:
             self.influence = target.influence(self._depth[0], contact, settings.influence_radius)
@@ -370,7 +496,7 @@ class SquishSolver:
         disp *= (settings.factor * weights)[:, None]
 
         if settings.rigid_group:
-            islands = target.rigid_islands(settings.rigid_group)
+            islands = target.rigid_islands(settings.rigid_group, settings.invert_rigid_group)
             if islands is None:
                 return target.basis, 0, "Rigid Vertex Group not found"
             disp = target.rigidify(disp, islands)
@@ -384,7 +510,7 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
 
     bl_idname = "mustardui.tools_creators_squish"
     bl_label = "Create Squish Shape Key"
-    bl_options = {"REGISTER", "UNDO", "PRESET"}
+    bl_options = {"REGISTER", "UNDO"}
 
     preview_tool = "SQUISH"
     preview_verb = "squished"
@@ -434,7 +560,7 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
         sk = write_shape_key(solver.body, settings.shape_key_name.strip(), shape_co)
         if solver.influence is not None:
             write_vertex_group(solver.body, sk.name, solver.influence)
-        create_children_shape_keys(solver, settings, solver.body, sk.name)
+        create_followers_shape_keys(solver, settings, solver.body, sk.name)
         self.report({"INFO"}, f"MustardUI - Shape Key '{sk.name}' created ({contact} vertices)")
         return {"FINISHED"}
 
@@ -463,6 +589,7 @@ def squish_draw_settings(layout, context):
     settings = context.window_manager.MustardUI_ToolsCreators_SquishSettings
 
     box = layout.box()
+    preview_draw_presets(box, SquishPresetsMenu, SquishPresetAdd)
     col = box.column()
     col.use_property_split = True
     col.use_property_decorate = False
@@ -470,8 +597,15 @@ def squish_draw_settings(layout, context):
     col.prop(settings, "shape_key_name")
     col.prop(settings, "mode")
     col.prop(settings, "use_modifiers")
-    col.prop_search(settings, "vertex_group", session.obj, "vertex_groups")
-    col.prop_search(settings, "rigid_group", session.obj, "vertex_groups")
+    for group, invert in (
+        ("vertex_group", "invert_vertex_group"),
+        ("rigid_group", "invert_rigid_group"),
+    ):
+        row = col.row(align=True)
+        row.prop_search(settings, group, session.obj, "vertex_groups")
+        sub = row.row(align=True)
+        sub.enabled = bool(getattr(settings, group))
+        sub.prop(settings, invert, text="", icon="ARROW_LEFTRIGHT")
     row = col.row()
     row.enabled = bool(session.solver.children)
     row.prop(settings, "move_children", text=f"Child Objects ({len(session.solver.children)})")
@@ -484,9 +618,13 @@ def squish_draw_settings(layout, context):
     sub = col.column(align=True)
     sub.prop(settings, "factor")
     sub.prop(settings, "offset")
+    sub.prop(settings, "tightness")
     row = sub.row(align=True)
-    row.enabled = settings.mode == "SURFACE"
-    row.prop(settings, "tightness")
+    row.enabled = settings.tightness > 0.0
+    row.prop(settings, "move_squishers")
+    row = sub.row(align=True)
+    row.enabled = settings.tightness > 0.0 and settings.move_squishers
+    row.prop(settings, "squishers_movement")
     sub.prop(settings, "max_depth")
 
     col.separator()
@@ -516,6 +654,8 @@ def squish_draw_settings(layout, context):
 def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_SquishSettings)
     bpy.utils.register_class(MustardUI_ToolsCreators_Squish)
+    bpy.utils.register_class(SquishPresetsMenu)
+    bpy.utils.register_class(SquishPresetAdd)
 
     bpy.types.WindowManager.MustardUI_ToolsCreators_SquishSettings = bpy.props.PointerProperty(
         type=MustardUI_ToolsCreators_SquishSettings
@@ -525,5 +665,7 @@ def register():
 def unregister():
     del bpy.types.WindowManager.MustardUI_ToolsCreators_SquishSettings
 
+    bpy.utils.unregister_class(SquishPresetAdd)
+    bpy.utils.unregister_class(SquishPresetsMenu)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_Squish)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_SquishSettings)

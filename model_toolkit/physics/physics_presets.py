@@ -151,6 +151,40 @@ CLOTH_PRESETS = [
         },
         True,
     ),
+    (
+        "ACCESSORY",
+        "Accessory Physics",
+        "Heavy and hardly stretching, with collisions and very stiff Rigid parts.\n"
+        "Meant for the necklaces, chains and pendants",
+        {
+            "quality": 15,
+            "time_scale": 1.0,
+            "mass": 0.3,
+            "air_damping": 2,
+            "bending_model": "ANGULAR",
+            "tension_stiffness": 80,
+            "compression_stiffness": 80,
+            "shear_stiffness": 20,
+            "bending_stiffness": 0.2,
+            "tension_damping": 10,
+            "compression_damping": 10,
+            "shear_damping": 5,
+            "bending_damping": 0.5,
+            "pin_stiffness": 1,
+            "tension_stiffness_max": 200,
+            "compression_stiffness_max": 200,
+            "shear_stiffness_max": 200,
+            "bending_stiffness_max": 200,
+        },
+        {
+            "collision_quality": 4,
+            "use_collision": True,
+            "distance_min": 0.001,
+            "impulse_clamp": 0.02,
+            "use_self_collision": False,
+        },
+        True,
+    ),
 ]
 
 # Cloth Dynamics presets. The keys are the ones of CLOTH_DYNAMICS_SOCKETS, and the

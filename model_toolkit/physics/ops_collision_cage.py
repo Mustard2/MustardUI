@@ -51,6 +51,15 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
         "performance, and it usually lead to similar results to un-decimated cages",
         default=True,
     )
+    decimate_ratio: bpy.props.FloatProperty(
+        name="Ratio",
+        description="Fraction of the faces kept in the cage.\nLower values give lighter cages "
+        "and faster collisions, but less accurate",
+        default=0.25,
+        min=0.01,
+        max=1.0,
+        subtype="FACTOR",
+    )
     clear_attributes: bpy.props.BoolProperty(
         name="Clear Attributes",
         description="Remove the UV Maps and the attributes inherited from the mesh the "
@@ -305,19 +314,18 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
                 mesh_cleanup.clear_attributes(obj)
 
         if self.decimate_proxy:
-            # Set the decimation ratio as a variable
-            decimation_ratio = 0.25  # You can change this value later
             # Enter edit mode
             bpy.ops.object.editmode_toggle()
             # Select all mesh elements
             bpy.ops.mesh.select_all(action="SELECT")
             # Apply the decimate modifier
-            bpy.ops.mesh.decimate(ratio=decimation_ratio)
+            bpy.ops.mesh.decimate(ratio=self.decimate_ratio)
             # Exit edit mode
             bpy.ops.object.editmode_toggle()
 
         # Add created cages to the Physics Panel
         for cage in proxy_map.values():
+            cage.MustardUI_tools_creators_type = "COLLISION"
             if self.add_to_panel:
                 add_item = physics_settings.items.add()
                 add_item.object = cage
@@ -340,6 +348,12 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "decimate_proxy")
+        row = layout.row()
+        row.enabled = self.decimate_proxy
+        row.prop(self, "decimate_ratio")
+
+        layout.separator()
+
         layout.prop(self, "clear_attributes")
 
         layout.separator()

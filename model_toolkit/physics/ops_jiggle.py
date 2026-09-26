@@ -729,6 +729,8 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
             bpy.ops.object.mode_set(mode=current_mode)
 
         for obj in bpy.context.selected_objects:
+            obj.MustardUI_tools_creators_type = "JIGGLE"
+
             # Add the object to the Physics Panel
             if self.add_to_panel:
                 add_item = physics_settings.items.add()

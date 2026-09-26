@@ -620,6 +620,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
         # Flag the mesh as Cage
         obj.MustardUI_tools_creators_is_created = True
+        obj.MustardUI_tools_creators_type = "HAIR"
 
         # Add the physics inline, with the preset chosen in this same dialog: the
         # cage is the active object and its Pin group is the active vertex group

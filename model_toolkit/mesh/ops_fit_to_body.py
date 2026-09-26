@@ -13,8 +13,10 @@ from ...misc.mesh_deform import (
 from .ops_squish import SQUISH_ORIENTATION_DISTANCE, squisher_is_flipped
 from .shape_key_preview import (
     ShapeKeyPreviewOperator,
-    create_children_shape_keys,
+    create_followers_shape_keys,
     preview_draw_footer,
+    preview_draw_presets,
+    preview_preset_classes,
     preview_running,
     preview_session,
     preview_settings_update,
@@ -56,10 +58,24 @@ class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
+    invert_vertex_group: bpy.props.BoolProperty(
+        name="Invert",
+        default=False,
+        description="Invert the Vertex Group weights",
+        update=preview_settings_update,
+    )
+
     rigid_group: bpy.props.StringProperty(
         name="Rigid Vertex Group",
         description="Vertex Group of the rigid parts (e.g. buttons), which are moved without "
         "deforming them",
+        update=preview_settings_update,
+    )
+
+    invert_rigid_group: bpy.props.BoolProperty(
+        name="Invert",
+        default=False,
+        description="Invert the Rigid Vertex Group weights",
         update=preview_settings_update,
     )
 
@@ -116,6 +132,27 @@ class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
         precision=4,
         subtype="DISTANCE",
         description="Minimum distance of the outfit from the body",
+        update=preview_settings_update,
+    )
+
+    fit_distance: bpy.props.FloatProperty(
+        name="Fit Distance",
+        default=0.01,
+        min=0.0,
+        soft_max=0.05,
+        subtype="DISTANCE",
+        description="Pull towards the body the outfit parts within this distance from it, to "
+        "make them fit better.\nThe farther parts keep their shape. Set to 0 to only fix the "
+        "clipping",
+        update=preview_settings_update,
+    )
+
+    fit_strength: bpy.props.FloatProperty(
+        name="Fit Strength",
+        default=1.0,
+        min=0.0,
+        max=1.0,
+        description="Fraction of the distance from the body closed by the pull",
         update=preview_settings_update,
     )
 
@@ -191,6 +228,33 @@ def clipping_vertices(bvh, co, indices, offset, max_depth):
     return required, directions
 
 
+def pulling_vertices(bvh, co, indices, offset, distance, strength):
+    """Distance to move each vertex towards the body, fading to zero at the fit distance"""
+
+    pull = np.zeros(len(indices))
+    directions = np.zeros((len(indices), 3))
+    for k, i in enumerate(indices):
+        v = Vector(co[i])
+        loc, normal, _, _ = bvh.find_nearest(v, offset + distance)
+        if loc is None:
+            continue
+        gap = (v - loc).dot(normal) - offset
+        if 0.0 < gap < distance:
+            # Full pull up to half the distance, then fading out
+            t = max(2.0 * gap / distance - 1.0, 0.0)
+            pull[k] = gap * strength * (1.0 - t * t * (3.0 - 2.0 * t))
+            directions[k] = -normal
+    return pull, directions
+
+
+FitToBodyPresetsMenu, FitToBodyPresetAdd = preview_preset_classes(
+    "FitToBody",
+    "Fit to Body",
+    MustardUI_ToolsCreators_FitToBodySettings,
+    "MustardUI_ToolsCreators_FitToBodySettings",
+)
+
+
 class FitToBodySolver:
     """Compute the fitted outfit, caching the results not affected by the changed settings"""
 
@@ -199,6 +263,7 @@ class FitToBodySolver:
         self.bodies = bodies
         self.target = DeformTarget(outfit, key_name)
         self.children = self.target.rigid_children(bodies)
+        self.followers = self.children
         self.disp = None
 
         self._body = {}
@@ -274,16 +339,73 @@ class FitToBodySolver:
 
         return required, directions
 
+    def pulls(self, context, settings, weights, co, outfit_mask=None):
+        """Displacement pulling the outfit parts near the body towards it, checking only the
+        masked outfit vertices"""
+
+        body_bvh, body_co, _ = self.body(context, settings.use_modifiers)
+        target = self.target
+        disp = np.zeros((target.n_verts, 3))
+        active = weights > 0.0
+        if outfit_mask is not None:
+            active &= outfit_mask
+        if settings.fit_distance <= 0.0 or settings.fit_strength <= 0.0:
+            return disp
+
+        margin = settings.fit_distance + settings.offset
+        bb_min = body_co.min(axis=0) - margin
+        bb_max = body_co.max(axis=0) + margin
+        candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & active)[0]
+        pull, directions = pulling_vertices(
+            body_bvh, co, candidates, settings.offset, settings.fit_distance, settings.fit_strength
+        )
+        disp[candidates] = directions * pull[:, None]
+        return disp
+
+    def layers(self, context, settings, weights):
+        """Outfit vertices over another layer of the outfit, with the face under them"""
+
+        body_bvh, body_co, _ = self.body(context, settings.use_modifiers)
+        target = self.target
+        co = target.co
+        margin = max(settings.fit_distance, settings.max_depth) + settings.offset
+        bb_min = body_co.min(axis=0) - margin
+        bb_max = body_co.max(axis=0) + margin
+        candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights > 0.0))[
+            0
+        ]
+
+        outfit_bvh = BVHTree.FromPolygons(co.tolist(), target.tris.tolist())
+        eps = 1e-4
+        outer = []
+        under = []
+        for i in candidates:
+            v = Vector(co[i])
+            loc, normal, _, _ = body_bvh.find_nearest(v, margin)
+            if loc is None:
+                continue
+            hit, _, face, _ = outfit_bvh.ray_cast(v - normal * eps, -normal, margin)
+            if hit is not None and i not in target.tris[face]:
+                outer.append(i)
+                under.append(target.tris[face])
+        return np.array(outer, dtype=np.int64), np.array(under, dtype=np.int64).reshape(-1, 3)
+
     def detect(self, context, settings, weights):
         key = (
             settings.use_modifiers,
             settings.vertex_group,
+            settings.invert_vertex_group,
             settings.check_body,
             settings.offset,
             settings.max_depth,
+            settings.fit_distance,
+            settings.fit_strength,
         )
         if self._detect[0] != key:
-            self._detect = (key, self.clipping(context, settings, weights, self.target.co))
+            clipping = self.clipping(context, settings, weights, self.target.co)
+            pulls = self.pulls(context, settings, weights, self.target.co)
+            layers = self.layers(context, settings, weights)
+            self._detect = (key, (*clipping, pulls, layers))
         return self._detect[1]
 
     def solve(self, context, settings):
@@ -291,19 +413,21 @@ class FitToBodySolver:
 
         target = self.target
         self.disp = None
-        weights = target.weights(settings.vertex_group)
+        weights = target.weights(settings.vertex_group, settings.invert_vertex_group)
         if weights is None:
             return target.basis, 0, "Vertex Group not found"
 
         if self.body(context, settings.use_modifiers)[0] is None:
             return target.basis, 0, "The selected Objects have no faces"
 
-        required, directions = self.detect(context, settings, weights)
-        contact = np.nonzero(required > 0.0)[0]
-        if not len(contact):
+        required, directions, pull, (outer, under) = self.detect(context, settings, weights)
+        fitted = np.nonzero((required > 0.0) | np.any(pull != 0.0, axis=1))[0]
+        if not len(fitted):
             return target.basis, 0, ""
 
-        disp = directions * required[:, None]
+        disp = directions * required[:, None] + pull
+
+        contact = np.nonzero(required > 0.0)[0]
         disp = target.smooth(
             disp,
             settings.smooth_iterations,
@@ -316,7 +440,7 @@ class FitToBodySolver:
 
         self.influence = None
         if settings.auto_influence:
-            self.influence = target.influence(self._detect[0], contact, settings.influence_radius)
+            self.influence = target.influence(self._detect[0], fitted, settings.influence_radius)
             disp *= self.influence[:, None]
 
         # Push out the moved vertices clipping again
@@ -339,16 +463,20 @@ class FitToBodySolver:
                     True,
                 )
 
+        # Outer layers follow the layer under them, keeping the thickness
+        for _ in range(2):
+            disp[outer] = disp[under].mean(axis=1)
+
         disp *= (settings.factor * weights)[:, None]
 
         if settings.rigid_group:
-            islands = target.rigid_islands(settings.rigid_group)
+            islands = target.rigid_islands(settings.rigid_group, settings.invert_rigid_group)
             if islands is None:
                 return target.basis, 0, "Rigid Vertex Group not found"
             disp = target.rigidify(disp, islands)
 
         self.disp = disp
-        return target.local(disp), len(contact), ""
+        return target.local(disp), len(fitted), ""
 
 
 class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operator):
@@ -356,7 +484,7 @@ class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Opera
 
     bl_idname = "mustardui.tools_creators_fix_clipping"
     bl_label = "Fit to Body"
-    bl_options = {"REGISTER", "UNDO", "PRESET"}
+    bl_options = {"REGISTER", "UNDO"}
 
     preview_tool = "FIT_TO_BODY"
     preview_verb = "fitted"
@@ -400,7 +528,7 @@ class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Opera
             self.report({"ERROR"}, f"MustardUI - {error}")
             return {"CANCELLED"}
         if not count:
-            self.report({"WARNING"}, "MustardUI - No vertex is clipping")
+            self.report({"WARNING"}, "MustardUI - No vertex to fit")
             return {"CANCELLED"}
 
         name = settings.shape_key_name.strip()
@@ -412,7 +540,7 @@ class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Opera
             self.report({"INFO"}, f"MustardUI - Fitted to body ({count} vertices)")
         else:
             sk = write_shape_key(solver.outfit, name, shape_co)
-            create_children_shape_keys(solver, settings, solver.outfit, sk.name)
+            create_followers_shape_keys(solver, settings, solver.outfit, sk.name)
             self.report({"INFO"}, f"MustardUI - Shape Key '{sk.name}' created ({count} vertices)")
         return {"FINISHED"}
 
@@ -464,9 +592,11 @@ def fit_to_body_apply_to_mesh(obj, disp):
 
 
 def fit_to_body_apply_to_children(solver, settings):
-    if settings.move_children:
-        for child in solver.children:
-            fit_to_body_apply_to_mesh(child.obj, child.coordinates(solver.disp) - child.basis)
+    for follower in solver.followers:
+        if follower.enabled(settings):
+            fit_to_body_apply_to_mesh(
+                follower.obj, follower.shape(solver, settings) - follower.basis
+            )
 
 
 def fit_to_body_draw_settings(layout, context):
@@ -478,6 +608,7 @@ def fit_to_body_draw_settings(layout, context):
     settings = session.settings
 
     box = layout.box()
+    preview_draw_presets(box, FitToBodyPresetsMenu, FitToBodyPresetAdd)
     col = box.column()
     col.use_property_split = True
     col.use_property_decorate = False
@@ -488,8 +619,15 @@ def fit_to_body_draw_settings(layout, context):
     row.prop(settings, "shape_key_name")
     col.prop(settings, "use_modifiers")
     col.prop(settings, "check_body")
-    col.prop_search(settings, "vertex_group", session.obj, "vertex_groups")
-    col.prop_search(settings, "rigid_group", session.obj, "vertex_groups")
+    for group, invert in (
+        ("vertex_group", "invert_vertex_group"),
+        ("rigid_group", "invert_rigid_group"),
+    ):
+        row = col.row(align=True)
+        row.prop_search(settings, group, session.obj, "vertex_groups")
+        sub = row.row(align=True)
+        sub.enabled = bool(getattr(settings, group))
+        sub.prop(settings, invert, text="", icon="ARROW_LEFTRIGHT")
     row = col.row()
     row.enabled = bool(session.solver.children)
     row.prop(settings, "move_children", text=f"Child Objects ({len(session.solver.children)})")
@@ -503,6 +641,13 @@ def fit_to_body_draw_settings(layout, context):
     sub.prop(settings, "factor")
     sub.prop(settings, "offset")
     sub.prop(settings, "max_depth")
+
+    col.separator()
+    sub = col.column(align=True)
+    sub.prop(settings, "fit_distance")
+    row = sub.row(align=True)
+    row.enabled = settings.fit_distance > 0.0
+    row.prop(settings, "fit_strength")
 
     col.separator()
     sub = col.column(align=True)
@@ -525,6 +670,8 @@ def fit_to_body_draw_settings(layout, context):
 def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_FitToBodySettings)
     bpy.utils.register_class(MustardUI_ToolsCreators_FitToBody)
+    bpy.utils.register_class(FitToBodyPresetsMenu)
+    bpy.utils.register_class(FitToBodyPresetAdd)
 
     bpy.types.WindowManager.MustardUI_ToolsCreators_FitToBodySettings = bpy.props.PointerProperty(
         type=MustardUI_ToolsCreators_FitToBodySettings
@@ -534,5 +681,7 @@ def register():
 def unregister():
     del bpy.types.WindowManager.MustardUI_ToolsCreators_FitToBodySettings
 
+    bpy.utils.unregister_class(FitToBodyPresetAdd)
+    bpy.utils.unregister_class(FitToBodyPresetsMenu)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_FitToBody)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_FitToBodySettings)

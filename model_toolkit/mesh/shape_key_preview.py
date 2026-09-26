@@ -2,6 +2,7 @@ import time
 
 import bpy
 import numpy as np
+from bl_operators.presets import AddPresetBase
 
 from ...misc.mesh_deform import write_vertex_group
 
@@ -44,12 +45,27 @@ def redraw_view3d(context):
             area.tag_redraw()
 
 
-def write_children(solver, settings, key_name):
-    """Write the Shape Keys moving the child objects"""
+def preview_show_result(session, show):
+    """Switch the preview Shape Keys on or off, to compare before and after"""
 
-    for child in solver.children:
-        disp = solver.disp if settings.move_children else None
-        write_shape_key(child.obj, key_name, child.coordinates(disp))
+    for obj in [session.obj] + [f.obj for f in session.solver.followers]:
+        sks = obj.data.shape_keys
+        sk = sks.key_blocks.get(session.key_name) if sks is not None else None
+        if sk is not None:
+            sk.value = 1.0 if show else 0.0
+
+
+def preview_show_result_update(self, context):
+    if PREVIEW_SESSION is not None:
+        preview_show_result(PREVIEW_SESSION, self.MustardUI_ToolsCreators_PreviewShow)
+        redraw_view3d(context)
+
+
+def write_followers(solver, settings, key_name):
+    """Write the Shape Keys of the objects following the main one"""
+
+    for follower in solver.followers:
+        write_shape_key(follower.obj, key_name, follower.shape(solver, settings))
 
 
 def link_shape_key_driver(obj, name, source, source_name):
@@ -69,14 +85,13 @@ def link_shape_key_driver(obj, name, source, source_name):
     var.targets[0].data_path = f'data.shape_keys.key_blocks["{escaped}"].value'
 
 
-def create_children_shape_keys(solver, settings, source, name):
-    """Write the child objects Shape Keys, driven by the source one"""
+def create_followers_shape_keys(solver, settings, source, name):
+    """Write the Shape Keys of the objects following the main one, driven by it"""
 
-    if not settings.move_children:
-        return
-    write_children(solver, settings, name)
-    for child in solver.children:
-        link_shape_key_driver(child.obj, name, source, name)
+    for follower in solver.followers:
+        if follower.enabled(settings):
+            write_shape_key(follower.obj, name, follower.shape(solver, settings))
+            link_shape_key_driver(follower.obj, name, source, name)
 
 
 class ShapeKeyBackup:
@@ -124,14 +139,11 @@ class ShapeKeyPreviewSession:
         self.count = 0
 
         self.backup = ShapeKeyBackup(obj, key_name)
-        self.children_backup = [ShapeKeyBackup(c.obj, key_name) for c in solver.children]
+        self.followers_backup = [ShapeKeyBackup(f.obj, key_name) for f in solver.followers]
 
     def restore(self):
         self.backup.restore()
-        self.restore_children()
-
-    def restore_children(self):
-        for backup in self.children_backup:
+        for backup in self.followers_backup:
             backup.restore()
 
 
@@ -147,6 +159,7 @@ class ShapeKeyPreviewOperator:
         PREVIEW_SESSION = ShapeKeyPreviewSession(
             self.preview_tool, obj, key_name, solver, self.preview_settings(context)
         )
+        context.window_manager.MustardUI_ToolsCreators_PreviewShow = True
         self.preview_update(context)
 
         wm = context.window_manager
@@ -170,7 +183,8 @@ class ShapeKeyPreviewOperator:
             session.info = f"{session.count} vertices {self.preview_verb} ({elapsed:.2f}s)"
 
         write_shape_key(session.obj, session.key_name, co)
-        write_children(session.solver, session.settings, session.key_name)
+        write_followers(session.solver, session.settings, session.key_name)
+        preview_show_result(session, context.window_manager.MustardUI_ToolsCreators_PreviewShow)
         redraw_view3d(context)
 
     def modal(self, context, event):
@@ -215,6 +229,7 @@ class ShapeKeyPreviewOperator:
     def preview_finish(self, context, session):
         """Finalize the Shape Key, returning the report message"""
 
+        preview_show_result(session, True)
         sk = session.obj.data.shape_keys.key_blocks[session.key_name]
         name = session.settings.shape_key_name.strip()
         if name and name != sk.name:
@@ -222,14 +237,16 @@ class ShapeKeyPreviewOperator:
         if session.solver.influence is not None:
             write_vertex_group(session.obj, sk.name, session.solver.influence)
 
-        # Child objects Shape Keys follow the main one
-        if session.settings.move_children:
-            for child in session.solver.children:
-                child_sk = child.obj.data.shape_keys.key_blocks[session.key_name]
-                child_sk.name = sk.name
-                link_shape_key_driver(child.obj, child_sk.name, session.obj, sk.name)
-        else:
-            session.restore_children()
+        # Other objects Shape Keys follow the main one
+        for follower, backup in zip(
+            session.solver.followers, session.followers_backup, strict=True
+        ):
+            if follower.enabled(session.settings):
+                follower_sk = follower.obj.data.shape_keys.key_blocks[session.key_name]
+                follower_sk.name = sk.name
+                link_shape_key_driver(follower.obj, follower_sk.name, session.obj, sk.name)
+            else:
+                backup.restore()
         return f"Shape Key '{sk.name}' created ({session.count} vertices {self.preview_verb})"
 
     def preview_end(self, context):
@@ -266,8 +283,63 @@ class MustardUI_ToolsCreators_PreviewFinish(bpy.types.Operator):
         return {"FINISHED"}
 
 
+# Settings depending on the model, not saved in the presets
+PRESET_EXCLUDED = {"shape_key_name", "vertex_group", "rigid_group"}
+
+
+def preview_preset_classes(tool, label, settings_cls, settings_attr):
+    """Presets menu and add/remove operator for the settings of a preview tool"""
+
+    menu_name = f"MUSTARDUI_MT_ToolsCreators_{tool}Presets"
+    subdir = f"mustardui/{tool.lower()}"
+    menu = type(
+        menu_name,
+        (bpy.types.Menu,),
+        {
+            "bl_label": f"{label} Presets",
+            "preset_subdir": subdir,
+            "preset_operator": "script.execute_preset",
+            "draw": bpy.types.Menu.draw_preset,
+        },
+    )
+    add = type(
+        f"MustardUI_ToolsCreators_{tool}PresetAdd",
+        (AddPresetBase, bpy.types.Operator),
+        {
+            "__doc__": f"Add or remove a {label} preset",
+            "bl_idname": f"mustardui.tools_creators_{tool.lower()}_preset_add",
+            "bl_label": f"Add {label} Preset",
+            "preset_menu": menu_name,
+            "preset_subdir": subdir,
+            "preset_defines": [f"settings = bpy.context.window_manager.{settings_attr}"],
+            "preset_values": [
+                f"settings.{name}"
+                for name in settings_cls.__annotations__
+                if name not in PRESET_EXCLUDED
+            ],
+        },
+    )
+    return menu, add
+
+
+def preview_draw_presets(layout, menu, add):
+    row = layout.row(align=True)
+    row.menu(menu.__name__, text=menu.bl_label)
+    row.operator(add.bl_idname, text="", icon="ADD")
+    row.operator(add.bl_idname, text="", icon="REMOVE").remove_active = True
+
+
 def preview_draw_footer(layout, session):
     layout.label(text=session.info, icon="INFO")
+    wm = bpy.context.window_manager
+    show = wm.MustardUI_ToolsCreators_PreviewShow
+    layout.prop(
+        wm,
+        "MustardUI_ToolsCreators_PreviewShow",
+        text="Show Result",
+        toggle=True,
+        icon="HIDE_OFF" if show else "HIDE_ON",
+    )
     row = layout.row(align=True)
     row.operator(
         "mustardui.tools_creators_preview_finish", text="Apply", icon="CHECKMARK"
@@ -278,6 +350,15 @@ def preview_draw_footer(layout, session):
 def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_PreviewFinish)
 
+    bpy.types.WindowManager.MustardUI_ToolsCreators_PreviewShow = bpy.props.BoolProperty(
+        name="Show Result",
+        default=True,
+        description="Show the result of the tool, to compare it with the original shape",
+        update=preview_show_result_update,
+    )
+
 
 def unregister():
+    del bpy.types.WindowManager.MustardUI_ToolsCreators_PreviewShow
+
     bpy.utils.unregister_class(MustardUI_ToolsCreators_PreviewFinish)

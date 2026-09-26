@@ -161,6 +161,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
             curve_obj = bpy.data.objects.new(bp_name, curve_data)
             bpy.context.collection.objects.link(curve_obj)
             curve_obj.MustardUI_tools_creators_is_created = True
+            curve_obj.MustardUI_tools_creators_type = "BONES"
 
             # Select only the new mesh
             bpy.ops.object.select_all(action="DESELECT")
