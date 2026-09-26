@@ -15,9 +15,11 @@ from .shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
     preview_draw_footer,
+    preview_draw_masks,
     preview_draw_presets,
     preview_preset_classes,
     preview_running,
+    preview_section,
     preview_session,
     preview_settings_update,
     write_shape_key,
@@ -167,13 +169,14 @@ class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
-    smooth_iterations: bpy.props.IntProperty(
+    smooth_distance: bpy.props.FloatProperty(
         name="Smooth",
-        default=10,
-        min=1,
-        soft_max=100,
-        description="Smoothing iterations of the fit, to spread it on the neighbouring "
-        "vertices and preserve the outfit shape",
+        default=0.02,
+        min=0.0,
+        soft_max=0.1,
+        subtype="DISTANCE",
+        description="Distance the fit is smoothed over, to spread it on the neighbouring "
+        "vertices and preserve the outfit shape.\nIt does not depend on the mesh density",
         update=preview_settings_update,
     )
 
@@ -430,11 +433,12 @@ class FitToBodySolver:
         contact = np.nonzero(required > 0.0)[0]
         disp = target.smooth(
             disp,
-            settings.smooth_iterations,
+            settings.smooth_distance,
             contact,
             directions[contact],
             required[contact],
             settings.keep_contact,
+            min_iterations=1,
         )
         disp = target.relax(disp, settings.relax_iterations, settings.relax_factor)
 
@@ -456,11 +460,12 @@ class FitToBodySolver:
                 # Smoothed anyway, as unsmoothed pushes build spikes
                 disp += target.smooth(
                     again_dirs * again[:, None],
-                    max(settings.smooth_iterations, 5),
+                    settings.smooth_distance,
                     again_contact,
                     again_dirs[again_contact],
                     again[again_contact],
                     True,
+                    min_iterations=5,
                 )
 
         # Outer layers follow the layer under them, keeping the thickness
@@ -612,58 +617,43 @@ def fit_to_body_draw_settings(layout, context):
     col = box.column()
     col.use_property_split = True
     col.use_property_decorate = False
+    col.prop(settings, "factor", text="Strength")
 
-    col.prop(settings, "result")
-    row = col.row()
-    row.enabled = settings.result == "SHAPE_KEY"
-    row.prop(settings, "shape_key_name")
-    col.prop(settings, "use_modifiers")
-    col.prop(settings, "check_body")
-    for group, invert in (
-        ("vertex_group", "invert_vertex_group"),
-        ("rigid_group", "invert_rigid_group"),
-    ):
-        row = col.row(align=True)
-        row.prop_search(settings, group, session.obj, "vertex_groups")
-        sub = row.row(align=True)
-        sub.enabled = bool(getattr(settings, group))
-        sub.prop(settings, invert, text="", icon="ARROW_LEFTRIGHT")
-    row = col.row()
-    row.enabled = bool(session.solver.children)
-    row.prop(settings, "move_children", text=f"Child Objects ({len(session.solver.children)})")
-    col.prop(settings, "auto_influence")
-    row = col.row()
-    row.enabled = settings.auto_influence
-    row.prop(settings, "influence_radius")
+    col = preview_section(box, "mustardui_fit_output", "Output", "SHAPEKEY_DATA")
+    if col is not None:
+        col.prop(settings, "result")
+        row = col.row()
+        row.enabled = settings.result == "SHAPE_KEY"
+        row.prop(settings, "shape_key_name")
 
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "factor")
-    sub.prop(settings, "offset")
-    sub.prop(settings, "max_depth")
+    col = preview_section(box, "mustardui_fit_fitting", "Fitting", "MOD_CLOTH")
+    if col is not None:
+        col.prop(settings, "offset", text="Skin Distance")
+        col.separator()
+        col.prop(settings, "max_depth")
+        col.prop(settings, "check_body", text="Body Vertices")
+        col.prop(settings, "final_check")
+        col.separator()
+        sub = col.column(align=True)
+        sub.prop(settings, "fit_distance", text="Pull Distance")
+        row = sub.row(align=True)
+        row.enabled = settings.fit_distance > 0.0
+        row.prop(settings, "fit_strength", text="Pull Strength")
+        col.separator()
+        col.prop(settings, "use_modifiers", text="Body Modifiers")
 
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "fit_distance")
-    row = sub.row(align=True)
-    row.enabled = settings.fit_distance > 0.0
-    row.prop(settings, "fit_strength")
+    col = preview_section(box, "mustardui_fit_shape", "Shape", "MOD_SMOOTH")
+    if col is not None:
+        sub = col.column(align=True)
+        sub.prop(settings, "smooth_distance")
+        sub.prop(settings, "keep_contact")
+        sub = col.column(align=True)
+        sub.prop(settings, "relax_iterations")
+        row = sub.row(align=True)
+        row.enabled = settings.relax_iterations > 0
+        row.prop(settings, "relax_factor", text="Factor")
 
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "smooth_iterations")
-    sub.prop(settings, "keep_contact")
-
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "relax_iterations")
-    row = sub.row(align=True)
-    row.enabled = settings.relax_iterations > 0
-    row.prop(settings, "relax_factor")
-
-    col.separator()
-    col.prop(settings, "final_check")
-
+    preview_draw_masks(box, session, "fit")
     preview_draw_footer(box, session)
 
 

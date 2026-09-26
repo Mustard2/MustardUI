@@ -4,6 +4,7 @@ import bpy
 import numpy as np
 from bl_operators.presets import AddPresetBase
 
+from ... import __package__ as base_package
 from ...misc.mesh_deform import write_vertex_group
 
 # Running preview session, only one at a time
@@ -136,6 +137,7 @@ class ShapeKeyPreviewSession:
         self.dirty = True
         self.finish = ""
         self.info = ""
+        self.error = ""
         self.count = 0
 
         self.backup = ShapeKeyBackup(obj, key_name)
@@ -177,9 +179,10 @@ class ShapeKeyPreviewOperator:
         start = time.perf_counter()
         co, session.count, error = session.solver.solve(context, session.settings)
         if error:
-            session.info = error
+            session.error = error
         else:
             elapsed = time.perf_counter() - start
+            session.error = ""
             session.info = f"{session.count} vertices {self.preview_verb} ({elapsed:.2f}s)"
 
         write_shape_key(session.obj, session.key_name, co)
@@ -329,8 +332,67 @@ def preview_draw_presets(layout, menu, add):
     row.operator(add.bl_idname, text="", icon="REMOVE").remove_active = True
 
 
+def preview_section(layout, idname, title, icon, default_closed=False):
+    """Collapsible section of the settings, returning its column or None if closed"""
+
+    header, body = layout.panel(idname, default_closed=default_closed)
+    header.label(text=title, icon=icon)
+    if body is None:
+        return None
+    col = body.column()
+    col.use_property_split = True
+    col.use_property_decorate = False
+    return col
+
+
+def preview_draw_vertex_group(col, settings, group, invert, obj, text):
+    row = col.row(align=True)
+    row.prop_search(settings, group, obj, "vertex_groups", text=text)
+    sub = row.row(align=True)
+    sub.enabled = bool(getattr(settings, group))
+    sub.prop(settings, invert, text="", icon="ARROW_LEFTRIGHT")
+
+
+def preview_draw_masks(layout, session, tool):
+    """Settings restricting where the tool acts, and the rigid parts"""
+
+    settings = session.settings
+    obj = session.obj
+
+    title = "Affected Area"
+    if settings.vertex_group or settings.auto_influence:
+        title += " (active)"
+    col = preview_section(layout, f"mustardui_{tool}_area", title, "GROUP_VERTEX", True)
+    if col is not None:
+        preview_draw_vertex_group(
+            col, settings, "vertex_group", "invert_vertex_group", obj, "Vertex Group"
+        )
+        col.prop(settings, "auto_influence", text="Around Intersections")
+        row = col.row()
+        row.enabled = settings.auto_influence
+        row.prop(settings, "influence_radius", text="Radius")
+
+    children = len(session.solver.children)
+    title = "Rigid Parts"
+    if settings.rigid_group or (settings.move_children and children):
+        title += " (active)"
+    col = preview_section(layout, f"mustardui_{tool}_rigid", title, "MESH_CUBE", True)
+    if col is not None:
+        preview_draw_vertex_group(
+            col, settings, "rigid_group", "invert_rigid_group", obj, "Vertex Group"
+        )
+        row = col.row()
+        row.enabled = bool(children)
+        row.prop(settings, "move_children", text=f"Child Objects ({children})")
+
+
 def preview_draw_footer(layout, session):
-    layout.label(text=session.info, icon="INFO")
+    if session.error:
+        layout.label(text=session.error, icon="ERROR")
+    else:
+        addon = bpy.context.preferences.addons.get(base_package)
+        if addon is not None and addon.preferences.debug:
+            layout.label(text=session.info, icon="INFO")
     wm = bpy.context.window_manager
     show = wm.MustardUI_ToolsCreators_PreviewShow
     layout.prop(

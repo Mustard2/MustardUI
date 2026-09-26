@@ -366,15 +366,51 @@ class DeformTarget:
         self._influence = ((key, radius), weights)
         return weights
 
-    def smooth(self, disp, iterations, contact, directions, required, keep_contact):
-        """Smooth the displacement, keeping at least the required one along the directions"""
+    def smooth(self, disp, distance, contact, directions, required, keep_contact, min_iterations=0):
+        """Smooth the displacement over the given distance, keeping at least the required one
+        along the directions"""
+
+        moving = np.linalg.norm(disp, axis=1) > 0.0
+        if not np.any(moving):
+            return disp
+        edges = self.edges
+        touching = moving[edges[:, 0]] | moving[edges[:, 1]]
+        length = np.median(
+            np.linalg.norm(self.co[edges[touching, 0]] - self.co[edges[touching, 1]], axis=1)
+        )
+        length = max(length, 1e-6)
+
+        # Iterations spreading the displacement over the distance, whatever the mesh density
+        iterations = int(np.ceil(2.0 * (distance / length) ** 2)) if distance > 0.0 else 0
+        iterations = min(max(iterations, min_iterations), 2000)
+        if not iterations:
+            return disp
+
+        # Only the vertices the smoothing can reach
+        region = moving.copy()
+        for _ in range(
+            int(np.ceil(3.0 * max(distance, length * np.sqrt(iterations / 2.0)) / length))
+        ):
+            grow = region[edges[:, 0]] | region[edges[:, 1]]
+            if np.all(region[edges[grow].ravel()]):
+                break
+            region[edges[grow].ravel()] = True
+        indices = np.nonzero(region)[0]
+        remap = np.full(self.n_verts, -1, dtype=np.int64)
+        remap[indices] = np.arange(len(indices))
+        sub_edges = remap[edges[region[edges[:, 0]] & region[edges[:, 1]]]]
+        sub = disp[indices]
+        sub_contact = remap[contact]
 
         for _ in range(iterations):
-            disp = 0.5 * disp + 0.5 * mesh_laplacian(disp, self.edges, self.n_verts)
+            sub = 0.5 * sub + 0.5 * mesh_laplacian(sub, sub_edges, len(indices))
             if keep_contact:
-                pushed = np.einsum("ij,ij->i", disp[contact], directions)
+                pushed = np.einsum("ij,ij->i", sub[sub_contact], directions)
                 missing = np.maximum(required - pushed, 0.0)
-                disp[contact] += directions * missing[:, None]
+                sub[sub_contact] += directions * missing[:, None]
+
+        disp = disp.copy()
+        disp[indices] = sub
         return disp
 
     def relax(self, disp, iterations, factor):

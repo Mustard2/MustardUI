@@ -17,9 +17,11 @@ from .shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
     preview_draw_footer,
+    preview_draw_masks,
     preview_draw_presets,
     preview_preset_classes,
     preview_running,
+    preview_section,
     preview_session,
     preview_settings_update,
     write_shape_key,
@@ -209,6 +211,7 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         name="Bulge",
         default=0.3,
         min=0.0,
+        max=10.0,
         soft_max=2.0,
         description="Push the vertices around the squished area outwards, as the flesh "
         "displaced by the squishing objects",
@@ -225,13 +228,14 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
-    smooth_iterations: bpy.props.IntProperty(
+    smooth_distance: bpy.props.FloatProperty(
         name="Smooth",
-        default=5,
-        min=0,
-        soft_max=100,
-        description="Smoothing iterations of the squish displacement, to spread it on the "
-        "neighbouring vertices",
+        default=0.005,
+        min=0.0,
+        soft_max=0.05,
+        subtype="DISTANCE",
+        description="Distance the squish is smoothed over, to blend it with the neighbouring "
+        "surface.\nIt does not depend on the mesh density",
         update=preview_settings_update,
     )
 
@@ -411,7 +415,10 @@ class SquishSolver:
                 if hit is not None:
                     facing = hit_normal.dot(n)
                     if (surface and facing > 0.5) or (not surface and facing < 0.0):
-                        depth[i] = max(dist - eps + settings.offset, 0.0)
+                        # Squishers on the other side of thin parts (e.g. fingers) are ignored
+                        through = self.body_bvh.ray_cast(v - n * 1e-4, -n, dist)
+                        if through[0] is None or through[3] < 0.002:
+                            depth[i] = max(dist - eps + settings.offset, 0.0)
             if depth[i] > 0.0:
                 continue
 
@@ -441,11 +448,13 @@ class SquishSolver:
         bb_max = co[contact].max(axis=0) + radius
         near = np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights > 0.0) & (depth == 0.0)
         for i in np.nonzero(near)[0]:
-            value = 0.0
-            for _, k, d in kd.find_range(co[i], radius):
-                falloff = 1.0 - d / radius
-                value = max(value, depth[contact[k]] * falloff * falloff)
-            bulge[i] = value
+            hits = kd.find_range(co[i], radius)
+            if not hits:
+                continue
+            # Rising from the squished area, peaking at a third of the radius
+            t = min(d for _, _, d in hits) / radius
+            deepest = max(depth[contact[k]] for _, k, _ in hits)
+            bulge[i] = deepest * 6.75 * t * (1.0 - t) ** 2
 
         self._bulge = (key, bulge)
         return bulge
@@ -476,7 +485,7 @@ class SquishSolver:
 
         disp = target.smooth(
             disp,
-            settings.smooth_iterations,
+            settings.smooth_distance,
             contact,
             -normals[contact],
             depth[contact],
@@ -586,68 +595,53 @@ def squish_draw_settings(layout, context):
     session = preview_session("SQUISH")
     if session is None:
         return
-    settings = context.window_manager.MustardUI_ToolsCreators_SquishSettings
+    settings = session.settings
 
     box = layout.box()
     preview_draw_presets(box, SquishPresetsMenu, SquishPresetAdd)
     col = box.column()
     col.use_property_split = True
     col.use_property_decorate = False
+    col.prop(settings, "factor", text="Strength")
 
-    col.prop(settings, "shape_key_name")
-    col.prop(settings, "mode")
-    col.prop(settings, "use_modifiers")
-    for group, invert in (
-        ("vertex_group", "invert_vertex_group"),
-        ("rigid_group", "invert_rigid_group"),
-    ):
-        row = col.row(align=True)
-        row.prop_search(settings, group, session.obj, "vertex_groups")
-        sub = row.row(align=True)
-        sub.enabled = bool(getattr(settings, group))
-        sub.prop(settings, invert, text="", icon="ARROW_LEFTRIGHT")
-    row = col.row()
-    row.enabled = bool(session.solver.children)
-    row.prop(settings, "move_children", text=f"Child Objects ({len(session.solver.children)})")
-    col.prop(settings, "auto_influence")
-    row = col.row()
-    row.enabled = settings.auto_influence
-    row.prop(settings, "influence_radius")
+    col = preview_section(box, "mustardui_squish_output", "Output", "SHAPEKEY_DATA")
+    if col is not None:
+        col.prop(settings, "shape_key_name")
 
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "factor")
-    sub.prop(settings, "offset")
-    sub.prop(settings, "tightness")
-    row = sub.row(align=True)
-    row.enabled = settings.tightness > 0.0
-    row.prop(settings, "move_squishers")
-    row = sub.row(align=True)
-    row.enabled = settings.tightness > 0.0 and settings.move_squishers
-    row.prop(settings, "squishers_movement")
-    sub.prop(settings, "max_depth")
+    col = preview_section(box, "mustardui_squish_squishing", "Squishing", "MOD_SHRINKWRAP")
+    if col is not None:
+        col.prop(settings, "mode")
+        col.prop(settings, "use_modifiers", text="Squishers Modifiers")
+        col.prop(settings, "max_depth")
+        col.prop(settings, "offset")
+        col.separator()
+        col.prop(settings, "tightness")
+        sub = col.column(align=True)
+        sub.enabled = settings.tightness > 0.0
+        sub.prop(settings, "move_squishers")
+        row = sub.row(align=True)
+        row.enabled = settings.move_squishers
+        row.prop(settings, "squishers_movement", text="Movement")
 
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "bulge")
-    row = sub.row(align=True)
-    row.enabled = settings.bulge > 0.0
-    row.prop(settings, "bulge_radius")
+    col = preview_section(box, "mustardui_squish_shape", "Shape", "MOD_SMOOTH")
+    if col is not None:
+        sub = col.column(align=True)
+        sub.prop(settings, "bulge")
+        row = sub.row(align=True)
+        row.enabled = settings.bulge > 0.0
+        row.prop(settings, "bulge_radius", text="Radius")
+        sub = col.column(align=True)
+        sub.prop(settings, "smooth_distance")
+        row = sub.row(align=True)
+        row.enabled = settings.smooth_distance > 0.0
+        row.prop(settings, "keep_contact")
+        sub = col.column(align=True)
+        sub.prop(settings, "relax_iterations")
+        row = sub.row(align=True)
+        row.enabled = settings.relax_iterations > 0
+        row.prop(settings, "relax_factor", text="Factor")
 
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "smooth_iterations")
-    row = sub.row(align=True)
-    row.enabled = settings.smooth_iterations > 0
-    row.prop(settings, "keep_contact")
-
-    col.separator()
-    sub = col.column(align=True)
-    sub.prop(settings, "relax_iterations")
-    row = sub.row(align=True)
-    row.enabled = settings.relax_iterations > 0
-    row.prop(settings, "relax_factor")
-
+    preview_draw_masks(box, session, "squish")
     preview_draw_footer(box, session)
 
 
