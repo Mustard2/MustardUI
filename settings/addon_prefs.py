@@ -93,11 +93,11 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.prop(self, "developer", text="Developer Tools (for Model creators)")
-        col.prop(self, "quick_setup")
         col.prop(self, "model_toolkit")
+        col.prop(self, "quick_setup")
 
         col.separator()
+        col.prop(self, "developer", text="Developer Tools (for Model creators)")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
