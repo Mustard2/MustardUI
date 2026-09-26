@@ -133,11 +133,11 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
+        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
 
         processed = 0

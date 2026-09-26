@@ -15,12 +15,12 @@ from .shape_key_preview import (
     write_shape_key,
 )
 
-SQUISH_CREATOR_TYPES = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
+SQUISHER_TYPES = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
 SQUISH_ORIENTATION_DISTANCE = 0.1
 
 
-def squish_creator_is_flipped(co, tris, body_bvh, max_dist, volume):
-    """Check if the creator normals point inwards, as they often do in clothes"""
+def squisher_is_flipped(co, tris, body_bvh, max_dist, volume):
+    """Check if the squisher normals point inwards, as they often do in clothes"""
 
     p0, p1, p2 = co[tris[:, 0]], co[tris[:, 1]], co[tris[:, 2]]
     face_normals = np.cross(p1 - p0, p2 - p0)
@@ -30,7 +30,7 @@ def squish_creator_is_flipped(co, tris, body_bvh, max_dist, volume):
         center = co.mean(axis=0)
         return np.einsum("ij,ij->", p0 - center, face_normals) < 0.0
 
-    # Surface: the creator should face as the closest body surface
+    # Surface: the squisher should face as the closest body surface
     centers = (p0 + p1 + p2) / 3.0
     step = max(1, len(tris) // 5000)
     vote = 0.0
@@ -54,13 +54,13 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
             (
                 "SURFACE",
                 "Surface",
-                "The body vertices poking out of the creator surface are pushed under it (e.g. "
+                "The body vertices poking out of the squishing surface are pushed under it (e.g. "
                 "clothes, straps)",
             ),
             (
                 "VOLUME",
                 "Volume",
-                "The body vertices inside the creator volume are pushed out of it (e.g. hands, "
+                "The body vertices inside the squishing volume are pushed out of it (e.g. hands, "
                 "closed objects pressing on the body)",
             ),
         ),
@@ -71,7 +71,7 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
     use_modifiers: bpy.props.BoolProperty(
         name="Use Modifiers",
         default=True,
-        description="Use the creators with their modifiers evaluated",
+        description="Use the squishing objects with their modifiers evaluated",
         update=preview_settings_update,
     )
 
@@ -132,7 +132,7 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         step=0.01,
         precision=4,
         subtype="DISTANCE",
-        description="Additional distance of the squished vertices from the creator surface",
+        description="Additional distance of the squished vertices from the squishing surface",
         update=preview_settings_update,
     )
 
@@ -144,8 +144,8 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         step=0.01,
         precision=4,
         subtype="DISTANCE",
-        description="Shrink the creator into the body by this distance, to squish creators "
-        "resting on the body without intersecting it (e.g. fitted clothes)",
+        description="Shrink the squishing objects into the body by this distance, to squish "
+        "objects resting on the body without intersecting it (e.g. fitted clothes)",
         update=preview_settings_update,
     )
 
@@ -166,7 +166,7 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         min=0.0,
         soft_max=1.0,
         description="Push the vertices around the squished area outwards, as the flesh "
-        "displaced by the creator",
+        "displaced by the squishing objects",
         update=preview_settings_update,
     )
 
@@ -193,7 +193,7 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
     keep_contact: bpy.props.BoolProperty(
         name="Keep Contact",
         default=True,
-        description="Keep the squished vertices under the creator while smoothing",
+        description="Keep the squished vertices under the squishing objects while smoothing",
         update=preview_settings_update,
     )
 
@@ -220,11 +220,11 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
 class SquishSolver:
     """Compute the squish Shape Key, caching the results not affected by the changed settings"""
 
-    def __init__(self, context, body, creators, key_name):
+    def __init__(self, context, body, squishers, key_name):
         self.body = body
-        self.creators = creators
+        self.squishers = squishers
         self.target = DeformTarget(body, key_name)
-        self.children = self.target.rigid_children(creators)
+        self.children = self.target.rigid_children(squishers)
         self.disp = None
         self.body_bvh = BVHTree.FromPolygons(self.target.co.tolist(), self.target.tris.tolist())
 
@@ -234,19 +234,17 @@ class SquishSolver:
         self._bulge = (None, None)
         self.influence = None
 
-    def creators_bvh(self, context, settings):
+    def squishers_bvh(self, context, settings):
         key = (settings.use_modifiers, settings.mode)
         if key not in self._bvh:
             if settings.use_modifiers not in self._geometry:
                 self._geometry[settings.use_modifiers] = rest_geometry(
-                    context, self.creators, [self.body], settings.use_modifiers
+                    context, self.squishers, [self.body], settings.use_modifiers
                 )
             geometry = self._geometry[settings.use_modifiers]
             volume = settings.mode == "VOLUME"
             flipped = [
-                squish_creator_is_flipped(
-                    co, tri, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, volume
-                )
+                squisher_is_flipped(co, tri, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, volume)
                 for co, tri in geometry
             ]
             self._bvh[key] = geometry_bvh(geometry, flipped)
@@ -268,16 +266,16 @@ class SquishSolver:
         if self._depth[0] == key:
             return self._depth[1]
 
-        bvh, creators_co = self.creators_bvh(context, settings)
+        bvh, squishers_co = self.squishers_bvh(context, settings)
         if bvh is None:
             return None
 
-        # Only check the vertices close to the creators
+        # Only check the vertices close to the squishers
         co = self.target.co
         normals = self.target.normals
         margin = settings.max_depth + tightness
-        bb_min = creators_co.min(axis=0) - margin
-        bb_max = creators_co.max(axis=0) + margin
+        bb_min = squishers_co.min(axis=0) - margin
+        bb_max = squishers_co.max(axis=0) + margin
         candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights > 0.0))[
             0
         ]
@@ -295,7 +293,7 @@ class SquishSolver:
             hit, hit_normal, _, dist = bvh.ray_cast(v + n * start, -n, settings.max_depth + start)
             if hit is None:
                 continue
-            # Surface: creator facing as the body, Volume: exit face of the creator
+            # Surface: squisher facing as the body, Volume: exit face of the squisher
             facing = hit_normal.dot(n)
             if (surface and facing > 0.5) or (not surface and facing < 0.0):
                 depth[i] = max(dist - eps + settings.offset, 0.0)
@@ -399,7 +397,7 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
         obj = context.active_object
         if obj is None or obj.type != "MESH" or obj.mode != "OBJECT":
             return False
-        return any(x != obj and x.type in SQUISH_CREATOR_TYPES for x in context.selected_objects)
+        return any(x != obj and x.type in SQUISHER_TYPES for x in context.selected_objects)
 
     def preview_settings(self, context):
         return context.window_manager.MustardUI_ToolsCreators_SquishSettings
@@ -407,9 +405,7 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
     def solver(self, context):
         settings = self.preview_settings(context)
         body = context.active_object
-        creators = [
-            x for x in context.selected_objects if x != body and x.type in SQUISH_CREATOR_TYPES
-        ]
+        squishers = [x for x in context.selected_objects if x != body and x.type in SQUISHER_TYPES]
         name = settings.shape_key_name.strip()
 
         if not name:
@@ -420,7 +416,7 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
             self.report({"ERROR"}, "MustardUI - The Basis Shape Key can not be overwritten")
             return None
 
-        return SquishSolver(context, body, creators, name)
+        return SquishSolver(context, body, squishers, name)
 
     def execute(self, context):
         settings = self.preview_settings(context)
@@ -445,12 +441,12 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
 
     def invoke(self, context, event):
         settings = self.preview_settings(context)
-        creators = [
+        squishers = [
             x.name
             for x in context.selected_objects
-            if x != context.active_object and x.type in SQUISH_CREATOR_TYPES
+            if x != context.active_object and x.type in SQUISHER_TYPES
         ]
-        settings.shape_key_name = f"Squish - {', '.join(sorted(creators))}"
+        settings.shape_key_name = f"Squish - {', '.join(sorted(squishers))}"
 
         solver = self.solver(context)
         if solver is None:

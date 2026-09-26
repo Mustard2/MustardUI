@@ -10,7 +10,7 @@ from . import MainPanel
 
 class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_ToolsCreators"
-    bl_label = "Creator Tools"
+    bl_label = "Model Toolkit"
     bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -31,7 +31,7 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
             box = layout.box()
             col = box.column(align=True)
             col.label(text="Viewport Model selection should be", icon="ERROR")
-            col.label(text="disabled to use Creator tools", icon="BLANK1")
+            col.label(text="disabled to use the Model Toolkit", icon="BLANK1")
             box.operator(
                 "mustardui.viewportmodelselection",
                 text="Viewport Model Selection",
@@ -43,7 +43,7 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
             box = layout.box()
             col = box.column(align=True)
             col.label(text="Complete the first configuration", icon="ERROR")
-            col.label(text="to use Creator tools", icon="BLANK1")
+            col.label(text="to use the Model Toolkit", icon="BLANK1")
 
 
 class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
@@ -58,7 +58,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
@@ -103,7 +103,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
@@ -135,7 +135,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
@@ -174,7 +174,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
@@ -245,7 +245,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 

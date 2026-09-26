@@ -153,7 +153,7 @@ class ShapeKeyPreviewOperator:
         self._timer = wm.event_timer_add(0.05, window=context.window)
         wm.modal_handler_add(self)
         context.workspace.status_text_set(
-            f"{self.bl_label}: change the settings in Creator Tools > Mesh, Esc to cancel"
+            f"{self.bl_label}: change the settings in Model Toolkit > Mesh, Esc to cancel"
         )
         return {"RUNNING_MODAL"}
 

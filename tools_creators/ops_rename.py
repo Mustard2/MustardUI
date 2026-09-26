@@ -19,7 +19,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         if arm is None:
             return False
 
@@ -78,7 +78,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 
@@ -179,7 +179,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout

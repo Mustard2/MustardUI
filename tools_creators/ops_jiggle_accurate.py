@@ -187,7 +187,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         return (
             res
             and context.active_object is not None
@@ -200,7 +200,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
     def _execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences

@@ -253,10 +253,10 @@ class MustardUI_RenameImageNodes_Update(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
+        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
 
         collection = context.scene.mustardui_rename_images
@@ -308,7 +308,7 @@ class MustardUI_RenameImageNodes_SelectAll(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
+        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def execute(self, context):
         for item in context.scene.mustardui_rename_images:
@@ -324,7 +324,7 @@ class MustardUI_RenameImageNodes_StripExtensions(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
+        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def execute(self, context):
         for item in context.scene.mustardui_rename_images:
@@ -346,7 +346,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
+        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def invoke(self, context, event):
         obj = context.object

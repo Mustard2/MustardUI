@@ -26,7 +26,7 @@ class MustardUI_ToolsCreators_AssignPhysics(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS):
+        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
             return False
         return any(o.type == "MESH" for o in context.selected_objects)
 

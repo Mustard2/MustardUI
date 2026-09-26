@@ -10,7 +10,7 @@ from ..misc.mesh_deform import (
     rest_geometry,
     write_vertex_group,
 )
-from .ops_squish import SQUISH_ORIENTATION_DISTANCE, squish_creator_is_flipped
+from .ops_squish import SQUISH_ORIENTATION_DISTANCE, squisher_is_flipped
 from .shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_children_shape_keys,
@@ -226,7 +226,7 @@ class FixClippingSolver:
     def outfit_flipped(self, body_bvh):
         if self._outfit_flipped is None:
             target = self.target
-            self._outfit_flipped = squish_creator_is_flipped(
+            self._outfit_flipped = squisher_is_flipped(
                 target.co, target.tris, body_bvh, SQUISH_ORIENTATION_DISTANCE, False
             )
         return self._outfit_flipped

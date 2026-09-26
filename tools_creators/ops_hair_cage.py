@@ -105,7 +105,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         return res and context.active_object and context.active_object.type == "MESH"
 
     def remove_temp_proxy(self, context):
@@ -126,7 +126,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
     def _execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         physics_settings = obj.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 

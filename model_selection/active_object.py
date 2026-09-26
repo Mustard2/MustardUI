@@ -23,7 +23,7 @@ class ModelMode(IntEnum):
     USER = 0  # poll true when the model UI is enabled
     CONFIG = 1  # poll true while the model is being configured
     QUICK_SETUP = 2  # viewport armature never configured with MustardUI
-    CREATOR_TOOLS = 3  # like ANY, but no armature with Viewport Model Selection
+    MODEL_TOOLKIT = 3  # like ANY, but no armature with Viewport Model Selection
 
 
 # Function to decide the active object for showing properties in the UI
@@ -41,8 +41,8 @@ def mustardui_active_object(context, config=ModelMode.USER):
         arm = obj.data
         return not arm.MustardUI_created and settings.viewport_model_selection, arm
 
-    # Creator Tools mode: any model state, but only with panel model selection
-    if config == ModelMode.CREATOR_TOOLS:
+    # Model Toolkit mode: any model state, but only with panel model selection
+    if config == ModelMode.MODEL_TOOLKIT:
         if settings.viewport_model_selection:
             return False, None
         config = ModelMode.ANY

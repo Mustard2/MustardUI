@@ -182,7 +182,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         return (
             res
             and context.active_object
@@ -195,7 +195,7 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
     def _execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences

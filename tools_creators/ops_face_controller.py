@@ -318,7 +318,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         if arm is None:
             return False
 
@@ -334,7 +334,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
         model_armature = rig_settings.model_armature_object
 
@@ -522,7 +522,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
             return {"CANCELLED"}
 
     def invoke(self, context, event):
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
         model_armature = rig_settings.model_armature_object
 
@@ -536,7 +536,7 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
         model_armature = rig_settings.model_armature_object
 
@@ -561,7 +561,7 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         if arm is None:
             return False
 
@@ -578,7 +578,7 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
         model_armature = rig_settings.model_armature_object
 

@@ -84,7 +84,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         if not res:
             return False
 
@@ -101,7 +101,7 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
 
@@ -326,7 +326,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         if not res:
             return False
 
@@ -339,7 +339,7 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         curve_obj = context.object

@@ -66,11 +66,11 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
+        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
+        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
 
