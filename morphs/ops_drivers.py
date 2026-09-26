@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -22,10 +23,10 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=0):
+        if not active_object_operator_poll(context, config=ModelMode.USER):
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = arm.MustardUI_MorphsSettings
         return morphs_settings.enable_ui
 
@@ -47,7 +48,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -141,16 +142,16 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=0):
+        if not active_object_operator_poll(context, config=ModelMode.USER):
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = arm.MustardUI_MorphsSettings
         return morphs_settings.enable_ui
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
         addon_prefs = context.preferences.addons[base_package].preferences

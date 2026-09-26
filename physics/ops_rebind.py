@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -116,11 +117,11 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=-1)
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -193,12 +194,12 @@ class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         return res if arm is not None else False
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -262,12 +263,12 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         return res if arm is not None else False
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -322,12 +323,12 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         return res if arm is not None else False
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences

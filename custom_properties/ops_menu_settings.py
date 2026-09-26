@@ -7,6 +7,7 @@ from .. import __package__ as base_package
 from ..misc.icons import mustardui_icon_list
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -141,11 +142,11 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         if not 0 <= index < len(custom_props):
@@ -304,7 +305,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
     def invoke(self, context, event):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         if not 0 <= index < len(custom_props):
@@ -382,7 +383,7 @@ class MustardUI_Property_Settings(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         custom_props, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         if not 0 <= index < len(custom_props):

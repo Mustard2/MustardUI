@@ -1,7 +1,7 @@
 import bpy
 
 from ..misc.ui_collapse import ui_collapse_prop
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..morphs.misc import get_section_by_diffeomorphic_id, morph_filter_function
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
@@ -79,7 +79,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -100,7 +100,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         if morphs_settings.type != "GENERIC":
@@ -109,7 +109,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
@@ -172,7 +172,7 @@ class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -188,12 +188,12 @@ class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
         return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions_units
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         draw_morphs_count(self.layout, obj, 0)
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
@@ -213,7 +213,7 @@ class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -229,12 +229,12 @@ class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
         return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_emotions
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         draw_morphs_count(self.layout, obj, 1)
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
@@ -256,7 +256,7 @@ class PANEL_PT_MustardUI_Morphs_FACSUnits(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -274,12 +274,12 @@ class PANEL_PT_MustardUI_Morphs_FACSUnits(MainPanel, bpy.types.Panel):
         )
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         draw_morphs_count(self.layout, obj, 2)
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
@@ -299,7 +299,7 @@ class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -315,12 +315,12 @@ class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
         return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_facs_emotions
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         draw_morphs_count(self.layout, obj, 3)
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
@@ -342,7 +342,7 @@ class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -358,12 +358,12 @@ class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
         return res and morphs_settings.enable_ui and morphs_settings.diffeomorphic_body_morphs
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         draw_morphs_count(self.layout, obj, 4)
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
@@ -385,7 +385,7 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -405,12 +405,12 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
         return res and morphs_settings.enable_ui
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         draw_morphs_count(self.layout, obj)
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout

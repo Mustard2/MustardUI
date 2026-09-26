@@ -6,6 +6,7 @@ from bpy.props import BoolProperty, PointerProperty, StringProperty
 
 from ..misc.materials import material_uses_nodes
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -252,10 +253,10 @@ class MustardUI_RenameImageNodes_Update(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = arm.MustardUI_RigSettings
 
         collection = context.scene.mustardui_rename_images
@@ -307,7 +308,7 @@ class MustardUI_RenameImageNodes_SelectAll(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def execute(self, context):
         for item in context.scene.mustardui_rename_images:
@@ -323,7 +324,7 @@ class MustardUI_RenameImageNodes_StripExtensions(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def execute(self, context):
         for item in context.scene.mustardui_rename_images:
@@ -345,7 +346,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def invoke(self, context, event):
         obj = context.object

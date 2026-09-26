@@ -38,13 +38,16 @@ Session-level (non-persistent UI) state lives on `Scene.MustardUI_Settings` (`se
 
 ### Resolving "which model are we acting on": `mustardui_active_object`
 
-`model_selection/active_object.py` is the single source of truth for figuring out the active model armature. **Operators and panels should call `mustardui_active_object(context, config=...)` rather than reaching into `context.active_object` directly.** It returns `(poll_result, armature)` and handles two selection modes (viewport-active-object vs. a panel-selected armature, including resolving a mesh to its armature via parent / armature modifier / Child Of constraint).
+`model_selection/active_object.py` is the single source of truth for figuring out the active model armature. **Operators and panels should call `mustardui_active_object(context, config=ModelMode...)` rather than reaching into `context.active_object` directly.** It returns `(poll_result, armature)` and handles two selection modes (viewport-active-object vs. a panel-selected armature, including resolving a mesh to its armature via parent / armature modifier / Child Of constraint).
 
-The `config` argument encodes both the mode and the poll meaning of the boolean:
-- `config=0` — user mode; poll true when the model UI is enabled (`MustardUI_enable`)
-- `config=1` — configuration mode; poll true when the model UI is **not** yet enabled (i.e. being configured)
-- `config=2` — quick-setup mode (uninitialized armature)
-- `config=-1` — return the armature regardless of state
+The `config` argument is a `ModelMode` (an `IntEnum` in the same module) that encodes both the mode and the poll meaning of the boolean:
+- `ModelMode.USER` — user mode; poll true when the model UI is enabled (`MustardUI_enable`)
+- `ModelMode.CONFIG` — configuration mode; poll true when the model UI is **not** yet enabled (i.e. being configured)
+- `ModelMode.QUICK_SETUP` — quick-setup mode (uninitialized armature)
+- `ModelMode.ANY` — return the armature regardless of state
+- `ModelMode.CREATOR_TOOLS` — like `ANY`, but no armature while Viewport Model Selection is enabled
+
+Always pass a `ModelMode` member, never a bare int.
 
 Use `active_object_operator_poll(context, config=...)` in an operator's `poll()` classmethod for the standard gate (see any `ops_*.py`).
 
@@ -58,7 +61,7 @@ Within a feature package, files follow consistent prefixes — match them when a
 
 ### Configuration vs. user mode
 
-The add-on has two faces: a **Configuration** UI (model creators build the panel with no code) and the **user** UI. Many operators are config-only and gate on `config=1`. Keep this split in mind — a feature usually has both a configure-side panel (`menu/menu_configure_*.py`) and a user-side panel.
+The add-on has two faces: a **Configuration** UI (model creators build the panel with no code) and the **user** UI. Many operators are config-only and gate on `ModelMode.CONFIG`. Keep this split in mind — a feature usually has both a configure-side panel (`menu/menu_configure_*.py`) and a user-side panel.
 
 ## Conventions & contribution rules
 

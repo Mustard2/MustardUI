@@ -1,6 +1,7 @@
 import bpy
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -22,11 +23,11 @@ class MustardUI_PresetDelete(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         try:
             settings, presets, preset, index, index_prop = get_preset_context(arm, self.preset_type)

@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .settings_item import mustardui_physics_item_type_dict
 from .ui_list import physics_items_filter
 
@@ -21,7 +21,7 @@ class MUSTARDUI_UL_PhysicsItems_UIList_Menu(bpy.types.UIList):
 
         settings = bpy.context.scene.MustardUI_Settings
 
-        res, obj = mustardui_active_object(bpy.context, config=0)
+        res, obj = mustardui_active_object(bpy.context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
 
         name = item.object.name

@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -16,7 +16,7 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is not None:
             return res and (
                 arm.MustardUI_ToolsSettings.autobreath_enable
@@ -37,7 +37,7 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if not arm:
             return False
@@ -49,7 +49,7 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         layout = self.layout
@@ -76,7 +76,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if not arm:
             return False
@@ -88,7 +88,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         layout = self.layout
@@ -108,7 +108,7 @@ class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if not arm:
             return False
@@ -120,7 +120,7 @@ class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         layout = self.layout

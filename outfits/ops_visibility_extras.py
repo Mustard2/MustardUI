@@ -1,6 +1,10 @@
 import bpy
 
-from ..model_selection.active_object import active_object_operator_poll, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     outfits_update_armature_collections,
@@ -19,7 +23,7 @@ class MustardUI_ExtrasCollectionVisibility(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         collection = bpy.data.collections.get(self.collection)
@@ -28,7 +32,7 @@ class MustardUI_ExtrasCollectionVisibility(bpy.types.Operator):
             self.report({"WARNING"}, f'MustardUI - Collection "{self.collection}" not found.')
             return {"CANCELLED"}
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         armature_settings = arm.MustardUI_ArmatureSettings
         physics_settings = arm.MustardUI_PhysicsSettings

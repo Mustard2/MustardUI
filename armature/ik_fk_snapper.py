@@ -9,7 +9,7 @@ from bpy.props import (
 )
 from mathutils import Quaternion
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 def ikfk_snapper_available(arm):
@@ -431,12 +431,12 @@ class MUSTARDUI_OT_IKFKDetect(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        # Works in both normal mode (config=0) and configure mode (config=1)
-        res, arm = mustardui_active_object(context, config=-1)
+        # Works in both user and configuration mode
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         return arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=-1)
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         arm_obj = _arm_obj(arm)
         if arm_obj is None:
             self.report({"ERROR"}, "Cannot find armature object")
@@ -475,11 +475,11 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         snapper = arm.MustardUI_IKFKSnapperSettings
 
         if self.chain_index >= len(snapper.ikfk_chains):
@@ -978,11 +978,11 @@ class MUSTARDUI_OT_IKFKSwitch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         snapper = arm.MustardUI_IKFKSnapperSettings
 
         if self.chain_index >= len(snapper.ikfk_chains):
@@ -1009,11 +1009,11 @@ class MUSTARDUI_OT_IKFKChainAdd(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         snapper = arm.MustardUI_IKFKSnapperSettings
         item = snapper.ikfk_chains.add()
         item.name = "Chain " + str(len(snapper.ikfk_chains))
@@ -1030,13 +1030,13 @@ class MUSTARDUI_OT_IKFKChainRemove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if not res or arm is None:
             return False
         return len(arm.MustardUI_IKFKSnapperSettings.ikfk_chains) > 0
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         snapper = arm.MustardUI_IKFKSnapperSettings
         idx = snapper.ikfk_chains_index
         if idx < len(snapper.ikfk_chains):
@@ -1060,11 +1060,11 @@ class MUSTARDUI_OT_IKFKChainSwitch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         snapper = arm.MustardUI_IKFKSnapperSettings
         chains = snapper.ikfk_chains
         index = snapper.ikfk_chains_index

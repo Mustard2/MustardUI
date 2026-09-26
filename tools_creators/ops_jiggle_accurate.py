@@ -9,7 +9,7 @@ from .. import __package__ as base_package
 from ..misc import mesh_cleanup
 from ..misc.move_modifier import move_modifier, move_modifier_after_armature
 from ..misc.scene_state import execute_restoring_state
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from . import physics_presets
 
 
@@ -187,7 +187,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         return (
             res
             and context.active_object is not None
@@ -200,7 +200,7 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
     def _execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences

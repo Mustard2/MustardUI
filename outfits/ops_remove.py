@@ -3,6 +3,7 @@ import bpy
 from .. import __package__ as base_package
 from ..custom_properties.misc import mustardui_clean_prop, mustardui_reassign_default
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -20,11 +21,11 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 

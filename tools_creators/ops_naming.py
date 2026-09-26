@@ -1,6 +1,7 @@
 import bpy
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -37,7 +38,7 @@ class MustardUI_ToolsCreators_Naming(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def execute(self, context):
 
@@ -48,7 +49,7 @@ class MustardUI_ToolsCreators_Naming(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 

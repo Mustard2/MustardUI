@@ -4,6 +4,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -155,10 +156,10 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
         addon_prefs = context.preferences.addons[base_package].preferences

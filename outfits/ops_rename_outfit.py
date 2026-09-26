@@ -2,6 +2,7 @@ import bpy
 from bpy.props import BoolProperty, StringProperty
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -53,14 +54,14 @@ class MustardUI_RenameOutfit_Update(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
         settings = context.scene.MustardUI_Settings
         rename_outfits_class = settings.rename_outfits_temp_class
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
 
         name = self.name
@@ -97,10 +98,10 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CONFIG):
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         return arm.MustardUI_RigSettings.model_name != ""
 
     def execute(self, context):
@@ -108,7 +109,7 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
         settings = context.scene.MustardUI_Settings
         rename_outfits_class = settings.rename_outfits_temp_class
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
 
         if self.right_click_call:
@@ -139,7 +140,7 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
         rename_outfits_class = settings.rename_outfits_temp_class
         rename_outfits_class.clear()
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
 
         if self.right_click_call:

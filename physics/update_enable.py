@@ -1,5 +1,5 @@
 from ..misc.set_bool import set_bool
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..outfits.helper_functions import find_layer_collections
 
 
@@ -219,7 +219,7 @@ def influence_cage_modifiers(physics_item, iterator, influence):
 
 
 def enable_physics_update(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     if arm is None or not res:
         return
@@ -243,7 +243,7 @@ def enable_physics_update(self, context):
 
 
 def enable_physics_update_single(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     if arm is None or not res or not self.object:
         return
@@ -263,7 +263,7 @@ def enable_physics_update_single(self, context):
 
 
 def enable_physics_update_single_smooth_corrective(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     if arm is None or not res or not self.object:
         return
@@ -282,7 +282,7 @@ def enable_physics_update_single_smooth_corrective(self, context):
 
 
 def collisions_physics_update_single(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     if (
         arm is None
@@ -298,7 +298,7 @@ def collisions_physics_update_single(self, context):
 
 
 def cage_influence_update(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     if arm is None or not res or self.type != "CAGE":
         return
@@ -333,7 +333,7 @@ def set_bone_driver_constraints(physics_item, influence):
 
 
 def bone_influence_update(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     if arm is None or not res or self.type != "BONES_DRIVER" or not self.object:
         return

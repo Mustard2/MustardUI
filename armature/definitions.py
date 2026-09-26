@@ -3,7 +3,7 @@ from bpy.props import BoolProperty, EnumProperty
 
 from ..misc.icons import mustardui_icon_list
 from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 # Class for single bone collection
@@ -81,7 +81,7 @@ class MustardUI_ArmatureBoneCollection(bpy.types.PropertyGroup):
 class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     # Outfit layers
     def armature_visibility_outfits_update(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         armature_settings = arm.MustardUI_ArmatureSettings
         rig_settings = arm.MustardUI_RigSettings
         collections = arm.collections_all
@@ -122,7 +122,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     )
 
     def armature_visibility_hair_update(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         armature_settings = arm.MustardUI_ArmatureSettings
 
@@ -200,7 +200,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
 
     # Show in Viewport
     def show_viewport_update(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         rig_settings.model_armature_object.hide_viewport = not self.show_viewport
 

@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -16,7 +16,7 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -28,14 +28,14 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
             return False
 
     def draw_header(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         simplify_settings = arm.MustardUI_SimplifySettings
         self.layout.prop(simplify_settings, "simplify_enable", text="", toggle=False)
 
     def draw(self, context):
 
         settings = context.scene.MustardUI_Settings
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings

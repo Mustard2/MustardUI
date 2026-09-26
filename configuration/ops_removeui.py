@@ -5,6 +5,7 @@ from .. import __package__ as base_package
 from ..custom_properties.misc import mustardui_delete_all_custom_properties
 from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -106,12 +107,12 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         arm_obj = rig_settings.model_armature_object
         addon_prefs = context.preferences.addons[base_package].preferences

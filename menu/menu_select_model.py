@@ -2,7 +2,7 @@ from collections import Counter
 
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -16,7 +16,7 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -25,7 +25,7 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
         settings = bpy.context.scene.MustardUI_Settings
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         armatures = [x for x in bpy.data.armatures if x.MustardUI_created]
 
@@ -52,7 +52,7 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         layout = self.layout
 

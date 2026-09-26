@@ -1,7 +1,7 @@
 import bpy
 from mathutils import Vector
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 def physics_preset_poll(arm, physics_settings, type="CREATE"):
@@ -181,7 +181,7 @@ class MUSTARDUI_UL_Physics_Presets_UIList(bpy.types.UIList):
     """UIList for Physics Presets"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         return res if obj is not None else False
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):

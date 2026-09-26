@@ -21,7 +21,6 @@ from . import (  # noqa: E402, I001
     menu_configure_others,
     menu_configure_debug,
     menu_configure_complete,
-    menu_tools_creators,
     menu_quick_setup,
     menu_model,
     menu_morphs,
@@ -35,6 +34,7 @@ from . import (  # noqa: E402, I001
     menu_tools,
     menu_settings,
     menu_links,
+    menu_tools_creators,
 )
 
 
@@ -55,7 +55,6 @@ def register():
     menu_configure_others.register()
     menu_configure_debug.register()
     menu_configure_complete.register()
-    menu_tools_creators.register()
     menu_quick_setup.register()
     menu_model.register()
     menu_morphs.register()
@@ -69,9 +68,11 @@ def register():
     menu_tools.register()
     menu_settings.register()
     menu_links.register()
+    menu_tools_creators.register()
 
 
 def unregister():
+    menu_tools_creators.unregister()
     menu_links.unregister()
     menu_settings.unregister()
     menu_tools.unregister()
@@ -85,7 +86,6 @@ def unregister():
     menu_morphs.unregister()
     menu_model.unregister()
     menu_quick_setup.unregister()
-    menu_tools_creators.unregister()
     menu_configure_complete.unregister()
     menu_configure_debug.unregister()
     menu_configure_others.unregister()

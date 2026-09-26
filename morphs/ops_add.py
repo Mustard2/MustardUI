@@ -6,6 +6,7 @@ import bpy
 from .. import __package__ as base_package
 from ..menu.menu_configure import row_scale
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -48,17 +49,17 @@ class MustardUI_Morphs_Clear(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CONFIG):
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = arm.MustardUI_MorphsSettings
 
         return morphs_settings.enable_ui and morphs_settings.sections
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 
@@ -124,10 +125,10 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CONFIG):
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = arm.MustardUI_MorphsSettings
 
         if morphs_settings.type == "GENERIC":
@@ -137,7 +138,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -537,7 +538,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = arm.MustardUI_MorphsSettings
 
         if morphs_settings.diffeomorphic_genesis_version == 8:
@@ -549,7 +550,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = arm.MustardUI_MorphsSettings
 
         layout = self.layout

@@ -1,6 +1,10 @@
 import bpy
 
-from ..model_selection.active_object import active_object_operator_poll, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -14,12 +18,12 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
     def poll(cls, context):
         if can_draw_ui():
             return False
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout

@@ -5,6 +5,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -19,7 +20,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def blinkFrame(self, frame, value, blink_driver, obj, type):
 
@@ -44,7 +45,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
         addon_prefs = context.preferences.addons[base_package].preferences

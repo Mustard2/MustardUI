@@ -1,6 +1,7 @@
 import bpy
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -15,11 +16,11 @@ class MustardUI_Armature_ResetCollections(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         for coll in obj.collections_all:
             coll.is_visible = (

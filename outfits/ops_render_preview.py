@@ -4,6 +4,7 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -108,7 +109,8 @@ class MustardUI_Outfits_RenderPreview(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            active_object_operator_poll(context, config=1) and find_view3d(context)[0] is not None
+            active_object_operator_poll(context, config=ModelMode.CONFIG)
+            and find_view3d(context)[0] is not None
         )
 
     def invoke(self, context, event):
@@ -116,7 +118,7 @@ class MustardUI_Outfits_RenderPreview(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         scene = context.scene
 

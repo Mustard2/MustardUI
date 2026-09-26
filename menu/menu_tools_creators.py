@@ -1,7 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..tools_creators.ops_fix_clipping import fix_clipping_draw_settings
 from ..tools_creators.ops_squish import squish_draw_settings
 from ..warnings.can_draw_ui import can_draw_ui
@@ -11,18 +11,19 @@ from . import MainPanel
 class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
     bl_idname = "PANEL_PT_MustardUI_ToolsCreators"
     bl_label = "Creator Tools"
+    bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
     def poll(cls, context):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         settings = bpy.context.scene.MustardUI_Settings
 
         if settings.viewport_model_selection and arm.MustardUI_created:
@@ -57,10 +58,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         addon_prefs = context.preferences.addons[base_package].preferences
-        settings = bpy.context.scene.MustardUI_Settings
-        return res and addon_prefs.developer and not settings.viewport_model_selection
+        return res and addon_prefs.developer
 
     def draw_header(self, context):
         layout = self.layout
@@ -103,10 +103,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         addon_prefs = context.preferences.addons[base_package].preferences
-        settings = bpy.context.scene.MustardUI_Settings
-        return res and addon_prefs.developer and not settings.viewport_model_selection
+        return res and addon_prefs.developer
 
     def draw_header(self, context):
         layout = self.layout
@@ -136,10 +135,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         addon_prefs = context.preferences.addons[base_package].preferences
-        settings = bpy.context.scene.MustardUI_Settings
-        return res and addon_prefs.developer and not settings.viewport_model_selection
+        return res and addon_prefs.developer
 
     def draw_header(self, context):
         layout = self.layout
@@ -176,10 +174,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         addon_prefs = context.preferences.addons[base_package].preferences
-        settings = bpy.context.scene.MustardUI_Settings
-        return res and addon_prefs.developer and not settings.viewport_model_selection
+        return res and addon_prefs.developer
 
     def draw_header(self, context):
         layout = self.layout
@@ -248,10 +245,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         addon_prefs = context.preferences.addons[base_package].preferences
-        settings = bpy.context.scene.MustardUI_Settings
-        return res and addon_prefs.developer and not settings.viewport_model_selection
+        return res and addon_prefs.developer
 
     def draw_header(self, context):
         layout = self.layout

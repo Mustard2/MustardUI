@@ -1,3 +1,6 @@
+from enum import IntEnum
+
+
 # Armature data of the only item (modifier or constraint) of item_type targeting an
 # Armature, or None if there is no such item or more than one
 def single_armature_data(items, item_type, target_attr):
@@ -14,13 +17,22 @@ def single_armature_data(items, item_type, target_attr):
     return found
 
 
+# Which model mustardui_active_object resolves, and what its poll result means
+class ModelMode(IntEnum):
+    ANY = -1  # the armature regardless of its state, poll always true
+    USER = 0  # poll true when the model UI is enabled
+    CONFIG = 1  # poll true while the model is being configured
+    QUICK_SETUP = 2  # viewport armature never configured with MustardUI
+    CREATOR_TOOLS = 3  # like ANY, but no armature with Viewport Model Selection
+
+
 # Function to decide the active object for showing properties in the UI
-def mustardui_active_object(context, config=0):
+def mustardui_active_object(context, config=ModelMode.USER):
     settings = context.scene.MustardUI_Settings
 
     # Quick Setup mode: always use the viewport active object, returns True only if
     # the armature has never been configured with MustardUI (MustardUI_created=False).
-    if config == 2:
+    if config == ModelMode.QUICK_SETUP:
         if context.active_object is None:
             return False, None
         obj = context.active_object
@@ -28,6 +40,12 @@ def mustardui_active_object(context, config=0):
             return False, None
         arm = obj.data
         return not arm.MustardUI_created and settings.viewport_model_selection, arm
+
+    # Creator Tools mode: any model state, but only with panel model selection
+    if config == ModelMode.CREATOR_TOOLS:
+        if settings.viewport_model_selection:
+            return False, None
+        config = ModelMode.ANY
 
     # If Viewport Model Selection is enabled, the active object will be the active
     # object only if it is an armature
@@ -58,11 +76,11 @@ def mustardui_active_object(context, config=0):
         if arm is None:
             return False, None
 
-        if config == 1:
+        if config == ModelMode.CONFIG:
             return not arm.MustardUI_enable, arm
-        elif config == 0:
+        elif config == ModelMode.USER:
             return arm.MustardUI_enable, arm
-        elif config == -1:
+        elif config == ModelMode.ANY:
             return True, arm
 
         return False, None
@@ -71,22 +89,22 @@ def mustardui_active_object(context, config=0):
     # in the model panel
     else:
         if settings.panel_model_selection_armature is not None:
-            if config == 1:
+            if config == ModelMode.CONFIG:
                 return (
                     not settings.panel_model_selection_armature.MustardUI_enable,
                     settings.panel_model_selection_armature,
                 )
-            elif config == 0:
+            elif config == ModelMode.USER:
                 return (
                     settings.panel_model_selection_armature.MustardUI_enable,
                     settings.panel_model_selection_armature,
                 )
-            elif config == -1:
+            elif config == ModelMode.ANY:
                 return True, settings.panel_model_selection_armature
 
     return False, None
 
 
-def active_object_operator_poll(context, config=0):
+def active_object_operator_poll(context, config=ModelMode.USER):
     poll, arm = mustardui_active_object(context, config=config)
     return poll if arm is not None else False

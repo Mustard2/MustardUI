@@ -2,6 +2,7 @@ import bpy
 
 from ..misc.mirror import check_mirror
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -135,11 +136,11 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = arm.MustardUI_PhysicsSettings
 
         obj = context.scene.objects.get(self.obj_name)

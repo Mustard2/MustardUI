@@ -9,6 +9,7 @@ from ..custom_properties.misc import (
 )
 from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -211,11 +212,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
         physics_settings = arm.MustardUI_PhysicsSettings
@@ -753,7 +754,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
         self.check_outfits_not_in_use = False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is not None:
             current_outfit = arm.MustardUI_RigSettings.outfits_list
             for item in self.outfits_to_remove:
@@ -764,7 +765,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
     def invoke(self, context, event):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is not None:
             self.update_outfits_to_remove(arm.MustardUI_RigSettings)
 
@@ -772,7 +773,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
 

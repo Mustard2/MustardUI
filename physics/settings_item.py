@@ -1,7 +1,7 @@
 import bpy
 
 from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh_physics
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .update_enable import (
     bone_influence_update,
     cage_influence_update,
@@ -12,14 +12,14 @@ from .update_enable import (
 
 
 def poll_mesh(self, o):
-    res, obj = mustardui_active_object(bpy.context, config=1)
+    res, obj = mustardui_active_object(bpy.context, config=ModelMode.CONFIG)
     physics_settings = obj.MustardUI_PhysicsSettings
 
     return o.type == "MESH" and o not in [x.object for x in physics_settings.items]
 
 
 def poll_mesh_linked(self, o):
-    res, obj = mustardui_active_object(bpy.context, config=1)
+    res, obj = mustardui_active_object(bpy.context, config=ModelMode.CONFIG)
     physics_settings = obj.MustardUI_PhysicsSettings
 
     return (

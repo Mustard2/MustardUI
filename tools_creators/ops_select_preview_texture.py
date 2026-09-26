@@ -3,6 +3,7 @@ import bpy
 from ..misc.get_ui_objects import get_ui_mesh_objects
 from ..misc.materials import material_uses_nodes
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -132,11 +133,11 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = arm.MustardUI_RigSettings
 
         processed = 0

@@ -2,6 +2,7 @@ import bpy
 
 from ..misc.enum_items import keep_enum_strings
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -11,7 +12,7 @@ from .types import preset_type_items
 
 
 def mustardui_get_characters(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     items = []
 
@@ -54,7 +55,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            active_object_operator_poll(context, config=0)
+            active_object_operator_poll(context, config=ModelMode.USER)
             and len(mustardui_get_characters(None, context)) > 0
         )
 
@@ -65,7 +66,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
         self.layout.prop(self, "target_character")
 
     def execute(self, context):
-        res, source_arm = mustardui_active_object(context, config=0)
+        res, source_arm = mustardui_active_object(context, config=ModelMode.USER)
 
         target_obj = context.scene.objects.get(self.target_character)
         if not target_obj or not target_obj.data:

@@ -35,7 +35,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.move_modifier import move_modifier_after_armature
 from ..misc.scene_state import execute_restoring_state
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from . import physics_presets
 
 
@@ -105,7 +105,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         return res and context.active_object and context.active_object.type == "MESH"
 
     def remove_temp_proxy(self, context):
@@ -126,7 +126,7 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
     def _execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         physics_settings = obj.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 

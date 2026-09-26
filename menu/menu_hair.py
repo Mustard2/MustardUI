@@ -8,7 +8,7 @@ from ..misc.geometry_nodes import (
     geometry_nodes_modifier_inputs,
 )
 from ..misc.ui_collapse import ui_collapse_prop
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..physics.definitions_nodes import HAIR_DYNAMICS_NODE_GROUP, HAIR_DYNAMICS_SOCKETS
 from ..tools_creators.physics_presets import find_physics_modifier
 from ..warnings.can_draw_ui import can_draw_ui
@@ -119,7 +119,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -166,7 +166,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -175,7 +175,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -348,7 +348,7 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if not res or arm is None:
             return False
 
@@ -364,7 +364,7 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
         return modifier is not None and modifier.type == "NODES"
 
     def draw_header(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         obj = context.scene.objects[rig_settings.hair_list]
         modifier = find_physics_modifier(obj)
@@ -379,7 +379,7 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
             layout.label(text="Physics Settings")
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         obj = context.scene.objects[rig_settings.hair_list]
         modifier = find_physics_modifier(obj)
@@ -403,7 +403,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -421,7 +421,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         return res if len(obj.particle_systems) > 0 else False
 
     def draw_header(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
@@ -470,7 +470,7 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
         )
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
@@ -512,7 +512,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -534,7 +534,7 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
         return res if (hair_extras_avail or particle_avail) else False
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 
@@ -589,7 +589,7 @@ class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -607,7 +607,7 @@ class PANEL_PT_MustardUI_Hair_GlobalProperties(MainPanel, bpy.types.Panel):
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
@@ -631,7 +631,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -654,7 +654,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
         return False
 
     def draw_header(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
@@ -672,7 +672,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
         ).enable = False
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout

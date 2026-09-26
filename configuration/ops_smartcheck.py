@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..misc.move_modifier import move_modifier
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..tools_creators.ops_optimize_mods import mask_vg_name
 
 
@@ -220,7 +220,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if arm is None:
             return False
 
@@ -234,7 +234,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 

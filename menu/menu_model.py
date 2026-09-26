@@ -2,7 +2,11 @@ import bpy
 
 from ..misc.prop_utils import evaluate_rna
 from ..misc.ui_multiline import label_multiline
-from ..model_selection.active_object import active_object_operator_poll, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -120,13 +124,13 @@ class PANEL_PT_MustardUI_Model(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
         props_by_section = custom_properties_by_section(settings, obj.MustardUI_CustomProperties)
 

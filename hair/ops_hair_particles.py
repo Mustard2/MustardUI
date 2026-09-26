@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import active_object_operator_poll
+from ..model_selection.active_object import ModelMode, active_object_operator_poll
 
 
 # Function to format dynamic name
@@ -23,7 +23,7 @@ class MustardUI_Physics_ParticleHair_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 

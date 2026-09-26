@@ -5,7 +5,7 @@ from ..configuration.naming_convention import (
     strip_naming_convention_collection,
 )
 from ..misc.icons import get_hair_icon
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .ops_add import MustardUI_Property_MenuAdd
 from .ops_link import MustardUI_Property_MenuLink
 
@@ -15,7 +15,7 @@ class OUTLINER_MT_MustardUI_PropertySectionMenu(bpy.types.Menu):
     bl_label = "Add to MustardUI Properties"
 
     def draw(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -49,7 +49,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -97,7 +97,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitMenu(bpy.types.Menu):
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -161,7 +161,7 @@ class OUTLINER_MT_MustardUI_PropertyHairMenu(bpy.types.Menu):
     bl_label = "Add to MustardUI Hair"
 
     def draw(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -227,7 +227,7 @@ class MUSTARDUI_MT_Property_LinkMenu_Section(bpy.types.Menu):
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -258,7 +258,7 @@ class MUSTARDUI_MT_Property_LinkMenu_Outfit(bpy.types.Menu):
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -302,12 +302,12 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         return res
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout

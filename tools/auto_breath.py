@@ -3,7 +3,7 @@ import random
 
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 class MustardUI_Tools_AutoBreath(bpy.types.Operator):
@@ -15,14 +15,14 @@ class MustardUI_Tools_AutoBreath(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if bpy.context.selected_pose_bones is not None:
             return res and len(bpy.context.selected_pose_bones) == 1
         return False
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         if len(bpy.context.selected_pose_bones) != 1:

@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import active_object_operator_poll
+from ..model_selection.active_object import ModelMode, active_object_operator_poll
 from . import physics_presets
 
 
@@ -26,7 +26,7 @@ class MustardUI_ToolsCreators_AssignPhysics(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS):
             return False
         return any(o.type == "MESH" for o in context.selected_objects)
 

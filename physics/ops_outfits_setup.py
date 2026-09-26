@@ -3,6 +3,7 @@ import bpy
 from ..misc.mesh_intersection import MeshIntersectionChecker
 from ..misc.move_modifier import move_modifier
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -104,7 +105,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if arm is None:
             return False
 
@@ -129,7 +130,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
         scene = context.scene
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 
@@ -457,7 +458,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         layout = self.layout
 
         settings = context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = arm.MustardUI_PhysicsSettings
 
         col = layout.column(align=True)
@@ -503,10 +504,10 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CONFIG):
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = arm.MustardUI_PhysicsSettings
         for pi in physics_settings.items:
             if len(pi.intersecting_objects) > 0:
@@ -517,7 +518,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 
@@ -629,10 +630,10 @@ class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CONFIG):
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = arm.MustardUI_PhysicsSettings
         return physics_settings.enable_ui and [
             x for x in physics_settings.items if x.type == "CAGE"
@@ -640,7 +641,7 @@ class MustardUI_Physics_OutfitsSetup_Clear(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 

@@ -1,7 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 # Naming convention
 IKSpline_Curve_Name = "MustardUI.IKSpline.Curve"
@@ -47,7 +47,7 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         if arm is None:
             return False
 

@@ -4,7 +4,7 @@ from bpy.props import StringProperty
 from .. import __package__ as base_package
 from ..custom_properties.misc import assign_pointers
 from ..custom_properties.ops_rebuild import fix_custom_property_path
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
@@ -19,7 +19,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         if arm is None:
             return False
 
@@ -78,7 +78,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 
@@ -179,7 +179,7 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout

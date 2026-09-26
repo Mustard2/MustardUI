@@ -4,6 +4,7 @@ import bpy
 
 from .. import bl_info
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -46,7 +47,7 @@ class MustardUI_PresetCreate(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         new_preset_name = self.new_preset_name
@@ -55,7 +56,7 @@ class MustardUI_PresetCreate(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Invalid preset name")
             return {"CANCELLED"}
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         settings, presets, _, _, _ = get_preset_context(arm, self.preset_type)
 

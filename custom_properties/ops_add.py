@@ -5,6 +5,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -36,11 +37,11 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -294,10 +295,10 @@ class MustardUI_Property_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -336,7 +337,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def move_index(self, uilist, index):
         """Move index of an item render queue while clamping it."""
@@ -347,7 +348,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         neighbour = index + (-1 if self.direction == "UP" else 1)

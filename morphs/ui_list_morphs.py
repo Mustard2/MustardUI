@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .misc import get_cp_source
 
 
@@ -14,7 +14,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if arm is None:
             return False
 
@@ -23,7 +23,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 
@@ -81,7 +81,7 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return obj is not None
 
     def move_index(self, uilist, index):
@@ -93,7 +93,7 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = obj.MustardUI_MorphsSettings
         uilist = morphs_settings.sections[obj.mustardui_morphs_section_uilist_index].morphs
         index = obj.mustardui_morphs_uilist_index
@@ -114,11 +114,11 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
     """UIList for Morphs"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return res if obj is not None else False
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         body = rig_settings.model_body

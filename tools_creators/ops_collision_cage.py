@@ -32,6 +32,7 @@ from rna_prop_ui import rna_idprop_ui_create
 
 from ..misc import mesh_cleanup
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -65,11 +66,11 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
 

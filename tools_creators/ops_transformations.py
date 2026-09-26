@@ -3,6 +3,7 @@ from bpy.props import BoolProperty
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -19,11 +20,11 @@ class MustardUI_ToolsCreators_AffectTransform(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 

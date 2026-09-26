@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .settings_item import MustardUI_PhysicsItem
 from .settings_presets import MustardUI_Physics_Preset
 from .update_enable import enable_physics_update
@@ -36,7 +36,7 @@ def update_frame(self, context):
             update_modifiers(self, pi.object)
 
     # Also update outfits, extras, and hair
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
     if arm is None or not res:
         return
     rig_settings = arm.MustardUI_RigSettings

@@ -3,6 +3,7 @@ from bpy.props import EnumProperty, StringProperty
 
 from ..misc.prop_utils import evaluate_path, evaluate_rna
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -30,11 +31,11 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         custom_props, nu = mustardui_choose_cp(obj, self.type, context.scene)
 
         prop = getattr(context, "button_prop", None)
@@ -164,11 +165,11 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         if not 0 <= index < len(uilist):

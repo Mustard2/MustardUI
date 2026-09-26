@@ -2,6 +2,7 @@ import bpy
 
 from ..misc import mesh_cleanup
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -43,11 +44,11 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
             and obj.type == "MESH"
             and obj.data is not None
             and obj.data.shape_keys is not None
-            and active_object_operator_poll(context, config=1)
+            and active_object_operator_poll(context, config=ModelMode.CREATOR_TOOLS)
         )
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.CREATOR_TOOLS)
         rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
 

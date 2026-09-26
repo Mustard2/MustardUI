@@ -4,6 +4,7 @@ from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -163,7 +164,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def invoke(self, context, event):
         if not self.shift:
@@ -178,7 +179,7 @@ class MustardUI_OutfitVisibility(bpy.types.Operator):
             self.report({"WARNING"}, f'MustardUI - Object "{self.obj}" not found.')
             return {"CANCELLED"}
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         switched = switch_outfit_piece(arm, obj, self.shift)
         update_model_after_pieces_switch(context, arm, [obj], switched)

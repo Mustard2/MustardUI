@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .settings_item import mustardui_physics_item_type_dict
 
 
@@ -48,7 +48,7 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return obj is not None
 
     def move_index(self, uilist, index):
@@ -60,7 +60,7 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = obj.MustardUI_PhysicsSettings
         uilist = physics_settings.items
         index = obj.mustardui_physics_items_uilist_index

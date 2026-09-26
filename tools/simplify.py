@@ -1,7 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..outfits.helper_functions import find_layer_collection
 from ..outfits.ops_visibility import (
     switch_outfit_piece,
@@ -203,7 +203,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -217,7 +217,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
         settings = scene.MustardUI_Settings
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         morphs_settings = arm.MustardUI_MorphsSettings

@@ -6,6 +6,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -25,11 +26,13 @@ class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
     @classmethod
     def poll(cls, context):
         addon_prefs = context.preferences.addons[base_package].preferences
-        return active_object_operator_poll(context, config=1) and addon_prefs.developer
+        return (
+            active_object_operator_poll(context, config=ModelMode.CONFIG) and addon_prefs.developer
+        )
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
 
         if len(arm.MustardUI_Links) < 1:
             self.report({"WARNING"}, "MustardUI - No link to export.")
@@ -67,12 +70,12 @@ class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist = arm.MustardUI_Links
 
         n_import = 0
