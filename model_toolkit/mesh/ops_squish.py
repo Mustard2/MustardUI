@@ -380,12 +380,11 @@ class SquishSolver:
 
 
 class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator):
-    """Create a Shape Key on the Active Object squished by the other selected Objects (e.g.
-    clothes, straps, hands), with a live preview.\nThe Rest Pose of the models is used"""
+    """Create a Shape Key on the Active Object squished by the other selected Objects (e.g. clothes, straps, hands), with a live preview.\nThe Rest Pose of the models is used"""  # noqa: E501
 
     bl_idname = "mustardui.tools_creators_squish"
     bl_label = "Create Squish Shape Key"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     preview_tool = "SQUISH"
     preview_verb = "squished"

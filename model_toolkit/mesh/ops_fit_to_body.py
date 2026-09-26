@@ -22,21 +22,21 @@ from .shape_key_preview import (
 )
 
 
-class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
+class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
     shape_key_name: bpy.props.StringProperty(
         name="Shape Key",
-        default="Fix Clipping",
+        default="Fit to Body",
         description="Name of the Shape Key. If it already exists, it is overwritten",
     )
 
     result: bpy.props.EnumProperty(
         name="Result",
         items=(
-            ("SHAPE_KEY", "Shape Key", "Create a Shape Key with the fix"),
+            ("SHAPE_KEY", "Shape Key", "Create a Shape Key with the fit"),
             (
                 "MESH",
                 "Mesh",
-                "Apply the fix to the mesh and all its Shape Keys",
+                "Apply the fit to the mesh and all its Shape Keys",
             ),
         ),
         default="SHAPE_KEY",
@@ -93,7 +93,7 @@ class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
     check_body: bpy.props.BoolProperty(
         name="Body Vertices",
         default=True,
-        description="Also fix the body vertices passing through the outfit faces, useful when "
+        description="Also consider the body vertices passing through the outfit faces, useful when "
         "the outfit has less vertices than the body",
         update=preview_settings_update,
     )
@@ -103,7 +103,7 @@ class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
         default=1.0,
         min=0.0,
         soft_max=1.0,
-        description="Strength of the fix",
+        description="Strength of the fit",
         update=preview_settings_update,
     )
 
@@ -126,7 +126,7 @@ class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
         soft_max=0.2,
         subtype="DISTANCE",
         description="Maximum clipping depth to consider. Increase it if some vertices are not "
-        "fixed, decrease it if far vertices are moved by mistake",
+        "fitted, decrease it if far vertices are moved by mistake",
         update=preview_settings_update,
     )
 
@@ -135,7 +135,7 @@ class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
         default=10,
         min=1,
         soft_max=100,
-        description="Smoothing iterations of the fix, to spread it on the neighbouring "
+        description="Smoothing iterations of the fit, to spread it on the neighbouring "
         "vertices and preserve the outfit shape",
         update=preview_settings_update,
     )
@@ -143,7 +143,7 @@ class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
     keep_contact: bpy.props.BoolProperty(
         name="Keep Contact",
         default=True,
-        description="Keep the fixed vertices out of the body while smoothing",
+        description="Keep the fitted vertices out of the body while smoothing",
         update=preview_settings_update,
     )
 
@@ -153,7 +153,7 @@ class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
         min=0,
         soft_max=50,
         description="Relaxation iterations, to even out the vertices distribution in the "
-        "fixed area",
+        "fitted area",
         update=preview_settings_update,
     )
 
@@ -191,8 +191,8 @@ def clipping_vertices(bvh, co, indices, offset, max_depth):
     return required, directions
 
 
-class FixClippingSolver:
-    """Compute the fixed outfit, caching the results not affected by the changed settings"""
+class FitToBodySolver:
+    """Compute the fitted outfit, caching the results not affected by the changed settings"""
 
     def __init__(self, context, outfit, bodies, key_name):
         self.outfit = outfit
@@ -287,7 +287,7 @@ class FixClippingSolver:
         return self._detect[1]
 
     def solve(self, context, settings):
-        """Return the Shape Key coordinates, the number of fixed vertices and the error"""
+        """Return the Shape Key coordinates, the number of fitted vertices and the error"""
 
         target = self.target
         self.disp = None
@@ -351,16 +351,15 @@ class FixClippingSolver:
         return target.local(disp), len(contact), ""
 
 
-class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Operator):
-    """Fix the Active Object (e.g. an outfit) clipping through the other selected Objects (e.g.
-    the body), with a live preview.\nThe Rest Pose of the models is used"""
+class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operator):
+    """Fit the Active Object (e.g. an outfit) to the other selected Objects (e.g. the body), pushing out the parts clipping through them, with a live preview.\nThe Rest Pose of the models is used"""  # noqa: E501
 
     bl_idname = "mustardui.tools_creators_fix_clipping"
-    bl_label = "Fix Clipping"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_label = "Fit to Body"
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
-    preview_tool = "FIX_CLIPPING"
-    preview_verb = "fixed"
+    preview_tool = "FIT_TO_BODY"
+    preview_verb = "fitted"
 
     @classmethod
     def poll(cls, context):
@@ -372,7 +371,7 @@ class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Ope
         return any(x != obj and x.type == "MESH" for x in context.selected_objects)
 
     def preview_settings(self, context):
-        return context.window_manager.MustardUI_ToolsCreators_FixClippingSettings
+        return context.window_manager.MustardUI_ToolsCreators_FitToBodySettings
 
     def solver(self, context):
         settings = self.preview_settings(context)
@@ -388,7 +387,7 @@ class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Ope
             self.report({"ERROR"}, "MustardUI - The Basis Shape Key can not be overwritten")
             return None
 
-        return FixClippingSolver(context, outfit, bodies, name)
+        return FitToBodySolver(context, outfit, bodies, name)
 
     def execute(self, context):
         settings = self.preview_settings(context)
@@ -408,9 +407,9 @@ class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Ope
         if solver.influence is not None:
             write_vertex_group(solver.outfit, name, solver.influence)
         if settings.result == "MESH":
-            fix_clipping_apply_to_mesh(solver.outfit, shape_co - solver.target.basis)
-            fix_clipping_apply_to_children(solver, settings)
-            self.report({"INFO"}, f"MustardUI - Clipping fixed ({count} vertices)")
+            fit_to_body_apply_to_mesh(solver.outfit, shape_co - solver.target.basis)
+            fit_to_body_apply_to_children(solver, settings)
+            self.report({"INFO"}, f"MustardUI - Fitted to body ({count} vertices)")
         else:
             sk = write_shape_key(solver.outfit, name, shape_co)
             create_children_shape_keys(solver, settings, solver.outfit, sk.name)
@@ -424,7 +423,7 @@ class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Ope
             for x in context.selected_objects
             if x != context.active_object and x.type == "MESH"
         ]
-        settings.shape_key_name = f"Fix Clipping - {', '.join(sorted(bodies))}"
+        settings.shape_key_name = f"Fit to Body - {', '.join(sorted(bodies))}"
 
         solver = self.solver(context)
         if solver is None:
@@ -442,15 +441,15 @@ class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Ope
         disp = co.reshape(-1, 3) - session.solver.target.basis
 
         session.restore()
-        fix_clipping_apply_to_mesh(session.obj, disp)
-        fix_clipping_apply_to_children(session.solver, session.settings)
+        fit_to_body_apply_to_mesh(session.obj, disp)
+        fit_to_body_apply_to_children(session.solver, session.settings)
         if session.solver.influence is not None:
             name = session.settings.shape_key_name.strip() or session.key_name
             write_vertex_group(session.obj, name, session.solver.influence)
-        return f"Clipping fixed ({session.count} vertices)"
+        return f"Fitted to body ({session.count} vertices)"
 
 
-def fix_clipping_apply_to_mesh(obj, disp):
+def fit_to_body_apply_to_mesh(obj, disp):
     """Add the local displacement to the mesh and all its Shape Keys"""
 
     mesh = obj.data
@@ -464,16 +463,16 @@ def fix_clipping_apply_to_mesh(obj, disp):
     mesh.update()
 
 
-def fix_clipping_apply_to_children(solver, settings):
+def fit_to_body_apply_to_children(solver, settings):
     if settings.move_children:
         for child in solver.children:
-            fix_clipping_apply_to_mesh(child.obj, child.coordinates(solver.disp) - child.basis)
+            fit_to_body_apply_to_mesh(child.obj, child.coordinates(solver.disp) - child.basis)
 
 
-def fix_clipping_draw_settings(layout, context):
+def fit_to_body_draw_settings(layout, context):
     """Draw the settings of the running preview"""
 
-    session = preview_session("FIX_CLIPPING")
+    session = preview_session("FIT_TO_BODY")
     if session is None:
         return
     settings = session.settings
@@ -524,16 +523,16 @@ def fix_clipping_draw_settings(layout, context):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_FixClippingSettings)
-    bpy.utils.register_class(MustardUI_ToolsCreators_FixClipping)
+    bpy.utils.register_class(MustardUI_ToolsCreators_FitToBodySettings)
+    bpy.utils.register_class(MustardUI_ToolsCreators_FitToBody)
 
-    bpy.types.WindowManager.MustardUI_ToolsCreators_FixClippingSettings = bpy.props.PointerProperty(
-        type=MustardUI_ToolsCreators_FixClippingSettings
+    bpy.types.WindowManager.MustardUI_ToolsCreators_FitToBodySettings = bpy.props.PointerProperty(
+        type=MustardUI_ToolsCreators_FitToBodySettings
     )
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_FixClippingSettings
+    del bpy.types.WindowManager.MustardUI_ToolsCreators_FitToBodySettings
 
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_FixClipping)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_FixClippingSettings)
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_FitToBody)
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_FitToBodySettings)

@@ -96,6 +96,8 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         col.prop(self, "developer", text="Developer Tools (for Model creators)")
         col.prop(self, "quick_setup")
         col.prop(self, "model_toolkit")
+
+        col.separator()
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")

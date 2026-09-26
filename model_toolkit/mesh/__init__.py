@@ -1,5 +1,5 @@
 from . import (
-    ops_fix_clipping,
+    ops_fit_to_body,
     ops_link_shape_keys,
     ops_squish,
     ops_transfer_vertex_groups,
@@ -12,11 +12,11 @@ def register():
     ops_transfer_vertex_groups.register()
     shape_key_preview.register()
     ops_squish.register()
-    ops_fix_clipping.register()
+    ops_fit_to_body.register()
 
 
 def unregister():
-    ops_fix_clipping.unregister()
+    ops_fit_to_body.unregister()
     ops_squish.unregister()
     shape_key_preview.unregister()
     ops_transfer_vertex_groups.unregister()

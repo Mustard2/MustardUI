@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..model_toolkit.mesh.ops_fix_clipping import fix_clipping_draw_settings
+from ..model_toolkit.mesh.ops_fit_to_body import fit_to_body_draw_settings
 from ..model_toolkit.mesh.ops_squish import squish_draw_settings
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
@@ -159,7 +159,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
 
         row = layout.row(align=True)
         row.operator("mustardui.tools_creators_fix_clipping", icon="MOD_CLOTH")
-        fix_clipping_draw_settings(layout, context)
+        fit_to_body_draw_settings(layout, context)
 
 
 class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
