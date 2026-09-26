@@ -1,0 +1,374 @@
+import numpy as np
+from mathutils.bvhtree import BVHTree
+from mathutils.kdtree import KDTree
+
+from .scene_state import SceneState
+
+
+def deform_armatures(objects):
+    """Find the Armatures deforming or parenting the objects"""
+
+    armatures = set()
+    for obj in objects:
+        if obj.parent is not None and obj.parent.type == "ARMATURE":
+            armatures.add(obj.parent)
+        for modifier in obj.modifiers:
+            if modifier.type == "ARMATURE" and modifier.object is not None:
+                armatures.add(modifier.object)
+        for constraint in obj.constraints:
+            target = getattr(constraint, "target", None)
+            if target is not None and target.type == "ARMATURE":
+                armatures.add(target)
+    return armatures
+
+
+def mesh_triangles(mesh):
+    mesh.calc_loop_triangles()
+    tris = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int64)
+    mesh.loop_triangles.foreach_get("vertices", tris)
+    return tris.reshape(-1, 3)
+
+
+def mesh_vertex_normals(co, tris):
+    """Area weighted vertex normals of the mesh with the given coordinates"""
+
+    face_normals = np.cross(co[tris[:, 1]] - co[tris[:, 0]], co[tris[:, 2]] - co[tris[:, 0]])
+    normals = np.zeros_like(co)
+    for i in range(3):
+        for k in range(3):
+            normals[:, i] += np.bincount(tris[:, k], weights=face_normals[:, i], minlength=len(co))
+    normals /= np.maximum(np.linalg.norm(normals, axis=1), 1e-12)[:, None]
+    return normals
+
+
+def mesh_laplacian(values, edges, n_verts):
+    """Average of the neighbours values for each vertex"""
+
+    count = np.bincount(edges.ravel(), minlength=n_verts).astype(np.float64)
+    count[count == 0] = 1.0
+    avg = np.empty_like(values)
+    for i in range(values.shape[1]):
+        acc = np.bincount(edges[:, 0], weights=values[edges[:, 1], i], minlength=n_verts)
+        acc += np.bincount(edges[:, 1], weights=values[edges[:, 0], i], minlength=n_verts)
+        avg[:, i] = acc / count
+    return avg
+
+
+def shape_key_mix(obj, exclude_name=""):
+    """Current Shape Keys mix of the object, without the excluded Shape Key"""
+
+    sks = obj.data.shape_keys
+    if sks is None:
+        return None
+
+    excluded = sks.key_blocks.get(exclude_name) if exclude_name else None
+    mute = excluded.mute if excluded is not None else False
+    if excluded is not None:
+        excluded.mute = True
+    active_index = obj.active_shape_key_index
+
+    tmp = obj.shape_key_add(name="MustardUI_Mix", from_mix=True)
+    mix = np.empty(len(tmp.data) * 3, dtype=np.float64)
+    tmp.data.foreach_get("co", mix)
+    obj.shape_key_remove(tmp)
+
+    if excluded is not None:
+        excluded.mute = mute
+    obj.active_shape_key_index = active_index
+
+    return mix.reshape(-1, 3)
+
+
+def vertex_group_weights(obj, name):
+    """Weights of the Vertex Group for each vertex, None if not found"""
+
+    weights = np.ones(len(obj.data.vertices))
+    if not name:
+        return weights
+
+    vg = obj.vertex_groups.get(name)
+    if vg is None:
+        return None
+
+    weights[:] = 0.0
+    for v in obj.data.vertices:
+        for g in v.groups:
+            if g.group == vg.index:
+                weights[v.index] = g.weight
+                break
+    return weights
+
+
+def write_vertex_group(obj, name, weights):
+    """Create or replace the Vertex Group with the given weights"""
+
+    vg = obj.vertex_groups.get(name)
+    if vg is None:
+        vg = obj.vertex_groups.new(name=name)
+    vg.remove(list(range(len(weights))))
+    for i in np.nonzero(weights > 0.0)[0]:
+        vg.add([int(i)], float(weights[i]), "REPLACE")
+    return vg
+
+
+def rest_geometry(context, objects, rest_objects, use_modifiers):
+    """World-space vertices and triangles of the objects, in Rest Pose as the Shape Keys"""
+
+    geometry = []
+    state = SceneState(context)
+    try:
+        for arm in deform_armatures(list(objects) + list(rest_objects)):
+            arm.data.pose_position = "REST"
+        depsgraph = context.evaluated_depsgraph_get()
+
+        for obj in objects:
+            eval_obj = obj.evaluated_get(depsgraph) if use_modifiers else obj
+            mesh = eval_obj.to_mesh()
+
+            co = None
+            if not use_modifiers and obj.type == "MESH":
+                co = shape_key_mix(obj)
+            if co is None:
+                co = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
+                mesh.vertices.foreach_get("co", co)
+                co = co.reshape(-1, 3)
+            mat = np.array(obj.matrix_world, dtype=np.float64)
+            co = co @ mat[:3, :3].T + mat[:3, 3]
+
+            tri = mesh_triangles(mesh)
+            eval_obj.to_mesh_clear()
+            if len(tri):
+                geometry.append((co, tri))
+    finally:
+        state.restore_poses_and_frame(context)
+
+    return geometry
+
+
+def geometry_bvh(geometry, flipped=None):
+    """Single BVHTree from the geometry, reversing the faces of the flipped items"""
+
+    verts = []
+    tris = []
+    offset = 0
+    for k, (co, tri) in enumerate(geometry):
+        flip = flipped is not None and flipped[k]
+        tris.append((tri[:, ::-1] if flip else tri) + offset)
+        verts.append(co)
+        offset += len(co)
+
+    if not tris:
+        return None, None
+
+    verts = np.concatenate(verts)
+    tris = np.concatenate(tris)
+    return BVHTree.FromPolygons(verts.tolist(), tris.tolist()), verts
+
+
+def rest_coordinates(obj, key_name):
+    """Basis coordinates, and world coordinates of the current Shape Keys mix without the
+    excluded Shape Key"""
+
+    mesh = obj.data
+    basis = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
+    if mesh.shape_keys is not None:
+        mesh.shape_keys.reference_key.data.foreach_get("co", basis)
+    else:
+        mesh.vertices.foreach_get("co", basis)
+    basis = basis.reshape(-1, 3)
+    mix = shape_key_mix(obj, key_name)
+    if mix is None:
+        mix = basis
+
+    mat = np.array(obj.matrix_world, dtype=np.float64)
+    return basis, mix @ mat[:3, :3].T + mat[:3, 3], np.linalg.inv(mat[:3, :3])
+
+
+def rigid_translation(moves):
+    """Single translation covering the moves along their average direction"""
+
+    mean = moves.mean(axis=0)
+    length = np.linalg.norm(mean)
+    if length < 1e-9:
+        return np.zeros(3)
+    direction = mean / length
+    return direction * max((moves @ direction).max(), 0.0)
+
+
+class RigidChild:
+    """Child object moved rigidly with the surface of its parent under it"""
+
+    def __init__(self, obj, target, key_name):
+        self.obj = obj
+        self.basis, co, self.mat3_inv = rest_coordinates(obj, key_name)
+        kd = target.kdtree()
+        self.anchors = np.array([kd.find(c)[1] for c in co], dtype=np.int64)
+
+    def coordinates(self, disp):
+        if disp is None or not len(self.anchors):
+            return self.basis
+        return self.basis + rigid_translation(disp[self.anchors]) @ self.mat3_inv.T
+
+
+class DeformTarget:
+    """Rest data of the object receiving the Shape Key"""
+
+    def __init__(self, obj, key_name):
+        self.obj = obj
+        self.key_name = key_name
+        mesh = obj.data
+        self.n_verts = len(mesh.vertices)
+
+        # Rest coordinates, and the current Shape Keys mix the other objects are fitted on
+        self.basis, self.co, self.mat3_inv = rest_coordinates(obj, key_name)
+        self.tris = mesh_triangles(mesh)
+        self.normals = mesh_vertex_normals(self.co, self.tris)
+
+        edges = np.empty(len(mesh.edges) * 2, dtype=np.int64)
+        mesh.edges.foreach_get("vertices", edges)
+        self.edges = edges.reshape(-1, 2)
+
+        self._weights = {}
+        self._influence = (None, None)
+        self._islands = {}
+        self._kdtree = None
+
+    def kdtree(self):
+        if self._kdtree is None:
+            self._kdtree = KDTree(self.n_verts)
+            for i, c in enumerate(self.co):
+                self._kdtree.insert(c, i)
+            self._kdtree.balance()
+        return self._kdtree
+
+    def rigid_children(self, exclude):
+        """Mesh objects parented to the object, moved rigidly with it"""
+
+        def object_parented(child):
+            # Vertex parented children already follow the parent vertices
+            while child is not None and child != self.obj:
+                if child.parent_type != "OBJECT":
+                    return False
+                child = child.parent
+            return child == self.obj
+
+        return [
+            RigidChild(child, self, self.key_name)
+            for child in self.obj.children_recursive
+            if child.type == "MESH"
+            and child not in exclude
+            and len(child.data.vertices)
+            and object_parented(child)
+        ]
+
+    def weights(self, vertex_group):
+        if vertex_group not in self._weights:
+            self._weights[vertex_group] = vertex_group_weights(self.obj, vertex_group)
+        return self._weights[vertex_group]
+
+    def rigid_islands(self, vertex_group):
+        """Connected parts of the Vertex Group vertices, None if not found"""
+
+        if vertex_group not in self._islands:
+            weights = self.weights(vertex_group)
+            if weights is None:
+                return None
+
+            rigid = weights > 0.0
+            neighbours = {int(i): [] for i in np.nonzero(rigid)[0]}
+            for a, b in self.edges[rigid[self.edges[:, 0]] & rigid[self.edges[:, 1]]]:
+                neighbours[int(a)].append(int(b))
+                neighbours[int(b)].append(int(a))
+
+            islands = []
+            visited = set()
+            for start in neighbours:
+                if start in visited:
+                    continue
+                island = [start]
+                visited.add(start)
+                for i in island:
+                    for j in neighbours[i]:
+                        if j not in visited:
+                            visited.add(j)
+                            island.append(j)
+                islands.append(np.array(island))
+
+            # Closest non rigid vertices, to follow the surface under the rigid parts
+            free = np.nonzero(~rigid)[0]
+            if len(free):
+                kd = KDTree(len(free))
+                for k, i in enumerate(free):
+                    kd.insert(self.co[i], k)
+                kd.balance()
+                islands = [
+                    (island, np.array([free[kd.find(self.co[i])[1]] for i in island]))
+                    for island in islands
+                ]
+            else:
+                islands = [(island, island[:0]) for island in islands]
+            self._islands[vertex_group] = islands
+        return self._islands[vertex_group]
+
+    def rigidify(self, disp, islands):
+        """Move each island with a single translation, covering the displacement of its
+        vertices and of the surface under it along the average direction"""
+
+        for island, anchors in islands:
+            disp[island] = rigid_translation(np.concatenate((disp[island], disp[anchors])))
+        return disp
+
+    def influence(self, key, contact, radius):
+        """Weights fading from the contact vertices to 0 at the radius, cached by key"""
+
+        if self._influence[0] == (key, radius):
+            return self._influence[1]
+
+        co = self.co
+        weights = np.zeros(self.n_verts)
+        weights[contact] = 1.0
+        if radius > 0.0:
+            kd = KDTree(len(contact))
+            for k, i in enumerate(contact):
+                kd.insert(co[i], k)
+            kd.balance()
+
+            bb_min = co[contact].min(axis=0) - radius
+            bb_max = co[contact].max(axis=0) + radius
+            near = np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights == 0.0)
+            for i in np.nonzero(near)[0]:
+                d = kd.find(co[i])[2]
+                if d < radius:
+                    t = 1.0 - d / radius
+                    weights[i] = t * t * (3.0 - 2.0 * t)
+
+        self._influence = ((key, radius), weights)
+        return weights
+
+    def smooth(self, disp, iterations, contact, directions, required, keep_contact):
+        """Smooth the displacement, keeping at least the required one along the directions"""
+
+        for _ in range(iterations):
+            disp = 0.5 * disp + 0.5 * mesh_laplacian(disp, self.edges, self.n_verts)
+            if keep_contact:
+                pushed = np.einsum("ij,ij->i", disp[contact], directions)
+                missing = np.maximum(required - pushed, 0.0)
+                disp[contact] += directions * missing[:, None]
+        return disp
+
+    def relax(self, disp, iterations, factor):
+        """Relax the displaced vertices on their tangent plane"""
+
+        normals = self.normals
+        affected = np.linalg.norm(disp, axis=1) > 1e-7
+        for _ in range(iterations):
+            pos = self.co + disp
+            delta = mesh_laplacian(pos, self.edges, self.n_verts) - pos
+            delta -= normals * np.einsum("ij,ij->i", delta, normals)[:, None]
+            disp[affected] += factor * delta[affected]
+        return disp
+
+    def local(self, disp):
+        """Shape Key coordinates from the world space displacement"""
+
+        return self.basis + disp @ self.mat3_inv.T
