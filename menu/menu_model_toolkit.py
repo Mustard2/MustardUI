@@ -105,7 +105,8 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit
+        # Creator-only section: hidden once the model UI is enabled for users
+        return res and not arm.MustardUI_enable and addon_prefs.model_toolkit
 
     def draw_header(self, context):
         layout = self.layout
@@ -259,7 +260,8 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit
+        # Creator-only section: hidden once the model UI is enabled for users
+        return res and not arm.MustardUI_enable and addon_prefs.model_toolkit
 
     def draw_header(self, context):
         layout = self.layout
