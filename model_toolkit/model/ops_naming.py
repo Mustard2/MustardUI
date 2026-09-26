@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import (
+from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,

@@ -3,8 +3,8 @@ import os
 
 import bpy
 
-from .. import __package__ as base_package
-from ..misc.materials import material_uses_nodes
+from ... import __package__ as base_package
+from ...misc.materials import material_uses_nodes
 
 
 class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):

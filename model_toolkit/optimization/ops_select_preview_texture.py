@@ -1,8 +1,8 @@
 import bpy
 
-from ..misc.get_ui_objects import get_ui_mesh_objects
-from ..misc.materials import material_uses_nodes
-from ..model_selection.active_object import (
+from ...misc.get_ui_objects import get_ui_mesh_objects
+from ...misc.materials import material_uses_nodes
+from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,

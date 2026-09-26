@@ -3,8 +3,8 @@ import re
 
 import bpy
 
-from .. import __package__ as base_package
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ... import __package__ as base_package
+from ...model_selection.active_object import ModelMode, mustardui_active_object
 
 face_rig_current_version = 2
 

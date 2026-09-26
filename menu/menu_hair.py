@@ -9,8 +9,8 @@ from ..misc.geometry_nodes import (
 )
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_toolkit.physics.physics_presets import find_physics_modifier
 from ..physics.definitions_nodes import HAIR_DYNAMICS_NODE_GROUP, HAIR_DYNAMICS_SOCKETS
-from ..tools_creators.physics_presets import find_physics_modifier
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .misc import PieceDrawCache, mustardui_custom_properties_print

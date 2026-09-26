@@ -2,8 +2,8 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..tools_creators.ops_fix_clipping import fix_clipping_draw_settings
-from ..tools_creators.ops_squish import squish_draw_settings
+from ..model_toolkit.mesh.ops_fix_clipping import fix_clipping_draw_settings
+from ..model_toolkit.mesh.ops_squish import squish_draw_settings
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 

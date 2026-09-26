@@ -1,6 +1,6 @@
 import bpy
 
-from ..misc.move_modifier import move_modifier
+from ...misc.move_modifier import move_modifier
 
 sm_vg_name = "MustardUI - Smooth Corrective"
 mask_vg_name = "MustardUI - Mask"

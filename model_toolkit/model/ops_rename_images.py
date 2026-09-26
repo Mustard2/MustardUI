@@ -4,8 +4,8 @@ import re
 import bpy
 from bpy.props import BoolProperty, PointerProperty, StringProperty
 
-from ..misc.materials import material_uses_nodes
-from ..model_selection.active_object import (
+from ...misc.materials import material_uses_nodes
+from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,

@@ -34,7 +34,7 @@ from . import (  # noqa: E402, I001
     menu_tools,
     menu_settings,
     menu_links,
-    menu_tools_creators,
+    menu_model_toolkit,
 )
 
 
@@ -68,11 +68,11 @@ def register():
     menu_tools.register()
     menu_settings.register()
     menu_links.register()
-    menu_tools_creators.register()
+    menu_model_toolkit.register()
 
 
 def unregister():
-    menu_tools_creators.unregister()
+    menu_model_toolkit.unregister()
     menu_links.unregister()
     menu_settings.unregister()
     menu_tools.unregister()

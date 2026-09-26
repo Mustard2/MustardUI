@@ -5,11 +5,11 @@ from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 from rna_prop_ui import rna_idprop_ui_create
 
-from .. import __package__ as base_package
-from ..misc import mesh_cleanup
-from ..misc.move_modifier import move_modifier, move_modifier_after_armature
-from ..misc.scene_state import execute_restoring_state
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ... import __package__ as base_package
+from ...misc import mesh_cleanup
+from ...misc.move_modifier import move_modifier, move_modifier_after_armature
+from ...misc.scene_state import execute_restoring_state
+from ...model_selection.active_object import ModelMode, mustardui_active_object
 from . import physics_presets
 
 

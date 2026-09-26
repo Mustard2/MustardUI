@@ -3,7 +3,7 @@ import bpy
 from .. import __package__ as base_package
 from ..misc.move_modifier import move_modifier
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..tools_creators.ops_optimize_mods import mask_vg_name
+from ..model_toolkit.optimization.ops_optimize_mods import mask_vg_name
 
 
 def smartcheck_body_mask_from_vg(self, context, rig_settings):

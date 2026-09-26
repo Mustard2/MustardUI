@@ -68,4 +68,4 @@ The add-on has two faces: a **Configuration** UI (model creators build the panel
 - `main` must stay **linear** — PRs are merged with **Squash and Merge**, no merge commits (see `Contributing.md`).
 - Version lives in three places that must stay in sync on release: `blender_manifest.toml` (`version`), `__init__.py` (`bl_info["version"]` tuple), and the git branch name (e.g. `2026.6.0`).
 - Do not post NSFW Blender files/images/videos in Issues or PRs.
-- Creator-facing tools (the **Model Toolkit** panel, `menu/menu_tools_creators.py`) live in `tools_creators/` (physics cages, bone physics, Spline IK rigs, etc.); end-user animator tools in `tools/`.
+- Creator-facing tools (the **Model Toolkit** panel, `menu/menu_model_toolkit.py`) live in `model_toolkit/`, one subpackage per panel section (`armature/`, `model/`, `mesh/`, `physics/`, `optimization/`, plus `images/` for the node editor tools); end-user animator tools in `tools/`.

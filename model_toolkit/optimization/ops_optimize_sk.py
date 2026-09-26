@@ -1,7 +1,7 @@
 import bpy
 
-from ..misc import mesh_cleanup
-from ..model_selection.active_object import (
+from ...misc import mesh_cleanup
+from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,

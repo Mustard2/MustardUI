@@ -3,7 +3,7 @@ import time
 import bpy
 import numpy as np
 
-from ..misc.mesh_deform import write_vertex_group
+from ...misc.mesh_deform import write_vertex_group
 
 # Running preview session, only one at a time
 PREVIEW_SESSION = None

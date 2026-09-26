@@ -1,6 +1,6 @@
 import bpy
 
-from .. import __package__ as base_package
+from ... import __package__ as base_package
 
 
 class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):

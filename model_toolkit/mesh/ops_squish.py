@@ -4,7 +4,7 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
-from ..misc.mesh_deform import DeformTarget, geometry_bvh, rest_geometry, write_vertex_group
+from ...misc.mesh_deform import DeformTarget, geometry_bvh, rest_geometry, write_vertex_group
 from .shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_children_shape_keys,

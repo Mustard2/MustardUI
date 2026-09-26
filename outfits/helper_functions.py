@@ -178,7 +178,7 @@ def update_obj_masks(context, obj, visibility, mask=True):
 
 
 def update_global_obj_mask(obj):
-    from ..tools_creators.ops_optimize_mods import mask_vg_name
+    from ..model_toolkit.optimization.ops_optimize_mods import mask_vg_name
 
     activate = any(
         mod.type == "VERTEX_WEIGHT_MIX" and mod.vertex_group_a == mask_vg_name and mod.show_viewport

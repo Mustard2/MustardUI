@@ -22,6 +22,7 @@ from . import (  # noqa: E402
     menu,
     misc,
     model_selection,
+    model_toolkit,
     morphs,
     outfits,
     physics,
@@ -29,7 +30,6 @@ from . import (  # noqa: E402
     sections,
     settings,
     tools,
-    tools_creators,
     warnings,
 )
 
@@ -45,7 +45,7 @@ def register():
     warnings.register()
     armature.register()
     tools.register()
-    tools_creators.register()
+    model_toolkit.register()
     custom_properties.register()
     physics.register()
     morphs.register()
@@ -61,7 +61,7 @@ def unregister():
     morphs.unregister()
     physics.unregister()
     custom_properties.unregister()
-    tools_creators.unregister()
+    model_toolkit.unregister()
     tools.unregister()
     armature.unregister()
     warnings.unregister()

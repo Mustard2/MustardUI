@@ -1,10 +1,10 @@
 import bpy
 from bpy.props import StringProperty
 
-from .. import __package__ as base_package
-from ..custom_properties.misc import assign_pointers
-from ..custom_properties.ops_rebuild import fix_custom_property_path
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ... import __package__ as base_package
+from ...custom_properties.misc import assign_pointers
+from ...custom_properties.ops_rebuild import fix_custom_property_path
+from ...model_selection.active_object import ModelMode, mustardui_active_object
 
 
 class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):

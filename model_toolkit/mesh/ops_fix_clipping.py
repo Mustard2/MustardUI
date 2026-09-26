@@ -3,7 +3,7 @@ import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
-from ..misc.mesh_deform import (
+from ...misc.mesh_deform import (
     DeformTarget,
     geometry_bvh,
     mesh_vertex_normals,

@@ -1,7 +1,7 @@
 import bpy
 
-from ..misc.move_modifier import move_modifier
-from ..physics.definitions_nodes import (
+from ...misc.move_modifier import move_modifier
+from ...physics.definitions_nodes import (
     CLOTH_DYNAMICS_NODE_GROUP,
     CLOTH_DYNAMICS_SOCKETS,
     cloth_dynamics_asset,

@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ...model_selection.active_object import ModelMode, mustardui_active_object
 
 
 def check_bones_connections(selected_bones):

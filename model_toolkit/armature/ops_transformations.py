@@ -1,8 +1,8 @@
 import bpy
 from bpy.props import BoolProperty
 
-from .. import __package__ as base_package
-from ..model_selection.active_object import (
+from ... import __package__ as base_package
+from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
