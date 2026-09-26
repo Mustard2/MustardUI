@@ -23,7 +23,7 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="", icon="ARMATURE_DATA")
+        layout.label(text="", icon="OUTLINER_DATA_ARMATURE")
 
     def draw(self, context):
 
