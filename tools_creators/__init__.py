@@ -5,6 +5,7 @@ from . import (
     ops_bone_physics,
     ops_collision_cage,
     ops_face_controller,
+    ops_fix_clipping,
     ops_hair_cage,
     ops_jiggle,
     ops_jiggle_accurate,
@@ -19,9 +20,11 @@ from . import (
     ops_rename_images,
     ops_select_preview_texture,
     ops_spline_ik,
+    ops_squish,
     ops_transfer_vertex_groups,
     ops_transformations,
     physics_presets,
+    shape_key_preview,
 )
 
 
@@ -49,9 +52,15 @@ def register():
     ops_optimize_shaders.register()
     ops_select_preview_texture.register()
     ops_optimize_sk.register()
+    shape_key_preview.register()
+    ops_squish.register()
+    ops_fix_clipping.register()
 
 
 def unregister():
+    ops_fix_clipping.unregister()
+    ops_squish.unregister()
+    shape_key_preview.unregister()
     ops_optimize_sk.unregister()
     ops_select_preview_texture.unregister()
     ops_optimize_shaders.unregister()

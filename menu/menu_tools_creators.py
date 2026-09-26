@@ -2,6 +2,8 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import mustardui_active_object
+from ..tools_creators.ops_fix_clipping import fix_clipping_draw_settings
+from ..tools_creators.ops_squish import squish_draw_settings
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -152,6 +154,14 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
 
         row = layout.row(align=True)
         row.operator("mustardui.tools_creators_transfer_vertex_groups", icon="GROUP_VERTEX")
+
+        row = layout.row(align=True)
+        row.operator("mustardui.tools_creators_squish", icon="MOD_SHRINKWRAP")
+        squish_draw_settings(layout, context)
+
+        row = layout.row(align=True)
+        row.operator("mustardui.tools_creators_fix_clipping", icon="MOD_CLOTH")
+        fix_clipping_draw_settings(layout, context)
 
 
 class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
