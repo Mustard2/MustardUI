@@ -37,6 +37,14 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         "(enable it with Developer Tools).",
     )
 
+    # Model Toolkit
+    model_toolkit: BoolProperty(
+        default=False,
+        name="Model Toolkit",
+        description="Show the Model Toolkit panel.\nIt contains tools to edit the model: "
+        "armature, mesh, physics, naming and optimizations",
+    )
+
     # Limits of new custom properties
     new_property_limits: EnumProperty(
         name="Limits of new Properties",
@@ -87,6 +95,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         col = layout.column(align=True)
         col.prop(self, "developer", text="Developer Tools (for Model creators)")
         col.prop(self, "quick_setup")
+        col.prop(self, "model_toolkit")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")

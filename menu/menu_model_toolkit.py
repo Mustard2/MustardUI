@@ -20,7 +20,7 @@ class PANEL_PT_MustardUI_ToolsCreators(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return res and addon_prefs.model_toolkit
 
     def draw(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.ANY)
@@ -60,7 +60,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Rig(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return res and addon_prefs.model_toolkit
 
     def draw_header(self, context):
         layout = self.layout
@@ -105,7 +105,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Model(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return res and addon_prefs.model_toolkit
 
     def draw_header(self, context):
         layout = self.layout
@@ -137,7 +137,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return res and addon_prefs.model_toolkit
 
     def draw_header(self, context):
         layout = self.layout
@@ -176,7 +176,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Physics(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return res and addon_prefs.model_toolkit
 
     def draw_header(self, context):
         layout = self.layout
@@ -247,7 +247,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Optimizations(MainPanel, bpy.types.Panel)
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return res and addon_prefs.model_toolkit
 
     def draw_header(self, context):
         layout = self.layout
