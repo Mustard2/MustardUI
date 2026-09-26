@@ -13,6 +13,7 @@ from ..misc.mesh_deform import (
 from .ops_squish import SQUISH_ORIENTATION_DISTANCE, squish_creator_is_flipped
 from .shape_key_preview import (
     ShapeKeyPreviewOperator,
+    create_children_shape_keys,
     preview_draw_footer,
     preview_running,
     preview_session,
@@ -59,6 +60,15 @@ class MustardUI_ToolsCreators_FixClippingSettings(bpy.types.PropertyGroup):
         name="Rigid Vertex Group",
         description="Vertex Group of the rigid parts (e.g. buttons), which are moved without "
         "deforming them",
+        update=preview_settings_update,
+    )
+
+    move_children: bpy.props.BoolProperty(
+        name="Child Objects",
+        default=True,
+        description="Move the mesh objects parented to the Active Object (e.g. buttons) "
+        "without deforming them, following the surface under them.\nTheir Shape Keys are "
+        "driven by the main one",
         update=preview_settings_update,
     )
 
@@ -188,6 +198,8 @@ class FixClippingSolver:
         self.outfit = outfit
         self.bodies = bodies
         self.target = DeformTarget(outfit, key_name)
+        self.children = self.target.rigid_children(bodies)
+        self.disp = None
 
         self._body = {}
         self._outfit_flipped = None
@@ -278,6 +290,7 @@ class FixClippingSolver:
         """Return the Shape Key coordinates, the number of fixed vertices and the error"""
 
         target = self.target
+        self.disp = None
         weights = target.weights(settings.vertex_group)
         if weights is None:
             return target.basis, 0, "Vertex Group not found"
@@ -334,6 +347,7 @@ class FixClippingSolver:
                 return target.basis, 0, "Rigid Vertex Group not found"
             disp = target.rigidify(disp, islands)
 
+        self.disp = disp
         return target.local(disp), len(contact), ""
 
 
@@ -395,9 +409,11 @@ class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Ope
             write_vertex_group(solver.outfit, name, solver.influence)
         if settings.result == "MESH":
             fix_clipping_apply_to_mesh(solver.outfit, shape_co - solver.target.basis)
+            fix_clipping_apply_to_children(solver, settings)
             self.report({"INFO"}, f"MustardUI - Clipping fixed ({count} vertices)")
         else:
             sk = write_shape_key(solver.outfit, name, shape_co)
+            create_children_shape_keys(solver, settings, solver.outfit, sk.name)
             self.report({"INFO"}, f"MustardUI - Shape Key '{sk.name}' created ({count} vertices)")
         return {"FINISHED"}
 
@@ -427,6 +443,7 @@ class MustardUI_ToolsCreators_FixClipping(ShapeKeyPreviewOperator, bpy.types.Ope
 
         session.restore()
         fix_clipping_apply_to_mesh(session.obj, disp)
+        fix_clipping_apply_to_children(session.solver, session.settings)
         if session.solver.influence is not None:
             name = session.settings.shape_key_name.strip() or session.key_name
             write_vertex_group(session.obj, name, session.solver.influence)
@@ -445,6 +462,12 @@ def fix_clipping_apply_to_mesh(obj, disp):
             kb.data.foreach_get("co", co)
             kb.data.foreach_set("co", co + disp.ravel())
     mesh.update()
+
+
+def fix_clipping_apply_to_children(solver, settings):
+    if settings.move_children:
+        for child in solver.children:
+            fix_clipping_apply_to_mesh(child.obj, child.coordinates(solver.disp) - child.basis)
 
 
 def fix_clipping_draw_settings(layout, context):
@@ -468,6 +491,9 @@ def fix_clipping_draw_settings(layout, context):
     col.prop(settings, "check_body")
     col.prop_search(settings, "vertex_group", session.obj, "vertex_groups")
     col.prop_search(settings, "rigid_group", session.obj, "vertex_groups")
+    row = col.row()
+    row.enabled = bool(session.solver.children)
+    row.prop(settings, "move_children", text=f"Child Objects ({len(session.solver.children)})")
     col.prop(settings, "auto_influence")
     row = col.row()
     row.enabled = settings.auto_influence

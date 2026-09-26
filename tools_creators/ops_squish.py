@@ -7,6 +7,7 @@ from mathutils.kdtree import KDTree
 from ..misc.mesh_deform import DeformTarget, geometry_bvh, rest_geometry, write_vertex_group
 from .shape_key_preview import (
     ShapeKeyPreviewOperator,
+    create_children_shape_keys,
     preview_draw_footer,
     preview_running,
     preview_session,
@@ -84,6 +85,15 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
         name="Rigid Vertex Group",
         description="Vertex Group of the rigid parts (e.g. buttons), which are moved without "
         "deforming them",
+        update=preview_settings_update,
+    )
+
+    move_children: bpy.props.BoolProperty(
+        name="Child Objects",
+        default=True,
+        description="Move the mesh objects parented to the Active Object (e.g. buttons) "
+        "without deforming them, following the surface under them.\nTheir Shape Keys are "
+        "driven by the main one",
         update=preview_settings_update,
     )
 
@@ -214,6 +224,8 @@ class SquishSolver:
         self.body = body
         self.creators = creators
         self.target = DeformTarget(body, key_name)
+        self.children = self.target.rigid_children(creators)
+        self.disp = None
         self.body_bvh = BVHTree.FromPolygons(self.target.co.tolist(), self.target.tris.tolist())
 
         self._geometry = {}
@@ -322,6 +334,7 @@ class SquishSolver:
         """Return the Shape Key coordinates, the number of squished vertices and the error"""
 
         target = self.target
+        self.disp = None
         weights = target.weights(settings.vertex_group)
         if weights is None:
             return target.basis, 0, "Vertex Group not found"
@@ -364,6 +377,7 @@ class SquishSolver:
                 return target.basis, 0, "Rigid Vertex Group not found"
             disp = target.rigidify(disp, islands)
 
+        self.disp = disp
         return target.local(disp), len(contact), ""
 
 
@@ -425,6 +439,7 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
         sk = write_shape_key(solver.body, settings.shape_key_name.strip(), shape_co)
         if solver.influence is not None:
             write_vertex_group(solver.body, sk.name, solver.influence)
+        create_children_shape_keys(solver, settings, solver.body, sk.name)
         self.report({"INFO"}, f"MustardUI - Shape Key '{sk.name}' created ({contact} vertices)")
         return {"FINISHED"}
 
@@ -462,6 +477,9 @@ def squish_draw_settings(layout, context):
     col.prop(settings, "use_modifiers")
     col.prop_search(settings, "vertex_group", session.obj, "vertex_groups")
     col.prop_search(settings, "rigid_group", session.obj, "vertex_groups")
+    row = col.row()
+    row.enabled = bool(session.solver.children)
+    row.prop(settings, "move_children", text=f"Child Objects ({len(session.solver.children)})")
     col.prop(settings, "auto_influence")
     row = col.row()
     row.enabled = settings.auto_influence

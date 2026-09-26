@@ -44,21 +44,47 @@ def redraw_view3d(context):
             area.tag_redraw()
 
 
-class ShapeKeyPreviewSession:
-    """State of the running preview"""
+def write_children(solver, settings, key_name):
+    """Write the Shape Keys moving the child objects"""
 
-    def __init__(self, tool, obj, key_name, solver, settings):
-        self.tool = tool
+    for child in solver.children:
+        disp = solver.disp if settings.move_children else None
+        write_shape_key(child.obj, key_name, child.coordinates(disp))
+
+
+def link_shape_key_driver(obj, name, source, source_name):
+    """Drive the Shape Key value with the one of the source object"""
+
+    sk = obj.data.shape_keys.key_blocks[name]
+    try:
+        sk.driver_remove("value")
+    except TypeError:
+        pass
+    driver = sk.driver_add("value").driver
+    driver.type = "AVERAGE"
+    var = driver.variables.new()
+    var.type = "SINGLE_PROP"
+    var.targets[0].id = source
+    escaped = bpy.utils.escape_identifier(source_name)
+    var.targets[0].data_path = f'data.shape_keys.key_blocks["{escaped}"].value'
+
+
+def create_children_shape_keys(solver, settings, source, name):
+    """Write the child objects Shape Keys, driven by the source one"""
+
+    if not settings.move_children:
+        return
+    write_children(solver, settings, name)
+    for child in solver.children:
+        link_shape_key_driver(child.obj, name, source, name)
+
+
+class ShapeKeyBackup:
+    """Shape Key state to restore on cancel"""
+
+    def __init__(self, obj, key_name):
         self.obj = obj
         self.key_name = key_name
-        self.solver = solver
-        self.settings = settings
-        self.dirty = True
-        self.finish = ""
-        self.info = ""
-        self.count = 0
-
-        # Backup to restore on cancel
         sks = obj.data.shape_keys
         self.had_shape_keys = sks is not None
         self.backup = None
@@ -81,6 +107,32 @@ class ShapeKeyPreviewSession:
             else:
                 obj.shape_key_clear()
         obj.data.update()
+
+
+class ShapeKeyPreviewSession:
+    """State of the running preview"""
+
+    def __init__(self, tool, obj, key_name, solver, settings):
+        self.tool = tool
+        self.obj = obj
+        self.key_name = key_name
+        self.solver = solver
+        self.settings = settings
+        self.dirty = True
+        self.finish = ""
+        self.info = ""
+        self.count = 0
+
+        self.backup = ShapeKeyBackup(obj, key_name)
+        self.children_backup = [ShapeKeyBackup(c.obj, key_name) for c in solver.children]
+
+    def restore(self):
+        self.backup.restore()
+        self.restore_children()
+
+    def restore_children(self):
+        for backup in self.children_backup:
+            backup.restore()
 
 
 class ShapeKeyPreviewOperator:
@@ -118,6 +170,7 @@ class ShapeKeyPreviewOperator:
             session.info = f"{session.count} vertices {self.preview_verb} ({elapsed:.2f}s)"
 
         write_shape_key(session.obj, session.key_name, co)
+        write_children(session.solver, session.settings, session.key_name)
         redraw_view3d(context)
 
     def modal(self, context, event):
@@ -168,6 +221,15 @@ class ShapeKeyPreviewOperator:
             sk.name = name
         if session.solver.influence is not None:
             write_vertex_group(session.obj, sk.name, session.solver.influence)
+
+        # Child objects Shape Keys follow the main one
+        if session.settings.move_children:
+            for child in session.solver.children:
+                child_sk = child.obj.data.shape_keys.key_blocks[session.key_name]
+                child_sk.name = sk.name
+                link_shape_key_driver(child.obj, child_sk.name, session.obj, sk.name)
+        else:
+            session.restore_children()
         return f"Shape Key '{sk.name}' created ({session.count} vertices {self.preview_verb})"
 
     def preview_end(self, context):
