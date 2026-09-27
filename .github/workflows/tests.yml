@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        blender: [ "5.2.0", "4.5.12", "4.2.23" ]
+
+    name: Tests - Blender ${{ matrix.blender }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      BLENDER_DIR: ${{ github.workspace }}/../blender-${{ matrix.blender }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache Blender
+        id: cache-blender
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BLENDER_DIR }}
+          key: blender-tests-${{ matrix.blender }}
+
+      - name: Download Blender
+        if: steps.cache-blender.outputs.cache-hit != 'true'
+        run: |
+          VERSION=${{ matrix.blender }}
+          MAJOR_MINOR=$(echo $VERSION | cut -d '.' -f1,2)
+          URL="https://download.blender.org/release/Blender$MAJOR_MINOR/blender-$VERSION-linux-x64.tar.xz"
+          echo "Downloading Blender from: $URL"
+          wget -q -O blender.tar.xz "$URL"
+          mkdir -p "$BLENDER_DIR"
+          tar -xf blender.tar.xz -C "$BLENDER_DIR" --strip-components=1
+          rm blender.tar.xz
+
+      - name: Run tests
+        run: tests/run_blender.sh "$BLENDER_DIR/blender"

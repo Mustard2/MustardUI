@@ -18,6 +18,15 @@ ruff format .           # apply formatting
 
 Both must pass; the Blender build matrix only runs after the lint job succeeds. `armature/external/mhx` is excluded from Ruff (vendored code).
 
+Functional tests run headless in Blender (CI workflow `tests.yml`, same Blender matrix):
+
+```bash
+tests/run_blender.sh /Applications/Blender.app/Contents/MacOS/Blender            # all tests
+tests/run_blender.sh /Applications/Blender.app/Contents/MacOS/Blender -k Outfits  # filter by name
+```
+
+The script links the checkout as the `bl_ext.user_default.MustardUI` extension in a throwaway user resources dir. Tests (`tests/test_*.py`, stdlib `unittest`) build a synthetic model in `tests/helpers.py`; `BlenderTestCase` fails a test if any traceback is printed (e.g. from property update callbacks, which Blender swallows). `tests/test_ui.py` draws every registered panel and UI list against a fake layout that validates property names and operator ids. `/tests/` is excluded from the extension build in `blender_manifest.toml`.
+
 To run the add-on, install the package as a Blender Extension in Blender itself — do **not** zip/distribute from a working checkout for end users (releases come from the Releases page / extensions.blender.org).
 
 ## Architecture

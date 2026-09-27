@@ -21,3 +21,12 @@ license = [
 
 [permissions]
 files = "Import/export templates from/to disk"
+
+[build]
+# Blender defaults, plus the test suite
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".*",
+  "/*.zip",
+  "/tests/",
+]
