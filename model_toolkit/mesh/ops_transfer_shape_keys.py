@@ -3,7 +3,7 @@ import numpy as np
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
-from ...misc.mesh_deform import mesh_laplacian, mesh_triangles
+from ...misc.mesh_deform import mesh_laplacian, mesh_triangles, vertex_group_weights
 from .shape_key_preview import link_shape_key_driver
 
 
@@ -30,6 +30,27 @@ class MustardUI_ToolsCreators_TransferShapeKeys_Select(bpy.types.Operator):
         for item in context.scene.MustardUI_ToolsCreators_TransferShapeKeys_Items:
             item.use = self.use
         return {"FINISHED"}
+
+
+def transfer_targets(context):
+    source = context.active_object
+    return [
+        o
+        for o in context.selected_objects
+        if o != source and o.type == "MESH" and source is not None and o.data != source.data
+    ]
+
+
+# Keep the Enum strings alive, as Blender does not store them
+VERTEX_GROUP_ITEMS = []
+
+
+def vertex_group_items(self, context):
+    names = sorted({vg.name for o in transfer_targets(context) for vg in o.vertex_groups})
+    VERTEX_GROUP_ITEMS[:] = [("NONE", "None", "Transfer to all the vertices")] + [
+        (n, n, "") for n in names
+    ]
+    return VERTEX_GROUP_ITEMS
 
 
 def mesh_rest_coordinates(obj):
@@ -174,6 +195,19 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
         "skipped",
     )
 
+    vertex_group: bpy.props.EnumProperty(
+        name="Vertex Group",
+        items=vertex_group_items,
+        description="Restrict the Shape Keys to this Vertex Group of the targets.\nTargets "
+        "without it are not restricted",
+    )
+
+    invert_vertex_group: bpy.props.BoolProperty(
+        name="Invert",
+        default=False,
+        description="Invert the Vertex Group weights",
+    )
+
     link: bpy.props.BoolProperty(
         name="Link to Source",
         default=True,
@@ -225,6 +259,9 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
         col.prop(self, "smooth")
         col.prop(self, "threshold")
         col.prop(self, "overwrite")
+        row = col.row(align=True)
+        row.prop(self, "vertex_group")
+        row.prop(self, "invert_vertex_group", text="", icon="ARROW_LEFTRIGHT")
         col.prop(self, "link")
 
     def invoke(self, context, event):
@@ -273,11 +310,7 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - No Shape Keys to transfer")
             return {"CANCELLED"}
 
-        targets = [
-            o
-            for o in context.selected_objects
-            if o != source and o.type == "MESH" and o.data != source.data
-        ]
+        targets = transfer_targets(context)
         if not targets:
             self.report({"ERROR"}, "MustardUI - Select at least one other Mesh")
             return {"CANCELLED"}
@@ -309,7 +342,13 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
                 mesh.edges.foreach_get("vertices", edges)
                 edges = edges.reshape(-1, 2)
 
-            mappings.append((target, target_basis, to_local, indices, weights, edges))
+            mask = None
+            if self.vertex_group != "NONE" and self.vertex_group in target.vertex_groups:
+                mask = vertex_group_weights(target, self.vertex_group)
+                if self.invert_vertex_group:
+                    mask = 1.0 - mask
+
+            mappings.append((target, target_basis, to_local, indices, weights, edges, mask))
 
         created = 0
         for sk in keys:
@@ -320,7 +359,7 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
                 relative_co = shape_key_coordinates(relative)
             source_delta = (shape_key_coordinates(sk) - relative_co) @ source_mat[:3, :3].T
 
-            for target, target_basis, to_local, indices, weights, edges in mappings:
+            for target, target_basis, to_local, indices, weights, edges, mask in mappings:
                 mesh = target.data
                 existing = mesh.shape_keys.key_blocks.get(sk.name) if mesh.shape_keys else None
                 if existing is not None and not self.overwrite:
@@ -329,6 +368,8 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
                 delta = np.einsum("ij,ijk->ik", weights, source_delta[indices])
                 for _ in range(self.smooth):
                     delta = 0.5 * (delta + mesh_laplacian(delta, edges, len(delta)))
+                if mask is not None:
+                    delta *= mask[:, None]
                 delta = delta @ to_local
 
                 if np.abs(delta).max() < self.threshold:
