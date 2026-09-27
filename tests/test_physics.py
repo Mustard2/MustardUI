@@ -69,3 +69,54 @@ class TestPhysics(BlenderTestCase):
         bpy.ops.mustardui.physics_item_remove()
         self.assertEqual(len(self.physics_settings.items), 0)
         self.assertIn("Chest Cage", bpy.data.objects)
+
+
+class TestCollisionCage(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        configure_model(self.model)
+        arm = self.model["armature"]
+
+        # Dense source mesh, so that decimation changes its topology
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, location=(0, 0, 1))
+        self.source = bpy.context.active_object
+        self.source.parent = arm
+        self.source.modifiers.new("Particles", "PARTICLE_SYSTEM")
+        self.source.modifiers.new("Dynamic Paint", "DYNAMIC_PAINT")
+        self.source.modifiers.new("Collision", "COLLISION")
+
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, location=(0, 0, 1))
+        self.target = bpy.context.active_object
+        self.target.parent = arm
+        deform = self.source.modifiers.new("Surface Deform", "SURFACE_DEFORM")
+        deform.target = self.target
+        smooth = self.source.modifiers.new("Corrective Smooth", "CORRECTIVE_SMOOTH")
+        smooth.rest_source = "BIND"
+        with bpy.context.temp_override(object=self.source):
+            bpy.ops.object.surfacedeform_bind(modifier=deform.name)
+            bpy.ops.object.correctivesmooth_bind(modifier=smooth.name)
+        set_active(self.source)
+
+    # Non-deforming modifiers are removed, and bound modifiers are rebound to the new topology
+    def test_create_cage(self):
+        bpy.ops.mustardui.tools_creators_create_collision_cage(decimate_proxy=True)
+        cage = bpy.context.active_object
+        self.assertNotEqual(cage, self.source)
+        types = {m.type for m in cage.modifiers}
+        self.assertFalse(types & {"PARTICLE_SYSTEM", "DYNAMIC_PAINT"})
+        self.assertEqual([m.type for m in cage.modifiers].count("COLLISION"), 1)
+        self.assertEqual(len(self.source.particle_systems), 1)
+        self.assertTrue(cage.modifiers["Surface Deform"].is_bound)
+        self.assertTrue(cage.modifiers["Corrective Smooth"].is_bind)
+
+        # Cage follows its Surface Deform target
+        def lowest_z():
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            return min(v.co.z for v in cage.evaluated_get(depsgraph).data.vertices)
+
+        before = lowest_z()
+        for v in self.target.data.vertices:
+            v.co.z += 1.0
+        self.target.data.update()
+        self.assertAlmostEqual(lowest_z() - before, 1.0, places=2)

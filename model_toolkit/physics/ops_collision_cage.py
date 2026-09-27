@@ -30,12 +30,17 @@ the scope of MustardUI
 import bpy
 from rna_prop_ui import rna_idprop_ui_create
 
+from ... import __package__ as base_package
 from ...misc import mesh_cleanup
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...physics.ops_rebind import bind_object
+
+# Modifiers that do not deform the mesh, useless on a cage
+NON_DEFORMING_MODIFIERS = {"PARTICLE_SYSTEM", "COLLISION", "DYNAMIC_PAINT", "FLUID"}
 
 
 class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
@@ -123,6 +128,10 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
                 if modifier.type in {"SUBSURF", "MULTIRES"}:
                     obj.modifiers.remove(modifier)
 
+        def remove_non_deforming_modifiers(obj):
+            for modifier in [m for m in obj.modifiers if m.type in NON_DEFORMING_MODIFIERS]:
+                obj.modifiers.remove(modifier)
+
         def create_proxy_for_object(obj, vertex_selection_required):
             """Create a proxy object for the given object with specified modifiers and drivers."""  # noqa: E501
             bpy.ops.object.select_all(action="DESELECT")
@@ -150,6 +159,7 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
             duplicate_obj.display_type = "WIRE"
             remove_subdiv_and_multires_modifiers(duplicate_obj)
+            remove_non_deforming_modifiers(duplicate_obj)
             if vertex_selection_required:
                 create_vertex_group_from_selection(
                     obj
@@ -322,6 +332,16 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
             bpy.ops.mesh.decimate(ratio=self.decimate_ratio)
             # Exit edit mode
             bpy.ops.object.editmode_toggle()
+
+        # Topology changed, so bindings copied from the original mesh are invalid
+        addon_prefs = context.preferences.addons[base_package].preferences
+        for cage in proxy_map.values():
+            targets = [
+                m.target if m.type == "SURFACE_DEFORM" else m.object
+                for m in cage.modifiers
+                if m.type in {"SURFACE_DEFORM", "MESH_DEFORM"}
+            ]
+            bind_object(cage, [t for t in targets if t is not None], addon_prefs)
 
         # Add created cages to the Physics Panel
         for cage in proxy_map.values():
