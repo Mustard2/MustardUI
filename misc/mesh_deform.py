@@ -375,6 +375,9 @@ class DeformTarget:
             return disp
         edges = self.edges
         touching = moving[edges[:, 0]] | moving[edges[:, 1]]
+        # Only loose vertices move: nothing to smooth
+        if not np.any(touching):
+            return disp
         length = np.median(
             np.linalg.norm(self.co[edges[touching, 0]] - self.co[edges[touching, 1]], axis=1)
         )

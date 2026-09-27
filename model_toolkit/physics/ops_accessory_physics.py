@@ -591,6 +591,30 @@ def bind_surface_deform(context, obj, modifier):
     return modifier.is_bound
 
 
+class CreatedData:
+    """Data created by the tool, to remove it if the tool fails"""
+
+    def __init__(self, target):
+        self.target = target
+        self.modifiers = set(target.modifiers.keys())
+        self.groups = set(target.vertex_groups.keys())
+        self.data = {
+            name: set(getattr(bpy.data, name).keys())
+            for name in ("objects", "meshes", "collections")
+        }
+
+    def remove(self):
+        target = self.target
+        for modifier in [m for m in target.modifiers if m.name not in self.modifiers]:
+            target.modifiers.remove(modifier)
+        for group in [g for g in target.vertex_groups if g.name not in self.groups]:
+            target.vertex_groups.remove(group)
+        for name, existing in self.data.items():
+            collection = getattr(bpy.data, name)
+            for datablock in [x for x in collection if x.name not in existing]:
+                collection.remove(datablock)
+
+
 def binary_group(obj, name, indices):
     group = obj.vertex_groups.get(name)
     if group is not None:
@@ -697,7 +721,6 @@ class MustardUI_ToolsCreators_AccessoryPhysics(bpy.types.Operator):
     def _execute(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         rig_settings = arm.MustardUI_RigSettings
-        physics_settings = arm.MustardUI_PhysicsSettings
         body = rig_settings.model_body
         target = context.active_object
 
@@ -724,6 +747,18 @@ class MustardUI_ToolsCreators_AccessoryPhysics(bpy.types.Operator):
         if body is None and not any(m.type == "ARMATURE" for m in target.modifiers):
             self.report({"ERROR"}, "MustardUI - The accessory has no Armature modifier.")
             return {"CANCELLED"}
+
+        created = CreatedData(target)
+        try:
+            return self.build(context, arm, target, armature)
+        except Exception:
+            created.remove()
+            raise
+
+    def build(self, context, arm, target, armature):
+        rig_settings = arm.MustardUI_RigSettings
+        physics_settings = arm.MustardUI_PhysicsSettings
+        body = rig_settings.model_body
 
         # Everything is computed in rest pose, on the first frame
         context.scene.frame_set(context.scene.frame_start)

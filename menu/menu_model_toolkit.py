@@ -159,7 +159,7 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         squish_draw_settings(layout, context)
 
         row = layout.row(align=True)
-        row.operator("mustardui.tools_creators_fix_clipping", icon="MOD_CLOTH")
+        row.operator("mustardui.tools_creators_fit_to_body", icon="MOD_CLOTH")
         fit_to_body_draw_settings(layout, context)
 
 

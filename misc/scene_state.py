@@ -40,12 +40,15 @@ class SceneState:
 
 def execute_restoring_state(operator, context):
     """Run operator._execute, restoring pose positions and frame, and also the mode and
-    selection if it fails."""
+    selection if it fails or is cancelled."""
     state = SceneState(context)
     try:
         result = operator._execute(context)
     except Exception:
         state.restore_all(context)
         raise
-    state.restore_poses_and_frame(context)
+    if "CANCELLED" in result:
+        state.restore_all(context)
+    else:
+        state.restore_poses_and_frame(context)
     return result

@@ -487,7 +487,7 @@ class FitToBodySolver:
 class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operator):
     """Fit the Active Object (e.g. an outfit) to the other selected Objects (e.g. the body), pushing out the parts clipping through them, with a live preview.\nThe Rest Pose of the models is used"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_fix_clipping"
+    bl_idname = "mustardui.tools_creators_fit_to_body"
     bl_label = "Fit to Body"
     bl_options = {"REGISTER", "UNDO"}
 

@@ -1,4 +1,5 @@
 import time
+import traceback
 
 import bpy
 import numpy as np
@@ -144,9 +145,12 @@ class ShapeKeyPreviewSession:
         self.followers_backup = [ShapeKeyBackup(f.obj, key_name) for f in solver.followers]
 
     def restore(self):
-        self.backup.restore()
-        for backup in self.followers_backup:
-            backup.restore()
+        for backup in [self.backup, *self.followers_backup]:
+            # The object might have been removed
+            try:
+                backup.restore()
+            except ReferenceError:
+                pass
 
 
 class ShapeKeyPreviewOperator:
@@ -162,7 +166,10 @@ class ShapeKeyPreviewOperator:
             self.preview_tool, obj, key_name, solver, self.preview_settings(context)
         )
         context.window_manager.MustardUI_ToolsCreators_PreviewShow = True
-        self.preview_update(context)
+        try:
+            self.preview_update(context)
+        except Exception as error:
+            return self.preview_failed(context, error)
 
         wm = context.window_manager
         self._timer = wm.event_timer_add(0.05, window=context.window)
@@ -191,6 +198,12 @@ class ShapeKeyPreviewOperator:
         redraw_view3d(context)
 
     def modal(self, context, event):
+        try:
+            return self.preview_modal(context, event)
+        except Exception as error:
+            return self.preview_failed(context, error)
+
+    def preview_modal(self, context, event):
         session = PREVIEW_SESSION
         # The object might have been removed
         try:
@@ -255,16 +268,22 @@ class ShapeKeyPreviewOperator:
     def preview_end(self, context):
         global PREVIEW_SESSION
         PREVIEW_SESSION = None
-        context.window_manager.event_timer_remove(self._timer)
+        if getattr(self, "_timer", None) is not None:
+            context.window_manager.event_timer_remove(self._timer)
+            self._timer = None
         if context.workspace is not None:
             context.workspace.status_text_set(None)
         redraw_view3d(context)
 
+    def preview_failed(self, context, error):
+        traceback.print_exc()
+        self.cancel(context)
+        self.report({"ERROR"}, f"MustardUI - {self.bl_label} failed: {error}")
+        return {"CANCELLED"}
+
     def cancel(self, context):
-        try:
+        if PREVIEW_SESSION is not None:
             PREVIEW_SESSION.restore()
-        except ReferenceError:
-            pass
         self.preview_end(context)
 
 
