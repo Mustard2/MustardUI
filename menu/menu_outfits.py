@@ -255,8 +255,9 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
         outfits_list = rig_settings.outfits_list
 
-        if outfits_list != "Nude":
-            collection = bpy.data.collections[outfits_list]
+        collection = bpy.data.collections.get(outfits_list)
+
+        if outfits_list != "Nude" and collection is not None:
             items = outfit_extract_items_from_collection(
                 collection, rig_settings.outfit_config_subcollections
             )
