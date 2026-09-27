@@ -1,11 +1,13 @@
 import bpy
 from bpy.props import BoolProperty, StringProperty
 
+from .. import __package__ as base_package
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from .helper_functions import rename_model_ids
 
 
 def remove_common_prefix_suffix(strings):
@@ -121,16 +123,20 @@ class MustardUI_RenameOutfit(bpy.types.Operator):
                 return {"FINISHED"}
             outfit_coll = uilist[index].collection
 
-        # Rename Outfit pieces
-        for pp in rename_outfits_class:
-            pp.object.name = pp.name
-
-        # Rename Collection
-        outfit_coll.name = rig_settings.model_name + " " + self.name
+        # Rename Outfit pieces and Collection
+        names = {pp.object: pp.name for pp in rename_outfits_class if pp.object is not None}
+        if outfit_coll is not None:
+            names[outfit_coll] = rig_settings.model_name + " " + self.name
+        addon_prefs = context.preferences.addons[base_package].preferences
+        fixed = rename_model_ids(arm, names, addon_prefs)
 
         rename_outfits_class.clear()
 
-        self.report({"INFO"}, "MustardUI - Collection Objects renamed with MustardUI convention")
+        self.report(
+            {"INFO"},
+            "MustardUI - Collection Objects renamed with MustardUI convention"
+            f" ({fixed} custom property paths updated)",
+        )
 
         return {"FINISHED"}
 

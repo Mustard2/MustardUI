@@ -204,6 +204,46 @@ def update_masks(context, rig_settings, visibility=None):
         update_global_obj_mask(obj)
 
 
+def rename_model_ids(arm, names, addon_prefs):
+    """Rename IDs of the model ({id: new name}), updating the mask modifiers named after
+    renamed Objects and the custom property paths. Returns the number of paths updated."""
+    from ..custom_properties.misc import assign_pointers
+    from ..custom_properties.ops_rebuild import fix_custom_property_path
+
+    custom_properties_lists = [
+        arm.MustardUI_CustomProperties,
+        arm.MustardUI_CustomPropertiesOutfit,
+        arm.MustardUI_CustomPropertiesHair,
+    ]
+    # Store pointers to the IDs while the paths still resolve
+    for custom_properties in custom_properties_lists:
+        assign_pointers(custom_properties, addon_prefs)
+
+    renamed = {}
+    for id_block, name in names.items():
+        old_name = id_block.name
+        id_block.name = name
+        if id_block.name != old_name and id_block.id_type == "OBJECT":
+            renamed[old_name] = id_block.name
+
+    # Masks are linked to the pieces by name ("|" separated)
+    if renamed:
+        for obj, _ in get_mask_objects(arm.MustardUI_RigSettings):
+            for mod in obj.modifiers:
+                if mod.type not in ("MASK", "VERTEX_WEIGHT_MIX"):
+                    continue
+                parts = mod.name.split("|")
+                if any(x in renamed for x in parts):
+                    mod.name = "|".join(renamed.get(x, x) for x in parts)
+
+    fixed = 0
+    for custom_properties in custom_properties_lists:
+        for custom_prop in custom_properties:
+            res = fix_custom_property_path(arm, custom_properties, custom_prop, addon_prefs)
+            fixed += res == "FIXED"
+    return fixed
+
+
 def outfits_update_armature_collections(
     rig_settings, arm, is_extras_hidden=None, outfits=False, hair=False
 ):
