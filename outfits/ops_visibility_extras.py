@@ -1,5 +1,6 @@
 import bpy
 
+from ..armature.helper_functions import outfits_update_armature_collections
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -7,7 +8,6 @@ from ..model_selection.active_object import (
 )
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
-    outfits_update_armature_collections,
     update_extras_visibility,
 )
 

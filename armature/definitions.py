@@ -4,6 +4,7 @@ from bpy.props import BoolProperty, EnumProperty
 from ..misc.icons import mustardui_icon_list
 from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh
 from ..model_selection.active_object import ModelMode, mustardui_active_object
+from .helper_functions import outfits_update_armature_collections
 
 
 # Class for single bone collection
@@ -82,37 +83,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     # Outfit layers
     def armature_visibility_outfits_update(self, context):
         poll, arm = mustardui_active_object(context, config=ModelMode.USER)
-        armature_settings = arm.MustardUI_ArmatureSettings
-        rig_settings = arm.MustardUI_RigSettings
-        collections = arm.collections_all
-        for bcoll in collections:
-            bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
-            if bcoll_settings.outfit_switcher_enable:
-                outfit_switcher_collection = bcoll_settings.outfit_switcher_collection
-                if outfit_switcher_collection == rig_settings.hair_collection:
-                    continue
-
-                outfit_switcher_object = bcoll_settings.outfit_switcher_object
-                check_coll = (
-                    bpy.data.collections[rig_settings.outfits_list] == outfit_switcher_collection
-                    if rig_settings.outfits_list != "Nude"
-                    else False
-                )
-                if rig_settings.extras_collection is not None:
-                    check_coll = (
-                        check_coll or outfit_switcher_collection == rig_settings.extras_collection
-                    )
-
-                if outfit_switcher_object is None:
-                    bcoll.is_visible = armature_settings.outfits and check_coll
-                else:
-                    bcoll.is_visible = (
-                        armature_settings.outfits
-                        and not outfit_switcher_object.MustardUI_outfit_visibility
-                        and (check_coll or outfit_switcher_object.MustardUI_outfit_lock)
-                    )
-
-        return
+        outfits_update_armature_collections(arm.MustardUI_RigSettings, arm, outfits=True)
 
     outfits: bpy.props.BoolProperty(
         default=True,
@@ -138,30 +109,7 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
                     )
 
         # Bone Collections Hair as Outfits
-        collections = arm.collections_all
-        for bcoll in collections:
-            bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
-            if bcoll_settings.outfit_switcher_enable:
-                outfit_switcher_collection = bcoll_settings.outfit_switcher_collection
-                if outfit_switcher_collection != rig_settings.hair_collection:
-                    continue
-
-                outfit_switcher_object = bcoll_settings.outfit_switcher_object
-                check_coll = rig_settings.hair_collection == outfit_switcher_collection
-                if rig_settings.hair_extras_collection is not None:
-                    check_coll = (
-                        check_coll
-                        or outfit_switcher_collection == rig_settings.hair_extras_collection
-                    )
-
-                if outfit_switcher_object is None:
-                    bcoll.is_visible = armature_settings.hair and check_coll
-                else:
-                    bcoll.is_visible = (
-                        armature_settings.hair
-                        and check_coll
-                        and not outfit_switcher_object.hide_viewport
-                    )
+        outfits_update_armature_collections(rig_settings, arm, hair=True)
 
     hair: bpy.props.BoolProperty(
         default=True,

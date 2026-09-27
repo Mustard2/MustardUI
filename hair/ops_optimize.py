@@ -1,12 +1,12 @@
 import bpy
 from bpy.props import IntProperty
 
+from ..armature.helper_functions import outfits_update_armature_collections
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ..outfits.helper_functions import outfits_update_armature_collections
 from ..tools.simplify import simplify_hair
 
 

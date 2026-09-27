@@ -1,5 +1,6 @@
 import bpy
 
+from ..armature.helper_functions import outfits_update_armature_collections
 from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..hair.helper_functions import apply_hair_visibility, hair_switcher_active
 from ..misc.set_bool import set_bool
@@ -11,7 +12,6 @@ from ..model_selection.active_object import (
 from ..physics.update_enable import enable_physics_update
 from .helper_functions import (
     get_mask_visibility,
-    outfits_update_armature_collections,
     update_extras_visibility,
     update_masks,
 )

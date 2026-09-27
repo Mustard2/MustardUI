@@ -5,6 +5,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from .helper_functions import outfits_update_armature_collections
 
 
 class MustardUI_Armature_ResetCollections(bpy.types.Operator):
@@ -29,10 +30,8 @@ class MustardUI_Armature_ResetCollections(bpy.types.Operator):
             )
             coll.is_solo = False
 
-        # Outfits visibility sync, (Hair does not seem to be affected by the reset)
-        arm = obj.MustardUI_ArmatureSettings
-
-        arm.armature_visibility_outfits_update(context)
+        # Outfit and Hair switchers are not in the UI, restore them
+        outfits_update_armature_collections(obj.MustardUI_RigSettings, obj)
 
         return {"FINISHED"}
 

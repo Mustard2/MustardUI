@@ -1,5 +1,6 @@
 import bpy
 
+from ..armature.helper_functions import outfits_update_armature_collections
 from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import (
@@ -9,7 +10,6 @@ from ..model_selection.active_object import (
 )
 from ..outfits.helper_functions import (
     find_layer_collection,
-    outfits_update_armature_collections,
     update_masks,
 )
 from .helper_functions import (
