@@ -1,3 +1,6 @@
+from ..misc.set_bool import set_bool
+
+
 # Function to add an option to the object, if not already there
 def mustardui_add_morph(
     collection, item, custom_property=True, custom_property_source="ARMATURE_OBJ", existing=None
@@ -169,9 +172,9 @@ def muteDazFcurves(
                 if muteDazFcurves_facscheck(
                     mutefacs, fcu.data_path, check_bones_rot, check_bones_loc
                 ) and muteDazFcurves_exceptionscheck(muteexceptions, fcu.data_path, exceptions):
-                    fcu.mute = mute
+                    set_bool(fcu, "mute", mute)
                 else:
-                    fcu.mute = False
+                    set_bool(fcu, "mute", False)
 
     if rig and rig.animation_data:
         for fcu in rig.animation_data.drivers:
@@ -186,7 +189,7 @@ def muteDazFcurves(
                 ) and muteDazFcurves_facscheck(
                     mutefacs, fcu.data_path, check_bones_rot, check_bones_loc
                 ):
-                    fcu.mute = mute
+                    set_bool(fcu, "mute", mute)
 
     for ob in rig.children:
         if ob.type == "MESH":
@@ -200,9 +203,9 @@ def muteDazFcurves(
                         ) and muteDazFcurves_exceptionscheck(
                             muteexceptions, fcu.data_path, exceptions
                         ):
-                            fcu.mute = mute
+                            set_bool(fcu, "mute", mute)
                         else:
-                            fcu.mute = False
+                            set_bool(fcu, "mute", False)
                         sname = words[1]
                         skey = skeys.key_blocks.get(sname) if muteSK else None
                         if skey is not None:
@@ -216,6 +219,6 @@ def muteDazFcurves(
                                 if muteDazFcurves_exceptionscheck(
                                     muteexceptions, sname, exceptions
                                 ):
-                                    skey.mute = mute
+                                    set_bool(skey, "mute", mute)
                                 else:
-                                    skey.mute = False
+                                    set_bool(skey, "mute", False)

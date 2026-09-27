@@ -1,6 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
+from ..misc.set_bool import set_bool
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -30,21 +31,19 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         morphs_settings = arm.MustardUI_MorphsSettings
         return morphs_settings.enable_ui
 
+    # Paths of the custom properties, joined once per run ("\n" is never in a data path)
+    def custom_properties_paths(self, arm):
+        custom_properties = [
+            *arm.MustardUI_CustomProperties,
+            *arm.MustardUI_CustomPropertiesOutfit,
+            *arm.MustardUI_CustomPropertiesHair,
+        ]
+        return "\n".join(cp.rna + "." + cp.path for cp in custom_properties)
+
     # Function to prevent the DisableDriver operator to switch off custom
     # properties drivers
-    def check_driver(self, arm, datapath):
-
-        for cp in arm.MustardUI_CustomProperties:
-            if datapath in cp.rna + "." + cp.path:
-                return False
-        for cp in arm.MustardUI_CustomPropertiesOutfit:
-            if datapath in cp.rna + "." + cp.path:
-                return False
-        for cp in arm.MustardUI_CustomPropertiesHair:
-            if datapath in cp.rna + "." + cp.path:
-                return False
-
-        return True
+    def check_driver(self, cp_paths, datapath):
+        return datapath not in cp_paths
 
     def execute(self, context):
 
@@ -58,6 +57,7 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
         context.view_layer.objects.active = rig_settings.model_armature_object
 
         warnings = 0
+        cp_paths = self.custom_properties_paths(arm)
 
         mutepJCM = morphs_settings.diffeomorphic_enable_pJCM
 
@@ -113,15 +113,15 @@ class MustardUI_DazMorphs_DisableDrivers(bpy.types.Operator):
                             )
                             and "MustardUINotDisable" not in driver.data_path
                         ):
-                            driver.mute = self.check_driver(arm, driver.data_path)
+                            set_bool(driver, "mute", self.check_driver(cp_paths, driver.data_path))
                         else:
-                            driver.mute = False
+                            set_bool(driver, "mute", False)
 
         animation_data = rig_settings.model_armature_object.animation_data
         if animation_data is not None:
             for driver in animation_data.drivers:
                 if "evalMorphs" in driver.driver.expression:
-                    driver.mute = self.check_driver(arm, driver.data_path)
+                    set_bool(driver, "mute", self.check_driver(cp_paths, driver.data_path))
 
         context.view_layer.objects.active = aobj
 
@@ -217,7 +217,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                             )
                             and "MustardUINotDisable" not in driver.data_path
                         ):
-                            driver.mute = False
+                            set_bool(driver, "mute", False)
 
         animation_data = rig_settings.model_armature_object.animation_data
         if animation_data is not None:
@@ -227,7 +227,7 @@ class MustardUI_DazMorphs_EnableDrivers(bpy.types.Operator):
                     or driver.driver.expression == "0.0"
                     or driver.driver.expression == "-0.0"
                 ):
-                    driver.mute = False
+                    set_bool(driver, "mute", False)
 
         context.view_layer.objects.active = aobj
 
