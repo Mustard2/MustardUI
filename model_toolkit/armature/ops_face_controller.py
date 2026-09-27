@@ -345,6 +345,14 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
         blend_file = directory + "/resources/face_controller.blend"
         collection_name = "Face Controller"
 
+        # Check the head bone before modifying the model
+        if self.head_bone not in model_armature.data.bones:
+            self.report(
+                {"ERROR"},
+                f"MustardUI - Head bone '{self.head_bone}' not found in the armature.",
+            )
+            return {"CANCELLED"}
+
         # Check if blend_file is set
         if not os.path.exists(blend_file):
             self.report(
@@ -385,13 +393,14 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
             # Parent the face controller to the head bone
             bpy.context.view_layer.objects.active = model_armature
             bpy.ops.object.mode_set(mode="EDIT")
-            head_bone = model_armature.data.edit_bones.get("head")
+            head_bone = model_armature.data.edit_bones.get(self.head_bone)
             face_controls_bone = model_armature.data.edit_bones.get("face_Controls_XYZ")
 
             if not head_bone or not face_controls_bone:
                 self.report(
                     {"ERROR"},
-                    "'head' or 'face_controls_XYZ' bone not found in the armature.",
+                    f"MustardUI - '{self.head_bone}' or 'face_Controls_XYZ' bone not found "
+                    "in the armature.",
                 )
                 bpy.ops.object.mode_set(
                     mode="OBJECT"
@@ -526,11 +535,14 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         model_armature = rig_settings.model_armature_object
 
-        head_bone = model_armature.pose.bones.get("head")
-        if head_bone is not None:
+        names = [b.name for b in model_armature.pose.bones]
+        if "head" in names:
             self.head_bone = "head"
         else:
-            self.head_bone = ""
+            matches = [n for n in names if n.lower() == "head"] or sorted(
+                (n for n in names if "head" in n.lower()), key=len
+            )
+            self.head_bone = matches[0] if matches else ""
 
         return context.window_manager.invoke_props_dialog(self, width=300)
 
