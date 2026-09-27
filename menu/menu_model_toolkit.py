@@ -152,6 +152,9 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         row.operator("mustardui.tools_creators_link_shape_keys", icon="DRIVER_TRANSFORM")
 
         row = layout.row(align=True)
+        row.operator("mustardui.tools_creators_transfer_shape_keys", icon="SHAPEKEY_DATA")
+
+        row = layout.row(align=True)
         row.operator("mustardui.tools_creators_transfer_vertex_groups", icon="GROUP_VERTEX")
 
         row = layout.row(align=True)
