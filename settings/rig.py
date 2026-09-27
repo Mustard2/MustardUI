@@ -221,6 +221,17 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "modifiers of the Body and children Objects",
     )
 
+    # Material normals tool
+    body_enable_material_normal_nodes: bpy.props.BoolProperty(
+        default=True,
+        description="Enable the Eevee Optimized Normals "
+        "tool.\nThis tool substitutes normal nodes "
+        "with more efficient ones, which can be "
+        "useful to get better performance in Render "
+        "Viewport mode",
+        name="Eevee Optimized Normals tool",
+    )
+
     # Custom properties
     body_custom_properties_icons: bpy.props.BoolProperty(
         default=False,

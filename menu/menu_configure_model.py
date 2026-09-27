@@ -35,7 +35,9 @@ class PANEL_PT_MustardUI_InitPanel_Model(MainPanel, bpy.types.Panel):
 
         box = layout.box()
         box.label(text="Global Properties", icon="PROPERTIES")
-        box.prop(rig_settings, "body_enable_preserve_volume")
+        col = box.column(align=True)
+        col.prop(rig_settings, "body_enable_material_normal_nodes")
+        col.prop(rig_settings, "body_enable_preserve_volume")
 
         # Sections
         box = layout.box()
