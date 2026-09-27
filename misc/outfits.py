@@ -35,22 +35,17 @@ def outfit_poll_mesh(self, object):
 
 
 def outfit_poll_mesh_physics(self, object):
+    if self.outfit_collection is None or object == self.object or object.type != "MESH":
+        return False
+
     rig_settings = self.id_data.MustardUI_RigSettings
     physics_settings = self.id_data.MustardUI_PhysicsSettings
-    if self.outfit_collection is not None:
-        physics_items = [x.object for x in physics_settings.items]
-        items = []
-        for obj in (
-            self.outfit_collection.all_objects
-            if rig_settings.outfit_config_subcollections
-            else self.outfit_collection.objects
-        ):
-            if obj not in physics_items:
-                items.append(obj)
-        for children in [x.children for x in items]:
-            for obj in children:
-                if obj not in physics_items:
-                    items.append(obj)
-        if object in [x for x in items] and object != self.object:
-            return object.type == "MESH"
-    return False
+    physics_objects = {x.object for x in physics_settings.items}
+    pieces = set(
+        self.outfit_collection.all_objects
+        if rig_settings.outfit_config_subcollections
+        else self.outfit_collection.objects
+    )
+    pieces -= physics_objects
+
+    return object in pieces or (object not in physics_objects and object.parent in pieces)
