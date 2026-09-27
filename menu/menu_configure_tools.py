@@ -37,9 +37,25 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         box.label(text="Enable Tools", icon="MODIFIER")
         col = box.column(align=True)
         col.prop(simplify_settings, "simplify_main_enable")
+
+        col.separator()
+
+        col.prop(tools_settings, "lipsync_enable")
         col.prop(tools_settings, "autobreath_enable")
         col.prop(tools_settings, "autoeyelid_enable")
         col.prop(tools_settings, "bone_shrinkwrap_enable")
+
+        if tools_settings.lipsync_enable:
+            box = layout.box()
+            box.label(text="Lip Sync Tool Settings", icon="SPEAKER")
+            box.prop(tools_settings, "lipsync_driver_type", text="Type")
+            col = box.column(align=True)
+            if tools_settings.lipsync_driver_type == "MORPH":
+                col.prop(tools_settings, "lipsync_source")
+            col.prop(tools_settings, "lipsync_prefix")
+            col.separator()
+            col.prop(tools_settings, "lipsync_substitutions")
+
         if tools_settings.autoeyelid_enable:
             box = layout.box()
             box.label(text="Auto Blink Tool Settings", icon="HIDE_OFF")

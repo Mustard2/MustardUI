@@ -8,6 +8,8 @@ from bpy.props import (
     StringProperty,
 )
 
+from ..morphs.settings_morph import cp_source
+
 
 class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
     # ------------------------------------------------------------------------
@@ -26,23 +28,24 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         min=1.0,
         max=200.0,
         name="Frequency",
-        description="Breathing frequency in breath/minute",
+        description="Breathing frequency in breaths/minute (12-20 at rest)",
     )
 
     autobreath_amplitude: FloatProperty(
-        default=1.0,
+        default=0.05,
         min=0.0,
         max=1.0,
         name="Amplitude",
-        description="Amplitude of the breathing animation",
+        description="Peak relative scale/location change at full inhale (resting "
+        "breathing is around 0.02-0.05)",
     )
 
     autobreath_random: FloatProperty(
-        default=0.01,
+        default=0.1,
         min=0.0,
         max=1.0,
         name="Random factor",
-        description="Randomization of breathing",
+        description="Breath-to-breath variation of duration and depth",
     )
 
     autobreath_sampling: IntProperty(
@@ -104,6 +107,139 @@ class MustardUI_ToolsSettings(bpy.types.PropertyGroup):
         description="The name of the morph should be the name of the custom property "
         "in the Armature object, and not the name of the morph shown in the"
         " UI",
+    )
+
+    # ------------------------------------------------------------------------
+    #    Lip Sync
+    # ------------------------------------------------------------------------
+
+    lipsync_enable: BoolProperty(
+        default=False,
+        name="Lip Sync",
+        description="Enable the Lip Sync tool.\nThis tool will allow a quick creation of "
+        "a viseme lip sync animation from text",
+    )
+
+    lipsync_driver_type: EnumProperty(
+        default="SHAPE_KEY",
+        items=[
+            ("SHAPE_KEY", "Shape Key", "Visemes are shape keys on the Body", "SHAPEKEY_DATA", 0),
+            (
+                "MORPH",
+                "Morph",
+                "Visemes are custom properties, as Morphs",
+                "OUTLINER_OB_ARMATURE",
+                1,
+            ),
+        ],
+        name="Driver type",
+    )
+
+    lipsync_prefix: StringProperty(
+        default="facs_ctrl_v",
+        name="Prefix",
+        description="Prefix of the viseme shape keys/custom properties.\nThe viseme name "
+        "is appended to it: AA, EE, EH, ER, F, IH, IY, K, L, M, OW, S, SH, T, TH, UW, W",
+    )
+
+    lipsync_source: EnumProperty(
+        items=cp_source,
+        default="ARMATURE_OBJ",
+        name="Source",
+        description="Object with the viseme custom properties",
+    )
+
+    lipsync_substitutions: StringProperty(
+        name="Substitutions",
+        description="Drive a viseme with another viseme's shape key/custom property, e.g. "
+        "'AA:EH, IY:EE'.\nUseful when a viseme is missing or broken. The replaced viseme "
+        "keeps its own strength",
+    )
+
+    lipsync_input: EnumProperty(
+        default="TEXT",
+        items=[
+            (
+                "TEXT",
+                "Text",
+                "English text, converted to phonemes with the CMU Pronouncing Dictionary",
+                "FONT_DATA",
+                0,
+            ),
+            ("ARPABET", "ARPABET", "ARPABET phonemes separated by spaces", "SORTALPHA", 1),
+            (
+                "TIMED",
+                "Timed",
+                "Text datablock with one 'label start end' line per segment (seconds).\n"
+                "Label is a viseme or ARPABET phoneme, e.g. from a forced aligner",
+                "TIME",
+                2,
+            ),
+        ],
+        name="Input",
+    )
+
+    lipsync_text: StringProperty(
+        default="Hello world, this is a lip sync test.",
+        name="Text",
+        description="Text to speak",
+    )
+
+    lipsync_arpabet: StringProperty(
+        default="HH AH L OW W ER L D",
+        name="ARPABET",
+        description="ARPABET phonemes separated by spaces (stress digits are ignored)",
+    )
+
+    lipsync_timed_text: PointerProperty(
+        type=bpy.types.Text,
+        name="Segments",
+        description="Text datablock with one 'label start end' line per segment (seconds)",
+    )
+
+    lipsync_speed: FloatProperty(
+        default=1.0,
+        min=0.1,
+        max=5.0,
+        name="Speed",
+        description="Speech speed.\nNot used with timed segments",
+    )
+
+    lipsync_intensity: FloatProperty(
+        default=1.0,
+        min=0.0,
+        soft_max=1.0,
+        max=2.0,
+        name="Intensity",
+        description="Multiplier on the viseme peaks",
+    )
+
+    lipsync_smoothing: FloatProperty(
+        default=40.0,
+        min=0.0,
+        max=200.0,
+        name="Smoothing",
+        description="Smoothing window in ms.\nHigher values give a softer mouth, lower "
+        "values crisper consonants. 0 disables smoothing",
+    )
+
+    lipsync_interpolation: EnumProperty(
+        default="BEZIER",
+        items=[
+            ("BEZIER", "Bezier", "Smooth interpolation"),
+            ("LINEAR", "Linear", "Linear interpolation"),
+        ],
+        name="Interpolation",
+    )
+
+    lipsync_new_action: BoolProperty(
+        default=True,
+        name="New Action",
+        description="Replace the current Action of the target with a new one, named after "
+        "the text.\nOther keyframes in the current Action (e.g. Auto Blink) will not "
+        "play anymore.\nIf disabled, the viseme keyframes are replaced in the current "
+        "Action.\nNot available for Morphs on the Armature Object, whose Action also "
+        "holds the body animation",
     )
 
     # ------------------------------------------------------------------------
