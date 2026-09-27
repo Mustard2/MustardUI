@@ -353,7 +353,7 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
             return False
 
         rig_settings = arm.MustardUI_RigSettings
-        if not rig_settings.hair_physics_support:
+        if not rig_settings.hair_physics_support or rig_settings.hair_collection is None:
             return False
 
         obj = context.scene.objects.get(rig_settings.hair_list)
@@ -404,21 +404,15 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
             return False
 
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
-
-        if arm is None:
+        if not res or arm is None:
             return False
 
         rig_settings = arm.MustardUI_RigSettings
-
-        hair = rig_settings.hair_list
-        if hair == "":
+        if rig_settings.hair_collection is None:
             return False
 
-        obj = context.scene.objects.get(hair)
-        if obj is None:
-            return False
-
-        return res if len(obj.particle_systems) > 0 else False
+        obj = context.scene.objects.get(rig_settings.hair_list)
+        return obj is not None and len(obj.particle_systems) > 0
 
     def draw_header(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
