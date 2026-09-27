@@ -24,6 +24,10 @@ class MustardUI_PhysicsAddItem(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 
+        if context.object is None or context.object.type != "MESH":
+            self.report({"ERROR"}, "MustardUI - Only mesh objects can be added as Physics items.")
+            return {"CANCELLED"}
+
         # Check if the item is already used as Extras, Hair or Outfit
         if rig_settings.extras_collection is not None:
             extras_objects = (
@@ -38,14 +42,16 @@ class MustardUI_PhysicsAddItem(bpy.types.Operator):
             if context.object in [x for x in rig_settings.hair_collection.objects]:
                 self.report({"ERROR"}, "MustardUI - Object already added in Hair.")
                 return {"FINISHED"}
-        for coll in [x.collection for x in rig_settings.outfits_collections]:
+        for coll in [
+            x.collection for x in rig_settings.outfits_collections if x.collection is not None
+        ]:
             if context.object in [x for x in coll.objects]:
                 self.report({"ERROR"}, "MustardUI - Object already added in Outfits.")
                 return {"FINISHED"}
 
         # Add the item
         add_item = physics_settings.items.add()
-        add_item.object = bpy.context.object
+        add_item.object = context.object
         self.report({"INFO"}, "MustardUI - Physics Items added.")
 
         return {"FINISHED"}
