@@ -78,31 +78,27 @@ class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist = arm.MustardUI_Links
 
-        n_import = 0
-
+        # Read and validate the whole file before touching the current links
         try:
-            if self.replace_links:
-                uilist.clear()
-
             with open(self.filepath, "r", encoding="utf-8") as f:
-                links_loaded = json.load(f)
-
-                for link in links_loaded:
-                    a = uilist.add()
-                    a.name = link["name"]
-                    a.url = link["url"]
-                    n_import = n_import + 1
-
-                index = len(uilist) - 1
-                context.scene.mustardui_links_uilist_index = index
-
+                links_loaded = [(str(x["name"]), str(x["url"])) for x in json.load(f)]
         except Exception:
             self.report({"ERROR"}, "MustardUI - Link file seems corrupted.")
             return {"FINISHED"}
 
+        if self.replace_links:
+            uilist.clear()
+
+        for name, url in links_loaded:
+            a = uilist.add()
+            a.name = name
+            a.url = url
+
+        context.scene.mustardui_links_uilist_index = len(uilist) - 1
+
         arm.update_tag()
 
-        self.report({"INFO"}, "MustardUI - " + str(n_import) + " links Imported.")
+        self.report({"INFO"}, "MustardUI - " + str(len(links_loaded)) + " links Imported.")
 
         return {"FINISHED"}
 
