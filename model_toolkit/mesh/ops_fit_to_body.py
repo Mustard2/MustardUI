@@ -6,6 +6,7 @@ from mathutils.bvhtree import BVHTree
 from ...misc.mesh_deform import (
     DeformTarget,
     geometry_bvh,
+    mesh_laplacian,
     mesh_vertex_normals,
     rest_geometry,
     write_vertex_group,
@@ -24,6 +25,11 @@ from .shape_key_preview import (
     preview_settings_update,
     write_shape_key,
 )
+
+# Pull of each refit iteration back to the first fit, so that the iterations converge
+REFIT_ANCHOR = 0.05
+# Automatic refit stops when the mean movement decreases less than this in 3 iterations
+REFIT_TOLERANCE = 0.05
 
 
 class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
@@ -149,15 +155,6 @@ class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
-    fit_strength: bpy.props.FloatProperty(
-        name="Fit Strength",
-        default=1.0,
-        min=0.0,
-        max=1.0,
-        description="Fraction of the distance from the body closed by the pull",
-        update=preview_settings_update,
-    )
-
     max_depth: bpy.props.FloatProperty(
         name="Max Depth",
         default=0.05,
@@ -180,10 +177,20 @@ class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
-    keep_contact: bpy.props.BoolProperty(
-        name="Keep Contact",
+    refit_iterations: bpy.props.IntProperty(
+        name="Refit Iterations",
+        default=50,
+        min=0,
+        soft_max=100,
+        description="Iterations smoothing the fit and fitting it again, to relax the creases "
+        "and the parts lifted from the body.\nWith Automatic, the maximum iterations",
+        update=preview_settings_update,
+    )
+
+    refit_auto: bpy.props.BoolProperty(
+        name="Automatic",
         default=True,
-        description="Keep the fitted vertices out of the body while smoothing",
+        description="Stop the refit iterations when the shape does not change anymore",
         update=preview_settings_update,
     )
 
@@ -206,49 +213,6 @@ class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
-    final_check: bpy.props.BoolProperty(
-        name="Final Check",
-        default=True,
-        description="Push out again the vertices still clipping after smoothing and relaxing",
-        update=preview_settings_update,
-    )
-
-
-def clipping_vertices(bvh, co, indices, offset, max_depth):
-    """Distance to move each vertex along the body normal to be outside the body"""
-
-    required = np.zeros(len(indices))
-    directions = np.zeros((len(indices), 3))
-    for k, i in enumerate(indices):
-        v = Vector(co[i])
-        loc, normal, _, _ = bvh.find_nearest(v, max_depth + offset)
-        if loc is None:
-            continue
-        signed = (v - loc).dot(normal)
-        if signed < offset:
-            required[k] = offset - signed
-            directions[k] = normal
-    return required, directions
-
-
-def pulling_vertices(bvh, co, indices, offset, distance, strength):
-    """Distance to move each vertex towards the body, fading to zero at the fit distance"""
-
-    pull = np.zeros(len(indices))
-    directions = np.zeros((len(indices), 3))
-    for k, i in enumerate(indices):
-        v = Vector(co[i])
-        loc, normal, _, _ = bvh.find_nearest(v, offset + distance)
-        if loc is None:
-            continue
-        gap = (v - loc).dot(normal) - offset
-        if 0.0 < gap < distance:
-            # Full pull up to half the distance, then fading out
-            t = max(2.0 * gap / distance - 1.0, 0.0)
-            pull[k] = gap * strength * (1.0 - t * t * (3.0 - 2.0 * t))
-            directions[k] = -normal
-    return pull, directions
-
 
 FitToBodyPresetsMenu, FitToBodyPresetAdd = preview_preset_classes(
     "FitToBody",
@@ -268,6 +232,7 @@ class FitToBodySolver:
         self.children = self.target.rigid_children(bodies)
         self.followers = self.children
         self.disp = None
+        self.refit_count = 0
 
         self._body = {}
         self._outfit_flipped = None
@@ -291,17 +256,11 @@ class FitToBodySolver:
             self._body[use_modifiers] = (bvh, co, normals)
         return self._body[use_modifiers]
 
-    def outfit_flipped(self, body_bvh):
-        if self._outfit_flipped is None:
-            target = self.target
-            self._outfit_flipped = squisher_is_flipped(
-                target.co, target.tris, body_bvh, SQUISH_ORIENTATION_DISTANCE, False
-            )
-        return self._outfit_flipped
-
-    def clipping(self, context, settings, weights, co, outfit_mask=None):
+    def clipping(self, context, settings, weights, co, outfit_mask=None, nearest=None):
         """Required displacement along the directions to fix the clipping of the outfit with
-        the given coordinates, checking only the masked outfit vertices"""
+        the given coordinates, checking only the masked outfit vertices.
+        With nearest (mask, distances), only the vertices in the mask are checked against the
+        closest body point, storing their distance from the body"""
 
         body_bvh, body_co, body_normals = self.body(context, settings.use_modifiers)
         target = self.target
@@ -313,17 +272,33 @@ class FitToBodySolver:
         # Outfit vertices inside the body
         bb_min = body_co.min(axis=0) - margin
         bb_max = body_co.max(axis=0) + margin
-        candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & active)[0]
+        inside = np.all((co >= bb_min) & (co <= bb_max), axis=1) & active
+        if nearest is not None:
+            inside &= nearest[0]
         required = np.zeros(target.n_verts)
         directions = np.zeros((target.n_verts, 3))
-        required[candidates], directions[candidates] = clipping_vertices(
-            body_bvh, co, candidates, settings.offset, settings.max_depth
-        )
+        for i in np.nonzero(inside)[0]:
+            v = Vector(co[i])
+            loc, normal, _, dist = body_bvh.find_nearest(v, margin)
+            if nearest is not None:
+                nearest[1][i] = margin if loc is None else dist
+            if loc is None:
+                continue
+            signed = (v - loc).dot(normal)
+            if signed < settings.offset:
+                required[i] = settings.offset - signed
+                directions[i] = normal
 
         # Body vertices through the outfit faces
         if settings.check_body and np.any(active):
-            tris = target.tris[:, ::-1] if self.outfit_flipped(body_bvh) else target.tris
-            outfit_bvh = BVHTree.FromPolygons(co.tolist(), tris.tolist())
+            if self._outfit_flipped is None:
+                self._outfit_flipped = squisher_is_flipped(
+                    target.co, target.tris, body_bvh, SQUISH_ORIENTATION_DISTANCE, False
+                )
+            tris = target.tris[:, ::-1] if self._outfit_flipped else target.tris
+            # Only the faces of the checked vertices
+            faces = np.nonzero(active[target.tris].any(axis=1))[0]
+            outfit_bvh = BVHTree.FromPolygons(co.tolist(), tris[faces].tolist())
             bb_min = co[active].min(axis=0) - margin
             bb_max = co[active].max(axis=0) + margin
             eps = 1e-5
@@ -334,8 +309,15 @@ class FitToBodySolver:
                 )
                 if hit is None or hit_normal.dot(n) < 0.5:
                     continue
+                # Skip internal body parts, with the skin between them and the outfit
+                if body_bvh.ray_cast(Vector(body_co[i]) - n * eps, -n, dist - 2 * eps)[0]:
+                    continue
+                # Skip outfit faces not buried as deep (e.g. seen through body openings)
+                loc, loc_normal, _, _ = body_bvh.find_nearest(hit)
+                if loc is not None and (loc - hit).dot(loc_normal) < 0.25 * (dist - eps):
+                    continue
                 need = dist - eps + settings.offset
-                for k in target.tris[face]:
+                for k in target.tris[faces[face]]:
                     if active[k] and need > required[k]:
                         required[k] = need
                         directions[k] = n
@@ -352,17 +334,24 @@ class FitToBodySolver:
         active = weights > 0.0
         if outfit_mask is not None:
             active &= outfit_mask
-        if settings.fit_distance <= 0.0 or settings.fit_strength <= 0.0:
+        if settings.fit_distance <= 0.0:
             return disp
 
         margin = settings.fit_distance + settings.offset
         bb_min = body_co.min(axis=0) - margin
         bb_max = body_co.max(axis=0) + margin
-        candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & active)[0]
-        pull, directions = pulling_vertices(
-            body_bvh, co, candidates, settings.offset, settings.fit_distance, settings.fit_strength
-        )
-        disp[candidates] = directions * pull[:, None]
+        distance = settings.fit_distance
+        for i in np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & active)[0]:
+            v = Vector(co[i])
+            loc, normal, _, _ = body_bvh.find_nearest(v, margin)
+            if loc is None:
+                continue
+            gap = (v - loc).dot(normal) - settings.offset
+            if 0.0 < gap < distance:
+                # Full pull up to half the distance, then fading out
+                t = max(2.0 * gap / distance - 1.0, 0.0)
+                pull = gap * (1.0 - t * t * (3.0 - 2.0 * t))
+                disp[i] = -np.array(normal, dtype=np.float64) * pull
         return disp
 
     def layers(self, context, settings, weights):
@@ -402,7 +391,6 @@ class FitToBodySolver:
             settings.offset,
             settings.max_depth,
             settings.fit_distance,
-            settings.fit_strength,
         )
         if self._detect[0] != key:
             clipping = self.clipping(context, settings, weights, self.target.co)
@@ -411,11 +399,92 @@ class FitToBodySolver:
             self._detect = (key, (*clipping, pulls, layers))
         return self._detect[1]
 
+    def push_out(self, context, settings, weights, co, mask):
+        """Push the masked vertices out of the body, again for the ones pushed into other
+        faces"""
+
+        for _ in range(3):
+            required, directions = self.clipping(context, settings, weights, co, mask)
+            if not np.any(required > 0.0):
+                break
+            co = co + directions * required[:, None]
+        return co
+
+    def refit(self, context, settings, weights, disp):
+        """Smooth the displacement of the fitted area and fit it again, for some iterations or
+        until it converges, yielding the progress of the solve"""
+
+        target = self.target
+        edges = target.edges
+        region = np.linalg.norm(disp, axis=1) > 1e-5
+        for _ in range(3):
+            grow = region[edges[:, 0]] | region[edges[:, 1]]
+            region[edges[grow].ravel()] = True
+        area = region & (weights > 0.0)
+        # The borders are kept, as smoothing shrinks them
+        tris = target.tris
+        pairs = np.sort(np.concatenate([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [2, 0]]]), axis=1)
+        pairs, counts = np.unique(pairs, axis=0, return_counts=True)
+        region = area.copy()
+        region[pairs[counts == 1].ravel()] = False
+
+        start = target.co + disp
+        co = start.copy()
+        movements = []
+        # Distance from the body at the last check, and the position then
+        distances = np.zeros(target.n_verts)
+        checked = co.copy()
+        self.refit_count = 0
+        total = settings.refit_iterations
+        for iteration in range(total):
+            yield 0.4 + 0.6 * iteration / total, f"Refit {iteration + 1}/{total}"
+            previous = co[region]
+            # Smoothing the displacement keeps the details of the outfit (e.g. knots)
+            fit = co - target.co
+            step = 0.5 * (mesh_laplacian(fit, edges, target.n_verts)[region] - fit[region])
+            # Short steps, so that the clipping check still finds the vertices sunk in the body
+            length = np.maximum(np.linalg.norm(step, axis=1), 1e-12)
+            co[region] += step * np.minimum(1.0, 0.5 * settings.max_depth / length)[:, None]
+            co[region] += REFIT_ANCHOR * (start[region] - co[region])
+            # Vertices far from the body can not have reached it since the last check
+            near = distances - np.linalg.norm(co - checked, axis=1) <= settings.offset + 1e-4
+            near &= region
+            checked[near] = co[near]
+            required, directions = self.clipping(
+                context, settings, weights, co, region, (near, distances)
+            )
+            co += directions * required[:, None]
+
+            self.refit_count += 1
+            movements.append(np.linalg.norm(co[region] - previous, axis=1).mean())
+            # The contact vertices keep moving in and out, so the movement stops decreasing
+            if (
+                settings.refit_auto
+                and len(movements) > 3
+                and movements[-1] > (1.0 - REFIT_TOLERANCE) * movements[-4]
+            ):
+                break
+
+        # Exact check of all the vertices at the end
+        co = self.push_out(context, settings, weights, co, area)
+        return co - target.co
+
     def solve(self, context, settings):
         """Return the Shape Key coordinates, the number of fitted vertices and the error"""
 
+        steps = self.solve_steps(context, settings)
+        while True:
+            try:
+                next(steps)
+            except StopIteration as stop:
+                return stop.value
+
+    def solve_steps(self, context, settings):
+        """Solve like solve, yielding the progress and the current step"""
+
         target = self.target
         self.disp = None
+        self.refit_count = 0
         weights = target.weights(settings.vertex_group, settings.invert_vertex_group)
         if weights is None:
             return target.basis, 0, "Vertex Group not found"
@@ -423,6 +492,7 @@ class FitToBodySolver:
         if self.body(context, settings.use_modifiers)[0] is None:
             return target.basis, 0, "The selected Objects have no faces"
 
+        yield 0.0, "Clipping"
         required, directions, pull, (outer, under) = self.detect(context, settings, weights)
         fitted = np.nonzero((required > 0.0) | np.any(pull != 0.0, axis=1))[0]
         if not len(fitted):
@@ -430,6 +500,7 @@ class FitToBodySolver:
 
         disp = directions * required[:, None] + pull
 
+        yield 0.2, "Smoothing"
         contact = np.nonzero(required > 0.0)[0]
         disp = target.smooth(
             disp,
@@ -437,7 +508,6 @@ class FitToBodySolver:
             contact,
             directions[contact],
             required[contact],
-            settings.keep_contact,
             min_iterations=1,
         )
         disp = target.relax(disp, settings.relax_iterations, settings.relax_factor)
@@ -447,30 +517,33 @@ class FitToBodySolver:
             self.influence = target.influence(self._detect[0], fitted, settings.influence_radius)
             disp *= self.influence[:, None]
 
-        # Push out the moved vertices clipping again
-        if settings.final_check:
-            for _ in range(3):
-                moved = np.linalg.norm(disp, axis=1) > 1e-7
-                again, again_dirs = self.clipping(
-                    context, settings, weights, target.co + disp, moved
-                )
-                again_contact = np.nonzero(again > 0.0)[0]
-                if not len(again_contact):
-                    break
-                # Smoothed anyway, as unsmoothed pushes build spikes
-                disp += target.smooth(
-                    again_dirs * again[:, None],
-                    settings.smooth_distance,
-                    again_contact,
-                    again_dirs[again_contact],
-                    again[again_contact],
-                    True,
-                    min_iterations=5,
-                )
+        # Push out the moved vertices clipping again, done by the refit otherwise
+        for _ in range(3 if not settings.refit_iterations else 0):
+            moved = np.linalg.norm(disp, axis=1) > 1e-7
+            again, again_dirs = self.clipping(context, settings, weights, target.co + disp, moved)
+            again_contact = np.nonzero(again > 0.0)[0]
+            if not len(again_contact):
+                break
+            # Smoothed anyway, as unsmoothed pushes build spikes
+            disp += target.smooth(
+                again_dirs * again[:, None],
+                settings.smooth_distance,
+                again_contact,
+                again_dirs[again_contact],
+                again[again_contact],
+                min_iterations=5,
+            )
+
+        disp = yield from self.refit(context, settings, weights, disp)
 
         # Outer layers follow the layer under them, keeping the thickness
         for _ in range(2):
             disp[outer] = disp[under].mean(axis=1)
+        # Push out the outer layers sunk in the body by following
+        if len(outer):
+            mask = np.zeros(target.n_verts, dtype=bool)
+            mask[outer] = True
+            disp = self.push_out(context, settings, weights, target.co + disp, mask) - target.co
 
         disp *= (settings.factor * weights)[:, None]
 
@@ -632,21 +705,17 @@ def fit_to_body_draw_settings(layout, context):
         col.separator()
         col.prop(settings, "max_depth")
         col.prop(settings, "check_body", text="Body Vertices")
-        col.prop(settings, "final_check")
         col.separator()
-        sub = col.column(align=True)
-        sub.prop(settings, "fit_distance", text="Pull Distance")
-        row = sub.row(align=True)
-        row.enabled = settings.fit_distance > 0.0
-        row.prop(settings, "fit_strength", text="Pull Strength")
+        col.prop(settings, "fit_distance", text="Pull Distance")
         col.separator()
         col.prop(settings, "use_modifiers", text="Body Modifiers")
 
     col = preview_section(box, "mustardui_fit_shape", "Shape", "MOD_SMOOTH")
     if col is not None:
-        sub = col.column(align=True)
-        sub.prop(settings, "smooth_distance")
-        sub.prop(settings, "keep_contact")
+        col.prop(settings, "smooth_distance")
+        row = col.row(align=True)
+        row.prop(settings, "refit_iterations")
+        row.prop(settings, "refit_auto", text="", icon="AUTO")
         sub = col.column(align=True)
         sub.prop(settings, "relax_iterations")
         row = sub.row(align=True)

@@ -7,6 +7,7 @@ from bl_operators.presets import AddPresetBase
 
 from ... import __package__ as base_package
 from ...misc.mesh_deform import write_vertex_group
+from ...misc.ui_progress import status_progress
 
 # Running preview session, only one at a time
 PREVIEW_SESSION = None
@@ -50,6 +51,14 @@ def redraw_view3d(context):
 def preview_show_result(session, show):
     """Switch the preview Shape Keys on or off, to compare before and after"""
 
+    # Tools changing an existing Shape Key show its original coordinates instead
+    original = getattr(session.solver, "original", None)
+    if original is not None and session.result is not None:
+        sk = session.obj.data.shape_keys.key_blocks[session.key_name]
+        sk.data.foreach_set("co", (session.result if show else original).ravel())
+        session.obj.data.update()
+        return
+
     for obj in [session.obj] + [f.obj for f in session.solver.followers]:
         sks = obj.data.shape_keys
         sk = sks.key_blocks.get(session.key_name) if sks is not None else None
@@ -61,13 +70,6 @@ def preview_show_result_update(self, context):
     if PREVIEW_SESSION is not None:
         preview_show_result(PREVIEW_SESSION, self.MustardUI_ToolsCreators_PreviewShow)
         redraw_view3d(context)
-
-
-def write_followers(solver, settings, key_name):
-    """Write the Shape Keys of the objects following the main one"""
-
-    for follower in solver.followers:
-        write_shape_key(follower.obj, key_name, follower.shape(solver, settings))
 
 
 def link_shape_key_driver(obj, name, source, source_name):
@@ -111,6 +113,24 @@ class ShapeKeyBackup:
             sk.data.foreach_get("co", co)
             self.backup = (co, sk.value)
 
+        # The driver of the value is muted, so that the preview can show the Shape Key
+        driver = self.driver()
+        self.driver_mute = driver.mute if driver is not None else None
+        if driver is not None:
+            driver.mute = True
+
+    def driver(self):
+        sks = self.obj.data.shape_keys
+        sk = sks.key_blocks.get(self.key_name) if sks is not None else None
+        if sk is None or sks.animation_data is None:
+            return None
+        return sks.animation_data.drivers.find(sk.path_from_id("value"))
+
+    def unmute(self):
+        driver = self.driver()
+        if driver is not None and self.driver_mute is not None:
+            driver.mute = self.driver_mute
+
     def restore(self):
         obj = self.obj
         sks = obj.data.shape_keys
@@ -140,6 +160,10 @@ class ShapeKeyPreviewSession:
         self.info = ""
         self.error = ""
         self.count = 0
+        # Running solve, with its start time, and the last result
+        self.steps = None
+        self.start = 0.0
+        self.result = None
 
         self.backup = ShapeKeyBackup(obj, key_name)
         self.followers_backup = [ShapeKeyBackup(f.obj, key_name) for f in solver.followers]
@@ -149,6 +173,13 @@ class ShapeKeyPreviewSession:
             # The object might have been removed
             try:
                 backup.restore()
+            except ReferenceError:
+                pass
+
+    def unmute(self):
+        for backup in [self.backup, *self.followers_backup]:
+            try:
+                backup.unmute()
             except ReferenceError:
                 pass
 
@@ -166,6 +197,7 @@ class ShapeKeyPreviewOperator:
             self.preview_tool, obj, key_name, solver, self.preview_settings(context)
         )
         context.window_manager.MustardUI_ToolsCreators_PreviewShow = True
+        self.preview_status(context)
         try:
             self.preview_update(context)
         except Exception as error:
@@ -174,26 +206,59 @@ class ShapeKeyPreviewOperator:
         wm = context.window_manager
         self._timer = wm.event_timer_add(0.05, window=context.window)
         wm.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def preview_status(self, context):
         context.workspace.status_text_set(
             f"{self.bl_label}: change the settings in Model Toolkit > Mesh, Esc to cancel"
         )
-        return {"RUNNING_MODAL"}
 
     def preview_update(self, context):
+        """Start solving the preview, restarting the running solve"""
+
         session = PREVIEW_SESSION
         session.dirty = False
+        session.start = time.perf_counter()
 
+        # Solvers with steps are run a bit at a time, showing the progress
+        if hasattr(session.solver, "solve_steps"):
+            session.steps = session.solver.solve_steps(context, session.settings)
+            self.preview_continue(context)
+        else:
+            self.preview_result(context, session.solver.solve(context, session.settings))
+
+    def preview_continue(self, context, budget=0.1):
+        """Run the solve steps for a short time, then show the progress or the result"""
+
+        session = PREVIEW_SESSION
         start = time.perf_counter()
-        co, session.count, error = session.solver.solve(context, session.settings)
+        try:
+            while time.perf_counter() - start < budget:
+                factor, text = next(session.steps)
+        except StopIteration as stop:
+            session.steps = None
+            self.preview_status(context)
+            self.preview_result(context, stop.value)
+            return
+        status_progress(context, factor, f"{self.bl_label}: {text}")
+
+    def preview_result(self, context, result):
+        session = PREVIEW_SESSION
+        co, session.count, error = result
         if error:
             session.error = error
         else:
-            elapsed = time.perf_counter() - start
+            elapsed = time.perf_counter() - session.start
             session.error = ""
-            session.info = f"{session.count} vertices {self.preview_verb} ({elapsed:.2f}s)"
+            refit = getattr(session.solver, "refit_count", None)
+            details = f", {refit} refit iterations" if refit is not None else ""
+            session.info = f"{session.count} vertices {self.preview_verb}{details} ({elapsed:.2f}s)"
 
+        session.result = co
         write_shape_key(session.obj, session.key_name, co)
-        write_followers(session.solver, session.settings, session.key_name)
+        for follower in session.solver.followers:
+            shape = follower.shape(session.solver, session.settings)
+            write_shape_key(follower.obj, session.key_name, shape)
         preview_show_result(session, context.window_manager.MustardUI_ToolsCreators_PreviewShow)
         redraw_view3d(context)
 
@@ -213,6 +278,9 @@ class ShapeKeyPreviewOperator:
             return {"CANCELLED"}
 
         if session.finish == "APPLY":
+            # Complete the running solve first
+            while session.steps is not None:
+                self.preview_continue(context, budget=float("inf"))
             return self.preview_apply(context)
         if session.finish == "CANCEL" or (event.type == "ESC" and event.value == "PRESS"):
             session.restore()
@@ -223,8 +291,11 @@ class ShapeKeyPreviewOperator:
         if event.type in {"Z", "Y"} and (event.ctrl or event.oskey):
             return {"RUNNING_MODAL"}
 
-        if event.type == "TIMER" and session.dirty and session.obj.mode == "OBJECT":
-            self.preview_update(context)
+        if event.type == "TIMER" and session.obj.mode == "OBJECT":
+            if session.dirty:
+                self.preview_update(context)
+            elif session.steps is not None:
+                self.preview_continue(context)
 
         return {"PASS_THROUGH"}
 
@@ -267,6 +338,8 @@ class ShapeKeyPreviewOperator:
 
     def preview_end(self, context):
         global PREVIEW_SESSION
+        if PREVIEW_SESSION is not None:
+            PREVIEW_SESSION.unmute()
         PREVIEW_SESSION = None
         if getattr(self, "_timer", None) is not None:
             context.window_manager.event_timer_remove(self._timer)
@@ -302,6 +375,29 @@ class MustardUI_ToolsCreators_PreviewFinish(bpy.types.Operator):
 
     def execute(self, context):
         PREVIEW_SESSION.finish = "APPLY" if self.apply else "CANCEL"
+        return {"FINISHED"}
+
+
+class MustardUI_ToolsCreators_PreviewReset(bpy.types.Operator):
+    """Reset the settings of the tool to their default values"""
+
+    bl_idname = "mustardui.tools_creators_preview_reset"
+    bl_label = "Reset Settings"
+    bl_options = {"INTERNAL"}
+
+    @classmethod
+    def poll(cls, context):
+        return PREVIEW_SESSION is not None
+
+    def execute(self, context):
+        settings = PREVIEW_SESSION.settings
+        for name in settings.__annotations__:
+            prop = settings.bl_rna.properties[name]
+            # The Shape Key name comes from the selected objects
+            if name == "shape_key_name" or prop.type == "POINTER":
+                continue
+            is_array = getattr(prop, "is_array", False)
+            setattr(settings, name, prop.default_array if is_array else prop.default)
         return {"FINISHED"}
 
 
@@ -349,6 +445,7 @@ def preview_draw_presets(layout, menu, add):
     row.menu(menu.__name__, text=menu.bl_label)
     row.operator(add.bl_idname, text="", icon="ADD")
     row.operator(add.bl_idname, text="", icon="REMOVE").remove_active = True
+    row.operator(MustardUI_ToolsCreators_PreviewReset.bl_idname, text="", icon="LOOP_BACK")
 
 
 def preview_section(layout, idname, title, icon, default_closed=False):
@@ -430,6 +527,7 @@ def preview_draw_footer(layout, session):
 
 def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_PreviewFinish)
+    bpy.utils.register_class(MustardUI_ToolsCreators_PreviewReset)
 
     bpy.types.WindowManager.MustardUI_ToolsCreators_PreviewShow = bpy.props.BoolProperty(
         name="Show Result",
@@ -442,4 +540,5 @@ def register():
 def unregister():
     del bpy.types.WindowManager.MustardUI_ToolsCreators_PreviewShow
 
+    bpy.utils.unregister_class(MustardUI_ToolsCreators_PreviewReset)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_PreviewFinish)

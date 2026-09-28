@@ -3,6 +3,7 @@ import bpy
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..model_toolkit.mesh.ops_fit_to_body import fit_to_body_draw_settings
+from ..model_toolkit.mesh.ops_smooth_shape_key import smooth_shape_key_draw_settings
 from ..model_toolkit.mesh.ops_squish import squish_draw_settings
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
@@ -149,10 +150,17 @@ class PANEL_PT_MustardUI_ToolsCreators_Mesh(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
+        row.operator("mustardui.tools_creators_add_outfit", icon="MOD_CLOTH")
+
+        row = layout.row(align=True)
         row.operator("mustardui.tools_creators_link_shape_keys", icon="DRIVER_TRANSFORM")
 
         row = layout.row(align=True)
         row.operator("mustardui.tools_creators_transfer_shape_keys", icon="SHAPEKEY_DATA")
+
+        row = layout.row(align=True)
+        row.operator("mustardui.tools_creators_smooth_shape_key", icon="MOD_SMOOTH")
+        smooth_shape_key_draw_settings(layout, context)
 
         row = layout.row(align=True)
         row.operator("mustardui.tools_creators_transfer_vertex_groups", icon="GROUP_VERTEX")

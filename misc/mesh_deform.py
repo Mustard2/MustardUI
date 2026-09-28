@@ -5,23 +5,6 @@ from mathutils.kdtree import KDTree
 from .scene_state import SceneState
 
 
-def deform_armatures(objects):
-    """Find the Armatures deforming or parenting the objects"""
-
-    armatures = set()
-    for obj in objects:
-        if obj.parent is not None and obj.parent.type == "ARMATURE":
-            armatures.add(obj.parent)
-        for modifier in obj.modifiers:
-            if modifier.type == "ARMATURE" and modifier.object is not None:
-                armatures.add(modifier.object)
-        for constraint in obj.constraints:
-            target = getattr(constraint, "target", None)
-            if target is not None and target.type == "ARMATURE":
-                armatures.add(target)
-    return armatures
-
-
 def mesh_triangles(mesh):
     mesh.calc_loop_triangles()
     tris = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int64)
@@ -52,6 +35,44 @@ def mesh_laplacian(values, edges, n_verts):
         acc += np.bincount(edges[:, 1], weights=values[edges[:, 0], i], minlength=n_verts)
         avg[:, i] = acc / count
     return avg
+
+
+def smooth_deformation(delta, edges, length, distance, area=None):
+    """Smooth the displacement of the vertices over the distance, keeping its size.
+    The length is the typical edge length, in the same space as the distance.
+    With the area, only its vertices are changed, the others hold it in place"""
+
+    iterations = int(np.ceil(2.0 * (distance / length) ** 2)) if distance > 0.0 else 0
+    if not iterations:
+        return delta
+
+    if area is None:
+        # Only the deformed area, with the vertices the smoothing can reach
+        region = np.linalg.norm(delta, axis=1) > 1e-5
+        rings = int(np.ceil(3.0 * distance / length))
+    else:
+        region = area.copy()
+        rings = 1
+    for _ in range(rings):
+        grow = edges[region[edges[:, 0]] | region[edges[:, 1]]].ravel()
+        if np.all(region[grow]):
+            break
+        region[grow] = True
+    indices = np.nonzero(region)[0]
+    free = np.ones(len(indices), dtype=bool) if area is None else area[indices]
+    remap = np.full(len(region), -1, dtype=np.int64)
+    remap[indices] = np.arange(len(indices))
+    sub_edges = remap[edges[region[edges[:, 0]] & region[edges[:, 1]]]]
+
+    # Smoothing and the opposite step, removing the details but keeping the size of the
+    # deformation. A larger opposite step (Taubin) enlarges it after many iterations
+    sub = delta[indices].copy()
+    for _ in range(min(iterations, 2000)):
+        sub[free] += 0.5 * (mesh_laplacian(sub, sub_edges, len(sub)) - sub)[free]
+        sub[free] -= 0.5 * (mesh_laplacian(sub, sub_edges, len(sub)) - sub)[free]
+    smoothed = delta.copy()
+    smoothed[indices] = sub
+    return smoothed
 
 
 def shape_key_mix(obj, exclude_name=""):
@@ -119,8 +140,13 @@ def rest_geometry(context, objects, rest_objects, use_modifiers, exclude_key="")
     state = SceneState(context)
     muted = []
     try:
-        for arm in deform_armatures(list(objects) + list(rest_objects)):
-            arm.data.pose_position = "REST"
+        # Armatures deforming or parenting the objects
+        for obj in [*objects, *rest_objects]:
+            armatures = [obj.parent] + [m.object for m in obj.modifiers if m.type == "ARMATURE"]
+            armatures += [getattr(c, "target", None) for c in obj.constraints]
+            for arm in armatures:
+                if arm is not None and arm.type == "ARMATURE":
+                    arm.data.pose_position = "REST"
         for obj in objects:
             sks = getattr(obj.data, "shape_keys", None)
             sk = sks.key_blocks.get(exclude_key) if sks is not None and exclude_key else None
@@ -214,16 +240,13 @@ class RigidChild:
         kd = target.kdtree()
         self.anchors = np.array([kd.find(c)[1] for c in co], dtype=np.int64)
 
-    def coordinates(self, disp):
-        if disp is None or not len(self.anchors):
-            return self.basis
-        return self.basis + rigid_translation(disp[self.anchors]) @ self.mat3_inv.T
-
     def enabled(self, settings):
         return settings.move_children
 
     def shape(self, solver, settings):
-        return self.coordinates(solver.disp if self.enabled(settings) else None)
+        if not self.enabled(settings) or solver.disp is None or not len(self.anchors):
+            return self.basis
+        return self.basis + rigid_translation(solver.disp[self.anchors]) @ self.mat3_inv.T
 
 
 class DeformTarget:
@@ -366,7 +389,7 @@ class DeformTarget:
         self._influence = ((key, radius), weights)
         return weights
 
-    def smooth(self, disp, distance, contact, directions, required, keep_contact, min_iterations=0):
+    def smooth(self, disp, distance, contact, directions, required, min_iterations=0):
         """Smooth the displacement over the given distance, keeping at least the required one
         along the directions"""
 
@@ -407,10 +430,9 @@ class DeformTarget:
 
         for _ in range(iterations):
             sub = 0.5 * sub + 0.5 * mesh_laplacian(sub, sub_edges, len(indices))
-            if keep_contact:
-                pushed = np.einsum("ij,ij->i", sub[sub_contact], directions)
-                missing = np.maximum(required - pushed, 0.0)
-                sub[sub_contact] += directions * missing[:, None]
+            pushed = np.einsum("ij,ij->i", sub[sub_contact], directions)
+            missing = np.maximum(required - pushed, 0.0)
+            sub[sub_contact] += directions * missing[:, None]
 
         disp = disp.copy()
         disp[indices] = sub

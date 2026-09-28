@@ -26,7 +26,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Add(bpy.types.Operator):
     vg_name: bpy.props.StringProperty(name="Vertex Group")
 
     def execute(self, context):
-        scene = context.scene
+        wm = context.window_manager
 
         # Use search_group from operator
         vg_name = self.vg_name.strip()
@@ -36,14 +36,14 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Add(bpy.types.Operator):
 
         # Prevent duplicates
         if vg_name in [
-            item.group_name for item in scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
+            item.group_name for item in wm.MustardUI_ToolsCreators_TransferVertexGroups_Items
         ]:
             self.report({"WARNING"}, "MustardUI - Vertex group already in list")
             return {"CANCELLED"}
 
-        scene.MustardUI_ToolsCreators_TransferVertexGroups_Items.add().group_name = vg_name
-        scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = (
-            len(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items) - 1
+        wm.MustardUI_ToolsCreators_TransferVertexGroups_Items.add().group_name = vg_name
+        wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = (
+            len(wm.MustardUI_ToolsCreators_TransferVertexGroups_Items) - 1
         )
         return {"FINISHED"}
 
@@ -53,23 +53,23 @@ class MustardUI_ToolsCreators_TransferVertexGroups_Remove(bpy.types.Operator):
     bl_label = "Remove Vertex Group"
 
     def execute(self, context):
-        scene = context.scene
+        wm = context.window_manager
 
-        if scene.MustardUI_ToolsCreators_TransferVertexGroups_Items:
-            scene.MustardUI_ToolsCreators_TransferVertexGroups_Items.remove(
-                scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex
+        if wm.MustardUI_ToolsCreators_TransferVertexGroups_Items:
+            wm.MustardUI_ToolsCreators_TransferVertexGroups_Items.remove(
+                wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex
             )
-            scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = max(
-                0, scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex - 1
+            wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = max(
+                0, wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex - 1
             )
 
         return {"FINISHED"}
 
 
-def mustardui_transfer_vertex_groups_add_items(scene, vg_names):
+def mustardui_transfer_vertex_groups_add_items(wm, vg_names):
     """Add the vertex group names to the transfer list, skipping the ones already added"""
 
-    items = scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
+    items = wm.MustardUI_ToolsCreators_TransferVertexGroups_Items
     already_added = {item.group_name for item in items}
 
     added = 0
@@ -80,7 +80,7 @@ def mustardui_transfer_vertex_groups_add_items(scene, vg_names):
         already_added.add(vg_name)
         added += 1
 
-    scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = max(0, len(items) - 1)
+    wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = max(0, len(items) - 1)
 
     return added
 
@@ -115,7 +115,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups_AddAll(bpy.types.Operator):
             return {"CANCELLED"}
 
         added = mustardui_transfer_vertex_groups_add_items(
-            context.scene, [vg.name for vg in obj.vertex_groups]
+            context.window_manager, [vg.name for vg in obj.vertex_groups]
         )
 
         if not added:
@@ -157,7 +157,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups_AddSelectedBones(bpy.types.Op
             self.report({"WARNING"}, "MustardUI - No Vertex Group found for the selected bones")
             return {"CANCELLED"}
 
-        added = mustardui_transfer_vertex_groups_add_items(context.scene, selected_bones)
+        added = mustardui_transfer_vertex_groups_add_items(context.window_manager, selected_bones)
 
         if not added:
             self.report({"WARNING"}, "MustardUI - No Vertex Group to add")
@@ -190,7 +190,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         return len(selected_objs) > 1
 
     def draw(self, context):
-        scene = context.scene
+        wm = context.window_manager
         layout = self.layout
 
         # UIList showing selected vertex groups
@@ -198,9 +198,9 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         row.template_list(
             "MUSTARDUI_UL_ToolsCreators_UIList_TransferVertexGroups",
             "",
-            scene,
+            wm,
             "MustardUI_ToolsCreators_TransferVertexGroups_Items",
-            scene,
+            wm,
             "MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex",
             rows=4,
         )
@@ -242,7 +242,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         )
 
     def execute(self, context):
-        scene = context.scene
+        wm = context.window_manager
         source = context.active_object
         targets = [o for o in context.selected_objects if o != source]
 
@@ -254,11 +254,11 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         source_vg_names = {vg.name for vg in source.vertex_groups}
         items_not_valid = [
             i
-            for i, item in enumerate(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items)
+            for i, item in enumerate(wm.MustardUI_ToolsCreators_TransferVertexGroups_Items)
             if item.group_name not in source_vg_names
         ]
 
-        items_to_transfer = len(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items) - len(
+        items_to_transfer = len(wm.MustardUI_ToolsCreators_TransferVertexGroups_Items) - len(
             items_not_valid
         )
         if items_to_transfer < 1:
@@ -275,7 +275,7 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
             bpy.context.view_layer.objects.active = target
             bpy.context.view_layer.update()
 
-            for item in scene.MustardUI_ToolsCreators_TransferVertexGroups_Items:
+            for item in wm.MustardUI_ToolsCreators_TransferVertexGroups_Items:
                 vg_name = item.group_name
 
                 if vg_name not in source_vg_names:
@@ -309,15 +309,15 @@ class MustardUI_ToolsCreators_TransferVertexGroups(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        scene = context.scene
+        wm = context.window_manager
 
         # Fix the index
-        scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = min(
-            scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex,
-            len(scene.MustardUI_ToolsCreators_TransferVertexGroups_Items) - 1,
+        wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = min(
+            wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex,
+            len(wm.MustardUI_ToolsCreators_TransferVertexGroups_Items) - 1,
         )
-        scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = max(
-            scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex, 0
+        wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = max(
+            wm.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex, 0
         )
 
         return context.window_manager.invoke_props_dialog(self)
@@ -332,17 +332,17 @@ def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups_AddSelectedBones)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferVertexGroups)
 
-    bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_Items = (
+    bpy.types.WindowManager.MustardUI_ToolsCreators_TransferVertexGroups_Items = (
         bpy.props.CollectionProperty(type=MustardUI_ToolsCreators_TransferVertexGroups_Item)
     )
-    bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = bpy.props.IntProperty(
-        default=0, name=""
+    bpy.types.WindowManager.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex = (
+        bpy.props.IntProperty(default=0, name="")
     )
 
 
 def unregister():
-    del bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_Items
-    del bpy.types.Scene.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex
+    del bpy.types.WindowManager.MustardUI_ToolsCreators_TransferVertexGroups_Items
+    del bpy.types.WindowManager.MustardUI_ToolsCreators_TransferVertexGroups_ItemIndex
 
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferVertexGroups_AddSelectedBones)

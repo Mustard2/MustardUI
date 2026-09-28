@@ -3,7 +3,7 @@ import numpy as np
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
-from ...misc.mesh_deform import mesh_laplacian, mesh_triangles, vertex_group_weights
+from ...misc.mesh_deform import mesh_triangles, smooth_deformation, vertex_group_weights
 from .shape_key_preview import link_shape_key_driver
 
 
@@ -27,7 +27,7 @@ class MustardUI_ToolsCreators_TransferShapeKeys_Select(bpy.types.Operator):
     use: bpy.props.BoolProperty(default=True)
 
     def execute(self, context):
-        for item in context.scene.MustardUI_ToolsCreators_TransferShapeKeys_Items:
+        for item in context.window_manager.MustardUI_ToolsCreators_TransferShapeKeys_Items:
             item.use = self.use
         return {"FINISHED"}
 
@@ -57,38 +57,19 @@ def mesh_rest_coordinates(obj):
     """Basis coordinates of the mesh, in local space"""
 
     mesh = obj.data
-    co = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
+    # Read as float32, the fast path of foreach_get
+    co = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
     if mesh.shape_keys is not None:
         mesh.shape_keys.reference_key.data.foreach_get("co", co)
     else:
         mesh.vertices.foreach_get("co", co)
-    return co.reshape(-1, 3)
+    return co.reshape(-1, 3).astype(np.float64)
 
 
 def shape_key_coordinates(sk):
-    co = np.empty(len(sk.data) * 3, dtype=np.float64)
+    co = np.empty(len(sk.data) * 3, dtype=np.float32)
     sk.data.foreach_get("co", co)
-    return co.reshape(-1, 3)
-
-
-def barycentric_weights(p, a, b, c):
-    """Barycentric weights of the points p on the triangles (a, b, c)"""
-
-    v0, v1, v2 = b - a, c - a, p - a
-    d00 = np.einsum("ij,ij->i", v0, v0)
-    d01 = np.einsum("ij,ij->i", v0, v1)
-    d11 = np.einsum("ij,ij->i", v1, v1)
-    d20 = np.einsum("ij,ij->i", v2, v0)
-    d21 = np.einsum("ij,ij->i", v2, v1)
-    denom = d00 * d11 - d01 * d01
-    degenerate = np.abs(denom) < 1e-20
-    denom[degenerate] = 1.0
-    v = (d11 * d20 - d01 * d21) / denom
-    w = (d00 * d21 - d01 * d20) / denom
-    weights = np.clip(np.stack([1.0 - v - w, v, w], axis=1), 0.0, 1.0)
-    weights[degenerate] = 1.0 / 3.0
-    weights /= np.maximum(weights.sum(axis=1), 1e-12)[:, None]
-    return weights
+    return co.reshape(-1, 3).astype(np.float64)
 
 
 def transfer_mapping(source_co, source_tris, target_co, method, max_distance):
@@ -109,12 +90,25 @@ def transfer_mapping(source_co, source_tris, target_co, method, max_distance):
             faces[i] = face
             distances[i] = dist
         indices = source_tris[faces]
-        weights = barycentric_weights(
-            locations,
-            source_co[indices[:, 0]],
-            source_co[indices[:, 1]],
-            source_co[indices[:, 2]],
-        )
+
+        # Barycentric weights of the closest points on the triangles
+        a = source_co[indices[:, 0]]
+        v0 = source_co[indices[:, 1]] - a
+        v1 = source_co[indices[:, 2]] - a
+        v2 = locations - a
+        d00 = np.einsum("ij,ij->i", v0, v0)
+        d01 = np.einsum("ij,ij->i", v0, v1)
+        d11 = np.einsum("ij,ij->i", v1, v1)
+        d20 = np.einsum("ij,ij->i", v2, v0)
+        d21 = np.einsum("ij,ij->i", v2, v1)
+        denom = d00 * d11 - d01 * d01
+        degenerate = np.abs(denom) < 1e-20
+        denom[degenerate] = 1.0
+        v = (d11 * d20 - d01 * d21) / denom
+        w = (d00 * d21 - d01 * d20) / denom
+        weights = np.clip(np.stack([1.0 - v - w, v, w], axis=1), 0.0, 1.0)
+        weights[degenerate] = 1.0 / 3.0
+        weights /= np.maximum(weights.sum(axis=1), 1e-12)[:, None]
     else:
         kd = KDTree(len(source_co))
         for i, co in enumerate(source_co):
@@ -132,9 +126,121 @@ def transfer_mapping(source_co, source_tris, target_co, method, max_distance):
     return indices, weights
 
 
+def transfer_shape_keys(source, targets, keys, **kwargs):
+    """Transfer the Shape Keys of the source to the targets, returning the number of the
+    Shape Keys written"""
+
+    steps = transfer_shape_keys_steps(source, targets, keys, **kwargs)
+    while True:
+        try:
+            next(steps)
+        except StopIteration as stop:
+            return stop.value
+
+
+def transfer_shape_keys_steps(
+    source,
+    targets,
+    keys,
+    method="SURFACE",
+    max_distance=0.0,
+    smooth=0.0,
+    threshold=0.0001,
+    overwrite=False,
+    vertex_group="NONE",
+    invert_vertex_group=False,
+    link=True,
+):
+    """Transfer the Shape Keys like transfer_shape_keys, yielding the fraction of the Shape
+    Keys done"""
+
+    source_sks = source.data.shape_keys
+    source_mat = np.array(source.matrix_world, dtype=np.float64)
+    source_basis = mesh_rest_coordinates(source)
+    source_co = source_basis @ source_mat[:3, :3].T + source_mat[:3, 3]
+    source_tris = mesh_triangles(source.data)
+
+    # Source points for each target vertex
+    mappings = []
+    for target in targets:
+        mesh = target.data
+        if len(mesh.vertices) == 0:
+            continue
+
+        target_mat = np.array(target.matrix_world, dtype=np.float64)
+        target_basis = mesh_rest_coordinates(target)
+        target_co = target_basis @ target_mat[:3, :3].T + target_mat[:3, 3]
+        to_local = np.linalg.inv(target_mat[:3, :3]).T
+
+        indices, weights = transfer_mapping(source_co, source_tris, target_co, method, max_distance)
+
+        edges = np.empty(len(mesh.edges) * 2, dtype=np.int64)
+        mesh.edges.foreach_get("vertices", edges)
+        edges = edges.reshape(-1, 2)
+        lengths = np.linalg.norm(target_co[edges[:, 0]] - target_co[edges[:, 1]], axis=1)
+        length = max(float(np.median(lengths)), 1e-6) if len(lengths) else 1e-6
+
+        mask = None
+        if vertex_group != "NONE" and vertex_group in target.vertex_groups:
+            mask = vertex_group_weights(target, vertex_group)
+            if invert_vertex_group:
+                mask = 1.0 - mask
+
+        mappings.append((target, target_basis, to_local, indices, weights, edges, length, mask))
+
+    created = 0
+    for index, sk in enumerate(keys):
+        yield index / len(keys)
+        relative = sk.relative_key
+        if relative is None or relative == source_sks.reference_key:
+            relative_co = source_basis
+        else:
+            relative_co = shape_key_coordinates(relative)
+        source_delta = (shape_key_coordinates(sk) - relative_co) @ source_mat[:3, :3].T
+
+        for target, target_basis, to_local, indices, weights, edges, length, mask in mappings:
+            mesh = target.data
+            existing = mesh.shape_keys.key_blocks.get(sk.name) if mesh.shape_keys else None
+            if existing is not None and not overwrite:
+                continue
+
+            delta = np.einsum("ij,ijk->ik", weights, source_delta[indices])
+            delta = smooth_deformation(delta, edges, length, smooth)
+            if mask is not None:
+                delta *= mask[:, None]
+
+            # In world space, whatever the scale of the target
+            if np.abs(delta).max() < threshold:
+                continue
+            delta = delta @ to_local
+
+            if mesh.shape_keys is None:
+                target.shape_key_add(name="Basis", from_mix=False)
+            new_sk = existing
+            if new_sk is None:
+                new_sk = target.shape_key_add(name=sk.name, from_mix=False)
+            new_sk.relative_key = mesh.shape_keys.reference_key
+            new_sk.data.foreach_set("co", (target_basis + delta).ravel())
+            new_sk.slider_min = sk.slider_min
+            new_sk.slider_max = sk.slider_max
+            new_sk.interpolation = sk.interpolation
+            if sk.vertex_group in target.vertex_groups:
+                new_sk.vertex_group = sk.vertex_group
+
+            new_sk.value = sk.value
+            if link:
+                link_shape_key_driver(target, new_sk.name, source, sk.name)
+
+            created += 1
+
+    for target, *_ in mappings:
+        target.data.update()
+
+    return created
+
+
 class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
-    """Transfer the Shape Keys from the Active Object to the other selected Objects, using the
-    closest points on its surface"""
+    """Transfer the Shape Keys from the Active Object to the other selected Objects, using the closest points on its surface"""  # noqa: E501
 
     bl_idname = "mustardui.tools_creators_transfer_shape_keys"
     bl_label = "Transfer Shape Keys"
@@ -168,13 +274,15 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
         "to disable",
     )
 
-    smooth: bpy.props.IntProperty(
+    smooth: bpy.props.FloatProperty(
         name="Smooth",
-        default=0,
-        min=0,
-        soft_max=20,
-        description="Smoothing iterations of the transferred Shape Keys, to reduce the "
-        "artifacts on loose meshes (e.g. skirts)",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        soft_max=0.1,
+        subtype="DISTANCE",
+        description="Distance the transferred Shape Keys are smoothed over, to reduce the "
+        "artifacts on loose meshes (e.g. skirts).\nSet to 0 to disable",
     )
 
     threshold: bpy.props.FloatProperty(
@@ -223,16 +331,16 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
         return len(selected_objs) > 1
 
     def draw(self, context):
-        scene = context.scene
+        wm = context.window_manager
         layout = self.layout
 
         row = layout.row()
         row.template_list(
             "MUSTARDUI_UL_ToolsCreators_UIList_TransferShapeKeys",
             "",
-            scene,
+            wm,
             "MustardUI_ToolsCreators_TransferShapeKeys_Items",
-            scene,
+            wm,
             "MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex",
             rows=8,
         )
@@ -265,9 +373,9 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
         col.prop(self, "link")
 
     def invoke(self, context, event):
-        scene = context.scene
+        wm = context.window_manager
         source = context.active_object
-        items = scene.MustardUI_ToolsCreators_TransferShapeKeys_Items
+        items = wm.MustardUI_ToolsCreators_TransferShapeKeys_Items
 
         sks = source.data.shape_keys
         if sks is None or len(sks.key_blocks) < 2:
@@ -283,12 +391,12 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
             item = items.add()
             item.name = sk.name
             item.use = previous.get(sk.name, True)
-        scene.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex = 0
+        wm.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex = 0
 
         return context.window_manager.invoke_props_dialog(self, width=350)
 
     def execute(self, context):
-        scene = context.scene
+        wm = context.window_manager
         source = context.active_object
 
         if source is None or source.type != "MESH" or source.data.shape_keys is None:
@@ -300,7 +408,7 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Absolute Shape Keys are not supported")
             return {"CANCELLED"}
 
-        items = scene.MustardUI_ToolsCreators_TransferShapeKeys_Items
+        items = wm.MustardUI_ToolsCreators_TransferShapeKeys_Items
         names = [item.name for item in items if item.use]
         # Transfer all the Shape Keys when called from scripts
         if not len(items):
@@ -315,88 +423,19 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Select at least one other Mesh")
             return {"CANCELLED"}
 
-        source_mat = np.array(source.matrix_world, dtype=np.float64)
-        source_basis = mesh_rest_coordinates(source)
-        source_co = source_basis @ source_mat[:3, :3].T + source_mat[:3, 3]
-        source_tris = mesh_triangles(source.data)
-
-        # Source points for each target vertex
-        mappings = []
-        for target in targets:
-            mesh = target.data
-            if len(mesh.vertices) == 0:
-                continue
-
-            target_mat = np.array(target.matrix_world, dtype=np.float64)
-            target_basis = mesh_rest_coordinates(target)
-            target_co = target_basis @ target_mat[:3, :3].T + target_mat[:3, 3]
-            to_local = np.linalg.inv(target_mat[:3, :3]).T
-
-            indices, weights = transfer_mapping(
-                source_co, source_tris, target_co, self.method, self.max_distance
-            )
-
-            edges = None
-            if self.smooth:
-                edges = np.empty(len(mesh.edges) * 2, dtype=np.int64)
-                mesh.edges.foreach_get("vertices", edges)
-                edges = edges.reshape(-1, 2)
-
-            mask = None
-            if self.vertex_group != "NONE" and self.vertex_group in target.vertex_groups:
-                mask = vertex_group_weights(target, self.vertex_group)
-                if self.invert_vertex_group:
-                    mask = 1.0 - mask
-
-            mappings.append((target, target_basis, to_local, indices, weights, edges, mask))
-
-        created = 0
-        for sk in keys:
-            relative = sk.relative_key
-            if relative is None or relative == source_sks.reference_key:
-                relative_co = source_basis
-            else:
-                relative_co = shape_key_coordinates(relative)
-            source_delta = (shape_key_coordinates(sk) - relative_co) @ source_mat[:3, :3].T
-
-            for target, target_basis, to_local, indices, weights, edges, mask in mappings:
-                mesh = target.data
-                existing = mesh.shape_keys.key_blocks.get(sk.name) if mesh.shape_keys else None
-                if existing is not None and not self.overwrite:
-                    continue
-
-                delta = np.einsum("ij,ijk->ik", weights, source_delta[indices])
-                for _ in range(self.smooth):
-                    delta = 0.5 * (delta + mesh_laplacian(delta, edges, len(delta)))
-                if mask is not None:
-                    delta *= mask[:, None]
-                delta = delta @ to_local
-
-                if np.abs(delta).max() < self.threshold:
-                    continue
-
-                if mesh.shape_keys is None:
-                    target.shape_key_add(name="Basis", from_mix=False)
-                new_sk = existing
-                if new_sk is None:
-                    new_sk = target.shape_key_add(name=sk.name, from_mix=False)
-                new_sk.relative_key = mesh.shape_keys.reference_key
-                new_sk.data.foreach_set("co", (target_basis + delta).ravel())
-                new_sk.slider_min = sk.slider_min
-                new_sk.slider_max = sk.slider_max
-                new_sk.interpolation = sk.interpolation
-                if sk.vertex_group in target.vertex_groups:
-                    new_sk.vertex_group = sk.vertex_group
-
-                if self.link:
-                    link_shape_key_driver(target, new_sk.name, source, sk.name)
-                else:
-                    new_sk.value = sk.value
-
-                created += 1
-
-        for target, *_ in mappings:
-            target.data.update()
+        created = transfer_shape_keys(
+            source,
+            targets,
+            keys,
+            method=self.method,
+            max_distance=self.max_distance,
+            smooth=self.smooth,
+            threshold=self.threshold,
+            overwrite=self.overwrite,
+            vertex_group=self.vertex_group,
+            invert_vertex_group=self.invert_vertex_group,
+            link=self.link,
+        )
 
         self.report(
             {"INFO"},
@@ -412,17 +451,17 @@ def register():
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferShapeKeys_Select)
     bpy.utils.register_class(MustardUI_ToolsCreators_TransferShapeKeys)
 
-    bpy.types.Scene.MustardUI_ToolsCreators_TransferShapeKeys_Items = bpy.props.CollectionProperty(
-        type=MustardUI_ToolsCreators_TransferShapeKeys_Item
+    bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_Items = (
+        bpy.props.CollectionProperty(type=MustardUI_ToolsCreators_TransferShapeKeys_Item)
     )
-    bpy.types.Scene.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex = bpy.props.IntProperty(
-        default=0, name=""
+    bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex = (
+        bpy.props.IntProperty(default=0, name="")
     )
 
 
 def unregister():
-    del bpy.types.Scene.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex
-    del bpy.types.Scene.MustardUI_ToolsCreators_TransferShapeKeys_Items
+    del bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex
+    del bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_Items
 
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferShapeKeys)
     bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferShapeKeys_Select)
