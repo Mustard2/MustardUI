@@ -9,10 +9,10 @@ from ...model_selection.active_object import (
 )
 
 
-class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
+class MustardUI_ModelToolkit_SelectPreviewTexture(bpy.types.Operator):
     """Set Viewport Solid Mode preview texture for all materials of the model"""
 
-    bl_idname = "mustardui.tools_creators_select_preview_texture"
+    bl_idname = "mustardui.model_toolkit_select_preview_texture"
     bl_label = "Select Solid Preview Texture"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -60,7 +60,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
             if not node.node_tree:
                 continue
 
-            result = MustardUI_ToolsCreators_SelectPreviewTexture.find_principled_recursive(
+            result = MustardUI_ModelToolkit_SelectPreviewTexture.find_principled_recursive(
                 node.node_tree, node, visited
             )
 
@@ -94,7 +94,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
             # RGB image found — only accept if at the root (level 0) tree.
             # Images inside groups are ignored so we keep traversing GROUP_INPUT
             # back out to the top-level node tree.
-            if MustardUI_ToolsCreators_SelectPreviewTexture.is_rgb_image_node(from_node):
+            if MustardUI_ModelToolkit_SelectPreviewTexture.is_rgb_image_node(from_node):
                 if current_tree is root_tree:
                     return from_node
                 # Inside a group: fall through and let GROUP_INPUT handling
@@ -102,7 +102,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
             # Traverse normally inside same tree
             for input_socket in from_node.inputs:
-                result = MustardUI_ToolsCreators_SelectPreviewTexture.find_node_from_socket(
+                result = MustardUI_ModelToolkit_SelectPreviewTexture.find_node_from_socket(
                     input_socket, current_tree, root_tree, parent_group, visited
                 )
 
@@ -122,7 +122,7 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
                     outer_socket = parent_group.inputs[output_index]
 
-                    result = MustardUI_ToolsCreators_SelectPreviewTexture.find_node_from_socket(  # noqa: E501
+                    result = MustardUI_ModelToolkit_SelectPreviewTexture.find_node_from_socket(  # noqa: E501
                         outer_socket, parent_group.id_data, root_tree, None, visited
                     )
 
@@ -187,8 +187,8 @@ class MustardUI_ToolsCreators_SelectPreviewTexture(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_SelectPreviewTexture)
+    bpy.utils.register_class(MustardUI_ModelToolkit_SelectPreviewTexture)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_SelectPreviewTexture)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_SelectPreviewTexture)

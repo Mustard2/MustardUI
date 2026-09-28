@@ -61,7 +61,7 @@ def squisher_is_flipped(co, tris, body_bvh, max_dist, volume):
     return vote < 0.0
 
 
-class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
+class MustardUI_ModelToolkit_SquishSettings(bpy.types.PropertyGroup):
     shape_key_name: bpy.props.StringProperty(
         name="Shape Key",
         default="Squish",
@@ -258,8 +258,8 @@ class MustardUI_ToolsCreators_SquishSettings(bpy.types.PropertyGroup):
 SquishPresetsMenu, SquishPresetAdd = preview_preset_classes(
     "Squish",
     "Squish",
-    MustardUI_ToolsCreators_SquishSettings,
-    "MustardUI_ToolsCreators_SquishSettings",
+    MustardUI_ModelToolkit_SquishSettings,
+    "MustardUI_ModelToolkit_SquishSettings",
 )
 
 
@@ -549,10 +549,10 @@ class SquishSolver:
         return target.local(disp), len(contact), ""
 
 
-class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator):
+class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator):
     """Create a Shape Key on the Active Object squished by the other selected Objects (e.g. clothes, straps, hands), with a live preview.\nThe Rest Pose of the models is used"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_squish"
+    bl_idname = "mustardui.model_toolkit_squish"
     bl_label = "Create Squish Shape Key"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -569,7 +569,7 @@ class MustardUI_ToolsCreators_Squish(ShapeKeyPreviewOperator, bpy.types.Operator
         return any(x != obj and x.type in SQUISHER_TYPES for x in context.selected_objects)
 
     def preview_settings(self, context):
-        return context.window_manager.MustardUI_ToolsCreators_SquishSettings
+        return context.window_manager.MustardUI_ModelToolkit_SquishSettings
 
     def solver(self, context):
         settings = self.preview_settings(context)
@@ -787,20 +787,20 @@ def squish_draw_settings(layout, context):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_SquishSettings)
-    bpy.utils.register_class(MustardUI_ToolsCreators_Squish)
+    bpy.utils.register_class(MustardUI_ModelToolkit_SquishSettings)
+    bpy.utils.register_class(MustardUI_ModelToolkit_Squish)
     bpy.utils.register_class(SquishPresetsMenu)
     bpy.utils.register_class(SquishPresetAdd)
 
-    bpy.types.WindowManager.MustardUI_ToolsCreators_SquishSettings = bpy.props.PointerProperty(
-        type=MustardUI_ToolsCreators_SquishSettings
+    bpy.types.WindowManager.MustardUI_ModelToolkit_SquishSettings = bpy.props.PointerProperty(
+        type=MustardUI_ModelToolkit_SquishSettings
     )
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_SquishSettings
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_SquishSettings
 
     bpy.utils.unregister_class(SquishPresetAdd)
     bpy.utils.unregister_class(SquishPresetsMenu)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_Squish)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_SquishSettings)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_Squish)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_SquishSettings)

@@ -68,7 +68,7 @@ def preview_show_result(session, show):
 
 def preview_show_result_update(self, context):
     if PREVIEW_SESSION is not None:
-        preview_show_result(PREVIEW_SESSION, self.MustardUI_ToolsCreators_PreviewShow)
+        preview_show_result(PREVIEW_SESSION, self.MustardUI_ModelToolkit_PreviewShow)
         redraw_view3d(context)
 
 
@@ -196,7 +196,7 @@ class ShapeKeyPreviewOperator:
         PREVIEW_SESSION = ShapeKeyPreviewSession(
             self.preview_tool, obj, key_name, solver, self.preview_settings(context)
         )
-        context.window_manager.MustardUI_ToolsCreators_PreviewShow = True
+        context.window_manager.MustardUI_ModelToolkit_PreviewShow = True
         self.preview_status(context)
         try:
             self.preview_update(context)
@@ -259,7 +259,7 @@ class ShapeKeyPreviewOperator:
         for follower in session.solver.followers:
             shape = follower.shape(session.solver, session.settings)
             write_shape_key(follower.obj, session.key_name, shape)
-        preview_show_result(session, context.window_manager.MustardUI_ToolsCreators_PreviewShow)
+        preview_show_result(session, context.window_manager.MustardUI_ModelToolkit_PreviewShow)
         redraw_view3d(context)
 
     def modal(self, context, event):
@@ -360,10 +360,10 @@ class ShapeKeyPreviewOperator:
         self.preview_end(context)
 
 
-class MustardUI_ToolsCreators_PreviewFinish(bpy.types.Operator):
+class MustardUI_ModelToolkit_PreviewFinish(bpy.types.Operator):
     """Apply or cancel the Shape Key preview"""
 
-    bl_idname = "mustardui.tools_creators_preview_finish"
+    bl_idname = "mustardui.model_toolkit_preview_finish"
     bl_label = "Finish Preview"
     bl_options = {"INTERNAL"}
 
@@ -378,10 +378,10 @@ class MustardUI_ToolsCreators_PreviewFinish(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_ToolsCreators_PreviewReset(bpy.types.Operator):
+class MustardUI_ModelToolkit_PreviewReset(bpy.types.Operator):
     """Reset the settings of the tool to their default values"""
 
-    bl_idname = "mustardui.tools_creators_preview_reset"
+    bl_idname = "mustardui.model_toolkit_preview_reset"
     bl_label = "Reset Settings"
     bl_options = {"INTERNAL"}
 
@@ -408,7 +408,7 @@ PRESET_EXCLUDED = {"shape_key_name", "vertex_group", "rigid_group"}
 def preview_preset_classes(tool, label, settings_cls, settings_attr):
     """Presets menu and add/remove operator for the settings of a preview tool"""
 
-    menu_name = f"MUSTARDUI_MT_ToolsCreators_{tool}Presets"
+    menu_name = f"MUSTARDUI_MT_ModelToolkit_{tool}Presets"
     subdir = f"mustardui/{tool.lower()}"
     menu = type(
         menu_name,
@@ -421,11 +421,11 @@ def preview_preset_classes(tool, label, settings_cls, settings_attr):
         },
     )
     add = type(
-        f"MustardUI_ToolsCreators_{tool}PresetAdd",
+        f"MustardUI_ModelToolkit_{tool}PresetAdd",
         (AddPresetBase, bpy.types.Operator),
         {
             "__doc__": f"Add or remove a {label} preset",
-            "bl_idname": f"mustardui.tools_creators_{tool.lower()}_preset_add",
+            "bl_idname": f"mustardui.model_toolkit_{tool.lower()}_preset_add",
             "bl_label": f"Add {label} Preset",
             "preset_menu": menu_name,
             "preset_subdir": subdir,
@@ -445,7 +445,7 @@ def preview_draw_presets(layout, menu, add):
     row.menu(menu.__name__, text=menu.bl_label)
     row.operator(add.bl_idname, text="", icon="ADD")
     row.operator(add.bl_idname, text="", icon="REMOVE").remove_active = True
-    row.operator(MustardUI_ToolsCreators_PreviewReset.bl_idname, text="", icon="LOOP_BACK")
+    row.operator(MustardUI_ModelToolkit_PreviewReset.bl_idname, text="", icon="LOOP_BACK")
 
 
 def preview_section(layout, idname, title, icon, default_closed=False):
@@ -510,26 +510,26 @@ def preview_draw_footer(layout, session):
         if addon is not None and addon.preferences.debug:
             layout.label(text=session.info, icon="INFO")
     wm = bpy.context.window_manager
-    show = wm.MustardUI_ToolsCreators_PreviewShow
+    show = wm.MustardUI_ModelToolkit_PreviewShow
     layout.prop(
         wm,
-        "MustardUI_ToolsCreators_PreviewShow",
+        "MustardUI_ModelToolkit_PreviewShow",
         text="Show Result",
         toggle=True,
         icon="HIDE_OFF" if show else "HIDE_ON",
     )
     row = layout.row(align=True)
     row.operator(
-        "mustardui.tools_creators_preview_finish", text="Apply", icon="CHECKMARK"
+        "mustardui.model_toolkit_preview_finish", text="Apply", icon="CHECKMARK"
     ).apply = True
-    row.operator("mustardui.tools_creators_preview_finish", text="Cancel", icon="X").apply = False
+    row.operator("mustardui.model_toolkit_preview_finish", text="Cancel", icon="X").apply = False
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_PreviewFinish)
-    bpy.utils.register_class(MustardUI_ToolsCreators_PreviewReset)
+    bpy.utils.register_class(MustardUI_ModelToolkit_PreviewFinish)
+    bpy.utils.register_class(MustardUI_ModelToolkit_PreviewReset)
 
-    bpy.types.WindowManager.MustardUI_ToolsCreators_PreviewShow = bpy.props.BoolProperty(
+    bpy.types.WindowManager.MustardUI_ModelToolkit_PreviewShow = bpy.props.BoolProperty(
         name="Show Result",
         default=True,
         description="Show the result of the tool, to compare it with the original shape",
@@ -538,7 +538,7 @@ def register():
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_PreviewShow
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_PreviewShow
 
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_PreviewReset)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_PreviewFinish)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_PreviewReset)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_PreviewFinish)

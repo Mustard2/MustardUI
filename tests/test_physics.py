@@ -100,7 +100,7 @@ class TestCollisionCage(BlenderTestCase):
 
     # Non-deforming modifiers are removed, and bound modifiers are rebound to the new topology
     def test_create_cage(self):
-        bpy.ops.mustardui.tools_creators_create_collision_cage(decimate_proxy=True)
+        bpy.ops.mustardui.model_toolkit_create_collision_cage(decimate_proxy=True)
         cage = bpy.context.active_object
         self.assertNotEqual(cage, self.source)
         types = {m.type for m in cage.modifiers}

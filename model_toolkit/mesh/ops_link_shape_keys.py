@@ -3,8 +3,8 @@ import bpy
 from ... import __package__ as base_package
 
 
-class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
-    bl_idname = "mustardui.tools_creators_link_shape_keys"
+class MustardUI_ModelToolkit_LinkShapeKeysToActive(bpy.types.Operator):
+    bl_idname = "mustardui.model_toolkit_link_shape_keys"
     bl_label = "Link Shape Keys to Active"
     bl_description = (
         "Link matching Shape Keys on selected objects to the active object using Drivers"  # noqa: E501
@@ -102,8 +102,8 @@ class MustardUI_ToolsCreators_LinkShapeKeysToActive(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_LinkShapeKeysToActive)
+    bpy.utils.register_class(MustardUI_ModelToolkit_LinkShapeKeysToActive)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_LinkShapeKeysToActive)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_LinkShapeKeysToActive)

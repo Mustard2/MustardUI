@@ -9,8 +9,8 @@ except ImportError:
     USE_NUMPY = False
 
 
-class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
-    bl_idname = "mustardui.tools_creators_pack_rgba"
+class MustardUI_ModelToolkit_PackRGBA(bpy.types.Operator):
+    bl_idname = "mustardui.model_toolkit_pack_rgba"
     bl_label = "Pack Grayscale to RGBA"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -163,8 +163,8 @@ class MustardUI_ToolsCreators_PackRGBA(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_PackRGBA)
+    bpy.utils.register_class(MustardUI_ModelToolkit_PackRGBA)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_PackRGBA)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_PackRGBA)

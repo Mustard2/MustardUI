@@ -37,10 +37,10 @@ def deformed_coordinates(context, obj):
     return coordinates
 
 
-class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
+class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
     """Needs to select vertices in Edit Mode.\nCreates a simplified cage from the selected vertices and binds the selection to it, so that the cage can drive the Physics of that specific part of the mesh"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_create_jiggle_accurate"
+    bl_idname = "mustardui.model_toolkit_create_jiggle_accurate"
     bl_label = "Create Jiggle Cage (High-resolution)"
     bl_options = {"REGISTER", "UNDO", "PRESET"}
 
@@ -1266,8 +1266,8 @@ class MustardUI_ToolsCreators_CreateJiggleAccurate(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_CreateJiggleAccurate)
+    bpy.utils.register_class(MustardUI_ModelToolkit_CreateJiggleAccurate)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_CreateJiggleAccurate)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_CreateJiggleAccurate)

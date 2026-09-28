@@ -11,10 +11,10 @@ IKSpline_Empty_Name = "MustardUI.IKSpline.Empty"
 IKSpline_Constraint_Name = "MustardUI.IKSpline"
 
 
-class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
+class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
     """Create an IK spline on the selected chain.\nSelect the bones, the last one being the tip of the chain.\nThe minimum number of bones is 4"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_ikspline"
+    bl_idname = "mustardui.model_toolkit_ikspline"
     bl_label = "Create"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -283,10 +283,10 @@ class MustardUI_ToolsCreators_IKSpline(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self, width=300)
 
 
-class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
+class MustardUI_ModelToolkit_IKSpline_Clean(bpy.types.Operator):
     """This tool will remove the IK spline.\nSelect a bone with an IK constraint to enable the tool.\nA confirmation box will appear"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_ikspline_clean"
+    bl_idname = "mustardui.model_toolkit_ikspline_clean"
     bl_label = "Clean"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -458,10 +458,10 @@ class MustardUI_ToolsCreators_IKSpline_Clean(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_IKSpline)
-    bpy.utils.register_class(MustardUI_ToolsCreators_IKSpline_Clean)
+    bpy.utils.register_class(MustardUI_ModelToolkit_IKSpline)
+    bpy.utils.register_class(MustardUI_ModelToolkit_IKSpline_Clean)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_IKSpline_Clean)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_IKSpline)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_IKSpline_Clean)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_IKSpline)

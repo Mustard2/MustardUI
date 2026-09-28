@@ -20,7 +20,7 @@ def rename_object(obj):
         obj.data.shape_keys.name = obj.name
 
 
-class MustardUI_ToolsCreators_Naming(bpy.types.Operator):
+class MustardUI_ModelToolkit_Naming(bpy.types.Operator):
     """Enforce naming based on the model name and its objects."""  # noqa: E501
 
     bl_idname = "mustardui.tool_naming"
@@ -142,8 +142,8 @@ class MustardUI_ToolsCreators_Naming(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_Naming)
+    bpy.utils.register_class(MustardUI_ModelToolkit_Naming)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_Naming)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_Naming)

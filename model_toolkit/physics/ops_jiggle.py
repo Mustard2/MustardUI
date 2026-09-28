@@ -120,8 +120,8 @@ def _apply_jiggle_physics(operator):
         bpy.ops.object.mode_set(mode=current_mode)
 
 
-class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
-    bl_idname = "mustardui.tools_creators_create_jiggle"
+class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
+    bl_idname = "mustardui.model_toolkit_create_jiggle"
     bl_label = "Create Jiggle Cage (Low-resolution)"
     bl_description = "Needs to select vertices in Edit Mode.\nCreates a jiggle cage using the selected regions in Edit Mode and attaches it to the active mesh"  # noqa: E501
     bl_options = {"REGISTER", "UNDO", "PRESET"}
@@ -787,8 +787,8 @@ class MustardUI_ToolsCreators_CreateJiggle(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_CreateJiggle)
+    bpy.utils.register_class(MustardUI_ModelToolkit_CreateJiggle)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_CreateJiggle)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_CreateJiggle)

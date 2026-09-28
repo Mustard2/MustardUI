@@ -14,7 +14,7 @@ from .shape_key_preview import (
 )
 
 
-class MustardUI_ToolsCreators_SmoothShapeKeySettings(bpy.types.PropertyGroup):
+class MustardUI_ModelToolkit_SmoothShapeKeySettings(bpy.types.PropertyGroup):
     mode: bpy.props.EnumProperty(
         name="Mode",
         items=(
@@ -164,10 +164,10 @@ class SmoothShapeKeySolver:
         return self.relative + delta, count, ""
 
 
-class MustardUI_ToolsCreators_SmoothShapeKey(ShapeKeyPreviewOperator, bpy.types.Operator):
+class MustardUI_ModelToolkit_SmoothShapeKey(ShapeKeyPreviewOperator, bpy.types.Operator):
     """Smooth the active Shape Key of the Active Object, with a live preview"""
 
-    bl_idname = "mustardui.tools_creators_smooth_shape_key"
+    bl_idname = "mustardui.model_toolkit_smooth_shape_key"
     bl_label = "Smooth Shape Key"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -185,7 +185,7 @@ class MustardUI_ToolsCreators_SmoothShapeKey(ShapeKeyPreviewOperator, bpy.types.
         return obj.data.shape_keys is not None and obj.active_shape_key_index > 0
 
     def preview_settings(self, context):
-        return context.window_manager.MustardUI_ToolsCreators_SmoothShapeKeySettings
+        return context.window_manager.MustardUI_ModelToolkit_SmoothShapeKeySettings
 
     def execute(self, context):
         obj = context.active_object
@@ -243,16 +243,16 @@ def smooth_shape_key_draw_settings(layout, context):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_SmoothShapeKeySettings)
-    bpy.utils.register_class(MustardUI_ToolsCreators_SmoothShapeKey)
+    bpy.utils.register_class(MustardUI_ModelToolkit_SmoothShapeKeySettings)
+    bpy.utils.register_class(MustardUI_ModelToolkit_SmoothShapeKey)
 
-    bpy.types.WindowManager.MustardUI_ToolsCreators_SmoothShapeKeySettings = (
-        bpy.props.PointerProperty(type=MustardUI_ToolsCreators_SmoothShapeKeySettings)
+    bpy.types.WindowManager.MustardUI_ModelToolkit_SmoothShapeKeySettings = (
+        bpy.props.PointerProperty(type=MustardUI_ModelToolkit_SmoothShapeKeySettings)
     )
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_SmoothShapeKeySettings
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_SmoothShapeKeySettings
 
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_SmoothShapeKey)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_SmoothShapeKeySettings)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_SmoothShapeKey)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_SmoothShapeKeySettings)

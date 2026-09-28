@@ -32,7 +32,7 @@ REFIT_ANCHOR = 0.05
 REFIT_TOLERANCE = 0.05
 
 
-class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
+class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
     shape_key_name: bpy.props.StringProperty(
         name="Shape Key",
         default="Fit to Body",
@@ -217,8 +217,8 @@ class MustardUI_ToolsCreators_FitToBodySettings(bpy.types.PropertyGroup):
 FitToBodyPresetsMenu, FitToBodyPresetAdd = preview_preset_classes(
     "FitToBody",
     "Fit to Body",
-    MustardUI_ToolsCreators_FitToBodySettings,
-    "MustardUI_ToolsCreators_FitToBodySettings",
+    MustardUI_ModelToolkit_FitToBodySettings,
+    "MustardUI_ModelToolkit_FitToBodySettings",
 )
 
 
@@ -557,10 +557,10 @@ class FitToBodySolver:
         return target.local(disp), len(fitted), ""
 
 
-class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operator):
+class MustardUI_ModelToolkit_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operator):
     """Fit the Active Object (e.g. an outfit) to the other selected Objects (e.g. the body), pushing out the parts clipping through them, with a live preview.\nThe Rest Pose of the models is used"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_fit_to_body"
+    bl_idname = "mustardui.model_toolkit_fit_to_body"
     bl_label = "Fit to Body"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -577,7 +577,7 @@ class MustardUI_ToolsCreators_FitToBody(ShapeKeyPreviewOperator, bpy.types.Opera
         return any(x != obj and x.type == "MESH" for x in context.selected_objects)
 
     def preview_settings(self, context):
-        return context.window_manager.MustardUI_ToolsCreators_FitToBodySettings
+        return context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
 
     def solver(self, context):
         settings = self.preview_settings(context)
@@ -727,20 +727,20 @@ def fit_to_body_draw_settings(layout, context):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_FitToBodySettings)
-    bpy.utils.register_class(MustardUI_ToolsCreators_FitToBody)
+    bpy.utils.register_class(MustardUI_ModelToolkit_FitToBodySettings)
+    bpy.utils.register_class(MustardUI_ModelToolkit_FitToBody)
     bpy.utils.register_class(FitToBodyPresetsMenu)
     bpy.utils.register_class(FitToBodyPresetAdd)
 
-    bpy.types.WindowManager.MustardUI_ToolsCreators_FitToBodySettings = bpy.props.PointerProperty(
-        type=MustardUI_ToolsCreators_FitToBodySettings
+    bpy.types.WindowManager.MustardUI_ModelToolkit_FitToBodySettings = bpy.props.PointerProperty(
+        type=MustardUI_ModelToolkit_FitToBodySettings
     )
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_FitToBodySettings
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_FitToBodySettings
 
     bpy.utils.unregister_class(FitToBodyPresetAdd)
     bpy.utils.unregister_class(FitToBodyPresetsMenu)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_FitToBody)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_FitToBodySettings)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_FitToBody)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_FitToBodySettings)

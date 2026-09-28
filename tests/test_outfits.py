@@ -143,7 +143,7 @@ class TestAddOutfit(BlenderTestCase):
 
     # New outfit with renamed and bound pieces, weights and Shape Keys from the body
     def test_new_outfit(self):
-        bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Sporty", fit="NONE")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
 
         coll = bpy.data.collections["Tester Sporty"]
         self.assertIn(coll, [x.collection for x in self.rig_settings.outfits_collections])
@@ -175,7 +175,7 @@ class TestAddOutfit(BlenderTestCase):
         bm.to_mesh(mesh)
         bm.free()
 
-        bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Sporty", fit="MESH")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="MESH")
         outside = self.belt_outside()
         self.assertGreater(outside.min(), 0.5)
         # The smoothing rounds the belt over the sharp edges of the box
@@ -192,7 +192,7 @@ class TestAddOutfit(BlenderTestCase):
         self.top.shape_key_add(name="Basis")
         self.top.shape_key_add(name="Grow", from_mix=False)
 
-        bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Sporty", fit="NONE")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
         np.testing.assert_allclose(self.weights(self.top, "spine"), 0.3)
         # No second group for the same bone
         self.assertEqual([vg.name for vg in self.top.vertex_groups], ["spine"])
@@ -200,7 +200,7 @@ class TestAddOutfit(BlenderTestCase):
         self.assertEqual(grow.data[0].co, self.top.data.vertices[0].co)
 
         self.select(self.top)
-        bpy.ops.mustardui.tools_creators_add_outfit(
+        bpy.ops.mustardui.model_toolkit_add_outfit(
             destination="OUTFIT",
             outfit="Tester Sporty",
             fit="NONE",
@@ -224,14 +224,14 @@ class TestAddOutfit(BlenderTestCase):
         var.targets[0].id = shirt.data.shape_keys
         var.targets[0].data_path = 'key_blocks["Tight"].value'
 
-        bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Sporty", fit="NONE")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
         sks = self.top.data.shape_keys.key_blocks
         self.assertIn("Grow", sks)
         self.assertNotIn("Shirt Fix", sks)
 
     # The fit uses the default settings, not the ones changed in the Fit to Body tool
     def test_fit_default_settings(self):
-        settings = bpy.context.window_manager.MustardUI_ToolsCreators_FitToBodySettings
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
         settings.relax_iterations = 7
         settings.refit_auto = False
         settings.fit_distance = 0.03
@@ -250,7 +250,7 @@ class TestAddOutfit(BlenderTestCase):
         original = add_outfit.FitToBodySolver
         add_outfit.FitToBodySolver = Solver
         try:
-            bpy.ops.mustardui.tools_creators_add_outfit(
+            bpy.ops.mustardui.model_toolkit_add_outfit(
                 outfit_name="Sporty", fit="MESH", fit_smooth=0.03
             )
         finally:
@@ -269,11 +269,11 @@ class TestAddOutfit(BlenderTestCase):
     def test_modifiers(self):
         self.top.modifiers.new("Subsurf", "SUBSURF")
         self.belt.modifiers.new("Existing", "SHRINKWRAP")
-        bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Sporty", fit="NONE")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
         self.assertEqual([m.type for m in self.top.modifiers], ["ARMATURE", "SUBSURF"])
 
         self.select(self.top, self.belt)
-        bpy.ops.mustardui.tools_creators_add_outfit(
+        bpy.ops.mustardui.model_toolkit_add_outfit(
             destination="OUTFIT",
             outfit="Tester Sporty",
             fit="NONE",
@@ -296,7 +296,7 @@ class TestAddOutfit(BlenderTestCase):
         button.parent = self.top
         self.select(self.top, button, self.belt)
 
-        bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Sporty", fit="MESH")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="MESH")
         self.assertEqual(button.name, "Tester Sporty - Top Button")
         self.assertEqual(button.parent, self.top)
         self.assertIn(button, bpy.data.collections["Tester Sporty"].objects[:])
@@ -307,19 +307,19 @@ class TestAddOutfit(BlenderTestCase):
     # The dialog lists are not saved in the file, and the pieces one is emptied at the end
     def test_dialog_lists_not_saved(self):
         add_outfit.add_outfit_fill_lists(bpy.context)
-        bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Sporty", fit="NONE")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
         wm = bpy.context.window_manager
-        self.assertEqual(len(wm.MustardUI_ToolsCreators_AddOutfit_Items), 0)
-        self.assertGreater(len(wm.MustardUI_ToolsCreators_AddOutfit_ShapeKeys), 0)
+        self.assertEqual(len(wm.MustardUI_ModelToolkit_AddOutfit_Items), 0)
+        self.assertGreater(len(wm.MustardUI_ModelToolkit_AddOutfit_ShapeKeys), 0)
         scene = bpy.context.scene
-        self.assertFalse(hasattr(scene, "MustardUI_ToolsCreators_AddOutfit_Items"))
-        self.assertFalse(hasattr(scene, "MustardUI_ToolsCreators_AddOutfit_ShapeKeys"))
-        self.assertFalse(hasattr(scene, "MustardUI_ToolsCreators_TransferShapeKeys_Items"))
-        self.assertFalse(hasattr(scene, "MustardUI_ToolsCreators_TransferVertexGroups_Items"))
+        self.assertFalse(hasattr(scene, "MustardUI_ModelToolkit_AddOutfit_Items"))
+        self.assertFalse(hasattr(scene, "MustardUI_ModelToolkit_AddOutfit_ShapeKeys"))
+        self.assertFalse(hasattr(scene, "MustardUI_ModelToolkit_TransferShapeKeys_Items"))
+        self.assertFalse(hasattr(scene, "MustardUI_ModelToolkit_TransferVertexGroups_Items"))
 
     # Pieces can be added to the Extras
     def test_extras(self):
-        bpy.ops.mustardui.tools_creators_add_outfit(destination="EXTRAS", fit="NONE")
+        bpy.ops.mustardui.model_toolkit_add_outfit(destination="EXTRAS", fit="NONE")
         self.assertIn(self.top, self.model["extras"].objects[:])
         self.assertEqual(self.top.name, "Tester Extras - Top")
         self.assertEqual(len(self.rig_settings.outfits_collections), 2)
@@ -327,7 +327,7 @@ class TestAddOutfit(BlenderTestCase):
     # A new outfit can not reuse an existing collection
     def test_existing_name(self):
         with self.assertRaises(RuntimeError):
-            bpy.ops.mustardui.tools_creators_add_outfit(outfit_name="Casual", fit="NONE")
+            bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Casual", fit="NONE")
         self.assertIsNone(self.top.parent)
 
     # The dialog lists the pieces and the body Shape Keys, and draws valid properties
@@ -336,18 +336,18 @@ class TestAddOutfit(BlenderTestCase):
         self.assertEqual(coll_name, "Import")
 
         wm = bpy.context.window_manager
-        pieces = {i.object_name: i.name for i in wm.MustardUI_ToolsCreators_AddOutfit_Items}
+        pieces = {i.object_name: i.name for i in wm.MustardUI_ModelToolkit_AddOutfit_Items}
         self.assertEqual(pieces, {"GO Top Mesh": "Top", "GO Belt Mesh": "Belt"})
-        keys = [i.name for i in wm.MustardUI_ToolsCreators_AddOutfit_ShapeKeys]
+        keys = [i.name for i in wm.MustardUI_ModelToolkit_AddOutfit_ShapeKeys]
         self.assertEqual(keys, ["Smile", "Blink", "Blink.L", "Blink.R", "Grow"])
 
-        cls = bpy.types.MUSTARDUI_OT_tools_creators_add_outfit
+        cls = bpy.types.MUSTARDUI_OT_model_toolkit_add_outfit
         drawer = Drawer()
         for destination in ("NEW", "OUTFIT", "EXTRAS"):
             op = FakeSelf(
                 cls,
                 FakeLayout(drawer),
-                bl_rna=bpy.ops.mustardui.tools_creators_add_outfit.get_rna_type(),
+                bl_rna=bpy.ops.mustardui.model_toolkit_add_outfit.get_rna_type(),
                 destination=destination,
                 fit="MESH",
                 transfer_weights=True,
@@ -379,7 +379,7 @@ class TestSquishOutfitProperty(BlenderTestCase):
         for obj in (self.body, self.shirt):
             outward_normals(obj)
 
-        settings = bpy.context.window_manager.MustardUI_ToolsCreators_SquishSettings
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
         for name in ("outfit_property", "shape_key_name"):
             self.addCleanup(setattr, settings, name, getattr(settings, name))
         settings.outfit_property = True
@@ -389,7 +389,7 @@ class TestSquishOutfitProperty(BlenderTestCase):
         for obj in bpy.context.view_layer.objects:
             obj.select_set(obj in (self.body, squisher))
         bpy.context.view_layer.objects.active = self.body
-        self.assertEqual(bpy.ops.mustardui.tools_creators_squish(), {"FINISHED"})
+        self.assertEqual(bpy.ops.mustardui.model_toolkit_squish(), {"FINISHED"})
 
     def outfit_property(self):
         arm = self.model["armature"].data

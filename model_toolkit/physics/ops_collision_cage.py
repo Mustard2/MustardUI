@@ -43,10 +43,10 @@ from ...physics.ops_rebind import bind_object
 NON_DEFORMING_MODIFIERS = {"PARTICLE_SYSTEM", "COLLISION", "DYNAMIC_PAINT", "FLUID"}
 
 
-class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
+class MustardUI_ModelToolkit_CreateCollisionCage(bpy.types.Operator):
     """Create a collision cage by duplicating the current mesh and masking it based on the selection in Edit Mode. If nothing is selected or if the mesh is in Object Mode, the entire mesh is used.\nThe inflation value of the cage can be adjusted via the object's 'Inflate' custom property.\nThe operation applies to both the active object and any selected objects."""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_create_collision_cage"
+    bl_idname = "mustardui.model_toolkit_create_collision_cage"
     bl_label = "Create collision cage"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -386,8 +386,8 @@ class MustardUI_ToolsCreators_CreateCollisionCage(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_CreateCollisionCage)
+    bpy.utils.register_class(MustardUI_ModelToolkit_CreateCollisionCage)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_CreateCollisionCage)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_CreateCollisionCage)

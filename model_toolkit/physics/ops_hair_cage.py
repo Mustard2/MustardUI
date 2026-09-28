@@ -63,8 +63,8 @@ def update_voxel_res(self, context):
                 mod.ratio = decimate_ratio
 
 
-class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
-    bl_idname = "mustardui.tools_creators_hair_cage"
+class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
+    bl_idname = "mustardui.model_toolkit_hair_cage"
     bl_label = "Hair Cage"
     bl_description = "Create a Hair Cage on a Mesh"
     bl_options = {"REGISTER", "UNDO", "PRESET"}
@@ -758,8 +758,8 @@ class MustardUI_ToolsCreators_HairCage(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_HairCage)
+    bpy.utils.register_class(MustardUI_ModelToolkit_HairCage)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_HairCage)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_HairCage)

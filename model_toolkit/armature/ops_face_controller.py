@@ -298,10 +298,10 @@ def compute_fixes(driver, var_out, armature, bone, sk, fac):
     return expression
 
 
-class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
+class MustardUI_ModelToolkit_FaceController(bpy.types.Operator):
     """Add a Face Controller rig to the model.\nIf another controller is available on the model, the tool can not is disabled"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_face_controller"
+    bl_idname = "mustardui.model_toolkit_face_controller"
     bl_label = "Add Face Controller"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -557,10 +557,10 @@ class MustardUI_ToolsCreators_FaceController(bpy.types.Operator):
         layout.prop(self, "add_to_armature_panel")
 
 
-class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
+class MustardUI_ModelToolkit_FaceController_Remove(bpy.types.Operator):
     """Remove a Face Controller rig to the model"""
 
-    bl_idname = "mustardui.tools_creators_face_controller_remove"
+    bl_idname = "mustardui.model_toolkit_face_controller_remove"
     bl_label = "Remove Face Controller"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -699,10 +699,10 @@ class MustardUI_ToolsCreators_FaceController_Remove(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_FaceController)
-    bpy.utils.register_class(MustardUI_ToolsCreators_FaceController_Remove)
+    bpy.utils.register_class(MustardUI_ModelToolkit_FaceController)
+    bpy.utils.register_class(MustardUI_ModelToolkit_FaceController_Remove)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_FaceController_Remove)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_FaceController)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_FaceController_Remove)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_FaceController)

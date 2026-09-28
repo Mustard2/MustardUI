@@ -29,13 +29,13 @@ from .ops_naming import rename_object
 WEIGHT_THRESHOLD = 0.0001
 
 
-class MustardUI_ToolsCreators_AddOutfit_Item(bpy.types.PropertyGroup):
+class MustardUI_ModelToolkit_AddOutfit_Item(bpy.types.PropertyGroup):
     object_name: bpy.props.StringProperty(name="Object")
     name: bpy.props.StringProperty(name="Piece Name", description="Name of the outfit piece")
     child: bpy.props.BoolProperty(name="Child", description="Object parented to a piece")
 
 
-class MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit(bpy.types.UIList):
+class MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         icon = "LINKED" if item.child else "OUTLINER_OB_MESH"
@@ -43,28 +43,28 @@ class MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit(bpy.types.UIList):
         row.label(text=item.object_name)
 
 
-class MustardUI_ToolsCreators_AddOutfit_ShapeKey(bpy.types.PropertyGroup):
+class MustardUI_ModelToolkit_AddOutfit_ShapeKey(bpy.types.PropertyGroup):
     use: bpy.props.BoolProperty(name="Transfer", default=True)
     outfit: bpy.props.BoolProperty(name="Outfit Shape Key")
 
 
-class MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit_ShapeKeys(bpy.types.UIList):
+class MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit_ShapeKeys(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         row.prop(item, "use", text="")
         row.label(text=item.name, icon="MOD_CLOTH" if item.outfit else "SHAPEKEY_DATA")
 
 
-class MustardUI_ToolsCreators_AddOutfit_ShapeKeysSelect(bpy.types.Operator):
+class MustardUI_ModelToolkit_AddOutfit_ShapeKeysSelect(bpy.types.Operator):
     """Select or deselect all the Shape Keys in the list"""
 
-    bl_idname = "mustardui.tools_creators_add_outfit_shape_keys_select"
+    bl_idname = "mustardui.model_toolkit_add_outfit_shape_keys_select"
     bl_label = "Select Shape Keys"
 
     use: bpy.props.BoolProperty(default=True)
 
     def execute(self, context):
-        for item in context.window_manager.MustardUI_ToolsCreators_AddOutfit_ShapeKeys:
+        for item in context.window_manager.MustardUI_ModelToolkit_AddOutfit_ShapeKeys:
             item.use = self.use
         return {"FINISHED"}
 
@@ -251,7 +251,7 @@ def add_outfit_fill_lists(context):
 
     wm = context.window_manager
     pieces = add_outfit_pieces(context)
-    items = wm.MustardUI_ToolsCreators_AddOutfit_Items
+    items = wm.MustardUI_ModelToolkit_AddOutfit_Items
 
     items.clear()
     for obj, name in add_outfit_default_names(pieces).items():
@@ -259,11 +259,11 @@ def add_outfit_fill_lists(context):
         item.object_name = obj.name
         item.name = name
         item.child = obj not in pieces
-    wm.MustardUI_ToolsCreators_AddOutfit_ItemIndex = 0
+    wm.MustardUI_ModelToolkit_AddOutfit_ItemIndex = 0
 
     # Keep the previous choices, skipping the Outfits Shape Keys by default
     arm, arm_obj, body = add_outfit_model(context)
-    sk_items = wm.MustardUI_ToolsCreators_AddOutfit_ShapeKeys
+    sk_items = wm.MustardUI_ModelToolkit_AddOutfit_ShapeKeys
     previous = {item.name: item.use for item in sk_items}
     sk_items.clear()
     sks = body.data.shape_keys if body is not None else None
@@ -276,17 +276,17 @@ def add_outfit_fill_lists(context):
             item.name = sk.name
             item.outfit = sk.name in outfit_sks
             item.use = previous.get(sk.name, not item.outfit)
-    wm.MustardUI_ToolsCreators_AddOutfit_ShapeKeyIndex = 0
+    wm.MustardUI_ModelToolkit_AddOutfit_ShapeKeyIndex = 0
 
     colls = {c for o in pieces for c in o.users_collection}
     return colls.pop().name if len(colls) == 1 else ""
 
 
-class MustardUI_ToolsCreators_AddOutfit(bpy.types.Operator):
+class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
     """Add the selected Objects to the model as an Outfit, transferring weights and Shape Keys
     from the body and fitting them to it"""
 
-    bl_idname = "mustardui.tools_creators_add_outfit"
+    bl_idname = "mustardui.model_toolkit_add_outfit"
     bl_label = "Add Outfit"
     bl_options = {"UNDO"}
 
@@ -435,12 +435,12 @@ class MustardUI_ToolsCreators_AddOutfit(bpy.types.Operator):
             col.prop(self, "outfit")
 
         layout.template_list(
-            "MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit",
+            "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit",
             "",
             wm,
-            "MustardUI_ToolsCreators_AddOutfit_Items",
+            "MustardUI_ModelToolkit_AddOutfit_Items",
             wm,
-            "MustardUI_ToolsCreators_AddOutfit_ItemIndex",
+            "MustardUI_ModelToolkit_AddOutfit_ItemIndex",
             rows=4,
         )
         col = layout.column()
@@ -481,22 +481,22 @@ class MustardUI_ToolsCreators_AddOutfit(bpy.types.Operator):
         col = col.column()
         col.enabled = self.transfer_shape_keys
         col.template_list(
-            "MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit_ShapeKeys",
+            "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit_ShapeKeys",
             "",
             wm,
-            "MustardUI_ToolsCreators_AddOutfit_ShapeKeys",
+            "MustardUI_ModelToolkit_AddOutfit_ShapeKeys",
             wm,
-            "MustardUI_ToolsCreators_AddOutfit_ShapeKeyIndex",
+            "MustardUI_ModelToolkit_AddOutfit_ShapeKeyIndex",
             rows=6,
         )
         row = col.row(align=True)
         row.operator(
-            "mustardui.tools_creators_add_outfit_shape_keys_select",
+            "mustardui.model_toolkit_add_outfit_shape_keys_select",
             text="All",
             icon="CHECKBOX_HLT",
         ).use = True
         row.operator(
-            "mustardui.tools_creators_add_outfit_shape_keys_select",
+            "mustardui.model_toolkit_add_outfit_shape_keys_select",
             text="None",
             icon="CHECKBOX_DEHLT",
         ).use = False
@@ -526,7 +526,7 @@ class MustardUI_ToolsCreators_AddOutfit(bpy.types.Operator):
         named = pieces + add_outfit_children(pieces)
         names = {
             item.object_name: item.name.strip()
-            for item in wm.MustardUI_ToolsCreators_AddOutfit_Items
+            for item in wm.MustardUI_ModelToolkit_AddOutfit_Items
         }
         # Default names when called from scripts
         if not all(o.name in names for o in named):
@@ -562,7 +562,7 @@ class MustardUI_ToolsCreators_AddOutfit(bpy.types.Operator):
         keys = []
         body_sks = body.data.shape_keys
         if self.transfer_shape_keys and body_sks is not None and body_sks.use_relative:
-            items = wm.MustardUI_ToolsCreators_AddOutfit_ShapeKeys
+            items = wm.MustardUI_ModelToolkit_AddOutfit_ShapeKeys
             key_names = {item.name for item in items if item.use}
             # All but the Outfits Shape Keys when called from scripts
             if not len(items):
@@ -664,7 +664,7 @@ class MustardUI_ToolsCreators_AddOutfit(bpy.types.Operator):
 
         # Fit after the Shape Keys, as the body is fitted with its current Shape Keys
         fitted = 0
-        settings = context.window_manager.MustardUI_ToolsCreators_FitToBodySettings
+        settings = context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
         key_name = f"Fit to Body - {body.name}"
         # Default settings, not the ones changed in the Fit to Body tool
         overrides = {
@@ -764,40 +764,40 @@ class MustardUI_ToolsCreators_AddOutfit(bpy.types.Operator):
 
         self.result = (len(pieces), collection.name, fitted, weights, shape_keys)
         # The pieces list is only needed by the dialog
-        context.window_manager.MustardUI_ToolsCreators_AddOutfit_Items.clear()
+        context.window_manager.MustardUI_ModelToolkit_AddOutfit_Items.clear()
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_AddOutfit_Item)
-    bpy.utils.register_class(MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit)
-    bpy.utils.register_class(MustardUI_ToolsCreators_AddOutfit_ShapeKey)
-    bpy.utils.register_class(MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit_ShapeKeys)
-    bpy.utils.register_class(MustardUI_ToolsCreators_AddOutfit_ShapeKeysSelect)
-    bpy.utils.register_class(MustardUI_ToolsCreators_AddOutfit)
+    bpy.utils.register_class(MustardUI_ModelToolkit_AddOutfit_Item)
+    bpy.utils.register_class(MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit)
+    bpy.utils.register_class(MustardUI_ModelToolkit_AddOutfit_ShapeKey)
+    bpy.utils.register_class(MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit_ShapeKeys)
+    bpy.utils.register_class(MustardUI_ModelToolkit_AddOutfit_ShapeKeysSelect)
+    bpy.utils.register_class(MustardUI_ModelToolkit_AddOutfit)
 
-    bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_Items = bpy.props.CollectionProperty(
-        type=MustardUI_ToolsCreators_AddOutfit_Item
+    bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_Items = bpy.props.CollectionProperty(
+        type=MustardUI_ModelToolkit_AddOutfit_Item
     )
-    bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_ItemIndex = bpy.props.IntProperty(
+    bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_ItemIndex = bpy.props.IntProperty(
         default=0, name=""
     )
-    bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_ShapeKeys = (
-        bpy.props.CollectionProperty(type=MustardUI_ToolsCreators_AddOutfit_ShapeKey)
+    bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_ShapeKeys = (
+        bpy.props.CollectionProperty(type=MustardUI_ModelToolkit_AddOutfit_ShapeKey)
     )
-    bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_ShapeKeyIndex = bpy.props.IntProperty(
+    bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_ShapeKeyIndex = bpy.props.IntProperty(
         default=0, name=""
     )
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_ShapeKeyIndex
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_ShapeKeys
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_ItemIndex
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_AddOutfit_Items
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_ShapeKeyIndex
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_ShapeKeys
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_ItemIndex
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_AddOutfit_Items
 
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_AddOutfit)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_AddOutfit_ShapeKeysSelect)
-    bpy.utils.unregister_class(MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit_ShapeKeys)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_AddOutfit_ShapeKey)
-    bpy.utils.unregister_class(MUSTARDUI_UL_ToolsCreators_UIList_AddOutfit)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_AddOutfit_Item)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_AddOutfit)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_AddOutfit_ShapeKeysSelect)
+    bpy.utils.unregister_class(MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit_ShapeKeys)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_AddOutfit_ShapeKey)
+    bpy.utils.unregister_class(MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_AddOutfit_Item)

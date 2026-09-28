@@ -7,12 +7,12 @@ from ... import __package__ as base_package
 from ...misc.materials import material_uses_nodes
 
 
-class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
+class MustardUI_ModelToolkit_OptimizeShaders(bpy.types.Operator):
     """Replace duplicate shader node groups and duplicate images.
     Node group matching includes canvas position and width, so groups that are
     structurally identical but placed at different locations will not be merged."""
 
-    bl_idname = "mustardui.tools_creators_optimize_shaders"
+    bl_idname = "mustardui.model_toolkit_optimize_shaders"
     bl_label = "Optimize Shaders"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -499,8 +499,8 @@ class MustardUI_ToolsCreators_OptimizeShaders(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_OptimizeShaders)
+    bpy.utils.register_class(MustardUI_ModelToolkit_OptimizeShaders)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_OptimizeShaders)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_OptimizeShaders)

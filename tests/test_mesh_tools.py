@@ -59,7 +59,7 @@ class TestTransferShapeKeys(BlenderTestCase):
 
     # The offsets are interpolated on the source surface, empty keys skipped
     def test_transfer(self):
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys()
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys()
 
         sks = self.target.data.shape_keys
         self.assertIn("Lift", sks.key_blocks)
@@ -81,7 +81,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         self.target.location = (0.0, 0.0, 0.0)
         bpy.context.view_layer.update()
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(link=False)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link=False)
 
         offsets = key_offsets(self.target, "Lift")
         xs = np.array([v.co.x for v in self.target.data.vertices])
@@ -98,7 +98,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         self.target.scale = (0.01, 0.01, 0.01)
         bpy.context.view_layer.update()
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(threshold=0.0001)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(threshold=0.0001)
         sks = self.target.data.shape_keys.key_blocks
         self.assertIn("Lift", sks)
         self.assertNotIn("Tiny", sks)
@@ -110,10 +110,10 @@ class TestTransferShapeKeys(BlenderTestCase):
         for d in noisy.data:
             d.co.z += 0.1 * (d.co.x + 1.0) + rng.uniform(-0.01, 0.01)
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(link=False)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link=False)
         plain = key_offsets(self.target, "Noisy")[:, 2]
         self.target.shape_key_remove(self.target.data.shape_keys.key_blocks["Noisy"])
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(link=False, smooth=0.3)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link=False, smooth=0.3)
         smooth = key_offsets(self.target, "Noisy")[:, 2]
 
         def noise(z):
@@ -132,7 +132,7 @@ class TestTransferShapeKeys(BlenderTestCase):
             d.co.z += 0.05
         more.relative_key = lift
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys()
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys()
 
         offsets = key_offsets(self.target, "More")
         np.testing.assert_allclose(offsets[:, 2], 0.05, atol=1e-5)
@@ -142,10 +142,10 @@ class TestTransferShapeKeys(BlenderTestCase):
         self.target.shape_key_add(name="Basis")
         self.target.shape_key_add(name="Lift")
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys()
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys()
         self.assertAlmostEqual(np.abs(key_offsets(self.target, "Lift")).max(), 0.0)
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(overwrite=True)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(overwrite=True)
         self.assertGreater(np.abs(key_offsets(self.target, "Lift")).max(), 0.01)
 
     # Vertices beyond the max distance are not moved
@@ -153,7 +153,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         far = grid_object("Far", size=0.5, subdivisions=3, location=(0, 0, 1.0))
         self.select(self.target, far, self.source)
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(max_distance=0.1)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(max_distance=0.1)
 
         self.assertIn("Lift", self.target.data.shape_keys.key_blocks)
         self.assertIsNone(far.data.shape_keys)
@@ -163,7 +163,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         copy = grid_object("Copy")
         self.select(copy, self.source)
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(method="VERTEX")
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(method="VERTEX")
 
         np.testing.assert_allclose(
             key_offsets(copy, "Lift"), key_offsets(self.source, "Lift"), atol=1e-6
@@ -177,7 +177,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         other = grid_object("Other", size=0.5, subdivisions=3, location=(0, 0, 0.001))
         self.select(self.target, other, self.source)
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(vertex_group="Mask")
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(vertex_group="Mask")
 
         offsets = key_offsets(self.target, "Lift")[:, 2]
         xs = np.array([v.co.x for v in self.target.data.vertices])
@@ -185,7 +185,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         np.testing.assert_allclose(offsets[xs >= 0.0], 0.0, atol=1e-6)
         self.assertGreater(key_offsets(other, "Lift")[:, 2].min(), 0.0)
 
-        bpy.ops.mustardui.tools_creators_transfer_shape_keys(
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(
             vertex_group="Mask", invert_vertex_group=True, overwrite=True
         )
 
@@ -201,7 +201,7 @@ class TestFitToBody(BlenderTestCase):
         self.body = bpy.context.active_object
         bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.49)
         self.outfit = bpy.context.active_object
-        self.settings = bpy.context.window_manager.MustardUI_ToolsCreators_FitToBodySettings
+        self.settings = bpy.context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
         self.settings.refit_iterations = 50
 
     def solve(self, auto):
@@ -259,7 +259,7 @@ class TestSquish(BlenderTestCase):
         body = bpy.context.active_object
         bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.48)
         squisher = bpy.context.active_object
-        settings = bpy.context.window_manager.MustardUI_ToolsCreators_SquishSettings
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
 
         solver = squish.SquishSolver(bpy.context, body, [squisher], "Squish")
         co, count, error = solver.solve(bpy.context, settings)
@@ -277,7 +277,7 @@ class TestSquish(BlenderTestCase):
         body = bpy.context.active_object
         bpy.ops.mesh.primitive_plane_add(size=0.1, location=(0.0, 0.0, -0.005))
         squisher = bpy.context.active_object
-        settings = bpy.context.window_manager.MustardUI_ToolsCreators_SquishSettings
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
         for name in ("bulge", "smooth_distance"):
             self.addCleanup(setattr, settings, name, getattr(settings, name))
         settings.smooth_distance = 0.02
@@ -303,7 +303,7 @@ class TestSquish(BlenderTestCase):
             x_subdivisions=40, y_subdivisions=40, size=0.2, location=(0.0025, 0.0025, 0.0)
         )
         squisher = bpy.context.active_object
-        settings = bpy.context.window_manager.MustardUI_ToolsCreators_SquishSettings
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
         for name in ("tightness", "squishers_movement", "bulge"):
             self.addCleanup(setattr, settings, name, getattr(settings, name))
         settings.tightness = 0.005
@@ -322,7 +322,7 @@ class TestSquish(BlenderTestCase):
 
     # The settings of the running preview go back to their defaults, but the Shape Key name
     def test_reset_settings(self):
-        settings = bpy.context.window_manager.MustardUI_ToolsCreators_SquishSettings
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
         self.addCleanup(setattr, settings, "shape_key_name", settings.shape_key_name)
         settings.shape_key_name = "Squish - Top"
         settings.mode = "VOLUME"
@@ -332,7 +332,7 @@ class TestSquish(BlenderTestCase):
 
         preview.PREVIEW_SESSION = type("Session", (), {"settings": settings})()
         try:
-            bpy.ops.mustardui.tools_creators_preview_reset()
+            bpy.ops.mustardui.model_toolkit_preview_reset()
         finally:
             preview.PREVIEW_SESSION = None
 
@@ -354,7 +354,7 @@ class TestSmoothShapeKey(BlenderTestCase):
         noisy.value = 0.3
         self.obj.active_shape_key_index = 1
         bpy.context.view_layer.objects.active = self.obj
-        self.settings = bpy.context.window_manager.MustardUI_ToolsCreators_SmoothShapeKeySettings
+        self.settings = bpy.context.window_manager.MustardUI_ModelToolkit_SmoothShapeKeySettings
         self.settings.smooth_distance = 0.3
         self.settings.keep_borders = False
 
@@ -366,7 +366,7 @@ class TestSmoothShapeKey(BlenderTestCase):
     def test_smooth(self):
         before = self.roughness()
         basis = [d.co.copy() for d in self.obj.data.shape_keys.reference_key.data]
-        bpy.ops.mustardui.tools_creators_smooth_shape_key()
+        bpy.ops.mustardui.model_toolkit_smooth_shape_key()
         self.assertLess(self.roughness(), 0.3 * before)
         self.assertEqual(basis, [d.co for d in self.obj.data.shape_keys.reference_key.data])
         self.assertAlmostEqual(self.obj.data.shape_keys.key_blocks["Noisy"].value, 0.3)
@@ -375,7 +375,7 @@ class TestSmoothShapeKey(BlenderTestCase):
     def test_factor_and_mask(self):
         offsets = key_offsets(self.obj, "Noisy")
         self.settings.factor = 0.0
-        bpy.ops.mustardui.tools_creators_smooth_shape_key()
+        bpy.ops.mustardui.model_toolkit_smooth_shape_key()
         np.testing.assert_allclose(key_offsets(self.obj, "Noisy"), offsets)
 
         self.settings.factor = 1.0
@@ -383,7 +383,7 @@ class TestSmoothShapeKey(BlenderTestCase):
         xs = np.array([v.co.x for v in self.obj.data.vertices])
         group.add([int(i) for i in np.nonzero(xs < -0.5)[0]], 1.0, "REPLACE")
         self.settings.vertex_group = "Half"
-        bpy.ops.mustardui.tools_creators_smooth_shape_key()
+        bpy.ops.mustardui.model_toolkit_smooth_shape_key()
         changed = np.abs(key_offsets(self.obj, "Noisy") - offsets).max(axis=1) > 1e-7
         self.assertTrue(changed[xs < -0.5].all())
         self.assertFalse(changed[xs >= -0.5].any())
@@ -448,14 +448,14 @@ class TestSmoothShapeKey(BlenderTestCase):
         bpy.context.view_layer.objects.active = self.obj
 
         before = key_offsets(self.obj, "Bump")[:, 2]
-        bpy.ops.mustardui.tools_creators_smooth_shape_key()
+        bpy.ops.mustardui.model_toolkit_smooth_shape_key()
         after = key_offsets(self.obj, "Bump")[:, 2]
         noise = np.abs(np.diff(after.reshape(61, 61), 2, axis=1)).mean()
         self.assertLess(noise, 0.5 * np.abs(np.diff(before.reshape(61, 61), 2, axis=1)).mean())
         self.assertGreater(after.max(), 0.8 * before.max())
         # Not enlarged either, as Taubin smoothing does after many iterations
         self.settings.smooth_distance = 1.0
-        bpy.ops.mustardui.tools_creators_smooth_shape_key()
+        bpy.ops.mustardui.model_toolkit_smooth_shape_key()
         self.assertLess(key_offsets(self.obj, "Bump")[:, 2].max(), 1.05 * before.max())
 
     # Hiding the result shows the original Shape Key, not the mesh without it
@@ -473,31 +473,31 @@ class TestSmoothShapeKey(BlenderTestCase):
             preview.ShapeKeyPreviewOperator.preview_result(operator, bpy.context, result)
             smoothed = key_offsets(self.obj, "Noisy")
 
-            wm.MustardUI_ToolsCreators_PreviewShow = False
+            wm.MustardUI_ModelToolkit_PreviewShow = False
             key = self.obj.data.shape_keys.key_blocks["Noisy"]
             self.assertEqual(key.value, 1.0)
             np.testing.assert_allclose(key_offsets(self.obj, "Noisy"), offsets, atol=1e-7)
 
-            wm.MustardUI_ToolsCreators_PreviewShow = True
+            wm.MustardUI_ModelToolkit_PreviewShow = True
             np.testing.assert_allclose(key_offsets(self.obj, "Noisy"), smoothed, atol=1e-7)
 
             # Applied while hidden, the smoothed Shape Key is kept
-            wm.MustardUI_ToolsCreators_PreviewShow = False
-            smooth_sk.MustardUI_ToolsCreators_SmoothShapeKey.preview_finish(
+            wm.MustardUI_ModelToolkit_PreviewShow = False
+            smooth_sk.MustardUI_ModelToolkit_SmoothShapeKey.preview_finish(
                 operator, bpy.context, session
             )
             np.testing.assert_allclose(key_offsets(self.obj, "Noisy"), smoothed, atol=1e-7)
             self.assertAlmostEqual(key.value, 0.3)
         finally:
             preview.PREVIEW_SESSION = None
-            wm.MustardUI_ToolsCreators_PreviewShow = True
+            wm.MustardUI_ModelToolkit_PreviewShow = True
 
     # The open borders keep the Shape Key, with the smoothing fading in from them
     def test_keep_borders(self):
         offsets = key_offsets(self.obj, "Noisy")
         self.settings.keep_borders = True
         self.settings.border_distance = 0.25
-        bpy.ops.mustardui.tools_creators_smooth_shape_key()
+        bpy.ops.mustardui.model_toolkit_smooth_shape_key()
         changed = np.abs(key_offsets(self.obj, "Noisy") - offsets).max(axis=1)
         co = np.array([v.co[:2] for v in self.obj.data.vertices])
         border = np.abs(co).max(axis=1)
@@ -529,7 +529,7 @@ class TestSmoothShapeKey(BlenderTestCase):
 
         before = bumps()
         self.settings.mode = "SHAPE"
-        bpy.ops.mustardui.tools_creators_smooth_shape_key()
+        bpy.ops.mustardui.model_toolkit_smooth_shape_key()
         after = np.array([d.co[:] for d in lift.data])
         self.assertLess(bumps(), 0.5 * before)
         # Outside the moved area the Shape Key is not changed

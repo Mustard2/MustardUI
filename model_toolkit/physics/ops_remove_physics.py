@@ -255,31 +255,31 @@ class RemovePhysicsBase:
         return
 
 
-class MustardUI_ToolsCreators_RemoveJiggle(RemovePhysicsBase, bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveJiggle(RemovePhysicsBase, bpy.types.Operator):
     """Remove the Jiggle Cages (Quick) selected, or driving the selected meshes, together
     with their modifiers, Vertex Groups and Physics Items"""
 
-    bl_idname = "mustardui.tools_creators_remove_jiggle"
+    bl_idname = "mustardui.model_toolkit_remove_jiggle"
     bl_label = "Remove Jiggle Cage (Quick)"
     tool_name = "Jiggle Cage"
     detector = staticmethod(is_jiggle)
 
 
-class MustardUI_ToolsCreators_RemoveJiggleAccurate(RemovePhysicsBase, bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveJiggleAccurate(RemovePhysicsBase, bpy.types.Operator):
     """Remove the Jiggle Cages (Accurate) selected, or driving the selected meshes, together
     with their modifiers, Vertex Groups and Physics Items"""
 
-    bl_idname = "mustardui.tools_creators_remove_jiggle_accurate"
+    bl_idname = "mustardui.model_toolkit_remove_jiggle_accurate"
     bl_label = "Remove Jiggle Cage (Accurate)"
     tool_name = "Jiggle Cage"
     detector = staticmethod(is_jiggle_accurate)
 
 
-class MustardUI_ToolsCreators_RemoveHairCage(RemovePhysicsBase, bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveHairCage(RemovePhysicsBase, bpy.types.Operator):
     """Remove the Hair Cages selected, or driving the selected hair, together with their
     modifiers, Vertex Groups and Physics Items"""
 
-    bl_idname = "mustardui.tools_creators_remove_hair_cage"
+    bl_idname = "mustardui.model_toolkit_remove_hair_cage"
     bl_label = "Remove Hair Cage"
     tool_name = "Hair Cage"
     detector = staticmethod(is_hair_cage)
@@ -297,11 +297,11 @@ class MustardUI_ToolsCreators_RemoveHairCage(RemovePhysicsBase, bpy.types.Operat
         return set(), modifiers
 
 
-class MustardUI_ToolsCreators_RemoveCollisionCage(RemovePhysicsBase, bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveCollisionCage(RemovePhysicsBase, bpy.types.Operator):
     """Remove the Collision Cages selected, or created from the selected meshes, and their
     Physics Items"""
 
-    bl_idname = "mustardui.tools_creators_remove_collision_cage"
+    bl_idname = "mustardui.model_toolkit_remove_collision_cage"
     bl_label = "Remove Collision Cage"
     tool_name = "Collision Cage"
     detector = staticmethod(is_collision_cage)
@@ -327,12 +327,12 @@ class MustardUI_ToolsCreators_RemoveCollisionCage(RemovePhysicsBase, bpy.types.O
         return self.from_sources(context), []
 
 
-class MustardUI_ToolsCreators_RemoveAccessoryPhysics(RemovePhysicsBase, bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveAccessoryPhysics(RemovePhysicsBase, bpy.types.Operator):
     """Remove the Accessory Physics of the selected accessories (or of the selected
     proxies): the proxy, the rigid parts, the generated collision mesh, the modifiers and
     the Physics Items"""
 
-    bl_idname = "mustardui.tools_creators_remove_accessory_physics"
+    bl_idname = "mustardui.model_toolkit_remove_accessory_physics"
     bl_label = "Remove Accessory Physics"
     tool_name = "Accessory Physics"
     detector = staticmethod(is_accessory)
@@ -406,11 +406,11 @@ class MustardUI_ToolsCreators_RemoveAccessoryPhysics(RemovePhysicsBase, bpy.type
 
 
 classes = (
-    MustardUI_ToolsCreators_RemoveJiggle,
-    MustardUI_ToolsCreators_RemoveJiggleAccurate,
-    MustardUI_ToolsCreators_RemoveHairCage,
-    MustardUI_ToolsCreators_RemoveCollisionCage,
-    MustardUI_ToolsCreators_RemoveAccessoryPhysics,
+    MustardUI_ModelToolkit_RemoveJiggle,
+    MustardUI_ModelToolkit_RemoveJiggleAccurate,
+    MustardUI_ModelToolkit_RemoveHairCage,
+    MustardUI_ModelToolkit_RemoveCollisionCage,
+    MustardUI_ModelToolkit_RemoveAccessoryPhysics,
 )
 
 

@@ -8,10 +8,10 @@ from ...model_selection.active_object import (
 )
 
 
-class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
+class MustardUI_ModelToolkit_OptimizeShapeKeys(bpy.types.Operator):
     """Tools to optimize the Shape Keys on the Active Object"""
 
-    bl_idname = "mustardui.tools_creators_optimize_shape_keys"
+    bl_idname = "mustardui.model_toolkit_optimize_shape_keys"
     bl_label = "Optimize Shape Keys"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -173,8 +173,8 @@ class MustardUI_ToolsCreators_OptimizeShapeKeys(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_OptimizeShapeKeys)
+    bpy.utils.register_class(MustardUI_ModelToolkit_OptimizeShapeKeys)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_OptimizeShapeKeys)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_OptimizeShapeKeys)

@@ -7,27 +7,27 @@ from ...misc.mesh_deform import mesh_triangles, smooth_deformation, vertex_group
 from .shape_key_preview import link_shape_key_driver
 
 
-class MustardUI_ToolsCreators_TransferShapeKeys_Item(bpy.types.PropertyGroup):
+class MustardUI_ModelToolkit_TransferShapeKeys_Item(bpy.types.PropertyGroup):
     use: bpy.props.BoolProperty(name="Transfer", default=True)
 
 
-class MUSTARDUI_UL_ToolsCreators_UIList_TransferShapeKeys(bpy.types.UIList):
+class MUSTARDUI_UL_ModelToolkit_UIList_TransferShapeKeys(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         row.prop(item, "use", text="")
         row.label(text=item.name, icon="SHAPEKEY_DATA")
 
 
-class MustardUI_ToolsCreators_TransferShapeKeys_Select(bpy.types.Operator):
+class MustardUI_ModelToolkit_TransferShapeKeys_Select(bpy.types.Operator):
     """Select or deselect all the Shape Keys in the list"""
 
-    bl_idname = "mustardui.tools_creators_transfer_shape_keys_select"
+    bl_idname = "mustardui.model_toolkit_transfer_shape_keys_select"
     bl_label = "Select Shape Keys"
 
     use: bpy.props.BoolProperty(default=True)
 
     def execute(self, context):
-        for item in context.window_manager.MustardUI_ToolsCreators_TransferShapeKeys_Items:
+        for item in context.window_manager.MustardUI_ModelToolkit_TransferShapeKeys_Items:
             item.use = self.use
         return {"FINISHED"}
 
@@ -239,10 +239,10 @@ def transfer_shape_keys_steps(
     return created
 
 
-class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
+class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
     """Transfer the Shape Keys from the Active Object to the other selected Objects, using the closest points on its surface"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_transfer_shape_keys"
+    bl_idname = "mustardui.model_toolkit_transfer_shape_keys"
     bl_label = "Transfer Shape Keys"
     bl_options = {"UNDO"}
 
@@ -336,23 +336,23 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
 
         row = layout.row()
         row.template_list(
-            "MUSTARDUI_UL_ToolsCreators_UIList_TransferShapeKeys",
+            "MUSTARDUI_UL_ModelToolkit_UIList_TransferShapeKeys",
             "",
             wm,
-            "MustardUI_ToolsCreators_TransferShapeKeys_Items",
+            "MustardUI_ModelToolkit_TransferShapeKeys_Items",
             wm,
-            "MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex",
+            "MustardUI_ModelToolkit_TransferShapeKeys_ItemIndex",
             rows=8,
         )
 
         row = layout.row(align=True)
         row.operator(
-            "mustardui.tools_creators_transfer_shape_keys_select",
+            "mustardui.model_toolkit_transfer_shape_keys_select",
             text="All",
             icon="CHECKBOX_HLT",
         ).use = True
         row.operator(
-            "mustardui.tools_creators_transfer_shape_keys_select",
+            "mustardui.model_toolkit_transfer_shape_keys_select",
             text="None",
             icon="CHECKBOX_DEHLT",
         ).use = False
@@ -375,7 +375,7 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
     def invoke(self, context, event):
         wm = context.window_manager
         source = context.active_object
-        items = wm.MustardUI_ToolsCreators_TransferShapeKeys_Items
+        items = wm.MustardUI_ModelToolkit_TransferShapeKeys_Items
 
         sks = source.data.shape_keys
         if sks is None or len(sks.key_blocks) < 2:
@@ -391,7 +391,7 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
             item = items.add()
             item.name = sk.name
             item.use = previous.get(sk.name, True)
-        wm.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex = 0
+        wm.MustardUI_ModelToolkit_TransferShapeKeys_ItemIndex = 0
 
         return context.window_manager.invoke_props_dialog(self, width=350)
 
@@ -408,7 +408,7 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Absolute Shape Keys are not supported")
             return {"CANCELLED"}
 
-        items = wm.MustardUI_ToolsCreators_TransferShapeKeys_Items
+        items = wm.MustardUI_ModelToolkit_TransferShapeKeys_Items
         names = [item.name for item in items if item.use]
         # Transfer all the Shape Keys when called from scripts
         if not len(items):
@@ -446,24 +446,24 @@ class MustardUI_ToolsCreators_TransferShapeKeys(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_TransferShapeKeys_Item)
-    bpy.utils.register_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferShapeKeys)
-    bpy.utils.register_class(MustardUI_ToolsCreators_TransferShapeKeys_Select)
-    bpy.utils.register_class(MustardUI_ToolsCreators_TransferShapeKeys)
+    bpy.utils.register_class(MustardUI_ModelToolkit_TransferShapeKeys_Item)
+    bpy.utils.register_class(MUSTARDUI_UL_ModelToolkit_UIList_TransferShapeKeys)
+    bpy.utils.register_class(MustardUI_ModelToolkit_TransferShapeKeys_Select)
+    bpy.utils.register_class(MustardUI_ModelToolkit_TransferShapeKeys)
 
-    bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_Items = (
-        bpy.props.CollectionProperty(type=MustardUI_ToolsCreators_TransferShapeKeys_Item)
+    bpy.types.WindowManager.MustardUI_ModelToolkit_TransferShapeKeys_Items = (
+        bpy.props.CollectionProperty(type=MustardUI_ModelToolkit_TransferShapeKeys_Item)
     )
-    bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex = (
+    bpy.types.WindowManager.MustardUI_ModelToolkit_TransferShapeKeys_ItemIndex = (
         bpy.props.IntProperty(default=0, name="")
     )
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_ItemIndex
-    del bpy.types.WindowManager.MustardUI_ToolsCreators_TransferShapeKeys_Items
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_TransferShapeKeys_ItemIndex
+    del bpy.types.WindowManager.MustardUI_ModelToolkit_TransferShapeKeys_Items
 
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferShapeKeys)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferShapeKeys_Select)
-    bpy.utils.unregister_class(MUSTARDUI_UL_ToolsCreators_UIList_TransferShapeKeys)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_TransferShapeKeys_Item)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferShapeKeys)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferShapeKeys_Select)
+    bpy.utils.unregister_class(MUSTARDUI_UL_ModelToolkit_UIList_TransferShapeKeys)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferShapeKeys_Item)

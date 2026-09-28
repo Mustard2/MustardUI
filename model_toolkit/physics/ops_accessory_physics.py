@@ -640,10 +640,10 @@ def hide_from_render(obj):
 # ----------------------------------------------------------------------------
 
 
-class MustardUI_ToolsCreators_AccessoryPhysics(bpy.types.Operator):
+class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
     """Add physics with collisions to an accessory (necklaces, chains, pendants, earrings).\nA low poly proxy is generated along the accessory and simulated with Cloth, and the accessory follows it with a Surface Deform modifier.\nUse Fit to Body first if the accessory intersects the body"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_accessory_physics"
+    bl_idname = "mustardui.model_toolkit_accessory_physics"
     bl_label = "Accessory Physics"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -1020,8 +1020,8 @@ class MustardUI_ToolsCreators_AccessoryPhysics(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_AccessoryPhysics)
+    bpy.utils.register_class(MustardUI_ModelToolkit_AccessoryPhysics)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_AccessoryPhysics)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_AccessoryPhysics)

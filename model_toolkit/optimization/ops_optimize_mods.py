@@ -139,10 +139,10 @@ def optimize_modifiers(
     return len(mods)
 
 
-class MustardUI_ToolsCreators_OptimizeModifiers(bpy.types.Operator):
+class MustardUI_ModelToolkit_OptimizeModifiers(bpy.types.Operator):
     """Optimize the Smooth Corrective modifiers on the Active Object.\nCreates a unique Smooth Corrective modifier and use the Vertex Weight Mix modifiers to generate the Vertex Group"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_optimize_modifiers"
+    bl_idname = "mustardui.model_toolkit_optimize_modifiers"
     bl_label = "Optimize Modifiers"
     bl_options = {"UNDO"}
 
@@ -245,8 +245,8 @@ class MustardUI_ToolsCreators_OptimizeModifiers(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_OptimizeModifiers)
+    bpy.utils.register_class(MustardUI_ModelToolkit_OptimizeModifiers)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_OptimizeModifiers)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_OptimizeModifiers)

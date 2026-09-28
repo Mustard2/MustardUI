@@ -9,10 +9,10 @@ from ...model_selection.active_object import (
 )
 
 
-class MustardUI_ToolsCreators_AffectTransform(bpy.types.Operator):
+class MustardUI_ModelToolkit_AffectTransform(bpy.types.Operator):
     """Enable/disable the \'Affect Transform\' option for all limit transform (loc, rot, sca) constraints on the rig bones"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_affect_transform"
+    bl_idname = "mustardui.model_toolkit_affect_transform"
     bl_label = "Change Affect Transform"
     bl_options = {"UNDO"}
 
@@ -70,8 +70,8 @@ class MustardUI_ToolsCreators_AffectTransform(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_AffectTransform)
+    bpy.utils.register_class(MustardUI_ModelToolkit_AffectTransform)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_AffectTransform)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_AffectTransform)

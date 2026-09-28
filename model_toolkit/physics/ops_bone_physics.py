@@ -44,8 +44,8 @@ def find_bone_chains(selected_bones):
     return chains
 
 
-class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
-    bl_idname = "mustardui.tools_creators_bone_physics"
+class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
+    bl_idname = "mustardui.model_toolkit_bone_physics"
     bl_label = "Bone Physics"
     bl_description = "Add physics to a set of selected bones in Pose Mode"
     bl_options = {"REGISTER", "UNDO", "PRESET"}
@@ -319,8 +319,8 @@ class MustardUI_ToolsCreators_BonePhysics(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self, width=300)
 
 
-class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
-    bl_idname = "mustardui.tools_creators_bone_physics_clean"
+class MustardUI_ModelToolkit_BonePhysics_Clean(bpy.types.Operator):
+    bl_idname = "mustardui.model_toolkit_bone_physics_clean"
     bl_label = "Remove Bone Physics"
     bl_description = "Clean the bone physics of the selected mesh"
     bl_options = {"REGISTER", "UNDO"}
@@ -381,10 +381,10 @@ class MustardUI_ToolsCreators_BonePhysics_Clean(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_BonePhysics)
-    bpy.utils.register_class(MustardUI_ToolsCreators_BonePhysics_Clean)
+    bpy.utils.register_class(MustardUI_ModelToolkit_BonePhysics)
+    bpy.utils.register_class(MustardUI_ModelToolkit_BonePhysics_Clean)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_BonePhysics_Clean)
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_BonePhysics)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_BonePhysics_Clean)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_BonePhysics)

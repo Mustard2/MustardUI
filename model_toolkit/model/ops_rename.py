@@ -7,7 +7,7 @@ from ...custom_properties.ops_rebuild import fix_custom_property_path
 from ...model_selection.active_object import ModelMode, mustardui_active_object
 
 
-class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
+class MustardUI_ModelToolkit_RenameModel(bpy.types.Operator):
     """Rename the model. This also changes the name of objects, collections and physics items associated to the model.\nThe renaming tool only works if MustardUI Naming Convention is active"""  # noqa: E501
 
     bl_idname = "mustardui.rename_model"
@@ -195,8 +195,8 @@ class MustardUI_ToolsCreators_RenameModel(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_RenameModel)
+    bpy.utils.register_class(MustardUI_ModelToolkit_RenameModel)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_RenameModel)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_RenameModel)

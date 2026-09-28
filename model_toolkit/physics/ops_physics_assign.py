@@ -4,10 +4,10 @@ from ...model_selection.active_object import ModelMode, active_object_operator_p
 from . import physics_presets
 
 
-class MustardUI_ToolsCreators_AssignPhysics(bpy.types.Operator):
+class MustardUI_ModelToolkit_AssignPhysics(bpy.types.Operator):
     """Assign the physics of a preset to the selected meshes.\nThis is the same simulation the cage tools add, on any mesh and without generating anything: it replaces the physics the meshes already have"""  # noqa: E501
 
-    bl_idname = "mustardui.tools_creators_assign_physics"
+    bl_idname = "mustardui.model_toolkit_assign_physics"
     bl_label = "Assign Physics"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -116,8 +116,8 @@ class MustardUI_ToolsCreators_AssignPhysics(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_ToolsCreators_AssignPhysics)
+    bpy.utils.register_class(MustardUI_ModelToolkit_AssignPhysics)
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_ToolsCreators_AssignPhysics)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_AssignPhysics)
