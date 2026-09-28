@@ -5,6 +5,7 @@ import bpy
 import numpy as np
 
 from ...misc.mesh_deform import mesh_triangles
+from ...misc.move_modifier import move_modifier
 from ...misc.ui_progress import status_progress
 from ...model_selection.active_object import (
     ModelMode,
@@ -241,8 +242,48 @@ def bind_to_armature(obj, armature):
     if not mods:
         mod = obj.modifiers.new(name="Armature", type="ARMATURE")
         mod.object = armature
-        with bpy.context.temp_override(object=obj):
-            bpy.ops.object.modifier_move_to_index(modifier=mod.name, index=0)
+        move_modifier(obj, mod, 0)
+
+
+class PiecesBackup:
+    """Pieces and children state before the tool, restored on cancel"""
+
+    def __init__(self, pieces):
+        self.objects = {
+            obj: (
+                obj.parent,
+                obj.matrix_parent_inverse.copy(),
+                obj.matrix_world.copy(),
+                {m.name: getattr(m, "object", None) for m in obj.modifiers},
+            )
+            for obj in pieces
+        }
+        # Weights, Shape Keys and fitted coordinates are all in the meshes
+        objs = pieces + [c for p in pieces for c in p.children_recursive]
+        self.meshes = {}
+        for obj in objs:
+            if obj.type == "MESH" and obj.data not in self.meshes:
+                self.meshes[obj.data] = obj.data.copy()
+
+    def restore(self):
+        for mesh, backup in self.meshes.items():
+            name = mesh.name
+            mesh.user_remap(backup)
+            bpy.data.meshes.remove(mesh)
+            backup.name = name
+        for obj, (parent, parent_inverse, matrix, mods) in self.objects.items():
+            for mod in [m for m in obj.modifiers if m.name not in mods]:
+                obj.modifiers.remove(mod)
+            for mod in obj.modifiers:
+                if mod.type == "ARMATURE":
+                    mod.object = mods[mod.name]
+            obj.parent = parent
+            obj.matrix_parent_inverse = parent_inverse
+            obj.matrix_world = matrix
+
+    def discard(self):
+        for backup in self.meshes.values():
+            bpy.data.meshes.remove(backup)
 
 
 def add_outfit_fill_lists(context):
@@ -371,8 +412,8 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
     overwrite_shape_keys: bpy.props.BoolProperty(
         name="Overwrite",
         default=False,
-        description="Overwrite the Shape Keys already on the pieces.\nIf disabled, they are "
-        "skipped",
+        description="Overwrite the Shape Keys already on the pieces, resetting the ones below "
+        "the threshold.\nIf disabled, they are skipped",
     )
 
     link: bpy.props.BoolProperty(
@@ -583,12 +624,18 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
             return self.finish(context)
 
         self._steps = steps
+        self._backup = PiecesBackup(pieces)
         self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
         context.window_manager.modal_handler_add(self)
         context.window.cursor_modal_set("WAIT")
         return {"RUNNING_MODAL"}
 
     def modal(self, context, event):
+        if event.type == "ESC" and event.value == "PRESS":
+            self.stop(context)
+            self._backup.restore()
+            self.report({"WARNING"}, "MustardUI - Add Outfit cancelled")
+            return {"CANCELLED"}
         if event.type != "TIMER":
             return {"RUNNING_MODAL"}
 
@@ -599,15 +646,19 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
                 factor, text = next(self._steps)
         except StopIteration:
             self.stop(context)
+            self._backup.discard()
             return self.finish(context)
         except Exception:
             self.stop(context)
+            self._backup.discard()
             raise
 
-        status_progress(context, factor, f"Add Outfit: {text}")
+        status_progress(context, factor, f"Add Outfit: {text} (Esc to cancel)")
         return {"RUNNING_MODAL"}
 
     def stop(self, context):
+        # Closing the steps restores the Fit to Body settings
+        self._steps.close()
         context.window_manager.event_timer_remove(self._timer)
         context.window.cursor_modal_restore()
         context.workspace.status_text_set(None)
@@ -720,9 +771,14 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
             if collection not in obj.users_collection:
                 collection.objects.link(obj)
 
-        # Remove the collections left empty
-        for coll in old_collections:
-            if coll != scene.collection and not coll.all_objects and not coll.children:
+        # Remove the collections left empty, unless used by other than their parents
+        empty = {
+            c
+            for c in old_collections
+            if c != scene.collection and not c.all_objects and not c.children
+        }
+        for coll, users in bpy.data.user_map(subset=empty).items():
+            if all(isinstance(u, (bpy.types.Collection, bpy.types.Scene)) for u in users):
                 bpy.data.collections.remove(coll)
 
         if self.rename:
@@ -752,8 +808,7 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
                 if getattr(rig_settings, f"outfits_enable_global_{option}"):
                     visible = getattr(rig_settings, f"outfits_global_{option}")
                     mod.show_viewport = mod.show_render = visible
-                with context.temp_override(object=piece):
-                    bpy.ops.object.modifier_move_to_index(modifier=mod.name, index=index + 1)
+                move_modifier(piece, mod, index + 1)
 
         if self.destination == "NEW":
             rig_settings.outfits_collections.add().collection = collection

@@ -317,6 +317,52 @@ class TestAddOutfit(BlenderTestCase):
         self.assertFalse(hasattr(scene, "MustardUI_ModelToolkit_TransferShapeKeys_Items"))
         self.assertFalse(hasattr(scene, "MustardUI_ModelToolkit_TransferVertexGroups_Items"))
 
+    # Emptied collections used by MustardUI are kept, the others removed
+    def test_emptied_collections(self):
+        casual = self.model["outfits"][0].name
+        hair = self.model["hair"].name
+        self.select(
+            self.top, self.belt, *self.model["outfits"][0].objects, *self.model["hair"].objects
+        )
+
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
+
+        self.assertNotIn("Import", bpy.data.collections)
+        self.assertIn(casual, bpy.data.collections)
+        self.assertIn(hair, bpy.data.collections)
+        self.assertEqual(self.rig_settings.outfits_collections[0].collection.name, casual)
+        self.assertEqual(self.rig_settings.hair_collection.name, hair)
+
+    # Cancelling restores the pieces, their children and their meshes
+    def test_backup_restore(self):
+        button = new_mesh_object("GO Top Button", self.top.users_collection[0], size=0.02)
+        button.parent = self.top
+        mesh_name = self.top.data.name
+        co = [v.co.copy() for v in self.top.data.vertices]
+        counts = (len(bpy.data.meshes), len(bpy.data.shape_keys))
+
+        backup = add_outfit.PiecesBackup([self.top, self.belt])
+        arm = self.model["armature"]
+        add_outfit.bind_to_armature(self.top, arm)
+        add_outfit.transfer_weights(self.model["body"], arm, self.top, False)
+        self.top.shape_key_add(name="Basis")
+        self.top.data.vertices[0].co.x += 1.0
+        button.shape_key_add(name="Basis")
+        backup.restore()
+
+        self.assertIsNone(self.top.parent)
+        self.assertEqual(len(self.top.modifiers), 0)
+        self.assertEqual(len(self.top.vertex_groups), 0)
+        self.assertIsNone(self.top.data.shape_keys)
+        self.assertIsNone(button.data.shape_keys)
+        self.assertEqual(self.top.data.name, mesh_name)
+        self.assertEqual([v.co for v in self.top.data.vertices], co)
+        self.assertEqual((len(bpy.data.meshes), len(bpy.data.shape_keys)), counts)
+
+        # Discarded after a completed run, without leftovers
+        add_outfit.PiecesBackup([self.top, self.belt]).discard()
+        self.assertEqual(len(bpy.data.meshes), counts[0])
+
     # Pieces can be added to the Extras
     def test_extras(self):
         bpy.ops.mustardui.model_toolkit_add_outfit(destination="EXTRAS", fit="NONE")

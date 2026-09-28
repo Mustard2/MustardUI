@@ -201,7 +201,9 @@ def transfer_shape_keys_steps(
         for target, target_basis, to_local, indices, weights, edges, length, mask in mappings:
             mesh = target.data
             existing = mesh.shape_keys.key_blocks.get(sk.name) if mesh.shape_keys else None
-            if existing is not None and not overwrite:
+            if existing is not None and (
+                not overwrite or existing == mesh.shape_keys.reference_key
+            ):
                 continue
 
             delta = np.einsum("ij,ijk->ik", weights, source_delta[indices])
@@ -211,6 +213,10 @@ def transfer_shape_keys_steps(
 
             # In world space, whatever the scale of the target
             if np.abs(delta).max() < threshold:
+                # The overwritten key would keep a stale deformation
+                if existing is not None:
+                    existing.relative_key = mesh.shape_keys.reference_key
+                    existing.data.foreach_set("co", target_basis.ravel())
                 continue
             delta = delta @ to_local
 
@@ -299,8 +305,8 @@ class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
     overwrite: bpy.props.BoolProperty(
         name="Overwrite",
         default=False,
-        description="Overwrite the Shape Keys already on the targets.\nIf disabled, they are "
-        "skipped",
+        description="Overwrite the Shape Keys already on the targets, resetting the ones below "
+        "the threshold.\nIf disabled, they are skipped",
     )
 
     vertex_group: bpy.props.EnumProperty(

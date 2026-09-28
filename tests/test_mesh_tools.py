@@ -148,6 +148,21 @@ class TestTransferShapeKeys(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_transfer_shape_keys(overwrite=True)
         self.assertGreater(np.abs(key_offsets(self.target, "Lift")).max(), 0.01)
 
+    # Overwrite never writes the reference key, and resets the keys below the threshold
+    def test_overwrite_reference_and_threshold(self):
+        reference = self.target.shape_key_add(name="Lift")
+        basis = np.array([d.co for d in reference.data])
+        empty = self.target.shape_key_add(name="Empty", from_mix=False)
+        for d in empty.data:
+            d.co.z += 0.5
+
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(overwrite=True)
+
+        sks = self.target.data.shape_keys
+        self.assertEqual(sks.reference_key, reference)
+        np.testing.assert_allclose([d.co for d in reference.data], basis)
+        self.assertAlmostEqual(np.abs(key_offsets(self.target, "Empty")).max(), 0.0)
+
     # Vertices beyond the max distance are not moved
     def test_max_distance(self):
         far = grid_object("Far", size=0.5, subdivisions=3, location=(0, 0, 1.0))
