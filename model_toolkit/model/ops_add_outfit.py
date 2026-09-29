@@ -1,3 +1,4 @@
+import itertools
 import re
 import time
 import traceback
@@ -117,6 +118,24 @@ def piece_default_names(names):
     # Imported meshes are often named "<name> Mesh"
     words = [w[:-1] if len(w) > 1 and w[-1] == "Mesh" else w for w in words]
     return [" ".join(w) for w in words]
+
+
+def add_outfit_groups(pieces):
+    """Pieces grouped by their collection"""
+
+    groups = {}
+    for piece in pieces:
+        groups.setdefault(piece.users_collection[0], []).append(piece)
+    return groups
+
+
+def outfit_default_name(coll_name, model_name):
+    """Outfit name from a collection name, without the number suffix and the model name"""
+
+    name = re.sub(r"\.\d{3}$", "", coll_name)
+    if model_name and name.startswith(f"{model_name} "):
+        name = name[len(model_name) + 1 :]
+    return name
 
 
 def add_outfit_default_names(pieces):
@@ -246,6 +265,89 @@ def bind_to_armature(obj, armature):
         move_modifier(obj, mod, 0)
 
 
+# Datablock at the start of a custom property path, e.g. bpy.data.objects["Name"]
+RNA_ID = re.compile(r'bpy\.data\.(\w+)\["((?:[^"\\]|\\.)*)"\]')
+
+
+def rna_id(rna):
+    """Collection name, datablock name and rest of a custom property path, or None"""
+
+    match = RNA_ID.match(rna)
+    if match is None:
+        return None
+    return match[1], re.sub(r"\\(.)", r"\1", match[2]), rna[match.end() :]
+
+
+def rna_with_id(attr, id_data, rest):
+    return f'bpy.data.{attr}["{bpy.utils.escape_identifier(id_data.name)}"]{rest}'
+
+
+def custom_property_refs(arm):
+    """Datablocks of the custom properties paths, to update the paths after renaming them"""
+
+    refs = []
+    for cps in (
+        arm.MustardUI_CustomProperties,
+        arm.MustardUI_CustomPropertiesOutfit,
+        arm.MustardUI_CustomPropertiesHair,
+    ):
+        for cp in cps:
+            for item in (cp, *cp.linked_properties):
+                parsed = rna_id(item.rna)
+                coll = getattr(bpy.data, parsed[0], None) if parsed else None
+                if isinstance(coll, bpy.types.bpy_prop_collection) and parsed[1] in coll:
+                    refs.append((item, parsed[0], coll[parsed[1]], parsed[2]))
+    return refs
+
+
+def update_custom_property_paths(refs):
+    for item, attr, id_data, rest in refs:
+        rna = rna_with_id(attr, id_data, rest)
+        if item.rna != rna:
+            item.rna = rna
+
+
+def rebind_modifiers(context, objects, armature):
+    """Bind again the Surface Deform and Corrective Smooth modifiers in rest pose,
+    returning the ones not bound"""
+
+    mods = [
+        (obj, mod)
+        for obj in objects
+        for mod in obj.modifiers
+        if (mod.type == "SURFACE_DEFORM" and mod.target is not None)
+        or (mod.type == "CORRECTIVE_SMOOTH" and mod.rest_source == "BIND")
+    ]
+    if not mods:
+        return []
+
+    def bound(mod):
+        return mod.is_bound if mod.type == "SURFACE_DEFORM" else mod.is_bind
+
+    pose_position = armature.data.pose_position
+    shown = {mod: mod.show_viewport for _, mod in mods}
+    armature.data.pose_position = "REST"
+    try:
+        for obj, mod in mods:
+            # The binding is done when the modifier is evaluated
+            mod.show_viewport = True
+            if mod.type == "SURFACE_DEFORM":
+                bind = bpy.ops.object.surfacedeform_bind
+            else:
+                bind = bpy.ops.object.correctivesmooth_bind
+            with context.temp_override(object=obj, active_object=obj):
+                # The operator unbinds the bound modifiers
+                if bound(mod):
+                    bind(modifier=mod.name)
+                bind(modifier=mod.name)
+        context.view_layer.update()
+    finally:
+        armature.data.pose_position = pose_position
+        for mod, show in shown.items():
+            mod.show_viewport = show
+    return [f"{obj.name}: {mod.name}" for obj, mod in mods if not bound(mod)]
+
+
 class PiecesBackup:
     """Pieces and children state before the tool, restored on cancel"""
 
@@ -303,7 +405,17 @@ def add_outfit_fill_lists(context):
         item.child = obj not in pieces
     wm.MustardUI_ModelToolkit_AddOutfit_ItemIndex = 0
 
+    add_outfit_fill_shape_keys(context)
+
+    colls = {c for o in pieces for c in o.users_collection}
+    return colls.pop().name if len(colls) == 1 else ""
+
+
+def add_outfit_fill_shape_keys(context):
+    """Fill the body Shape Keys list"""
+
     # Keep the previous choices, skipping the Outfits Shape Keys by default
+    wm = context.window_manager
     arm, arm_obj, body = add_outfit_model(context)
     sk_items = wm.MustardUI_ModelToolkit_AddOutfit_ShapeKeys
     previous = {item.name: item.use for item in sk_items}
@@ -320,17 +432,25 @@ def add_outfit_fill_lists(context):
             item.use = previous.get(sk.name, not item.outfit)
     wm.MustardUI_ModelToolkit_AddOutfit_ShapeKeyIndex = 0
 
-    colls = {c for o in pieces for c in o.users_collection}
-    return colls.pop().name if len(colls) == 1 else ""
+
+def fit_property(default):
+    """Fit to Body setting, declared by each operator with its default"""
+
+    return bpy.props.EnumProperty(
+        name="Fit to Body",
+        items=(
+            ("NONE", "None", "Do not fit the pieces to the body"),
+            ("SHAPE_KEY", "Shape Key", "Fit the pieces clipping through the body with a Shape Key"),
+            ("MESH", "Mesh", "Fit the pieces clipping through the body, applying it to the mesh"),
+        ),
+        default=default,
+        description="Fit the pieces clipping through the body, with the default settings of the "
+        "Fit to Body tool.\nPieces not clipping are not changed",
+    )
 
 
-class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
-    """Add the selected Objects to the model as an Outfit, transferring weights and Shape Keys
-    from the body and fitting them to it"""
-
-    bl_idname = "mustardui.model_toolkit_add_outfit"
-    bl_label = "Add Outfit"
-    bl_options = {"UNDO"}
+class AddOutfitSettings:
+    """Settings of Add Outfit, shared with Add Outfit from File"""
 
     destination: bpy.props.EnumProperty(
         name="Add to",
@@ -348,24 +468,18 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
         "MustardUI naming convention",
     )
 
+    split: bpy.props.BoolProperty(
+        name="One Outfit per Collection",
+        default=False,
+        description="Create an Outfit for each collection of the selected Objects, named after it",
+    )
+
     outfit: bpy.props.EnumProperty(name="Outfit", items=outfit_items)
 
     rename: bpy.props.BoolProperty(
         name="Rename Objects",
         default=True,
         description="Rename the Objects and their data with the piece names",
-    )
-
-    fit: bpy.props.EnumProperty(
-        name="Fit to Body",
-        items=(
-            ("NONE", "None", "Do not fit the pieces to the body"),
-            ("SHAPE_KEY", "Shape Key", "Fit the pieces clipping through the body with a Shape Key"),
-            ("MESH", "Mesh", "Fit the pieces clipping through the body, applying it to the mesh"),
-        ),
-        default="MESH",
-        description="Fit the pieces clipping through the body, with the default settings of the "
-        "Fit to Body tool.\nPieces not clipping are not changed",
     )
 
     fit_smooth: bpy.props.FloatProperty(
@@ -389,6 +503,13 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
         default=False,
         description="Add a Shrinkwrap modifier after the Armature, pushing out of the body "
         "the parts clipping through it in poses",
+    )
+
+    rebind: bpy.props.BoolProperty(
+        name="Rebind Modifiers",
+        default=True,
+        description="Bind again, in rest pose, the Surface Deform modifiers of the pieces and "
+        "the Corrective Smooth ones using a bind, as their target or mesh might have changed",
     )
 
     transfer_weights: bpy.props.BoolProperty(
@@ -455,61 +576,56 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
         description="Shape Keys moving the piece less than this are not created",
     )
 
-    @classmethod
-    def poll(cls, context):
-        if context.mode != "OBJECT":
-            return False
-        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
-            return False
-        return bool(add_outfit_pieces(context))
+    def draw_settings(self, context, pieces=None):
+        """Draw the settings, with the pieces list if the pieces are known"""
 
-    def draw(self, context):
         wm = context.window_manager
         layout = self.layout
 
         col = layout.column()
-        col.use_property_split = True
-        col.use_property_decorate = False
-        col.prop(self, "destination")
+        col.label(text="Add to")
+        col.prop(self, "destination", text="")
         if self.destination == "NEW":
-            col.prop(self, "outfit_name")
+            if pieces is None or len(add_outfit_groups(pieces)) > 1:
+                col.prop(self, "split")
+            if not self.split:
+                col.label(text="Outfit Name")
+                col.prop(self, "outfit_name", text="")
         elif self.destination == "OUTFIT":
-            col.prop(self, "outfit")
+            col.label(text="Outfit")
+            col.prop(self, "outfit", text="")
 
-        layout.template_list(
-            "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit",
-            "",
-            wm,
-            "MustardUI_ModelToolkit_AddOutfit_Items",
-            wm,
-            "MustardUI_ModelToolkit_AddOutfit_ItemIndex",
-            rows=4,
-        )
-        col = layout.column()
-        col.use_property_split = True
-        col.use_property_decorate = False
-        col.prop(self, "rename")
+        if pieces is not None:
+            col = layout.column()
+            col.label(text="Pieces")
+            col.template_list(
+                "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit",
+                "",
+                wm,
+                "MustardUI_ModelToolkit_AddOutfit_Items",
+                wm,
+                "MustardUI_ModelToolkit_AddOutfit_ItemIndex",
+                rows=4,
+            )
+        layout.prop(self, "rename")
 
         box = layout.box()
         col = box.column()
-        col.use_property_split = True
-        col.use_property_decorate = False
-        col.prop(self, "fit")
+        col.label(text="Fit to Body", icon="MOD_SHRINKWRAP")
+        col.row().prop(self, "fit", expand=True)
         row = col.row()
         row.enabled = self.fit != "NONE"
         row.prop(self, "fit_smooth")
 
         box = layout.box()
-        col = box.column(heading="Add Modifiers")
-        col.use_property_split = True
-        col.use_property_decorate = False
+        col = box.column()
+        col.label(text="Add Modifiers", icon="MODIFIER")
         col.prop(self, "add_smooth")
         col.prop(self, "add_shrinkwrap")
+        col.prop(self, "rebind")
 
         box = layout.box()
         col = box.column()
-        col.use_property_split = True
-        col.use_property_decorate = False
         col.prop(self, "transfer_weights")
         row = col.row()
         row.enabled = self.transfer_weights
@@ -517,8 +633,6 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
 
         box = layout.box()
         col = box.column()
-        col.use_property_split = True
-        col.use_property_decorate = False
         col.prop(self, "transfer_shape_keys")
         col = col.column()
         col.enabled = self.transfer_shape_keys
@@ -548,10 +662,34 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
         col.prop(self, "smooth")
         col.prop(self, "threshold")
 
+
+class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
+    """Add the selected Objects to the model as an Outfit, transferring weights and Shape Keys
+    from the body and fitting them to it"""
+
+    bl_idname = "mustardui.model_toolkit_add_outfit"
+    bl_label = "Add Outfit"
+    bl_options = {"UNDO"}
+
+    fit: fit_property("MESH")
+
+    @classmethod
+    def poll(cls, context):
+        if context.mode != "OBJECT":
+            return False
+        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
+            return False
+        return bool(add_outfit_pieces(context))
+
+    def draw(self, context):
+        self.draw_settings(context, add_outfit_pieces(context))
+
     def invoke(self, context, event):
         coll_name = add_outfit_fill_lists(context)
         if not self.outfit_name:
-            self.outfit_name = coll_name
+            arm, _, _ = add_outfit_model(context)
+            model_name = arm.MustardUI_RigSettings.model_name if arm is not None else ""
+            self.outfit_name = outfit_default_name(coll_name, model_name)
 
         return context.window_manager.invoke_props_dialog(self, width=400)
 
@@ -579,27 +717,36 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
 
         convention = rig_settings.model_MustardUI_naming_convention
 
-        # Destination collection
-        collection = None
+        # Destination collections, with the new ones created at the end (.001 if duplicated)
+        targets = []
         if self.destination == "NEW":
-            outfit_name = self.outfit_name.strip()
-            if not outfit_name:
-                self.report({"ERROR"}, "MustardUI - Choose a name for the Outfit")
-                return {"CANCELLED"}
-            coll_name = f"{rig_settings.model_name} {outfit_name}" if convention else outfit_name
-            if coll_name in bpy.data.collections:
-                self.report({"ERROR"}, f"MustardUI - Collection '{coll_name}' already exists")
-                return {"CANCELLED"}
+            if self.split:
+                outfits = [
+                    (outfit_default_name(c.name, rig_settings.model_name), group)
+                    for c, group in add_outfit_groups(pieces).items()
+                ]
+            else:
+                outfits = [(self.outfit_name.strip(), pieces)]
+            for outfit_name, group in outfits:
+                if not outfit_name:
+                    self.report({"ERROR"}, "MustardUI - Choose a name for the Outfit")
+                    return {"CANCELLED"}
+                coll_name = (
+                    f"{rig_settings.model_name} {outfit_name}" if convention else outfit_name
+                )
+                targets.append((coll_name, group))
         elif self.destination == "OUTFIT":
             collection = bpy.data.collections.get(self.outfit)
             if collection is None:
                 self.report({"ERROR"}, "MustardUI - Choose an Outfit")
                 return {"CANCELLED"}
+            targets.append((collection, pieces))
         else:
             collection = rig_settings.extras_collection
             if collection is None:
                 self.report({"ERROR"}, "MustardUI - The model has no Extras collection")
                 return {"CANCELLED"}
+            targets.append((collection, pieces))
 
         keys = []
         body_sks = body.data.shape_keys
@@ -616,7 +763,7 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
                 if sk != body_sks.reference_key and sk.name in key_names
             ]
 
-        steps = self.steps(context, pieces, named, names, keys, collection)
+        steps = self.steps(context, pieces, names, keys, targets)
         self._backup = PiecesBackup(pieces)
 
         # Without a window (e.g. from scripts) all the steps are run at once
@@ -677,15 +824,34 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
         context.workspace.status_text_set(None)
 
     def finish(self, context):
+        unbound = self.result[5]
+        if unbound:
+            print("MustardUI - Modifiers not bound:\n  " + "\n  ".join(unbound))
         self.report(
-            {"INFO"},
+            {"WARNING"} if unbound else {"INFO"},
             f"MustardUI - {self.result[0]} pieces added to '{self.result[1]}': "
             f"{self.result[2]} fitted, {self.result[3]} Vertex Groups and {self.result[4]} Shape "
-            "Keys transferred",
+            "Keys transferred"
+            + (f", {len(unbound)} modifiers not bound (listed in the console)" if unbound else ""),
         )
         return {"FINISHED"}
 
-    def steps(self, context, pieces, named, names, keys, collection):
+    def steps(self, context, pieces, names, keys, targets):
+        """Add the pieces with the model Nude, restoring the Outfit if not showing the new one"""
+
+        arm, _, _ = add_outfit_model(context)
+        rig_settings = arm.MustardUI_RigSettings
+        previous = rig_settings.outfits_list
+        nude = rig_settings.outfit_nude and previous not in ("", "Nude")
+        if nude:
+            rig_settings.outfits_list = "Nude"
+        try:
+            return (yield from self.add_steps(context, pieces, names, keys, targets))
+        finally:
+            if nude and rig_settings.outfits_list == "Nude":
+                rig_settings.outfits_list = previous
+
+    def add_steps(self, context, pieces, names, keys, targets):
         """Add the pieces, yielding the progress and the next step"""
 
         scene = context.scene
@@ -759,46 +925,82 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
             for name, value in stored.items():
                 setattr(settings, name, value)
 
+        # Before moving the pieces, as hidden collections are not evaluated
+        unbound = []
+        if self.rebind:
+            yield done / total, "Rebinding Modifiers"
+            unbound = rebind_modifiers(context, pieces + add_outfit_children(pieces), arm_obj)
+
         yield done / total, "Adding to MustardUI"
-        if collection is None:
-            outfit_name = self.outfit_name.strip()
-            coll_name = f"{rig_settings.model_name} {outfit_name}" if convention else outfit_name
-            collection = bpy.data.collections.new(coll_name)
-            # Next to the other Outfits
-            outfits = [x.collection for x in rig_settings.outfits_collections if x.collection]
-            parents = [scene.collection, *bpy.data.collections]
-            parent = next((c for c in parents if outfits and outfits[0].name in c.children), None)
-            (parent or arm_obj.users_collection[0]).children.link(collection)
+        # Next to the other Outfits
+        outfits = [x.collection for x in rig_settings.outfits_collections if x.collection]
+        candidates = [scene.collection, *bpy.data.collections]
+        parent = next((c for c in candidates if outfits and outfits[0].name in c.children), None)
+        collections = []
+        for target, group in targets:
+            collection = target
+            if isinstance(target, str):
+                collection = bpy.data.collections.new(target)
+                (parent or arm_obj.users_collection[0]).children.link(collection)
+            collections.append((collection, group))
 
-        # Move the pieces with their children
-        old_collections = set()
-        moved = set()
-        for obj in pieces + [c for p in pieces for c in p.children_recursive]:
-            if obj in moved:
-                continue
-            moved.add(obj)
-            for coll in obj.users_collection:
-                if coll != collection:
-                    coll.objects.unlink(obj)
-                    old_collections.add(coll)
-            if collection not in obj.users_collection:
-                collection.objects.link(obj)
+        # Move the pieces with their children and own parents (e.g. armatures of wings),
+        # storing where they are moved from and to
+        old_collections = {}
+        moved = {}
+        for collection, group in collections:
+            own_parents = [
+                p
+                for piece in group
+                for p in itertools.takewhile(lambda p: p != arm_obj, parents(piece))
+                if set(p.users_collection) & set(piece.users_collection)
+            ]
+            for obj in group + [c for p in group for c in p.children_recursive] + own_parents:
+                if obj in moved:
+                    continue
+                moved[obj] = collection
+                for coll in obj.users_collection:
+                    if coll != collection:
+                        coll.objects.unlink(obj)
+                        old_collections.setdefault(coll, collection)
+                if collection not in obj.users_collection:
+                    collection.objects.link(obj)
 
-        # Remove the collections left empty, unless used by other than their parents
         empty = {
             c
             for c in old_collections
             if c != scene.collection and not c.all_objects and not c.children
         }
+
+        # Outfit custom properties follow their piece, or their emptied collection
+        registered = set(outfits_get_collections(rig_settings))
+        for cp in arm.MustardUI_CustomPropertiesOutfit:
+            if cp.outfit_piece in moved:
+                cp.outfit = moved[cp.outfit_piece]
+            elif cp.outfit in empty and cp.outfit not in registered:
+                cp.outfit = old_collections[cp.outfit]
+
+        # Remove the collections left empty, unless used by other than their parents
         for coll, users in bpy.data.user_map(subset=empty).items():
             if all(isinstance(u, (bpy.types.Collection, bpy.types.Scene)) for u in users):
                 bpy.data.collections.remove(coll)
 
+        # Lowest free number suffix, now that the emptied collections are removed
+        for (collection, _), (target, _) in zip(collections, targets, strict=True):
+            if isinstance(target, str) and collection.name != target:
+                collection.name = target
+
         if self.rename:
-            new_names = {obj: names[obj.name] for obj in named}
-            for obj, name in new_names.items():
+            new_names = [
+                (obj, collection, names[obj.name])
+                for collection, group in collections
+                for obj in group + add_outfit_children(group)
+            ]
+            refs = custom_property_refs(arm)
+            for obj, collection, name in new_names:
                 obj.name = f"{collection.name} - {name}" if convention else name
                 rename_object(obj)
+            update_custom_property_paths(refs)
 
         # Modifiers after the Armature, following the global Outfit options
         modifiers = (
@@ -824,13 +1026,15 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
                 move_modifier(piece, mod, index + 1)
 
         if self.destination == "NEW":
-            rig_settings.outfits_collections.add().collection = collection
+            for collection, _ in collections:
+                rig_settings.outfits_collections.add().collection = collection
 
         # Show the outfit in User mode
         if arm.MustardUI_enable and self.destination != "EXTRAS":
-            rig_settings.outfits_list = collection.name
+            rig_settings.outfits_list = collections[0][0].name
 
-        self.result = (len(pieces), collection.name, fitted, weights, shape_keys)
+        coll_names = "', '".join(c.name for c, _ in collections)
+        self.result = (len(pieces), coll_names, fitted, weights, shape_keys, unbound)
         # The pieces list is only needed by the dialog
         context.window_manager.MustardUI_ModelToolkit_AddOutfit_Items.clear()
 

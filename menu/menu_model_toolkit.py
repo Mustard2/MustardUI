@@ -151,6 +151,8 @@ class PANEL_PT_MustardUI_ModelToolkit_Mesh(MainPanel, bpy.types.Panel):
 
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_add_outfit", icon="MOD_CLOTH")
+        row.operator("mustardui.model_toolkit_add_outfit_from_file", text="", icon="APPEND_BLEND")
+        row.operator("mustardui.model_toolkit_export_outfits", text="", icon="EXPORT")
 
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_link_shape_keys", icon="DRIVER_TRANSFORM")

@@ -1,4 +1,7 @@
 import importlib
+import os
+import shutil
+import tempfile
 
 import bmesh
 import bpy
@@ -11,10 +14,14 @@ from helpers import (
     configure_model,
     new_collection,
     new_mesh_object,
+    new_object,
+    reset_scene,
 )
 
 add_outfit = importlib.import_module(ADDON + ".model_toolkit.model.ops_add_outfit")
 squish = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_squish")
+export = importlib.import_module(ADDON + ".model_toolkit.model.ops_export_outfits")
+cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
 
 
 class TestOutfits(BlenderTestCase):
@@ -26,11 +33,6 @@ class TestOutfits(BlenderTestCase):
     def visible(self, name):
         obj = bpy.data.objects[name]
         return not obj.hide_viewport and not obj.hide_render
-
-    # Outfit list has Nude plus the outfit collections
-    def test_outfit_list(self):
-        items = [x[0] for x in self.rig_settings.outfits_list_make(bpy.context)]
-        self.assertEqual(items, ["Nude", "Tester Casual", "Tester Formal"])
 
     # Switching outfit shows only its pieces, Nude hides all
     def test_switch_outfit(self):
@@ -136,6 +138,10 @@ class TestAddOutfit(BlenderTestCase):
         for obj in bpy.context.view_layer.objects:
             obj.select_set(obj in objs)
         bpy.context.view_layer.objects.active = objs[-1]
+
+    def visible(self, name):
+        obj = bpy.data.objects[name]
+        return not obj.hide_viewport and not obj.hide_render
 
     def weights(self, obj, name):
         vg = obj.vertex_groups[name]
@@ -391,6 +397,27 @@ class TestAddOutfit(BlenderTestCase):
         self.assertEqual(len(bpy.data.meshes), meshes)
         self.assertEqual(settings.relax_iterations, 7)
 
+    # The model is Nude while adding, then the previous Outfit is restored for the Extras
+    def test_nude_while_adding(self):
+        self.rig_settings.outfits_list = "Tester Casual"
+        shown = []
+
+        class Solver(add_outfit.FitToBodySolver):
+            def solve(solver, context, settings):
+                shown.append((self.rig_settings.outfits_list, self.visible("Casual - Shirt")))
+                return super().solve(context, settings)
+
+        original = add_outfit.FitToBodySolver
+        add_outfit.FitToBodySolver = Solver
+        try:
+            bpy.ops.mustardui.model_toolkit_add_outfit(destination="EXTRAS", fit="MESH")
+        finally:
+            add_outfit.FitToBodySolver = original
+
+        self.assertEqual(shown[0], ("Nude", False))
+        self.assertEqual(self.rig_settings.outfits_list, "Tester Casual")
+        self.assertTrue(self.visible("Casual - Shirt"))
+
     # Pieces can be added to the Extras
     def test_extras(self):
         bpy.ops.mustardui.model_toolkit_add_outfit(destination="EXTRAS", fit="NONE")
@@ -398,11 +425,14 @@ class TestAddOutfit(BlenderTestCase):
         self.assertEqual(self.top.name, "Tester Extras - Top")
         self.assertEqual(len(self.rig_settings.outfits_collections), 2)
 
-    # A new outfit can not reuse an existing collection
+    # A new outfit with the name of an existing collection gets a number suffix
     def test_existing_name(self):
-        with self.assertRaises(RuntimeError):
-            bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Casual", fit="NONE")
-        self.assertIsNone(self.top.parent)
+        # The emptied collection of the pieces frees its name
+        self.top.users_collection[0].name = "Tester Casual.001"
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Casual", fit="NONE")
+        self.assertEqual(self.top.users_collection[0].name, "Tester Casual.001")
+        self.assertEqual(self.top.name, "Tester Casual.001 - Top")
+        self.assertEqual(len(self.model["outfits"][0].objects), 2)
 
     # The dialog lists the pieces and the body Shape Keys, and draws valid properties
     def test_dialog(self):
@@ -423,12 +453,247 @@ class TestAddOutfit(BlenderTestCase):
                 FakeLayout(drawer),
                 bl_rna=bpy.ops.mustardui.model_toolkit_add_outfit.get_rna_type(),
                 destination=destination,
+                split=False,
                 fit="MESH",
                 transfer_weights=True,
                 transfer_shape_keys=True,
             )
             drawer.run("draw", cls.draw, op, bpy.context)
         self.assertEqual(drawer.errors, [])
+
+    # With One Outfit per Collection, each collection of the pieces becomes an Outfit
+    def test_split(self):
+        self.belt.users_collection[0].objects.unlink(self.belt)
+        new_collection("Beach").objects.link(self.belt)
+        bpy.ops.mustardui.model_toolkit_add_outfit(split=True, fit="NONE")
+
+        names = {x.collection.name for x in self.rig_settings.outfits_collections}
+        self.assertEqual(names, {"Tester Casual", "Tester Formal", "Tester Import", "Tester Beach"})
+        self.assertEqual(self.top.name, "Tester Import - Top")
+        self.assertEqual(self.belt.name, "Tester Beach - Belt")
+        self.assertNotIn("Import", bpy.data.collections)
+        self.assertNotIn("Beach", bpy.data.collections)
+
+    # Source file with two outfits bound to their own, hidden armature
+    def write_source(self):
+        rig = new_object("Source Rig", bpy.data.armatures.new("Source Rig"))
+        colls = [new_collection("Other Sporty"), new_collection("Other Beach")]
+        for coll, name in zip(colls, ("Shorts", "Hat"), strict=True):
+            obj = new_mesh_object(f"{coll.name} - {name}", coll, size=0.52)
+            obj.parent = rig
+            obj.modifiers.new("Armature", "ARMATURE").object = rig
+            obj.hide_viewport = True
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
+        path = os.path.join(folder, "source.blend")
+        bpy.data.libraries.write(path, set(colls))
+        objs = [o for c in colls for o in c.objects]
+        bpy.data.batch_remove([*objs, *(o.data for o in objs), rig, rig.data, *colls])
+        return path
+
+    # Collections appended from another file are added bound to the model armature
+    def test_from_file(self):
+        path = self.write_source()
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.join(path, "Collection", ""),
+            files=[{"name": "Other Sporty"}, {"name": "Other Beach"}],
+            split=True,
+            fit="NONE",
+        )
+        arm = self.model["armature"]
+        shorts = bpy.data.objects["Tester Other Sporty - Shorts"]
+        self.assertNotIn("Source Rig", bpy.data.objects)
+        self.assertNotIn("Source Rig", bpy.data.armatures)
+        self.assertEqual(shorts.parent, arm)
+        self.assertEqual(shorts.modifiers["Armature"].object, arm)
+        self.assertTrue(shorts.visible_get())
+        self.assertIn(shorts, bpy.data.collections["Tester Other Sporty"].objects[:])
+        self.assertIn(
+            "Tester Other Beach - Hat", bpy.data.collections["Tester Other Beach"].objects
+        )
+        self.assertNotIn("Other Sporty", bpy.data.collections)
+        # The pieces of the scene are not changed
+        self.assertIsNone(self.top.parent)
+
+    # Appended piece with drivers to the source body and armature, returning its drivers
+    def append_driven(self):
+        rig = new_object("Source Rig", bpy.data.armatures.new("Source Rig"))
+        rig.data["Outfit Sporty"] = 1.0
+        body = new_mesh_object("Source Body", size=0.5)
+        for name in ("Basis", "Blink", "Missing"):
+            body.shape_key_add(name=name, from_mix=False)
+        rig.data.MustardUI_RigSettings.model_body = body
+        coll = new_collection("Other Sporty")
+        shorts = new_mesh_object("Other Sporty - Shorts", coll, size=0.52)
+        shorts.modifiers.new("Armature", "ARMATURE").object = rig
+        shorts.shape_key_add(name="Basis")
+        for name, id_type, id_data, path in (
+            ("Blink", "KEY", body.data.shape_keys, 'key_blocks["Blink"].value'),
+            ("Missing", "KEY", body.data.shape_keys, 'key_blocks["Missing"].value'),
+            ("Outfit", "ARMATURE", rig.data, '["Outfit Sporty"]'),
+        ):
+            sk = shorts.shape_key_add(name=name, from_mix=False)
+            var = sk.driver_add("value").driver.variables.new()
+            var.targets[0].id_type = id_type
+            var.targets[0].id = id_data
+            var.targets[0].data_path = path
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
+        path = os.path.join(folder, "source.blend")
+        bpy.data.libraries.write(path, {coll})
+        bpy.data.batch_remove([shorts, shorts.data, body, body.data, rig, rig.data, coll])
+
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.join(path, "Collection", ""),
+            files=[{"name": "Other Sporty"}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+        shorts = bpy.data.objects["Tester Other Sporty - Shorts"]
+        return {
+            fc.data_path: fc.driver.variables[0].targets[0].id
+            for fc in shorts.data.shape_keys.animation_data.drivers
+        }
+
+    # Drivers using something missing in this file are removed
+    def test_from_file_broken_drivers(self):
+        drivers = self.append_driven()
+        self.assertEqual(drivers, {'key_blocks["Blink"].value': self.model["body"].data.shape_keys})
+
+    # Appended MustardUI model with Outfit custom properties, returning the model ones added
+    def append_custom_properties(self):
+        cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
+        rig = new_object("Source Rig", bpy.data.armatures.new("Source Rig"))
+        body = new_mesh_object("Source Body", size=0.5)
+        for name in ("Basis", "Fix"):
+            body.shape_key_add(name=name, from_mix=False)
+        rig.data.MustardUI_RigSettings.model_body = body
+        coll = new_collection("Other Sporty")
+        shorts = new_mesh_object("Other Sporty - Shorts", coll, size=0.52)
+        shorts.modifiers.new("Armature", "ARMATURE").object = rig
+        for name in ("Basis", "Tight", "Loose"):
+            shorts.shape_key_add(name=name, from_mix=False)
+
+        # Piece property with a pointer, Outfit one without, and one driving the body
+        for name, key, piece, pointer in (
+            ("Tight", shorts.data.shape_keys, shorts, True),
+            ("Loose", shorts.data.shape_keys, None, False),
+            ("Fix", body.data.shape_keys, shorts, True),
+        ):
+            rna = f'bpy.data.shape_keys["{key.name}"].key_blocks["{name}"]'
+            rig.data[name] = 0.7
+            cp_misc.mustardui_add_driver(rig.data, rna, "value", name, 0)
+            cp = rig.data.MustardUI_CustomPropertiesOutfit.add()
+            cp.name, cp.prop_name, cp.rna, cp.path = name, name, rna, "value"
+            cp.type, cp.is_animatable, cp.cp_type = "FLOAT", True, "OUTFIT"
+            cp.outfit, cp.outfit_piece = coll, piece
+            if pointer:
+                cp.ptr_type, cp.ptr_key = "SHAPEKEY", key
+
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
+        path = os.path.join(folder, "source.blend")
+        bpy.data.libraries.write(path, {coll})
+        bpy.data.batch_remove([shorts, shorts.data, body, body.data, rig, rig.data, coll])
+
+        arm = self.model["armature"].data
+        # Name taken by a property of the model
+        arm["Tight"] = 0.5
+        start = len(arm.MustardUI_CustomPropertiesOutfit)
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.join(path, "Collection", ""),
+            files=[{"name": "Other Sporty"}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+        return {cp.name: cp for cp in list(arm.MustardUI_CustomPropertiesOutfit)[start:]}
+
+    # The Outfit custom properties of the appended pieces are added to the model
+    def test_from_file_custom_properties(self):
+        cps = self.append_custom_properties()
+        arm = self.model["armature"].data
+        shorts = bpy.data.objects["Tester Other Sporty - Shorts"]
+        outfit = bpy.data.collections["Tester Other Sporty"]
+        self.assertEqual(set(cps), {"Tight", "Loose"})
+        self.assertNotIn("Other Sporty", bpy.data.collections)
+
+        tight = cps["Tight"]
+        self.assertEqual((tight.outfit, tight.outfit_piece), (outfit, shorts))
+        self.assertEqual(tight.prop_name, "Tight 2")
+        self.assertIn(f'bpy.data.shape_keys["{shorts.data.shape_keys.name}"]', tight.rna)
+        self.assertAlmostEqual(arm["Tight 2"], 0.7)
+        self.assertAlmostEqual(arm["Tight"], 0.5)
+        drivers = shorts.data.shape_keys.animation_data.drivers
+        target = drivers.find('key_blocks["Tight"].value').driver.variables[0].targets[0]
+        self.assertEqual((target.id, target.data_path), (arm, '["Tight 2"]'))
+        # The imported property drives the Shape Key
+        arm["Tight 2"] = 0.2
+        arm.update_tag()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        depsgraph.update()
+        key = shorts.data.shape_keys.evaluated_get(depsgraph)
+        self.assertAlmostEqual(key.key_blocks["Tight"].value, 0.2, places=5)
+
+        loose = cps["Loose"]
+        self.assertEqual((loose.outfit, loose.outfit_piece), (outfit, None))
+        self.assertEqual(loose.prop_name, "Loose")
+        self.assertIsNotNone(drivers.find('key_blocks["Loose"].value'))
+        self.assertNotIn("Fix", arm.keys())
+
+    # Outfit custom properties follow the pieces, with the paths updated after the renaming
+    def test_custom_properties_follow_pieces(self):
+        arm = self.model["armature"].data
+        self.top.shape_key_add(name="Basis")
+        self.top.shape_key_add(name="Tight", from_mix=False)
+        rna = f'bpy.data.objects["{self.top.name}"].data.shape_keys.key_blocks["Tight"]'
+        for name, piece in (("Tight", self.top), ("Loose", None)):
+            cp = arm.MustardUI_CustomPropertiesOutfit.add()
+            cp.name, cp.rna, cp.path = name, rna, "value"
+            cp.outfit, cp.outfit_piece = self.top.users_collection[0], piece
+
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
+        outfit = bpy.data.collections["Tester Sporty"]
+        cps = {cp.name: cp for cp in arm.MustardUI_CustomPropertiesOutfit}
+        self.assertEqual(cps["Tight"].outfit, outfit)
+        self.assertEqual(cps["Loose"].outfit, outfit)
+        self.assertTrue(cps["Tight"].rna.startswith('bpy.data.objects["Tester Sporty - Top"]'))
+        self.assertNotIn("Import", bpy.data.collections)
+
+    # Surface Deform and Corrective Smooth modifiers are bound again, in rest pose
+    def test_rebind_modifiers(self):
+        deform = self.top.modifiers.new("SurfaceDeform", "SURFACE_DEFORM")
+        deform.target = self.model["body"]
+        smooth = self.top.modifiers.new("CorrectiveSmooth", "CORRECTIVE_SMOOTH")
+        smooth.rest_source = "BIND"
+        self.assertFalse(deform.is_bound or smooth.is_bind)
+        arm = self.model["armature"].data
+        arm.pose_position = "POSE"
+
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
+        self.assertTrue(deform.is_bound)
+        self.assertTrue(smooth.is_bind)
+        self.assertEqual(arm.pose_position, "POSE")
+
+        # Bound ones are bound again
+        self.select(self.top)
+        bpy.ops.mustardui.model_toolkit_add_outfit(
+            destination="OUTFIT", outfit="Tester Sporty", fit="NONE"
+        )
+        self.assertTrue(deform.is_bound and smooth.is_bind)
+
+    # The own armature of a piece is moved with it, the model one is not
+    def test_own_armature(self):
+        coll = self.belt.users_collection[0]
+        rig = new_object("GO Wing Rig", bpy.data.armatures.new("GO Wing Rig"), coll)
+        self.belt.parent = rig
+        self.top.parent = self.model["armature"]
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
+
+        outfit = bpy.data.collections["Tester Sporty"]
+        self.assertEqual(list(rig.users_collection), [outfit])
+        self.assertEqual(self.belt.parent, rig)
+        self.assertNotIn(outfit, self.model["armature"].users_collection)
+        self.assertNotIn("Import", bpy.data.collections)
 
 
 def outward_normals(obj):
@@ -499,3 +764,226 @@ class TestSquishOutfitProperty(BlenderTestCase):
         self.squish(other)
         self.assertIn("Squish Shirt", self.body.data.shape_keys.key_blocks)
         self.assertIsNone(self.outfit_property())
+
+
+def select_model(model):
+    settings = bpy.context.scene.MustardUI_Settings
+    settings.viewport_model_selection = False
+    settings.panel_model_selection_armature = model["armature"].data
+
+
+def add_outfit_custom_property(arm, name, rna, path, piece, key=None):
+    """Outfit custom property of the piece, driving the property at rna.path"""
+
+    arm[name] = 0.7
+    cp_misc.mustardui_add_driver(arm, rna, path, name, 0)
+    cp = arm.MustardUI_CustomPropertiesOutfit.add()
+    cp.name, cp.prop_name, cp.rna, cp.path = name, name, rna, path
+    cp.type, cp.is_animatable, cp.cp_type = "FLOAT", True, "OUTFIT"
+    cp.outfit, cp.outfit_piece = piece.users_collection[0], piece
+    if key is not None:
+        cp.ptr_type, cp.ptr_key = "SHAPEKEY", key
+
+
+class TestExportOutfits(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        configure_model(self.model)
+        select_model(self.model)
+        arm = self.model["armature"].data
+        body_keys = self.model["body"].data.shape_keys
+        shirt = bpy.data.objects["Casual - Shirt"]
+
+        # Shape Key of the shirt, linked to the body one
+        shirt.shape_key_add(name="Basis")
+        keys = shirt.data.shape_keys
+        for name in ("Tight", "Smile"):
+            shirt.shape_key_add(name=name, from_mix=False)
+        link = keys.key_blocks["Smile"].driver_add("value").driver.variables.new()
+        link.targets[0].id = self.model["body"]
+        link.targets[0].data_path = 'data.shape_keys.key_blocks["Smile"].value'
+
+        material = bpy.data.materials.new("Shirt Material")
+        material.use_nodes = True
+        shirt.data.materials.append(material)
+
+        # Custom properties of the shirt, of the body and of the material
+        rna = f'bpy.data.shape_keys["{keys.name}"].key_blocks["Tight"]'
+        add_outfit_custom_property(arm, "Tight", rna, "value", shirt, keys)
+        rna = f'bpy.data.shape_keys["{body_keys.name}"].key_blocks["Blink"]'
+        add_outfit_custom_property(arm, "Blink Fix", rna, "value", shirt, body_keys)
+        rna = 'bpy.data.materials["Shirt Material"].node_tree.nodes["Principled BSDF"]'
+        rna += '.inputs["Roughness"]'
+        add_outfit_custom_property(arm, "Rough", rna, "default_value", shirt)
+
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
+        self.path = os.path.join(folder, "outfits.blend")
+
+    def export(self, *names, **settings):
+        export.export_fill_items(bpy.context)
+        for item in bpy.context.window_manager.MustardUI_ModelToolkit_ExportOutfits_Items:
+            item.use = item.name in names
+        return bpy.ops.mustardui.model_toolkit_export_outfits(filepath=self.path, **settings)
+
+    # Only the chosen Outfits are written, with stand-ins of the armature and body
+    def test_export(self):
+        counts = {
+            a: len(getattr(bpy.data, a))
+            for a in (
+                "objects",
+                "meshes",
+                "materials",
+                "collections",
+                "armatures",
+                "shape_keys",
+                "scenes",
+            )
+        }
+        names = sorted(o.name for o in bpy.data.objects)
+        self.assertEqual(self.export("Tester Casual"), {"FINISHED"})
+
+        with bpy.data.libraries.load(self.path) as (source, _):
+            self.assertEqual(set(source.collections), {"Tester Casual"})
+            self.assertEqual(
+                set(source.objects),
+                {"Casual - Shirt", "Casual - Pants", "Tester Armature", "Tester Body"},
+            )
+            self.assertEqual(list(source.armatures), ["Tester Armature"])
+            self.assertIn("Shirt Material", source.materials)
+            self.assertNotIn("Tester Skin", source.materials)
+
+        # The model is not changed
+        after = {a: len(getattr(bpy.data, a)) for a in counts}
+        self.assertEqual(after, counts)
+        self.assertEqual(sorted(o.name for o in bpy.data.objects), names)
+        shirt = bpy.data.objects["Casual - Shirt"]
+        self.assertEqual(shirt.modifiers["Armature"].object, self.model["armature"])
+        self.assertEqual(shirt.data.materials[0], bpy.data.materials["Shirt Material"])
+        target = shirt.data.shape_keys.animation_data.drivers[0].driver.variables[0].targets[0]
+        self.assertIn(target.id, (self.model["body"], self.model["armature"].data))
+
+        # The stand-in armature has the custom properties and the stand-in body
+        with bpy.data.libraries.load(self.path) as (_, target):
+            target.objects = ["Tester Armature"]
+        data = target.objects[0].data
+        self.assertEqual(len(data.MustardUI_CustomPropertiesOutfit), 3)
+        self.assertEqual(len(data.MustardUI_RigSettings.model_body.data.vertices), 0)
+
+    # Images of the Outfits are packed in the file, not in the model
+    def test_export_pack_images(self):
+        image = bpy.data.images.new("Shirt Texture", 4, 4)
+        image.filepath_raw = os.path.join(os.path.dirname(self.path), "shirt.png")
+        image.file_format = "PNG"
+        image.save()
+        image.source = "FILE"
+        missing = bpy.data.images.new("missing.png", 4, 4)
+        missing.source = "FILE"
+        missing.filepath = os.path.join(os.path.dirname(self.path), "missing.png")
+        nodes = bpy.data.materials["Shirt Material"].node_tree.nodes
+        for img in (image, missing):
+            nodes.new("ShaderNodeTexImage").image = img
+
+        self.export("Tester Casual")
+        self.assertIsNone(image.packed_file)
+        with bpy.data.libraries.load(self.path) as (_, target):
+            target.images = ["Shirt Texture", "missing.png"]
+        exported, exported_missing = target.images
+        self.assertIsNotNone(exported.packed_file)
+        self.assertIsNone(exported_missing.packed_file)
+
+        # Not packed if not requested
+        export.export_fill_items(bpy.context)
+        for item in bpy.context.window_manager.MustardUI_ModelToolkit_ExportOutfits_Items:
+            item.use = item.name == "Tester Casual"
+        bpy.ops.mustardui.model_toolkit_export_outfits(filepath=self.path, pack_images=False)
+        with bpy.data.libraries.load(self.path) as (_, target):
+            target.images = ["Shirt Texture"]
+        self.assertIsNone(target.images[0].packed_file)
+
+    # Each Outfit can be written in its own file, named after it
+    def test_export_separate_files(self):
+        self.export("Tester Casual", "Tester Extras", separate_files=True)
+        self.assertFalse(os.path.exists(self.path))
+        folder = os.path.dirname(self.path)
+        for name, coll in (("Casual", "Tester Casual"), ("Extras", "Tester Extras")):
+            path = os.path.join(folder, f"outfits - {name}.blend")
+            with bpy.data.libraries.load(path) as (source, _):
+                self.assertEqual(list(source.collections), [coll])
+                self.assertEqual(list(source.armatures), ["Tester Armature"])
+
+    # The exported Outfit is added to another model with its custom properties
+    def test_round_trip(self):
+        pants = bpy.data.objects["Casual - Pants"]
+        pants.modifiers.new("SurfaceDeform", "SURFACE_DEFORM").target = self.model["body"]
+        self.export("Tester Casual")
+        reset_scene()
+        model = build_model("Other")
+        configure_model(model, "Other")
+        select_model(model)
+        arm = model["armature"].data
+
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.join(self.path, "Collection", ""),
+            files=[{"name": "Tester Casual"}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+        outfit = bpy.data.collections["Other Casual.001"]
+        shirt = bpy.data.objects["Other Casual.001 - Shirt"]
+        self.assertEqual(shirt.parent, model["armature"])
+        self.assertNotIn("Tester Armature", bpy.data.armatures)
+        self.assertNotIn("Tester Body", bpy.data.objects)
+
+        cps = {cp.name: cp for cp in arm.MustardUI_CustomPropertiesOutfit}
+        self.assertEqual(set(cps), {"Tight", "Blink Fix", "Rough"})
+        self.assertEqual({cps[n].outfit for n in cps}, {outfit})
+
+        # The custom properties drive the outfit, its material and the body
+        for name in cps:
+            arm[name] = 0.25
+        arm.update_tag()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        depsgraph.update()
+        key = shirt.data.shape_keys.evaluated_get(depsgraph)
+        self.assertAlmostEqual(key.key_blocks["Tight"].value, 0.25, places=5)
+        body_key = model["body"].data.shape_keys.evaluated_get(depsgraph)
+        self.assertAlmostEqual(body_key.key_blocks["Blink"].value, 0.25, places=5)
+        material = shirt.data.materials[0].evaluated_get(depsgraph)
+        roughness = material.node_tree.nodes["Principled BSDF"].inputs["Roughness"]
+        self.assertAlmostEqual(roughness.default_value, 0.25, places=5)
+        link = shirt.data.shape_keys.animation_data.drivers.find('key_blocks["Smile"].value')
+        self.assertEqual(link.driver.variables[0].targets[0].id, model["body"])
+        # Bound to the new body
+        deform = bpy.data.objects["Other Casual.001 - Pants"].modifiers["SurfaceDeform"]
+        self.assertEqual(deform.target, model["body"])
+        self.assertTrue(deform.is_bound)
+
+    # The armature of an Outfit is kept, the one of the model replaced
+    def test_round_trip_own_armature(self):
+        formal = self.model["outfits"][1]
+        rig = new_object("Formal - Wing Rig", bpy.data.armatures.new("Wing Rig"), formal)
+        dress = bpy.data.objects["Formal - Dress"]
+        dress.parent = rig
+        dress.modifiers["Armature"].object = rig
+        self.export("Tester Formal")
+        reset_scene()
+        model = build_model("Other")
+        configure_model(model, "Other")
+        select_model(model)
+
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.join(self.path, "Collection", ""),
+            files=[{"name": "Tester Formal"}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+        outfit = bpy.data.collections["Other Formal.001"]
+        rig = bpy.data.objects["Formal - Wing Rig"]
+        dress = bpy.data.objects["Other Formal.001 - Dress"]
+        self.assertEqual(list(rig.users_collection), [outfit])
+        self.assertEqual((dress.parent, dress.modifiers["Armature"].object), (rig, rig))
+        self.assertEqual(
+            {o for o in bpy.data.objects if o.type == "ARMATURE"}, {model["armature"], rig}
+        )

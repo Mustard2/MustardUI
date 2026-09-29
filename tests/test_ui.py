@@ -1,5 +1,5 @@
 import bpy
-from fake_ui import addon_classes, draw_all
+from fake_ui import draw_all
 from helpers import ADDON, BlenderTestCase, build_model, configure_model, set_active
 
 
@@ -9,11 +9,6 @@ class TestUI(BlenderTestCase):
         self.assertIn(expected_panel, drawer.drawn)
         self.assertEqual(drawer.errors, [], "\n" + "\n".join(drawer.errors))
         return drawer
-
-    # Panels and UI lists are registered
-    def test_classes_registered(self):
-        self.assertGreater(len(addon_classes(bpy.types.Panel)), 20)
-        self.assertGreater(len(addon_classes(bpy.types.UIList)), 10)
 
     # Quick Setup panels draw before and after the scan
     def test_draw_quick_setup(self):

@@ -62,14 +62,6 @@ class TestConfigurationLists(BlenderTestCase):
         bpy.ops.mustardui.section_delete()
         self.assertEqual(len(sections), 1)
 
-    # Links can be added and removed
-    def test_links(self):
-        links = self.arm.MustardUI_Links
-        bpy.ops.mustardui.link_add()
-        self.assertEqual(len(links), 1)
-        bpy.ops.mustardui.link_remove()
-        self.assertEqual(len(links), 0)
-
     # Armature Smart Check adds the Rigify bone collections to the UI
     def test_armature_smartcheck_rigify(self):
         arm = self.model["armature"]

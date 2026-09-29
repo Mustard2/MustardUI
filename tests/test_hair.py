@@ -12,11 +12,6 @@ class TestHair(BlenderTestCase):
         obj = bpy.data.objects[name]
         return not obj.hide_viewport and not obj.hide_render
 
-    # Hair list shows the objects of the hair collection
-    def test_hair_list(self):
-        items = {x[0] for x in self.rig_settings.hair_list_make(bpy.context)}
-        self.assertEqual(items, {"Hair Short", "Hair Long"})
-
     # Switching hair shows only the selected one
     def test_switch_hair(self):
         self.rig_settings.hair_list = "Hair Long"

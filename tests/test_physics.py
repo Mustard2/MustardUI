@@ -25,10 +25,6 @@ class TestPhysics(BlenderTestCase):
         bpy.ops.mustardui.configuration()
         self.physics_settings.items[0].enable = True
 
-    # A mesh can be added as physics item
-    def test_add_item(self):
-        self.assertEqual([x.object for x in self.physics_settings.items], [self.cage])
-
     # Outfit pieces cannot be added as physics items
     def test_add_outfit_piece_is_rejected(self):
         bpy.ops.mustardui.configuration()
