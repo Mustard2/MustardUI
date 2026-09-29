@@ -1,5 +1,6 @@
 import re
 import time
+import traceback
 
 import bpy
 import numpy as np
@@ -616,15 +617,20 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
             ]
 
         steps = self.steps(context, pieces, named, names, keys, collection)
+        self._backup = PiecesBackup(pieces)
 
         # Without a window (e.g. from scripts) all the steps are run at once
         if context.window is None or bpy.app.background:
-            for _ in steps:
-                pass
+            try:
+                for _ in steps:
+                    pass
+            except Exception:
+                self.rollback()
+                raise
+            self._backup.discard()
             return self.finish(context)
 
         self._steps = steps
-        self._backup = PiecesBackup(pieces)
         self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
         context.window_manager.modal_handler_add(self)
         context.window.cursor_modal_set("WAIT")
@@ -650,11 +656,18 @@ class MustardUI_ModelToolkit_AddOutfit(bpy.types.Operator):
             return self.finish(context)
         except Exception:
             self.stop(context)
-            self._backup.discard()
+            self.rollback()
             raise
 
         status_progress(context, factor, f"Add Outfit: {text} (Esc to cancel)")
         return {"RUNNING_MODAL"}
+
+    def rollback(self):
+        # A failed restore must not hide the error of the step
+        try:
+            self._backup.restore()
+        except Exception:
+            traceback.print_exc()
 
     def stop(self, context):
         # Closing the steps restores the Fit to Body settings

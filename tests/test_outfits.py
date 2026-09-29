@@ -363,6 +363,34 @@ class TestAddOutfit(BlenderTestCase):
         add_outfit.PiecesBackup([self.top, self.belt]).discard()
         self.assertEqual(len(bpy.data.meshes), counts[0])
 
+    # A failing step restores the pieces, like cancelling
+    def test_failure_restores(self):
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
+        settings.relax_iterations = 7
+        meshes = len(bpy.data.meshes)
+
+        class Solver(add_outfit.FitToBodySolver):
+            def solve(self, context, settings):
+                raise ValueError("Test failure")
+
+        original = add_outfit.FitToBodySolver
+        add_outfit.FitToBodySolver = Solver
+        try:
+            with self.assertRaises(RuntimeError):
+                bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="MESH")
+        finally:
+            add_outfit.FitToBodySolver = original
+        # The expected error is printed
+        self._stderr.buffer.seek(0)
+        self._stderr.buffer.truncate()
+
+        self.assertIsNone(self.top.parent)
+        self.assertEqual(len(self.top.modifiers), 0)
+        self.assertEqual(len(self.top.vertex_groups), 0)
+        self.assertIsNone(self.top.data.shape_keys)
+        self.assertEqual(len(bpy.data.meshes), meshes)
+        self.assertEqual(settings.relax_iterations, 7)
+
     # Pieces can be added to the Extras
     def test_extras(self):
         bpy.ops.mustardui.model_toolkit_add_outfit(destination="EXTRAS", fit="NONE")
