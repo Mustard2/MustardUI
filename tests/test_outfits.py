@@ -459,6 +459,19 @@ class TestAddOutfit(BlenderTestCase):
                 transfer_shape_keys=True,
             )
             drawer.run("draw", cls.draw, op, bpy.context)
+
+        cls = bpy.types.MUSTARDUI_OT_model_toolkit_add_outfit_from_file
+        op = FakeSelf(
+            cls,
+            FakeLayout(drawer),
+            bl_rna=bpy.ops.mustardui.model_toolkit_add_outfit_from_file.get_rna_type(),
+            destination="NEW",
+            split=False,
+            fit="NONE",
+            transfer_weights=True,
+            transfer_shape_keys=True,
+        )
+        drawer.run("draw", cls.draw, op, bpy.context)
         self.assertEqual(drawer.errors, [])
 
     # With One Outfit per Collection, each collection of the pieces becomes an Outfit
@@ -821,10 +834,13 @@ class TestExportOutfits(BlenderTestCase):
         self.addCleanup(shutil.rmtree, folder)
         self.path = os.path.join(folder, "outfits.blend")
 
-    def export(self, *names, **settings):
+    def export(self, *names, extras=(), **settings):
         export.export_fill_items(bpy.context)
-        for item in bpy.context.window_manager.MustardUI_ModelToolkit_ExportOutfits_Items:
+        wm = bpy.context.window_manager
+        for item in wm.MustardUI_ModelToolkit_ExportOutfits_Items:
             item.use = item.name in names
+        for item in wm.MustardUI_ModelToolkit_ExportOutfits_Extras:
+            item.use = item.name in extras
         return bpy.ops.mustardui.model_toolkit_export_outfits(filepath=self.path, **settings)
 
     # Only the chosen Outfits are written, with stand-ins of the armature and body
@@ -902,16 +918,74 @@ class TestExportOutfits(BlenderTestCase):
             target.images = ["Shirt Texture"]
         self.assertIsNone(target.images[0].packed_file)
 
-    # Each Outfit can be written in its own file, named after it
+    # Outfits and Extras pieces are listed, with the shown Outfit chosen
+    def test_export_items(self):
+        self.model["armature"].data.MustardUI_RigSettings.outfits_list = "Tester Formal"
+        export.export_fill_items(bpy.context)
+        wm = bpy.context.window_manager
+        items = {i.name: i.use for i in wm.MustardUI_ModelToolkit_ExportOutfits_Items}
+        self.assertEqual(items, {"Tester Casual": False, "Tester Formal": True})
+        extras = {i.name: i.use for i in wm.MustardUI_ModelToolkit_ExportOutfits_Extras}
+        self.assertEqual(extras, {"Extras - Glasses": False})
+
+        bpy.ops.mustardui.model_toolkit_export_outfits_select(use=True, extras=True)
+        self.assertTrue(wm.MustardUI_ModelToolkit_ExportOutfits_Extras[0].use)
+        self.assertFalse(wm.MustardUI_ModelToolkit_ExportOutfits_Items[0].use)
+
+        cls = bpy.types.MUSTARDUI_OT_model_toolkit_export_outfits
+        drawer = Drawer()
+        op = FakeSelf(
+            cls,
+            FakeLayout(drawer),
+            bl_rna=bpy.ops.mustardui.model_toolkit_export_outfits.get_rna_type(),
+        )
+        drawer.run("draw", cls.draw, op, bpy.context)
+        self.assertEqual(drawer.errors, [])
+
+    # Only the chosen Extras pieces are written, with the objects parented to them
+    def test_export_extras(self):
+        extras = self.model["extras"]
+        glasses = bpy.data.objects["Extras - Glasses"]
+        lens = new_mesh_object("Extras - Lens", extras, size=0.1)
+        lens.parent = glasses
+        new_mesh_object("Extras - Hat", extras, armature=self.model["armature"])
+
+        self.assertEqual(self.export("Tester Casual", extras=["Extras - Glasses"]), {"FINISHED"})
+        with bpy.data.libraries.load(self.path) as (source, _):
+            self.assertEqual(set(source.collections), {"Tester Casual", "Tester Extras"})
+            self.assertIn("Extras - Lens", source.objects)
+            self.assertNotIn("Extras - Hat", source.objects)
+        with bpy.data.libraries.load(self.path) as (_, target):
+            target.collections = ["Tester Extras"]
+        # Loaded next to the originals, so with a suffix
+        names = {o.name.removesuffix(".001") for o in target.collections[0].objects}
+        self.assertEqual(names, {"Extras - Glasses", "Extras - Lens", "Tester Armature"})
+
+        # Only Extras
+        self.assertEqual(self.export(extras=["Extras - Hat"]), {"FINISHED"})
+        with bpy.data.libraries.load(self.path) as (source, _):
+            self.assertEqual(list(source.collections), ["Tester Extras"])
+            self.assertNotIn("Extras - Glasses", source.objects)
+
+    # Each Outfit and Extras piece can be written in its own file, named after it
     def test_export_separate_files(self):
-        self.export("Tester Casual", "Tester Extras", separate_files=True)
+        new_mesh_object("Extras - Hat", self.model["extras"], armature=self.model["armature"])
+        self.export(
+            "Tester Casual", extras=["Extras - Glasses", "Extras - Hat"], separate_files=True
+        )
         self.assertFalse(os.path.exists(self.path))
         folder = os.path.dirname(self.path)
-        for name, coll in (("Casual", "Tester Casual"), ("Extras", "Tester Extras")):
+        for name, coll, piece in (
+            ("Casual", "Tester Casual", "Casual - Shirt"),
+            ("Extras - Glasses", "Tester Extras", "Extras - Glasses"),
+            ("Extras - Hat", "Tester Extras", "Extras - Hat"),
+        ):
             path = os.path.join(folder, f"outfits - {name}.blend")
             with bpy.data.libraries.load(path) as (source, _):
                 self.assertEqual(list(source.collections), [coll])
                 self.assertEqual(list(source.armatures), ["Tester Armature"])
+                self.assertIn(piece, source.objects)
+                self.assertEqual(len(source.objects), 3 if piece.startswith("Extras") else 4)
 
     # The exported Outfit is added to another model with its custom properties
     def test_round_trip(self):

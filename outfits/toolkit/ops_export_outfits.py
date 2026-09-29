@@ -5,7 +5,7 @@ import bpy
 from bpy_extras.io_utils import ExportHelper
 
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
-from ..helper_functions import outfits_get_collections
+from ..helper_functions import outfits_get_collection_items, outfits_get_collections
 from .ops_add_outfit import add_outfit_model, outfit_default_name
 from .ops_add_outfit_from_file import copy_id_property, copy_settings
 
@@ -42,22 +42,68 @@ NOT_COPIED = (bpy.types.Collection, bpy.types.Scene, bpy.types.Key)
 
 
 class MustardUI_ModelToolkit_ExportOutfits_Item(bpy.types.PropertyGroup):
-    use: bpy.props.BoolProperty(name="Export", description="Export this Outfit")
+    use: bpy.props.BoolProperty(name="Export", description="Export this item")
+
+
+class MUSTARDUI_UL_ModelToolkit_UIList_ExportOutfits(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        obj = bpy.data.objects.get(item.name)
+        icon = "OUTLINER_COLLECTION" if obj is None else f"OUTLINER_OB_{obj.type}"
+        row = layout.row(align=True)
+        row.prop(item, "use", text="")
+        row.label(text=item.name, icon=icon)
+
+
+class MustardUI_ModelToolkit_ExportOutfits_Select(bpy.types.Operator):
+    """Select or deselect all the items in the list"""
+
+    bl_idname = "mustardui.model_toolkit_export_outfits_select"
+    bl_label = "Select Items"
+
+    use: bpy.props.BoolProperty(default=True)
+    extras: bpy.props.BoolProperty(default=False)
+
+    def execute(self, context):
+        wm = context.window_manager
+        items = (
+            wm.MustardUI_ModelToolkit_ExportOutfits_Extras
+            if self.extras
+            else wm.MustardUI_ModelToolkit_ExportOutfits_Items
+        )
+        for item in items:
+            item.use = self.use
+        return {"FINISHED"}
+
+
+def extras_pieces(rig_settings):
+    """Extras pieces, without the ones parented to other pieces"""
+
+    extras = rig_settings.extras_collection
+    if extras is None:
+        return []
+    objects = set(outfits_get_collection_items(rig_settings, extras))
+    return [o for o in objects if o.parent not in objects]
 
 
 def export_fill_items(context):
-    """List the Outfits and the Extras, with the shown Outfit selected"""
+    """List the Outfits, with the shown one selected, and the Extras pieces"""
 
-    items = context.window_manager.MustardUI_ModelToolkit_ExportOutfits_Items
+    wm = context.window_manager
+    items = wm.MustardUI_ModelToolkit_ExportOutfits_Items
+    extras = wm.MustardUI_ModelToolkit_ExportOutfits_Extras
     items.clear()
+    extras.clear()
     arm, _, _ = add_outfit_model(context)
     if arm is None:
         return
     rig_settings = arm.MustardUI_RigSettings
-    for coll in outfits_get_collections(rig_settings):
-        item = items.add()
-        item.name = coll.name
-        item.use = coll.name == rig_settings.outfits_list
+    for x in rig_settings.outfits_collections:
+        if x.collection is not None:
+            item = items.add()
+            item.name = x.collection.name
+            item.use = x.collection.name == rig_settings.outfits_list
+    for obj in sorted(extras_pieces(rig_settings), key=lambda o: o.name):
+        extras.add().name = obj.name
 
 
 def closure(graph, roots, stop=()):
@@ -170,21 +216,47 @@ class OutfitCopier:
                             value[i] = new
 
 
-def copy_collection(coll, mapping, objects):
-    """Copy of the collection and its children, with the copies of the objects"""
+def copy_collection(coll, mapping, objects, keep=None):
+    """Copy of the collection and its children, with the copies of the objects, or only of
+    the keep ones and the children having them"""
 
+    if keep is not None and not any(o in keep for o in coll.all_objects):
+        return None
     new = bpy.data.collections.new(coll.name)
     mapping[coll] = new
     for attr in ("hide_viewport", "hide_render", "hide_select"):
         setattr(new, attr, getattr(coll, attr))
     for obj in coll.objects:
+        if keep is not None and obj not in keep:
+            continue
         if obj not in mapping:
             mapping[obj] = obj.copy()
         new.objects.link(mapping[obj])
         objects.add(obj)
     for child in coll.children:
-        new.children.link(copy_collection(child, mapping, objects))
+        child_copy = copy_collection(child, mapping, objects, keep)
+        if child_copy is not None:
+            new.children.link(child_copy)
     return new
+
+
+def extras_keep(extras, pieces):
+    """The Extras pieces with the objects parented to them"""
+
+    keep = set(pieces)
+    for obj in extras.all_objects:
+        parent = obj.parent
+        while parent is not None and parent not in keep:
+            parent = parent.parent
+        if parent is not None:
+            keep.add(obj)
+    return keep
+
+
+def file_name(name):
+    """Name without the characters not allowed in file names"""
+
+    return re.sub(r'[\\/:*?"<>|]', "_", name)
 
 
 def stand_ins(arm, arm_obj, body, rig_settings):
@@ -234,9 +306,10 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
     )
 
     separate_files: bpy.props.BoolProperty(
-        name="One File per Outfit",
+        name="One File per Item",
         default=False,
-        description="Write each Outfit in its own file, named after the chosen file and the Outfit",
+        description="Write each Outfit and Extras piece in its own file, named after the chosen "
+        "file and the item",
     )
 
     @classmethod
@@ -249,13 +322,50 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         return bool(outfits_get_collections(arm.MustardUI_RigSettings))
 
     def draw(self, context):
-        col = self.layout.column()
-        col.label(text="Outfits")
-        for item in context.window_manager.MustardUI_ModelToolkit_ExportOutfits_Items:
-            col.prop(item, "use", text=item.name)
-        self.layout.prop(self, "separate_files")
-        self.layout.prop(self, "pack_images")
-        self.layout.prop(self, "compress")
+        wm = context.window_manager
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        lists = [("Outfits", "Items", False, "MOD_CLOTH")]
+        if wm.MustardUI_ModelToolkit_ExportOutfits_Extras:
+            lists.append(("Extras", "Extras", True, "OBJECT_DATA"))
+        for label, prop, extras, icon in lists:
+            items = getattr(wm, f"MustardUI_ModelToolkit_ExportOutfits_{prop}")
+            chosen = sum(i.use for i in items)
+            header, body = layout.panel(f"MustardUI_ExportOutfits_{prop}")
+            header.label(text=f"{label} ({chosen}/{len(items)})", icon=icon)
+            if body is None:
+                continue
+            # Full width, not in the property split column
+            col = body.column(align=True)
+            col.use_property_split = False
+            col.template_list(
+                "MUSTARDUI_UL_ModelToolkit_UIList_ExportOutfits",
+                prop,
+                wm,
+                f"MustardUI_ModelToolkit_ExportOutfits_{prop}",
+                wm,
+                f"MustardUI_ModelToolkit_ExportOutfits_{prop}Index",
+                rows=4,
+            )
+            row = col.row(align=True)
+            for text, use, select_icon in (
+                ("All", True, "CHECKBOX_HLT"),
+                ("None", False, "CHECKBOX_DEHLT"),
+            ):
+                op = row.operator(
+                    "mustardui.model_toolkit_export_outfits_select", text=text, icon=select_icon
+                )
+                op.use, op.extras = use, extras
+
+        header, body = layout.panel("MustardUI_ExportOutfits_File")
+        header.label(text="File", icon="FILE_BLEND")
+        if body is not None:
+            col = body.column(heading="Write")
+            col.prop(self, "separate_files")
+            col.prop(self, "compress")
+            body.column(heading="Images").prop(self, "pack_images", text="Pack")
 
     def invoke(self, context, event):
         export_fill_items(context)
@@ -273,26 +383,35 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             return {"CANCELLED"}
         rig_settings = arm.MustardUI_RigSettings
 
-        chosen = {
-            i.name
-            for i in context.window_manager.MustardUI_ModelToolkit_ExportOutfits_Items
-            if i.use
-        }
-        roots = [c for c in outfits_get_collections(rig_settings) if c.name in chosen]
-        if not roots:
-            self.report({"ERROR"}, "MustardUI - Choose the Outfits to export")
+        wm = context.window_manager
+        chosen = {i.name for i in wm.MustardUI_ModelToolkit_ExportOutfits_Items if i.use}
+        outfits = [
+            x.collection
+            for x in rig_settings.outfits_collections
+            if x.collection is not None and x.collection.name in chosen
+        ]
+        chosen = {i.name for i in wm.MustardUI_ModelToolkit_ExportOutfits_Extras if i.use}
+        pieces = [o for o in extras_pieces(rig_settings) if o.name in chosen]
+        if not outfits and not pieces:
+            self.report({"ERROR"}, "MustardUI - Choose the Outfits or Extras to export")
             return {"CANCELLED"}
 
+        # Files with the collections to export, and the objects kept for the Extras
+        extras = rig_settings.extras_collection
         filepath = bpy.path.abspath(self.filepath)
         if self.separate_files:
             base = os.path.splitext(filepath)[0]
             files = []
-            for root in roots:
-                name = outfit_default_name(root.name, rig_settings.model_name)
-                # Without the characters not allowed in file names
-                name = re.sub(r'[\\/:*?"<>|]', "_", name)
-                files.append((f"{base} - {name}.blend", [root]))
+            for root in outfits:
+                name = file_name(outfit_default_name(root.name, rig_settings.model_name))
+                files.append((f"{base} - {name}.blend", [(root, None)]))
+            for piece in pieces:
+                name = file_name(outfit_default_name(piece.name, rig_settings.model_name))
+                files.append((f"{base} - {name}.blend", [(extras, extras_keep(extras, [piece]))]))
         else:
+            roots = [(root, None) for root in outfits]
+            if pieces:
+                roots.append((extras, extras_keep(extras, pieces)))
             files = [(filepath, roots)]
         model_file = os.path.abspath(bpy.data.filepath) if bpy.data.filepath else None
         if any(os.path.abspath(path) == model_file for path, _ in files):
@@ -315,7 +434,10 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         self.missing = sorted(set(self.missing))
         if self.missing:
             print("MustardUI - Images not found, not packed:\n  " + "\n  ".join(self.missing))
-        message = f"MustardUI - {len(roots)} Outfits exported"
+        exported = [f"{len(outfits)} Outfits"] if outfits else []
+        if pieces:
+            exported.append(f"{len(pieces)} Extras")
+        message = f"MustardUI - {' and '.join(exported)} exported"
         if self.separate_files:
             message += f" to {len(files)} files"
         message += f" with {count} custom properties"
@@ -357,14 +479,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
 
         mapping = dict(model)
         objects = set()
-        copies = [copy_collection(c, mapping, objects) for c in roots]
+        copies = [copy_collection(c, mapping, objects, keep) for c, keep in roots]
         created.extend(v for k, v in mapping.items() if k not in heavy)
         # Appended with any Outfit, as it has the model name and custom properties
         for copy in copies:
             copy.objects.link(model[arm_obj])
 
         # Outfit custom properties of the exported Outfits on the stand-in armature
-        collections = {c for root in roots for c in (root, *root.children_recursive)}
+        collections = {c for c in mapping if isinstance(c, bpy.types.Collection)}
         cps = model[arm].MustardUI_CustomPropertiesOutfit
         for cp in arm.MustardUI_CustomPropertiesOutfit:
             piece = cp.outfit_piece
@@ -438,13 +560,28 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
 
 def register():
     bpy.utils.register_class(MustardUI_ModelToolkit_ExportOutfits_Item)
+    bpy.utils.register_class(MUSTARDUI_UL_ModelToolkit_UIList_ExportOutfits)
+    bpy.utils.register_class(MustardUI_ModelToolkit_ExportOutfits_Select)
     bpy.utils.register_class(MustardUI_ModelToolkit_ExportOutfits)
-    bpy.types.WindowManager.MustardUI_ModelToolkit_ExportOutfits_Items = (
-        bpy.props.CollectionProperty(type=MustardUI_ModelToolkit_ExportOutfits_Item)
-    )
+    wm = bpy.types.WindowManager
+    for prop in ("Items", "Extras"):
+        setattr(
+            wm,
+            f"MustardUI_ModelToolkit_ExportOutfits_{prop}",
+            bpy.props.CollectionProperty(type=MustardUI_ModelToolkit_ExportOutfits_Item),
+        )
+        setattr(
+            wm,
+            f"MustardUI_ModelToolkit_ExportOutfits_{prop}Index",
+            bpy.props.IntProperty(default=0, name=""),
+        )
 
 
 def unregister():
-    del bpy.types.WindowManager.MustardUI_ModelToolkit_ExportOutfits_Items
+    for prop in ("Extras", "Items"):
+        delattr(bpy.types.WindowManager, f"MustardUI_ModelToolkit_ExportOutfits_{prop}Index")
+        delattr(bpy.types.WindowManager, f"MustardUI_ModelToolkit_ExportOutfits_{prop}")
     bpy.utils.unregister_class(MustardUI_ModelToolkit_ExportOutfits)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_ExportOutfits_Select)
+    bpy.utils.unregister_class(MUSTARDUI_UL_ModelToolkit_UIList_ExportOutfits)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_ExportOutfits_Item)

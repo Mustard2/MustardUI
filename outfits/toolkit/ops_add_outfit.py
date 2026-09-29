@@ -75,7 +75,7 @@ class MustardUI_ModelToolkit_AddOutfit_ShapeKeysSelect(bpy.types.Operator):
 def add_outfit_model(context):
     """Armature data, armature object and body of the model"""
 
-    _, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+    _, arm = mustardui_active_object(context, config=ModelMode.ANY)
     if arm is None:
         return None, None, None
     rig_settings = arm.MustardUI_RigSettings
@@ -581,86 +581,99 @@ class AddOutfitSettings:
 
         wm = context.window_manager
         layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
 
         col = layout.column()
-        col.label(text="Add to")
-        col.prop(self, "destination", text="")
+        col.prop(self, "destination")
         if self.destination == "NEW":
             if pieces is None or len(add_outfit_groups(pieces)) > 1:
                 col.prop(self, "split")
             if not self.split:
-                col.label(text="Outfit Name")
-                col.prop(self, "outfit_name", text="")
+                col.prop(self, "outfit_name", text="Name")
         elif self.destination == "OUTFIT":
-            col.label(text="Outfit")
-            col.prop(self, "outfit", text="")
+            col.prop(self, "outfit")
+        col.prop(self, "rename")
+
+        self.draw_extra(layout)
 
         if pieces is not None:
-            col = layout.column()
-            col.label(text="Pieces")
+            header, body = layout.panel("MustardUI_AddOutfit_Pieces")
+            header.label(text="Pieces", icon="OUTLINER_OB_MESH")
+            if body is not None:
+                body.use_property_split = False
+                body.template_list(
+                    "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit",
+                    "",
+                    wm,
+                    "MustardUI_ModelToolkit_AddOutfit_Items",
+                    wm,
+                    "MustardUI_ModelToolkit_AddOutfit_ItemIndex",
+                    rows=4,
+                )
+
+        header, body = layout.panel("MustardUI_AddOutfit_Fit")
+        header.label(text="Fit to Body", icon="MOD_SHRINKWRAP")
+        if body is not None:
+            body.row().prop(self, "fit", text="Mode", expand=True)
+            col = body.column()
+            col.active = self.fit != "NONE"
+            col.prop(self, "fit_smooth")
+
+        header, body = layout.panel("MustardUI_AddOutfit_Modifiers", default_closed=True)
+        header.label(text="Modifiers", icon="MODIFIER")
+        if body is not None:
+            col = body.column(heading="Add")
+            col.prop(self, "add_smooth")
+            col.prop(self, "add_shrinkwrap")
+            body.column(heading="Surface Deform").prop(self, "rebind", text="Rebind")
+
+        header, body = layout.panel("MustardUI_AddOutfit_Weights", default_closed=True)
+        header.use_property_split = False
+        header.prop(self, "transfer_weights")
+        if body is not None:
+            body.active = self.transfer_weights
+            body.prop(self, "overwrite_weights")
+
+        header, body = layout.panel("MustardUI_AddOutfit_ShapeKeys", default_closed=True)
+        header.use_property_split = False
+        header.prop(self, "transfer_shape_keys")
+        if body is not None:
+            body.active = self.transfer_shape_keys
+            # Full width, not in the property split column
+            col = body.column(align=True)
+            col.use_property_split = False
             col.template_list(
-                "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit",
+                "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit_ShapeKeys",
                 "",
                 wm,
-                "MustardUI_ModelToolkit_AddOutfit_Items",
+                "MustardUI_ModelToolkit_AddOutfit_ShapeKeys",
                 wm,
-                "MustardUI_ModelToolkit_AddOutfit_ItemIndex",
-                rows=4,
+                "MustardUI_ModelToolkit_AddOutfit_ShapeKeyIndex",
+                rows=6,
             )
-        layout.prop(self, "rename")
+            row = col.row(align=True)
+            row.operator(
+                "mustardui.model_toolkit_add_outfit_shape_keys_select",
+                text="All",
+                icon="CHECKBOX_HLT",
+            ).use = True
+            row.operator(
+                "mustardui.model_toolkit_add_outfit_shape_keys_select",
+                text="None",
+                icon="CHECKBOX_DEHLT",
+            ).use = False
 
-        box = layout.box()
-        col = box.column()
-        col.label(text="Fit to Body", icon="MOD_SHRINKWRAP")
-        col.row().prop(self, "fit", expand=True)
-        row = col.row()
-        row.enabled = self.fit != "NONE"
-        row.prop(self, "fit_smooth")
+            col = body.column()
+            col.prop(self, "overwrite_shape_keys")
+            col.prop(self, "link")
+            col.separator()
+            col.prop(self, "max_distance")
+            col.prop(self, "smooth")
+            col.prop(self, "threshold")
 
-        box = layout.box()
-        col = box.column()
-        col.label(text="Add Modifiers", icon="MODIFIER")
-        col.prop(self, "add_smooth")
-        col.prop(self, "add_shrinkwrap")
-        col.prop(self, "rebind")
-
-        box = layout.box()
-        col = box.column()
-        col.prop(self, "transfer_weights")
-        row = col.row()
-        row.enabled = self.transfer_weights
-        row.prop(self, "overwrite_weights")
-
-        box = layout.box()
-        col = box.column()
-        col.prop(self, "transfer_shape_keys")
-        col = col.column()
-        col.enabled = self.transfer_shape_keys
-        col.template_list(
-            "MUSTARDUI_UL_ModelToolkit_UIList_AddOutfit_ShapeKeys",
-            "",
-            wm,
-            "MustardUI_ModelToolkit_AddOutfit_ShapeKeys",
-            wm,
-            "MustardUI_ModelToolkit_AddOutfit_ShapeKeyIndex",
-            rows=6,
-        )
-        row = col.row(align=True)
-        row.operator(
-            "mustardui.model_toolkit_add_outfit_shape_keys_select",
-            text="All",
-            icon="CHECKBOX_HLT",
-        ).use = True
-        row.operator(
-            "mustardui.model_toolkit_add_outfit_shape_keys_select",
-            text="None",
-            icon="CHECKBOX_DEHLT",
-        ).use = False
-        col.prop(self, "overwrite_shape_keys")
-        col.prop(self, "link")
-        col.prop(self, "max_distance")
-        col.prop(self, "smooth")
-        col.prop(self, "threshold")
+    def draw_extra(self, layout):
+        """Draw the settings of the operator below the Outfit ones"""
 
 
 class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):

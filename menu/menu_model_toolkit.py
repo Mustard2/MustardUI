@@ -72,16 +72,18 @@ class PANEL_PT_MustardUI_ModelToolkit_Rig(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_face_controller", icon="USER")
-        row.operator("mustardui.model_toolkit_face_controller_remove", text="", icon="X")
-
-        row = layout.row(align=True)
         row.operator(
             "mustardui.model_toolkit_ikspline",
             text="Create IK Spline",
             icon="CON_SPLINEIK",
         )
         row.operator("mustardui.model_toolkit_ikspline_clean", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_face_controller", icon="USER")
+        row.operator("mustardui.model_toolkit_face_controller_remove", text="", icon="X")
+
+        layout.separator()
 
         row = layout.row(align=True)
         row.operator(
@@ -118,11 +120,53 @@ class PANEL_PT_MustardUI_ModelToolkit_Model(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
+        row.operator("mustardui.rename_model", icon="GREASEPENCIL")
+
+        layout.operator()
+
+        row = layout.row(align=True)
         row.operator("mustardui.tool_naming", icon="SMALL_CAPS", text="Enforce Naming on Data")
+
         row = layout.row(align=True)
         row.operator("mustardui.rename_image_nodes", icon="IMAGE_DATA")
+
+
+class PANEL_PT_MustardUI_ModelToolkit_Outfits(MainPanel, bpy.types.Panel):
+    bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
+    bl_label = ""
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
+
+    @classmethod
+    def poll(cls, context):
+        if can_draw_ui():
+            return False
+
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+        addon_prefs = context.preferences.addons[base_package].preferences
+        return res and addon_prefs.model_toolkit
+
+    def draw_header(self, context):
+        layout = self.layout
+        layout.label(text="Outfits", icon="MOD_CLOTH")
+
+    def draw(self, context):
+        layout = self.layout
+
         row = layout.row(align=True)
-        row.operator("mustardui.rename_model", icon="GREASEPENCIL")
+        row.operator("mustardui.model_toolkit_add_outfit", icon="ADD")
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_export_outfits", icon="EXPORT")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_fit_to_body", icon="MOD_CLOTH")
+        fit_to_body_draw_settings(layout, context)
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_squish", icon="MOD_SHRINKWRAP")
+        squish_draw_settings(layout, context)
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Mesh(MainPanel, bpy.types.Panel):
@@ -150,30 +194,19 @@ class PANEL_PT_MustardUI_ModelToolkit_Mesh(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_add_outfit", icon="MOD_CLOTH")
-        row.operator("mustardui.model_toolkit_add_outfit_from_file", text="", icon="APPEND_BLEND")
-        row.operator("mustardui.model_toolkit_export_outfits", text="", icon="EXPORT")
+        row.operator("mustardui.model_toolkit_transfer_shape_keys", icon="SHAPEKEY_DATA")
 
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_link_shape_keys", icon="DRIVER_TRANSFORM")
 
         row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_transfer_shape_keys", icon="SHAPEKEY_DATA")
-
-        row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_smooth_shape_key", icon="MOD_SMOOTH")
         smooth_shape_key_draw_settings(layout, context)
 
+        layout.separator()
+
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_transfer_vertex_groups", icon="GROUP_VERTEX")
-
-        row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_squish", icon="MOD_SHRINKWRAP")
-        squish_draw_settings(layout, context)
-
-        row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_fit_to_body", icon="MOD_CLOTH")
-        fit_to_body_draw_settings(layout, context)
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Physics(MainPanel, bpy.types.Panel):
@@ -216,6 +249,8 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(MainPanel, bpy.types.Panel):
         )
         row.operator("mustardui.model_toolkit_remove_jiggle_accurate", text="", icon="X")
 
+        layout.separator()
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.model_toolkit_hair_cage",
@@ -240,6 +275,8 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(MainPanel, bpy.types.Panel):
         )
         row.operator("mustardui.model_toolkit_bone_physics_clean", text="", icon="X")
 
+        layout.separator()
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.model_toolkit_create_collision_cage",
@@ -249,6 +286,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(MainPanel, bpy.types.Panel):
         row.operator("mustardui.model_toolkit_remove_collision_cage", text="", icon="X")
 
         layout.separator()
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.model_toolkit_assign_physics",
@@ -305,6 +343,8 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(MainPanel, bpy.types.Panel):
             "mustardui.model_toolkit_optimize_shape_keys", icon="LOOP_BACK", text=""
         ).revert = True
 
+        layout.separator()
+
         row = layout.row(align=True)
         row.operator(
             "mustardui.model_toolkit_select_preview_texture",
@@ -316,6 +356,7 @@ def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Model)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Rig)
+    bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Mesh)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Physics)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Optimizations)
@@ -325,6 +366,7 @@ def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Optimizations)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Physics)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Mesh)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Rig)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Model)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit)

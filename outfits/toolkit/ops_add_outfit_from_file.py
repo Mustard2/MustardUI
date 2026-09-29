@@ -408,13 +408,20 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
     @classmethod
     def poll(cls, context):
         return context.mode == "OBJECT" and active_object_operator_poll(
-            context, config=ModelMode.MODEL_TOOLKIT
+            context, config=ModelMode.ANY
         )
 
     def draw(self, context):
-        self.layout.prop(self, "import_custom_properties")
-        self.layout.prop(self, "remove_drivers")
         self.draw_settings(context)
+
+    def draw_extra(self, layout):
+        header, body = layout.panel("MustardUI_AddOutfitFromFile_Import")
+        header.label(text="Import", icon="APPEND_BLEND")
+        if body is not None:
+            col = body.column(heading="Custom Properties")
+            col.prop(self, "import_custom_properties", text="Import")
+            col = body.column(heading="Drivers")
+            col.prop(self, "remove_drivers", text="Remove Broken")
 
     def invoke(self, context, event):
         add_outfit_fill_shape_keys(context)

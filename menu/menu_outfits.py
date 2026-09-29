@@ -253,6 +253,8 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         ):
             row.prop(rig_settings, "hair_switch_with_outfit", text="", icon="CURVES")
 
+        row.operator("mustardui.model_toolkit_add_outfit_from_file", text="", icon="IMPORT")
+
         outfits_list = rig_settings.outfits_list
 
         collection = bpy.data.collections.get(outfits_list)
