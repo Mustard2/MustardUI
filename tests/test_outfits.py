@@ -18,9 +18,9 @@ from helpers import (
     reset_scene,
 )
 
-add_outfit = importlib.import_module(ADDON + ".model_toolkit.model.ops_add_outfit")
+add_outfit = importlib.import_module(ADDON + ".outfits.toolkit.ops_add_outfit")
 squish = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_squish")
-export = importlib.import_module(ADDON + ".model_toolkit.model.ops_export_outfits")
+export = importlib.import_module(ADDON + ".outfits.toolkit.ops_export_outfits")
 cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
 
 

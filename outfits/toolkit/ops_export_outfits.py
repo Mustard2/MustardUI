@@ -5,7 +5,7 @@ import bpy
 from bpy_extras.io_utils import ExportHelper
 
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
-from ...outfits.helper_functions import outfits_get_collections
+from ..helper_functions import outfits_get_collections
 from .ops_add_outfit import add_outfit_model, outfit_default_name
 from .ops_add_outfit_from_file import copy_id_property, copy_settings
 
