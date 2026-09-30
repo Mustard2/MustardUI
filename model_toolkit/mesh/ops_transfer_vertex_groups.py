@@ -182,10 +182,6 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        # Tool works only in Blender 5.0 or above
-        if bpy.app.version < (5, 0, 0):
-            return False
-
         selected_objs = [x for x in context.selected_objects if x.type == "MESH"]
         return len(selected_objs) > 1
 
@@ -290,9 +286,9 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
                 mod.data_types_verts = {"VGROUP_WEIGHTS"}
                 mod.vert_mapping = "POLYINTERP_NEAREST"
 
-                # Assign vertex group names directly (Blender 5.0 API)
+                # Single source group, matched by name on the target
                 mod.layers_vgroup_select_src = vg_name
-                mod.layers_vgroup_select_dst = vg_name
+                mod.layers_vgroup_select_dst = "NAME"
 
                 mod.mix_mode = "REPLACE"
                 mod.mix_factor = 1.0
