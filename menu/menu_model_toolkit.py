@@ -122,7 +122,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Model(MainPanel, bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("mustardui.rename_model", icon="GREASEPENCIL")
 
-        layout.operator()
+        layout.separator()
 
         row = layout.row(align=True)
         row.operator("mustardui.tool_naming", icon="SMALL_CAPS", text="Enforce Naming on Data")
