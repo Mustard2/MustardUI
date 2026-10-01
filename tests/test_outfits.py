@@ -19,7 +19,7 @@ from helpers import (
 )
 
 add_outfit = importlib.import_module(ADDON + ".outfits.toolkit.ops_add_outfit")
-squish = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_squish")
+squish = importlib.import_module(ADDON + ".model_toolkit.outfits.ops_squish")
 export = importlib.import_module(ADDON + ".outfits.toolkit.ops_export_outfits")
 cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
 
@@ -238,16 +238,16 @@ class TestAddOutfit(BlenderTestCase):
     # The fit uses the default settings, not the ones changed in the Fit to Body tool
     def test_fit_default_settings(self):
         settings = bpy.context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
-        settings.relax_iterations = 7
-        settings.refit_auto = False
+        settings.stiffness = 7.0
+        settings.self_collisions = False
         settings.fit_distance = 0.03
         used = {}
 
         class Solver(add_outfit.FitToBodySolver):
             def solve(self, context, settings):
                 used.update(
-                    relax=settings.relax_iterations,
-                    auto=settings.refit_auto,
+                    stiffness=settings.stiffness,
+                    collisions=settings.self_collisions,
                     pull=settings.fit_distance,
                     smooth=settings.smooth_distance,
                 )
@@ -262,13 +262,13 @@ class TestAddOutfit(BlenderTestCase):
         finally:
             add_outfit.FitToBodySolver = original
 
-        self.assertEqual(used["relax"], 0)
-        self.assertTrue(used["auto"])
+        self.assertAlmostEqual(used["stiffness"], 1.0)
+        self.assertTrue(used["collisions"])
         self.assertAlmostEqual(used["pull"], 0.01)
         self.assertAlmostEqual(used["smooth"], 0.03)
         # The Fit to Body settings are kept
-        self.assertEqual(settings.relax_iterations, 7)
-        self.assertFalse(settings.refit_auto)
+        self.assertAlmostEqual(settings.stiffness, 7.0)
+        self.assertFalse(settings.self_collisions)
         self.assertAlmostEqual(settings.fit_distance, 0.03)
 
     # Corrective Smooth and Shrinkwrap are added after the Armature only if requested
@@ -372,7 +372,7 @@ class TestAddOutfit(BlenderTestCase):
     # A failing step restores the pieces, like cancelling
     def test_failure_restores(self):
         settings = bpy.context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
-        settings.relax_iterations = 7
+        settings.stiffness = 7.0
         meshes = len(bpy.data.meshes)
 
         class Solver(add_outfit.FitToBodySolver):
@@ -395,7 +395,7 @@ class TestAddOutfit(BlenderTestCase):
         self.assertEqual(len(self.top.vertex_groups), 0)
         self.assertIsNone(self.top.data.shape_keys)
         self.assertEqual(len(bpy.data.meshes), meshes)
-        self.assertEqual(settings.relax_iterations, 7)
+        self.assertAlmostEqual(settings.stiffness, 7.0)
 
     # The model is Nude while adding, then the previous Outfit is restored for the Extras
     def test_nude_while_adding(self):

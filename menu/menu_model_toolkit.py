@@ -2,9 +2,9 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..model_toolkit.mesh.ops_fit_to_body import fit_to_body_draw_settings
 from ..model_toolkit.mesh.ops_smooth_shape_key import smooth_shape_key_draw_settings
-from ..model_toolkit.mesh.ops_squish import squish_draw_settings
+from ..model_toolkit.outfits.ops_fit_to_body import fit_to_body_draw_settings
+from ..model_toolkit.outfits.ops_squish import squish_draw_settings
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 

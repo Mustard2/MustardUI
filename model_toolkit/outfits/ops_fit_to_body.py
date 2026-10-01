@@ -6,15 +6,15 @@ from mathutils.bvhtree import BVHTree
 from ...misc.mesh_deform import (
     DeformTarget,
     geometry_bvh,
-    mesh_laplacian,
     mesh_vertex_normals,
     rest_geometry,
     write_vertex_group,
 )
-from .ops_squish import SQUISH_ORIENTATION_DISTANCE, squisher_is_flipped
-from .shape_key_preview import (
+from ...misc.mesh_intersection import WindingNumbers
+from ..mesh.shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
+    preview_debug,
     preview_draw_footer,
     preview_draw_masks,
     preview_draw_presets,
@@ -25,11 +25,11 @@ from .shape_key_preview import (
     preview_settings_update,
     write_shape_key,
 )
+from .fit_optimizer import FitOptimizer, outfit_metrics
+from .ops_squish import SQUISH_ORIENTATION_DISTANCE, squisher_is_flipped
 
-# Pull of each refit iteration back to the first fit, so that the iterations converge
-REFIT_ANCHOR = 0.05
-# Automatic refit stops when the mean movement decreases less than this in 3 iterations
-REFIT_TOLERANCE = 0.05
+# Outfit vertices checked at a time by the live preview metrics
+CHECK_CHUNK = 2048
 
 
 class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
@@ -57,6 +57,13 @@ class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
         default=False,
         description="Use the body with its modifiers evaluated.\nNote: Mask modifiers might "
         "remove the body under the outfit",
+        update=preview_settings_update,
+    )
+
+    ignore_body_shape_keys: bpy.props.BoolProperty(
+        name="Ignore Body Shape Keys",
+        default=False,
+        description="Fit to the Basis shape of the body, without its current Shape Keys",
         update=preview_settings_update,
     )
 
@@ -177,39 +184,30 @@ class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
-    refit_iterations: bpy.props.IntProperty(
-        name="Refit Iterations",
-        default=50,
-        min=0,
-        soft_max=100,
-        description="Iterations smoothing the fit and fitting it again, to relax the creases "
-        "and the parts lifted from the body.\nWith Automatic, the maximum iterations",
+    iterations: bpy.props.IntProperty(
+        name="Iterations",
+        default=200,
+        min=1,
+        soft_max=1000,
+        description="Maximum iterations of the optimization, which stops earlier when the "
+        "shape does not change anymore",
         update=preview_settings_update,
     )
 
-    refit_auto: bpy.props.BoolProperty(
-        name="Automatic",
-        default=True,
-        description="Stop the refit iterations when the shape does not change anymore",
-        update=preview_settings_update,
-    )
-
-    relax_iterations: bpy.props.IntProperty(
-        name="Relax",
-        default=0,
-        min=0,
-        soft_max=50,
-        description="Relaxation iterations, to even out the vertices distribution in the "
-        "fitted area",
-        update=preview_settings_update,
-    )
-
-    relax_factor: bpy.props.FloatProperty(
-        name="Relax Factor",
-        default=0.5,
+    stiffness: bpy.props.FloatProperty(
+        name="Stiffness",
+        default=1.0,
         min=0.0,
-        max=1.0,
-        description="Strength of each relaxation iteration",
+        soft_max=10.0,
+        description="Preservation of the outfit shape: higher values keep the details and the "
+        "edge lengths, lower values fit closer to the body",
+        update=preview_settings_update,
+    )
+
+    self_collisions: bpy.props.BoolProperty(
+        name="Self Collisions",
+        default=True,
+        description="Keep the outfit layers on the side they had before the fit",
         update=preview_settings_update,
     )
 
@@ -223,27 +221,43 @@ FitToBodyPresetsMenu, FitToBodyPresetAdd = preview_preset_classes(
 
 
 class FitToBodySolver:
-    """Compute the fitted outfit, caching the results not affected by the changed settings"""
+    """Compute the fitted outfit, caching the results not affected by the changed settings.
+    With check, the metrics before and after the fit are computed too"""
 
-    def __init__(self, context, outfit, bodies, key_name):
+    def __init__(self, context, outfit, bodies, key_name, check=False):
         self.outfit = outfit
         self.bodies = bodies
         self.target = DeformTarget(outfit, key_name)
         self.children = self.target.rigid_children(bodies)
         self.followers = self.children
         self.disp = None
-        self.refit_count = 0
+        self.iterations = 0
+        self.check = check
+        self.metrics = None
 
         self._body = {}
+        self._body_tris = {}
+        self._before = {}
+        self._winding = {}
+        self._optimizer = {}
         self._outfit_flipped = None
         self._detect = (None, None)
         self.influence = None
 
-    def body(self, context, use_modifiers):
+    @staticmethod
+    def body_key(settings):
+        """Settings changing the body geometry, the key of its cached data"""
+
+        return settings.use_modifiers, settings.ignore_body_shape_keys
+
+    def body(self, context, key):
         """Body BVHTree, coordinates and normals"""
 
-        if use_modifiers not in self._body:
-            geometry = rest_geometry(context, self.bodies, [self.outfit], use_modifiers)
+        if key not in self._body:
+            use_modifiers, basis = key
+            geometry = rest_geometry(
+                context, self.bodies, [self.outfit], use_modifiers, basis=basis
+            )
             bvh, co = geometry_bvh(geometry)
             normals = None
             if bvh is not None:
@@ -252,9 +266,79 @@ class FitToBodySolver:
                 for item_co, tri in geometry:
                     tris.append(tri + offset)
                     offset += len(item_co)
-                normals = mesh_vertex_normals(co, np.concatenate(tris))
-            self._body[use_modifiers] = (bvh, co, normals)
-        return self._body[use_modifiers]
+                self._body_tris[key] = np.concatenate(tris)
+                normals = mesh_vertex_normals(co, self._body_tris[key])
+            self._body[key] = (bvh, co, normals)
+        return self._body[key]
+
+    def winding(self, context, key):
+        """Winding numbers of the body, built once"""
+
+        if key not in self._winding:
+            body_co = self.body(context, key)[1]
+            self._winding[key] = WindingNumbers(body_co, self._body_tris[key])
+        return self._winding[key]
+
+    def check_steps(self, context, settings):
+        """Store the metrics before and after the last fit, a bit at a time"""
+
+        target = self.target
+        disp = self.disp if self.disp is not None else np.zeros_like(target.co)
+        key = self.body_key(settings)
+        tree = self.winding(context, key)
+        body_bvh = self.body(context, key)[0]
+
+        def winding_steps(points):
+            winding = np.empty(len(points))
+            for start in range(0, len(points), CHECK_CHUNK):
+                winding[start : start + CHECK_CHUNK] = tree(points[start : start + CHECK_CHUNK])
+                yield
+            return winding
+
+        if key not in self._before:
+            winding = yield from winding_steps(target.co)
+            buried = int(np.count_nonzero(np.abs(winding) > 0.5))
+            before = outfit_metrics(target.co, target.tris, body_bvh, buried)
+            yield
+            # Rest distance of the outfit vertices from the body
+            distance = np.array([body_bvh.find_nearest(Vector(c))[3] for c in target.co])
+            self._before[key] = (before, winding, distance)
+            yield
+        before, winding, distance = self._before[key]
+
+        # Only the vertices moved farther than the body surface can change side
+        moved = np.linalg.norm(disp, axis=1) >= distance - 1e-6
+        winding = winding.copy()
+        winding[moved] = yield from winding_steps(target.co[moved] + disp[moved])
+        buried = int(np.count_nonzero(np.abs(winding) > 0.5))
+        self.metrics = (before, outfit_metrics(target.co + disp, target.tris, body_bvh, buried))
+
+    def optimize(self, context, settings, weights, disp):
+        """Refine the fit minimizing the energy of the optimizer, yielding the progress"""
+
+        target = self.target
+        key = self.body_key(settings)
+        if key not in self._optimizer:
+            body_bvh, body_co, body_normals = self.body(context, key)
+            self._optimizer[key] = FitOptimizer(
+                target,
+                body_co,
+                self._body_tris[key],
+                body_normals,
+                body_bvh,
+                lambda: self.winding(context, key),
+            )
+        free = weights > 0.0
+        if self.influence is not None:
+            free &= self.influence > 0.0
+        steps = self._optimizer[key].run(target.co + disp, free, settings)
+        while True:
+            try:
+                factor, text = next(steps)
+            except StopIteration as stop:
+                co, self.iterations = stop.value
+                return co - target.co
+            yield 0.4 + 0.5 * factor, text
 
     def clipping(self, context, settings, weights, co, outfit_mask=None, nearest=None):
         """Required displacement along the directions to fix the clipping of the outfit with
@@ -262,7 +346,7 @@ class FitToBodySolver:
         With nearest (mask, distances), only the vertices in the mask are checked against the
         closest body point, storing their distance from the body"""
 
-        body_bvh, body_co, body_normals = self.body(context, settings.use_modifiers)
+        body_bvh, body_co, body_normals = self.body(context, self.body_key(settings))
         target = self.target
         margin = settings.max_depth + settings.offset
         active = weights > 0.0
@@ -328,7 +412,7 @@ class FitToBodySolver:
         """Displacement pulling the outfit parts near the body towards it, checking only the
         masked outfit vertices"""
 
-        body_bvh, body_co, _ = self.body(context, settings.use_modifiers)
+        body_bvh, body_co, _ = self.body(context, self.body_key(settings))
         target = self.target
         disp = np.zeros((target.n_verts, 3))
         active = weights > 0.0
@@ -354,37 +438,9 @@ class FitToBodySolver:
                 disp[i] = -np.array(normal, dtype=np.float64) * pull
         return disp
 
-    def layers(self, context, settings, weights):
-        """Outfit vertices over another layer of the outfit, with the face under them"""
-
-        body_bvh, body_co, _ = self.body(context, settings.use_modifiers)
-        target = self.target
-        co = target.co
-        margin = max(settings.fit_distance, settings.max_depth) + settings.offset
-        bb_min = body_co.min(axis=0) - margin
-        bb_max = body_co.max(axis=0) + margin
-        candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights > 0.0))[
-            0
-        ]
-
-        outfit_bvh = BVHTree.FromPolygons(co.tolist(), target.tris.tolist())
-        eps = 1e-4
-        outer = []
-        under = []
-        for i in candidates:
-            v = Vector(co[i])
-            loc, normal, _, _ = body_bvh.find_nearest(v, margin)
-            if loc is None:
-                continue
-            hit, _, face, _ = outfit_bvh.ray_cast(v - normal * eps, -normal, margin)
-            if hit is not None and i not in target.tris[face]:
-                outer.append(i)
-                under.append(target.tris[face])
-        return np.array(outer, dtype=np.int64), np.array(under, dtype=np.int64).reshape(-1, 3)
-
     def detect(self, context, settings, weights):
         key = (
-            settings.use_modifiers,
+            self.body_key(settings),
             settings.vertex_group,
             settings.invert_vertex_group,
             settings.check_body,
@@ -395,79 +451,8 @@ class FitToBodySolver:
         if self._detect[0] != key:
             clipping = self.clipping(context, settings, weights, self.target.co)
             pulls = self.pulls(context, settings, weights, self.target.co)
-            layers = self.layers(context, settings, weights)
-            self._detect = (key, (*clipping, pulls, layers))
+            self._detect = (key, (*clipping, pulls))
         return self._detect[1]
-
-    def push_out(self, context, settings, weights, co, mask):
-        """Push the masked vertices out of the body, again for the ones pushed into other
-        faces"""
-
-        for _ in range(3):
-            required, directions = self.clipping(context, settings, weights, co, mask)
-            if not np.any(required > 0.0):
-                break
-            co = co + directions * required[:, None]
-        return co
-
-    def refit(self, context, settings, weights, disp):
-        """Smooth the displacement of the fitted area and fit it again, for some iterations or
-        until it converges, yielding the progress of the solve"""
-
-        target = self.target
-        edges = target.edges
-        region = np.linalg.norm(disp, axis=1) > 1e-5
-        for _ in range(3):
-            grow = region[edges[:, 0]] | region[edges[:, 1]]
-            region[edges[grow].ravel()] = True
-        area = region & (weights > 0.0)
-        # The borders are kept, as smoothing shrinks them
-        tris = target.tris
-        pairs = np.sort(np.concatenate([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [2, 0]]]), axis=1)
-        pairs, counts = np.unique(pairs, axis=0, return_counts=True)
-        region = area.copy()
-        region[pairs[counts == 1].ravel()] = False
-
-        start = target.co + disp
-        co = start.copy()
-        movements = []
-        # Distance from the body at the last check, and the position then
-        distances = np.zeros(target.n_verts)
-        checked = co.copy()
-        self.refit_count = 0
-        total = settings.refit_iterations
-        for iteration in range(total):
-            yield 0.4 + 0.6 * iteration / total, f"Refit {iteration + 1}/{total}"
-            previous = co[region]
-            # Smoothing the displacement keeps the details of the outfit (e.g. knots)
-            fit = co - target.co
-            step = 0.5 * (mesh_laplacian(fit, edges, target.n_verts)[region] - fit[region])
-            # Short steps, so that the clipping check still finds the vertices sunk in the body
-            length = np.maximum(np.linalg.norm(step, axis=1), 1e-12)
-            co[region] += step * np.minimum(1.0, 0.5 * settings.max_depth / length)[:, None]
-            co[region] += REFIT_ANCHOR * (start[region] - co[region])
-            # Vertices far from the body can not have reached it since the last check
-            near = distances - np.linalg.norm(co - checked, axis=1) <= settings.offset + 1e-4
-            near &= region
-            checked[near] = co[near]
-            required, directions = self.clipping(
-                context, settings, weights, co, region, (near, distances)
-            )
-            co += directions * required[:, None]
-
-            self.refit_count += 1
-            movements.append(np.linalg.norm(co[region] - previous, axis=1).mean())
-            # The contact vertices keep moving in and out, so the movement stops decreasing
-            if (
-                settings.refit_auto
-                and len(movements) > 3
-                and movements[-1] > (1.0 - REFIT_TOLERANCE) * movements[-4]
-            ):
-                break
-
-        # Exact check of all the vertices at the end
-        co = self.push_out(context, settings, weights, co, area)
-        return co - target.co
 
     def solve(self, context, settings):
         """Return the Shape Key coordinates, the number of fitted vertices and the error"""
@@ -477,28 +462,35 @@ class FitToBodySolver:
             try:
                 next(steps)
             except StopIteration as stop:
-                return stop.value
+                result = stop.value
+                break
+        if self.check:
+            for _ in self.check_steps(context, settings):
+                pass
+        return result
 
     def solve_steps(self, context, settings):
         """Solve like solve, yielding the progress and the current step"""
 
         target = self.target
         self.disp = None
-        self.refit_count = 0
+        self.iterations = 0
+        self.metrics = None
         weights = target.weights(settings.vertex_group, settings.invert_vertex_group)
         if weights is None:
             return target.basis, 0, "Vertex Group not found"
 
-        if self.body(context, settings.use_modifiers)[0] is None:
+        if self.body(context, self.body_key(settings))[0] is None:
             return target.basis, 0, "The selected Objects have no faces"
 
         yield 0.0, "Clipping"
-        required, directions, pull, (outer, under) = self.detect(context, settings, weights)
+        required, directions, pull = self.detect(context, settings, weights)
         fitted = np.nonzero((required > 0.0) | np.any(pull != 0.0, axis=1))[0]
         if not len(fitted):
             return target.basis, 0, ""
 
-        disp = directions * required[:, None] + pull
+        # The optimization pulls by itself, as the pulls moving single vertices cross the outfit
+        disp = directions * required[:, None]
 
         yield 0.2, "Smoothing"
         contact = np.nonzero(required > 0.0)[0]
@@ -510,40 +502,13 @@ class FitToBodySolver:
             required[contact],
             min_iterations=1,
         )
-        disp = target.relax(disp, settings.relax_iterations, settings.relax_factor)
 
         self.influence = None
         if settings.auto_influence:
             self.influence = target.influence(self._detect[0], fitted, settings.influence_radius)
             disp *= self.influence[:, None]
 
-        # Push out the moved vertices clipping again, done by the refit otherwise
-        for _ in range(3 if not settings.refit_iterations else 0):
-            moved = np.linalg.norm(disp, axis=1) > 1e-7
-            again, again_dirs = self.clipping(context, settings, weights, target.co + disp, moved)
-            again_contact = np.nonzero(again > 0.0)[0]
-            if not len(again_contact):
-                break
-            # Smoothed anyway, as unsmoothed pushes build spikes
-            disp += target.smooth(
-                again_dirs * again[:, None],
-                settings.smooth_distance,
-                again_contact,
-                again_dirs[again_contact],
-                again[again_contact],
-                min_iterations=5,
-            )
-
-        disp = yield from self.refit(context, settings, weights, disp)
-
-        # Outer layers follow the layer under them, keeping the thickness
-        for _ in range(2):
-            disp[outer] = disp[under].mean(axis=1)
-        # Push out the outer layers sunk in the body by following
-        if len(outer):
-            mask = np.zeros(target.n_verts, dtype=bool)
-            mask[outer] = True
-            disp = self.push_out(context, settings, weights, target.co + disp, mask) - target.co
+        disp = yield from self.optimize(context, settings, weights, disp)
 
         disp *= (settings.factor * weights)[:, None]
 
@@ -579,7 +544,7 @@ class MustardUI_ModelToolkit_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operat
     def preview_settings(self, context):
         return context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
 
-    def solver(self, context):
+    def solver(self, context, check=False):
         settings = self.preview_settings(context)
         outfit = context.active_object
         bodies = [x for x in context.selected_objects if x != outfit and x.type == "MESH"]
@@ -593,7 +558,7 @@ class MustardUI_ModelToolkit_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operat
             self.report({"ERROR"}, "MustardUI - The Basis Shape Key can not be overwritten")
             return None
 
-        return FitToBodySolver(context, outfit, bodies, name)
+        return FitToBodySolver(context, outfit, bodies, name, check)
 
     def execute(self, context):
         settings = self.preview_settings(context)
@@ -631,7 +596,7 @@ class MustardUI_ModelToolkit_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operat
         ]
         settings.shape_key_name = f"Fit to Body - {', '.join(sorted(bodies))}"
 
-        solver = self.solver(context)
+        solver = self.solver(context, check=preview_debug())
         if solver is None:
             return {"CANCELLED"}
 
@@ -709,21 +674,39 @@ def fit_to_body_draw_settings(layout, context):
         col.prop(settings, "fit_distance", text="Pull Distance")
         col.separator()
         col.prop(settings, "use_modifiers", text="Body Modifiers")
+        col.prop(settings, "ignore_body_shape_keys")
 
     col = preview_section(box, "mustardui_fit_shape", "Shape", "MOD_SMOOTH")
     if col is not None:
         col.prop(settings, "smooth_distance")
-        row = col.row(align=True)
-        row.prop(settings, "refit_iterations")
-        row.prop(settings, "refit_auto", text="", icon="AUTO")
-        sub = col.column(align=True)
-        sub.prop(settings, "relax_iterations")
-        row = sub.row(align=True)
-        row.enabled = settings.relax_iterations > 0
-        row.prop(settings, "relax_factor", text="Factor")
+        col.prop(settings, "stiffness")
+        col.prop(settings, "iterations")
+        col.prop(settings, "self_collisions")
 
     preview_draw_masks(box, session, "fit")
-    preview_draw_footer(box, session)
+
+    col = None
+    if preview_debug():
+        col = preview_section(box, "mustardui_fit_debug", "Debug", "CONSOLE", True)
+    if col is not None:
+        metrics = session.solver.metrics
+        rows = [
+            ("Fitted Vertices", str(session.count)),
+            ("Iterations", str(session.solver.iterations)),
+            ("Time", f"{session.elapsed:.2f} s"),
+        ]
+        labels = ("Buried Vertices", "Through Body", "Self Intersections")
+        for index, label in enumerate(labels):
+            value = "..." if metrics is None else f"{metrics[0][index]} → {metrics[1][index]}"
+            rows.append((label, value))
+        for label, value in rows:
+            split = col.split(factor=0.4)
+            row = split.row()
+            row.alignment = "RIGHT"
+            row.label(text=label)
+            split.label(text=value)
+
+    preview_draw_footer(box, session, info=False)
 
 
 def register():

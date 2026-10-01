@@ -1,4 +1,14 @@
+import math
+
 import bpy
+import numpy as np
+
+from ...misc.mesh_cleanup import clear_unused_vertex_groups
+from ...misc.mesh_deform import read_weights, rest_geometry, write_weights
+from .weight_transfer import MIN_WEIGHT, transfer_weights
+
+# Vertex Group marking the vertices with inpainted weights
+UNMATCHED_GROUP = "Transfer Unmatched"
 
 
 class MustardUI_ModelToolkit_TransferVertexGroups_Item(bpy.types.PropertyGroup):
@@ -169,7 +179,7 @@ class MustardUI_ModelToolkit_TransferVertexGroups_AddSelectedBones(bpy.types.Ope
 
 
 class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
-    """Transfer selected vertex groups from active object to other selected objects"""
+    """Transfer selected vertex groups from active object to other selected objects.\nThe weights are copied where the surfaces are close and aligned, and filled smoothly from them elsewhere (e.g. skirts between the legs)"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_transfer_vertex_groups"
     bl_label = "Transfer Vertex Groups"
@@ -178,6 +188,61 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
     search_group: bpy.props.StringProperty(
         name="Vertex Group",
         description="Vertex Group to transfer from active to selected Objects",
+    )
+
+    max_distance: bpy.props.FloatProperty(
+        name="Max Distance",
+        default=0.02,
+        min=0.0,
+        soft_max=0.1,
+        subtype="DISTANCE",
+        description="Maximum distance from the source to copy its weights, the farther "
+        "vertices are filled smoothly.\nWith a large distance and Max Angle at 180°, the weights "
+        "of the nearest point are copied everywhere",
+    )
+
+    max_angle: bpy.props.FloatProperty(
+        name="Max Angle",
+        default=math.radians(30.0),
+        min=0.0,
+        max=math.pi,
+        subtype="ANGLE",
+        description="Maximum angle between the source and target normals to copy the weights, "
+        "the other vertices are filled smoothly",
+    )
+
+    both_sides: bpy.props.BoolProperty(
+        name="Both Sides",
+        default=False,
+        description="Also copy the weights where the normals point in opposite directions",
+    )
+
+    smooth: bpy.props.IntProperty(
+        name="Smooth",
+        default=0,
+        min=0,
+        soft_max=20,
+        description="Smoothing iterations of the filled weights and of the copied ones around them",
+    )
+
+    smooth_all: bpy.props.BoolProperty(
+        name="Smooth All",
+        default=False,
+        description="Smooth all the weights, also the copied ones far from the filled vertices",
+    )
+
+    limit_influences: bpy.props.IntProperty(
+        name="Limit Influences",
+        default=0,
+        min=0,
+        soft_max=8,
+        description="Maximum Vertex Groups per vertex, 0 for no limit",
+    )
+
+    mark_unmatched: bpy.props.BoolProperty(
+        name="Mark Filled Vertices",
+        default=False,
+        description=f"Add the vertices with filled weights to the '{UNMATCHED_GROUP}' Vertex Group",
     )
 
     @classmethod
@@ -235,6 +300,21 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             icon="BONE_DATA",
         )
 
+        layout.separator()
+        col = layout.column()
+        col.use_property_split = True
+        col.use_property_decorate = False
+        col.prop(self, "max_distance")
+        col.prop(self, "max_angle")
+        col.prop(self, "both_sides")
+        col.separator()
+        col.prop(self, "smooth")
+        row = col.row()
+        row.enabled = self.smooth > 0
+        row.prop(self, "smooth_all")
+        col.prop(self, "limit_influences")
+        col.prop(self, "mark_unmatched")
+
     def execute(self, context):
         wm = context.window_manager
         source = context.active_object
@@ -244,62 +324,58 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Active Object must be a Mesh")
             return {"CANCELLED"}
 
-        # Filter out invalid vertex groups from the list
-        source_vg_names = {vg.name for vg in source.vertex_groups}
-        items_not_valid = [
-            i
-            for i, item in enumerate(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items)
-            if item.group_name not in source_vg_names
+        # The listed Vertex Groups found on the source
+        names = [
+            item.group_name
+            for item in wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
+            if item.group_name in source.vertex_groups
         ]
-
-        items_to_transfer = len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items) - len(
-            items_not_valid
-        )
-        if items_to_transfer < 1:
+        names = list(dict.fromkeys(names))
+        if not names:
             self.report({"ERROR"}, "MustardUI - No Vertex Groups to transfer")
             return {"CANCELLED"}
 
+        geometry = rest_geometry(context, [source], [], False)
+        if not geometry:
+            self.report({"ERROR"}, "MustardUI - The Active Object has no faces")
+            return {"CANCELLED"}
+        source_co, source_tris = geometry[0]
+        source_weights = read_weights(source, names)
+
+        matched = 0
+        total = 0
         for target in targets:
             if target.type != "MESH":
                 continue
+            geometry = rest_geometry(context, [target], [], False, faces_only=False)
+            if not geometry or not len(geometry[0][0]):
+                continue
+            co, tris = geometry[0]
+            edges = np.empty(len(target.data.edges) * 2, dtype=np.int64)
+            target.data.edges.foreach_get("vertices", edges)
 
-            # Ensure all needed vertex groups exist on target
-            target_vg_names = {vg.name for vg in target.vertex_groups}
+            weights, found, filled = transfer_weights(
+                (source_co, source_tris, source_weights), (co, tris, edges.reshape(-1, 2)), self
+            )
+            write_weights(target, names, weights, MIN_WEIGHT)
+            # The transferred groups without weights on the target are removed, not left empty
+            others = [vg.name for vg in target.vertex_groups if vg.name not in names]
+            clear_unused_vertex_groups(target, keep=others)
+            if self.mark_unmatched:
+                write_weights(target, [UNMATCHED_GROUP], filled.astype(np.float64)[:, None])
+            elif UNMATCHED_GROUP in target.vertex_groups:
+                # The group of a previous transfer would be outdated
+                target.vertex_groups.remove(target.vertex_groups[UNMATCHED_GROUP])
+            matched += int(np.count_nonzero(found))
+            total += len(found)
 
-            bpy.context.view_layer.objects.active = target
-            bpy.context.view_layer.update()
-
-            for item in wm.MustardUI_ModelToolkit_TransferVertexGroups_Items:
-                vg_name = item.group_name
-
-                if vg_name not in source_vg_names:
-                    continue
-
-                if vg_name not in target_vg_names:
-                    target.vertex_groups.new(name=vg_name)
-
-                # Create Data Transfer modifier
-                mod = target.modifiers.new(name=f"Transfer_{vg_name}", type="DATA_TRANSFER")
-                mod.object = source
-
-                mod.use_vert_data = True
-                mod.data_types_verts = {"VGROUP_WEIGHTS"}
-                mod.vert_mapping = "POLYINTERP_NEAREST"
-
-                # Single source group, matched by name on the target
-                mod.layers_vgroup_select_src = vg_name
-                mod.layers_vgroup_select_dst = "NAME"
-
-                mod.mix_mode = "REPLACE"
-                mod.mix_factor = 1.0
-
-                # Apply modifier
-                bpy.ops.object.modifier_apply(modifier=mod.name)
-
-        context.view_layer.objects.active = source
-
-        self.report({"INFO"}, "MustardUI - Vertex Groups transferred")
-
+        if not total:
+            self.report({"ERROR"}, "MustardUI - The selected Objects have no vertices")
+            return {"CANCELLED"}
+        self.report(
+            {"INFO"},
+            f"MustardUI - Vertex Groups transferred ({matched}/{total} vertices matched)",
+        )
         return {"FINISHED"}
 
     def invoke(self, context, event):

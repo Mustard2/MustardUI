@@ -14,11 +14,6 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ...model_toolkit.mesh.ops_fit_to_body import (
-    FitToBodySolver,
-    fit_to_body_apply_to_children,
-    fit_to_body_apply_to_mesh,
-)
 from ...model_toolkit.mesh.ops_transfer_shape_keys import (
     mesh_rest_coordinates,
     transfer_mapping,
@@ -26,6 +21,11 @@ from ...model_toolkit.mesh.ops_transfer_shape_keys import (
 )
 from ...model_toolkit.mesh.shape_key_preview import create_followers_shape_keys, write_shape_key
 from ...model_toolkit.model.ops_naming import rename_object
+from ...model_toolkit.outfits.ops_fit_to_body import (
+    FitToBodySolver,
+    fit_to_body_apply_to_children,
+    fit_to_body_apply_to_mesh,
+)
 from ..helper_functions import outfits_get_collections
 
 # Weights below this are not written

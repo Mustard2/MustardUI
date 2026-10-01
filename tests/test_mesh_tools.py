@@ -1,13 +1,21 @@
 import importlib
 
+import bmesh
 import bpy
 import numpy as np
+from fake_ui import Drawer, FakeLayout
 from helpers import ADDON, BlenderTestCase, new_object
 from mathutils import Matrix
+from mathutils.bvhtree import BVHTree
 
-fit_to_body = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_fit_to_body")
+fit_to_body = importlib.import_module(ADDON + ".model_toolkit.outfits.ops_fit_to_body")
+fit_optimizer = importlib.import_module(ADDON + ".model_toolkit.outfits.fit_optimizer")
+weight_transfer = importlib.import_module(ADDON + ".model_toolkit.mesh.weight_transfer")
+mesh_deform = importlib.import_module(ADDON + ".misc.mesh_deform")
+ops_transfer = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_transfer_vertex_groups")
 preview = importlib.import_module(ADDON + ".model_toolkit.mesh.shape_key_preview")
-squish = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_squish")
+intersection = importlib.import_module(ADDON + ".misc.mesh_intersection")
+squish = importlib.import_module(ADDON + ".model_toolkit.outfits.ops_squish")
 smooth_sk = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_smooth_shape_key")
 
 
@@ -209,6 +217,179 @@ class TestTransferShapeKeys(BlenderTestCase):
         np.testing.assert_allclose(offsets[xs >= 0.0], 0.1 * (xs[xs >= 0.0] + 1.0), atol=1e-5)
 
 
+class TestTransferVertexGroups(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.source = grid_object("Source")
+        # Weights growing with x
+        foo = self.source.vertex_groups.new(name="Foo")
+        for v in self.source.data.vertices:
+            foo.add([v.index], (v.co.x + 1.0) / 2.0, "REPLACE")
+        self.source.vertex_groups.new(name="Bar").add([0], 1.0, "REPLACE")
+
+        self.target = grid_object("Target", size=0.5, subdivisions=7, location=(0, 0, 0.001))
+
+        bpy.context.view_layer.update()
+        for obj in bpy.context.view_layer.objects:
+            obj.select_set(obj in (self.source, self.target))
+        bpy.context.view_layer.objects.active = self.source
+
+        items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        items.clear()
+        items.add().group_name = "Foo"
+
+    # Only the listed groups are transferred, copying the weights of the close source
+    def test_transfer(self):
+        self.assertTrue(bpy.ops.mustardui.model_toolkit_transfer_vertex_groups.poll())
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups()
+
+        self.assertIn("Foo", self.target.vertex_groups)
+        self.assertNotIn("Bar", self.target.vertex_groups)
+
+        index = self.target.vertex_groups["Foo"].index
+        for v in self.target.data.vertices:
+            weight = next(g.weight for g in v.groups if g.group == index)
+            self.assertAlmostEqual(weight, (v.co.x + 1.0) / 2.0, places=4)
+
+    def transfer(self, **settings):
+        items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        items.clear()
+        for name in ("Foo", "Baz"):
+            items.add().group_name = name
+        # A second group completing the first one to 1
+        baz = self.source.vertex_groups.new(name="Baz")
+        for v in self.source.data.vertices:
+            baz.add([v.index], 1.0 - (v.co.x + 1.0) / 2.0, "REPLACE")
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups(**settings)
+        weights = mesh_deform.read_weights(self.target, ["Foo", "Baz"])
+        return weights, np.array([v.co for v in self.target.data.vertices])
+
+    # The vertices far from the source are filled smoothly from the matched ones
+    def test_fill(self):
+        for v in self.target.data.vertices:
+            if v.co.x > 0.1:
+                v.co.z += 0.05
+        weights, co = self.transfer(mark_unmatched=True)
+
+        lifted = co[:, 0] > 0.1
+        unmatched = mesh_deform.read_weights(self.target, [ops_transfer.UNMATCHED_GROUP])[:, 0]
+        np.testing.assert_array_equal(unmatched > 0.5, lifted)
+        # The matched weights are copied, the filled ones continue them smoothly
+        np.testing.assert_allclose(weights[~lifted, 0], (co[~lifted, 0] + 1.0) / 2.0, atol=1e-4)
+        rows = weights[:, 0].reshape(8, 8)
+        self.assertTrue(np.all(np.diff(rows, axis=1) >= -1e-6))
+        self.assertLess(np.abs(np.diff(rows[:, 4:6], axis=1)).max(), 0.1)
+        self.assertLessEqual(weights[lifted, 0].max(), 0.75)
+        np.testing.assert_allclose(weights.sum(axis=1), 1.0, atol=1e-3)
+
+    # The groups without weights on the target are not left empty
+    def test_empty_groups(self):
+        # Bar only weights the source corner, far from the target, which already has a Bar group
+        self.target.vertex_groups.new(name="Bar")
+        items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        items.add().group_name = "Bar"
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups()
+        self.assertIn("Foo", self.target.vertex_groups)
+        self.assertNotIn("Bar", self.target.vertex_groups)
+
+    # With a large distance and any angle, the weights of the nearest point are copied everywhere
+    def test_nearest(self):
+        for v in self.target.data.vertices:
+            if v.co.x > 0.1:
+                v.co.z += 0.05
+        weights, co = self.transfer(max_distance=1.0, max_angle=np.pi, mark_unmatched=True)
+
+        unmatched = mesh_deform.read_weights(self.target, [ops_transfer.UNMATCHED_GROUP])
+        self.assertFalse(np.any(unmatched > 0.0))
+        np.testing.assert_allclose(weights[:, 0], (co[:, 0] + 1.0) / 2.0, atol=1e-4)
+
+    # A loose piece far from the source moves rigidly with its closest point
+    def test_rigid_piece(self):
+        mesh = self.target.data
+        piece = grid_object("Piece", size=0.05, subdivisions=2, location=(0.7, 0.0, 0.2))
+        for obj in bpy.context.view_layer.objects:
+            obj.select_set(obj in (piece, self.target))
+        bpy.context.view_layer.objects.active = self.target
+        bpy.ops.object.join()
+        bpy.context.view_layer.objects.active = self.source
+        self.source.select_set(True)
+        weights, co = self.transfer(mark_unmatched=True)
+
+        loose = np.arange(len(mesh.vertices)) >= 64
+        self.assertLess(np.abs(weights[loose] - weights[loose][0]).max(), 1e-6)
+        self.assertGreater(weights[loose][0, 0], 0.5)
+        # The piece copied its weights, it was not filled
+        filled = mesh_deform.read_weights(self.target, [ops_transfer.UNMATCHED_GROUP])
+        self.assertFalse(np.any(filled[loose] > 0.0))
+
+        # Without marking, the group of the previous transfer is removed
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups(mark_unmatched=False)
+        self.assertNotIn(ops_transfer.UNMATCHED_GROUP, self.target.vertex_groups)
+
+    # Meshes without faces copy the weights of the closest points
+    def test_edges_only(self):
+        mesh = bpy.data.meshes.new("Wire")
+        mesh.from_pydata([(-0.5, 0.0, 0.001), (0.5, 0.0, 0.001)], [(0, 1)], [])
+        wire = new_object("Wire", mesh)
+        bpy.context.view_layer.update()
+        for obj in bpy.context.view_layer.objects:
+            obj.select_set(obj in (self.source, wire))
+        bpy.context.view_layer.objects.active = self.source
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups()
+
+        weights = mesh_deform.read_weights(wire, ["Foo"])[:, 0]
+        np.testing.assert_allclose(weights, [0.25, 0.75], atol=1e-4)
+
+    # Smoothing softens the seam with the copied weights, or all of them with Smooth All
+    def test_smooth(self):
+        for v in self.target.data.vertices:
+            if v.co.x > 0.1:
+                v.co.z += 0.05
+        base, co = self.transfer()
+        results = {}
+        for smooth_all in (False, True):
+            bpy.ops.mustardui.model_toolkit_transfer_vertex_groups(smooth=10, smooth_all=smooth_all)
+            results[smooth_all] = mesh_deform.read_weights(self.target, ["Foo", "Baz"])
+            np.testing.assert_allclose(results[smooth_all].sum(axis=1), 1.0, atol=1e-3)
+
+        # Columns of the 8x8 grid: filled from x > 0.1, the seam band reaches 2 columns before
+        columns = np.round((co[:, 0] + 0.5) / (1.0 / 7.0)).astype(int)
+        band = (columns >= 2) & (columns <= 4)
+        far = columns <= 1
+        self.assertGreater(np.abs(results[False][band, 0] - base[band, 0]).max(), 1e-4)
+        np.testing.assert_allclose(results[False][far], base[far], atol=1e-6)
+        self.assertGreater(np.abs(results[True][far, 0] - base[far, 0]).max(), 1e-4)
+
+    # Only the masked vertices change, and the groups without weights around them are skipped
+    def test_smooth_weights(self):
+        n = 5
+        edges = [(j * n + i, j * n + i + 1) for j in range(n) for i in range(n - 1)]
+        edges += [(j * n + i, (j + 1) * n + i) for j in range(n - 1) for i in range(n)]
+        edges = np.array(edges)
+        weights = np.zeros((n * n, 2))
+        weights[12, 0] = 1.0
+        weights[0, 1] = 1.0
+        mask = np.zeros(n * n, dtype=bool)
+        mask[[6, 7, 8, 11, 12, 13, 16, 17, 18]] = True
+
+        smoothed = weight_transfer.smooth_weights(weights, edges, mask, 5)
+        np.testing.assert_array_equal(smoothed[~mask], weights[~mask])
+        np.testing.assert_array_equal(smoothed[:, 1], weights[:, 1])
+        self.assertLess(smoothed[12, 0], 1.0)
+        self.assertGreater(smoothed[7, 0], 0.0)
+
+    # The weights of each vertex are limited to the largest ones, keeping their sum
+    def test_limit_influences(self):
+        weights = np.array([[0.5, 0.3, 0.2], [0.1, 0.1, 0.8]])
+        limited = weight_transfer.limit_influences(weights, 2)
+        np.testing.assert_array_equal(np.count_nonzero(limited, axis=1), [2, 2])
+        np.testing.assert_allclose(limited.sum(axis=1), 1.0)
+        np.testing.assert_allclose(limited[0], [0.625, 0.375, 0.0])
+        # Groups not summing to 1 (e.g. masks) are kept within 1
+        limited = weight_transfer.limit_influences(np.array([[1.0, 1.0, 1.0]]), 1)
+        np.testing.assert_allclose(limited, [[1.0, 0.0, 0.0]])
+
+
 class TestFitToBody(BlenderTestCase):
     def setUp(self):
         super().setUp()
@@ -217,54 +398,254 @@ class TestFitToBody(BlenderTestCase):
         bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.49)
         self.outfit = bpy.context.active_object
         self.settings = bpy.context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
-        self.settings.refit_iterations = 50
 
-    def solve(self, auto):
-        self.settings.refit_auto = auto
+    def solve(self):
         solver = fit_to_body.FitToBodySolver(bpy.context, self.outfit, [self.body], "Fit")
         co, count, error = solver.solve(bpy.context, self.settings)
-        return np.linalg.norm(co, axis=1), solver.refit_count
+        self.assertEqual(error, "")
+        return np.linalg.norm(co, axis=1)
 
     # The outfit inside the body is pushed out of it
     def test_fit(self):
-        radius, _ = self.solve(auto=True)
+        radius = self.solve()
         self.assertGreater(radius.min(), 0.5)
         self.assertLess(radius.max(), 0.52)
 
-    # The refit keeps the details of the outfit, e.g. a knot far from the body
-    def test_refit_keeps_details(self):
+    # The fit keeps the details of the outfit, e.g. a knot far from the body
+    def test_keeps_details(self):
         mesh = self.outfit.data
         top = int(np.argmax([v.co.z for v in mesh.vertices]))
         mesh.vertices[top].co.z += 0.03
-        radius, _ = self.solve(auto=True)
+        radius = self.solve()
         neighbours = [sum(e.vertices) - top for e in mesh.edges if top in e.vertices]
         # The detail still sticks out of the surface around it
         self.assertGreater(radius[top] - radius[neighbours].mean(), 0.025)
 
-    # The automatic refit stops early, with the same result as all the iterations
-    def test_refit_auto(self):
-        auto_radius, auto_count = self.solve(auto=True)
-        radius, count = self.solve(auto=False)
-        self.assertLess(auto_count, 50)
-        self.assertEqual(count, 50)
-        self.assertLess(np.abs(auto_radius - radius).mean(), 0.0005)
-        self.assertGreater(auto_radius.min(), 0.5)
+    # The metrics count the outfit inside the body before the fit, and nothing after it
+    def test_metrics(self):
+        solver = fit_to_body.FitToBodySolver(
+            bpy.context, self.outfit, [self.body], "Fit", check=True
+        )
+        solver.solve(bpy.context, self.settings)
+        before, after = solver.metrics
+        self.assertEqual(before.buried, len(self.outfit.data.vertices))
+        self.assertEqual(before.through, 0)
+        self.assertEqual(after, (0, 0, 0))
 
-    # The preview debug information shows the refit iterations
-    def test_preview_info(self):
+        # Without the check, no metrics are computed
         solver = fit_to_body.FitToBodySolver(bpy.context, self.outfit, [self.body], "Fit")
+        solver.solve(bpy.context, self.settings)
+        self.assertIsNone(solver.metrics)
+
+    # The body is used with its current Shape Keys, or with its Basis shape ignoring them
+    def test_body_shape_keys(self):
+        option = "ignore_body_shape_keys"
+        self.addCleanup(setattr, self.settings, option, getattr(self.settings, option))
+        self.body.shape_key_add(name="Basis")
+        grow = self.body.shape_key_add(name="Grow", from_mix=False)
+        for d in grow.data:
+            d.co *= 1.1
+        grow.value = 1.0
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.52)
+        outfit = bpy.context.active_object
+
+        for ignore in (False, True):
+            self.settings.ignore_body_shape_keys = ignore
+            solver = fit_to_body.FitToBodySolver(bpy.context, outfit, [self.body], "Fit")
+            co, count, _ = solver.solve(bpy.context, self.settings)
+            if ignore:
+                self.assertEqual(count, 0)
+            else:
+                self.assertGreater(np.linalg.norm(co, axis=1).min(), 0.55)
+        # The Shape Keys of the body are restored
+        self.assertFalse(grow.mute)
+
+    # A loose vertex, last in the mesh, does not break the fit
+    def test_loose_vertex(self):
+        bm = bmesh.new()
+        bm.from_mesh(self.outfit.data)
+        bm.verts.new((0.0, 0.0, 0.0))
+        bm.to_mesh(self.outfit.data)
+        bm.free()
+        solver = fit_to_body.FitToBodySolver(bpy.context, self.outfit, [self.body], "Fit")
+        co, _, error = solver.solve(bpy.context, self.settings)
+        self.assertEqual(error, "")
+        self.assertTrue(np.all(np.isfinite(co)))
+
+    # The layers of the outfit do not cross each other when pushed out of the body
+    def test_layers(self):
+        self.addCleanup(setattr, self.settings, "self_collisions", self.settings.self_collisions)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.495)
+        layer = bpy.context.active_object
+        self.outfit.select_set(True)
+        layer.select_set(True)
+        bpy.context.view_layer.objects.active = self.outfit
+        bpy.ops.object.join()
+        # The sphere quads have equal diagonals, split differently at each run otherwise
+        for obj in (self.body, self.outfit):
+            bm = bmesh.new()
+            bm.from_mesh(obj.data)
+            bmesh.ops.triangulate(bm, faces=bm.faces, quad_method="FIXED")
+            bm.to_mesh(obj.data)
+            bm.free()
+
+        for self_collisions in (True, False):
+            self.settings.self_collisions = self_collisions
+            solver = fit_to_body.FitToBodySolver(
+                bpy.context, self.outfit, [self.body], "Fit", check=True
+            )
+            solver.solve(bpy.context, self.settings)
+            after = solver.metrics[1]
+            if self_collisions:
+                self.assertEqual(after, (0, 0, 0))
+            else:
+                self.assertGreater(after.through + after.crossing, 0)
+
+    # The triangles of a coarse outfit do not cross the body, even with the vertices outside it
+    def test_triangles(self):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=0.5)
+        body = bpy.context.active_object
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.52)
+        outfit = bpy.context.active_object
+
+        solver = fit_to_body.FitToBodySolver(bpy.context, outfit, [body], "Fit", check=True)
+        solver.solve(bpy.context, self.settings)
+        before, after = solver.metrics
+        self.assertEqual(before.buried, 0)
+        self.assertGreater(before.through, 0)
+        self.assertEqual(after.through, 0)
+
+    # The check of the best result counts the vertices inside the body
+    def test_check_buried(self):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.52)
+        outfit = bpy.context.active_object
+        solver = fit_to_body.FitToBodySolver(bpy.context, outfit, [self.body], "Fit")
+        body_bvh, body_co, body_normals = solver.body(bpy.context, (False, False))
+        optimizer = fit_optimizer.FitOptimizer(
+            solver.target,
+            body_co,
+            solver._body_tris[(False, False)],
+            body_normals,
+            body_bvh,
+            lambda: solver.winding(bpy.context, (False, False)),
+        )
+        co = solver.target.co.copy()
+        gap = self.settings.offset
+        planes = optimizer.body_planes(co, np.arange(len(co)), 0.1)
+        self.assertEqual(optimizer.check(co, planes, gap), 0)
+
+        # A vertex just under the body surface, with its triangles still outside it
+        top = int(np.argmax(co[:, 2]))
+        co[top] *= 0.498 / np.linalg.norm(co[top])
+        tris = solver.target.tris
+        bvh = BVHTree.FromPolygons(co.tolist(), tris.tolist())
+        others = len(np.unique(intersection.intersecting_triangles(bvh, body_bvh)[:, 0]))
+        self.assertEqual(optimizer.check(co, planes, gap), others + 1)
+
+    # The preview settings draw, with the debug information too, also while solving
+    def test_draw(self):
+        solver = fit_to_body.FitToBodySolver(
+            bpy.context, self.outfit, [self.body], "Fit", check=True
+        )
+        session = preview.ShapeKeyPreviewSession(
+            "FIT_TO_BODY", self.outfit, "Fit", solver, self.settings
+        )
+        preview.PREVIEW_SESSION = session
+        preferences = bpy.context.preferences.addons[ADDON].preferences
+        self.addCleanup(setattr, preferences, "debug", preferences.debug)
+        drawer = Drawer()
+        try:
+            layout = FakeLayout(drawer)
+            draw = fit_to_body.fit_to_body_draw_settings
+            for debug in (False, True):
+                preferences.debug = debug
+                drawer.run(f"unsolved, debug {debug}", draw, layout, bpy.context)
+            solver.solve(bpy.context, self.settings)
+            for debug in (False, True):
+                preferences.debug = debug
+                drawer.run(f"solved, debug {debug}", draw, layout, bpy.context)
+        finally:
+            preview.PREVIEW_SESSION = None
+        self.assertEqual(drawer.errors, [])
+
+    # The preview shows the result first, then measures it a bit at a time
+    def test_preview_check_after_result(self):
+        solver = fit_to_body.FitToBodySolver(
+            bpy.context, self.outfit, [self.body], "Fit", check=True
+        )
         session = preview.ShapeKeyPreviewSession(
             "FIT_TO_BODY", self.outfit, "Fit", solver, self.settings
         )
         preview.PREVIEW_SESSION = session
         try:
             operator = type("Operator", (), {"preview_verb": "fitted"})()
-            result = solver.solve(bpy.context, self.settings)
+            steps = solver.solve_steps(bpy.context, self.settings)
+            while True:
+                try:
+                    next(steps)
+                except StopIteration as stop:
+                    result = stop.value
+                    break
             preview.ShapeKeyPreviewOperator.preview_result(operator, bpy.context, result)
+            self.assertIsNone(solver.metrics)
+            self.assertIsNotNone(session.checks)
+            for _ in session.checks:
+                pass
         finally:
             preview.PREVIEW_SESSION = None
-        self.assertGreater(solver.refit_count, 0)
-        self.assertIn(f", {solver.refit_count} refit iterations (", session.info)
+        self.assertEqual(solver.metrics[1], (0, 0, 0))
+
+
+def mesh_arrays(obj):
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    co = np.array([obj.matrix_world @ v.co for v in mesh.vertices], dtype=np.float64)
+    tris = np.array([t.vertices[:] for t in mesh.loop_triangles], dtype=np.int64)
+    return co, tris
+
+
+class TestMeshIntersection(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=0.5)
+        self.sphere = bpy.context.active_object
+        rng = np.random.default_rng(0)
+        self.points = rng.uniform(-0.8, 0.8, (500, 3))
+
+    # Points inside the closed mesh have winding number 1, outside 0
+    def test_winding_closed(self):
+        co, tris = mesh_arrays(self.sphere)
+        winding = intersection.WindingNumbers(co, tris)(self.points)
+        radius = np.linalg.norm(self.points, axis=1)
+        np.testing.assert_allclose(winding[radius < 0.45], 1.0, atol=0.05)
+        np.testing.assert_allclose(winding[radius > 0.55], 0.0, atol=0.05)
+
+    # The tree approximation agrees with the exact winding numbers
+    def test_winding_approximation(self):
+        co, tris = mesh_arrays(self.sphere)
+        exact = intersection.WindingNumbers(co, tris, beta=np.inf)(self.points)
+        winding = intersection.WindingNumbers(co, tris)(self.points)
+        self.assertLess(np.abs(winding - exact).max(), 0.05)
+
+    # With a hole in the mesh, the points inside away from it are still inside
+    def test_winding_open(self):
+        co, tris = mesh_arrays(self.sphere)
+        tris = tris[co[tris].mean(axis=1)[:, 2] < 0.4]
+        points = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, -0.3], [0.2, 0.0, 0.1], [0.0, 0.0, 0.7]])
+        winding = intersection.WindingNumbers(co, tris)(points)
+        self.assertTrue(np.all(winding[:3] > 0.5))
+        self.assertLess(winding[3], 0.5)
+
+    # Self intersections are counted once, without the neighbouring triangles
+    def test_self_intersections(self):
+        co = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0), (0.5, 0.5, -0.5), (0.5, 0.5, 0.5)]
+        co.append((0.6, 0.4, 0.5))
+        bvh = intersection.BVHTree.FromPolygons(co, [(0, 1, 3), (0, 3, 2), (4, 5, 6)])
+        self.assertEqual(intersection.intersecting_triangles(bvh).tolist(), [[0, 2]])
+
+        co, tris = mesh_arrays(self.sphere)
+        bvh = intersection.BVHTree.FromPolygons(co.tolist(), tris.tolist())
+        self.assertEqual(len(intersection.intersecting_triangles(bvh)), 0)
 
 
 class TestSquish(BlenderTestCase):

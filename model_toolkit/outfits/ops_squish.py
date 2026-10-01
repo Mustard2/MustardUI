@@ -18,7 +18,7 @@ from ...misc.mesh_deform import (
     smooth_deformation,
     write_vertex_group,
 )
-from .shape_key_preview import (
+from ..mesh.shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
     preview_draw_footer,
@@ -553,7 +553,7 @@ class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator)
     """Create a Shape Key on the Active Object squished by the other selected Objects (e.g. clothes, straps, hands), with a live preview.\nThe Rest Pose of the models is used"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_squish"
-    bl_label = "Create Squish Shape Key"
+    bl_label = "Add Squish"
     bl_options = {"REGISTER", "UNDO"}
 
     preview_tool = "SQUISH"

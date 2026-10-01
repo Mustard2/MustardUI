@@ -37,6 +37,27 @@ def mesh_laplacian(values, edges, n_verts):
     return avg
 
 
+class NeighbourAverage:
+    """Average of the values of the neighbours of each vertex, for all the columns at once.
+    The vertices without neighbours keep their value"""
+
+    def __init__(self, edges, n):
+        linked = np.concatenate((edges, edges[:, ::-1]))
+        order = np.argsort(linked[:, 0], kind="stable")
+        self.neighbours = linked[order, 1]
+        self.counts = np.bincount(linked[:, 0], minlength=n)
+        self.connected = self.counts > 0
+        # Vertices without neighbours have no range to sum, and would end past the last one
+        self.starts = (np.cumsum(self.counts) - self.counts)[self.connected]
+
+    def __call__(self, values):
+        average = values.copy()
+        if len(self.neighbours):
+            sums = np.add.reduceat(values[self.neighbours], self.starts, axis=0)
+            average[self.connected] = sums / self.counts[self.connected, None]
+        return average
+
+
 def smooth_deformation(delta, edges, length, distance, area=None):
     """Smooth the displacement of the vertices over the distance, keeping its size.
     The length is the typical edge length, in the same space as the distance.
@@ -100,41 +121,79 @@ def shape_key_mix(obj, exclude_name=""):
     return mix.reshape(-1, 3)
 
 
+def triangle_barycentric(points, corners, clamp=True):
+    """Barycentric coordinates of the points projected on the triangles, clamped inside them"""
+
+    e1 = corners[:, 1] - corners[:, 0]
+    e2 = corners[:, 2] - corners[:, 0]
+    v = points - corners[:, 0]
+    d11 = np.einsum("ij,ij->i", e1, e1)
+    d12 = np.einsum("ij,ij->i", e1, e2)
+    d22 = np.einsum("ij,ij->i", e2, e2)
+    v1 = np.einsum("ij,ij->i", v, e1)
+    v2 = np.einsum("ij,ij->i", v, e2)
+    det = np.maximum(d11 * d22 - d12 * d12, 1e-30)
+    b1 = (d22 * v1 - d12 * v2) / det
+    b2 = (d11 * v2 - d12 * v1) / det
+    bary = np.stack((1.0 - b1 - b2, b1, b2), axis=1)
+    if not clamp:
+        return bary
+    bary = np.clip(bary, 0.0, None)
+    return bary / np.maximum(bary.sum(axis=1), 1e-12)[:, None]
+
+
+def read_weights(obj, names):
+    """Weights of the Vertex Groups for each vertex, as columns"""
+
+    weights = np.zeros((len(obj.data.vertices), len(names)))
+    columns = {obj.vertex_groups[name].index: k for k, name in enumerate(names)}
+    for v in obj.data.vertices:
+        for g in v.groups:
+            k = columns.get(g.group)
+            if k is not None:
+                weights[v.index, k] = g.weight
+    return weights
+
+
+def write_weights(obj, names, weights, min_weight=0.0):
+    """Replace the Vertex Groups with the weights columns, creating them if needed. The
+    weights under the minimum are not written"""
+
+    everything = list(range(len(obj.data.vertices)))
+    groups = []
+    for k, name in enumerate(names):
+        vg = obj.vertex_groups.get(name)
+        if vg is None:
+            vg = obj.vertex_groups.new(name=name)
+        vg.remove(everything)
+        for i in np.nonzero((weights[:, k] > 0.0) & (weights[:, k] >= min_weight))[0]:
+            vg.add([int(i)], float(weights[i, k]), "REPLACE")
+        groups.append(vg)
+    return groups
+
+
 def vertex_group_weights(obj, name):
     """Weights of the Vertex Group for each vertex, None if not found"""
 
-    weights = np.ones(len(obj.data.vertices))
     if not name:
-        return weights
-
-    vg = obj.vertex_groups.get(name)
-    if vg is None:
+        return np.ones(len(obj.data.vertices))
+    if obj.vertex_groups.get(name) is None:
         return None
-
-    weights[:] = 0.0
-    for v in obj.data.vertices:
-        for g in v.groups:
-            if g.group == vg.index:
-                weights[v.index] = g.weight
-                break
-    return weights
+    return read_weights(obj, [name])[:, 0]
 
 
 def write_vertex_group(obj, name, weights):
     """Create or replace the Vertex Group with the given weights"""
 
-    vg = obj.vertex_groups.get(name)
-    if vg is None:
-        vg = obj.vertex_groups.new(name=name)
-    vg.remove(list(range(len(weights))))
-    for i in np.nonzero(weights > 0.0)[0]:
-        vg.add([int(i)], float(weights[i]), "REPLACE")
-    return vg
+    return write_weights(obj, [name], weights[:, None])[0]
 
 
-def rest_geometry(context, objects, rest_objects, use_modifiers, exclude_key=""):
+def rest_geometry(
+    context, objects, rest_objects, use_modifiers, exclude_key="", faces_only=True, basis=False
+):
     """World-space vertices and triangles of the objects, in Rest Pose as the Shape Keys,
-    without the excluded Shape Key"""
+    without the excluded Shape Key. With faces_only, the objects without faces are skipped.
+    With basis, all the Shape Keys of the objects are ignored"""
 
     geometry = []
     state = SceneState(context)
@@ -149,10 +208,16 @@ def rest_geometry(context, objects, rest_objects, use_modifiers, exclude_key="")
                     arm.data.pose_position = "REST"
         for obj in objects:
             sks = getattr(obj.data, "shape_keys", None)
-            sk = sks.key_blocks.get(exclude_key) if sks is not None and exclude_key else None
-            if sk is not None and not sk.mute:
-                sk.mute = True
-                muted.append(sk)
+            if sks is None:
+                continue
+            if basis:
+                excluded = [sk for sk in sks.key_blocks if sk != sks.reference_key]
+            else:
+                excluded = [sks.key_blocks.get(exclude_key)] if exclude_key else []
+            for sk in excluded:
+                if sk is not None and not sk.mute:
+                    sk.mute = True
+                    muted.append(sk)
         depsgraph = context.evaluated_depsgraph_get()
 
         for obj in objects:
@@ -171,7 +236,7 @@ def rest_geometry(context, objects, rest_objects, use_modifiers, exclude_key="")
 
             tri = mesh_triangles(mesh)
             eval_obj.to_mesh_clear()
-            if len(tri):
+            if len(tri) or not faces_only:
                 geometry.append((co, tri))
     finally:
         for sk in muted:
@@ -436,18 +501,6 @@ class DeformTarget:
 
         disp = disp.copy()
         disp[indices] = sub
-        return disp
-
-    def relax(self, disp, iterations, factor):
-        """Relax the displaced vertices on their tangent plane"""
-
-        normals = self.normals
-        affected = np.linalg.norm(disp, axis=1) > 1e-7
-        for _ in range(iterations):
-            pos = self.co + disp
-            delta = mesh_laplacian(pos, self.edges, self.n_verts) - pos
-            delta -= normals * np.einsum("ij,ij->i", delta, normals)[:, None]
-            disp[affected] += factor * delta[affected]
         return disp
 
     def local(self, disp):

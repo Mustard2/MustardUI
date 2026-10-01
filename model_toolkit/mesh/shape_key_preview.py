@@ -17,6 +17,13 @@ def preview_running():
     return PREVIEW_SESSION is not None
 
 
+def preview_debug():
+    """Whether the debug information of the add-on is shown"""
+
+    addon = bpy.context.preferences.addons.get(base_package)
+    return addon is not None and addon.preferences.debug
+
+
 def preview_session(tool):
     session = PREVIEW_SESSION
     return session if session is not None and session.tool == tool else None
@@ -160,8 +167,11 @@ class ShapeKeyPreviewSession:
         self.info = ""
         self.error = ""
         self.count = 0
+        self.elapsed = 0.0
         # Running solve, with its start time, and the last result
         self.steps = None
+        # Running check of the last result, after showing it
+        self.checks = None
         self.start = 0.0
         self.result = None
 
@@ -219,6 +229,10 @@ class ShapeKeyPreviewOperator:
         session = PREVIEW_SESSION
         session.dirty = False
         session.start = time.perf_counter()
+        session.checks = None
+        # The result is measured only to show it
+        if hasattr(session.solver, "check"):
+            session.solver.check = preview_debug()
 
         # Solvers with steps are run a bit at a time, showing the progress
         if hasattr(session.solver, "solve_steps"):
@@ -248,11 +262,9 @@ class ShapeKeyPreviewOperator:
         if error:
             session.error = error
         else:
-            elapsed = time.perf_counter() - session.start
+            session.elapsed = time.perf_counter() - session.start
             session.error = ""
-            refit = getattr(session.solver, "refit_count", None)
-            details = f", {refit} refit iterations" if refit is not None else ""
-            session.info = f"{session.count} vertices {self.preview_verb}{details} ({elapsed:.2f}s)"
+            session.info = f"{session.count} vertices {self.preview_verb} ({session.elapsed:.2f}s)"
 
         session.result = co
         write_shape_key(session.obj, session.key_name, co)
@@ -261,6 +273,10 @@ class ShapeKeyPreviewOperator:
             write_shape_key(follower.obj, session.key_name, shape)
         preview_show_result(session, context.window_manager.MustardUI_ModelToolkit_PreviewShow)
         redraw_view3d(context)
+
+        # Solvers with a check measure the result after showing it
+        if not error and getattr(session.solver, "check", False):
+            session.checks = session.solver.check_steps(context, session.settings)
 
     def modal(self, context, event):
         try:
@@ -296,6 +312,15 @@ class ShapeKeyPreviewOperator:
                 self.preview_update(context)
             elif session.steps is not None:
                 self.preview_continue(context)
+            elif session.checks is not None:
+                # The check of the result, run for a short time
+                start = time.perf_counter()
+                try:
+                    while time.perf_counter() - start < 0.1:
+                        next(session.checks)
+                except StopIteration:
+                    session.checks = None
+                    redraw_view3d(context)
 
         return {"PASS_THROUGH"}
 
@@ -502,13 +527,13 @@ def preview_draw_masks(layout, session, tool):
         row.prop(settings, "move_children", text=f"Child Objects ({children})")
 
 
-def preview_draw_footer(layout, session):
+def preview_draw_footer(layout, session, info=True):
+    """Error, result toggle and finish buttons. The debug information too, with info"""
+
     if session.error:
         layout.label(text=session.error, icon="ERROR")
-    else:
-        addon = bpy.context.preferences.addons.get(base_package)
-        if addon is not None and addon.preferences.debug:
-            layout.label(text=session.info, icon="INFO")
+    elif info and preview_debug():
+        layout.label(text=session.info, icon="INFO")
     wm = bpy.context.window_manager
     show = wm.MustardUI_ModelToolkit_PreviewShow
     layout.prop(
