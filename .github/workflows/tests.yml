@@ -28,7 +28,7 @@ jobs:
 
       - name: Cache Blender
         id: cache-blender
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.BLENDER_DIR }}
           key: blender-tests-${{ matrix.blender }}
