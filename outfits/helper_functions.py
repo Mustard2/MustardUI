@@ -7,8 +7,7 @@ FULL_PREVIEW_MAX_SIZE = 1024
 
 
 def set_full_resolution_preview(image):
-    """Replace the image preview (limited to 256 pixels by Blender) with the full
-    resolution image, so that it stays sharp when drawn at large scales"""
+    """Use the full resolution image as preview, to keep it sharp"""
 
     if image is None:
         return
@@ -26,8 +25,7 @@ def set_full_resolution_preview(image):
 
 
 def find_layer_collection(layer_coll, collection):
-    """Recursively find the LayerCollection (view-layer wrapper that holds the
-    'exclude' flag) for a given collection, starting from a root layer collection."""
+    """LayerCollection of the collection, searched from the root one"""
     if layer_coll.collection == collection:
         return layer_coll
     for child in layer_coll.children:
@@ -56,9 +54,7 @@ def find_layer_collections(layer_coll, collections):
 
 
 def update_extras_visibility(context, rig_settings):
-    """Recursively hide/exclude each Extras (sub-)collection only when all its
-    objects are hidden.
-    Returns True if the whole tree is hidden, None if no Extras collection."""
+    """Hide the Extras collections with all their objects hidden"""
     extras = rig_settings.extras_collection
     if extras is None:
         return None
@@ -145,8 +141,7 @@ def get_mask_visibility(rig_settings):
 
 
 def update_obj_masks(context, obj, visibility, mask=True):
-    """Update the mask modifiers hosted by obj which are driven by the pieces in
-    visibility ({piece name: mask visibility})."""
+    """Update the mask modifiers of obj driven by the pieces"""
     for mod in obj.modifiers:
         if mod.type not in ("MASK", "VERTEX_WEIGHT_MIX"):
             continue
@@ -205,8 +200,7 @@ def update_masks(context, rig_settings, visibility=None):
 
 
 def rename_model_ids(arm, names, addon_prefs):
-    """Rename IDs of the model ({id: new name}), updating the mask modifiers named after
-    renamed Objects and the custom property paths. Returns the number of paths updated."""
+    """Rename IDs of the model, updating masks and custom property paths"""
     from ..custom_properties.misc import assign_pointers
     from ..custom_properties.ops_rebuild import fix_custom_property_path
 

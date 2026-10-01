@@ -39,11 +39,7 @@ from . import physics_presets
 
 
 def _apply_jiggle_physics(operator):
-    """Apply the physics preset selected on 'operator' to every selected mesh.
-
-    Uses the active vertex group as the Pin group in Object Mode; in Edit Mode a
-    new group is created from the selected vertices instead.
-    """
+    """Apply the physics preset of the operator to the selected meshes"""
 
     # Function to handle vertex group creation and assignment in Edit Mode
     def create_vertex_group(obj, base_name="ClothPinGroup"):

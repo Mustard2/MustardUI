@@ -103,8 +103,7 @@ class RegionOperator:
         return (-lx + self.laplacian(lx / self.mass[:, None]))[self.unknown]
 
     def solve(self, known, guess):
-        """Columns on the unknown vertices minimizing the operator energy, with the known values
-        fixed on the other vertices of the region, starting from the guess"""
+        """Values on the unknown vertices minimizing the operator energy"""
 
         x = known[self.index].copy()
         x[self.unknown] = 0.0
@@ -154,8 +153,7 @@ def limit_influences(weights, count):
 
 
 def smooth_weights(weights, edges, mask, iterations):
-    """Average the weights of the masked vertices with their neighbours. Only the Vertex Groups
-    with weights around them can change"""
+    """Average the weights of the masked vertices with their neighbours"""
 
     if iterations <= 0 or not np.any(mask) or not len(edges):
         return weights
@@ -173,12 +171,7 @@ def smooth_weights(weights, edges, mask, iterations):
 
 
 def transfer_weights(source, target, settings):
-    """Weights of the target vertices from the source ones (Abdrashitov et al. 2023): the
-    closest points within the distance and the normal angle copy the source weights, the
-    others are inpainted smoothly from them. The pieces without matches copy the weights of
-    their closest point, as rigid parts.
-    Source and target are (coordinates, triangles, edges), the source with the weights too.
-    Returns the weights, the matched vertices and the filled ones"""
+    """Robust weight transfer from the source to the target (Abdrashitov et al. 2023)"""
 
     source_co, source_tris, source_weights = source
     co, tris, edges = target

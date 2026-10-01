@@ -1,9 +1,10 @@
 import bpy
 import numpy as np
 from mathutils.bvhtree import BVHTree
-from mathutils.kdtree import KDTree
 
-from ...misc.mesh_deform import mesh_triangles, smooth_deformation, vertex_group_weights
+from ...misc.enum_items import keep_enum_strings
+from ...misc.mesh_deform import kdtree, mesh_triangles, smooth_deformation, vertex_group_weights
+from ...misc.ui_progress import run_steps
 from .shape_key_preview import link_shape_key_driver
 
 
@@ -41,16 +42,11 @@ def transfer_targets(context):
     ]
 
 
-# Keep the Enum strings alive, as Blender does not store them
-VERTEX_GROUP_ITEMS = []
-
-
 def vertex_group_items(self, context):
     names = sorted({vg.name for o in transfer_targets(context) for vg in o.vertex_groups})
-    VERTEX_GROUP_ITEMS[:] = [("NONE", "None", "Transfer to all the vertices")] + [
-        (n, n, "") for n in names
-    ]
-    return VERTEX_GROUP_ITEMS
+    return keep_enum_strings(
+        [("NONE", "None", "Transfer to all the vertices")] + [(n, n, "") for n in names]
+    )
 
 
 def mesh_rest_coordinates(obj):
@@ -110,10 +106,7 @@ def transfer_mapping(source_co, source_tris, target_co, method, max_distance):
         weights[degenerate] = 1.0 / 3.0
         weights /= np.maximum(weights.sum(axis=1), 1e-12)[:, None]
     else:
-        kd = KDTree(len(source_co))
-        for i, co in enumerate(source_co):
-            kd.insert(co, i)
-        kd.balance()
+        kd = kdtree(source_co)
         for i, co in enumerate(target_co):
             _, index, dist = kd.find(co)
             indices[i, 0] = index
@@ -124,18 +117,6 @@ def transfer_mapping(source_co, source_tris, target_co, method, max_distance):
         weights[distances > max_distance] = 0.0
 
     return indices, weights
-
-
-def transfer_shape_keys(source, targets, keys, **kwargs):
-    """Transfer the Shape Keys of the source to the targets, returning the number of the
-    Shape Keys written"""
-
-    steps = transfer_shape_keys_steps(source, targets, keys, **kwargs)
-    while True:
-        try:
-            next(steps)
-        except StopIteration as stop:
-            return stop.value
 
 
 def transfer_shape_keys_steps(
@@ -151,8 +132,7 @@ def transfer_shape_keys_steps(
     invert_vertex_group=False,
     link=True,
 ):
-    """Transfer the Shape Keys like transfer_shape_keys, yielding the fraction of the Shape
-    Keys done"""
+    """Transfer the Shape Keys, yielding the progress and returning the count"""
 
     source_sks = source.data.shape_keys
     source_mat = np.array(source.matrix_world, dtype=np.float64)
@@ -429,18 +409,20 @@ class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Select at least one other Mesh")
             return {"CANCELLED"}
 
-        created = transfer_shape_keys(
-            source,
-            targets,
-            keys,
-            method=self.method,
-            max_distance=self.max_distance,
-            smooth=self.smooth,
-            threshold=self.threshold,
-            overwrite=self.overwrite,
-            vertex_group=self.vertex_group,
-            invert_vertex_group=self.invert_vertex_group,
-            link=self.link,
+        created = run_steps(
+            transfer_shape_keys_steps(
+                source,
+                targets,
+                keys,
+                method=self.method,
+                max_distance=self.max_distance,
+                smooth=self.smooth,
+                threshold=self.threshold,
+                overwrite=self.overwrite,
+                vertex_group=self.vertex_group,
+                invert_vertex_group=self.invert_vertex_group,
+                link=self.link,
+            )
         )
 
         self.report(

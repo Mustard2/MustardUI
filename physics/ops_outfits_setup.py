@@ -12,9 +12,7 @@ from .update_enable import enable_physics_update
 
 
 def include_collection(coll):
-    """Temporarily clear a collection's view-layer 'exclude' flag so its objects are
-    in the depsgraph.
-    Returns (LayerCollection, previously_excluded) for restore_collection()."""
+    """Include the collection in the view layer, returning how to restore it"""
     lc = find_layer_collection(bpy.context.view_layer.layer_collection, coll)
     if lc is None:
         return None, False

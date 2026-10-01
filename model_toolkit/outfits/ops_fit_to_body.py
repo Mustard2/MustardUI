@@ -11,6 +11,7 @@ from ...misc.mesh_deform import (
     write_vertex_group,
 )
 from ...misc.mesh_intersection import WindingNumbers
+from ...misc.ui_progress import run_steps
 from ..mesh.shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
@@ -221,10 +222,9 @@ FitToBodyPresetsMenu, FitToBodyPresetAdd = preview_preset_classes(
 
 
 class FitToBodySolver:
-    """Compute the fitted outfit, caching the results not affected by the changed settings.
-    With check, the metrics before and after the fit are computed too"""
+    """Compute the fitted outfit, caching the results"""
 
-    def __init__(self, context, outfit, bodies, key_name, check=False):
+    def __init__(self, outfit, bodies, key_name, check=False):
         self.outfit = outfit
         self.bodies = bodies
         self.target = DeformTarget(outfit, key_name)
@@ -258,16 +258,8 @@ class FitToBodySolver:
             geometry = rest_geometry(
                 context, self.bodies, [self.outfit], use_modifiers, basis=basis
             )
-            bvh, co = geometry_bvh(geometry)
-            normals = None
-            if bvh is not None:
-                offset = 0
-                tris = []
-                for item_co, tri in geometry:
-                    tris.append(tri + offset)
-                    offset += len(item_co)
-                self._body_tris[key] = np.concatenate(tris)
-                normals = mesh_vertex_normals(co, self._body_tris[key])
+            bvh, co, self._body_tris[key] = geometry_bvh(geometry)
+            normals = mesh_vertex_normals(co, self._body_tris[key]) if bvh is not None else None
             self._body[key] = (bvh, co, normals)
         return self._body[key]
 
@@ -340,32 +332,24 @@ class FitToBodySolver:
                 return co - target.co
             yield 0.4 + 0.5 * factor, text
 
-    def clipping(self, context, settings, weights, co, outfit_mask=None, nearest=None):
-        """Required displacement along the directions to fix the clipping of the outfit with
-        the given coordinates, checking only the masked outfit vertices.
-        With nearest (mask, distances), only the vertices in the mask are checked against the
-        closest body point, storing their distance from the body"""
+    def clipping(self, context, settings, weights):
+        """Required displacement along the directions to fix the clipping of the outfit"""
 
         body_bvh, body_co, body_normals = self.body(context, self.body_key(settings))
         target = self.target
+        co = target.co
         margin = settings.max_depth + settings.offset
         active = weights > 0.0
-        if outfit_mask is not None:
-            active &= outfit_mask
 
         # Outfit vertices inside the body
         bb_min = body_co.min(axis=0) - margin
         bb_max = body_co.max(axis=0) + margin
         inside = np.all((co >= bb_min) & (co <= bb_max), axis=1) & active
-        if nearest is not None:
-            inside &= nearest[0]
         required = np.zeros(target.n_verts)
         directions = np.zeros((target.n_verts, 3))
         for i in np.nonzero(inside)[0]:
             v = Vector(co[i])
-            loc, normal, _, dist = body_bvh.find_nearest(v, margin)
-            if nearest is not None:
-                nearest[1][i] = margin if loc is None else dist
+            loc, normal, _, _ = body_bvh.find_nearest(v, margin)
             if loc is None:
                 continue
             signed = (v - loc).dot(normal)
@@ -408,35 +392,25 @@ class FitToBodySolver:
 
         return required, directions
 
-    def pulls(self, context, settings, weights, co, outfit_mask=None):
-        """Displacement pulling the outfit parts near the body towards it, checking only the
-        masked outfit vertices"""
+    def pulled(self, context, settings, weights):
+        """Outfit vertices near the body, which the optimization pulls towards it"""
 
-        body_bvh, body_co, _ = self.body(context, self.body_key(settings))
         target = self.target
-        disp = np.zeros((target.n_verts, 3))
-        active = weights > 0.0
-        if outfit_mask is not None:
-            active &= outfit_mask
+        pulled = np.zeros(target.n_verts, dtype=bool)
         if settings.fit_distance <= 0.0:
-            return disp
+            return pulled
+        body_bvh, body_co, _ = self.body(context, self.body_key(settings))
 
         margin = settings.fit_distance + settings.offset
         bb_min = body_co.min(axis=0) - margin
         bb_max = body_co.max(axis=0) + margin
-        distance = settings.fit_distance
-        for i in np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & active)[0]:
-            v = Vector(co[i])
+        inside = np.all((target.co >= bb_min) & (target.co <= bb_max), axis=1) & (weights > 0.0)
+        for i in np.nonzero(inside)[0]:
+            v = Vector(target.co[i])
             loc, normal, _, _ = body_bvh.find_nearest(v, margin)
-            if loc is None:
-                continue
-            gap = (v - loc).dot(normal) - settings.offset
-            if 0.0 < gap < distance:
-                # Full pull up to half the distance, then fading out
-                t = max(2.0 * gap / distance - 1.0, 0.0)
-                pull = gap * (1.0 - t * t * (3.0 - 2.0 * t))
-                disp[i] = -np.array(normal, dtype=np.float64) * pull
-        return disp
+            if loc is not None:
+                pulled[i] = 0.0 < (v - loc).dot(normal) - settings.offset < settings.fit_distance
+        return pulled
 
     def detect(self, context, settings, weights):
         key = (
@@ -449,24 +423,16 @@ class FitToBodySolver:
             settings.fit_distance,
         )
         if self._detect[0] != key:
-            clipping = self.clipping(context, settings, weights, self.target.co)
-            pulls = self.pulls(context, settings, weights, self.target.co)
-            self._detect = (key, (*clipping, pulls))
+            clipping = self.clipping(context, settings, weights)
+            self._detect = (key, (*clipping, self.pulled(context, settings, weights)))
         return self._detect[1]
 
     def solve(self, context, settings):
         """Return the Shape Key coordinates, the number of fitted vertices and the error"""
 
-        steps = self.solve_steps(context, settings)
-        while True:
-            try:
-                next(steps)
-            except StopIteration as stop:
-                result = stop.value
-                break
+        result = run_steps(self.solve_steps(context, settings))
         if self.check:
-            for _ in self.check_steps(context, settings):
-                pass
+            run_steps(self.check_steps(context, settings))
         return result
 
     def solve_steps(self, context, settings):
@@ -484,8 +450,8 @@ class FitToBodySolver:
             return target.basis, 0, "The selected Objects have no faces"
 
         yield 0.0, "Clipping"
-        required, directions, pull = self.detect(context, settings, weights)
-        fitted = np.nonzero((required > 0.0) | np.any(pull != 0.0, axis=1))[0]
+        required, directions, pulled = self.detect(context, settings, weights)
+        fitted = np.nonzero((required > 0.0) | pulled)[0]
         if not len(fitted):
             return target.basis, 0, ""
 
@@ -558,7 +524,7 @@ class MustardUI_ModelToolkit_FitToBody(ShapeKeyPreviewOperator, bpy.types.Operat
             self.report({"ERROR"}, "MustardUI - The Basis Shape Key can not be overwritten")
             return None
 
-        return FitToBodySolver(context, outfit, bodies, name, check)
+        return FitToBodySolver(outfit, bodies, name, check)
 
     def execute(self, context):
         settings = self.preview_settings(context)
@@ -685,10 +651,9 @@ def fit_to_body_draw_settings(layout, context):
 
     preview_draw_masks(box, session, "fit")
 
-    col = None
-    if preview_debug():
-        col = preview_section(box, "mustardui_fit_debug", "Debug", "CONSOLE", True)
-    if col is not None:
+    if preview_debug() and (
+        col := preview_section(box, "mustardui_fit_debug", "Debug", "CONSOLE", True)
+    ):
         metrics = session.solver.metrics
         rows = [
             ("Fitted Vertices", str(session.count)),

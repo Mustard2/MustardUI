@@ -400,7 +400,7 @@ class TestFitToBody(BlenderTestCase):
         self.settings = bpy.context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
 
     def solve(self):
-        solver = fit_to_body.FitToBodySolver(bpy.context, self.outfit, [self.body], "Fit")
+        solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit")
         co, count, error = solver.solve(bpy.context, self.settings)
         self.assertEqual(error, "")
         return np.linalg.norm(co, axis=1)
@@ -423,9 +423,7 @@ class TestFitToBody(BlenderTestCase):
 
     # The metrics count the outfit inside the body before the fit, and nothing after it
     def test_metrics(self):
-        solver = fit_to_body.FitToBodySolver(
-            bpy.context, self.outfit, [self.body], "Fit", check=True
-        )
+        solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit", check=True)
         solver.solve(bpy.context, self.settings)
         before, after = solver.metrics
         self.assertEqual(before.buried, len(self.outfit.data.vertices))
@@ -433,7 +431,7 @@ class TestFitToBody(BlenderTestCase):
         self.assertEqual(after, (0, 0, 0))
 
         # Without the check, no metrics are computed
-        solver = fit_to_body.FitToBodySolver(bpy.context, self.outfit, [self.body], "Fit")
+        solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit")
         solver.solve(bpy.context, self.settings)
         self.assertIsNone(solver.metrics)
 
@@ -451,7 +449,7 @@ class TestFitToBody(BlenderTestCase):
 
         for ignore in (False, True):
             self.settings.ignore_body_shape_keys = ignore
-            solver = fit_to_body.FitToBodySolver(bpy.context, outfit, [self.body], "Fit")
+            solver = fit_to_body.FitToBodySolver(outfit, [self.body], "Fit")
             co, count, _ = solver.solve(bpy.context, self.settings)
             if ignore:
                 self.assertEqual(count, 0)
@@ -467,7 +465,7 @@ class TestFitToBody(BlenderTestCase):
         bm.verts.new((0.0, 0.0, 0.0))
         bm.to_mesh(self.outfit.data)
         bm.free()
-        solver = fit_to_body.FitToBodySolver(bpy.context, self.outfit, [self.body], "Fit")
+        solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit")
         co, _, error = solver.solve(bpy.context, self.settings)
         self.assertEqual(error, "")
         self.assertTrue(np.all(np.isfinite(co)))
@@ -491,9 +489,7 @@ class TestFitToBody(BlenderTestCase):
 
         for self_collisions in (True, False):
             self.settings.self_collisions = self_collisions
-            solver = fit_to_body.FitToBodySolver(
-                bpy.context, self.outfit, [self.body], "Fit", check=True
-            )
+            solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit", check=True)
             solver.solve(bpy.context, self.settings)
             after = solver.metrics[1]
             if self_collisions:
@@ -508,7 +504,7 @@ class TestFitToBody(BlenderTestCase):
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.52)
         outfit = bpy.context.active_object
 
-        solver = fit_to_body.FitToBodySolver(bpy.context, outfit, [body], "Fit", check=True)
+        solver = fit_to_body.FitToBodySolver(outfit, [body], "Fit", check=True)
         solver.solve(bpy.context, self.settings)
         before, after = solver.metrics
         self.assertEqual(before.buried, 0)
@@ -519,7 +515,7 @@ class TestFitToBody(BlenderTestCase):
     def test_check_buried(self):
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.52)
         outfit = bpy.context.active_object
-        solver = fit_to_body.FitToBodySolver(bpy.context, outfit, [self.body], "Fit")
+        solver = fit_to_body.FitToBodySolver(outfit, [self.body], "Fit")
         body_bvh, body_co, body_normals = solver.body(bpy.context, (False, False))
         optimizer = fit_optimizer.FitOptimizer(
             solver.target,
@@ -544,9 +540,7 @@ class TestFitToBody(BlenderTestCase):
 
     # The preview settings draw, with the debug information too, also while solving
     def test_draw(self):
-        solver = fit_to_body.FitToBodySolver(
-            bpy.context, self.outfit, [self.body], "Fit", check=True
-        )
+        solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit", check=True)
         session = preview.ShapeKeyPreviewSession(
             "FIT_TO_BODY", self.outfit, "Fit", solver, self.settings
         )
@@ -570,22 +564,14 @@ class TestFitToBody(BlenderTestCase):
 
     # The preview shows the result first, then measures it a bit at a time
     def test_preview_check_after_result(self):
-        solver = fit_to_body.FitToBodySolver(
-            bpy.context, self.outfit, [self.body], "Fit", check=True
-        )
+        solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit", check=True)
         session = preview.ShapeKeyPreviewSession(
             "FIT_TO_BODY", self.outfit, "Fit", solver, self.settings
         )
         preview.PREVIEW_SESSION = session
         try:
             operator = type("Operator", (), {"preview_verb": "fitted"})()
-            steps = solver.solve_steps(bpy.context, self.settings)
-            while True:
-                try:
-                    next(steps)
-                except StopIteration as stop:
-                    result = stop.value
-                    break
+            result = fit_to_body.run_steps(solver.solve_steps(bpy.context, self.settings))
             preview.ShapeKeyPreviewOperator.preview_result(operator, bpy.context, result)
             self.assertIsNone(solver.metrics)
             self.assertIsNotNone(session.checks)
@@ -657,12 +643,12 @@ class TestSquish(BlenderTestCase):
         squisher = bpy.context.active_object
         settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
 
-        solver = squish.SquishSolver(bpy.context, body, [squisher], "Squish")
+        solver = squish.SquishSolver(body, [squisher], "Squish")
         co, count, error = solver.solve(bpy.context, settings)
         self.assertEqual(error, "")
         self.assertGreater(count, 0)
 
-        bvh, _ = solver.squishers_bvh(bpy.context, settings)
+        bvh = solver.squishers_bvh(bpy.context, settings)[0]
         moved = np.nonzero(np.linalg.norm(solver.disp, axis=1) > 0.0)[0]
         left = solver.penetration(bvh, solver.target.co + solver.disp, moved, settings)
         self.assertFalse(np.any(left > 0.0))
@@ -678,7 +664,7 @@ class TestSquish(BlenderTestCase):
             self.addCleanup(setattr, settings, name, getattr(settings, name))
         settings.smooth_distance = 0.02
 
-        solver = squish.SquishSolver(bpy.context, body, [squisher], "Squish")
+        solver = squish.SquishSolver(body, [squisher], "Squish")
         outward = {}
         for bulge in (0.0, 1.0):
             settings.bulge = bulge
@@ -706,7 +692,7 @@ class TestSquish(BlenderTestCase):
         settings.squishers_movement = 1.0
         settings.bulge = 0.0
 
-        solver = squish.SquishSolver(bpy.context, body, [squisher], "Squish")
+        solver = squish.SquishSolver(body, [squisher], "Squish")
         solver.solve(bpy.context, settings)
         follower = next(x for x in solver.followers if x.obj == squisher)
         moved = follower.basis[:, 2] - follower.shape(solver, settings)[:, 2]

@@ -5,6 +5,16 @@ from mathutils.kdtree import KDTree
 from .scene_state import SceneState
 
 
+def kdtree(points):
+    """KDTree of the points, found by their index"""
+
+    kd = KDTree(len(points))
+    for i, co in enumerate(points):
+        kd.insert(co, i)
+    kd.balance()
+    return kd
+
+
 def mesh_triangles(mesh):
     mesh.calc_loop_triangles()
     tris = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int64)
@@ -38,8 +48,7 @@ def mesh_laplacian(values, edges, n_verts):
 
 
 class NeighbourAverage:
-    """Average of the values of the neighbours of each vertex, for all the columns at once.
-    The vertices without neighbours keep their value"""
+    """Average of the neighbours values of each vertex"""
 
     def __init__(self, edges, n):
         linked = np.concatenate((edges, edges[:, ::-1]))
@@ -59,9 +68,7 @@ class NeighbourAverage:
 
 
 def smooth_deformation(delta, edges, length, distance, area=None):
-    """Smooth the displacement of the vertices over the distance, keeping its size.
-    The length is the typical edge length, in the same space as the distance.
-    With the area, only its vertices are changed, the others hold it in place"""
+    """Smooth the displacement of the vertices over the distance, keeping its size"""
 
     iterations = int(np.ceil(2.0 * (distance / length) ** 2)) if distance > 0.0 else 0
     if not iterations:
@@ -156,8 +163,7 @@ def read_weights(obj, names):
 
 
 def write_weights(obj, names, weights, min_weight=0.0):
-    """Replace the Vertex Groups with the weights columns, creating them if needed. The
-    weights under the minimum are not written"""
+    """Replace the Vertex Groups with the weights columns"""
 
     everything = list(range(len(obj.data.vertices)))
     groups = []
@@ -191,9 +197,7 @@ def write_vertex_group(obj, name, weights):
 def rest_geometry(
     context, objects, rest_objects, use_modifiers, exclude_key="", faces_only=True, basis=False
 ):
-    """World-space vertices and triangles of the objects, in Rest Pose as the Shape Keys,
-    without the excluded Shape Key. With faces_only, the objects without faces are skipped.
-    With basis, all the Shape Keys of the objects are ignored"""
+    """World coordinates and triangles of the objects in Rest Pose"""
 
     geometry = []
     state = SceneState(context)
@@ -247,7 +251,7 @@ def rest_geometry(
 
 
 def geometry_bvh(geometry, flipped=None):
-    """Single BVHTree from the geometry, reversing the faces of the flipped items"""
+    """BVHTree of the geometry, with its vertices and triangles"""
 
     verts = []
     tris = []
@@ -259,16 +263,15 @@ def geometry_bvh(geometry, flipped=None):
         offset += len(co)
 
     if not tris:
-        return None, None
+        return None, None, None
 
     verts = np.concatenate(verts)
     tris = np.concatenate(tris)
-    return BVHTree.FromPolygons(verts.tolist(), tris.tolist()), verts
+    return BVHTree.FromPolygons(verts.tolist(), tris.tolist()), verts, tris
 
 
 def rest_coordinates(obj, key_name):
-    """Basis coordinates, and world coordinates of the current Shape Keys mix without the
-    excluded Shape Key"""
+    """Basis coordinates and world coordinates of the Shape Keys mix"""
 
     mesh = obj.data
     basis = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
@@ -339,10 +342,7 @@ class DeformTarget:
 
     def kdtree(self):
         if self._kdtree is None:
-            self._kdtree = KDTree(self.n_verts)
-            for i, c in enumerate(self.co):
-                self._kdtree.insert(c, i)
-            self._kdtree.balance()
+            self._kdtree = kdtree(self.co)
         return self._kdtree
 
     def rigid_children(self, exclude):
@@ -406,10 +406,7 @@ class DeformTarget:
             # Closest non rigid vertices, to follow the surface under the rigid parts
             free = np.nonzero(~rigid)[0]
             if len(free):
-                kd = KDTree(len(free))
-                for k, i in enumerate(free):
-                    kd.insert(self.co[i], k)
-                kd.balance()
+                kd = kdtree(self.co[free])
                 islands = [
                     (island, np.array([free[kd.find(self.co[i])[1]] for i in island]))
                     for island in islands
@@ -420,8 +417,7 @@ class DeformTarget:
         return self._islands[key]
 
     def rigidify(self, disp, islands):
-        """Move each island with a single translation, covering the displacement of its
-        vertices and of the surface under it along the average direction"""
+        """Move each rigid island with a single translation"""
 
         for island, anchors in islands:
             disp[island] = rigid_translation(np.concatenate((disp[island], disp[anchors])))
@@ -437,11 +433,7 @@ class DeformTarget:
         weights = np.zeros(self.n_verts)
         weights[contact] = 1.0
         if radius > 0.0:
-            kd = KDTree(len(contact))
-            for k, i in enumerate(contact):
-                kd.insert(co[i], k)
-            kd.balance()
-
+            kd = kdtree(co[contact])
             bb_min = co[contact].min(axis=0) - radius
             bb_max = co[contact].max(axis=0) + radius
             near = np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights == 0.0)
@@ -455,8 +447,7 @@ class DeformTarget:
         return weights
 
     def smooth(self, disp, distance, contact, directions, required, min_iterations=0):
-        """Smooth the displacement over the given distance, keeping at least the required one
-        along the directions"""
+        """Smooth the displacement, keeping the required one along the directions"""
 
         moving = np.linalg.norm(disp, axis=1) > 0.0
         if not np.any(moving):

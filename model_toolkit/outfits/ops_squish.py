@@ -3,7 +3,6 @@ import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.interpolate import poly_3d_calc
-from mathutils.kdtree import KDTree
 from rna_prop_ui import rna_idprop_ui_create
 
 from ... import __package__ as base_package
@@ -11,6 +10,7 @@ from ...custom_properties.misc import assign_ptr, mustardui_add_driver, mustardu
 from ...misc.mesh_deform import (
     DeformTarget,
     geometry_bvh,
+    kdtree,
     mesh_triangles,
     mesh_vertex_normals,
     rest_coordinates,
@@ -319,7 +319,7 @@ class SquisherFollower:
 class SquishSolver:
     """Compute the squish Shape Key, caching the results not affected by the changed settings"""
 
-    def __init__(self, context, body, squishers, key_name):
+    def __init__(self, body, squishers, key_name):
         self.body = body
         self.squishers = squishers
         self.target = DeformTarget(body, key_name)
@@ -391,7 +391,7 @@ class SquishSolver:
         if self._depth[0] == key:
             return self._depth[1]
 
-        bvh, squishers_co = self.squishers_bvh(context, settings)
+        bvh, squishers_co, _ = self.squishers_bvh(context, settings)
         if bvh is None:
             return None
 
@@ -401,9 +401,8 @@ class SquishSolver:
         margin = settings.max_depth
         bb_min = squishers_co.min(axis=0) - margin
         bb_max = squishers_co.max(axis=0) + margin
-        candidates = np.nonzero(np.all((co >= bb_min) & (co <= bb_max), axis=1) & (weights > 0.0))[
-            0
-        ]
+        near = np.all((co >= bb_min) & (co <= bb_max), axis=1)
+        candidates = np.flatnonzero(near & (weights > 0.0))
 
         depth = self.penetration(bvh, co, candidates, settings)
         covered = np.zeros(self.target.n_verts, dtype=bool)
@@ -449,10 +448,7 @@ class SquishSolver:
 
         co = self.target.co
         bulge = np.zeros(self.target.n_verts)
-        kd = KDTree(len(contact))
-        for k, i in enumerate(contact):
-            kd.insert(co[i], k)
-        kd.balance()
+        kd = kdtree(co[contact])
 
         bb_min = co[contact].min(axis=0) - radius
         bb_max = co[contact].max(axis=0) + radius
@@ -529,7 +525,7 @@ class SquishSolver:
             disp *= self.influence[:, None]
 
         # Push again under the squishers the vertices moved out of them by the smoothing
-        bvh, _ = self.squishers_bvh(context, settings)
+        bvh = self.squishers_bvh(context, settings)[0]
         moved = np.nonzero((np.linalg.norm(disp, axis=1) > 0.0) & (weights > 0.0))[0]
         for _ in range(3):
             again = self.penetration(bvh, target.co + disp, moved, settings)
@@ -547,6 +543,23 @@ class SquishSolver:
 
         self.disp = disp
         return target.local(disp), len(contact), ""
+
+    def overriding_modifiers(self):
+        """Surface Deform modifiers of the body hiding the squish"""
+
+        if self.disp is None:
+            return []
+        if self._overriding[0] is not self.disp:
+            squished = np.linalg.norm(self.disp, axis=1) > 1e-5
+            names = []
+            for m in self.body.modifiers:
+                if m.type != "SURFACE_DEFORM" or not m.show_viewport or m.target is None:
+                    continue
+                weights = self.target.weights(m.vertex_group, m.invert_vertex_group)
+                if weights is None or np.any(weights[squished] > 0.0):
+                    names.append(m.name)
+            self._overriding = (self.disp, names)
+        return self._overriding[1]
 
 
 class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator):
@@ -585,7 +598,7 @@ class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator)
             self.report({"ERROR"}, "MustardUI - The Basis Shape Key can not be overwritten")
             return None
 
-        return SquishSolver(context, body, squishers, name)
+        return SquishSolver(body, squishers, name)
 
     def execute(self, context):
         settings = self.preview_settings(context)
@@ -634,8 +647,7 @@ class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator)
 
 
 def squish_outfit(body, squishers):
-    """MustardUI model of the body and Outfit of the squishers, (None, None) if the squishers
-    are not all pieces of one of its Outfits"""
+    """Model and Outfit of the squishers, (None, None) if not in one"""
 
     arm = next(
         (
@@ -707,27 +719,6 @@ def squish_outfit_property(context, solver, key_name):
     arm.update_tag()
 
 
-def squish_overriding_modifiers(solver):
-    """Enabled Surface Deform modifiers of the body moving its squished vertices (e.g. physics
-    cages): they replace the Shape Keys, hiding the squish"""
-
-    if solver.disp is None:
-        return []
-    if solver._overriding[0] is solver.disp:
-        return solver._overriding[1]
-
-    squished = np.linalg.norm(solver.disp, axis=1) > 1e-5
-    names = []
-    for m in solver.body.modifiers:
-        if m.type != "SURFACE_DEFORM" or not m.show_viewport or m.target is None:
-            continue
-        weights = solver.target.weights(m.vertex_group, m.invert_vertex_group)
-        if weights is None or np.any(weights[squished] > 0.0):
-            names.append(m.name)
-    solver._overriding = (solver.disp, names)
-    return names
-
-
 def squish_draw_settings(layout, context):
     """Draw the settings of the running preview"""
 
@@ -776,7 +767,7 @@ def squish_draw_settings(layout, context):
 
     preview_draw_masks(box, session, "squish")
 
-    overriding = squish_overriding_modifiers(session.solver)
+    overriding = session.solver.overriding_modifiers()
     if overriding:
         col = box.column(align=True)
         col.label(text="Hidden by Surface Deform modifiers:", icon="ERROR")

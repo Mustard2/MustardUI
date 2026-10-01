@@ -1,10 +1,12 @@
+import functools
 import gzip
-import math
 import os
 import re
 from collections import defaultdict
+from typing import Callable, NamedTuple
 
 import bpy
+import numpy as np
 
 from ..model_selection.active_object import (
     ModelMode,
@@ -129,6 +131,16 @@ VOWELS = {
     "UW",
 }
 
+# Duration factors by phoneme group, the first matching one is used
+DUR_FACTORS = (
+    (PLOSIVES, 0.60),
+    (AFFRICATES, 0.90),
+    (FRICATIVES, 1.10),
+    (NASALS | APPROX, 0.90),
+    (DIPHTHONGS, 1.70),
+    (VOWELS, 1.35),
+)
+
 WORD_GAP = 0.070
 SENT_GAP = 0.240
 
@@ -145,30 +157,14 @@ _STRESS = re.compile(r"\d+$")
 
 
 _CMUDICT_PATH = os.path.join(os.path.dirname(__file__), "resources", "cmudict.gz")
-_cmudict = None
 
 
+@functools.cache
 def _cmu_dict():
-    """CMU Pronouncing Dictionary: word -> ARPABET phonemes (loaded once)"""
-    global _cmudict
-    if _cmudict is None:
-        _cmudict = {}
-        with gzip.open(_CMUDICT_PATH, "rt", encoding="utf-8") as f:
-            for line in f:
-                word, _, phones = line.rstrip("\n").partition(" ")
-                _cmudict[word] = phones.split()
-    return _cmudict
-
-
-def _try_g2p(text):
-    try:
-        from g2p_en import G2p
-    except Exception:
-        return None
-    try:
-        return G2p()(text)
-    except Exception:
-        return None
+    """CMU Pronouncing Dictionary: word -> ARPABET phonemes"""
+    with gzip.open(_CMUDICT_PATH, "rt", encoding="utf-8") as f:
+        lines = (line.rstrip("\n").partition(" ") for line in f)
+        return {word: phones.split() for word, _, phones in lines}
 
 
 # Fallback speller rules (longest patterns first)
@@ -265,7 +261,13 @@ def _fallback_word(word):
 
 def text_to_tokens(text):
     """Return (tokens, unknown words): ARPABET phonemes, "<WORD>" and "<SENT>" pauses"""
-    g = _try_g2p(text)
+    # The g2p_en module, if installed
+    try:
+        from g2p_en import G2p
+
+        g = G2p()(text)
+    except Exception:
+        g = None
     tokens = []
     if g is not None:
         for t in g:
@@ -303,23 +305,6 @@ def text_to_tokens(text):
 # ------------------------------------------------------------------------
 
 
-def _phone_dur(arpa, speed):
-    b = BASE_DUR / speed
-    if arpa in PLOSIVES:
-        return b * 0.60
-    if arpa in AFFRICATES:
-        return b * 0.90
-    if arpa in FRICATIVES:
-        return b * 1.10
-    if arpa in NASALS or arpa in APPROX:
-        return b * 0.90
-    if arpa in DIPHTHONGS:
-        return b * 1.70
-    if arpa in VOWELS:
-        return b * 1.35
-    return b
-
-
 def tokens_to_segments(tokens, speed):
     """List of {vis, start, end}; vis None is silence"""
     speed = max(speed, 1e-3)
@@ -333,7 +318,7 @@ def tokens_to_segments(tokens, speed):
             vis = ARPA2VIS.get(tok)
             if vis is None:
                 continue
-            dur = _phone_dur(tok, speed)
+            dur = BASE_DUR / speed * next((f for g, f in DUR_FACTORS if tok in g), 1.0)
         segs.append({"vis": vis, "start": t, "end": t + dur})
         t += dur
     return segs
@@ -374,45 +359,6 @@ def parse_substitutions(text):
 # ------------------------------------------------------------------------
 
 
-def _gaussian_kernel(sigma):
-    if sigma <= 1e-6:
-        return [1.0]
-    radius = max(1, int(round(sigma * 3.0)))
-    k = [math.exp(-(x * x) / (2.0 * sigma * sigma)) for x in range(-radius, radius + 1)]
-    s = sum(k)
-    return [v / s for v in k]
-
-
-def _convolve_edge(sig, kernel):
-    r = len(kernel) // 2
-    n = len(sig)
-    out = [0.0] * n
-    for i in range(n):
-        acc = 0.0
-        for j, kv in enumerate(kernel):
-            idx = min(max(i + j - r, 0), n - 1)
-            acc += sig[idx] * kv
-        out[i] = acc
-    return out
-
-
-def _sample_pwl(pts, xs):
-    """Piecewise-linear samples of sorted points at sorted xs; 0 outside"""
-    out = []
-    i = 1
-    x_first, x_last = pts[0][0], pts[-1][0]
-    for x in xs:
-        if x < x_first or x > x_last:
-            out.append(0.0)
-            continue
-        while i < len(pts) - 1 and pts[i][0] < x:
-            i += 1
-        x0, y0 = pts[i - 1]
-        x1, y1 = pts[i]
-        out.append(y1 if x1 == x0 else y0 + (x - x0) / (x1 - x0) * (y1 - y0))
-    return out
-
-
 def _rdp(pts, eps):
     """Ramer-Douglas-Peucker thinning using vertical error"""
     n = len(pts)
@@ -447,13 +393,17 @@ def _smooth_channel(ctrl, fps, smoothing_ms):
     step = fps / rate
     sigma = (smoothing_ms / 1000.0) * rate
     pad = max(1, int(round(3.0 * sigma)))
-    f0, f1 = ctrl[0][0], ctrl[-1][0]
-    total = int(math.ceil((f1 - f0) / step)) + 1 + 2 * pad
-    start = f0 - pad * step
-    frames = [start + k * step for k in range(total)]
-    sm = _convolve_edge(_sample_pwl(ctrl, frames), _gaussian_kernel(sigma))
-    pts = [(frames[i], 0.0 if sm[i] < 1e-4 else sm[i]) for i in range(total)]
-    return _rdp(pts, SMOOTH_TOL)
+    x, y = np.array(ctrl, dtype=np.float64).T
+    total = int(np.ceil((x[-1] - x[0]) / step)) + 1 + 2 * pad
+    frames = x[0] - pad * step + np.arange(total) * step
+    samples = np.interp(frames, x, y, left=0.0, right=0.0)
+    # Gaussian blur, repeating the values at the ends
+    if sigma > 1e-6:
+        radius = max(1, int(round(sigma * 3.0)))
+        kernel = np.exp(-(np.arange(-radius, radius + 1) ** 2) / (2.0 * sigma * sigma))
+        samples = np.convolve(np.pad(samples, radius, mode="edge"), kernel / kernel.sum(), "valid")
+    samples[samples < 1e-4] = 0.0
+    return _rdp(list(zip(frames.tolist(), samples.tolist(), strict=True)), SMOOTH_TOL)
 
 
 # ------------------------------------------------------------------------
@@ -489,55 +439,22 @@ def can_create_action(tools_settings):
 
 def _action_name(tools_settings):
     if tools_settings.lipsync_input == "TEXT":
-        return _name_from_phrase(tools_settings.lipsync_text)
+        # The words of the phrase in CamelCase
+        words = re.findall(r"[A-Za-z0-9']+", tools_settings.lipsync_text or "")
+        return "".join(w[0].upper() + w[1:] for w in words) or "LipSync"
     if tools_settings.lipsync_input == "TIMED":
         return os.path.splitext(tools_settings.lipsync_timed_text.name)[0]
     return "LipSync"
 
 
-def _name_from_phrase(text, fallback="LipSync"):
-    words = re.findall(r"[A-Za-z0-9']+", text or "")
-    return "".join(w[0].upper() + w[1:] for w in words) or fallback
+class _Target(NamedTuple):
+    """Datablock animated by the lip sync, with its visemes"""
 
-
-class _Target:
-    def __init__(self, anim_id, exists, set_key, data_path, label):
-        self.anim_id = anim_id
-        self.exists = exists
-        self.set_key = set_key
-        self.data_path = data_path
-        self.label = label
-
-
-def _shape_key_target(obj):
-    kbs = obj.data.shape_keys.key_blocks
-
-    def set_key(name, frame, value):
-        kb = kbs[name]
-        kb.value = max(0.0, value)
-        kb.keyframe_insert("value", frame=frame)
-
-    return _Target(
-        obj.data.shape_keys,
-        lambda name: name in kbs,
-        set_key,
-        lambda name: f'key_blocks["{name}"].value',
-        obj.name,
-    )
-
-
-def _custom_prop_target(owner):
-    def set_key(name, frame, value):
-        owner[name] = float(max(0.0, value))
-        owner.keyframe_insert(data_path=f'["{name}"]', frame=frame)
-
-    return _Target(
-        owner,
-        lambda name: name in owner.keys(),
-        set_key,
-        lambda name: f'["{name}"]',
-        owner.name,
-    )
+    anim_id: bpy.types.ID
+    exists: Callable
+    set_key: Callable
+    data_path: Callable
+    label: str
 
 
 class MustardUI_Tools_LipSync(bpy.types.Operator):
@@ -557,7 +474,19 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
             obj = rig_settings.model_body
             if obj is None or obj.type != "MESH" or not obj.data.shape_keys:
                 raise RuntimeError("the model body has no shape keys")
-            return _shape_key_target(obj)
+            kbs = obj.data.shape_keys.key_blocks
+
+            def set_key(name, frame, value):
+                kbs[name].value = max(0.0, value)
+                kbs[name].keyframe_insert("value", frame=frame)
+
+            return _Target(
+                obj.data.shape_keys,
+                lambda name: name in kbs,
+                set_key,
+                lambda name: f'key_blocks["{name}"].value',
+                obj.name,
+            )
 
         # Body is optional, so the source may be missing
         try:
@@ -566,7 +495,18 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
             owner = None
         if owner is None:
             raise RuntimeError("the custom properties source is not set")
-        return _custom_prop_target(owner)
+
+        def set_key(name, frame, value):
+            owner[name] = float(max(0.0, value))
+            owner.keyframe_insert(data_path=f'["{name}"]', frame=frame)
+
+        return _Target(
+            owner,
+            lambda name: name in owner.keys(),
+            set_key,
+            lambda name: f'["{name}"]',
+            owner.name,
+        )
 
     def _segments(self, tools_settings):
         mode = tools_settings.lipsync_input
@@ -637,12 +577,12 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
 
         anim_id = tgt.anim_id
         ad = anim_id.animation_data
+        our_paths = {tgt.data_path(nm) for nm in channels}
         had_action = bool(ad and ad.action)
         if had_action and tools_settings.lipsync_new_action and can_create_action(tools_settings):
             ad.action = None
             had_action = False
         elif had_action:
-            our_paths = {tgt.data_path(nm) for nm in channels}
             fcurves = _action_fcurves(anim_id)
             if fcurves is not None:
                 for fc in [fc for fc in fcurves if fc.data_path in our_paths]:
@@ -664,7 +604,6 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
             act.use_fake_user = True
 
         interpolation = tools_settings.lipsync_interpolation
-        our_paths = {tgt.data_path(nm) for nm in channels}
         for fc in _action_fcurves(anim_id) or []:
             if fc.data_path not in our_paths:
                 continue

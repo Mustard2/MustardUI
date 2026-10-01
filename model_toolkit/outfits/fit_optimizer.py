@@ -79,9 +79,7 @@ def scatter(grad, index, values):
 
 
 class QueryCache:
-    """Results of a query for moving points, queried again only for the points moved more than
-    the tolerance since their last query. With triangles, the results are pairs with a triangle
-    per point, queried again also when a corner of the triangle moved"""
+    """Query results for moving points, queried again only when they moved"""
 
     def __init__(self, query, count, tolerance, tris=None):
         self.query = query
@@ -113,9 +111,7 @@ class QueryCache:
 
 
 class FitOptimizer:
-    """Fit of the outfit as the minimum of an energy, found with the L-BFGS optimizer: signed
-    repulsion from the body and between the outfit layers, pull towards the body, and
-    preservation of the outfit shape"""
+    """Outfit fit as the minimum of an energy, found with L-BFGS"""
 
     def __init__(self, target, body_co, body_tris, body_normals, body_bvh, winding):
         self.target = target
@@ -161,9 +157,7 @@ class FitOptimizer:
         self.patch_size = np.bincount(patch).astype(np.float64)
 
     def body_points(self, co, planes, gap):
-        """Body vertices through the outfit triangles or under them within the gap, with the
-        corners of the triangle, the barycentric coordinates of the nearest point on it and its
-        outward normal"""
+        """Body vertices through or under the outfit triangles"""
 
         target = self.target
         tris = target.tris
@@ -203,8 +197,7 @@ class FitOptimizer:
         return found[keep], corners[keep], bary, direction[keep]
 
     def layer_rays(self, co, points, band):
-        """Outfit triangles over and under the points along their normals, with the barycentric
-        coordinates of the hit"""
+        """Outfit triangles over and under the points"""
 
         tris = self.target.tris
         normals = mesh_vertex_normals(co, tris)
@@ -229,10 +222,7 @@ class FitOptimizer:
         return found, faces, triangle_barycentric(locations[keep], co[tris[faces]])
 
     def layer_faces(self, co, gap, rays):
-        """Outfit vertices over or under an outfit triangle, with its corners, the barycentric
-        coordinates of the point under the vertex, the normal of the triangle towards the vertex
-        and its minimum height. The pairs stacked at rest keep the side they had, the others the
-        current one"""
+        """Outfit vertices over or under an outfit triangle, keeping their side"""
 
         target = self.target
         found, faces, bary = rays
@@ -255,9 +245,7 @@ class FitOptimizer:
         return found, corners, bary, normal * side[:, None], min_height
 
     def body_planes(self, co, points, reach):
-        """Outfit points within the reach from the body, with the plane through their nearest
-        body point facing them, so that the height over it is their signed distance. Also exact
-        at the sharp edges of the body, unlike the planes of the faces"""
+        """Outfit points near the body, with the plane through their nearest body point"""
 
         found = []
         faces = []
@@ -286,8 +274,7 @@ class FitOptimizer:
         return np.einsum("ij,ij->i", points - origins, normals)
 
     def check(self, co, planes, gap):
-        """Outfit vertices inside the body, triangles through it, self intersecting pairs and
-        flipped triangles, which the intersections miss when folded on a neighbour"""
+        """Number of intersections and flipped triangles of the outfit"""
 
         # Only the vertices sunk under the body planes can be inside it
         i, origins, normals = planes
@@ -390,8 +377,7 @@ class FitOptimizer:
         return energy, grad
 
     def run(self, co, free, settings):
-        """Optimize the outfit coordinates, yielding the progress and returning the
-        coordinates with less intersections and the iterations done"""
+        """Optimize the outfit, yielding the progress"""
 
         gap = settings.offset
         reach = gap + max(settings.max_depth, settings.fit_distance)
@@ -527,9 +513,7 @@ class FitOptimizer:
 
     @staticmethod
     def direction(grad, smoothed, history, max_step):
-        """Preconditioned L-BFGS descent direction, limited to the maximum movement of a
-        vertex. The preconditioning is linear, so it is applied to the smoothed gradient and
-        gradient changes instead of smoothing the vector again"""
+        """Preconditioned L-BFGS descent direction"""
 
         q = grad.copy()
         pq = smoothed.copy()

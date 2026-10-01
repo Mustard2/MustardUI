@@ -31,8 +31,7 @@ def find_view3d(context):
 
 
 def set_attributes(values):
-    """Set (owner, attribute, value) triples, skipping values not valid in the current
-    state (e.g. a color depth not supported by the file format)"""
+    """Set (owner, attribute, value) triples, skipping the invalid values"""
 
     for owner, attr, value in values:
         try:

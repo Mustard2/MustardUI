@@ -17,16 +17,11 @@ class MustardUI_ModelToolkit_TransferVertexGroups_Item(bpy.types.PropertyGroup):
 
 class MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        row = layout.row()
-
         obj = context.active_object
-        # check dynamically if VG still exists
-        if obj and obj.type == "MESH" and obj.vertex_groups.get(item.group_name) is None:
-            row.enabled = False  # gray out
-            row.label(text=item.group_name, icon="ERROR")  # warning icon
-        else:
-            row.enabled = True
-            row.label(text=item.group_name, icon="GROUP_VERTEX")
+        missing = obj and obj.type == "MESH" and item.group_name not in obj.vertex_groups
+        row = layout.row()
+        row.enabled = not missing
+        row.label(text=item.group_name, icon="ERROR" if missing else "GROUP_VERTEX")
 
 
 class MustardUI_ModelToolkit_TransferVertexGroups_Add(bpy.types.Operator):
@@ -38,23 +33,18 @@ class MustardUI_ModelToolkit_TransferVertexGroups_Add(bpy.types.Operator):
     def execute(self, context):
         wm = context.window_manager
 
-        # Use search_group from operator
         vg_name = self.vg_name.strip()
         if not vg_name:
             self.report({"WARNING"}, "MustardUI - Type a vertex group name first")
             return {"CANCELLED"}
 
-        # Prevent duplicates
-        if vg_name in [
-            item.group_name for item in wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
-        ]:
+        items = wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        if any(item.group_name == vg_name for item in items):
             self.report({"WARNING"}, "MustardUI - Vertex group already in list")
             return {"CANCELLED"}
 
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_Items.add().group_name = vg_name
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = (
-            len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items) - 1
-        )
+        items.add().group_name = vg_name
+        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = len(items) - 1
         return {"FINISHED"}
 
 
@@ -93,22 +83,6 @@ def mustardui_transfer_vertex_groups_add_items(wm, vg_names):
     wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = max(0, len(items) - 1)
 
     return added
-
-
-def mustardui_transfer_vertex_groups_armatures(obj):
-    """Find the Armatures deforming the object"""
-
-    armatures = []
-
-    for modifier in obj.modifiers:
-        if modifier.type == "ARMATURE" and modifier.object is not None:
-            if modifier.object not in armatures:
-                armatures.append(modifier.object)
-
-    if obj.parent is not None and obj.parent.type == "ARMATURE" and obj.parent not in armatures:
-        armatures.append(obj.parent)
-
-    return armatures
 
 
 class MustardUI_ModelToolkit_TransferVertexGroups_AddAll(bpy.types.Operator):
@@ -150,18 +124,24 @@ class MustardUI_ModelToolkit_TransferVertexGroups_AddSelectedBones(bpy.types.Ope
             self.report({"WARNING"}, "MustardUI - Active Object must be a Mesh")
             return {"CANCELLED"}
 
-        armatures = mustardui_transfer_vertex_groups_armatures(obj)
+        # Armatures deforming the object
+        armatures = [m.object for m in obj.modifiers if m.type == "ARMATURE" and m.object]
+        if obj.parent is not None and obj.parent.type == "ARMATURE":
+            armatures.append(obj.parent)
         if not armatures:
             self.report({"WARNING"}, "MustardUI - No Armature found for the Active Object")
             return {"CANCELLED"}
 
-        vg_names = {vg.name for vg in obj.vertex_groups}
-
-        selected_bones = []
-        for armature in armatures:
-            for bone in armature.data.bones:
-                if bone.select and bone.name in vg_names and bone.name not in selected_bones:
-                    selected_bones.append(bone.name)
+        selected_bones = list(
+            dict.fromkeys(
+                bone.name
+                for armature in armatures
+                for bone in armature.pose.bones
+                # Selection is on the pose bones since Blender 5.0
+                if (bone.select if bpy.app.version >= (5, 0, 0) else bone.bone.select)
+                and bone.name in obj.vertex_groups
+            )
+        )
 
         if not selected_bones:
             self.report({"WARNING"}, "MustardUI - No Vertex Group found for the selected bones")
@@ -325,12 +305,13 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             return {"CANCELLED"}
 
         # The listed Vertex Groups found on the source
-        names = [
-            item.group_name
-            for item in wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
-            if item.group_name in source.vertex_groups
-        ]
-        names = list(dict.fromkeys(names))
+        names = list(
+            dict.fromkeys(
+                item.group_name
+                for item in wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
+                if item.group_name in source.vertex_groups
+            )
+        )
         if not names:
             self.report({"ERROR"}, "MustardUI - No Vertex Groups to transfer")
             return {"CANCELLED"}
@@ -381,13 +362,13 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
     def invoke(self, context, event):
         wm = context.window_manager
 
-        # Fix the index
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = min(
-            wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex,
-            len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items) - 1,
-        )
+        # Index in the list
         wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = max(
-            wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex, 0
+            0,
+            min(
+                wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex,
+                len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items) - 1,
+            ),
         )
 
         return context.window_manager.invoke_props_dialog(self)

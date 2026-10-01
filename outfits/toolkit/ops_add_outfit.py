@@ -6,7 +6,8 @@ import traceback
 import bpy
 import numpy as np
 
-from ...misc.mesh_deform import mesh_triangles
+from ...misc.enum_items import keep_enum_strings
+from ...misc.mesh_deform import mesh_triangles, read_weights
 from ...misc.move_modifier import move_modifier
 from ...misc.ui_progress import status_progress
 from ...model_selection.active_object import (
@@ -149,10 +150,6 @@ def add_outfit_default_names(pieces):
     return names
 
 
-# Keep the Enum strings alive, as Blender does not store them
-OUTFIT_ITEMS = []
-
-
 def outfit_items(self, context):
     arm, _, _ = add_outfit_model(context)
     collections = []
@@ -162,10 +159,8 @@ def outfit_items(self, context):
             for x in arm.MustardUI_RigSettings.outfits_collections
             if x.collection is not None
         ]
-    OUTFIT_ITEMS[:] = [(c.name, c.name, "") for c in collections] or [
-        ("NONE", "None", "No Outfit available")
-    ]
-    return OUTFIT_ITEMS
+    items = [(c.name, c.name, "") for c in collections]
+    return keep_enum_strings(items or [("NONE", "None", "No Outfit available")])
 
 
 def outfit_shape_keys(arm, arm_obj, body):
@@ -200,23 +195,14 @@ def outfit_shape_keys(arm, arm_obj, body):
 
 
 def transfer_weights(body, armature, target, overwrite):
-    """Transfer the weights of the deform bones from the body, returning the number of
-    Vertex Groups written"""
+    """Transfer the deform bones weights from the body, returning the count"""
 
     bones = {b.name for b in armature.data.bones if b.use_deform}
     names = [vg.name for vg in body.vertex_groups if vg.name in bones]
     if not names or not len(target.data.vertices):
         return 0
 
-    # Weights of the body for each vertex and Vertex Group
-    columns = {body.vertex_groups[n].index: k for k, n in enumerate(names)}
-    body_weights = np.zeros((len(body.data.vertices), len(names)))
-    for v in body.data.vertices:
-        for g in v.groups:
-            k = columns.get(g.group)
-            if k is not None:
-                body_weights[v.index, k] = g.weight
-
+    body_weights = read_weights(body, names)
     world = []
     for obj in (body, target):
         mat = np.array(obj.matrix_world, dtype=np.float64)
@@ -308,8 +294,7 @@ def update_custom_property_paths(refs):
 
 
 def rebind_modifiers(context, objects, armature):
-    """Bind again the Surface Deform and Corrective Smooth modifiers in rest pose,
-    returning the ones not bound"""
+    """Bind again the modifiers in Rest Pose, returning the ones not bound"""
 
     mods = [
         (obj, mod)
@@ -390,8 +375,7 @@ class PiecesBackup:
 
 
 def add_outfit_fill_lists(context):
-    """Fill the pieces and Shape Keys lists, returning the name of the collection of the
-    pieces"""
+    """Fill the pieces and Shape Keys lists, returning the pieces collection"""
 
     wm = context.window_manager
     pieces = add_outfit_pieces(context)
@@ -923,7 +907,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
                 done += 1
                 if self.fit == "NONE":
                     continue
-                solver = FitToBodySolver(context, piece, [body], key_name)
+                solver = FitToBodySolver(piece, [body], key_name)
                 shape_co, count, error = solver.solve(context, settings)
                 if error or not count:
                     continue

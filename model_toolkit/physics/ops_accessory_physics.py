@@ -5,8 +5,8 @@ import bpy
 import numpy as np
 from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
-from mathutils.kdtree import KDTree
 
+from ...misc.mesh_deform import kdtree, read_weights
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
 from ...model_selection.active_object import ModelMode, mustardui_active_object
@@ -36,24 +36,6 @@ def world_coordinates(obj):
     return co @ mw[:3, :3].T + mw[:3, 3]
 
 
-def group_weights(obj, name):
-    weights = np.zeros(len(obj.data.vertices))
-    group = obj.vertex_groups.get(name) if name else None
-    if group is None:
-        return weights
-    for v in obj.data.vertices:
-        for g in v.groups:
-            if g.group == group.index:
-                weights[v.index] = g.weight
-                break
-    return weights
-
-
-def smooth_step(e0, e1, x):
-    t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
-    return t * t * (3 - 2 * t)
-
-
 def evaluated_bvh(obj, depsgraph):
     """BVH of the evaluated mesh in world space."""
     eval_obj = obj.evaluated_get(depsgraph)
@@ -68,12 +50,7 @@ def evaluated_bvh(obj, depsgraph):
 
 def deform_weights_kdtree(source, armature):
     """KD-Tree of the source vertices with their deform weights."""
-    coordinates = world_coordinates(source)
-    kd = KDTree(len(coordinates))
-    for i, co in enumerate(coordinates):
-        kd.insert(co, i)
-    kd.balance()
-
+    kd = kdtree(world_coordinates(source))
     deform = {
         g.index: g.name
         for g in source.vertex_groups
@@ -111,8 +88,8 @@ def transfer_deform_weights(target, kd, weights, points):
 
 def voxel_cells(points, size):
     cells = {}
-    for i, co in enumerate(points):
-        cells.setdefault(tuple(np.floor(co / size).astype(int)), []).append(i)
+    for i, cell in enumerate(np.floor(points / size).astype(int).tolist()):
+        cells.setdefault(tuple(cell), []).append(i)
     return cells
 
 
@@ -156,12 +133,7 @@ def hops_within(adjacency, a, b, limit):
 
 
 def skeleton(points, size, loop_hops=8, spur_length=2):
-    """Graph following the strands of the points: nodes positions and adjacency.
-
-    The voxel centroids are joined by a minimum spanning tree, and the edges closing
-    long loops (e.g. the ring of a necklace) are added back. Short spurs left by the
-    thickness of the strands are pruned.
-    """
+    """Graph following the strands of the points: nodes positions and adjacency"""
     cells = voxel_cells(points, size)
     keys = list(cells)
     index = {k: i for i, k in enumerate(keys)}
@@ -219,8 +191,7 @@ def skeleton(points, size, loop_hops=8, spur_length=2):
 
 
 def polylines(adjacency):
-    """Split the graph in polylines between the nodes which are not in the middle of a
-    strand. Returns (nodes, closed) tuples."""
+    """Polylines of the graph between its ends and junctions, as (nodes, closed)"""
     ends = {n for n, adj in adjacency.items() if len(adj) != 2}
     visited = set()
     lines = []
@@ -262,8 +233,7 @@ def polylines(adjacency):
 
 
 class ProxyBuilder:
-    """Low poly mesh driving the accessory: ribbons along the strands and a stiff patch
-    for every rigid part."""
+    """Low poly mesh driving the accessory"""
 
     def __init__(self, surface_normal, width):
         self.bm = bmesh.new()
@@ -369,8 +339,7 @@ class ProxyBuilder:
         )
 
     def attach(self, perimeter, positions, adjacency):
-        """Tie the patch to the nearest strand node and to its neighbours with springs, so
-        that it swings around the strand but does not spin around a single point."""
+        """Tie the patch to the nearest strand nodes with springs"""
         if not self.node_vertices:
             return
         node = min(
@@ -432,8 +401,7 @@ def copy_driver(source_fcurve, target_id, data_path):
 
 
 def create_collider(source, armature, box_min, box_max, name):
-    """Copy of the source mesh around the box, deformed by the armature, keeping only the
-    Shape Keys (and their drivers) which move that region."""
+    """Collision mesh from the source mesh around the box"""
     mw = source.matrix_world
     co = world_coordinates(source)
     inside = np.all((co >= box_min) & (co <= box_max), axis=1)
@@ -553,11 +521,7 @@ def rigid_patch_node_group():
 
 
 def rigid_follower(name, proxy, group_name, collection):
-    """Mesh made of one rigid patch of the simulated proxy.
-
-    Geometry Nodes are used and not a Vertex Parent, as the transform of a hidden object
-    is not updated, while its geometry is evaluated when another object depends on it.
-    """
+    """Mesh following one rigid patch of the simulated proxy"""
     obj = bpy.data.objects.new(name, bpy.data.meshes.new(name))
     collection.objects.link(obj)
     modifier = obj.modifiers.new("Rigid Patch", "NODES")
@@ -780,8 +744,9 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             return direction.normalized() if direction.length > 1e-6 else Vector((0, -1, 0))
 
         # Proxy: strands and rigid parts
-        rigid_weights = group_weights(target, self.rigid_group)
-        rigid_mask = rigid_weights > 0.5
+        rigid_mask = np.zeros(len(points), dtype=bool)
+        if self.rigid_group in target.vertex_groups:
+            rigid_mask = read_weights(target, [self.rigid_group])[:, 0] > 0.5
         builder = ProxyBuilder(surface_normal, self.width)
 
         flexible = points[~rigid_mask]
@@ -827,16 +792,16 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
         proxy_points = [v.co.copy() for v in proxy.data.vertices]
 
         # Pin weights from the accessory
-        pin_weights = group_weights(target, self.pin_group)
-        if not self.pin_group or target.vertex_groups.get(self.pin_group) is None:
+        if self.pin_group in target.vertex_groups:
+            pin_weights = read_weights(target, [self.pin_group])[:, 0]
+        else:
+            # The top of the accessory, fading out below it
             z = points[:, 2]
             top = z.max() - self.auto_pin * (z.max() - z.min())
             blend = max(0.1 * (z.max() - z.min()), 1e-4)
-            pin_weights = smooth_step(top - blend, top, z)
-        kd = KDTree(len(points))
-        for i, co in enumerate(points):
-            kd.insert(co, i)
-        kd.balance()
+            t = np.clip((z - top + blend) / blend, 0.0, 1.0)
+            pin_weights = t * t * (3 - 2 * t)
+        kd = kdtree(points)
         pin = proxy.vertex_groups.new(name=PIN_GROUP)
         for v in proxy.data.vertices:
             weight = np.mean([pin_weights[i] for _, i, _ in kd.find_n(proxy_points[v.index], 3)])

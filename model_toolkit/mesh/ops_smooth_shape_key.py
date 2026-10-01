@@ -1,8 +1,7 @@
 import bpy
 import numpy as np
-from mathutils.kdtree import KDTree
 
-from ...misc.mesh_deform import mesh_triangles, smooth_deformation, vertex_group_weights
+from ...misc.mesh_deform import kdtree, mesh_triangles, smooth_deformation, vertex_group_weights
 from .shape_key_preview import (
     ShapeKeyPreviewOperator,
     preview_draw_footer,
@@ -129,10 +128,7 @@ class SmoothShapeKeySolver:
         border = np.unique(pairs[counts == 1])
         self.border_distance = np.full(len(world), np.inf)
         if len(border):
-            kd = KDTree(len(border))
-            for k, i in enumerate(border):
-                kd.insert(world[i], k)
-            kd.balance()
+            kd = kdtree(world[border])
             self.border_distance = np.array([kd.find(c)[2] for c in world])
 
     def solve(self, context, settings):

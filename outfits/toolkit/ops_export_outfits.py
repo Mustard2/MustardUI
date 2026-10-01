@@ -6,7 +6,7 @@ from bpy_extras.io_utils import ExportHelper
 
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from ..helper_functions import outfits_get_collection_items, outfits_get_collections
-from .ops_add_outfit import add_outfit_model, outfit_default_name
+from .ops_add_outfit import add_outfit_model, outfit_default_name, parents
 from .ops_add_outfit_from_file import copy_id_property, copy_settings
 
 # Collections of geometry and other data without datablock pointers
@@ -107,8 +107,7 @@ def export_fill_items(context):
 
 
 def closure(graph, roots, stop=()):
-    """Datablocks linked to the roots in the graph, directly or through others but the stop
-    ones"""
+    """Datablocks reached from the roots in the graph, not past the stop ones"""
 
     found = set(roots)
     queue = list(roots)
@@ -217,8 +216,7 @@ class OutfitCopier:
 
 
 def copy_collection(coll, mapping, objects, keep=None):
-    """Copy of the collection and its children, with the copies of the objects, or only of
-    the keep ones and the children having them"""
+    """Copy of the collection and its children, only with the keep objects"""
 
     if keep is not None and not any(o in keep for o in coll.all_objects):
         return None
@@ -244,19 +242,7 @@ def extras_keep(extras, pieces):
     """The Extras pieces with the objects parented to them"""
 
     keep = set(pieces)
-    for obj in extras.all_objects:
-        parent = obj.parent
-        while parent is not None and parent not in keep:
-            parent = parent.parent
-        if parent is not None:
-            keep.add(obj)
-    return keep
-
-
-def file_name(name):
-    """Name without the characters not allowed in file names"""
-
-    return re.sub(r'[\\/:*?"<>|]', "_", name)
+    return keep | {o for o in extras.all_objects if not keep.isdisjoint(parents(o))}
 
 
 def stand_ins(arm, arm_obj, body, rig_settings):
@@ -401,13 +387,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         filepath = bpy.path.abspath(self.filepath)
         if self.separate_files:
             base = os.path.splitext(filepath)[0]
+            items = [(root, root, None) for root in outfits]
+            items += [(piece, extras, extras_keep(extras, [piece])) for piece in pieces]
             files = []
-            for root in outfits:
-                name = file_name(outfit_default_name(root.name, rig_settings.model_name))
-                files.append((f"{base} - {name}.blend", [(root, None)]))
-            for piece in pieces:
-                name = file_name(outfit_default_name(piece.name, rig_settings.model_name))
-                files.append((f"{base} - {name}.blend", [(extras, extras_keep(extras, [piece]))]))
+            for item, root, keep in items:
+                name = outfit_default_name(item.name, rig_settings.model_name)
+                # Without the characters not allowed in file names
+                name = re.sub(r'[\\/:*?"<>|]', "_", name)
+                files.append((f"{base} - {name}.blend", [(root, keep)]))
         else:
             roots = [(root, None) for root in outfits]
             if pieces:

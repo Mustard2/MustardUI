@@ -2,9 +2,7 @@ import bpy
 
 
 class SceneState:
-    """Pose positions, frame, mode, active object and selection, to restore them after a
-    tool changed them, also when it fails. Objects are stored by name, as the tool might
-    remove some of them."""
+    """Scene state changed by the tools, to restore it"""
 
     def __init__(self, context):
         self.pose_positions = {
@@ -39,8 +37,7 @@ class SceneState:
 
 
 def execute_restoring_state(operator, context):
-    """Run operator._execute, restoring pose positions and frame, and also the mode and
-    selection if it fails or is cancelled."""
+    """Run operator._execute, restoring the scene state"""
     state = SceneState(context)
     try:
         result = operator._execute(context)

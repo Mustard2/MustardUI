@@ -49,8 +49,7 @@ def mustardui_prop_limits(prop, addon_prefs):
 
 # Function to check over all custom properties
 def split_data_path(data_path):
-    """Split a full data path into (rna, path) as stored by the custom properties, keeping
-    the brackets for Blender custom properties (["name"]). None if it has no property."""
+    """Split a data path into the (rna, path) of the custom properties, None if no property"""
     if "][" in data_path:
         rna, rem = data_path.rsplit("[", 1)
         return rna, "[" + rem

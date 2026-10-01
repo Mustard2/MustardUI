@@ -1,3 +1,4 @@
+import contextlib
 import time
 import traceback
 
@@ -111,10 +112,9 @@ class ShapeKeyBackup:
     def __init__(self, obj, key_name):
         self.obj = obj
         self.key_name = key_name
-        sks = obj.data.shape_keys
-        self.had_shape_keys = sks is not None
+        self.had_shape_keys = obj.data.shape_keys is not None
         self.backup = None
-        sk = sks.key_blocks.get(key_name) if sks is not None else None
+        sk = self.shape_key()
         if sk is not None:
             co = np.empty(len(sk.data) * 3, dtype=np.float32)
             sk.data.foreach_get("co", co)
@@ -126,12 +126,15 @@ class ShapeKeyBackup:
         if driver is not None:
             driver.mute = True
 
-    def driver(self):
+    def shape_key(self):
         sks = self.obj.data.shape_keys
-        sk = sks.key_blocks.get(self.key_name) if sks is not None else None
-        if sk is None or sks.animation_data is None:
+        return sks.key_blocks.get(self.key_name) if sks is not None else None
+
+    def driver(self):
+        sk = self.shape_key()
+        if sk is None or sk.id_data.animation_data is None:
             return None
-        return sks.animation_data.drivers.find(sk.path_from_id("value"))
+        return sk.id_data.animation_data.drivers.find(sk.path_from_id("value"))
 
     def unmute(self):
         driver = self.driver()
@@ -140,8 +143,7 @@ class ShapeKeyBackup:
 
     def restore(self):
         obj = self.obj
-        sks = obj.data.shape_keys
-        sk = sks.key_blocks.get(self.key_name) if sks is not None else None
+        sk = self.shape_key()
         if self.backup is not None and sk is not None:
             sk.data.foreach_set("co", self.backup[0])
             sk.value = self.backup[1]
@@ -181,22 +183,17 @@ class ShapeKeyPreviewSession:
     def restore(self):
         for backup in [self.backup, *self.followers_backup]:
             # The object might have been removed
-            try:
+            with contextlib.suppress(ReferenceError):
                 backup.restore()
-            except ReferenceError:
-                pass
 
     def unmute(self):
         for backup in [self.backup, *self.followers_backup]:
-            try:
+            with contextlib.suppress(ReferenceError):
                 backup.unmute()
-            except ReferenceError:
-                pass
 
 
 class ShapeKeyPreviewOperator:
-    """Operator mixin to create a Shape Key with a live preview.
-    Subclasses define preview_tool, preview_verb and preview_settings(context)"""
+    """Operator mixin creating a Shape Key with a live preview"""
 
     preview_tool = ""
     preview_verb = ""

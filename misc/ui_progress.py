@@ -10,3 +10,13 @@ def status_progress(context, factor, text):
         layout.separator_spacer()
 
     context.workspace.status_text_set(draw)
+
+
+def run_steps(steps):
+    """Run the steps of a generator to the end, returning its value"""
+
+    try:
+        while True:
+            next(steps)
+    except StopIteration as stop:
+        return stop.value

@@ -296,12 +296,7 @@ def nodes_preset_property(default="JIGGLE"):
 
 
 def draw_physics_presets(layout, operator):
-    """Draw the engine and the preset of the engine currently selected.
-
-    Two separate properties are used, and not a single list filtered on the engine,
-    so that each tool keeps its own default on both of them and the enums stay
-    static.
-    """
+    """Draw the engine and its preset"""
     available = cloth_dynamics_available()
 
     row = layout.row()
@@ -329,11 +324,7 @@ def selected_preset(operator):
 
 
 def remove_physics(obj):
-    """Remove the simulation of both engines from an object.
-
-    Both are removed whichever engine is being applied: the two are alternatives,
-    and leaving the other one behind would stack two simulations on the same mesh.
-    """
+    """Remove the simulation of both engines from the object"""
     for modifier in [
         x
         for x in obj.modifiers
@@ -444,12 +435,7 @@ def apply_physics(
     pin_group_name="",
     structural_group_name="",
 ):
-    """Add the physics of a preset to an object, replacing the one it may have.
-
-    Returns the modifier which was added, or None if the Geometry Nodes physics was
-    asked for and this Blender cannot provide it. The caller is expected to report
-    that to the user and, if it makes sense, to fall back on the Cloth modifier.
-    """
+    """Add the physics of a preset, returning the modifier or None"""
     if obj is None or obj.type != "MESH":
         return None
 

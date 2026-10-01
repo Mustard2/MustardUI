@@ -19,8 +19,7 @@ def tool_type(obj):
 
 
 def deform_targets(obj):
-    """Objects driving obj through Surface Deform and Mesh Deform modifiers, with the name
-    of the modifier."""
+    """Objects deforming obj, with the name of the modifier"""
     if obj.type != "MESH":
         return []
     targets = []
@@ -97,8 +96,7 @@ def is_accessory_proxy(obj):
 
 
 def cages_from_selection(context, detector, sources=True):
-    """The selected objects recognized by the detector, and the ones driving the other
-    selected meshes."""
+    """Selected cages, and the ones driving the selected meshes"""
     selected = set(context.selected_objects)
     if context.active_object is not None:
         selected.add(context.active_object)
@@ -136,10 +134,7 @@ def used_vertex_groups(obj):
 
 
 def remove_cages(arm, cages, extra_modifiers=()):
-    """Remove the cages, the modifiers and constraints using them, the Vertex Groups created
-    for them and their Physics Items.
-
-    extra_modifiers is a list of (object, modifier name) to remove too."""
+    """Remove the cages with their modifiers, constraints, Vertex Groups and items"""
     cages = {c for c in cages if c is not None and c.name in bpy.data.objects}
     if not cages:
         return 0
@@ -201,16 +196,6 @@ def remove_cages(arm, cages, extra_modifiers=()):
     return count
 
 
-def remove_empty_collections(collections):
-    for collection in collections:
-        if (
-            collection.name in bpy.data.collections
-            and not collection.all_objects
-            and not collection.children
-        ):
-            bpy.data.collections.remove(collection)
-
-
 # ----------------------------------------------------------------------------
 # Operators
 # ----------------------------------------------------------------------------
@@ -242,7 +227,9 @@ class RemovePhysicsBase:
         others, modifiers = self.collect(context, cages)
         collections = self.own_collections(cages | others)
         count = remove_cages(arm, cages | others, modifiers)
-        remove_empty_collections(collections)
+        for collection in collections:
+            if not collection.all_objects and not collection.children:
+                bpy.data.collections.remove(collection)
         self.after(context)
         self.report({"INFO"}, f"MustardUI - {self.tool_name} removed ({count} objects).")
         return {"FINISHED"}

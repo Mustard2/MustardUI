@@ -14,7 +14,7 @@ from . import physics_presets
 
 
 def deformed_coordinates(context, obj):
-    """The coordinates of the vertices of 'obj' as they are currently deformed."""
+    """Coordinates of the vertices as currently deformed"""
     vertex_count = len(obj.data.vertices)
     coordinates = [0.0] * (vertex_count * 3)
 
@@ -228,8 +228,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
                 obj.data.pose_position = "REST"
         context.view_layer.update()
 
-        # The shape of the model the cages are built on, read once the pose is at
-        # rest
+        # Shape of the model in rest pose, which the cages are built on
         source_coordinates = deformed_coordinates(context, source)
         source_positions = [
             Vector(source_coordinates[index : index + 3])
@@ -251,13 +250,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
                 neighbors[b].add(a)
 
         def selection_islands():
-            """The connected parts of the selection.
-
-            Each one gets a cage of its own: a selection covering two breasts, or a
-            dozen hair clumps, is not a single soft body, and a single cage would
-            tie parts which have nothing to do with each other to the same
-            simulation, on top of splitting the face budget among them.
-            """
+            """Connected parts of the selection, each with its own cage"""
             if self.merge_cages:
                 return [set(selected_indices)]
 
@@ -288,15 +281,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             return {i for i in island if any(n not in island for n in neighbors[i])}
 
         def pinned_border(loops, border_indices, ring_length):
-            """The borders of a cage the Pin group is built on.
-
-            A part open on several sides is held by a single one of them by default:
-            a leg hangs from the hip, a lock of hair from the scalp, and pinning the
-            far end as well would keep the whole cage from moving. Multiple Pin
-            Boundaries pins every border instead, for the parts which really are
-            attached on all of their sides, like a sleeve held at the shoulder and
-            at the wrist.
-            """
+            """Borders of the cage the Pin group is built on"""
             if not loops:
                 return []
 
@@ -347,13 +332,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             return unique_name
 
         def isolate_selection(obj, island):
-            """Delete everything which does not belong to the island on the copy.
-
-            The deletion is done with bmesh, and not by selecting the vertices and
-            calling the delete operator: entering Edit Mode flushes the selection of
-            the faces of the mesh down to their vertices, which would select back
-            the whole mesh.
-            """
+            """Delete what does not belong to the island"""
             bm = bmesh.new()
             bm.from_mesh(obj.data)
             bm.verts.ensure_lookup_table()
@@ -380,18 +359,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
                 polygon.hide = False
 
         def clean_topology(bm):
-            """Make the cage a clean surface: no extra faces, no loose geometry.
-
-            The Surface Deform refuses the whole target as soon as a single edge has
-            more than two faces ('Target has edges with more than two polygons').
-            Filling a border which pinches on itself, and dissolving degenerate
-            geometry, can both produce them. The smallest faces are dropped, so what
-            is removed is the overlapping sliver and not the surface of the cage.
-
-            The collapses also leave wire edges and stray vertices behind. They are
-            invisible on the cage but they keep it from ever being reported as
-            closed, and the simulation has no use for them.
-            """
+            """Remove extra faces and loose geometry, refused by the Surface Deform"""
             extra = set()
             for edge in bm.edges:
                 faces = [f for f in edge.link_faces if f not in extra]
@@ -413,16 +381,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             return bool(extra)
 
         def triangulate(obj):
-            """Triangulate the whole cage.
-
-            The Surface Deform modifier refuses to bind on a target containing
-            concave polygons, and it reads a quad which is concave *or* simply too
-            non planar as such. Both are produced in quantity by the simplification
-            of a dense, irregular mesh, and splitting only the concave faces is not
-            enough. Triangles are always convex and always planar, so this removes
-            the problem at the root. The simulation is not affected: the cloth
-            solver triangulates the mesh internally anyway.
-            """
+            """Triangulate the cage, as the Surface Deform refuses concave polygons"""
             bm = bmesh.new()
             bm.from_mesh(obj.data)
 
@@ -446,13 +405,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             obj.data.update()
 
         def border_loops(bm):
-            """The open borders of the cage, one list of edges per loop.
-
-            A selection is open on as many sides as the part it was taken from: a
-            leg is a tube open at the hip and at the ankle, a sleeve at the shoulder
-            and at the wrist. Each of those borders has to be handled on its own,
-            because they can be of very different sizes.
-            """
+            """Open borders of the cage, as lists of edges"""
             loops = []
             visited = set()
 
@@ -484,21 +437,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
         MINIMUM_BORDER_EDGES = 8
 
         def simplify_border(bm):
-            """Bring the border loops down to the density of the rest of the cage.
-
-            The un-subdivision simplifies the inside of the cage but leaves the
-            border loops untouched. Closing a border which is still as dense as the
-            original mesh gives a fan of hundreds of sliver triangles, which the
-            Surface Deform refuses to bind and the simulation handles badly.
-
-            Two precautions keep a border from being collapsed out of existence,
-            which used to close the narrow end of a tapered part (the ankle of a
-            leg, the wrist of a sleeve) and leave it unpinned:
-            the edges are picked loop by loop, so that a small border is not judged
-            against the size of a large one, and they are picked without ever taking
-            two edges sharing a vertex, because 'collapse' welds a connected run of
-            edges to a single point and would zip a whole loop shut in one call.
-            """
+            """Bring the border loops down to the density of the cage"""
             interior = [e.calc_length() for e in bm.edges if len(e.link_faces) > 1]
             if not interior:
                 return
@@ -534,12 +473,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
                 bmesh.ops.dissolve_degenerate(bm, dist=1e-6, edges=bm.edges[:])
 
         def finalize_border(obj, recorded_loops):
-            """Simplify the border of the cage, record it, and close it if needed.
-
-            bmesh is used instead of the fill_holes operator: the latter works on
-            the selection, and on a ragged border it both leaves holes open and
-            creates edges shared by three faces, which the Surface Deform rejects.
-            """
+            """Simplify the border of the cage, record it, and close it if needed"""
             bm = bmesh.new()
             bm.from_mesh(obj.data)
 
@@ -624,14 +558,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             obj.data.update()
 
         def relax(obj):
-            """Even out the triangles of the cage, keeping it on the original mesh.
-
-            The collapse decimation keeps the detail where the mesh curves the most,
-            so the cage it returns has triangles of very different sizes and shapes.
-            Each iteration here relaxes the vertices towards the centre of their
-            neighbours, rewires the triangles which can be improved, and projects
-            everything back on the mesh so that the shape of the cage is preserved.
-            """
+            """Even out the triangles of the cage, keeping it on the original mesh"""
             if self.relax_iterations <= 0:
                 return
 
@@ -677,11 +604,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             cage.name = generate_unique_name(cage_name)
             cage.data.name = cage.name
 
-            # Shape Keys and modifiers of the source mesh would prevent the
-            # generation modifiers from being applied. They are dropped, and the
-            # shape they were giving to the model is written in the mesh instead:
-            # the cage is generated on the model as it is seen, and the clean copy
-            # is what the Decimate and the Shrinkwrap need to work on
+            # Shape Keys and modifiers would prevent applying the generation modifiers:
+            # the current shape of the model is written in the mesh instead
             cage.shape_key_clear()
             cage.modifiers.clear()
             cage.data.vertices.foreach_set("co", source_coordinates)

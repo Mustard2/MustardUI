@@ -283,8 +283,7 @@ def rename_driver_targets(ids, renamed):
 
 
 def import_custom_properties(arm, arm_obj, body, scene, appended):
-    """Add the Outfit custom properties of the appended models for the appended pieces,
-    returning the skipped ones"""
+    """Import the Outfit custom properties of the appended pieces"""
 
     pieces = set(scene.objects) & appended
     colls = set(scene.collection.children_recursive) & appended

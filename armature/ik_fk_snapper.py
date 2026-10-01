@@ -13,13 +13,7 @@ from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 def ikfk_snapper_available(arm):
-    """Whether the IK/FK Snapper applies to this model.
-
-    Restricted to a generic ("Other") rig — MHX/Rigify/ARP ship their own IK/FK
-    switching. Once the model is configured the stored ``model_rig_type`` is
-    authoritative, so use it directly; before that it is still the default, so
-    detect the type live from the armature.
-    """
+    """Whether the IK/FK Snapper applies to the model (generic rigs only)"""
     rig_settings = arm.MustardUI_RigSettings
     if arm.MustardUI_created:
         return rig_settings.model_rig_type == "other"
@@ -33,8 +27,7 @@ def ikfk_snapper_available(arm):
 
 
 def ikfk_chain_is_complete(chain):
-    """A chain is usable only if it has the vital fields: IK bones, FK bones and
-    an IK control."""
+    """Whether the chain has its IK bones, FK bones and IK control"""
     return bool(_split_bones(chain.ik_bones) and _split_bones(chain.fk_bones) and chain.ik_ctrl)
 
 
@@ -167,8 +160,7 @@ _NAME_STRIP_TOKENS = [
 
 
 def _clean_chain_name(name):
-    """Make a readable chain name: strip IK/FK tokens and turn separators into
-    spaces (e.g. R_Leg_IK → "R Leg")."""
+    """Readable chain name without the IK/FK tokens (e.g. R_Leg_IK -> R Leg)"""
     cleaned = name
     for tok in _NAME_STRIP_TOKENS:
         cleaned = cleaned.replace(tok, "")
@@ -202,9 +194,7 @@ def _ik_chain_from_constraint(arm_obj, end_bone, constraint):
 
 
 def _bone_is_visible(arm_obj, bone_name):
-    """Return True if the bone is not explicitly hidden (b.hide).
-    Collection visibility is intentionally ignored because rigs toggle
-    IK/FK collections based on mode, which would break detection."""
+    """Whether the bone is not hidden, ignoring the collections visibility"""
     b = arm_obj.data.bones.get(bone_name)
     return b is not None and not b.hide
 
@@ -228,13 +218,7 @@ def _collections_of(arm_obj, bone_names):
 
 
 def detect_chains(arm_obj):
-    """
-    Scan *arm_obj* for IK constraints and build chain descriptions.
-    Returns a list of dicts ready to be stored in MustardUI_IKFKChain.
-
-    Only chains whose IK control bone is visible are included, which
-    filters out internal/mechanism bones and keeps the animator-facing limb chains.
-    """
+    """IK/FK chains of the armature with a visible IK control, as dicts"""
     pose_bones = arm_obj.pose.bones
     seen_ctrls = set()
     results = []
@@ -333,11 +317,7 @@ def _split_bones(s):
 
 
 def _signed_angle(v_from, v_to, axis):
-    """Signed angle (radians) rotating *v_from* onto *v_to* about *axis*.
-
-    Both vectors are projected onto the plane perpendicular to *axis* first.
-    Returns 0.0 if either projection is degenerate.
-    """
+    """Signed angle rotating v_from onto v_to around the axis"""
     f = v_from - axis * v_from.dot(axis)
     t = v_to - axis * v_to.dot(axis)
     if f.length < 1e-9 or t.length < 1e-9:
@@ -377,11 +357,7 @@ def _auto_key(bone, frame):
 
 
 def populate_ikfk_chains(arm, arm_obj, clear_existing=False):
-    """(Re)build auto-detected IK/FK chains on *arm* from *arm_obj*.
-
-    Removes previously auto-detected chains (or all, when *clear_existing*) and
-    adds freshly detected ones. Returns the list of detection result dicts.
-    """
+    """Rebuild the auto-detected IK/FK chains, returning the detected ones"""
     snapper = arm.MustardUI_IKFKSnapperSettings
 
     if clear_existing:
@@ -663,20 +639,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
     @staticmethod
     def _match_pole(arm_obj, chain, ik_list, pole_bone, base, axis, radial_len, desired_dir):
-        """Place the pole so the IK solve reproduces the FK bend.
-
-        Rotating the pole around the chain axis rotates the IK bend plane — and so
-        the mid (knee/elbow) joint — by the same angle. So we aim the pole along
-        the FK bend direction, solve once, measure how far the solver's pole angle
-        rotated the resulting bend away from the FK direction, and cancel exactly
-        that angle. A single measure-and-correct pass lands the joint on the FK
-        position regardless of the constraint's pole_angle or its sign convention,
-        and it is deterministic — repeated clicks compute the same pole, so the
-        side never flips.
-
-        ``base`` is the pole's anchor on the chain axis (pivot + the pole's own
-        axial offset); the pole is kept at ``radial_len`` from it.
-        """
+        """Place the pole so that the IK solve reproduces the FK bend"""
         default = base + desired_dir * radial_len
         if not ik_list:
             return default
@@ -728,13 +691,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
     @staticmethod
     def _force_ik_solve(arm_obj, chain, ik_list, copy_types):
-        """Force a clean IK solve so the chain reflects the IK controls.
-
-        Enables the IK constraint and the companion constraints that copy the IK
-        ctrl, and disables the FK→IK copies that would otherwise pin the IK bones
-        to the FK pose. Returns the (constraint, original_influence) pairs to
-        restore. When already in IK mode this only records the (unchanged) state.
-        """
+        """Solve the IK chain, returning the constraints influences to restore"""
         saved = []
 
         end_ik = _bone(arm_obj, ik_list[-1])
@@ -902,15 +859,7 @@ def _set_collection_visible(armature, coll_name, visible):
 
 
 def apply_ikfk_switch(arm_obj, chain, direction, frame):
-    """Toggle the IK constraint and any companion constraints that target the IK ctrl.
-
-    Companion constraints (e.g. Copy Rotation on the hand/foot bone that point at
-    the IK ctrl) are toggled together with the main IK constraint so they stay
-    in sync without needing drivers. The chain's IK/FK bone collections (layers)
-    are shown/hidden to match the new mode.
-
-    direction is 'FK_TO_IK' or 'IK_TO_FK'.
-    """
+    """Switch the IK constraints of the chain and the visibility of its collections"""
     influence = 1.0 if direction == "FK_TO_IK" else 0.0
 
     # 1. Toggle the IK constraint on the chain end bone

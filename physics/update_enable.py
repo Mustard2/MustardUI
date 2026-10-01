@@ -4,12 +4,7 @@ from ..outfits.helper_functions import find_layer_collections
 
 
 def model_objects(rig_settings):
-    """Iterate over the model objects that can be driven by the Physics Items.
-
-    Yield (object, visible) tuples, where visible takes into account the visibility of
-    the collection the object belongs to. Each object is yielded once, with the
-    visibility of the last group it was found in.
-    """
+    """Model objects driven by the Physics Items, with their visibility"""
     visibility = {}
 
     arm = rig_settings.model_armature_object
@@ -109,8 +104,7 @@ def set_physics_item(physics_item, status):
 
 
 def named_after_cage(name, cage_name, cage_names):
-    """True if name contains cage_name, but not only as part of a longer Cage name
-    (e.g. "Proxy.001" for the Cage "Proxy")."""
+    """Whether the name contains the cage name, not as part of a longer one"""
     longer = [c for c in cage_names if len(c) > len(cage_name) and cage_name in c]
     start = name.find(cage_name)
     while start != -1:
@@ -128,12 +122,7 @@ def named_after_cage(name, cage_name, cage_names):
 
 
 def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
-    """Update the modifiers of an object driven by a Cage Physics Item.
-
-    Both the deform modifiers bound to the Cage and the modifiers named after it (Smooth
-    Corrective, Vertex Weight Mix, ...) are updated. If mtype is provided, only the
-    modifiers of that type are updated, together with the Vertex Weight Mix feeding them.
-    """
+    """Update the modifiers of an object driven by a Cage"""
     cage = physics_item.object
     if cage is None:
         return
@@ -315,8 +304,7 @@ def cage_influence_update(self, context):
 
 
 def set_bone_driver_constraints(physics_item, influence):
-    """Apply the influence to the bone constraints targeting a Bones Driver item (0 disables
-    them), without changing the influence stored on the item."""
+    """Apply the influence to the constraints of a Bones Driver item"""
     parent = physics_item.object.parent if physics_item.object else None
 
     if not parent or parent.type != "ARMATURE":

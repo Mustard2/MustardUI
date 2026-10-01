@@ -47,12 +47,16 @@ class PANEL_PT_MustardUI_ModelToolkit(MainPanel, bpy.types.Panel):
             col.label(text="to use the Model Toolkit", icon="BLANK1")
 
 
-class PANEL_PT_MustardUI_ModelToolkit_Rig(MainPanel, bpy.types.Panel):
+class ModelToolkitSection(MainPanel):
     bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
     bl_label = ""
     bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
-    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Armature"
+    # Header label and icon, and page of the guide in the wiki
+    header = ("", "NONE")
+    guide = ""
+    # Creator-only sections are hidden once the model UI is enabled for users
+    creator_only = False
 
     @classmethod
     def poll(cls, context):
@@ -61,12 +65,20 @@ class PANEL_PT_MustardUI_ModelToolkit_Rig(MainPanel, bpy.types.Panel):
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit
+        return res and addon_prefs.model_toolkit and not (cls.creator_only and arm.MustardUI_enable)
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="Armature", icon="OUTLINER_DATA_ARMATURE")
-        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
+        layout.label(text=self.header[0], icon=self.header[1])
+        if self.guide:
+            layout.operator(
+                "wm.url_open", text="", icon="QUESTION"
+            ).url = f"https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-{self.guide}"
+
+
+class PANEL_PT_MustardUI_ModelToolkit_Rig(ModelToolkitSection, bpy.types.Panel):
+    header = ("Armature", "OUTLINER_DATA_ARMATURE")
+    guide = "Armature"
 
     def draw(self, context):
         layout = self.layout
@@ -94,27 +106,10 @@ class PANEL_PT_MustardUI_ModelToolkit_Rig(MainPanel, bpy.types.Panel):
         row.operator("mustardui.model_toolkit_affect_transform", text="", icon="X").enable = False
 
 
-class PANEL_PT_MustardUI_ModelToolkit_Model(MainPanel, bpy.types.Panel):
-    bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
-    bl_label = ""
-    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
-
-    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Model"
-
-    @classmethod
-    def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        addon_prefs = context.preferences.addons[base_package].preferences
-        # Creator-only section: hidden once the model UI is enabled for users
-        return res and not arm.MustardUI_enable and addon_prefs.model_toolkit
-
-    def draw_header(self, context):
-        layout = self.layout
-        layout.label(text="Model", icon="ARMATURE_DATA")
-        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
+class PANEL_PT_MustardUI_ModelToolkit_Model(ModelToolkitSection, bpy.types.Panel):
+    header = ("Model", "ARMATURE_DATA")
+    guide = "Model"
+    creator_only = True
 
     def draw(self, context):
         layout = self.layout
@@ -131,23 +126,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Model(MainPanel, bpy.types.Panel):
         row.operator("mustardui.rename_image_nodes", icon="IMAGE_DATA")
 
 
-class PANEL_PT_MustardUI_ModelToolkit_Outfits(MainPanel, bpy.types.Panel):
-    bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
-    bl_label = ""
-    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
-
-    @classmethod
-    def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit
-
-    def draw_header(self, context):
-        layout = self.layout
-        layout.label(text="Outfits", icon="MOD_CLOTH")
+class PANEL_PT_MustardUI_ModelToolkit_Outfits(ModelToolkitSection, bpy.types.Panel):
+    header = ("Outfits", "MOD_CLOTH")
+    guide = "Outfits"
 
     def draw(self, context):
         layout = self.layout
@@ -169,26 +150,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Outfits(MainPanel, bpy.types.Panel):
         squish_draw_settings(layout, context)
 
 
-class PANEL_PT_MustardUI_ModelToolkit_Mesh(MainPanel, bpy.types.Panel):
-    bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
-    bl_label = ""
-    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
-
-    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Mesh"
-
-    @classmethod
-    def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit
-
-    def draw_header(self, context):
-        layout = self.layout
-        layout.label(text="Mesh", icon="MESH_DATA")
-        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
+class PANEL_PT_MustardUI_ModelToolkit_Mesh(ModelToolkitSection, bpy.types.Panel):
+    header = ("Mesh", "MESH_DATA")
+    guide = "Mesh"
 
     def draw(self, context):
         layout = self.layout
@@ -209,26 +173,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Mesh(MainPanel, bpy.types.Panel):
         row.operator("mustardui.model_toolkit_transfer_vertex_groups", icon="GROUP_VERTEX")
 
 
-class PANEL_PT_MustardUI_ModelToolkit_Physics(MainPanel, bpy.types.Panel):
-    bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
-    bl_label = ""
-    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
-
-    url_MustardUI_ToolsGuide = "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Physics"
-
-    @classmethod
-    def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit
-
-    def draw_header(self, context):
-        layout = self.layout
-        layout.label(text="Physics", icon="PHYSICS")
-        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
+class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Panel):
+    header = ("Physics", "PHYSICS")
+    guide = "Physics"
 
     def draw(self, context):
         layout = self.layout
@@ -295,29 +242,10 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(MainPanel, bpy.types.Panel):
         )
 
 
-class PANEL_PT_MustardUI_ModelToolkit_Optimizations(MainPanel, bpy.types.Panel):
-    bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
-    bl_label = ""
-    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
-
-    url_MustardUI_ToolsGuide = (
-        "https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-Optimization"
-    )
-
-    @classmethod
-    def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        addon_prefs = context.preferences.addons[base_package].preferences
-        # Creator-only section: hidden once the model UI is enabled for users
-        return res and not arm.MustardUI_enable and addon_prefs.model_toolkit
-
-    def draw_header(self, context):
-        layout = self.layout
-        layout.label(text="Optimizations", icon="FORCE_WIND")
-        layout.operator("wm.url_open", text="", icon="QUESTION").url = self.url_MustardUI_ToolsGuide
+class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.types.Panel):
+    header = ("Optimizations", "FORCE_WIND")
+    guide = "Optimization"
+    creator_only = True
 
     def draw(self, context):
         layout = self.layout
