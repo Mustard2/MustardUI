@@ -3,7 +3,13 @@ import numpy as np
 from mathutils.bvhtree import BVHTree
 
 from ...misc.enum_items import keep_enum_strings
-from ...misc.mesh_deform import kdtree, mesh_triangles, smooth_deformation, vertex_group_weights
+from ...misc.mesh_deform import (
+    kdtree,
+    mesh_triangles,
+    smooth_deformation,
+    triangle_barycentric,
+    vertex_group_weights,
+)
 from ...misc.ui_progress import run_steps
 from .shape_key_preview import link_shape_key_driver
 
@@ -86,25 +92,8 @@ def transfer_mapping(source_co, source_tris, target_co, method, max_distance):
             faces[i] = face
             distances[i] = dist
         indices = source_tris[faces]
-
         # Barycentric weights of the closest points on the triangles
-        a = source_co[indices[:, 0]]
-        v0 = source_co[indices[:, 1]] - a
-        v1 = source_co[indices[:, 2]] - a
-        v2 = locations - a
-        d00 = np.einsum("ij,ij->i", v0, v0)
-        d01 = np.einsum("ij,ij->i", v0, v1)
-        d11 = np.einsum("ij,ij->i", v1, v1)
-        d20 = np.einsum("ij,ij->i", v2, v0)
-        d21 = np.einsum("ij,ij->i", v2, v1)
-        denom = d00 * d11 - d01 * d01
-        degenerate = np.abs(denom) < 1e-20
-        denom[degenerate] = 1.0
-        v = (d11 * d20 - d01 * d21) / denom
-        w = (d00 * d21 - d01 * d20) / denom
-        weights = np.clip(np.stack([1.0 - v - w, v, w], axis=1), 0.0, 1.0)
-        weights[degenerate] = 1.0 / 3.0
-        weights /= np.maximum(weights.sum(axis=1), 1e-12)[:, None]
+        weights = triangle_barycentric(locations, source_co[indices])
     else:
         kd = kdtree(source_co)
         for i, co in enumerate(target_co):

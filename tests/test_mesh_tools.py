@@ -217,6 +217,15 @@ class TestTransferShapeKeys(BlenderTestCase):
         np.testing.assert_allclose(offsets[xs >= 0.0], 0.1 * (xs[xs >= 0.0] + 1.0), atol=1e-5)
 
 
+class TestTriangleBarycentric(BlenderTestCase):
+    # Points on a triangle get their coordinates, triangles without area weight corners equally
+    def test_barycentric(self):
+        corners = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]], [[0, 0, 0], [1, 0, 0], [2, 0, 0]]])
+        points = np.array([[0.25, 0.25, 0.0], [0.5, 0.0, 0.0]])
+        bary = mesh_deform.triangle_barycentric(points, corners.astype(np.float64))
+        np.testing.assert_allclose(bary, [[0.5, 0.25, 0.25], [1 / 3, 1 / 3, 1 / 3]])
+
+
 class TestTransferVertexGroups(BlenderTestCase):
     def setUp(self):
         super().setUp()

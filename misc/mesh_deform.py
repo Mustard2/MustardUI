@@ -139,10 +139,14 @@ def triangle_barycentric(points, corners, clamp=True):
     d22 = np.einsum("ij,ij->i", e2, e2)
     v1 = np.einsum("ij,ij->i", v, e1)
     v2 = np.einsum("ij,ij->i", v, e2)
-    det = np.maximum(d11 * d22 - d12 * d12, 1e-30)
+    det = d11 * d22 - d12 * d12
+    degenerate = np.abs(det) < 1e-20
+    det[degenerate] = 1.0
     b1 = (d22 * v1 - d12 * v2) / det
     b2 = (d11 * v2 - d12 * v1) / det
     bary = np.stack((1.0 - b1 - b2, b1, b2), axis=1)
+    # Triangles without area weight their corners equally
+    bary[degenerate] = 1.0 / 3.0
     if not clamp:
         return bary
     bary = np.clip(bary, 0.0, None)
