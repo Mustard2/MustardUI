@@ -37,6 +37,7 @@ class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
     shape_key_name: bpy.props.StringProperty(
         name="Shape Key",
         default="Fit to Body",
+        maxlen=63,
         description="Name of the Shape Key. If it already exists, it is overwritten",
     )
 

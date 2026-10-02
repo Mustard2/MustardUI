@@ -874,7 +874,10 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         # Fit after the Shape Keys, as the body is fitted with its current Shape Keys
         fitted = 0
         settings = context.window_manager.MustardUI_ModelToolkit_FitToBodySettings
-        key_name = f"Fit to Body - {body.name}"
+
+        # Within the length of the Shape Key names, to find it again
+        key_name = f"Fit to Body - {body.name}".encode()[:63].decode(errors="ignore")
+
         # Default settings, not the ones changed in the Fit to Body tool
         overrides = {
             name: settings.bl_rna.properties[name].default for name in settings.__annotations__
@@ -911,6 +914,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
             unbound = rebind_modifiers(context, pieces + add_outfit_children(pieces), arm_obj)
 
         yield done / total, "Adding to MustardUI"
+
         # Next to the other Outfits
         outfits = [x.collection for x in rig_settings.outfits_collections if x.collection]
         candidates = [scene.collection, *bpy.data.collections]
@@ -1014,6 +1018,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
 
         coll_names = "', '".join(c.name for c, _ in collections)
         self.result = (len(pieces), coll_names, fitted, weights, shape_keys, unbound)
+
         # The pieces list is only needed by the dialog
         context.window_manager.MustardUI_ModelToolkit_AddOutfit_Items.clear()
 

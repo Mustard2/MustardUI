@@ -65,6 +65,7 @@ class MustardUI_ModelToolkit_SquishSettings(bpy.types.PropertyGroup):
     shape_key_name: bpy.props.StringProperty(
         name="Shape Key",
         default="Squish",
+        maxlen=63,
         description="Name of the Shape Key. If it already exists, it is overwritten",
     )
 

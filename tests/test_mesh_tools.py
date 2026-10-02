@@ -603,6 +603,29 @@ class TestFitToBody(BlenderTestCase):
             preview.PREVIEW_SESSION = None
         self.assertEqual(drawer.errors, [])
 
+    # Cancelling the preview removes its Shape Key, also with a name too long for Blender
+    def test_preview_cancel_long_name(self):
+        name = self.settings.shape_key_name
+        self.addCleanup(setattr, self.settings, "shape_key_name", name)
+        self.settings.shape_key_name = "Fit to Body - " + "x" * 60
+        name = self.settings.shape_key_name
+        before = self.outfit.data.shape_keys
+        solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], name)
+        session = preview.ShapeKeyPreviewSession(
+            "FIT_TO_BODY", self.outfit, name, solver, self.settings
+        )
+        preview.PREVIEW_SESSION = session
+        try:
+            operator = type("Operator", (), {"preview_verb": "fitted"})()
+            # Solved again, as when the settings change
+            for _ in range(2):
+                result = fit_to_body.run_steps(solver.solve_steps(bpy.context, self.settings))
+                preview.ShapeKeyPreviewOperator.preview_result(operator, bpy.context, result)
+            session.restore()
+        finally:
+            preview.PREVIEW_SESSION = None
+        self.assertEqual(self.outfit.data.shape_keys, before)
+
     # The preview shows the result first, then measures it a bit at a time
     def test_preview_check_after_result(self):
         solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit", check=True)
