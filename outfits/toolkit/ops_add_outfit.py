@@ -755,6 +755,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
         context.window_manager.modal_handler_add(self)
         context.window.cursor_modal_set("WAIT")
+
         return {"RUNNING_MODAL"}
 
     def modal(self, context, event):
@@ -781,6 +782,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
             raise
 
         status_progress(context, factor, f"Add Outfit: {text} (Esc to cancel)")
+
         return {"RUNNING_MODAL"}
 
     def rollback(self):
@@ -798,16 +800,16 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         context.workspace.status_text_set(None)
 
     def finish(self, context):
-        unbound = self.result[5]
+        count, name, fitted, weights, shape_keys, unbound = self.result
+        print(
+            f"MustardUI - Add Outfit: {fitted} pieces fitted, {weights} Vertex Groups and "
+            f"{shape_keys} Shape Keys transferred"
+        )
+        message = f"MustardUI - {count} pieces added to '{name}'"
         if unbound:
             print("MustardUI - Modifiers not bound:\n  " + "\n  ".join(unbound))
-        self.report(
-            {"WARNING"} if unbound else {"INFO"},
-            f"MustardUI - {self.result[0]} pieces added to '{self.result[1]}': "
-            f"{self.result[2]} fitted, {self.result[3]} Vertex Groups and {self.result[4]} Shape "
-            "Keys transferred"
-            + (f", {len(unbound)} modifiers not bound (listed in the console)" if unbound else ""),
-        )
+            message += f", {len(unbound)} modifiers not bound (details in the console)"
+        self.report({"WARNING"} if unbound else {"INFO"}, message)
         return {"FINISHED"}
 
     def steps(self, context, pieces, names, keys, targets):

@@ -435,27 +435,24 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
                     context, arm, extras_keep(rig_settings.extras_collection, pieces)
                 )
 
+        print(f"MustardUI - Export Outfits: {len(files)} files, {count} custom properties")
+        issues = []
         if cut:
             print("MustardUI - References to the model removed:\n  " + "\n  ".join(cut))
+            issues.append(f"{len(cut)} references removed")
         self.missing = sorted(set(self.missing))
         if self.missing:
             print("MustardUI - Images not found, not packed:\n  " + "\n  ".join(self.missing))
+            issues.append(f"{len(self.missing)} images not found")
         exported = [f"{len(outfits)} Outfits"] if outfits else []
         if pieces:
             exported.append(f"{len(pieces)} Extras")
         message = f"MustardUI - {' and '.join(exported)} exported"
-        if self.separate_files:
-            message += f" to {len(files)} files"
-        message += f" with {count} custom properties"
         if self.delete_outfits:
-            message += ", deleted from the model"
-        if cut:
-            message += f", {len(cut)} references removed"
-        if self.missing:
-            message += f", {len(self.missing)} images not found"
-        if cut or self.missing:
-            message += " (listed in the console)"
-        self.report({"WARNING"} if cut or self.missing else {"INFO"}, message)
+            message += " and deleted"
+        if issues:
+            message += f", {' and '.join(issues)} (details in the console)"
+        self.report({"WARNING"} if issues else {"INFO"}, message)
         return {"FINISHED"}
 
     def export_file(self, context, filepath, roots):
@@ -537,7 +534,7 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             print("MustardUI - Export stopped:\n  " + "\n  ".join(sorted(users)))
             self.report(
                 {"ERROR"},
-                "MustardUI - The Outfits still use the model (listed in the console), "
+                "MustardUI - The Outfits still use the model (details in the console), "
                 "nothing exported",
             )
             return None, None

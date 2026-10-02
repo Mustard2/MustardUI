@@ -353,6 +353,7 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
 
         matched = 0
         total = 0
+        transferred = 0
         skipped = False
         # Objects keeping the closest weights where they could not be filled
         unsolved = []
@@ -384,6 +385,7 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
 
             matched += int(np.count_nonzero(found))
             total += len(found)
+            transferred += 1
 
         if not total and skipped:
             self.report(
@@ -396,10 +398,11 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - The selected Objects have no vertices")
             return {"CANCELLED"}
 
-        message = f"MustardUI - Vertex Groups transferred ({matched}/{total} vertices matched)"
+        print(f"MustardUI - Transfer Vertex Groups: {matched}/{total} vertices matched")
+        message = f"MustardUI - {len(names)} Vertex Groups transferred to {transferred} Objects"
         if unsolved:
             print("MustardUI - Weights not filled, closest ones kept:\n  " + "\n  ".join(unsolved))
-            message += f", closest weights kept on {len(unsolved)} Objects (listed in the console)"
+            message += f", closest weights kept on {len(unsolved)} Objects (details in the console)"
 
         self.report({"WARNING"} if unsolved else {"INFO"}, message)
         return {"FINISHED"}

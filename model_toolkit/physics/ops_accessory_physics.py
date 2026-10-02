@@ -696,7 +696,7 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             rig_settings.model_armature_object,
         )
         if armature is None:
-            self.report({"ERROR"}, "MustardUI - No armature found for the accessory.")
+            self.report({"ERROR"}, "MustardUI - No armature found for the accessory")
             return {"CANCELLED"}
         if any(
             m.type == "SURFACE_DEFORM" and m.name.startswith(DEFORM_NAME) for m in target.modifiers
@@ -704,12 +704,12 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             self.report(
                 {"ERROR"},
                 "MustardUI - The accessory already has physics: remove the "
-                f"'{DEFORM_NAME}' modifier first.",
+                f"'{DEFORM_NAME}' modifier first",
             )
             return {"CANCELLED"}
 
         if body is None and not any(m.type == "ARMATURE" for m in target.modifiers):
-            self.report({"ERROR"}, "MustardUI - The accessory has no Armature modifier.")
+            self.report({"ERROR"}, "MustardUI - The accessory has no Armature modifier")
             return {"CANCELLED"}
 
         created = CreatedData(target)
@@ -769,7 +769,7 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
 
         if not builder.bm.verts:
             builder.bm.free()
-            self.report({"ERROR"}, "MustardUI - The proxy could not be generated.")
+            self.report({"ERROR"}, "MustardUI - The proxy could not be generated")
             return {"CANCELLED"}
 
         proxy, patches = builder.to_object(f"{target.name} Physics Proxy")
@@ -860,7 +860,7 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             follower.hide_viewport = True
 
         if not bound:
-            self.report({"WARNING"}, "MustardUI - The Surface Deform modifier could not be bound.")
+            self.report({"WARNING"}, "MustardUI - The Surface Deform modifier could not be bound")
 
         # Physics
         cloth = physics_presets.apply_physics(
@@ -942,13 +942,17 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             obj.MustardUI_tools_creators_type = "ACCESSORY"
 
         if clipping:
+            print(
+                f"MustardUI - Accessory Physics: {clipping} proxy vertices are inside the body, "
+                "use Fit to Body on the accessory, then create it again"
+            )
             self.report(
                 {"WARNING"},
-                f"MustardUI - Accessory Physics created, but {clipping} proxy vertices are "
-                "inside the body: use Fit to Body on the accessory, then create it again.",
+                "MustardUI - Accessory Physics created, the proxy is inside the body "
+                "(details in the console)",
             )
         else:
-            self.report({"INFO"}, "MustardUI - Accessory Physics created.")
+            self.report({"INFO"}, "MustardUI - Accessory Physics created")
 
         return {"FINISHED"}
 

@@ -532,11 +532,11 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
             subs = parse_substitutions(tools_settings.lipsync_substitutions)
             segs, unknown = self._segments(tools_settings)
         except (RuntimeError, ValueError) as e:
-            self.report({"ERROR"}, f"MustardUI - Lip Sync: {e}.")
+            self.report({"ERROR"}, f"MustardUI - Lip Sync: {e}")
             return {"CANCELLED"}
 
         if not segs:
-            self.report({"ERROR"}, "MustardUI - Lip Sync: nothing to animate.")
+            self.report({"ERROR"}, "MustardUI - Lip Sync: nothing to animate")
             return {"CANCELLED"}
 
         prefix = tools_settings.lipsync_prefix
@@ -571,7 +571,7 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
         if not channels:
             self.report(
                 {"ERROR"},
-                f"MustardUI - Lip Sync: no viseme found with prefix '{prefix}' on '{tgt.label}'.",
+                f"MustardUI - Lip Sync: no viseme found with prefix '{prefix}' on '{tgt.label}'",
             )
             return {"CANCELLED"}
 
@@ -616,17 +616,15 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
 
         end_frame = int(to_frame(segs[-1]["end"])) + 1
 
-        msg = (
-            f"MustardUI - Lip Sync '{act.name}' created "
-            f"({segs[-1]['end']:.2f}s, frames {start_frame}-{end_frame})."
-        )
+        print(f"MustardUI - Lip Sync: {segs[-1]['end']:.2f}s, frames {start_frame}-{end_frame}")
+        if unknown:
+            words = ", ".join(dict.fromkeys(unknown))
+            print(f"MustardUI - Lip Sync: not in dictionary, spelled roughly: {words}")
+        message = f"MustardUI - Lip Sync '{act.name}' created"
         if missing:
-            self.report({"WARNING"}, f"{msg} Visemes not found: {', '.join(missing)}.")
-        elif unknown:
-            words = ", ".join(dict.fromkeys(unknown[:5]))
-            self.report({"INFO"}, f"{msg} Not in dictionary, spelled roughly: {words}.")
-        else:
-            self.report({"INFO"}, msg)
+            print(f"MustardUI - Lip Sync: visemes not found: {', '.join(missing)}")
+            message += f", {len(missing)} visemes not found (details in the console)"
+        self.report({"WARNING"} if missing else {"INFO"}, message)
 
         return {"FINISHED"}
 

@@ -501,27 +501,21 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         replaced = replace_models(appended, arm_obj, body)
         remove_unused(context.scene, before, replaced)
 
+        # Reported with the added Outfit
+        issues = []
         if self.import_custom_properties:
             skipped += remove_invalid_custom_properties(arm, start)
             imported = len(arm.MustardUI_CustomPropertiesOutfit) - start
+            print(f"MustardUI - Add Outfit from File: {imported} custom properties imported")
             if skipped:
                 print("MustardUI - Custom properties not imported:\n  " + "\n  ".join(skipped))
-                self.report(
-                    {"WARNING"},
-                    f"MustardUI - {imported} custom properties imported, {len(skipped)} "
-                    "skipped (listed in the console)",
-                )
-            elif imported:
-                self.report({"INFO"}, f"MustardUI - {imported} custom properties imported")
+                issues.append(f"{len(skipped)} custom properties skipped")
 
         if self.remove_drivers:
             removed = remove_broken_drivers(data_ids() - before)
             if removed:
                 print("MustardUI - Broken drivers removed:\n  " + "\n  ".join(removed))
-                self.report(
-                    {"WARNING"},
-                    f"MustardUI - {len(removed)} broken drivers removed (listed in the console)",
-                )
+                issues.append(f"{len(removed)} broken drivers removed")
 
         # Outfit pieces might have been hidden in the other file
         for coll in colls:
@@ -559,6 +553,11 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         except RuntimeError as error:
             # The appended pieces are kept selected, to add them with Add Outfit
             self.report({"ERROR"}, str(error).removeprefix("Error: ").strip())
+            return {"FINISHED"}
+        message = f"MustardUI - {len(pieces)} pieces added from '{os.path.basename(filepath)}'"
+        if issues:
+            message += f", {' and '.join(issues)} (details in the console)"
+        self.report({"WARNING"} if issues else {"INFO"}, message)
         return {"FINISHED"}
 
 

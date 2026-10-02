@@ -231,7 +231,7 @@ class RemovePhysicsBase:
             if not collection.all_objects and not collection.children:
                 bpy.data.collections.remove(collection)
         self.after(context)
-        self.report({"INFO"}, f"MustardUI - {self.tool_name} removed ({count} objects).")
+        self.report({"INFO"}, f"MustardUI - {self.tool_name} removed ({count} objects)")
         return {"FINISHED"}
 
     def own_collections(self, objects):
