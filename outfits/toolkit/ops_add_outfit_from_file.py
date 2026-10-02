@@ -374,7 +374,7 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
 
     bl_idname = "mustardui.model_toolkit_add_outfit_from_file"
     bl_label = "Add Outfit from File"
-    bl_options = {"UNDO"}
+    bl_options = {"UNDO", "PRESET"}
 
     filepath: bpy.props.StringProperty(subtype="FILE_PATH", options={"HIDDEN", "SKIP_SAVE"})
     directory: bpy.props.StringProperty(subtype="DIR_PATH", options={"HIDDEN", "SKIP_SAVE"})

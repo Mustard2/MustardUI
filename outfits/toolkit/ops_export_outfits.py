@@ -6,6 +6,7 @@ from bpy_extras.io_utils import ExportHelper
 
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from ..helper_functions import outfits_get_collection_items, outfits_get_collections
+from ..ops_delete import delete_extras_pieces
 from .ops_add_outfit import add_outfit_model, outfit_default_name, parents
 from .ops_add_outfit_from_file import copy_id_property, copy_settings
 
@@ -276,6 +277,7 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
 
     bl_idname = "mustardui.model_toolkit_export_outfits"
     bl_label = "Export Outfits"
+    bl_options = {"UNDO", "PRESET"}
 
     filename_ext = ".blend"
     filter_glob: bpy.props.StringProperty(default="*.blend", options={"HIDDEN"})
@@ -296,6 +298,12 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         default=False,
         description="Write each Outfit and Extras piece in its own file, named after the chosen "
         "file and the item",
+    )
+
+    delete_outfits: bpy.props.BoolProperty(
+        name="Delete Exported",
+        default=False,
+        description="Delete the exported Outfits and Extras pieces from the model after the export",
     )
 
     @classmethod
@@ -352,6 +360,7 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             col.prop(self, "separate_files")
             col.prop(self, "compress")
             body.column(heading="Images").prop(self, "pack_images", text="Pack")
+            body.column(heading="Exported").prop(self, "delete_outfits", text="Delete")
 
     def invoke(self, context, event):
         export_fill_items(context)
@@ -416,6 +425,16 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             count += result[0]
             cut += result[1]
 
+        if self.delete_outfits:
+            for outfit in outfits:
+                collections = [x.collection for x in rig_settings.outfits_collections]
+                context.scene.mustardui_outfits_uilist_index = collections.index(outfit)
+                bpy.ops.mustardui.delete_outfit(is_config=True)
+            if pieces:
+                delete_extras_pieces(
+                    context, arm, extras_keep(rig_settings.extras_collection, pieces)
+                )
+
         if cut:
             print("MustardUI - References to the model removed:\n  " + "\n  ".join(cut))
         self.missing = sorted(set(self.missing))
@@ -428,6 +447,8 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         if self.separate_files:
             message += f" to {len(files)} files"
         message += f" with {count} custom properties"
+        if self.delete_outfits:
+            message += ", deleted from the model"
         if cut:
             message += f", {len(cut)} references removed"
         if self.missing:

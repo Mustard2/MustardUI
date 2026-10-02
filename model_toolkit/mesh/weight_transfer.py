@@ -8,9 +8,8 @@ from ...misc.mesh_deform import NeighbourAverage, mesh_vertex_normals, triangle_
 MIN_WEIGHT = 1e-4
 # Rings of copied weights around the filled ones smoothed with them, to soften the seam
 SEAM_RINGS = 2
-# Conjugate gradient tolerance and maximum iterations of the inpainting
-SOLVE_TOLERANCE = 1e-7
-SOLVE_ITERATIONS = 2000
+# Factor entries above which a region is not filled, about 200 MB
+MAX_FACTOR_ENTRIES = 25_000_000
 
 
 def cotan_laplacian(co, tris):
@@ -52,89 +51,148 @@ def grow(mask, edges, rings):
     return mask
 
 
-class RegionOperator:
-    """The inpainting operator on the unknown vertices, with the known ones around them"""
+def concatenated_ranges(starts, counts):
+    """Indices of the ranges with the given starts and counts, one after the other"""
 
-    def __init__(self, edges, weights, mass, unknown):
-        n = len(mass)
-        # Unknown vertices and two rings around them, as the operator reaches that far
-        region = np.zeros(n, dtype=bool)
-        region[unknown] = True
-        region = grow(region, edges, 2)
-        self.index = np.nonzero(region)[0]
-        local = np.full(n, -1, dtype=np.int64)
-        local[self.index] = np.arange(len(self.index))
-        inside = region[edges[:, 0]] & region[edges[:, 1]]
-        e = local[edges[inside]]
-        w = weights[inside]
+    return np.repeat(starts - np.cumsum(counts) + counts, counts) + np.arange(counts.sum())
 
-        # Directed edges sorted by their first vertex, to sum over the neighbours quickly
-        src = np.concatenate((e[:, 0], e[:, 1]))
-        dst = np.concatenate((e[:, 1], e[:, 0]))
-        order = np.argsort(src, kind="stable")
-        self.src, self.dst, self.w = src[order], dst[order], np.concatenate((w, w))[order]
-        m = len(self.index)
-        counts = np.bincount(self.src, minlength=m)
-        # Vertices without neighbours have no range to sum, and would end past the last one
-        self.connected = counts > 0
-        self.starts = (np.cumsum(counts) - counts)[self.connected]
-        self.total = np.bincount(self.src, weights=self.w, minlength=m)
-        self.mass = np.maximum(mass[self.index], 1e-30)
-        self.unknown = local[unknown]
 
-        # Diagonal of the operator on the unknown vertices, for the preconditioner
-        u = self.unknown
-        squares = np.bincount(self.src, weights=self.w**2 / self.mass[self.dst], minlength=m)
-        self.diagonal = self.total[u] + self.total[u] ** 2 / self.mass[u] + squares[u]
+def inpainting_matrix(edges, weights, mass, unknown):
+    """Entries (row, column, value) of -L + L M^-1 L on the rows of the unknown vertices"""
 
-    def laplacian(self, x):
-        """Cotangent laplacian of the columns"""
+    n = len(mass)
+    total = np.bincount(edges.ravel(), weights=np.repeat(weights, 2), minlength=n)
+    # Laplacian entries with the diagonal, sorted by column
+    rows = np.concatenate((edges[:, 0], edges[:, 1], np.arange(n)))
+    cols = np.concatenate((edges[:, 1], edges[:, 0], np.arange(n)))
+    vals = np.concatenate((weights, weights, -total))
+    order = np.argsort(cols, kind="stable")
+    rows, cols, vals = rows[order], cols[order], vals[order]
+    counts = np.bincount(cols, minlength=n)
+    starts = np.cumsum(counts) - counts
 
-        if not len(self.src):
-            return np.zeros_like(x)
-        sums = np.zeros_like(x)
-        sums[self.connected] = np.add.reduceat(self.w[:, None] * x[self.dst], self.starts, axis=0)
-        return sums - self.total[:, None] * x
+    # (L M^-1 L)_ik sums L_ij L_jk / m_j, pairing each entry of an unknown row with its column
+    is_unknown = np.zeros(n, dtype=bool)
+    is_unknown[unknown] = True
+    own = np.nonzero(is_unknown[rows])[0]
+    reps = counts[cols[own]]
+    first = np.repeat(own, reps)
+    second = concatenated_ranges(starts[cols[own]], reps)
+    product = vals[first] * vals[second] / np.maximum(mass[cols[first]], 1e-30)
+    return (
+        np.concatenate((rows[first], rows[own])),
+        np.concatenate((rows[second], cols[own])),
+        np.concatenate((product, -vals[own])),
+    )
 
-    def apply(self, x):
-        """Operator of the paper, -L + L M^-1 L, on the unknown rows"""
 
-        lx = self.laplacian(x)
-        return (-lx + self.laplacian(lx / self.mass[:, None]))[self.unknown]
+def breadth_levels(start, adjacency, seen):
+    """Breadth first levels of the graph from the start vertex, marking them as seen"""
 
-    def solve(self, known, guess):
-        """Values on the unknown vertices minimizing the operator energy"""
+    starts, counts, neighbours = adjacency
+    levels = []
+    current = np.array([start])
+    seen[start] = True
+    while len(current):
+        levels.append(current)
+        current = np.unique(neighbours[concatenated_ranges(starts[current], counts[current])])
+        current = current[~seen[current]]
+        seen[current] = True
+    return levels
 
-        x = known[self.index].copy()
-        x[self.unknown] = 0.0
-        b = -self.apply(x)
 
-        def product(y, columns):
-            z = np.zeros((len(x), len(columns)))
-            z[self.unknown] = y
-            return self.apply(z)
+def solve_block_tridiagonal(diagonal, lower, b):
+    """Solution of the block tridiagonal positive definite system, with a block Cholesky"""
 
-        # Preconditioned conjugate gradient, all the columns at once until they converge
-        y = guess.copy()
-        r = b - product(y, np.arange(b.shape[1]))
-        z = r / self.diagonal[:, None]
-        p = z.copy()
-        rz = np.einsum("ij,ij->j", r, z)
-        limit = SOLVE_TOLERANCE**2 * np.maximum(np.einsum("ij,ij->j", b, b), 1e-30)
-        active = np.arange(b.shape[1])
-        for _ in range(SOLVE_ITERATIONS):
-            active = active[np.einsum("ij,ij->j", r[:, active], r[:, active]) > limit[active]]
-            if not len(active):
-                break
-            ap = product(p[:, active], active)
-            alpha = rz[active] / np.maximum(np.einsum("ij,ij->j", p[:, active], ap), 1e-30)
-            y[:, active] += alpha * p[:, active]
-            r[:, active] -= alpha * ap
-            z = r[:, active] / self.diagonal[:, None]
-            rz_new = np.einsum("ij,ij->j", r[:, active], z)
-            p[:, active] = z + (rz_new / np.maximum(rz[active], 1e-30)) * p[:, active]
-            rz[active] = rz_new
-        return y
+    factors, coupling = [], [None]
+    for k, block in enumerate(diagonal):
+        if k:
+            coupling.append(np.linalg.solve(factors[-1], lower[k].T).T)
+        factors.append(np.linalg.cholesky(block - coupling[k] @ coupling[k].T if k else block))
+    y = [None] * len(diagonal)
+    for k in range(len(diagonal)):
+        rhs = b[k] - coupling[k] @ y[k - 1] if k else b[k]
+        y[k] = np.linalg.solve(factors[k], rhs)
+    for k in reversed(range(len(diagonal))):
+        if k + 1 < len(diagonal):
+            y[k] = y[k] - coupling[k + 1].T @ y[k + 1]
+        y[k] = np.linalg.solve(factors[k].T, y[k])
+    return np.concatenate(y)
+
+
+def inpaint(edges, weights, mass, unknown, values):
+    """Unknown values minimizing -L + L M^-1 L, and if no region kept its closest values"""
+
+    m = len(unknown)
+    # The closest values are kept by the regions too large or degenerate to solve
+    result = values[unknown]
+    if not values.shape[1]:
+        return result, True
+    local = np.full(len(mass), -1, dtype=np.int64)
+    local[unknown] = np.arange(m)
+    rows, cols, vals = inpainting_matrix(edges, weights, mass, unknown)
+
+    # The known values move to the right side
+    known = local[cols] < 0
+    b = np.zeros((m, values.shape[1]))
+    np.add.at(b, local[rows[known]], -vals[known, None] * values[cols[known]])
+    touched = np.zeros(m, dtype=bool)
+    touched[local[rows[known]]] = True
+    rows, cols, vals = local[rows[~known]], local[cols[~known]], vals[~known]
+    order = np.argsort(rows, kind="stable")
+    rows, cols, vals = rows[order], cols[order], vals[order]
+    counts = np.bincount(rows, minlength=m)
+    starts = np.cumsum(counts) - counts
+    adjacency = (starts, counts, cols)
+
+    solved = True
+    seen = np.zeros(m, dtype=bool)
+    level = np.empty(m, dtype=np.int64)
+    position = np.empty(m, dtype=np.int64)
+    for start in range(m):
+        if seen[start]:
+            continue
+        # Levels from a far vertex, as they are narrower: the matrix is block tridiagonal
+        levels = breadth_levels(start, adjacency, seen)
+        seen[np.concatenate(levels)] = False
+        levels = breadth_levels(levels[-1][0], adjacency, seen)
+        region = np.concatenate(levels)
+        # Regions without known vertices around keep the closest values
+        if not np.any(touched[region]):
+            continue
+        sizes = np.array([len(x) for x in levels])
+        if np.sum(sizes**2) + np.sum(sizes[1:] * sizes[:-1]) > MAX_FACTOR_ENTRIES:
+            solved = False
+            continue
+
+        for k, x in enumerate(levels):
+            level[x] = k
+            position[x] = np.arange(len(x))
+        # Entries of the region rows, in the order of the levels
+        entries = concatenated_ranges(starts[region], counts[region])
+        r, c, v = rows[entries], cols[entries], vals[entries]
+        bounds = np.searchsorted(level[r], np.arange(len(sizes) + 1))
+        diagonal, lower = [], []
+        for k, size in enumerate(sizes):
+            at = slice(bounds[k], bounds[k + 1])
+            rk, ck, vk = position[r[at]], c[at], v[at]
+            # Columns of the previous level and of this one, as the matrix is symmetric
+            previous = sizes[k - 1] if k else 0
+            keep = level[ck] <= k
+            columns = position[ck] + np.where(level[ck] == k, previous, 0)
+            block = np.zeros((size, previous + size))
+            np.add.at(block, (rk[keep], columns[keep]), vk[keep])
+            lower.append(block[:, :previous])
+            diagonal.append(block[:, previous:])
+        try:
+            y = solve_block_tridiagonal(diagonal, lower, [b[x] for x in levels])
+        except np.linalg.LinAlgError:
+            y = None
+        if y is None or not np.all(np.isfinite(y)):
+            solved = False
+            continue
+        result[region] = y
+    return result, solved
 
 
 def limit_influences(weights, count):
@@ -190,7 +248,7 @@ def transfer_weights(source, target, settings):
     # Meshes without faces (e.g. wires) copy the closest weights
     if not len(tris):
         weights = limit_influences(np.clip(closest, 0.0, 1.0), settings.limit_influences)
-        return weights, np.ones(n, dtype=bool), np.zeros(n, dtype=bool)
+        return weights, np.ones(n, dtype=bool), np.zeros(n, dtype=bool), True
 
     source_normals = mesh_vertex_normals(source_co, source_tris)
     normals = mesh_vertex_normals(co, tris)
@@ -233,19 +291,17 @@ def transfer_weights(source, target, settings):
         weights[pieces] = closest[best[component[pieces]]]
 
     unknown = np.nonzero(~matched & ~rigid & in_faces)[0]
+    solved = True
     if len(unknown):
         lap_edges, lap_weights, mass = cotan_laplacian(co, tris)
-        # Only the columns with weights around the unknown vertices
-        operator = RegionOperator(lap_edges, lap_weights, mass, unknown)
-        columns = np.nonzero(np.any(weights[operator.index] > 0.0, axis=0))[0]
-        if len(columns):
-            # The closest weights are a good start
-            guess = weights[np.ix_(unknown, columns)]
-            solved = operator.solve(weights[:, columns], guess)
-            weights[unknown] = 0.0
-            weights[np.ix_(unknown, columns)] = solved
-        else:
-            weights[unknown] = 0.0
+        # Only the columns with weights within the operator reach of the unknown vertices
+        around = np.zeros(n, dtype=bool)
+        around[unknown] = True
+        around = grow(around, lap_edges, 2)
+        columns = np.nonzero(np.any(weights[around] > 0.0, axis=0))[0]
+        values, solved = inpaint(lap_edges, lap_weights, mass, unknown, weights[:, columns])
+        weights[unknown] = 0.0
+        weights[np.ix_(unknown, columns)] = values
 
     weights = np.clip(weights, 0.0, 1.0)
     filled = np.zeros(n, dtype=bool)
@@ -256,4 +312,4 @@ def transfer_weights(source, target, settings):
         smoothed = grow(filled, edges, SEAM_RINGS) if len(edges) else filled
     weights = smooth_weights(weights, edges, smoothed, settings.smooth)
     weights = limit_influences(weights, settings.limit_influences)
-    return weights, matched, filled
+    return weights, matched, filled, solved

@@ -350,7 +350,7 @@ class TestAddOutfit(BlenderTestCase):
         backup = add_outfit.PiecesBackup([self.top, self.belt])
         arm = self.model["armature"]
         add_outfit.bind_to_armature(self.top, arm)
-        add_outfit.transfer_weights(self.model["body"], arm, self.top, False)
+        add_outfit.transfer_weights(bpy.context, self.model["body"], arm, self.top, False)
         self.top.shape_key_add(name="Basis")
         self.top.data.vertices[0].co.x += 1.0
         button.shape_key_add(name="Basis")
@@ -886,6 +886,31 @@ class TestExportOutfits(BlenderTestCase):
         data = target.objects[0].data
         self.assertEqual(len(data.MustardUI_CustomPropertiesOutfit), 3)
         self.assertEqual(len(data.MustardUI_RigSettings.model_body.data.vertices), 0)
+
+    # With Delete Exported, the exported Outfits and Extras pieces are deleted from the model
+    def test_export_delete(self):
+        rig_settings = self.model["armature"].data.MustardUI_RigSettings
+        extras = self.model["extras"]
+        lens = new_mesh_object("Extras - Lens", extras, size=0.1)
+        lens.parent = bpy.data.objects["Extras - Glasses"]
+        new_mesh_object("Extras - Hat", extras, armature=self.model["armature"])
+        self.export("Tester Casual", "Tester Formal", extras=["Extras - Glasses"])
+        self.assertEqual(len(rig_settings.outfits_collections), 2)
+
+        self.export(
+            "Tester Casual", "Tester Formal", extras=["Extras - Glasses"], delete_outfits=True
+        )
+        with bpy.data.libraries.load(self.path) as (source, _):
+            self.assertIn("Casual - Shirt", source.objects)
+            self.assertIn("Extras - Lens", source.objects)
+        self.assertEqual(len(rig_settings.outfits_collections), 0)
+        self.assertNotIn("Tester Casual", bpy.data.collections)
+        self.assertNotIn("Casual - Shirt", bpy.data.objects)
+        self.assertNotIn("Extras - Glasses", bpy.data.objects)
+        self.assertNotIn("Extras - Lens", bpy.data.objects)
+        self.assertIn("Extras - Hat", bpy.data.objects)
+        self.assertEqual(rig_settings.extras_collection, extras)
+        self.assertEqual(len(self.model["armature"].data.MustardUI_CustomPropertiesOutfit), 0)
 
     # Images of the Outfits are packed in the file, not in the model
     def test_export_pack_images(self):

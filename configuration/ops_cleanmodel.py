@@ -14,6 +14,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from ..morphs.misc import isDazFcurve
+from ..outfits.ops_delete import delete_extras_pieces
 
 
 def remove_diffeomorphic_data_result(obj, attr):
@@ -581,62 +582,9 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 else rig_settings.extras_collection.objects
             )
             objs = [x for x in items if x.hide_viewport]
-
-            # Remove dangling Physics Items first
-            if self.remove_dangling_pi:
-                items_to_remove = []
-                for pi_id, item in enumerate(physics_settings.items):
-                    if (
-                        item.outfit_enable
-                        and item.outfit_collection == rig_settings.extras_collection
-                        and item.outfit_object in objs
-                        and item.object is not None
-                    ):
-                        items_to_remove.append(pi_id)
-                # The Physics Items Objects are deleted with the items
-                pi_objects = {physics_settings.items[i].object for i in items_to_remove}
-                objs = [x for x in objs if x not in pi_objects]
-                for pi_id in reversed(items_to_remove):
-                    arm.mustardui_physics_items_uilist_index = pi_id
-                    bpy.ops.mustardui.physics_item_delete()
-
-            # Clean Custom Properties
-            outfit_cp = arm.MustardUI_CustomPropertiesOutfit
-
-            # Firstly set the custom property to their default value
-            for i, cp in enumerate(outfit_cp):
-                if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
-                    mustardui_reassign_default(arm, outfit_cp, i, addon_prefs)
-
-            # Update everything
-            if rig_settings.model_armature_object:
-                rig_settings.model_armature_object.update_tag()
-            bpy.context.view_layer.update()
-
-            # And then delete data
-            if self.remove_dangling_cp:
-                to_remove = []
-                for i, cp in enumerate(outfit_cp):
-                    if cp.outfit == rig_settings.extras_collection and cp.outfit_piece in objs:
-                        mustardui_clean_prop(arm, outfit_cp, i, addon_prefs)
-                        to_remove.append(i)
-                for i in reversed(to_remove):
-                    outfit_cp.remove(i)
-
-            # Delete the Objects
-            remove_objects(objs)
-            extras_deleted = extras_deleted + len(objs)
-
-            # Delete the collection if now empty
-            items = (
-                rig_settings.extras_collection.all_objects
-                if rig_settings.extras_config_subcollections
-                else rig_settings.extras_collection.objects
+            extras_deleted += 1 + delete_extras_pieces(
+                context, arm, objs, self.remove_dangling_pi, self.remove_dangling_cp
             )
-            if len(items) < 1:
-                bpy.data.collections.remove(rig_settings.extras_collection)
-
-            extras_deleted = extras_deleted + 1
 
             if addon_prefs.debug:
                 print("  Extras deleted: " + str(extras_deleted))

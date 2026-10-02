@@ -2,12 +2,11 @@ import itertools
 import re
 import time
 import traceback
+from types import SimpleNamespace
 
 import bpy
-import numpy as np
 
-from ...misc.enum_items import keep_enum_strings
-from ...misc.mesh_deform import mesh_triangles, read_weights
+from ...misc.mesh_deform import read_weights, rest_geometry
 from ...misc.move_modifier import move_modifier
 from ...misc.ui_progress import status_progress
 from ...model_selection.active_object import (
@@ -15,11 +14,8 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ...model_toolkit.mesh.ops_transfer_shape_keys import (
-    mesh_rest_coordinates,
-    transfer_mapping,
-    transfer_shape_keys_steps,
-)
+from ...model_toolkit.mesh.ops_transfer_shape_keys import transfer_shape_keys_steps
+from ...model_toolkit.mesh.ops_transfer_vertex_groups import transfer_vertex_groups
 from ...model_toolkit.mesh.shape_key_preview import create_followers_shape_keys, write_shape_key
 from ...model_toolkit.model.ops_naming import rename_object
 from ...model_toolkit.outfits.ops_fit_to_body import (
@@ -28,9 +24,6 @@ from ...model_toolkit.outfits.ops_fit_to_body import (
     fit_to_body_apply_to_mesh,
 )
 from ..helper_functions import outfits_get_collections
-
-# Weights below this are not written
-WEIGHT_THRESHOLD = 0.0001
 
 
 class MustardUI_ModelToolkit_AddOutfit_Item(bpy.types.PropertyGroup):
@@ -150,17 +143,12 @@ def add_outfit_default_names(pieces):
     return names
 
 
-def outfit_items(self, context):
+def outfit_search(self, context, edit_text):
     arm, _, _ = add_outfit_model(context)
-    collections = []
-    if arm is not None:
-        collections = [
-            x.collection
-            for x in arm.MustardUI_RigSettings.outfits_collections
-            if x.collection is not None
-        ]
-    items = [(c.name, c.name, "") for c in collections]
-    return keep_enum_strings(items or [("NONE", "None", "No Outfit available")])
+    if arm is None:
+        return []
+    collections = arm.MustardUI_RigSettings.outfits_collections
+    return [x.collection.name for x in collections if x.collection is not None]
 
 
 def outfit_shape_keys(arm, arm_obj, body):
@@ -194,42 +182,29 @@ def outfit_shape_keys(arm, arm_obj, body):
     return names
 
 
-def transfer_weights(body, armature, target, overwrite):
-    """Transfer the deform bones weights from the body, returning the count"""
+def transfer_weights(context, body, armature, target, overwrite):
+    """Robust transfer of the deform bones weights from the body, returning the count"""
 
     bones = {b.name for b in armature.data.bones if b.use_deform}
     names = [vg.name for vg in body.vertex_groups if vg.name in bones]
     if not names or not len(target.data.vertices):
         return 0
 
-    body_weights = read_weights(body, names)
-    world = []
-    for obj in (body, target):
-        mat = np.array(obj.matrix_world, dtype=np.float64)
-        world.append(mesh_rest_coordinates(obj) @ mat[:3, :3].T + mat[:3, 3])
-    indices, bary = transfer_mapping(world[0], mesh_triangles(body.data), world[1], "SURFACE", 0.0)
-
     if overwrite:
         for vg in [vg for vg in target.vertex_groups if vg.name in bones]:
             target.vertex_groups.remove(vg)
+    written = [n for n in names if n not in target.vertex_groups]
+    if not written:
+        return 0
 
-    written = 0
-    for k in np.nonzero(body_weights[np.unique(indices)].any(axis=0))[0]:
-        name = names[k]
-        if name in target.vertex_groups:
-            continue
-
-        values = np.einsum("ij,ij->i", bary, body_weights[indices, k])
-        verts = np.nonzero(values > WEIGHT_THRESHOLD)[0]
-        if not len(verts):
-            continue
-
-        vg = target.vertex_groups.new(name=name)
-        for i in verts:
-            vg.add([int(i)], float(values[i]), "REPLACE")
-        written += 1
-
-    return written
+    # Default settings, not the ones changed in the Transfer Vertex Groups tool
+    props = bpy.ops.mustardui.model_toolkit_transfer_vertex_groups.get_rna_type().properties
+    settings = SimpleNamespace(**{p.identifier: getattr(p, "default", None) for p in props})
+    source = (*rest_geometry(context, [body], [], False)[0], read_weights(body, names))
+    result = transfer_vertex_groups(context, source, names, target, written, settings)
+    if result is not None and not result[2]:
+        print(f"MustardUI - Weights not filled on {target.name}, the closest ones are kept")
+    return sum(n in target.vertex_groups for n in written)
 
 
 def bind_to_armature(obj, armature):
@@ -450,6 +425,7 @@ class AddOutfitSettings:
         name="Outfit Name",
         description="Name of the new Outfit.\nThe model name is added if the model uses the "
         "MustardUI naming convention",
+        options={"SKIP_PRESET"},
     )
 
     split: bpy.props.BoolProperty(
@@ -458,7 +434,9 @@ class AddOutfitSettings:
         description="Create an Outfit for each collection of the selected Objects, named after it",
     )
 
-    outfit: bpy.props.EnumProperty(name="Outfit", items=outfit_items)
+    outfit: bpy.props.StringProperty(
+        name="Outfit", search=outfit_search, search_options=set(), options={"SKIP_PRESET"}
+    )
 
     rename: bpy.props.BoolProperty(
         name="Rename Objects",
@@ -733,11 +711,10 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
                 )
                 targets.append((coll_name, group))
         elif self.destination == "OUTFIT":
-            collection = bpy.data.collections.get(self.outfit)
-            if collection is None:
+            if self.outfit not in outfit_search(self, context, ""):
                 self.report({"ERROR"}, "MustardUI - Choose an Outfit")
                 return {"CANCELLED"}
-            targets.append((collection, pieces))
+            targets.append((bpy.data.collections[self.outfit], pieces))
         else:
             collection = rig_settings.extras_collection
             if collection is None:
@@ -856,8 +833,10 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         convention = rig_settings.model_MustardUI_naming_convention
 
-        # Progress units, roughly proportional to the time of each step
-        total = 0.2 * len(pieces) + (len(pieces) if keys else 0) + len(pieces) + 0.2
+        # Progress units, proportional to the time of each step on typical pieces
+        weights_unit = 0.7 if self.transfer_weights else 0.1
+        fit_unit = 4.0 if self.fit != "NONE" else 0.1
+        total = (weights_unit + (1 if keys else 0) + fit_unit) * len(pieces) + 0.4
         done = 0.0
 
         weights = 0
@@ -865,8 +844,8 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
             yield done / total, f"{names[piece.name]} - Weights"
             bind_to_armature(piece, arm_obj)
             if self.transfer_weights:
-                weights += transfer_weights(body, arm_obj, piece, self.overwrite_weights)
-            done += 0.2
+                weights += transfer_weights(context, body, arm_obj, piece, self.overwrite_weights)
+            done += weights_unit
 
         shape_keys = 0
         if keys:
@@ -904,7 +883,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         try:
             for piece in pieces:
                 yield done / total, f"{names[piece.name]} - Fit to Body"
-                done += 1
+                done += fit_unit
                 if self.fit == "NONE":
                     continue
                 solver = FitToBodySolver(piece, [body], key_name)

@@ -11,6 +11,26 @@ from .weight_transfer import MIN_WEIGHT, transfer_weights
 UNMATCHED_GROUP = "Transfer Unmatched"
 
 
+def transfer_vertex_groups(context, source, names, target, written, settings):
+    """Robust transfer writing only the written groups: matched, filled, solved, or None"""
+
+    geometry = rest_geometry(context, [target], [], False, faces_only=False)
+    if not geometry or not len(geometry[0][0]):
+        return None
+    co, tris = geometry[0]
+    edges = np.empty(len(target.data.edges) * 2, dtype=np.int64)
+    target.data.edges.foreach_get("vertices", edges)
+
+    weights, found, filled, solved = transfer_weights(
+        source, (co, tris, edges.reshape(-1, 2)), settings
+    )
+    write_weights(target, written, weights[:, [names.index(n) for n in written]], MIN_WEIGHT)
+    # The transferred groups without weights on the target are removed, not left empty
+    others = [vg.name for vg in target.vertex_groups if vg.name not in written]
+    clear_unused_vertex_groups(target, keep=others)
+    return found, filled, solved
+
+
 class MustardUI_ModelToolkit_TransferVertexGroups_Item(bpy.types.PropertyGroup):
     group_name: bpy.props.StringProperty(name="Vertex Group")
 
@@ -191,6 +211,13 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
         "the other vertices are filled smoothly",
     )
 
+    overwrite: bpy.props.BoolProperty(
+        name="Overwrite",
+        default=True,
+        description="Replace the listed Vertex Groups already on the targets.\n"
+        "If disabled, only the missing ones are added.\nLocked Vertex Groups are never replaced",
+    )
+
     both_sides: bpy.props.BoolProperty(
         name="Both Sides",
         default=False,
@@ -284,6 +311,8 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
         col = layout.column()
         col.use_property_split = True
         col.use_property_decorate = False
+        col.prop(self, "overwrite")
+        col.separator()
         col.prop(self, "max_distance")
         col.prop(self, "max_angle")
         col.prop(self, "both_sides")
@@ -320,43 +349,59 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
         if not geometry:
             self.report({"ERROR"}, "MustardUI - The Active Object has no faces")
             return {"CANCELLED"}
-        source_co, source_tris = geometry[0]
-        source_weights = read_weights(source, names)
+        source_data = (*geometry[0], read_weights(source, names))
 
         matched = 0
         total = 0
+        skipped = False
+        # Objects keeping the closest weights where they could not be filled
+        unsolved = []
         for target in targets:
             if target.type != "MESH":
                 continue
-            geometry = rest_geometry(context, [target], [], False, faces_only=False)
-            if not geometry or not len(geometry[0][0]):
-                continue
-            co, tris = geometry[0]
-            edges = np.empty(len(target.data.edges) * 2, dtype=np.int64)
-            target.data.edges.foreach_get("vertices", edges)
 
-            weights, found, filled = transfer_weights(
-                (source_co, source_tris, source_weights), (co, tris, edges.reshape(-1, 2)), self
-            )
-            write_weights(target, names, weights, MIN_WEIGHT)
-            # The transferred groups without weights on the target are removed, not left empty
-            others = [vg.name for vg in target.vertex_groups if vg.name not in names]
-            clear_unused_vertex_groups(target, keep=others)
+            vgs = target.vertex_groups
+            written = [
+                n for n in names if n not in vgs or (self.overwrite and not vgs[n].lock_weight)
+            ]
+
+            if not written:
+                skipped = True
+                continue
+
+            result = transfer_vertex_groups(context, source_data, names, target, written, self)
+            if result is None:
+                continue
+
+            found, filled, solved = result
+            if not solved:
+                unsolved.append(target.name)
             if self.mark_unmatched:
                 write_weights(target, [UNMATCHED_GROUP], filled.astype(np.float64)[:, None])
             elif UNMATCHED_GROUP in target.vertex_groups:
                 # The group of a previous transfer would be outdated
                 target.vertex_groups.remove(target.vertex_groups[UNMATCHED_GROUP])
+
             matched += int(np.count_nonzero(found))
             total += len(found)
+
+        if not total and skipped:
+            self.report(
+                {"WARNING"},
+                "MustardUI - The Vertex Groups are already on the targets or locked",
+            )
+            return {"CANCELLED"}
 
         if not total:
             self.report({"ERROR"}, "MustardUI - The selected Objects have no vertices")
             return {"CANCELLED"}
-        self.report(
-            {"INFO"},
-            f"MustardUI - Vertex Groups transferred ({matched}/{total} vertices matched)",
-        )
+
+        message = f"MustardUI - Vertex Groups transferred ({matched}/{total} vertices matched)"
+        if unsolved:
+            print("MustardUI - Weights not filled, closest ones kept:\n  " + "\n  ".join(unsolved))
+            message += f", closest weights kept on {len(unsolved)} Objects (listed in the console)"
+
+        self.report({"WARNING"} if unsolved else {"INFO"}, message)
         return {"FINISHED"}
 
     def invoke(self, context, event):

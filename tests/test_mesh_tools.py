@@ -273,6 +273,27 @@ class TestTransferVertexGroups(BlenderTestCase):
         weights = mesh_deform.read_weights(self.target, ["Foo", "Baz"])
         return weights, np.array([v.co for v in self.target.data.vertices])
 
+    # Existing groups are kept without Overwrite, locked ones also with it
+    def test_overwrite(self):
+        foo = self.target.vertex_groups.new(name="Foo")
+        foo.add([0], 0.3, "REPLACE")
+        weights, co = self.transfer(overwrite=False)
+        np.testing.assert_allclose(weights[:, 0], [0.3] + [0.0] * (len(weights) - 1))
+        self.assertTrue(np.all(weights[1:, 1] > 0.0))
+        result = bpy.ops.mustardui.model_toolkit_transfer_vertex_groups(overwrite=False)
+        self.assertEqual(result, {"CANCELLED"})
+
+        foo.lock_weight = True
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups(overwrite=True)
+        np.testing.assert_allclose(
+            mesh_deform.read_weights(self.target, ["Foo"])[:, 0], weights[:, 0]
+        )
+
+        foo.lock_weight = False
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups(overwrite=True)
+        weights = mesh_deform.read_weights(self.target, ["Foo"])[:, 0]
+        np.testing.assert_allclose(weights, (co[:, 0] + 1.0) / 2.0, atol=1e-4)
+
     # The vertices far from the source are filled smoothly from the matched ones
     def test_fill(self):
         for v in self.target.data.vertices:
@@ -290,6 +311,17 @@ class TestTransferVertexGroups(BlenderTestCase):
         self.assertLess(np.abs(np.diff(rows[:, 4:6], axis=1)).max(), 0.1)
         self.assertLessEqual(weights[lifted, 0].max(), 0.75)
         np.testing.assert_allclose(weights.sum(axis=1), 1.0, atol=1e-3)
+
+    # Regions too large to fill keep the closest weights
+    def test_fill_too_large(self):
+        for v in self.target.data.vertices:
+            if v.co.x > 0.1:
+                v.co.z += 0.05
+        limit = weight_transfer.MAX_FACTOR_ENTRIES
+        self.addCleanup(setattr, weight_transfer, "MAX_FACTOR_ENTRIES", limit)
+        weight_transfer.MAX_FACTOR_ENTRIES = 0
+        weights, co = self.transfer()
+        np.testing.assert_allclose(weights[:, 0], (co[:, 0] + 1.0) / 2.0, atol=1e-4)
 
     # The groups without weights on the target are not left empty
     def test_empty_groups(self):
