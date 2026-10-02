@@ -389,6 +389,12 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
 
     fit: fit_property("NONE")
 
+    transfer_shape_keys: bpy.props.BoolProperty(
+        name="Transfer Shape Keys",
+        default=False,
+        description="Transfer the Shape Keys from the body",
+    )
+
     import_custom_properties: bpy.props.BoolProperty(
         name="Import Custom Properties",
         default=True,
