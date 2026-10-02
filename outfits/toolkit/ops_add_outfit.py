@@ -833,10 +833,11 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         convention = rig_settings.model_MustardUI_naming_convention
 
-        # Progress units, proportional to the time of each step on typical pieces
-        weights_unit = 0.7 if self.transfer_weights else 0.1
-        fit_unit = 4.0 if self.fit != "NONE" else 0.1
-        total = (weights_unit + (1 if keys else 0) + fit_unit) * len(pieces) + 0.4
+        # Progress units, about the seconds of each step on a typical piece
+        weights_unit = 0.9 if self.transfer_weights else 0.05
+        keys_unit = 0.35 if keys else 0.0
+        fit_unit = 5.0 if self.fit != "NONE" else 0.05
+        total = (weights_unit + keys_unit + fit_unit) * len(pieces) + 0.5
         done = 0.0
 
         weights = 0
@@ -865,8 +866,8 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
                 except StopIteration as stop:
                     shape_keys = stop.value
                     break
-                yield (done + fraction * len(pieces)) / total, "Shape Keys"
-            done += len(pieces)
+                yield (done + fraction * keys_unit * len(pieces)) / total, "Shape Keys"
+            done += keys_unit * len(pieces)
 
         # Fit after the Shape Keys, as the body is fitted with its current Shape Keys
         fitted = 0

@@ -62,15 +62,15 @@ def mesh_rest_coordinates(obj):
     # Read as float32, the fast path of foreach_get
     co = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
     if mesh.shape_keys is not None:
-        mesh.shape_keys.reference_key.data.foreach_get("co", co)
+        mesh.shape_keys.reference_key.points.foreach_get("co", co)
     else:
         mesh.vertices.foreach_get("co", co)
     return co.reshape(-1, 3).astype(np.float64)
 
 
 def shape_key_coordinates(sk):
-    co = np.empty(len(sk.data) * 3, dtype=np.float32)
-    sk.data.foreach_get("co", co)
+    co = np.empty(len(sk.points) * 3, dtype=np.float32)
+    sk.points.foreach_get("co", co)
     return co.reshape(-1, 3).astype(np.float64)
 
 
@@ -157,6 +157,12 @@ def transfer_shape_keys_steps(
 
         mappings.append((target, target_basis, to_local, indices, weights, edges, length, mask))
 
+    if not mappings:
+        return 0
+    # Only the source vertices closest to the targets are needed
+    used = np.unique(np.concatenate([indices.ravel() for _, _, _, indices, *_ in mappings]))
+    source_delta = np.zeros_like(source_basis)
+
     created = 0
     for index, sk in enumerate(keys):
         yield index / len(keys)
@@ -165,7 +171,11 @@ def transfer_shape_keys_steps(
             relative_co = source_basis
         else:
             relative_co = shape_key_coordinates(relative)
-        source_delta = (shape_key_coordinates(sk) - relative_co) @ source_mat[:3, :3].T
+        delta_used = (shape_key_coordinates(sk)[used] - relative_co[used]) @ source_mat[:3, :3].T
+        # The targets move at most as much as the source vertices they use
+        if not overwrite and np.abs(delta_used).max() < threshold:
+            continue
+        source_delta[used] = delta_used
 
         for target, target_basis, to_local, indices, weights, edges, length, mask in mappings:
             mesh = target.data
@@ -185,7 +195,7 @@ def transfer_shape_keys_steps(
                 # The overwritten key would keep a stale deformation
                 if existing is not None:
                     existing.relative_key = mesh.shape_keys.reference_key
-                    existing.data.foreach_set("co", target_basis.ravel())
+                    existing.points.foreach_set("co", target_basis.astype(np.float32).ravel())
                 continue
             delta = delta @ to_local
 
@@ -195,7 +205,7 @@ def transfer_shape_keys_steps(
             if new_sk is None:
                 new_sk = target.shape_key_add(name=sk.name, from_mix=False)
             new_sk.relative_key = mesh.shape_keys.reference_key
-            new_sk.data.foreach_set("co", (target_basis + delta).ravel())
+            new_sk.points.foreach_set("co", (target_basis + delta).astype(np.float32).ravel())
             new_sk.slider_min = sk.slider_min
             new_sk.slider_max = sk.slider_max
             new_sk.interpolation = sk.interpolation

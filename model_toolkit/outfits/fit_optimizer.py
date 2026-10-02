@@ -6,7 +6,6 @@ from mathutils.bvhtree import BVHTree
 
 from ...misc.mesh_deform import (
     NeighbourAverage,
-    mesh_laplacian,
     mesh_vertex_normals,
     triangle_barycentric,
 )
@@ -292,7 +291,6 @@ class FitOptimizer:
         """Energy of the outfit coordinates and its gradient, with the pairs of the terms"""
 
         target = self.target
-        n = target.n_verts
         grad = np.zeros_like(co)
         energy = 0.0
 
@@ -361,8 +359,8 @@ class FitOptimizer:
         # Smooth displacement, keeping the details of the outfit
         edges = target.edges
         disp = co - target.co
-        lap = mesh_laplacian(disp, edges, n) - disp
-        back = self.degree[:, None] * mesh_laplacian(lap / self.degree[:, None], edges, n)
+        lap = self.average(disp) - disp
+        back = self.degree[:, None] * self.average(lap / self.degree[:, None])
         energy += stiffness * np.einsum("ij,ij->", lap, lap)
         grad += 2.0 * stiffness * (back - lap)
 

@@ -34,19 +34,6 @@ def mesh_vertex_normals(co, tris):
     return normals
 
 
-def mesh_laplacian(values, edges, n_verts):
-    """Average of the neighbours values for each vertex"""
-
-    count = np.bincount(edges.ravel(), minlength=n_verts).astype(np.float64)
-    count[count == 0] = 1.0
-    avg = np.empty_like(values)
-    for i in range(values.shape[1]):
-        acc = np.bincount(edges[:, 0], weights=values[edges[:, 1], i], minlength=n_verts)
-        acc += np.bincount(edges[:, 1], weights=values[edges[:, 0], i], minlength=n_verts)
-        avg[:, i] = acc / count
-    return avg
-
-
 class NeighbourAverage:
     """Average of the neighbours values of each vertex"""
 
@@ -58,13 +45,18 @@ class NeighbourAverage:
         self.connected = self.counts > 0
         # Vertices without neighbours have no range to sum, and would end past the last one
         self.starts = (np.cumsum(self.counts) - self.counts)[self.connected]
+        self.inverse = 1.0 / self.counts[self.connected, None]
 
     def __call__(self, values):
-        average = values.copy()
-        if len(self.neighbours):
-            sums = np.add.reduceat(values[self.neighbours], self.starts, axis=0)
-            average[self.connected] = sums / self.counts[self.connected, None]
-        return average
+        if not len(self.neighbours):
+            return values.copy()
+        average = np.add.reduceat(values[self.neighbours], self.starts, axis=0) * self.inverse
+        if len(average) == len(values):
+            return average
+        # Vertices without neighbours keep their values
+        full = values.copy()
+        full[self.connected] = average
+        return full
 
 
 def smooth_deformation(delta, edges, length, distance, area=None):
@@ -87,17 +79,19 @@ def smooth_deformation(delta, edges, length, distance, area=None):
             break
         region[grow] = True
     indices = np.nonzero(region)[0]
-    free = np.ones(len(indices), dtype=bool) if area is None else area[indices]
+    # A slice, unlike a mask, does not copy the values
+    free = slice(None) if area is None else area[indices]
     remap = np.full(len(region), -1, dtype=np.int64)
     remap[indices] = np.arange(len(indices))
     sub_edges = remap[edges[region[edges[:, 0]] & region[edges[:, 1]]]]
 
     # Smoothing and the opposite step, removing the details but keeping the size of the
     # deformation. A larger opposite step (Taubin) enlarges it after many iterations
+    average = NeighbourAverage(sub_edges, len(indices))
     sub = delta[indices].copy()
     for _ in range(min(iterations, 2000)):
-        sub[free] += 0.5 * (mesh_laplacian(sub, sub_edges, len(sub)) - sub)[free]
-        sub[free] -= 0.5 * (mesh_laplacian(sub, sub_edges, len(sub)) - sub)[free]
+        sub[free] += 0.5 * (average(sub) - sub)[free]
+        sub[free] -= 0.5 * (average(sub) - sub)[free]
     smoothed = delta.copy()
     smoothed[indices] = sub
     return smoothed
@@ -488,8 +482,9 @@ class DeformTarget:
         sub = disp[indices]
         sub_contact = remap[contact]
 
+        average = NeighbourAverage(sub_edges, len(indices))
         for _ in range(iterations):
-            sub = 0.5 * sub + 0.5 * mesh_laplacian(sub, sub_edges, len(indices))
+            sub = 0.5 * sub + 0.5 * average(sub)
             pushed = np.einsum("ij,ij->i", sub[sub_contact], directions)
             missing = np.maximum(required - pushed, 0.0)
             sub[sub_contact] += directions * missing[:, None]
