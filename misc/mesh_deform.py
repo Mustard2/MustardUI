@@ -169,7 +169,8 @@ def write_weights(obj, names, weights, min_weight=0.0):
         vg = obj.vertex_groups.get(name)
         if vg is None:
             vg = obj.vertex_groups.new(name=name)
-        vg.remove(everything)
+        else:
+            vg.remove(everything)
         for i in np.nonzero((weights[:, k] > 0.0) & (weights[:, k] >= min_weight))[0]:
             vg.add([int(i)], float(weights[i, k]), "REPLACE")
         groups.append(vg)
