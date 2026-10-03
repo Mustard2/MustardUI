@@ -100,23 +100,24 @@ class MustardUI_PresetImport(bpy.types.Operator, ImportHelper):
             with open(self.filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            # Check the preset version
-            if not check_preset_version(data):
-                self.report(
-                    {"ERROR"},
-                    "MustardUI - This Preset is not compatible with this MustardUI version",
-                )
-                return {"CANCELLED"}
-
-            # Check the preset type
-            definition = get_preset_definition(self.preset_type)
-            err, msg = check_preset_type(self.preset_type, data, definition.get("name"))
-            if err != "":
-                self.report({err}, msg)
-                return {"CANCELLED"}
-
+            # A file can hold one preset or a list of them
             if isinstance(data, dict):
                 data = [data]
+
+            # Check the version and type of every preset before adding any
+            definition = get_preset_definition(self.preset_type)
+            for preset_json in data:
+                if not check_preset_version(preset_json):
+                    self.report(
+                        {"ERROR"},
+                        "MustardUI - This Preset is not compatible with this MustardUI version",
+                    )
+                    return {"CANCELLED"}
+
+                err, msg = check_preset_type(self.preset_type, preset_json, definition.get("name"))
+                if err != "":
+                    self.report({err}, msg)
+                    return {"CANCELLED"}
 
             for i, preset_json in enumerate(data):
                 new_name = get_unique_preset_name(presets, preset_json.get("name", f"Preset_{i}"))
