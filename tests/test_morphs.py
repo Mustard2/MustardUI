@@ -43,6 +43,21 @@ class TestMorphs(BlenderTestCase):
         bpy.ops.mustardui.morphs_check()
         self.assertIn("Blink Strength", self.morph_paths())
 
+    # Empty entries match nothing, while spaces are part of the search strings
+    def test_check_search_strings(self):
+        section = self.morphs_settings.sections[0]
+        for string, expected in (
+            ("", set()),
+            ("Blink,", {"Blink", "Blink.L", "Blink.R"}),
+            ("Smile,,Blink.L", {"Smile", "Blink.L"}),
+            ("Smile, Blink", {"Smile"}),
+        ):
+            with self.subTest(string):
+                section.string = string
+                section.morphs.clear()
+                bpy.ops.mustardui.morphs_check()
+                self.assertEqual(self.morph_paths(), expected)
+
     # Mute drivers are added by Check Morphs and removed by Clear
     def test_mute_drivers(self):
         bpy.ops.mustardui.morphs_check(add_shape_key_mute_driver=True)

@@ -440,7 +440,7 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             custom_properties_source = section.custom_properties_source
             string = section.string
 
-            strings = string.split(",")
+            strings = [s for s in string.split(",") if s]
 
             if custom_properties:
                 cp_source = get_cp_source(custom_properties_source, rig_settings)
