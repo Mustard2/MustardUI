@@ -495,7 +495,7 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
             obj.select_set(obj in initial_selection)
 
         bpy.ops.object.data_transfer(
-            "INVOKE_DEFAULT",
+            "EXEC_DEFAULT",
             use_freeze=False,
             data_type="VGROUP_WEIGHTS",
             use_create=True,
