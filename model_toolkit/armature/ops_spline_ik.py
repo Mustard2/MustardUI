@@ -9,6 +9,21 @@ IKSpline_Bone_Name = "MustardUI.IKSpline.Bone"
 IKSpline_Hook_Modifier_Name = "MustardUI.IKSpline.Hook"
 IKSpline_Empty_Name = "MustardUI.IKSpline.Empty"
 IKSpline_Constraint_Name = "MustardUI.IKSpline"
+IKSpline_Settings_Prop = "_MustardUI.IKSpline.Settings"
+
+
+def selected_chain(bones):
+    """Bones ordered from root to tip, or None if they are not a single parent chain"""
+    names = {x.name for x in bones}
+    tips = [x for x in bones if not any(c.name in names for c in x.children)]
+    if len(tips) != 1:
+        return None
+    chain = []
+    bone = tips[0]
+    while bone is not None and bone.name in names:
+        chain.append(bone)
+        bone = bone.parent
+    return chain[::-1] if len(chain) == len(bones) else None
 
 
 class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
@@ -74,7 +89,13 @@ class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
 
         # Definitions
         arm = bpy.context.object
-        chain_bones = bpy.context.selected_pose_bones
+        chain_bones = selected_chain(bpy.context.selected_pose_bones)
+        if chain_bones is None:
+            self.report(
+                {"ERROR"},
+                "MustardUI - Select a single chain of bones, each one the parent of the next.",
+            )
+            return {"CANCELLED"}
         chain_length = len(chain_bones)
         chain_last_bone = chain_bones[chain_length - 1]
         # Rest positions, since the rig might be posed
@@ -88,6 +109,11 @@ class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
                 "number of requested spline bones.",
             )
             return {"FINISHED"}
+
+        chain_last_bone[IKSpline_Settings_Prop] = {
+            "display_type": arm.data.display_type,
+            "bbone_segments": {x.name: x.bone.bbone_segments for x in chain_bones},
+        }
 
         if addon_prefs.debug:
             print("MustardUI IK Spline - Armature selected: " + bpy.context.object.name)
@@ -313,9 +339,21 @@ class MustardUI_ModelToolkit_IKSpline_Clean(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="EDIT", toggle=False)
 
         if self.reset_bendy:
-            for bone in chain_bones:
-                arm.data.edit_bones[bone.name].bbone_segments = 1
-            arm.data.display_type = "OCTAHEDRAL"
+            stored = [
+                x[IKSpline_Settings_Prop].to_dict()
+                for x in chain_bones
+                if IKSpline_Settings_Prop in x
+            ]
+            for settings in stored:
+                for name, segments in settings["bbone_segments"].items():
+                    edit_bone = arm.data.edit_bones.get(name)
+                    if edit_bone is not None:
+                        edit_bone.bbone_segments = segments
+                arm.data.display_type = settings["display_type"]
+            if not stored:
+                for bone in chain_bones:
+                    arm.data.edit_bones[bone.name].bbone_segments = 1
+                arm.data.display_type = "OCTAHEDRAL"
             if addon_prefs.debug:
                 print("MustardUI IK Spline - Bendy bones reset")
 
@@ -384,6 +422,8 @@ class MustardUI_ModelToolkit_IKSpline_Clean(bpy.types.Operator):
 
                 IKConstr_name = constraint.name
                 bone.constraints.remove(constraint)
+                if IKSpline_Settings_Prop in bone:
+                    del bone[IKSpline_Settings_Prop]
                 removed_constr = removed_constr + 1
                 if addon_prefs.debug:
                     print(
