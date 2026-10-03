@@ -42,8 +42,9 @@ class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
         col = box.column()
         col.enabled = rig_settings.model_version_date_enable
         col.prop(rig_settings, "model_version_date_format", text="Format")
-        row = box.row(align=True)
+        row = col.row(align=True)
         row.prop(rig_settings, "model_version_date_vector", text="Date", expand=True)
+        row.operator("mustardui.version_date_today", text="", icon="TIME")
 
         box.separator()
 

@@ -182,10 +182,9 @@ class MustardUI_Configuration(bpy.types.Operator):
                     if vec[0] == 0 and vec[1] == 0 and vec[2] == 0:
                         dt = datetime.today()
                     else:
-                        # Vector is (Year, Month, Day)
-                        # Converting depending on the date format used
+                        # Vector is (Month, Day, Year) for MDY formats, (Day, Month, Year) otherwise
                         if rig_settings.model_version_date_format in ["MDY", "MDY2"]:
-                            dt = datetime(vec[1], vec[2], vec[0])
+                            dt = datetime(vec[2], vec[0], vec[1])
                         else:
                             dt = datetime(vec[2], vec[1], vec[0])
                 except ValueError:

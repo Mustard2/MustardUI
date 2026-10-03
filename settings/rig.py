@@ -1058,7 +1058,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     model_version_date_vector: bpy.props.IntVectorProperty(
         name="Date",
         size=3,
-        min=1,
+        min=0,
         max=3000,
         default=(0, 0, 0),
         description="Date of the version: (Day, Month, Year) if "

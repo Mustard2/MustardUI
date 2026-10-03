@@ -1,4 +1,5 @@
 import importlib
+from datetime import datetime
 
 import bpy
 from helpers import (
@@ -47,6 +48,40 @@ class TestConfiguration(BlenderTestCase):
         self.assertTrue(arm.MustardUI_created)
         bpy.ops.mustardui.configuration()
         self.assertTrue(arm.MustardUI_enable)
+
+    # The version date follows the date vector in every format, and 0,0,0 means today
+    def test_version_date(self):
+        model = build_model()
+        rig_settings = configure_model(model)
+        rig_settings.model_version_date_enable = True
+        cases = [
+            ("DMY", (13, 4, 2023), "13/04/2023"),
+            ("MDY2", (4, 13, 2023), "04/13/2023"),
+            ("MDY", (4, 13, 2023), "April 13, 2023"),
+            ("DMY", (0, 0, 0), datetime.today().strftime("%d/%m/%Y")),
+        ]
+        for date_format, vector, expected in cases:
+            with self.subTest(date_format=date_format, vector=vector):
+                bpy.ops.mustardui.configuration()
+                rig_settings.model_version_date_format = date_format
+                rig_settings.model_version_date_vector = vector
+                bpy.ops.mustardui.configuration()
+                self.assertEqual(rig_settings.model_version_date, expected)
+
+    # The Today button fills the date vector in the order of the chosen format
+    def test_version_date_today(self):
+        model = build_model()
+        rig_settings = configure_model(model)
+        bpy.ops.mustardui.configuration()
+        today = datetime.today()
+        for date_format, expected in [
+            ("DMY", (today.day, today.month, today.year)),
+            ("MDY2", (today.month, today.day, today.year)),
+        ]:
+            with self.subTest(date_format=date_format):
+                rig_settings.model_version_date_format = date_format
+                bpy.ops.mustardui.version_date_today()
+                self.assertEqual(tuple(rig_settings.model_version_date_vector), expected)
 
     # Adding the same outfit collection twice is rejected
     def test_add_outfit_twice_is_rejected(self):
