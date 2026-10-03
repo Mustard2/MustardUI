@@ -96,7 +96,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
                 switched_warning = False
                 for check_prop in custom_props:
-                    for i in range(0, len(check_prop.linked_properties)):
+                    for i in reversed(range(len(check_prop.linked_properties))):
                         if (
                             check_prop.linked_properties[i].rna == rna
                             and check_prop.linked_properties[i].path == path
