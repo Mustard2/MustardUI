@@ -271,6 +271,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.typ
             "mustardui.model_toolkit_optimize_shape_keys", icon="LOOP_BACK", text=""
         ).revert = True
 
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.model_toolkit_convert_images",
+            icon="IMAGE_DATA",
+        )
+
         layout.separator()
 
         row = layout.row(align=True)

@@ -1,4 +1,5 @@
 from . import (
+    ops_convert_images,
     ops_optimize_mods,
     ops_optimize_shaders,
     ops_optimize_sk,
@@ -11,9 +12,11 @@ def register():
     ops_optimize_shaders.register()
     ops_select_preview_texture.register()
     ops_optimize_sk.register()
+    ops_convert_images.register()
 
 
 def unregister():
+    ops_convert_images.unregister()
     ops_optimize_sk.unregister()
     ops_select_preview_texture.unregister()
     ops_optimize_shaders.unregister()
