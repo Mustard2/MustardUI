@@ -77,6 +77,9 @@ class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
         chain_bones = bpy.context.selected_pose_bones
         chain_length = len(chain_bones)
         chain_last_bone = chain_bones[chain_length - 1]
+        # Rest positions, since the rig might be posed
+        heads = [x.bone.head_local.copy() for x in chain_bones]
+        tails = [x.bone.tail_local.copy() for x in chain_bones]
 
         if self.ik_spline_number > len(chain_bones) - 1:
             self.report(
@@ -108,13 +111,9 @@ class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
         b_name = []
 
         for i in range(0, num - 1):
+            k = int(chain_length / (num - 1) * i)
             # Create the point to insert in the curve, at the head of the bone
-            (x, y, z) = (
-                chain_bones[int(chain_length / (num - 1) * i)].head.x,
-                chain_bones[int(chain_length / (num - 1) * i)].head.y,
-                chain_bones[int(chain_length / (num - 1) * i)].head.z,
-            )
-            polyline.bezier_points[i].co = (x, y, z)
+            polyline.bezier_points[i].co = heads[k]
             # Use AUTO to generate handles (should be changed later to ALIGNED to
             # enable rotations)
             polyline.bezier_points[i].handle_right_type = "AUTO"
@@ -123,42 +122,25 @@ class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
             # Create the controller bone
             b = arm.data.edit_bones.new(IKSpline_Bone_Name)
             b.use_deform = False
-            b.head = chain_bones[int(chain_length / (num - 1) * i)].head
-            b.tail = chain_bones[int(chain_length / (num - 1) * i)].tail
+            b.head = heads[k]
+            b.tail = tails[k]
 
             # Save the name, as changing context will erase the bone data
             b_name.append(b.name)
 
         # The same as above, but for the last bone
         i += 1
-        (x, y, z) = (
-            chain_bones[chain_length - 1].head.x,
-            chain_bones[chain_length - 1].head.y,
-            chain_bones[chain_length - 1].head.z,
-        )
-        (x2, y2, z2) = (
-            chain_bones[chain_length - 2].head.x,
-            chain_bones[chain_length - 2].head.y,
-            chain_bones[chain_length - 2].head.z,
-        )
-        polyline.bezier_points[i].co = (x, y, z)
-        polyline.bezier_points[i].handle_right = (
-            x + (x - x2) / 2,
-            y + (y - y2) / 2,
-            z + (z - z2) / 2,
-        )
-        polyline.bezier_points[i].handle_left = (
-            x2 + (x - x2) / 2,
-            y2 + (y - y2) / 2,
-            z2 + (z - z2) / 2,
-        )
+        head, head_prev = heads[-1], heads[-2]
+        polyline.bezier_points[i].co = head
+        polyline.bezier_points[i].handle_right = head + (head - head_prev) / 2
+        polyline.bezier_points[i].handle_left = head_prev + (head - head_prev) / 2
         polyline.bezier_points[i].handle_right_type = "ALIGNED"
         polyline.bezier_points[i].handle_left_type = "ALIGNED"
 
         b = arm.data.edit_bones.new(IKSpline_Bone_Name)
         b.use_deform = False
-        b.head = chain_bones[chain_length - 1].head
-        b.tail = chain_bones[chain_length - 1].tail
+        b.head = heads[-1]
+        b.tail = tails[-1]
         b_name.append(b.name)
 
         # Enable bendy bones if the option has been selected
