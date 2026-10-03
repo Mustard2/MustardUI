@@ -87,6 +87,8 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
         if self.is_config:
             uilist = rig_settings.outfits_collections
             index = context.scene.mustardui_outfits_uilist_index
+            if not 0 <= index < len(uilist):
+                return {"FINISHED"}
 
             col = uilist[index].collection
         else:

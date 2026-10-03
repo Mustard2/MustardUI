@@ -120,14 +120,15 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
                 "mustardui.rename_outfit", text="", icon="GREASEPENCIL"
             ).right_click_call = False
 
-            col2 = col.column(align=True)
-            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
+            index = scene.mustardui_outfits_uilist_index
+            outfits = rig_settings.outfits_collections
+            outfit = outfits[index] if 0 <= index < len(outfits) else None
 
-            outfit_collection = rig_settings.outfits_collections[
-                scene.mustardui_outfits_uilist_index
-            ].collection
-            if outfit_collection is not None:
-                op.single_outfit = outfit_collection.name
+            col2 = col.column(align=True)
+            col2.enabled = outfit is not None
+            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
+            if outfit is not None and outfit.collection is not None:
+                op.single_outfit = outfit.collection.name
             else:
                 op.single_outfit = ""
 
@@ -142,24 +143,23 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             op.is_config = True
             op.delete_cp = True
 
-            outfit = rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index]
+            if outfit is not None:
+                if rig_settings.hair_collection is not None:
+                    box.prop(outfit, "hair")
 
-            if rig_settings.hair_collection is not None:
-                box.prop(outfit, "hair")
-
-            if rig_settings.outfits_list_mode == "THUMBNAILS":
-                box2 = box.box()
-                row = box2.row()
-                row.template_ID(outfit, "preview", open="image.open", text="Thumbnail")
-                if outfit.collection is not None:
-                    row.operator(
-                        "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
-                    ).outfit = outfit.collection.name
-                if outfit.preview is not None:
-                    box2.template_icon(
-                        icon_value=outfit.preview.preview_ensure().icon_id,
-                        scale=rig_settings.outfits_list_previews_scale,
-                    )
+                if rig_settings.outfits_list_mode == "THUMBNAILS":
+                    box2 = box.box()
+                    row = box2.row()
+                    row.template_ID(outfit, "preview", open="image.open", text="Thumbnail")
+                    if outfit.collection is not None:
+                        row.operator(
+                            "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
+                        ).outfit = outfit.collection.name
+                    if outfit.preview is not None:
+                        box2.template_icon(
+                            icon_value=outfit.preview.preview_ensure().icon_id,
+                            scale=rig_settings.outfits_list_previews_scale,
+                        )
 
             # Custom properties
             box = layout.box()

@@ -20,7 +20,8 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
             return False
 
         res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return len(obj.MustardUI_RigSettings.body_custom_properties_sections) > 0
+        sections = obj.MustardUI_RigSettings.body_custom_properties_sections
+        return 0 <= context.scene.mustardui_section_uilist_index < len(sections)
 
     def execute(self, context):
 

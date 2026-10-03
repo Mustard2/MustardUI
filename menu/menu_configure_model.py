@@ -66,11 +66,10 @@ class PANEL_PT_MustardUI_InitPanel_Model(MainPanel, bpy.types.Panel):
         opdown = col2.operator("mustardui.section_switch", icon="TRIA_DOWN", text="")
         opdown.direction = "DOWN"
 
-        if (
-            scene.mustardui_section_uilist_index > -1
-            and len(rig_settings.body_custom_properties_sections) > 0
-        ):
-            sec = rig_settings.body_custom_properties_sections[scene.mustardui_section_uilist_index]
+        index = scene.mustardui_section_uilist_index
+        sections = rig_settings.body_custom_properties_sections
+        if 0 <= index < len(sections):
+            sec = sections[index]
 
             row = box.row()
             row.label(text="Icon")
@@ -92,7 +91,7 @@ class PANEL_PT_MustardUI_InitPanel_Model(MainPanel, bpy.types.Panel):
 
             col = box.column(align=True)
             row = col.row()
-            row.enabled = scene.mustardui_section_uilist_index != 0
+            row.enabled = index != 0
             row.prop(sec, "is_subsection")
 
             col = box.column(align=True)

@@ -42,6 +42,8 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
         box.label(text="Physics Items", icon="MODIFIER")
 
         index = arm.mustardui_physics_items_uilist_index
+        items = physics_settings.items
+        pi = items[index] if 0 <= index < len(items) else None
 
         if len(physics_settings.items):
             row = box.row()
@@ -63,9 +65,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             col.operator("mustardui.physics_item_remove", text="", icon="X")
             col.operator("mustardui.physics_item_delete", text="", icon="TRASH")
 
-            if index > -1:
-                pi = physics_settings.items[index]
-
+            if pi is not None:
                 col = box.column()
                 row = col.row()
                 row.prop(pi, "type")
@@ -94,17 +94,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             ).unique = False
         row.operator("mustardui.physics_outfits_setup_clear", icon="X", text="")
 
-        if (
-            len(physics_settings.items)
-            and settings.advanced
-            and index > -1
-            and len(
-                physics_settings.items[
-                    arm.mustardui_physics_items_uilist_index
-                ].intersecting_objects
-            )
-            > 0
-        ):
+        if pi is not None and settings.advanced and len(pi.intersecting_objects) > 0:
             box = layout.box()
             box.label(text="Outfits Affected by Physics Item", icon="XRAY")
 
@@ -112,7 +102,7 @@ class PANEL_PT_MustardUI_InitPanel_Physics(MainPanel, bpy.types.Panel):
             row.template_list(
                 "MUSTARDUI_UL_PhysicsItems_Outfits_UIList",
                 "The_List",
-                physics_settings.items[arm.mustardui_physics_items_uilist_index],
+                pi,
                 "intersecting_objects",
                 arm,
                 "mustardui_physics_items_outfits_uilist_index",

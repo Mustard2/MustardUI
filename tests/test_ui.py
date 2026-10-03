@@ -1,6 +1,13 @@
 import bpy
 from fake_ui import draw_all
-from helpers import ADDON, BlenderTestCase, build_model, configure_model, set_active
+from helpers import (
+    ADDON,
+    BlenderTestCase,
+    build_model,
+    configure_model,
+    new_mesh_object,
+    set_active,
+)
 
 
 class TestUI(BlenderTestCase):
@@ -68,3 +75,33 @@ class TestUI(BlenderTestCase):
         settings.viewport_model_selection = False
         settings.panel_model_selection_armature = model["armature"].data
         self.assertDrawsCleanly("PANEL_PT_MustardUI_Outfits")
+
+    # Configuration panels draw with list indices past the end, as left by another model
+    def test_draw_configuration_stale_indices(self):
+        model = build_model()
+        arm = model["armature"].data
+        configure_model(model)
+        bpy.ops.mustardui.configuration()
+        arm.MustardUI_MorphsSettings.enable_ui = True
+        bpy.ops.mustardui.morphs_section_add()
+        arm.MustardUI_PhysicsSettings.enable_ui = True
+        set_active(new_mesh_object("Cage", armature=model["armature"]))
+        bpy.ops.mustardui.physics_add_item()
+        set_active(model["armature"])
+        bpy.ops.mustardui.section_add()
+        prefs = bpy.context.preferences.addons[ADDON].preferences
+        prefs.developer = prefs.advanced = True
+
+        scene = bpy.context.scene
+        for owner, prop, panel in (
+            (scene, "mustardui_outfits_uilist_index", "PANEL_PT_MustardUI_InitPanel_Outfit"),
+            (scene, "mustardui_section_uilist_index", "PANEL_PT_MustardUI_InitPanel_Model"),
+            (arm, "mustardui_morphs_section_uilist_index", "PANEL_PT_MustardUI_InitPanel_Morphs"),
+            (arm, "mustardui_physics_items_uilist_index", "PANEL_PT_MustardUI_InitPanel_Physics"),
+        ):
+            with self.subTest(prop):
+                setattr(owner, prop, 5)
+                self.assertDrawsCleanly(panel)
+                setattr(owner, prop, 0)
+        scene.mustardui_section_uilist_index = 5
+        self.assertFalse(bpy.ops.mustardui.section_property_assign.poll())
