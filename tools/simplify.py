@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..outfits.helper_functions import find_layer_collection
+from ..outfits.helper_functions import find_layer_collection, outfits_get_collection_items
 from ..outfits.ops_visibility import (
     switch_outfit_piece,
     update_model_after_pieces_switch,
@@ -335,34 +335,18 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     for ps in [x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"]:
                         ps.show_viewport = not simplify_settings.simplify_enable
 
-        # Armature Children
-        child_all = [
-            x for x in rig_settings.model_armature_object.children if x != rig_settings.model_body
-        ]
-        child = child_all.copy()
-
+        # Armature Children, except the body, outfits, extras, hair and physics items
+        excluded = {rig_settings.model_body}
+        colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
         if rig_settings.extras_collection:
-            items = (
-                rig_settings.extras_collection.all_objects
-                if rig_settings.extras_config_subcollections
-                else rig_settings.extras_collection.objects
-            )
-            for obj in [x for x in items if x in child_all]:
-                child.remove(obj)
+            colls.append(rig_settings.extras_collection)
+        for coll in colls:
+            excluded.update(outfits_get_collection_items(rig_settings, coll))
         if rig_settings.hair_collection:
-            for obj in [x for x in rig_settings.hair_collection.objects if x in child_all]:
-                child.remove(obj)
-        for col in rig_settings.outfits_collections:
-            items = (
-                col.collection.all_objects
-                if rig_settings.outfit_config_subcollections
-                else col.collection.objects
-            )
-            for obj in [x for x in items if x in child_all]:
-                child.remove(obj)
+            excluded.update(rig_settings.hair_collection.objects)
         if physics_settings:
-            for obj in [x.object for x in physics_settings.items if x.object in child_all]:
-                child.remove(obj)
+            excluded.update(x.object for x in physics_settings.items if x.object)
+        child = [x for x in rig_settings.model_armature_object.children if x not in excluded]
 
         for c in child:
             c.hide_viewport = (

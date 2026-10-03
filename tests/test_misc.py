@@ -1,6 +1,6 @@
 import addon_utils
 import bpy
-from helpers import ADDON, BlenderTestCase, build_model, configure_model
+from helpers import ADDON, BlenderTestCase, build_model, configure_model, new_object
 
 
 class TestRegister(BlenderTestCase):
@@ -42,6 +42,25 @@ class TestSimplify(BlenderTestCase):
         self.simplify.simplify_enable = False
         self.assertFalse(self.model["hair"].hide_viewport)
         self.assertEqual(glasses.MustardUI_outfit_visibility, glasses_visible)
+
+    def check_armature_children(self):
+        prop = new_object("Prop")
+        prop.parent = self.model["armature"]
+        self.simplify.simplify_enable = True
+        self.assertTrue(prop.hide_viewport)
+        self.assertFalse(bpy.data.objects["Casual - Shirt"].hide_viewport)
+        self.simplify.simplify_enable = False
+        self.assertFalse(prop.hide_viewport)
+
+    # Simplify hides other armature children when a piece is in two outfits
+    def test_simplify_shared_piece(self):
+        self.model["outfits"][1].objects.link(bpy.data.objects["Casual - Shirt"])
+        self.check_armature_children()
+
+    # Simplify hides other armature children when an outfit collection was deleted
+    def test_simplify_missing_outfit_collection(self):
+        bpy.data.collections.remove(self.model["outfits"][1])
+        self.check_armature_children()
 
 
 class TestConfigurationLists(BlenderTestCase):
