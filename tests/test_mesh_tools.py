@@ -269,6 +269,24 @@ class TestTransferVertexGroups(BlenderTestCase):
         self.assertEqual(len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items), 0)
         self.assertEqual(wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex, 0)
 
+    # Deform Bones adds only the groups of the deform bones
+    def test_add_deform_bones(self):
+        arm_data = bpy.data.armatures.new("Armature")
+        arm = new_object("Armature", arm_data)
+        bpy.context.view_layer.objects.active = arm
+        bpy.ops.object.mode_set(mode="EDIT")
+        for name in ("Foo", "Bar", "Baz"):
+            arm_data.edit_bones.new(name).tail = (0, 0, 1)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        arm_data.bones["Bar"].use_deform = False
+        self.source.parent = arm
+        bpy.context.view_layer.objects.active = self.source
+
+        items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        items.clear()
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups_add_bones(deform=True)
+        self.assertEqual([item.group_name for item in items], ["Foo"])
+
     def transfer(self, **settings):
         items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
         items.clear()
