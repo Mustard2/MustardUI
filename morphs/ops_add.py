@@ -10,7 +10,11 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import get_cp_source, mustardui_add_morph, mustardui_add_section
+from .misc import (
+    get_cp_source,
+    mustardui_add_morph,
+    mustardui_add_section,
+)
 
 
 def rename_morph(self, name, protected_strings=None):
@@ -60,34 +64,11 @@ class MustardUI_Morphs_Clear(bpy.types.Operator):
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
-        rig_settings = arm.MustardUI_RigSettings
         morphs_settings = arm.MustardUI_MorphsSettings
-
-        # Remove automatic mute drivers from shape keys
-        shape_keys = rig_settings.model_body.data.shape_keys
-
-        if shape_keys and shape_keys.animation_data:
-            drivers_to_remove = []
-            for driver in shape_keys.animation_data.drivers:
-                if driver.data_path.endswith('"].mute'):
-                    drv = driver.driver
-                    if drv.type == "SCRIPTED" and drv.expression == "abs(var) < 0.001":
-                        drivers_to_remove.append(driver.data_path)
-            for driver_path in drivers_to_remove:
-                try:
-                    # Extract shape key name
-                    sk_name = driver_path.split('key_blocks["')[1].split('"]')[0]
-                    # Unmute before removing driver
-                    if sk_name in shape_keys.key_blocks:
-                        shape_keys.key_blocks[sk_name].mute = False
-                    shape_keys.driver_remove(driver_path)
-                except Exception:
-                    pass
 
         morphs_settings.sections.clear()
         morphs_settings.diffeomorphic_genesis_version = -1
         morphs_settings.morphs_number = 0
-        morphs_settings.use_shape_key_mute_drivers = False
 
         # Reset UI List indices
         arm.mustardui_morphs_section_uilist_index = -1
@@ -113,14 +94,6 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
         default=False,
         name="Clear Existing Morphs",
         description="Remove existing Morphs from the sections before re-adding them",
-    )
-    add_shape_key_mute_driver: bpy.props.BoolProperty(
-        default=False,
-        name="Automatically Mute null Shape Keys",
-        description="Add a driver on the Mute property of the Shape Keys, which are "
-        "automatically disabled when their value is 0.\nNote: Freezable option for "
-        "custom sections will be disabled as incompatible with drivers on the Mute "
-        "properties",
     )
 
     @classmethod
@@ -459,55 +432,8 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
             if shape_keys and body_sks is not None:
                 sks = [x for x in body_sks.key_blocks if any(s in x.name for s in strings)]
 
-                # Disable the freezable setting as it would work on the Mute
-                # button which is now blocked by the driver
-                # Note: Enable Freeze Morphs might still be enabled for Diffeomorphic
-                # Morphs
-                if self.add_shape_key_mute_driver and not section.is_internal:
-                    section.freezable = False
-
                 for sk in sks:
-                    morph = sk.name
-                    add_morph(
-                        i,
-                        [rename_morph(self, morph), morph],
-                        custom_property=False,
-                    )
-
-                    # Add automatic mute driver
-                    if self.add_shape_key_mute_driver:
-                        # Remove existing driver if present
-                        try:
-                            sk.driver_remove("mute")
-                        except Exception:
-                            pass
-
-                        fcurve = sk.driver_add("mute")
-                        driver = fcurve.driver
-                        driver.type = "SCRIPTED"
-                        var = driver.variables.new()
-                        var.name = "var"
-                        target = var.targets[0]
-                        target.id_type = "KEY"
-                        target.id = body_sks
-                        target.data_path = f'key_blocks["{morph}"].value'
-                        driver.expression = "abs(var) < 0.001"
-                    # Otherwise remove the mute driver
-                    else:
-                        try:
-                            driver_path = f'key_blocks["{sk.name}"].mute'
-                            fcurve = body_sks.animation_data.drivers.find(driver_path)
-                            if fcurve:
-                                drv = fcurve.driver
-                                if drv.type == "SCRIPTED" and drv.expression == "abs(var) < 0.001":
-                                    body_sks.driver_remove(driver_path)
-                            # Unmute if muted
-                            body_sks.key_blocks[sk.name].mute = False
-                        except Exception:
-                            pass
-
-        # Save the status of the mute drivers on Shape Keys
-        morphs_settings.use_shape_key_mute_drivers = self.add_shape_key_mute_driver
+                    add_morph(i, [rename_morph(self, sk.name), sk.name], custom_property=False)
 
         morphs_settings.diffeomorphic_genesis_version = (
             -1
@@ -561,10 +487,6 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
 
         col.prop(self, "custom_rename")
         col.prop(self, "clear_existing_morphs")
-
-        row = col.row()
-        row.enabled = any(section.shape_keys for section in morphs_settings.sections)
-        row.prop(self, "add_shape_key_mute_driver")
 
         if morphs_settings.type in ["DIFFEO_GENESIS_8", "DIFFEO_GENESIS_9"]:
             box = layout.box()

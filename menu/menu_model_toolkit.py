@@ -274,10 +274,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.typ
         row.operator(
             "mustardui.model_toolkit_optimize_shape_keys",
             icon="SHAPEKEY_DATA",
-        ).revert = False
-        row.operator(
-            "mustardui.model_toolkit_optimize_shape_keys", icon="LOOP_BACK", text=""
-        ).revert = True
+        )
 
         row = layout.row(align=True)
         row.operator(

@@ -58,16 +58,6 @@ class TestMorphs(BlenderTestCase):
                 bpy.ops.mustardui.morphs_check()
                 self.assertEqual(self.morph_paths(), expected)
 
-    # Mute drivers are added by Check Morphs and removed by Clear
-    def test_mute_drivers(self):
-        bpy.ops.mustardui.morphs_check(add_shape_key_mute_driver=True)
-        drivers = {d.data_path for d in self.shape_keys.animation_data.drivers}
-        self.assertIn('key_blocks["Blink.L"].mute', drivers)
-
-        bpy.ops.mustardui.morphs_clear()
-        self.assertEqual(len(self.morphs_settings.sections), 0)
-        self.assertEqual(len(self.shape_keys.animation_data.drivers), 0)
-
     # Restore Default Values resets the morphs
     def test_default_values(self):
         bpy.ops.mustardui.morphs_check()
