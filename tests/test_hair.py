@@ -1,5 +1,5 @@
 import bpy
-from helpers import BlenderTestCase, build_model, configure_model
+from helpers import BlenderTestCase, build_model, configure_model, new_mesh_object, new_object
 
 
 class TestHair(BlenderTestCase):
@@ -30,3 +30,24 @@ class TestHair(BlenderTestCase):
         self.assertFalse(subsurf.show_viewport)
         bpy.ops.mustardui.hair_switchglobal(enable=1)
         self.assertTrue(subsurf.show_viewport)
+
+    # Clean Model deletes the hair not in use and their rigs, keeping the rigs of the selected hair
+    def test_clean_model_unselected_hair(self):
+        hair = self.model["hair"]
+        rigs = {}
+        for name, users in (
+            ("Short Rig", ("Hair Short",)),
+            ("Long Rig", ("Hair Long",)),
+            ("Shared Rig", ("Hair Short", "Hair Long")),
+        ):
+            rigs[name] = new_object(name, bpy.data.armatures.new(name), hair)
+            for user in users:
+                bpy.data.objects[user].modifiers.new(name, "ARMATURE").object = rigs[name]
+        bpy.data.objects["Hair Long"].parent = rigs["Long Rig"]
+        new_mesh_object("Hair Short Bangs", hair)
+        self.rig_settings.hair_list = "Hair Short"
+
+        bpy.ops.mustardui.cleanmodel(remove_unselected_hair=True)
+        self.assertEqual(
+            sorted(o.name for o in hair.objects), ["Hair Short", "Shared Rig", "Short Rig"]
+        )

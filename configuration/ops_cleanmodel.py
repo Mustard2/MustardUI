@@ -591,7 +591,20 @@ class MustardUI_CleanModel(bpy.types.Operator):
         # Remove unselected hair
         if rig_settings.hair_collection is not None and self.remove_unselected_hair:
             current_hair = rig_settings.hair_list
-            objs = [x for x in rig_settings.hair_collection.objects if current_hair not in x.name]
+            hair_objs = rig_settings.hair_collection.objects
+
+            def armatures(obj):
+                """Armatures in the hair collection deforming the hair"""
+                rigs = {m.object for m in obj.modifiers if m.type == "ARMATURE"}
+                if obj.parent is not None and obj.parent.type == "ARMATURE":
+                    rigs.add(obj.parent)
+                return {x for x in rigs if x is not None and x.name in hair_objs}
+
+            # The other hair and their armatures, keeping the ones of the selected hair
+            objs = [x for x in hair_objs if x.type in {"MESH", "CURVES"} and x.name != current_hair]
+            selected = hair_objs.get(current_hair)
+            kept = armatures(selected) if selected is not None else set()
+            objs += list(set().union(*(armatures(x) for x in objs)) - kept)
 
             # Remove dangling Physics Items first
             if self.remove_dangling_pi:
