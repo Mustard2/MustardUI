@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import bpy
 
 from .. import __package__ as base_package
@@ -102,6 +104,26 @@ def bind_object(
             m.show_viewport = hv
 
 
+@contextmanager
+def rest_pose(objects):
+    """Armatures deforming the objects in rest position while in the context"""
+    armatures = {
+        m.object.data
+        for obj in objects
+        for m in obj.modifiers
+        if m.type == "ARMATURE" and m.object is not None and m.object.type == "ARMATURE"
+    }
+    posed = [arm for arm in armatures if arm.pose_position == "POSE"]
+    for arm in posed:
+        arm.pose_position = "REST"
+    bpy.context.view_layer.update()
+    try:
+        yield
+    finally:
+        for arm in posed:
+            arm.pose_position = "POSE"
+
+
 class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
     """Rebind cages to the model meshes (Body, Outfits, Hair).\nDepending on the number of Physics Items, Blender might freeze for a while"""  # noqa: E501
 
@@ -161,16 +183,18 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
         ]:
             cages.append(item.object)
 
-        for obj in objects:
-            bind_object(
-                obj,
-                cages,
-                addon_prefs,
-                surface_deform=True,
-                mesh_deform=True,
-                corrective_smooth=True,
-                force=self.force,
-            )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose(objects + cages):
+            for obj in objects:
+                bind_object(
+                    obj,
+                    cages,
+                    addon_prefs,
+                    surface_deform=True,
+                    mesh_deform=True,
+                    corrective_smooth=True,
+                    force=self.force,
+                )
 
         self.report({"INFO"}, "MustardUI - Cages successfully re-bound.")
 
@@ -227,16 +251,18 @@ class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
         ]:
             cages.append(item.object)
 
-        for obj in objects:
-            bind_object(
-                obj,
-                cages,
-                addon_prefs,
-                surface_deform=True,
-                mesh_deform=True,
-                corrective_smooth=True,
-                force=self.force,
-            )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose(objects + cages):
+            for obj in objects:
+                bind_object(
+                    obj,
+                    cages,
+                    addon_prefs,
+                    surface_deform=True,
+                    mesh_deform=True,
+                    corrective_smooth=True,
+                    force=self.force,
+                )
 
         self.report(
             {"INFO"},
@@ -288,15 +314,17 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
         ]:
             cages.append(item.object)
 
-        bind_object(
-            obj,
-            cages,
-            addon_prefs,
-            surface_deform=True,
-            mesh_deform=True,
-            corrective_smooth=True,
-            force=self.force,
-        )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose([obj, *cages]):
+            bind_object(
+                obj,
+                cages,
+                addon_prefs,
+                surface_deform=True,
+                mesh_deform=True,
+                corrective_smooth=True,
+                force=self.force,
+            )
 
         self.report(
             {"INFO"},
@@ -371,16 +399,18 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
             cages.append(item.object)
             break
 
-        for obj in objects:
-            bind_object(
-                obj,
-                cages,
-                addon_prefs,
-                surface_deform=True,
-                mesh_deform=True,
-                corrective_smooth=True,
-                force=self.force,
-            )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose(objects + cages):
+            for obj in objects:
+                bind_object(
+                    obj,
+                    cages,
+                    addon_prefs,
+                    surface_deform=True,
+                    mesh_deform=True,
+                    corrective_smooth=True,
+                    force=self.force,
+                )
 
         self.report({"INFO"}, f'MustardUI - Cage "{self.cage_name}" successfully re-bound.')
 

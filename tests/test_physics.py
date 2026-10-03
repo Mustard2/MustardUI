@@ -1,6 +1,9 @@
 import importlib
+import math
 
+import bmesh
 import bpy
+import numpy as np
 from helpers import (
     ADDON,
     BlenderTestCase,
@@ -12,6 +15,14 @@ from helpers import (
 )
 
 ops_outfits_setup = importlib.import_module(ADDON + ".physics.ops_outfits_setup")
+
+
+def evaluated_co(obj):
+    bpy.context.view_layer.update()
+    mesh = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+    co = np.empty(len(mesh.vertices) * 3)
+    mesh.vertices.foreach_get("co", co)
+    return co.reshape(-1, 3)
 
 
 class TestPhysics(BlenderTestCase):
@@ -77,6 +88,43 @@ class TestPhysics(BlenderTestCase):
         bpy.ops.mustardui.physics_item_remove()
         self.assertEqual(len(self.physics_settings.items), 0)
         self.assertIn("Chest Cage", bpy.data.objects)
+
+    # Rebinding on a posed rig binds in rest pose, so the rest shape is kept
+    def test_rebind_in_pose(self):
+        body = self.model["body"]
+        spine = self.model["armature"].pose.bones["spine"]
+
+        # Column bent by the spine, with a Corrective Smooth bound at rest
+        bm = bmesh.new()
+        bmesh.ops.create_cone(bm, segments=16, radius1=0.2, radius2=0.2, depth=1.0)
+        bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, 0.9))
+        long_edges = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.5]
+        bmesh.ops.subdivide_edges(bm, edges=long_edges, cuts=19)
+        bm.to_mesh(body.data)
+        bm.free()
+        body.vertex_groups.clear()
+        root = body.vertex_groups.new(name="root")
+        bend = body.vertex_groups.new(name="spine")
+        for v in body.data.vertices:
+            weight = min(max(v.co.z - 0.4, 0.0), 1.0)
+            root.add([v.index], 1.0 - weight, "REPLACE")
+            bend.add([v.index], weight, "REPLACE")
+        smooth = body.modifiers.new("Smooth", "CORRECTIVE_SMOOTH")
+        smooth.rest_source = "BIND"
+        with bpy.context.temp_override(object=body):
+            bpy.ops.object.correctivesmooth_bind(modifier=smooth.name)
+        rest = evaluated_co(body)
+
+        spine.rotation_mode = "XYZ"
+        for rebind in (
+            bpy.ops.mustardui.physics_rebind,
+            lambda: bpy.ops.mustardui.physics_rebind_single_cage(cage_name="Chest Cage"),
+        ):
+            spine.rotation_euler.x = math.radians(60)
+            rebind()
+            self.assertEqual(self.model["armature"].data.pose_position, "POSE")
+            spine.rotation_euler.x = 0.0
+            np.testing.assert_allclose(evaluated_co(body), rest, atol=1e-5)
 
 
 class TestOutfitsPhysicsSetup(BlenderTestCase):
