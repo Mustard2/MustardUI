@@ -1,3 +1,13 @@
+def outfits_get_collection_items(rig_settings, collection):
+    """Objects of an Outfits/Extras collection, honouring the sub-collections setting."""
+    use_sub = (
+        rig_settings.extras_config_subcollections
+        if collection == rig_settings.extras_collection
+        else rig_settings.outfit_config_subcollections
+    )
+    return collection.all_objects if use_sub else collection.objects
+
+
 def outfit_extract_items_from_collection(collection, subcollections):
     items = list(collection.all_objects if subcollections else collection.objects)
     item_set = set(items)
@@ -22,16 +32,10 @@ def outfit_poll_collection(self, object):
 
 # Poll function for the selection of mesh belonging to an outfit in pointer properties
 def outfit_poll_mesh(self, object):
-    rig_settings = self.id_data.MustardUI_RigSettings
-    if self.outfit_switcher_collection is not None:
-        items = (
-            self.outfit_switcher_collection.all_objects
-            if rig_settings.outfit_config_subcollections
-            else self.outfit_switcher_collection.objects
-        )
-        if object in [x for x in items]:
-            return object.type == "MESH"
-    return False
+    coll = self.outfit_switcher_collection
+    if coll is None or object.type not in {"MESH", "CURVES"}:
+        return False
+    return object in list(outfits_get_collection_items(self.id_data.MustardUI_RigSettings, coll))
 
 
 def outfit_poll_mesh_physics(self, object):

@@ -1,5 +1,6 @@
 from array import array
 
+from ..misc.outfits import outfits_get_collection_items
 from ..misc.set_bool import set_bool
 
 # Largest image side copied into a full resolution preview
@@ -87,16 +88,6 @@ def outfits_get_collections(rig_settings):
     if rig_settings.extras_collection is not None:
         collections.append(rig_settings.extras_collection)
     return collections
-
-
-def outfits_get_collection_items(rig_settings, collection):
-    """Objects of an Outfits/Extras collection, honouring the sub-collections setting."""
-    use_sub = (
-        rig_settings.extras_config_subcollections
-        if collection == rig_settings.extras_collection
-        else rig_settings.outfit_config_subcollections
-    )
-    return collection.all_objects if use_sub else collection.objects
 
 
 def get_mask_pieces(rig_settings):
