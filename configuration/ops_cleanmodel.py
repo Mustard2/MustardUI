@@ -14,6 +14,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from ..morphs.misc import isDazFcurve
+from ..outfits.helper_functions import outfits_get_collection_items
 from ..outfits.ops_delete import delete_extras_pieces
 
 
@@ -478,9 +479,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
                 dd_colls.append(rig_settings.hair_collection)
 
             for col in dd_colls:
-                items = (
-                    col.all_objects if rig_settings.outfit_config_subcollections else col.objects
-                )
+                items = outfits_get_collection_items(rig_settings, col)
                 for obj in [x for x in items if x is not None]:
                     objects.append(obj)
                     if obj.data is not None:

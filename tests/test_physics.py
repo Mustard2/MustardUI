@@ -1,5 +1,17 @@
+import importlib
+
 import bpy
-from helpers import BlenderTestCase, build_model, configure_model, new_mesh_object, set_active
+from helpers import (
+    ADDON,
+    BlenderTestCase,
+    build_model,
+    configure_model,
+    new_collection,
+    new_mesh_object,
+    set_active,
+)
+
+ops_outfits_setup = importlib.import_module(ADDON + ".physics.ops_outfits_setup")
 
 
 class TestPhysics(BlenderTestCase):
@@ -65,6 +77,73 @@ class TestPhysics(BlenderTestCase):
         bpy.ops.mustardui.physics_item_remove()
         self.assertEqual(len(self.physics_settings.items), 0)
         self.assertIn("Chest Cage", bpy.data.objects)
+
+
+class TestOutfitsPhysicsSetup(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        arm = self.model["armature"]
+        self.rig_settings = configure_model(self.model)
+        self.physics_settings = arm.data.MustardUI_PhysicsSettings
+        self.subsurf = self.model["body"].modifiers.new("Subdivision", "SUBSURF")
+
+        # Cage crossing the top of the outfit pieces, and an Extras piece in a sub-collection
+        cage = new_mesh_object("Chest Cage", armature=arm, size=0.4, z=1.5)
+        cage.modifiers.new("Cloth", "CLOTH")
+        hats = new_collection("Tester Extras Hats", self.model["extras"])
+        self.hat = new_mesh_object("Extras - Hat", hats, armature=arm, size=0.55)
+
+        bpy.ops.mustardui.configuration()
+        self.rig_settings.extras_config_subcollections = True
+        self.physics_settings.enable_ui = True
+        set_active(cage)
+        bpy.ops.mustardui.physics_add_item()
+        self.physics_settings.items[0].type = "CAGE"
+        set_active(arm)
+
+    @staticmethod
+    def surface_deforms(obj):
+        return [m for m in obj.modifiers if m.type == "SURFACE_DEFORM"]
+
+    # Pieces in Extras sub-collections follow the Extras sub-collections setting
+    def test_extras_subcollections(self):
+        bpy.ops.mustardui.physics_outfits_setup()
+        self.assertEqual(len(self.surface_deforms(bpy.data.objects["Casual - Shirt"])), 1)
+        self.assertEqual(len(self.surface_deforms(self.hat)), 1)
+        self.assertIn(
+            self.hat, [x.object for x in self.physics_settings.items[0].intersecting_objects]
+        )
+
+    # The armature keeps its pose position
+    def test_rest_position_kept(self):
+        self.model["armature"].data.pose_position = "REST"
+        bpy.ops.mustardui.physics_outfits_setup()
+        self.assertEqual(self.model["armature"].data.pose_position, "REST")
+
+    # A failure halfway restores the scene state
+    def test_state_restored_on_failure(self):
+        def fail(*args):
+            raise ValueError("Bind failed")
+
+        scene = bpy.context.scene
+        scene.frame_current = 5
+        self.physics_settings.enable_physics = True
+        original_bind = ops_outfits_setup.MustardUI_Physics_OutfitsSetup.bind
+        ops_outfits_setup.MustardUI_Physics_OutfitsSetup.bind = fail
+        try:
+            with self.assertRaisesRegex(RuntimeError, "Bind failed"):
+                bpy.ops.mustardui.physics_outfits_setup()
+        finally:
+            ops_outfits_setup.MustardUI_Physics_OutfitsSetup.bind = original_bind
+        # The expected error is printed
+        self._stderr.buffer.seek(0)
+        self._stderr.buffer.truncate()
+
+        self.assertEqual(scene.frame_current, 5)
+        self.assertTrue(self.physics_settings.enable_physics)
+        self.assertTrue(self.subsurf.show_viewport)
+        self.assertEqual(self.model["armature"].data.pose_position, "POSE")
 
 
 class TestCollisionCage(BlenderTestCase):
