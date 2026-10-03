@@ -1,4 +1,6 @@
+import io
 import os
+import struct
 import tempfile
 
 import bpy
@@ -14,11 +16,49 @@ from ...model_selection.active_object import (
 
 sizes = (1024, 2048, 4096, 8192, 16384)
 
+# Short names of the file formats
+FORMAT_NAMES = {"OPEN_EXR": "EXR", "TARGA": "TGA", "TARGA_RAW": "TGA", "JPEG": "JPG"}
+
+# JPEG Start Of Frame markers, with the image size
+JPEG_SOF = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+
+
+def header_info(image):
+    """Size, float state and format of PNG and JPEG Images from the file header, or None"""
+
+    if image.packed_file is not None:
+        file = io.BytesIO(image.packed_file.data)
+    else:
+        try:
+            file = open(bpy.path.abspath(image.filepath, library=image.library), "rb")
+        except OSError:
+            return None
+
+    with file:
+        head = file.read(25)
+        # 16-bit PNG files are loaded as float
+        if head[:8] == b"\x89PNG\r\n\x1a\n" and head[12:16] == b"IHDR":
+            width, height, depth = struct.unpack(">IIB", head[16:25])
+            return width, height, depth == 16, "PNG"
+
+        if head[:2] != b"\xff\xd8":
+            return None
+        file.seek(2)
+        while (segment := file.read(4))[:1] == b"\xff" and len(segment) == 4:
+            if segment[1] in JPEG_SOF:
+                height, width = struct.unpack(">xHH", file.read(5))
+                return width, height, False, "JPEG"
+            file.seek(struct.unpack(">H", segment[2:])[0] - 2, 1)
+
+    return None
+
 
 def listed(item, props):
-    """Whether the Image passes the size and bit depth filters"""
-    return max(item.width, item.height) >= int(props.min_size) and (
-        item.is_float or props.min_bits == "8"
+    """Whether the Image passes the size, bit depth and format filters"""
+    return (
+        max(item.width, item.height) >= int(props.min_size)
+        and (item.is_float or props.min_bits == "8")
+        and props.format_filter in ("ANY", item.file_format)
     )
 
 
@@ -42,6 +82,7 @@ class MustardUI_ConvertImages_Item(bpy.types.PropertyGroup):
     width: IntProperty()
     height: IntProperty()
     is_float: BoolProperty()
+    file_format: StringProperty()
     packed: BoolProperty()
 
 
@@ -55,6 +96,7 @@ class MUSTARDUI_UL_ConvertImages_UIList(bpy.types.UIList):
         memory = item.width * item.height * (16 if item.is_float else 4) / 1024**2
         # Fixed width columns
         for text, width in (
+            (item.file_format, 3),
             (f"{item.width} x {item.height}", 5),
             ("16/32-bit" if item.is_float else "8-bit", 4),
             (f"{memory:.0f} MB", 4),
@@ -95,12 +137,33 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         default="8",
         description="List the Images with this bit depth or above",
     )
+    format_filter: EnumProperty(
+        name="Format",
+        items=[("ANY", "Any", "Any format")]
+        + [(x, x, "") for x in ("PNG", "JPG", "EXR", "TIFF", "TGA")],
+        default="ANY",
+        description="List the Images with this file format",
+    )
     max_size: EnumProperty(
         name="Resize To",
         items=[("0", "Keep", "Keep the resolution")]
         + [(str(s), f"{s // 1024}K", f"{s} x {s}") for s in sizes],
         default="2048",
         description="Downscale the Images larger than this resolution",
+    )
+    output_format: EnumProperty(
+        name="Convert To",
+        items=[
+            (
+                "KEEP",
+                "Keep",
+                "Keep PNG, JPG and EXR Images in their format, save the others as PNG",
+            ),
+            ("PNG", "PNG", "Lossless format, with alpha"),
+            ("JPEG", "JPG", "Smaller files, without alpha and 8-bit only"),
+        ],
+        default="KEEP",
+        description="File format of the new Images",
     )
     to_8bit: BoolProperty(
         name="Convert to 8-bit",
@@ -138,17 +201,19 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         wm.progress_begin(0, len(images))
         for i, image in enumerate(images):
             wm.progress_update(i)
-            # Reading the size loads the Image
-            loaded = image.has_data
-            width, height = image.size
-            if width and height:
-                found.append((image, width, height, image.is_float))
-            if not loaded:
-                image.buffers_free()
+            info = None if image.has_data else header_info(image)
+            if info is None:
+                # Reading the size loads the Image
+                loaded = image.has_data
+                info = (*image.size, image.is_float, image.file_format)
+                if not loaded:
+                    image.buffers_free()
+            if info[0] and info[1]:
+                found.append((image, *info))
         wm.progress_end()
 
         # Heaviest first
-        for image, width, height, is_float in sorted(
+        for image, width, height, is_float, file_format in sorted(
             found, key=lambda x: -x[1] * x[2] * (4 if x[3] else 1)
         ):
             item = self.images.add()
@@ -156,13 +221,14 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
             item.width = width
             item.height = height
             item.is_float = is_float
+            item.file_format = FORMAT_NAMES.get(file_format, file_format)
             item.packed = image.packed_file is not None
 
         if not self.images:
             self.report({"INFO"}, "MustardUI - No Images found")
             return {"CANCELLED"}
 
-        return wm.invoke_props_dialog(self, width=600, confirm_text="Convert")
+        return wm.invoke_props_dialog(self, width=700, confirm_text="Convert")
 
     def convert(self, image, scene, tempdir):
         """Converted copy of the Image, or None if there is nothing to convert"""
@@ -170,20 +236,20 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         width, height = image.size
         max_size = int(self.max_size)
         scale = min(1.0, max_size / max(width, height)) if max_size else 1.0
-        to_8bit = self.to_8bit and image.is_float
-        if scale == 1.0 and not to_8bit:
+        # JPG files are 8-bit only
+        to_8bit = image.is_float and (self.to_8bit or self.output_format == "JPEG")
+        if scale == 1.0 and not to_8bit and self.output_format in ("KEEP", image.file_format):
             return None
 
-        if image.is_float and not to_8bit:
-            file_format, depth, ext = (
-                ("OPEN_EXR", "32", ".exr")
-                if image.file_format == "OPEN_EXR"
-                else ("PNG", "16", ".png")
-            )
-        elif image.file_format == "JPEG":
-            file_format, depth, ext = "JPEG", "8", ".jpg"
-        else:
-            file_format, depth, ext = "PNG", "8", ".png"
+        file_format = self.output_format
+        if file_format == "KEEP":
+            file_format = image.file_format if image.file_format in ("JPEG", "OPEN_EXR") else "PNG"
+            if file_format == "OPEN_EXR" and to_8bit:
+                file_format = "PNG"
+        depth = (
+            "8" if to_8bit or not image.is_float else "32" if file_format == "OPEN_EXR" else "16"
+        )
+        ext = {"PNG": ".png", "JPEG": ".jpg", "OPEN_EXR": ".exr"}[file_format]
 
         # Name with the new resolution and bit depth, next to the original file
         folder, filename = os.path.split(image.filepath)
@@ -294,6 +360,7 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         row = layout.row()
         row.prop(self, "min_size")
         row.prop(self, "min_bits")
+        row.prop(self, "format_filter")
 
         layout.template_list(
             "MUSTARDUI_UL_ConvertImages_UIList",
@@ -306,6 +373,7 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
 
         row = layout.row()
         row.prop(self, "max_size")
+        row.prop(self, "output_format")
         row.prop(self, "to_8bit")
 
         row = layout.row()

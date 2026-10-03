@@ -83,6 +83,7 @@ class TestConvertImages(BlenderTestCase):
                 "width": x.size[0],
                 "height": x.size[1],
                 "is_float": x.is_float,
+                "file_format": x.file_format,
                 "packed": x.packed_file is not None,
             }
             for x in images
@@ -222,18 +223,65 @@ class TestConvertImages(BlenderTestCase):
         self.assertEqual(new_image.file_format, "JPEG")
         self.assertIn(image.name, bpy.data.images)
 
+    # Images converted to another format, JPG ones also to 8-bit
+    def test_output_format(self):
+        targa = self.new_image("color.tga", "TARGA", "8")
+        self.convert(targa, max_size="0", output_format="KEEP")
+        self.assertEqual(self.node_images(), [targa])
+
+        source = raw_pixels(targa)
+        self.convert(targa, max_size="0", output_format="PNG")
+        png = self.node_images()[0]
+        self.assertEqual(os.path.basename(png.filepath), "color.png")
+        self.assertEqual(png.file_format, "PNG")
+        self.assertLess(np.abs(raw_pixels(png) - source).max(), 1e-6)
+
+        image = self.new_image("data.png", "PNG", "16")
+        self.convert(image, max_size="0", to_8bit=False, output_format="JPEG")
+        jpg = self.node_images()[-1]
+        self.assertEqual(os.path.basename(jpg.filepath), "data_8bit.jpg")
+        self.assertEqual(jpg.file_format, "JPEG")
+        self.assertFalse(jpg.is_float)
+        self.assertEqual(tuple(jpg.size), (2048, 16))
+
+    # Size and bit depth of PNG and JPEG files read without loading the Images
+    def test_header_info(self):
+        images = [
+            self.new_image("color16.png", "PNG", "16"),
+            self.new_image("color8.png", "PNG", "8"),
+            self.new_image("photo.jpg", "JPEG", "8"),
+        ]
+        images[1].pack()
+        for image in images:
+            with self.subTest(image=image.name):
+                image.buffers_free()
+                info = convert_images.header_info(image)
+                self.assertFalse(image.has_data)
+                self.assertEqual(info, (*image.size, image.is_float, image.file_format))
+
+        self.assertIsNone(
+            convert_images.header_info(self.new_image("height.exr", "OPEN_EXR", "32"))
+        )
+        missing = bpy.data.images.load(images[0].filepath, check_existing=False)
+        missing.filepath_raw = os.path.join(self.dir.name, "missing.png")
+        self.assertIsNone(convert_images.header_info(missing))
+
     def test_filters(self):
         props = bpy.context.window_manager.operator_properties_last(
             "mustardui.model_toolkit_convert_images"
         )
         item = props.images.add()
-        for width, is_float, min_size, min_bits, listed in (
-            (4096, False, "4096", "8", True),
-            (2048, False, "4096", "8", False),
-            (4096, False, "4096", "16", False),
-            (4096, True, "4096", "16", True),
-            (512, True, "0", "16", True),
+        item.file_format = "PNG"
+        for width, is_float, min_size, min_bits, format_filter, listed in (
+            (4096, False, "4096", "8", "ANY", True),
+            (2048, False, "4096", "8", "ANY", False),
+            (4096, False, "4096", "16", "ANY", False),
+            (4096, True, "4096", "16", "ANY", True),
+            (512, True, "0", "16", "ANY", True),
+            (4096, False, "4096", "8", "PNG", True),
+            (4096, False, "4096", "8", "JPG", False),
         ):
             item.width, item.height, item.is_float = width, 16, is_float
             props.min_size, props.min_bits = min_size, min_bits
+            props.format_filter = format_filter
             self.assertEqual(convert_images.listed(item, props), listed)
