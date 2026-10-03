@@ -1044,8 +1044,10 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
 
             if self.parent_to_model and rig_settings.model_armature_object is not None:
                 parent = rig_settings.model_armature_object
+                world = cage.matrix_world.copy()
                 cage.parent = parent
                 cage.matrix_parent_inverse = parent.matrix_world.inverted()
+                cage.matrix_world = world
 
             # Disable shadows for viewport/render
             cage.visible_camera = False

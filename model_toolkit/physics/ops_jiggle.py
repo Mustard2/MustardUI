@@ -736,8 +736,10 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
             # Parent the object to the Model Armature
             if self.parent_to_model and rig_settings.model_armature_object is not None:
                 parent = rig_settings.model_armature_object
+                world = obj.matrix_world.copy()
                 obj.parent = parent
                 obj.matrix_parent_inverse = parent.matrix_world.inverted()
+                obj.matrix_world = world
 
         # Disable shadows for viewport/render
         for obj in bpy.context.selected_objects:

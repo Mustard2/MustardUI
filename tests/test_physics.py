@@ -11,8 +11,10 @@ from helpers import (
     configure_model,
     new_collection,
     new_mesh_object,
+    reset_scene,
     set_active,
 )
+from mathutils import Vector
 
 ops_outfits_setup = importlib.import_module(ADDON + ".physics.ops_outfits_setup")
 
@@ -192,6 +194,48 @@ class TestOutfitsPhysicsSetup(BlenderTestCase):
         self.assertTrue(self.physics_settings.enable_physics)
         self.assertTrue(self.subsurf.show_viewport)
         self.assertEqual(self.model["armature"].data.pose_position, "POSE")
+
+
+class TestJiggleParentToModel(BlenderTestCase):
+    # Parent to Model keeps the cage on the body when the armature is not at the origin
+    def test_cage_stays_on_body(self):
+        for op in (
+            bpy.ops.mustardui.model_toolkit_create_jiggle,
+            bpy.ops.mustardui.model_toolkit_create_jiggle_accurate,
+        ):
+            with self.subTest(op.idname_py()):
+                reset_scene()
+                model = build_model()
+                configure_model(model)
+                arm, body = model["armature"], model["body"]
+                arm.location = (1.0, 0.0, 0.0)
+                bm = bmesh.new()
+                bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=16, radius=0.5)
+                bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, 1))
+                bm.to_mesh(body.data)
+                bm.free()
+                body.vertex_groups["spine"].add(range(len(body.data.vertices)), 1.0, "REPLACE")
+                settings = bpy.context.scene.MustardUI_Settings
+                settings.viewport_model_selection = False
+                settings.panel_model_selection_armature = arm.data
+
+                before = set(bpy.data.objects)
+                for v in body.data.vertices:
+                    v.select = v.co.x > 0.25
+                set_active(body)
+                bpy.ops.object.mode_set(mode="EDIT")
+                op(parent_to_model=True)
+                bpy.ops.object.mode_set(mode="OBJECT")
+                bpy.context.view_layer.update()
+
+                cage = max(
+                    (o for o in set(bpy.data.objects) - before if o.type == "MESH"),
+                    key=lambda o: len(o.data.vertices),
+                )
+                self.assertEqual(cage.parent, arm)
+                world = [cage.matrix_world @ v.co for v in cage.data.vertices]
+                center = sum(world, Vector()) / len(world)
+                self.assertAlmostEqual(center.x, 1.38, delta=0.05)
 
 
 class TestCollisionCage(BlenderTestCase):
