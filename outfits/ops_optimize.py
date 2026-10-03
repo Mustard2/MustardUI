@@ -78,7 +78,7 @@ class MustardUI_Outfit_DisableViewport(bpy.types.Operator):
                 }
 
         simplify_outfits(rig_settings, self.enable)
-        simplify_extras(rig_settings, self.enable)
+        simplify_extras(rig_settings, arm, self.enable)
 
         if not self.enable:
             if "mustardui_outfit_show" in arm:

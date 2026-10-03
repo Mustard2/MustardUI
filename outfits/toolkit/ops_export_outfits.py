@@ -5,6 +5,7 @@ import bpy
 from bpy_extras.io_utils import ExportHelper
 
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
+from ...text_storage import storage as text_storage
 from ..helper_functions import outfits_get_collection_items, outfits_get_collections
 from ..ops_delete import delete_extras_pieces
 from .ops_add_outfit import add_outfit_model, outfit_default_name, parents
@@ -467,10 +468,15 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         finally:
             for image in self.packed:
                 image.unpack(method="REMOVE")
+            # Text storage of the stand-in armature, also when the export stopped
+            for arm in [i for i in created if isinstance(i, bpy.types.Armature)]:
+                text_storage.remove_holder(arm)
             # Remove the copies before giving back the names to the originals
             bpy.data.batch_remove([i for i in created if not isinstance(i, bpy.types.Key)])
             for id_data, name in names:
                 id_data.name = name
+            # The written armatures of the file back to the chosen storage
+            text_storage.apply()
         return None if count is None else (count, cut)
 
     def write(self, context, filepath, roots, created, names):
@@ -557,10 +563,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
                 continue
             self.packed.append(image)
 
+        # Written with Armature storage, readable by any MustardUI version
+        count = len(cps)
+        for data in [i for i in reached if isinstance(i, bpy.types.Armature)]:
+            text_storage.store_on_armature(data)
         bpy.data.libraries.write(
             filepath, set(written), path_remap="RELATIVE", fake_user=True, compress=self.compress
         )
-        return len(cps), copier.cut
+        return count, copier.cut
 
 
 def register():

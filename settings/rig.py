@@ -15,7 +15,7 @@ from ..outfits.helper_functions import (
     update_masks,
 )
 from ..sections.definitions import MustardUI_SectionItem
-from ..text_storage.storage import settings_armature
+from ..text_storage.storage import text_of
 
 
 # Main class to store model settings
@@ -43,7 +43,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Poll function for the selection of armatures for the armature object
     def poll_armature(self, object):
         if object.type == "ARMATURE":
-            return object.data == settings_armature(self.id_data)
+            return self.id_data in (object.data, text_of(object.data))
         return False
 
     model_armature_object: bpy.props.PointerProperty(

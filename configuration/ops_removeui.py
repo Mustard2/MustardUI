@@ -10,7 +10,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
-from ..text_storage.storage import remove_holder
+from ..text_storage.storage import remove_holder, system_properties
 
 
 class MustardUI_RemoveUI(bpy.types.Operator):
@@ -59,10 +59,10 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         remove_objects(ll)
 
     def remove_property(self, obj, name):
-        try:
-            del obj[name]
-        except Exception:
-            pass
+        # Both custom and add-on properties
+        for props in (obj, system_properties(obj)):
+            if props is not None and name in props:
+                del props[name]
 
     def other_models_objects(self, arm):
         # List the Objects belonging to the other MustardUI models in the file

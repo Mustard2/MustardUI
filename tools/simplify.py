@@ -7,7 +7,6 @@ from ..outfits.ops_visibility import (
     switch_outfit_piece,
     update_model_after_pieces_switch,
 )
-from ..text_storage.storage import settings_armature
 
 
 class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
@@ -127,9 +126,8 @@ def simplify_outfits(
         rig_settings.outfits_list = "Nude"
 
 
-def simplify_extras(rig_settings, enable):
-    arm = settings_armature(rig_settings.id_data)
-    if rig_settings.extras_collection is None or arm is None:
+def simplify_extras(rig_settings, arm, enable):
+    if rig_settings.extras_collection is None:
         return
 
     scene_objects = bpy.context.scene.objects
@@ -301,7 +299,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
 
         # Extras
         if simplify_settings.simplify_extras:
-            simplify_extras(rig_settings, simplify_settings.simplify_enable)
+            simplify_extras(rig_settings, arm, simplify_settings.simplify_enable)
 
         # Hair
         simplify_hair(

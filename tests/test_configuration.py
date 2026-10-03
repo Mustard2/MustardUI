@@ -1,11 +1,16 @@
+import importlib
+
 import bpy
 from helpers import (
+    ADDON,
     BlenderTestCase,
     build_model,
     configure_model,
     set_active,
     set_active_collection,
 )
+
+storage = importlib.import_module(ADDON + ".text_storage.storage")
 
 
 class TestConfiguration(BlenderTestCase):
@@ -90,6 +95,15 @@ class TestConfiguration(BlenderTestCase):
         bpy.ops.mustardui.remove(delete_settings=True)
         self.assertEqual(len(arm.MustardUI_RigSettings.outfits_collections), 0)
         self.assertIn("Casual - Shirt", bpy.data.objects)
+
+    # Remove UI with Delete Settings removes the stored settings, not only the outfits
+    def test_remove_ui_settings_stored(self):
+        model = build_model()
+        arm = model["armature"].data
+        configure_model(model)
+        bpy.ops.mustardui.remove(delete_settings=True)
+        props = storage.system_properties(arm)
+        self.assertNotIn("MustardUI_RigSettings", props or {})
 
     # Remove UI with Delete Objects deletes the model objects
     def test_remove_ui_objects(self):

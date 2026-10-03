@@ -164,7 +164,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             else:
                 for text in (
                     "Older MustardUI versions can not read the models saved with this option",
-                    "Linked or overridden models saved with Armature storage are not supported",
+                    "Linked or overridden models are not supported",
                     "Keyframes and drivers on MustardUI settings stop working",
                     "Every Armature in the file gets a hidden Text datablock",
                 ):
