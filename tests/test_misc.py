@@ -1,6 +1,10 @@
+import importlib
+
 import addon_utils
 import bpy
 from helpers import ADDON, BlenderTestCase, build_model, configure_model, new_object
+
+prop_utils = importlib.import_module(ADDON + ".misc.prop_utils")
 
 
 class TestRegister(BlenderTestCase):
@@ -110,3 +114,35 @@ class TestConfigurationLists(BlenderTestCase):
         rig_settings.outfits_list = "Tester Casual"
         bpy.ops.mustardui.object_visibility(obj="Casual - Shirt")
         self.assertFalse(shirt_bones.is_visible)
+
+
+class TestPropUtils(BlenderTestCase):
+    # Paths resolve with ] or quotes in names, and invalid ones give None
+    def test_evaluate_path(self):
+        new_object("Top [v2]")
+        new_object('Say "Hi"')
+        hidden = bpy.data.collections.new("[Hidden]")
+        bpy.context.scene.collection.children.link(hidden)
+
+        for rna, path, expected in (
+            ('bpy.data.collections["[Hidden]"]', "name", "[Hidden]"),
+            ('bpy.data.objects["Top [v2]"]', "name", "Top [v2]"),
+            ("bpy.data.objects['Top [v2]']", "name", "Top [v2]"),
+            ('bpy.data.objects["Top [v2]", None]', "name", "Top [v2]"),
+            ('bpy.data.objects["Say \\"Hi\\""]', "name", 'Say "Hi"'),
+            ('bpy.context.scene.collection.children["[Hidden]"]', "name", "[Hidden]"),
+            ('bpy.data.objects["Missing"]', "name", None),
+            ('bpy.data.objects["Top', "name", None),
+            ("bpy.data.objects[5]", "name", None),
+        ):
+            with self.subTest(rna):
+                self.assertEqual(prop_utils.evaluate_path(rna, path), expected)
+
+        # Fix Path keeps a property on a datablock with ] in its name
+        model = build_model()
+        configure_model(model)
+        arm = model["armature"].data
+        cp = arm.MustardUI_CustomProperties.add()
+        cp.name, cp.rna, cp.path = "Hidden", 'bpy.data.collections["[Hidden]"]', "hide_viewport"
+        bpy.ops.mustardui.property_fix_path()
+        self.assertIn("Hidden", [x.name for x in arm.MustardUI_CustomProperties])

@@ -16,19 +16,20 @@ def evaluate_rna(rna_path, verbose=False):
     # Start with the bpy module
     current_element = bpy
 
-    # Regular expression to split the path into components, including dictionary keys
     import re
 
-    path_parts = re.findall(r"\w+|\[.*?]", rna_sub_path)
+    # Split the path into attributes and [keys], a ] in quoted names included (["[Hidden]"])
+    path_parts = re.findall(
+        r"\w+|\[(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'|[^\]\"'])*]", rna_sub_path
+    )
 
     for part in path_parts:
         if part.startswith("[") and part.endswith("]"):
             # Remove the square brackets and safely evaluate the key
             key = part[1:-1]
-            key = ast.literal_eval(key)
             try:
-                current_element = current_element[key]
-            except (KeyError, TypeError, AttributeError):
+                current_element = current_element[ast.literal_eval(key)]
+            except (KeyError, IndexError, TypeError, AttributeError, ValueError, SyntaxError):
                 if verbose:
                     print(f"Key '{key}' not found in {current_element}.")
                 return None
