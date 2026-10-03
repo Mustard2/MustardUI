@@ -26,7 +26,8 @@ class TestSplineIK(BlenderTestCase):
             self.chain.append(bone.name)
         bpy.ops.object.mode_set(mode="POSE")
         for pose_bone in self.arm.pose.bones:
-            pose_bone.select = pose_bone.name in self.chain
+            selectable = pose_bone if bpy.app.version >= (5, 0, 0) else pose_bone.bone
+            selectable.select = pose_bone.name in self.chain
         tail = self.arm.pose.bones["Tail.0"]
         tail.rotation_mode = "XYZ"
         tail.rotation_euler = (math.radians(60), 0, 0)
