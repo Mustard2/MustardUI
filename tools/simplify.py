@@ -459,6 +459,6 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_SimplifySettings)
-    bpy.utils.unregister_class(MUSTARDUI_OT_UpdateSimplify)
     del bpy.types.Armature.MustardUI_SimplifySettings
+    bpy.utils.unregister_class(MUSTARDUI_OT_UpdateSimplify)
+    bpy.utils.unregister_class(MustardUI_SimplifySettings)
