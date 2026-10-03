@@ -171,6 +171,20 @@ class TestOutfitsPhysicsSetup(BlenderTestCase):
         bpy.ops.mustardui.physics_outfits_setup()
         self.assertEqual(self.model["armature"].data.pose_position, "REST")
 
+    # Compute Intersecting Outfits rebuilds the lists and keeps the Surface Deform modifiers shown
+    def test_compute_intersecting_outfits(self):
+        self.physics_settings.items[0].enable = True
+        bpy.ops.mustardui.physics_outfits_setup()
+        self.physics_settings.enable_physics = True
+        item = self.physics_settings.items[0]
+        intersecting = {x.object for x in item.intersecting_objects}
+
+        bpy.ops.mustardui.physics_outfits_setup_intersecting_objects()
+        self.assertEqual({x.object for x in item.intersecting_objects}, intersecting)
+        for obj in intersecting:
+            for mod in self.surface_deforms(obj):
+                self.assertTrue(mod.show_viewport and mod.show_render, obj.name)
+
     # A failure halfway restores the scene state
     def test_state_restored_on_failure(self):
         def fail(*args):

@@ -531,12 +531,13 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
             if physics_settings.items[arm.mustardui_physics_items_uilist_index].object is None:
                 return {"FINISHED"}
 
-        # Clear current intersection objects
+        # Clear current intersection objects, keeping the Surface Deform modifiers as they are
         if self.unique:
             pi = physics_settings.items[arm.mustardui_physics_items_uilist_index]
             pi.intersecting_objects.clear()
         else:
-            bpy.ops.mustardui.physics_outfits_setup_clear()
+            for pi in [x for x in items if x.type == "CAGE"]:
+                pi.intersecting_objects.clear()
 
         colls = [x.collection for x in rig_settings.outfits_collections if x.collection is not None]
         if rig_settings.extras_collection is not None:
