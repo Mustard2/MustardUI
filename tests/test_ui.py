@@ -91,6 +91,8 @@ class TestUI(BlenderTestCase):
         bpy.ops.mustardui.section_add()
         prefs = bpy.context.preferences.addons[ADDON].preferences
         prefs.developer = prefs.advanced = True
+        arm.collections.active = arm.collections.new("Parent")
+        arm.collections.new("Child", parent=arm.collections.active)
 
         scene = bpy.context.scene
         for owner, prop, panel in (
@@ -98,6 +100,7 @@ class TestUI(BlenderTestCase):
             (scene, "mustardui_section_uilist_index", "PANEL_PT_MustardUI_InitPanel_Model"),
             (arm, "mustardui_morphs_section_uilist_index", "PANEL_PT_MustardUI_InitPanel_Morphs"),
             (arm, "mustardui_physics_items_uilist_index", "PANEL_PT_MustardUI_InitPanel_Physics"),
+            (scene, "mustardui_armature_uilist_index", "PANEL_PT_MustardUI_InitPanel_Armature"),
         ):
             with self.subTest(prop):
                 setattr(owner, prop, 5)
