@@ -172,6 +172,11 @@ class PANEL_PT_MustardUI_ModelToolkit_Mesh(ModelToolkitSection, bpy.types.Panel)
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_transfer_vertex_groups", icon="GROUP_VERTEX")
 
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_select_preview_texture", icon="SHADING_SOLID")
+
 
 class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Panel):
     header = ("Physics", "PHYSICS")
@@ -275,14 +280,6 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.typ
         row.operator(
             "mustardui.model_toolkit_convert_images",
             icon="IMAGE_DATA",
-        )
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.operator(
-            "mustardui.model_toolkit_select_preview_texture",
-            icon="SHADING_SOLID",
         )
 
 
