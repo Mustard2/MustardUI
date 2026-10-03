@@ -82,6 +82,7 @@ def optimize_modifiers(
             iterations = mod.iterations
             scale = mod.scale
         visibility = mod.show_viewport
+        show_only = mod_type == "MASK" and not mod.invert_vertex_group
         lst_index = get_index(obj, name)
 
         if not preserve_modifiers:
@@ -96,6 +97,7 @@ def optimize_modifiers(
         mix_mod.vertex_group_b = vg
         mix_mod.mix_set = "ALL"
         mix_mod.mix_mode = "ADD"
+        mix_mod.invert_vertex_group_b = show_only
         mix_mod.show_expanded = False
 
         mods.append((mix_mod, iterations, scale))

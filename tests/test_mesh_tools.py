@@ -226,6 +226,32 @@ class TestTriangleBarycentric(BlenderTestCase):
         np.testing.assert_allclose(bary, [[0.5, 0.25, 0.25], [1 / 3, 1 / 3, 1 / 3]])
 
 
+class TestOptimizeModifiers(BlenderTestCase):
+    # Merged Masks hide the same vertices, inverted or not
+    def test_masks(self):
+        obj = grid_object("Grid")
+        for name, invert, test in (
+            ("Hide", True, lambda x: x > 0.5),
+            ("Show", False, lambda x: x < 0),
+        ):
+            group = obj.vertex_groups.new(name=name)
+            group.add([v.index for v in obj.data.vertices if test(v.co.x)], 1.0, "REPLACE")
+            mask = obj.modifiers.new(name, "MASK")
+            mask.vertex_group = name
+            mask.invert_vertex_group = invert
+
+        def visible():
+            bpy.context.view_layer.update()
+            mesh = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            return sorted(tuple(v.co) for v in mesh.vertices)
+
+        original = visible()
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.mustardui.model_toolkit_optimize_modifiers(smooth_corrective=False)
+        self.assertEqual([m.type for m in obj.modifiers].count("MASK"), 1)
+        self.assertEqual(visible(), original)
+
+
 class TestTransferVertexGroups(BlenderTestCase):
     def setUp(self):
         super().setUp()
