@@ -9,6 +9,58 @@ from ...model_selection.active_object import (
 )
 
 
+def find_base_color_image(socket, groups=(), base_color=False, visited=None):
+    """First color image of the material tree feeding a Principled BSDF Base Color."""
+
+    visited = set() if visited is None else visited
+
+    for link in socket.links:
+        node = link.from_node
+        key = (groups, link.from_socket, base_color)
+        if key in visited:
+            continue
+        visited.add(key)
+
+        node_groups, node_base_color = groups, base_color
+        if node.type == "GROUP":
+            if not node.node_tree:
+                continue
+            nodes = node.node_tree.nodes
+            output = next(
+                (n for n in nodes if n.type == "GROUP_OUTPUT" and n.is_active_output), None
+            )
+            if not output:
+                continue
+            inputs = [output.inputs.get(link.from_socket.identifier)]
+            node_groups = groups + (node,)
+        elif node.type == "GROUP_INPUT":
+            if not groups:
+                continue
+            inputs = [groups[-1].inputs.get(link.from_socket.identifier)]
+            node_groups = groups[:-1]
+        elif node.type == "BSDF_PRINCIPLED":
+            inputs = [node.inputs["Base Color"]]
+            node_base_color = True
+        elif (
+            base_color
+            and not groups
+            and node.type == "TEX_IMAGE"
+            and node.image
+            and not node.image.colorspace_settings.is_data
+        ):
+            return node
+        else:
+            inputs = node.inputs
+
+        for input_socket in inputs:
+            if input_socket and (
+                image := find_base_color_image(input_socket, node_groups, node_base_color, visited)
+            ):
+                return image
+
+    return None
+
+
 class MustardUI_ModelToolkit_SelectPreviewTexture(bpy.types.Operator):
     """Set Viewport Solid Mode preview texture for all materials of the model"""
 
@@ -16,173 +68,33 @@ class MustardUI_ModelToolkit_SelectPreviewTexture(bpy.types.Operator):
     bl_label = "Select Solid Preview Texture"
     bl_options = {"REGISTER", "UNDO"}
 
-    @staticmethod
-    def is_rgb_image_node(node):
-
-        if node.type != "TEX_IMAGE":
-            return False
-
-        if not node.image:
-            return False
-
-        colorspace = node.image.colorspace_settings.name.lower().strip()
-
-        # Explicitly allowed color spaces only
-        allowed = {
-            "srgb",
-            "linear",
-            "linear rec.709",
-            "utility - linear - srgb",
-        }
-
-        return colorspace in allowed
-
-    @staticmethod
-    def find_principled_recursive(node_tree, parent_group=None, visited=None):
-
-        if visited is None:
-            visited = set()
-
-        if id(node_tree) in visited:
-            return None
-        visited.add(id(node_tree))
-
-        # Direct Principled
-        for node in node_tree.nodes:
-            if node.type == "BSDF_PRINCIPLED":
-                return node, node_tree, parent_group
-
-        # Search inside groups
-        for node in node_tree.nodes:
-            if node.type != "GROUP":
-                continue
-
-            if not node.node_tree:
-                continue
-
-            result = MustardUI_ModelToolkit_SelectPreviewTexture.find_principled_recursive(
-                node.node_tree, node, visited
-            )
-
-            if result:
-                return result
-
-        return None
-
-    @staticmethod
-    def find_node_from_socket(socket, current_tree, root_tree, parent_group=None, visited=None):
-
-        if visited is None:
-            visited = set()
-
-        if not socket:
-            return None
-
-        if not socket.is_linked:
-            return None
-
-        for link in socket.links:
-            from_node = link.from_node
-
-            key = (id(current_tree), from_node.name)
-
-            if key in visited:
-                continue
-
-            visited.add(key)
-
-            # RGB image found — only accept if at the root (level 0) tree.
-            # Images inside groups are ignored so we keep traversing GROUP_INPUT
-            # back out to the top-level node tree.
-            if MustardUI_ModelToolkit_SelectPreviewTexture.is_rgb_image_node(from_node):
-                if current_tree is root_tree:
-                    return from_node
-                # Inside a group: fall through and let GROUP_INPUT handling
-                # bubble us back to the root tree.
-
-            # Traverse normally inside same tree
-            for input_socket in from_node.inputs:
-                result = MustardUI_ModelToolkit_SelectPreviewTexture.find_node_from_socket(
-                    input_socket, current_tree, root_tree, parent_group, visited
-                )
-
-                if result:
-                    return result
-
-            # IMPORTANT:
-            # If we hit GROUP_INPUT,
-            # jump OUTSIDE the group
-            if from_node.type == "GROUP_INPUT" and parent_group:
-                for output_index, output_socket in enumerate(from_node.outputs):
-                    if output_socket != link.from_socket:
-                        continue
-
-                    if output_index >= len(parent_group.inputs):
-                        continue
-
-                    outer_socket = parent_group.inputs[output_index]
-
-                    result = MustardUI_ModelToolkit_SelectPreviewTexture.find_node_from_socket(  # noqa: E501
-                        outer_socket, parent_group.id_data, root_tree, None, visited
-                    )
-
-                    if result:
-                        return result
-
-        return None
-
     @classmethod
     def poll(cls, context):
         return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def execute(self, context):
-
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = arm.MustardUI_RigSettings
 
         processed = 0
-
-        for obj in get_ui_mesh_objects(rig_settings):
+        for obj in get_ui_mesh_objects(arm.MustardUI_RigSettings):
             for slot in obj.material_slots:
-                mat = slot.material
-
-                if not mat:
+                if not material_uses_nodes(slot.material):
                     continue
 
-                if not material_uses_nodes(mat):
-                    continue
-
-                node_tree = mat.node_tree
-
-                principled_data = self.find_principled_recursive(node_tree)
-
-                if not principled_data:
-                    continue
-
-                principled, principled_tree, parent_group = principled_data
-
-                socket = principled.inputs.get("Base Color")
-
-                if not socket:
-                    continue
-
-                preview_node = self.find_node_from_socket(
-                    socket, principled_tree, node_tree, parent_group
+                nodes = slot.material.node_tree.nodes
+                output = next(
+                    (n for n in nodes if n.type == "OUTPUT_MATERIAL" and n.is_active_output), None
                 )
+                image = output and find_base_color_image(output.inputs["Surface"])
+                if image:
+                    nodes.active = image
+                    processed += 1
 
-                if not preview_node:
-                    continue
-
-                node_tree.nodes.active = preview_node
-
-                processed += 1
-
-        if processed == 0:
-            self.report({"WARNING"}, "No RGB preview textures found")
+        if not processed:
+            self.report({"WARNING"}, "MustardUI - No preview textures found")
             return {"CANCELLED"}
 
-        self.report({"INFO"}, f"Updated {processed} material previews")
-
+        self.report({"INFO"}, f"MustardUI - Updated {processed} material previews")
         return {"FINISHED"}
 
 
