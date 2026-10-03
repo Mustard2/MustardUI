@@ -176,6 +176,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Mesh(ModelToolkitSection, bpy.types.Panel)
 
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_select_preview_texture", icon="SHADING_SOLID")
+        row.operator(
+            "mustardui.model_toolkit_select_preview_texture", text="", icon="SCENE_DATA"
+        ).scene = True
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Panel):

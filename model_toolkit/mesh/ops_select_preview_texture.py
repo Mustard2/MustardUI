@@ -62,33 +62,48 @@ def find_base_color_image(socket, groups=(), base_color=False, visited=None):
 
 
 class MustardUI_ModelToolkit_SelectPreviewTexture(bpy.types.Operator):
-    """Set Viewport Solid Mode preview texture for all materials of the model"""
-
     bl_idname = "mustardui.model_toolkit_select_preview_texture"
     bl_label = "Select Solid Preview Texture"
     bl_options = {"REGISTER", "UNDO"}
+
+    scene: bpy.props.BoolProperty(
+        name="Whole Scene",
+        description="Apply to the materials of every object in the scene",
+        options={"SKIP_SAVE"},
+    )
+
+    @classmethod
+    def description(cls, context, properties):
+        target = "every object in the scene" if properties.scene else "the model"
+        return f"Set Viewport Solid Mode preview texture for all materials of {target}"
 
     @classmethod
     def poll(cls, context):
         return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+        if self.scene:
+            objects = context.scene.objects
+        else:
+            res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+            objects = get_ui_mesh_objects(arm.MustardUI_RigSettings)
+
+        # Materials shared by several objects are processed once
+        materials = {slot.material for obj in objects for slot in obj.material_slots}
 
         processed = 0
-        for obj in get_ui_mesh_objects(arm.MustardUI_RigSettings):
-            for slot in obj.material_slots:
-                if not material_uses_nodes(slot.material):
-                    continue
+        for material in materials:
+            if not material_uses_nodes(material):
+                continue
 
-                nodes = slot.material.node_tree.nodes
-                output = next(
-                    (n for n in nodes if n.type == "OUTPUT_MATERIAL" and n.is_active_output), None
-                )
-                image = output and find_base_color_image(output.inputs["Surface"])
-                if image:
-                    nodes.active = image
-                    processed += 1
+            nodes = material.node_tree.nodes
+            output = next(
+                (n for n in nodes if n.type == "OUTPUT_MATERIAL" and n.is_active_output), None
+            )
+            image = output and find_base_color_image(output.inputs["Surface"])
+            if image:
+                nodes.active = image
+                processed += 1
 
         if not processed:
             self.report({"WARNING"}, "MustardUI - No preview textures found")

@@ -4,7 +4,14 @@ import bmesh
 import bpy
 import numpy as np
 from fake_ui import Drawer, FakeLayout
-from helpers import ADDON, BlenderTestCase, new_object
+from helpers import (
+    ADDON,
+    BlenderTestCase,
+    build_model,
+    configure_model,
+    new_mesh_object,
+    new_object,
+)
 from mathutils import Matrix
 from mathutils.bvhtree import BVHTree
 
@@ -1034,3 +1041,32 @@ class TestSmoothShapeKey(BlenderTestCase):
         # Outside the moved area the Shape Key is not changed
         outside = np.hypot(shape[:, 0], shape[:, 1]) > 0.75
         np.testing.assert_allclose(after[outside], shape[outside], atol=1e-7)
+
+
+class TestSelectPreviewTexture(BlenderTestCase):
+    # The model button sets the model materials only, the scene button every material
+    def test_model_and_scene(self):
+        model = build_model()
+        configure_model(model)
+        other = new_mesh_object("Prop")
+
+        images = {}
+        for obj in (model["body"], other):
+            material = bpy.data.materials.new(obj.name)
+            material.use_nodes = True
+            nodes = material.node_tree.nodes
+            texture = nodes.new("ShaderNodeTexImage")
+            texture.image = bpy.data.images.new(obj.name, 4, 4)
+            bsdf = nodes["Principled BSDF"]
+            material.node_tree.links.new(texture.outputs["Color"], bsdf.inputs["Base Color"])
+            nodes.active = bsdf
+            obj.data.materials.clear()
+            obj.data.materials.append(material)
+            images[obj] = (nodes, texture)
+
+        bpy.ops.mustardui.model_toolkit_select_preview_texture()
+        self.assertEqual(images[model["body"]][0].active, images[model["body"]][1])
+        self.assertNotEqual(images[other][0].active, images[other][1])
+
+        bpy.ops.mustardui.model_toolkit_select_preview_texture(scene=True)
+        self.assertEqual(images[other][0].active, images[other][1])
