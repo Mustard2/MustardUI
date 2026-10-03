@@ -77,22 +77,10 @@ class PANEL_PT_MustardUI_Simplify(MainPanel, bpy.types.Panel):
         col.prop(simplify_settings, "simplify_normals_optimize")
 
         # Morphs
-        if morphs_settings.enable_ui and (
-            "DIFFEO_GENESIS" in morphs_settings.type or morphs_settings.enable_freeze_morphs
-        ):
+        if morphs_settings.enable_ui:
             box = layout.box()
             box.label(text="Morphs", icon="SHAPEKEY_DATA")
-            col = box.column(align=True)
-            if "DIFFEO_GENESIS" in morphs_settings.type:
-                col.prop(simplify_settings, "simplify_morphs")
-            if morphs_settings.enable_freeze_morphs:
-                row = col.column()
-                row.enabled = (
-                    not simplify_settings.simplify_morphs
-                    if "DIFFEO_GENESIS" in morphs_settings.type
-                    else True
-                )
-                row.prop(simplify_settings, "simplify_morphs_freeze")
+            box.prop(simplify_settings, "simplify_morphs")
 
         # Outfits
         box = layout.box()

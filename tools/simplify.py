@@ -82,8 +82,6 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
 
     simplify_morphs: bpy.props.BoolProperty(name="Disable Morphs", default=True)
 
-    simplify_morphs_freeze: bpy.props.BoolProperty(name="Freeze Morphs", default=True)
-
     simplify_physics: bpy.props.BoolProperty(name="Disable Physics", default=False)
 
     simplify_force_no_physics: bpy.props.BoolProperty(
@@ -382,14 +380,8 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                         disable_modifier(c, mod)
 
         # Morphs
-        if morphs_settings and morphs_settings.enable_ui:
-            if simplify_settings.simplify_morphs and "DIFFEO_GENESIS" in morphs_settings.type:
-                morphs_settings.diffeomorphic_enable = not simplify_settings.simplify_enable
-            elif simplify_settings.simplify_morphs_freeze and morphs_settings.enable_freeze_morphs:
-                if (not morphs_settings.morphs_optimized and simplify_settings.simplify_enable) or (
-                    morphs_settings.morphs_optimized and not simplify_settings.simplify_enable
-                ):
-                    bpy.ops.mustardui.morphs_optimize()
+        if morphs_settings and morphs_settings.enable_ui and simplify_settings.simplify_morphs:
+            morphs_settings.diffeomorphic_enable = not simplify_settings.simplify_enable
 
         # Physics
         if (

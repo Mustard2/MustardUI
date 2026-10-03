@@ -67,6 +67,40 @@ class TestUI(BlenderTestCase):
         bpy.ops.mustardui.configuration()
         self.assertDrawsCleanly("PANEL_PT_MustardUI_Morphs")
 
+    # Morphs panels draw with the settings open and the morphs disabled, for each type
+    def test_draw_morphs_settings(self):
+        model = build_model()
+        arm = model["armature"].data
+        model["armature"]["body_bs_Wide"] = 0.0
+        configure_model(model)
+        bpy.context.preferences.addons[ADDON].preferences.developer = True
+        morphs = arm.MustardUI_MorphsSettings
+        for morphs_type in ("GENERIC", "DIFFEO_GENESIS_9"):
+            with self.subTest(morphs_type):
+                bpy.ops.mustardui.configuration()
+                morphs.sections.clear()
+                morphs.enable_ui = True
+                morphs.type = morphs_type
+                morphs.diffeomorphic_body_morphs = True
+                # Diffeomorphic sections come first, as in the Configuration panel
+                if morphs_type != "GENERIC":
+                    bpy.ops.mustardui.morphs_check()
+                bpy.ops.mustardui.morphs_section_add()
+                arm.mustardui_morphs_section_uilist_index = len(morphs.sections) - 1
+                morphs.sections[-1].string = "Blink"
+                morphs.sections[-1].shape_keys = True
+                bpy.ops.mustardui.morphs_check()
+                self.assertDrawsCleanly("PANEL_PT_MustardUI_InitPanel_Morphs")
+                bpy.ops.mustardui.configuration()
+                morphs.diffeomorphic_enable_settings = True
+                drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_Morphs")
+                if morphs_type != "GENERIC":
+                    self.assertIn("PANEL_PT_MustardUI_Morphs_Body", drawer.drawn)
+                    self.assertIn("PANEL_PT_MustardUI_Morphs_Custom", drawer.drawn)
+                morphs.diffeomorphic_enable = False
+                self.assertDrawsCleanly("PANEL_PT_MustardUI_Morphs")
+                morphs.diffeomorphic_enable = True
+
     # User panels draw with panel model selection
     def test_draw_panel_model_selection(self):
         model = build_model()

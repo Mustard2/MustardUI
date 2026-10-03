@@ -9,7 +9,9 @@ from . import MainPanel
 
 # Each list needs its own id, or the lists would share their size and scrolling
 def draw_morphs_list(layout, arm, section, list_id):
-    layout.template_list(
+    row = layout.row()
+    row.enabled = arm.MustardUI_MorphsSettings.diffeomorphic_enable or not section.can_disable
+    row.template_list(
         "MUSTARDUI_UL_Morphs_UIList_Menu",
         list_id,
         section,
@@ -37,35 +39,18 @@ def draw_morphs_count(layout, arm, diffeomorphic_id=None):
 
 
 # Draw header Morph buttons
-def draw_morphs_buttons(layout, morphs_settings, has_morphs=True, settings_button=False):
-    freeze = morphs_settings.enable_freeze_morphs
-
-    if has_morphs:
-        row = layout.row(align=freeze)
-        row.prop(morphs_settings, "diffeomorphic_search", icon="VIEWZOOM")
-        buttons = row.row(align=True)
-        buttons.prop(morphs_settings, "diffeomorphic_filter_null", icon="FILTER", text="")
-
-    if freeze:
-        row = layout.row()
-        row.operator(
-            "mustardui.morphs_optimize",
-            text="Morphs Freeze",
-            depress=morphs_settings.morphs_optimized,
-            icon="FREEZE",
-        )
-        buttons = row.row(align=True)
-
-    if has_morphs:
-        buttons.operator("mustardui.morphs_defaultvalues", text="", icon="LOOP_BACK")
-        if settings_button:
-            buttons.prop(
-                morphs_settings, "diffeomorphic_enable_settings", icon="PREFERENCES", text=""
-            )
-        if not freeze:
-            buttons.separator()
-        op = buttons.operator("mustardui.presets_ui", text="", icon="PRESET")
-        op.preset_type = "MORPHS"
+def draw_morphs_buttons(layout, morphs_settings):
+    row = layout.row()
+    row.prop(morphs_settings, "diffeomorphic_search", icon="VIEWZOOM")
+    buttons = row.row(align=True)
+    buttons.prop(morphs_settings, "diffeomorphic_filter_null", icon="FILTER", text="")
+    buttons.operator("mustardui.morphs_defaultvalues", text="", icon="LOOP_BACK")
+    settings = buttons.row(align=True)
+    settings.enabled = morphs_settings.diffeomorphic_enable
+    settings.prop(morphs_settings, "diffeomorphic_enable_settings", icon="PREFERENCES", text="")
+    buttons.separator()
+    op = buttons.operator("mustardui.presets_ui", text="", icon="PRESET")
+    op.preset_type = "MORPHS"
 
 
 class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
@@ -101,11 +86,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
 
         poll, obj = mustardui_active_object(context, config=ModelMode.USER)
-        morphs_settings = obj.MustardUI_MorphsSettings
-
-        if morphs_settings.type != "GENERIC":
-            layout = self.layout
-            layout.prop(morphs_settings, "diffeomorphic_enable", text="", toggle=False)
+        self.layout.prop(obj.MustardUI_MorphsSettings, "diffeomorphic_enable", text="")
 
     def draw(self, context):
 
@@ -113,34 +94,34 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
+        diffeomorphic = morphs_settings.type != "GENERIC"
 
-        # Diffeomorphic panel
-        if morphs_settings.type != "GENERIC":
-            layout.enabled = morphs_settings.diffeomorphic_enable
+        has_morphs = diffeomorphic or any(
+            x.morphs and not x.hidden for x in morphs_settings.sections
+        )
+        if has_morphs:
+            draw_morphs_buttons(layout, morphs_settings)
 
-            draw_morphs_buttons(layout, morphs_settings, settings_button=True)
+        if has_morphs and morphs_settings.diffeomorphic_enable_settings:
+            box = layout.box()
+            col = box.column(align=True)
+            row = col.row(align=True)
+            row.label(text="Mute Shape Keys")
+            row.prop(morphs_settings, "mute_shape_keys", expand=True)
 
-            if morphs_settings.diffeomorphic_enable_settings:
-                box = layout.box()
-                col = box.column(align=True)
-                col.prop(morphs_settings, "diffeomorphic_enable_shapekeys")
+            col.separator()
+
+            if diffeomorphic:
                 col.prop(morphs_settings, "diffeomorphic_enable_pJCM")
                 col.prop(morphs_settings, "diffeomorphic_enable_facs")
                 row = col.row(align=True)
                 row.enabled = not morphs_settings.diffeomorphic_enable_facs
                 row.prop(morphs_settings, "diffeomorphic_enable_facs_bones")
-                col.separator()
-                col.prop(morphs_settings, "diffeomorphic_show_count")
+            col.separator()
+            col.prop(morphs_settings, "diffeomorphic_show_count")
 
         # Generic panel
-        else:
-            has_morphs = any(x.morphs and not x.hidden for x in morphs_settings.sections)
-            draw_morphs_buttons(layout, morphs_settings, has_morphs, settings_button=True)
-
-            if has_morphs and morphs_settings.diffeomorphic_enable_settings:
-                box = layout.box()
-                box.prop(morphs_settings, "diffeomorphic_show_count")
-
+        if not diffeomorphic:
             morph_filter = (
                 morph_filter_function(obj.MustardUI_RigSettings, morphs_settings)
                 if morphs_settings.diffeomorphic_show_count
@@ -155,11 +136,7 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 if morph_filter is not None:
                     label = f"({sum(1 for x in section.morphs if morph_filter(x))}) {label}"
                 if ui_collapse_prop(layout, section, "collapse", label, icon=section.icon):
-                    row = layout.row()
-                    row.enabled = (
-                        not morphs_settings.morphs_optimized if section.freezable else True
-                    )
-                    draw_morphs_list(row, obj, section, f"Section_{index}")
+                    draw_morphs_list(layout, obj, section, f"Section_{index}")
 
 
 class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
@@ -196,11 +173,8 @@ class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
-        layout = self.layout
-        layout.enabled = morphs_settings.diffeomorphic_enable
-
         section = get_section_by_diffeomorphic_id(morphs_settings, 0)
-        draw_morphs_list(layout, obj, section, "Diffeomorphic_0")
+        draw_morphs_list(self.layout, obj, section, "Diffeomorphic_0")
 
 
 class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
@@ -237,13 +211,8 @@ class PANEL_PT_MustardUI_Morphs_Emotions(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
-        layout = self.layout
-        layout.enabled = (
-            morphs_settings.diffeomorphic_enable and not morphs_settings.morphs_optimized
-        )
-
         section = get_section_by_diffeomorphic_id(morphs_settings, 1)
-        draw_morphs_list(layout, obj, section, "Diffeomorphic_1")
+        draw_morphs_list(self.layout, obj, section, "Diffeomorphic_1")
 
 
 class PANEL_PT_MustardUI_Morphs_FACSUnits(MainPanel, bpy.types.Panel):
@@ -282,11 +251,8 @@ class PANEL_PT_MustardUI_Morphs_FACSUnits(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
-        layout = self.layout
-        layout.enabled = morphs_settings.diffeomorphic_enable
-
         section = get_section_by_diffeomorphic_id(morphs_settings, 2)
-        draw_morphs_list(layout, obj, section, "Diffeomorphic_2")
+        draw_morphs_list(self.layout, obj, section, "Diffeomorphic_2")
 
 
 class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
@@ -323,13 +289,8 @@ class PANEL_PT_MustardUI_Morphs_FACS(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
-        layout = self.layout
-        layout.enabled = (
-            morphs_settings.diffeomorphic_enable and not morphs_settings.morphs_optimized
-        )
-
         section = get_section_by_diffeomorphic_id(morphs_settings, 3)
-        draw_morphs_list(layout, obj, section, "Diffeomorphic_3")
+        draw_morphs_list(self.layout, obj, section, "Diffeomorphic_3")
 
 
 class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
@@ -366,13 +327,8 @@ class PANEL_PT_MustardUI_Morphs_Body(MainPanel, bpy.types.Panel):
         poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         morphs_settings = obj.MustardUI_MorphsSettings
 
-        layout = self.layout
-        layout.enabled = (
-            morphs_settings.diffeomorphic_enable and not morphs_settings.morphs_optimized
-        )
-
         section = get_section_by_diffeomorphic_id(morphs_settings, 4)
-        draw_morphs_list(layout, obj, section, "Diffeomorphic_4")
+        draw_morphs_list(self.layout, obj, section, "Diffeomorphic_4")
 
 
 class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
@@ -414,13 +370,11 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
         morphs_settings = obj.MustardUI_MorphsSettings
 
         layout = self.layout
-        layout.enabled = morphs_settings.diffeomorphic_enable
 
         for index, section in enumerate(morphs_settings.sections):
             if not section.morphs or section.is_internal or section.hidden:
                 continue
             box = layout.box()
-            box.enabled = not morphs_settings.morphs_optimized if section.freezable else True
             if ui_collapse_prop(box, section, "collapse", section.name, icon=section.icon):
                 draw_morphs_list(box, obj, section, f"Section_{index}")
 

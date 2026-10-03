@@ -194,8 +194,6 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     )
                     add_morph(0, [name, emotion])
 
-                morphs_settings.sections[0].freezable = False
-
             # Emotions
             mustardui_add_section(
                 morphs_settings.sections,
@@ -280,8 +278,6 @@ class MustardUI_Morphs_Check(bpy.types.Operator):
                     )
                     name = name.removesuffix("_div2")
                     add_morph(2, [name, emotion])
-
-                morphs_settings.sections[2].freezable = False
 
             # FACS Emotions
             sec = "Advanced Emotions" if morphs_settings.type == "DIFFEO_GENESIS_8" else "Emotions"

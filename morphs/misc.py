@@ -157,7 +157,7 @@ def muteDazFcurves(
     useLocation=True,
     useRotation=True,
     useScale=True,
-    muteSK=True,
+    mute_used_sk=True,
     mutepJCM=False,
     mutefacs=False,
     check_bones_rot=(),
@@ -207,7 +207,7 @@ def muteDazFcurves(
                         else:
                             set_bool(fcu, "mute", False)
                         sname = words[1]
-                        skey = skeys.key_blocks.get(sname) if muteSK else None
+                        skey = skeys.key_blocks.get(sname)
                         if skey is not None:
                             if (
                                 "MustardUINotDisable" not in sname
@@ -219,6 +219,10 @@ def muteDazFcurves(
                                 if muteDazFcurves_exceptionscheck(
                                     muteexceptions, sname, exceptions
                                 ):
-                                    set_bool(skey, "mute", mute)
+                                    set_bool(
+                                        skey,
+                                        "mute",
+                                        mute and (mute_used_sk or abs(skey.value) < 0.001),
+                                    )
                                 else:
                                     set_bool(skey, "mute", False)

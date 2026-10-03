@@ -37,8 +37,6 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
         col = box.column(align=True)
         col.prop(morphs_settings, "enable_ui", text="Enable Morph Panel")
 
-        col.prop(morphs_settings, "enable_freeze_morphs")
-
         box = layout.box()
         box.label(text="Morphs Type", icon="ASSET_MANAGER")
         row = box.row(align=True)
@@ -103,12 +101,11 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                 col.separator()
                 col.prop(section, "hidden")
 
-                row = col.row()
-                row.enabled = morphs_settings.enable_freeze_morphs
-                row.prop(section, "freezable")
-
                 col.separator()
                 col.prop(section, "icon")
+
+                # Available also for Diffeomorphic sections
+                box.prop(section, "can_disable")
 
             if section is not None and section.morphs:
                 box = layout.box()
