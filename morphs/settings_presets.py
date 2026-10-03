@@ -22,7 +22,7 @@ def morphs_to_json(morph_settings, rig_settings):
                 if kb:
                     val = kb.value
 
-            if abs(float(val)) > 0.001:
+            if isinstance(val, (int, float)) and abs(val) > 0.001:
                 data["morphs"].append(
                     {
                         "name": morph.name,

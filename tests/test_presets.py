@@ -14,6 +14,23 @@ class TestMorphPresets(BlenderTestCase):
         self.morphs_settings = setup_generic_morphs(self.model)
         self.keys = self.model["body"].data.shape_keys.key_blocks
 
+    # Morphs from array or text custom properties are not stored in the preset
+    def test_create_with_non_numeric_morphs(self):
+        arm = self.model["armature"]
+        arm["Blink Color"] = [1.0, 0.0, 0.0]
+        arm["Blink Label"] = "text"
+        bpy.ops.mustardui.configuration()
+        section = self.morphs_settings.sections[0]
+        section.custom_properties = True
+        section.custom_properties_source = "ARMATURE_OBJ"
+        bpy.ops.mustardui.morphs_check()
+        bpy.ops.mustardui.configuration()
+
+        self.keys["Blink.L"].value = 1.0
+        bpy.ops.mustardui.preset_create(preset_type="MORPHS", new_preset_name="Wink")
+        data = json.loads(self.morphs_settings.presets[0].data)
+        self.assertEqual([m["path"] for m in data["morphs"]], ["Blink.L"])
+
     # Morph preset stores and restores the morph values
     def test_create_and_apply(self):
         self.keys["Blink.L"].value = 1.0

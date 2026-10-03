@@ -5,7 +5,7 @@ from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 def physics_preset_poll(arm, physics_settings, type="CREATE"):
-    if arm.mustardui_physics_items_uilist_index < 0 or len(physics_settings.items) < 1:
+    if not 0 <= arm.mustardui_physics_items_uilist_index < len(physics_settings.items):
         return "ERROR", "MustardUI - Invalid Preset selected"
 
     obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object

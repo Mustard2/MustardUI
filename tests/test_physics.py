@@ -17,6 +17,7 @@ from helpers import (
 from mathutils import Vector
 
 ops_outfits_setup = importlib.import_module(ADDON + ".physics.ops_outfits_setup")
+settings_presets = importlib.import_module(ADDON + ".physics.settings_presets")
 
 
 def evaluated_co(obj):
@@ -90,6 +91,13 @@ class TestPhysics(BlenderTestCase):
         bpy.ops.mustardui.physics_item_remove()
         self.assertEqual(len(self.physics_settings.items), 0)
         self.assertIn("Chest Cage", bpy.data.objects)
+
+    # The physics preset check rejects an item index past the end
+    def test_preset_poll_stale_index(self):
+        arm = self.model["armature"].data
+        arm.mustardui_physics_items_uilist_index = 3
+        err, _ = settings_presets.physics_preset_poll(arm, self.physics_settings)
+        self.assertEqual(err, "ERROR")
 
     # Rebinding on a posed rig binds in rest pose, so the rest shape is kept
     def test_rebind_in_pose(self):

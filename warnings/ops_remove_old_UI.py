@@ -56,11 +56,11 @@ class MustardUI_Warnings_RemoveOldUI(bpy.types.Operator):
                 + str(nc)
                 + " removed).",
             )
-
-        self.report(
-            {"INFO"},
-            "MustardUI - Removed " + str(nc) + " scripts. Save and restart Blender!",
-        )
+        else:
+            self.report(
+                {"INFO"},
+                "MustardUI - Removed " + str(nc) + " scripts. Save and restart Blender!",
+            )
 
         return {"FINISHED"}
 
