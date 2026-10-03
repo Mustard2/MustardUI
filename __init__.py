@@ -29,6 +29,7 @@ from . import (  # noqa: E402
     presets,
     sections,
     settings,
+    text_storage,
     tools,
     warnings,
 )
@@ -52,9 +53,11 @@ def register():
     configuration.register()
     links.register()
     menu.register()
+    text_storage.register()
 
 
 def unregister():
+    text_storage.unregister()
     menu.unregister()
     links.unregister()
     configuration.unregister()

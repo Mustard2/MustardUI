@@ -6,6 +6,7 @@ import bpy
 from ...custom_properties.misc import mustardui_add_driver
 from ...misc.prop_utils import evaluate_path, evaluate_rna
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
+from ...text_storage import storage as text_storage
 from .ops_add_outfit import (
     AddOutfitSettings,
     add_outfit_fill_shape_keys,
@@ -461,6 +462,8 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         if not items:
             self.report({"ERROR"}, "MustardUI - Nothing to append")
             return {"CANCELLED"}
+        # The appended models can store their settings in the other storage
+        text_storage.apply()
 
         scene_coll = context.scene.collection
         if id_type == "Collection":

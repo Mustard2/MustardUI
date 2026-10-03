@@ -10,6 +10,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
+from ..text_storage.storage import remove_holder
 
 
 class MustardUI_RemoveUI(bpy.types.Operator):
@@ -274,6 +275,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             self.remove_property(arm, "MustardUI_SimplifySettings")
             self.remove_property(arm, "MustardUI_IKFKSnapperSettings")
             self.remove_property(arm, "MustardUI_Links")
+            remove_holder(arm)
 
             # Clear UI lists indices and filters
             self.remove_property(arm, "mustardui_morphs_uilist_index")

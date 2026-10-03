@@ -4,6 +4,7 @@ from bpy.props import BoolProperty, IntProperty, PointerProperty
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..text_storage.storage import settings_owner
 from .ops_set_section import MustardUI_Property_SetSection
 
 
@@ -294,12 +295,12 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
 
         row = layout.row(align=True)
         row.prop(
-            arm,
+            settings_owner(arm),
             "mustardui_property_uilist_outfits_filter_outfit",
             text="",
             icon="MOD_CLOTH",
         )
-        row.prop(arm, "mustardui_property_uilist_outfits_filter_piece", text="")
+        row.prop(settings_owner(arm), "mustardui_property_uilist_outfits_filter_piece", text="")
 
     def filter_items(self, context, data, propname):
         return filter_items_by_type(self, context, data, propname, cptype=1)
@@ -352,7 +353,12 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
             return
 
         row = layout.row(align=True)
-        row.prop(arm, "mustardui_property_uilist_hair_filter_object", text="", icon="CURVES")
+        row.prop(
+            settings_owner(arm),
+            "mustardui_property_uilist_hair_filter_object",
+            text="",
+            icon="CURVES",
+        )
 
     def filter_items(self, context, data, propname):
         return filter_items_by_type(self, context, data, propname, cptype=2)

@@ -7,6 +7,7 @@ from ..outfits.ops_visibility import (
     switch_outfit_piece,
     update_model_after_pieces_switch,
 )
+from ..text_storage.storage import settings_armature
 
 
 class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
@@ -127,10 +128,10 @@ def simplify_outfits(
 
 
 def simplify_extras(rig_settings, enable):
-    if rig_settings.extras_collection is None:
+    arm = settings_armature(rig_settings.id_data)
+    if rig_settings.extras_collection is None or arm is None:
         return
 
-    arm = rig_settings.id_data
     scene_objects = bpy.context.scene.objects
 
     # The objects are switched one by one, then the whole model is updated once

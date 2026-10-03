@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..text_storage.storage import settings_owner
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .menu_configure import row_scale
@@ -114,7 +115,7 @@ class PANEL_PT_MustardUI_InitPanel_Model(MainPanel, bpy.types.Panel):
             row.template_list(
                 "MUSTARDUI_UL_Property_UIList",
                 "The_List",
-                arm,
+                settings_owner(arm),
                 "MustardUI_CustomProperties",
                 scene,
                 "mustardui_property_uilist_index",
