@@ -51,3 +51,13 @@ class TestHair(BlenderTestCase):
         self.assertEqual(
             sorted(o.name for o in hair.objects), ["Hair Short", "Shared Rig", "Short Rig"]
         )
+
+    # Deleting a hair before the selected one keeps the selection, and Clean Model the worn hair
+    def test_selection_after_deleting_hair(self):
+        new_mesh_object("Hair Bob", self.model["hair"])
+        self.rig_settings.hair_list = "Hair Long"
+        bpy.data.objects.remove(bpy.data.objects["Hair Short"])
+        self.assertEqual(self.rig_settings.hair_list, "Hair Long")
+
+        bpy.ops.mustardui.cleanmodel(remove_unselected_hair=True)
+        self.assertEqual([o.name for o in self.model["hair"].objects], ["Hair Long"])
