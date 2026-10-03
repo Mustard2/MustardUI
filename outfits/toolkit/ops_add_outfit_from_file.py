@@ -59,10 +59,6 @@ def replace_models(objects, armature, body):
 
     body_keys = body.data.shape_keys
     for source, target in replaced.items():
-        for child in source.children:
-            matrix = child.matrix_world.copy()
-            child.parent = None
-            child.matrix_world = matrix
         # Shape Keys linked to the source body follow the model one
         source_keys = source.data.shape_keys if source.type == "MESH" else None
         if source_keys is not None and body_keys is not None:

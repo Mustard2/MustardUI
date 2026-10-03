@@ -1059,6 +1059,31 @@ class TestExportOutfits(BlenderTestCase):
         self.assertEqual(deform.target, model["body"])
         self.assertTrue(deform.is_bound)
 
+    # Pieces keep their transform relative to the model armature
+    def test_round_trip_transform(self):
+        self.model["armature"].scale = (0.01,) * 3
+        shirt = bpy.data.objects["Casual - Shirt"]
+        shirt.location, shirt.scale = (0.2, 0, 0), (0.5,) * 3
+        bpy.context.view_layer.update()
+        relative = self.model["armature"].matrix_world.inverted() @ shirt.matrix_world
+        self.export("Tester Casual")
+        reset_scene()
+        model = build_model("Other")
+        configure_model(model, "Other")
+        select_model(model)
+        model["armature"].location = (1, 0, 0)
+
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.join(self.path, "Collection", ""),
+            files=[{"name": "Tester Casual"}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+        shirt = bpy.data.objects["Other Casual.001 - Shirt"]
+        bpy.context.view_layer.update()
+        matrix = model["armature"].matrix_world.inverted() @ shirt.matrix_world
+        self.assertLess(max(abs(v) for row in matrix - relative for v in row), 1e-5)
+
     # The armature of an Outfit is kept, the one of the model replaced
     def test_round_trip_own_armature(self):
         formal = self.model["outfits"][1]
