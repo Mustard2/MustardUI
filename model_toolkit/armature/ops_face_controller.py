@@ -201,6 +201,25 @@ data = [
 ]
 
 
+def remove_expression_terms(expression, names):
+    """Remove the top-level terms of a driver expression that use any of the variables"""
+    uses = re.compile(r"\b(?:" + "|".join(re.escape(x) for x in names) + r")\b")
+    terms, start, depth = [], 0, 0
+    for i, ch in enumerate(expression):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch in "+-" and depth == 0:
+            before = expression[:i].rstrip()
+            # Binary sign only, not unary or an exponent like 1e-3
+            if re.search(r"[\w.)]$", before) and not re.search(r"(?<![\w.])[\d.]+[eE]$", before):
+                terms.append(expression[start:i])
+                start = i
+    terms.append(expression[start:])
+    return "".join(x for x in terms if not uses.search(x)).strip()
+
+
 def find_direction(dir):
     direction = ""
     if "SCALE" not in dir:
@@ -630,29 +649,14 @@ class MustardUI_ModelToolkit_FaceController_Remove(bpy.types.Operator):
                 for v in [var.name for var in variables_to_remove]:
                     print(f"MustardUI - Variables '{v}' to be deleted from '{dr.data_path}'.")
 
-            # Remove variables from current expression
-            current_expression = driver.expression.strip()
+            # Remove the terms using the variables from the expression
             if addon_prefs.debug:
-                print(f"MustardUI - Expression before removal: {current_expression}'.")
-            for v in [var.name for var in variables_to_remove]:
-                if "fcd" in v:
-                    pattern = r"([+\-]?\s*(?:\d+(?:\.\d+)?|\.\d+)?)\s?\*(?:\s*(?:\d+(?:\.\d+)?|\.\d+)\s?\*)*\s?(min\([^\)]+fcd[^\)]+[^\)]+fcd[^\)]+\)|\w*fcd\w*(\*\w*fcd\w*)*|\([^\)]+fcd[^\)]+\))"  # noqa: E501
-                    current_expression = re.sub(
-                        pattern,
-                        lambda m: "" if m.group(0).strip() else "",
-                        current_expression,
-                    )
-                pattern = (
-                    rf"([+\-]?\s*\d*\.?\d*)\s?\*\s?\(?\s?([a-zA-Z0-9_]+|{re.escape(v)}\d+)\s?\)?"  # noqa: E501
-                )
-                current_expression = re.sub(
-                    pattern,
-                    lambda m: "" if m.group(0).strip() else "",
-                    current_expression,
-                )
+                print(f"MustardUI - Expression before removal: {driver.expression}'.")
+            driver.expression = remove_expression_terms(
+                driver.expression, [var.name for var in variables_to_remove]
+            )
             if addon_prefs.debug:
-                print(f"MustardUI - Expression before removal: {current_expression.strip()}'.")
-            driver.expression = current_expression.strip()
+                print(f"MustardUI - Expression after removal: {driver.expression}'.")
 
             # Remove variables
             for var in variables_to_remove:
