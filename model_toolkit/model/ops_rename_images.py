@@ -381,6 +381,7 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self, width=600)
 
     def execute(self, context):
+        failed = 0
         for item in context.scene.mustardui_rename_images:
             if not item.enabled:
                 continue
@@ -412,22 +413,46 @@ class MustardUI_RenameImageNodes(bpy.types.Operator):
                 if image.packed_file or image.source == "TILED" or "<UDIM>" in image.filepath:
                     continue
 
-                try:
-                    abs_path = bpy.path.abspath(image.filepath)
-                    if os.path.exists(abs_path):
-                        directory = os.path.dirname(abs_path)
-                        ext = os.path.splitext(abs_path)[1]
-                        new_path = available_file_path(
-                            directory, strip_image_extension(new_name), ext, abs_path
-                        )
+                abs_path = bpy.path.abspath(image.filepath)
+                if not os.path.exists(abs_path):
+                    continue
+                directory = os.path.dirname(abs_path)
+                ext = os.path.splitext(abs_path)[1]
+                new_path = available_file_path(
+                    directory, strip_image_extension(new_name), ext, abs_path
+                )
+                if abs_path == new_path:
+                    continue
 
-                        if abs_path != new_path:
-                            os.rename(abs_path, new_path)
-                            image.filepath = bpy.path.relpath(new_path)
-                except Exception:
-                    pass
+                # Every local image using the file, found before it is renamed
+                users = [
+                    x
+                    for x in bpy.data.images
+                    if x.library is None
+                    and not x.packed_file
+                    and x.filepath
+                    and os.path.normcase(os.path.normpath(bpy.path.abspath(x.filepath)))
+                    == os.path.normcase(os.path.normpath(abs_path))
+                ]
+                try:
+                    os.rename(abs_path, new_path)
+                except OSError:
+                    failed += 1
+                    continue
+                try:
+                    stored_path = bpy.path.relpath(new_path)
+                except ValueError:
+                    # No relative path to another drive
+                    stored_path = new_path
+                for user in users:
+                    user.filepath = stored_path
 
         context.scene.mustardui_rename_images.clear()
+        if failed:
+            self.report({"WARNING"}, f"MustardUI - {failed} image files could not be renamed.")
+        else:
+            self.report({"INFO"}, "MustardUI - Images renamed.")
+
         return {"FINISHED"}
 
     def draw(self, context):
