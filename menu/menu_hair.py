@@ -184,9 +184,10 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
         layout.enabled = rig_settings.hair_show
 
         if rig_settings.hair_collection is not None:
-            hair_num = len(
-                [x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}]
-            )
+            hairs = [
+                x for x in rig_settings.hair_collection.objects if x.type in {"MESH", "CURVES"}
+            ]
+            hair_num = len(hairs)
 
             # An Outfit piece brings its own Hair: the Hair selection is locked to avoid
             # showing a second Hair on top of it
@@ -201,8 +202,8 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                 if switcher_active:
                     layout.label(text="Hair disabled by an Outfit piece.", icon="INFO")
 
-            elif hair_num > 0 and rig_settings.hair_collection.objects[0] is not None:
-                obj = rig_settings.hair_collection.objects[0]
+            elif hair_num > 0:
+                obj = hairs[0]
                 row = layout.row(align=True)
                 row.label(
                     text=strip_naming_convention(
