@@ -260,6 +260,15 @@ class TestTransferVertexGroups(BlenderTestCase):
             weight = next(g.weight for g in v.groups if g.group == index)
             self.assertAlmostEqual(weight, (v.co.x + 1.0) / 2.0, places=4)
 
+    # The list is emptied by Clear
+    def test_clear(self):
+        wm = bpy.context.window_manager
+        wm.MustardUI_ModelToolkit_TransferVertexGroups_Items.add().group_name = "Bar"
+        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = 1
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups_clear()
+        self.assertEqual(len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items), 0)
+        self.assertEqual(wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex, 0)
+
     def transfer(self, **settings):
         items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
         items.clear()

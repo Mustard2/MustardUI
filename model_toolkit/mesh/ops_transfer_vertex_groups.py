@@ -37,11 +37,7 @@ class MustardUI_ModelToolkit_TransferVertexGroups_Item(bpy.types.PropertyGroup):
 
 class MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        obj = context.active_object
-        missing = obj and obj.type == "MESH" and item.group_name not in obj.vertex_groups
-        row = layout.row()
-        row.enabled = not missing
-        row.label(text=item.group_name, icon="ERROR" if missing else "GROUP_VERTEX")
+        layout.label(text=item.group_name, icon="GROUP_VERTEX")
 
 
 class MustardUI_ModelToolkit_TransferVertexGroups_Add(bpy.types.Operator):
@@ -83,6 +79,19 @@ class MustardUI_ModelToolkit_TransferVertexGroups_Remove(bpy.types.Operator):
                 0, wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex - 1
             )
 
+        return {"FINISHED"}
+
+
+class MustardUI_ModelToolkit_TransferVertexGroups_Clear(bpy.types.Operator):
+    """Remove all the Vertex Groups from the list"""
+
+    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_clear"
+    bl_label = "Clear Vertex Groups"
+
+    def execute(self, context):
+        wm = context.window_manager
+        wm.MustardUI_ModelToolkit_TransferVertexGroups_Items.clear()
+        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = 0
         return {"FINISHED"}
 
 
@@ -273,13 +282,15 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             rows=4,
         )
 
-        # Remove button
+        # Remove buttons
         col = row.column(align=True)
         col.operator(
             "mustardui.model_toolkit_transfer_vertex_groups_remove",
             icon="REMOVE",
             text="",
         )
+        col.separator()
+        col.operator("mustardui.model_toolkit_transfer_vertex_groups_clear", icon="X", text="")
 
         layout.separator()
 
@@ -409,6 +420,17 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
 
     def invoke(self, context, event):
         wm = context.window_manager
+        source = context.active_object
+
+        if not source or source.type != "MESH":
+            self.report({"ERROR"}, "MustardUI - Active Object must be a Mesh")
+            return {"CANCELLED"}
+
+        # Remove the listed Vertex Groups not found on the source
+        items = wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        for i in reversed(range(len(items))):
+            if items[i].group_name not in source.vertex_groups:
+                items.remove(i)
 
         # Index in the list
         wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = max(
@@ -427,6 +449,7 @@ def register():
     bpy.utils.register_class(MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups)
     bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Add)
     bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Remove)
+    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Clear)
     bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_AddAll)
     bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_AddSelectedBones)
     bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups)
@@ -446,6 +469,7 @@ def unregister():
     bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_AddSelectedBones)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_AddAll)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Clear)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Remove)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Add)
     bpy.utils.unregister_class(MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups)
