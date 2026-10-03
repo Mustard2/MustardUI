@@ -1,4 +1,5 @@
 import importlib
+import itertools
 import os
 import tempfile
 
@@ -262,6 +263,30 @@ class TestTextStorage(BlenderTestCase):
         self.assertIsNone(storage.text_of(arm))
         self.assertEqual(arm.MustardUI_RigSettings.model_name, "Tester")
         self.assertFalse([x for x in bpy.data.texts if x.name.startswith(".MustardUI")])
+
+    # Linked and overridden armatures are converted before drawing, which can not create the Text
+    def test_linked_armatures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            paths = {}
+            for saved in (False, True):
+                self.set_enabled(saved)
+                paths[saved] = os.path.join(directory, f"model_{saved}.blend")
+                bpy.ops.wm.save_as_mainfile(filepath=paths[saved], copy=True)
+            for saved, enabled in itertools.product((False, True), repeat=2):
+                with self.subTest(saved=saved, enabled=enabled):
+                    bpy.ops.wm.read_homefile(use_empty=True)
+                    self.set_enabled(enabled)
+                    with bpy.data.libraries.load(paths[saved], link=True) as (data_from, data_to):
+                        data_to.objects = ["Tester Armature"]
+                    linked = data_to.objects[0]
+                    override = linked.override_create()
+                    override.data = linked.data.override_create()
+                    bpy.context.scene.collection.objects.link(override)
+                    bpy.context.view_layer.update()
+
+                    for arm in (linked.data, override.data):
+                        self.assertEqual(storage.text_of(arm) is not None, enabled)
+                        self.assertEqual(arm.MustardUI_RigSettings.model_name, "Tester")
 
     # Armatures sharing a Text all get the settings back
     def test_shared_text(self):

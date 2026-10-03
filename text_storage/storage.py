@@ -84,7 +84,7 @@ def _relocate(enable):
 def _new_text(arm, source=None):
     """New Text assigned to arm, a copy of source if given."""
     text = source.copy() if source is not None else bpy.data.texts.new("")
-    # Linked armatures and draw callbacks can not store the Text, which is then removed
+    # Draw callbacks can not store the Text, which is then removed
     try:
         text.name = f".MustardUI {arm.name}"
         # Without the fake user the Text is removed with the armature
@@ -123,17 +123,13 @@ def _tag_relations():
                 view_layer.depsgraph.debug_tag_update()
 
 
-# Armatures whose settings can be written, so not linked or overridden
-def _local_armatures():
-    return [x for x in bpy.data.armatures if x.library is None and x.override_library is None]
-
-
 def _convert(enable):
     global _armatures
     names = _names()
     texts = set()
     moved = False
-    for arm in _local_armatures():
+    # Linked and overridden armatures too, as draw callbacks can not create their Text
+    for arm in bpy.data.armatures:
         text = text_of(arm)
         if enable:
             # Duplicated armatures share the Text of the original one
@@ -167,7 +163,7 @@ def apply(*args):
 def _depsgraph_update(scene, depsgraph):
     # Text storage: armatures without their own Text, e.g. new, duplicated or made local
     if _moved:
-        texts = [text_of(x) for x in _local_armatures()]
+        texts = [text_of(x) for x in bpy.data.armatures]
         if None in texts or len(set(texts)) < len(texts):
             _convert(True)
     # Armature storage: new armatures, e.g. appended with a Text
