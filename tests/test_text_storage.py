@@ -280,6 +280,8 @@ class TestTextStorage(BlenderTestCase):
                         data_to.objects = ["Tester Armature"]
                     linked = data_to.objects[0]
                     override = linked.override_create()
+                    if override is None:
+                        self.skipTest("Library overrides are not available")
                     override.data = linked.data.override_create()
                     bpy.context.scene.collection.objects.link(override)
                     bpy.context.view_layer.update()
