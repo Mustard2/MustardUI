@@ -3,6 +3,7 @@ import bpy
 from .. import __package__ as base_package
 from ..custom_properties.misc import mustardui_clean_prop, mustardui_reassign_default
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -20,11 +21,11 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -74,14 +75,20 @@ class MustardUI_RemoveOutfit(bpy.types.Operator):
             for i in reversed(to_remove):
                 outfit_cp.remove(i)
 
+        # Read before removing, as the outfit list stores an index which shifts on removal
+        current = rig_settings.outfits_list
+        removed_current = collection is not None and current == collection.name
+
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
 
-        if rig_settings.outfit_nude:
+        outfits = [x[0] for x in rig_settings.outfits_list_make(context)]
+        if not removed_current and current in outfits:
+            rig_settings.outfits_list = current
+        elif rig_settings.outfit_nude:
             rig_settings.outfits_list = "Nude"
-        else:
-            if len(rig_settings.outfits_list_make(context)) > 0:
-                rig_settings.outfits_list = rig_settings.outfits_list_make(context)[0][0]
+        elif outfits:
+            rig_settings.outfits_list = outfits[0]
 
         index = max(0, min(index - 1, len(uilist) - 1))
         context.scene.mustardui_outfits_uilist_index = index

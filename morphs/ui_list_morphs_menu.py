@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .misc import get_cp_source, morph_filter_function
 
 
@@ -9,14 +9,14 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
     """UIList for Morphs"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         return res if obj is not None else False
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
         settings = context.scene.MustardUI_Settings
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
         morphs_settings = obj.MustardUI_MorphsSettings
 
@@ -98,7 +98,7 @@ class MUSTARDUI_UL_Morphs_UIList_Menu(bpy.types.UIList):
         )
 
         # Search and null filters of the Morphs panel, shared by all the lists
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         if obj is not None:
             morph_filter = morph_filter_function(
                 obj.MustardUI_RigSettings, obj.MustardUI_MorphsSettings

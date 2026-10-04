@@ -1,3 +1,8 @@
+import ast
+import math
+import re
+from itertools import zip_longest
+
 import bpy
 from bpy.props import (
     BoolProperty,
@@ -9,32 +14,27 @@ from bpy.props import (
 )
 from mathutils import Quaternion
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
+
+_COPY_TYPES = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
 
 
 def ikfk_snapper_available(arm):
-    """Whether the IK/FK Snapper applies to this model.
-
-    Restricted to a generic ("Other") rig — MHX/Rigify/ARP ship their own IK/FK
-    switching. Once the model is configured the stored ``model_rig_type`` is
-    authoritative, so use it directly; before that it is still the default, so
-    detect the type live from the armature.
-    """
+    """Whether the IK/FK Snapper applies to the model (generic rigs only)"""
     rig_settings = arm.MustardUI_RigSettings
     if arm.MustardUI_created:
         return rig_settings.model_rig_type == "other"
 
     from ..configuration.definitions import mustardui_detect_rig_type
 
-    arm_obj = rig_settings.model_armature_object or _arm_obj(arm)
+    arm_obj = _arm_obj(arm)
     if arm_obj is None:
         return False
     return mustardui_detect_rig_type(arm, arm_obj) == "other"
 
 
 def ikfk_chain_is_complete(chain):
-    """A chain is usable only if it has the vital fields: IK bones, FK bones and
-    an IK control."""
+    """Whether the chain has its IK bones, FK bones and IK control"""
     return bool(_split_bones(chain.ik_bones) and _split_bones(chain.fk_bones) and chain.ik_ctrl)
 
 
@@ -167,8 +167,7 @@ _NAME_STRIP_TOKENS = [
 
 
 def _clean_chain_name(name):
-    """Make a readable chain name: strip IK/FK tokens and turn separators into
-    spaces (e.g. R_Leg_IK → "R Leg")."""
+    """Readable chain name without the IK/FK tokens (e.g. R_Leg_IK -> R Leg)"""
     cleaned = name
     for tok in _NAME_STRIP_TOKENS:
         cleaned = cleaned.replace(tok, "")
@@ -202,16 +201,9 @@ def _ik_chain_from_constraint(arm_obj, end_bone, constraint):
 
 
 def _bone_is_visible(arm_obj, bone_name):
-    """Return True if the bone is not explicitly hidden (b.hide).
-    Collection visibility is intentionally ignored because rigs toggle
-    IK/FK collections based on mode, which would break detection."""
+    """Whether the bone is not hidden, ignoring the collections visibility"""
     b = arm_obj.data.bones.get(bone_name)
     return b is not None and not b.hide
-
-
-def _all_collections(armature):
-    """All bone collections of the armature, flattened (incl. nested)."""
-    return getattr(armature, "collections_all", armature.collections)
 
 
 def _collections_of(arm_obj, bone_names):
@@ -228,13 +220,7 @@ def _collections_of(arm_obj, bone_names):
 
 
 def detect_chains(arm_obj):
-    """
-    Scan *arm_obj* for IK constraints and build chain descriptions.
-    Returns a list of dicts ready to be stored in MustardUI_IKFKChain.
-
-    Only chains whose IK control bone is visible are included, which
-    filters out internal/mechanism bones and keeps the animator-facing limb chains.
-    """
+    """IK/FK chains of the armature with a visible IK control, as dicts"""
     pose_bones = arm_obj.pose.bones
     seen_ctrls = set()
     results = []
@@ -289,7 +275,7 @@ def detect_chains(arm_obj):
                 ik_candidates[0] if ik_candidates else ""
             )
 
-            coll_names = {c.name for c in _all_collections(arm_obj.data)}
+            coll_names = {c.name for c in arm_obj.data.collections_all}
             fk_collection = ""
             if ik_collection:
                 fk_collection = _fk_name_for(ik_collection, coll_names) or ""
@@ -315,11 +301,17 @@ def detect_chains(arm_obj):
     return results
 
 
-def _arm_obj(arm_data):
-    for obj in bpy.data.objects:
-        if obj.type == "ARMATURE" and obj.data is arm_data:
+def _arm_obj(arm_data, context=None):
+    """Armature object using the data, the active one first since the data can be shared"""
+    active = context.active_object if context else None
+    for obj in (
+        active,
+        active and active.parent,
+        arm_data.MustardUI_RigSettings.model_armature_object,
+    ):
+        if obj is not None and obj.data == arm_data:
             return obj
-    return None
+    return next((x for x in bpy.data.objects if x.type == "ARMATURE" and x.data == arm_data), None)
 
 
 def _bone(arm_obj, name):
@@ -332,12 +324,133 @@ def _split_bones(s):
     return [n.strip() for n in s.split(",") if n.strip()]
 
 
-def _signed_angle(v_from, v_to, axis):
-    """Signed angle (radians) rotating *v_from* onto *v_to* about *axis*.
+def _ik_constraint(arm_obj, chain):
+    """IK constraint of the chain end bone targeting the IK control"""
+    ik_list = _split_bones(chain.ik_bones)
+    end = _bone(arm_obj, ik_list[-1]) if ik_list else None
+    if end is None:
+        return None
+    return next(
+        (c for c in end.constraints if c.type == "IK" and c.subtarget == chain.ik_ctrl), None
+    )
 
-    Both vectors are projected onto the plane perpendicular to *axis* first.
-    Returns 0.0 if either projection is degenerate.
-    """
+
+def _ik_solve_changes(arm_obj, chain, ik_list):
+    """Influences forcing a clean IK solve: IK and companions on, FK copies off"""
+    ik_cns = _ik_constraint(arm_obj, chain)
+    changes = [(ik_cns, 1.0)] if ik_cns is not None else []
+    for pb in arm_obj.pose.bones:
+        for cns in pb.constraints:
+            if cns.type in _COPY_TYPES and cns.subtarget == chain.ik_ctrl:
+                changes.append((cns, 1.0))
+    fk_set = set(_split_bones(chain.fk_bones))
+    for ik_name in ik_list:
+        pb = _bone(arm_obj, ik_name)
+        for cns in pb.constraints if pb is not None else []:
+            if cns.type in _COPY_TYPES and cns.subtarget in fk_set:
+                changes.append((cns, 0.0))
+    return changes
+
+
+def _override_influences(arm_obj, changes):
+    """Set constraint influences, muting their drivers, returning what to restore"""
+    drivers = arm_obj.animation_data.drivers if arm_obj.animation_data else None
+    saved = []
+    for cns, influence in changes:
+        fcu = drivers.find(cns.path_from_id("influence")) if drivers else None
+        saved.append((cns, cns.influence, fcu, fcu is not None and fcu.mute))
+        if fcu is not None:
+            fcu.mute = True
+        cns.influence = influence
+    if saved:
+        bpy.context.view_layer.update()
+    return saved
+
+
+def _restore_influences(saved):
+    for cns, influence, fcu, mute in reversed(saved):
+        cns.influence = influence
+        if fcu is not None:
+            fcu.mute = mute
+    if saved:
+        bpy.context.view_layer.update()
+
+
+# Last element of a data path: an attribute or a quoted key
+_PATH_END = re.compile(r'^(.*?)(?:\.(\w+)|\[("(?:[^"\\]|\\.)*")\])$')
+
+
+def _set_path(id_data, path, value):
+    head, attr, key = _PATH_END.match(path).groups()
+    owner = id_data.path_resolve(head) if head else id_data
+    if attr:
+        setattr(owner, attr, value)
+    else:
+        owner[ast.literal_eval(key)] = value
+
+
+def _drive(source, source_path, driven):
+    """Set the property read by the drivers to the value giving the driven values"""
+    try:
+        old = source.path_resolve(source_path)
+        if not isinstance(old, (bool, int, float)):
+            return False
+        for candidate in dict.fromkeys((old, type(old)(0), type(old)(1))):
+            _set_path(source, source_path, candidate)
+            source.update_tag()
+            bpy.context.view_layer.update()
+            if all(
+                math.isclose(float(owner.path_resolve(path)), value, abs_tol=1e-4)
+                for owner, path, value, *_ in driven
+            ):
+                return True
+        _set_path(source, source_path, old)
+        source.update_tag()
+    except (AttributeError, TypeError, ValueError):
+        pass
+    return False
+
+
+def _set_values(targets, frame):
+    """Set (owner, data_path, value, key) targets, through the property their drivers read"""
+    direct = []
+    sources = {}
+    for owner, path, value, key in targets:
+        fcu = owner.animation_data.drivers.find(path) if owner.animation_data else None
+        variables = fcu.driver.variables if fcu is not None and not fcu.mute else []
+        target = variables[0].targets[0] if len(variables) == 1 else None
+        if target is not None and variables[0].type == "SINGLE_PROP" and target.id is not None:
+            sources.setdefault((target.id, target.data_path), []).append(
+                (owner, path, value, key, fcu)
+            )
+        else:
+            if fcu is not None:
+                fcu.mute = True
+            direct.append((owner, path, value, key))
+
+    keys = []
+    for (source, source_path), driven in sources.items():
+        if _drive(source, source_path, driven):
+            if any(x[3] for x in driven):
+                keys.append((source, source_path))
+            continue
+        # Drivers the switch can not drive are muted, not removed
+        for owner, path, value, key, fcu in driven:
+            fcu.mute = True
+            direct.append((owner, path, value, key))
+
+    for owner, path, value, key in direct:
+        _set_path(owner, path, value)
+        if key:
+            keys.append((owner, path))
+
+    if bpy.context.scene.tool_settings.use_keyframe_insert_auto:
+        for owner, path in keys:
+            owner.keyframe_insert(path, frame=frame)
+
+
+def _signed_angle(v_from, v_to, axis):
+    """Signed angle rotating v_from onto v_to around the axis"""
     f = v_from - axis * v_from.dot(axis)
     t = v_to - axis * v_to.dot(axis)
     if f.length < 1e-9 or t.length < 1e-9:
@@ -377,11 +490,7 @@ def _auto_key(bone, frame):
 
 
 def populate_ikfk_chains(arm, arm_obj, clear_existing=False):
-    """(Re)build auto-detected IK/FK chains on *arm* from *arm_obj*.
-
-    Removes previously auto-detected chains (or all, when *clear_existing*) and
-    adds freshly detected ones. Returns the list of detection result dicts.
-    """
+    """Rebuild the auto-detected IK/FK chains, returning the detected ones"""
     snapper = arm.MustardUI_IKFKSnapperSettings
 
     if clear_existing:
@@ -431,13 +540,13 @@ class MUSTARDUI_OT_IKFKDetect(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        # Works in both normal mode (config=0) and configure mode (config=1)
-        res, arm = mustardui_active_object(context, config=-1)
+        # Works in both user and configuration mode
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         return arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=-1)
-        arm_obj = _arm_obj(arm)
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
+        arm_obj = _arm_obj(arm, context)
         if arm_obj is None:
             self.report({"ERROR"}, "Cannot find armature object")
             return {"CANCELLED"}
@@ -450,6 +559,20 @@ class MUSTARDUI_OT_IKFKDetect(bpy.types.Operator):
             msg += f"; {fk_missing} chain(s) have no FK counterparts (IK→FK snap unavailable)"
         self.report({"INFO"}, msg)
         return {"FINISHED"}
+
+
+def _chain_and_object(operator, context):
+    """Chain of the operator and armature object of the model, or None if missing"""
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
+    chains = arm.MustardUI_IKFKSnapperSettings.ikfk_chains
+    if operator.chain_index >= len(chains):
+        operator.report({"ERROR"}, "Invalid chain index")
+        return None, None
+    arm_obj = _arm_obj(arm, context)
+    if arm_obj is None:
+        operator.report({"ERROR"}, "Cannot find armature object")
+        return None, None
+    return chains[operator.chain_index], arm_obj
 
 
 class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
@@ -475,21 +598,12 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=0)
-        snapper = arm.MustardUI_IKFKSnapperSettings
-
-        if self.chain_index >= len(snapper.ikfk_chains):
-            self.report({"ERROR"}, "Invalid chain index")
-            return {"CANCELLED"}
-
-        chain = snapper.ikfk_chains[self.chain_index]
-        arm_obj = _arm_obj(arm)
-        if arm_obj is None:
-            self.report({"ERROR"}, "Cannot find armature object")
+        chain, arm_obj = _chain_and_object(self, context)
+        if chain is None:
             return {"CANCELLED"}
 
         frame = context.scene.frame_current
@@ -513,9 +627,11 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
             self.report({"ERROR"}, f"IK control bone '{chain.ik_ctrl}' not found")
             return False
 
-        # Use explicit FK bones if configured; otherwise fall back to the IK
-        # chain bones themselves (single-chain rigs reuse the same bones for FK).
-        fk_list = _split_bones(chain.fk_bones) or _split_bones(chain.ik_bones)
+        # FK bones keep their position in the chain: a missing one uses the IK bone,
+        # as do single-chain rigs, which reuse the same bones for FK
+        ik_list = _split_bones(chain.ik_bones)
+        fk_slots = [x.strip() for x in chain.fk_bones.split(",")]
+        fk_list = [fk or ik for ik, fk in zip_longest(ik_list, fk_slots, fillvalue="") if fk or ik]
         if not fk_list:
             self.report({"ERROR"}, "No chain bones found")
             return False
@@ -532,151 +648,117 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         # pole would jump. Neutralize every link from the IK side — the IK
         # constraint plus every copy constraint pointing at the IK ctrl or an IK
         # chain bone — for the duration of the read; restored before returning.
-        ik_list = _split_bones(chain.ik_bones)
-        _ik_cns = None
-        _was_ik_on = False
-        _copy_types = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
-        _ik_side = set(ik_list)
-        if chain.ik_ctrl:
-            _ik_side.add(chain.ik_ctrl)
+        ik_side = set(ik_list) | {chain.ik_ctrl}
+        changes = [
+            (cns, 0.0)
+            for pb in arm_obj.pose.bones
+            for cns in pb.constraints
+            if cns.influence != 0.0
+            and (
+                (cns.type == "IK" and cns.subtarget == chain.ik_ctrl)
+                or (cns.type in _COPY_TYPES and cns.subtarget in ik_side)
+            )
+        ]
+        saved = _override_influences(arm_obj, changes)
+        try:
+            # Capture ALL FK positions before touching any bone.
+            # Placing the IK ctrl triggers a scene update that can shift constraint-driven
+            # FK bones, so pole geometry must be read from the unmodified FK pose.
+            fk_tail = fk_end_bone.tail.copy()
 
-        if ik_list:
-            end_ik_b = _bone(arm_obj, ik_list[-1])
-            if end_ik_b:
-                for cns in end_ik_b.constraints:
-                    if cns.type == "IK" and cns.subtarget == chain.ik_ctrl:
-                        _ik_cns = cns
-                        _was_ik_on = cns.influence > 0.5
-                        break
+            # For rotation: find the bone that Copy Rotation-s from the IK ctrl (e.g.
+            # Hand.l → Copy Rotation → L_Arm_IK). In FK mode its rotation is the one
+            # the IK ctrl needs to match so that the hand stays put after switching.
+            # Fall back to the FK end bone if no such companion exists.
+            rot_source = next(
+                (
+                    pb
+                    for pb in arm_obj.pose.bones
+                    for cns in pb.constraints
+                    if cns.type in {"COPY_ROTATION", "COPY_TRANSFORMS"}
+                    and cns.subtarget == chain.ik_ctrl
+                ),
+                fk_end_bone,
+            )
+            rot_mat = rot_source.matrix.copy()
 
-        _fk_read_saved = []
-        for pb in arm_obj.pose.bones:
-            for cns in pb.constraints:
-                drives_from_ik = (
-                    cns.type == "IK" and getattr(cns, "subtarget", "") == chain.ik_ctrl
-                ) or (cns.type in _copy_types and getattr(cns, "subtarget", "") in _ik_side)
-                if drives_from_ik and cns.influence != 0.0:
-                    _fk_read_saved.append((cns, cns.influence))
-                    cns.influence = 0.0
-        if _fk_read_saved:
-            bpy.context.view_layer.update()
-
-        # Capture ALL FK positions before touching any bone.
-        # Placing the IK ctrl triggers a scene update that can shift constraint-driven
-        # FK bones, so pole geometry must be read from the unmodified FK pose.
-        fk_tail = fk_end_bone.tail.copy()
-
-        # For rotation: find the bone that Copy Rotation-s from the IK ctrl (e.g.
-        # Hand.l → Copy Rotation → L_Arm_IK). In FK mode its rotation is the one
-        # the IK ctrl needs to match so that the hand stays put after switching.
-        # Fall back to the FK end bone if no such companion exists.
-        rot_source = next(
-            (
-                pb
-                for pb in arm_obj.pose.bones
-                for cns in pb.constraints
-                if cns.type in {"COPY_ROTATION", "COPY_TRANSFORMS"}
-                and getattr(cns, "subtarget", "") == chain.ik_ctrl
-            ),
-            fk_end_bone,
-        )
-        rot_mat = rot_source.matrix.copy()
-
-        # Capture pole geometry from clean FK state (before IK ctrl is placed).
-        # Placing the IK ctrl triggers an update that can shift constraint-driven
-        # bones, so everything the pole needs is read from the unmodified FK pose.
-        pole_data = None
-        if chain.pole_ctrl and len(fk_list) >= 2:
-            pole_bone = _bone(arm_obj, chain.pole_ctrl)
-            above = _bone(arm_obj, fk_list[0])  # thigh FK
-            below = _bone(arm_obj, fk_list[1])  # shin FK
-            if pole_bone and above and below:
-                pole_data = (
-                    pole_bone,
-                    pole_bone.head.copy(),  # current pole world position
-                    below.head.copy(),  # knee world position
-                    above.head.copy(),  # hip world position (chain root)
-                    fk_tail,  # ankle world position (chain tip / IK target)
-                )
-
-        # Place IK ctrl to match FK end position.
-        rot_mat.translation = fk_tail
-        _set_world_matrix(ik_ctrl_bone, rot_mat)
-        _auto_key(ik_ctrl_bone, frame)
-
-        # Place pole target using the FK geometry captured above.
-        if pole_data:
-            pole_bone, pole_p0, knee_pos, root_pos, end_pos = pole_data
-            chain_axis = end_pos - root_pos
-            limb_len = chain_axis.length
-
-            if limb_len > 1e-8:
-                chain_axis = chain_axis.normalized()
-                t = (knee_pos - root_pos).dot(chain_axis)
-                pivot = root_pos + chain_axis * t
-
-                # True FK bend direction: the knee's offset from the hip→ankle
-                # chord (perpendicular to the chain axis by construction).
-                bend_dir = knee_pos - pivot
-
-                # Skip when the limb is too straight to determine a reliable bend
-                # direction (e.g. rest pose) — moving the pole then only adds error.
-                if bend_dir.length > max(1e-5, 1e-3 * limb_len):
-                    bend_dir.normalize()
-
-                    # Preserve the pole's existing offset from the chain axis (its
-                    # axial position and radial distance); only re-aim the radial
-                    # direction. This makes the snap a no-op when the pole is
-                    # already correct, so a clean FK→IK round-trip leaves the pole
-                    # transform unchanged instead of jumping to a fixed distance.
-                    rel = pole_p0 - pivot
-                    axial = chain_axis * rel.dot(chain_axis)
-                    radial_len = (rel - axial).length or chain.pole_distance
-                    base = pivot + axial
-
-                    # Place the pole so the solve reproduces the FK bend, handling
-                    # the constraint's pole angle (and its per-side sign) by
-                    # measuring the bend the solver induces and cancelling it —
-                    # deterministic, so repeated clicks don't flip the side.
-                    pole_pos = self._match_pole(
-                        arm_obj,
-                        chain,
-                        ik_list,
+            # Capture pole geometry from clean FK state (before IK ctrl is placed).
+            # Placing the IK ctrl triggers an update that can shift constraint-driven
+            # bones, so everything the pole needs is read from the unmodified FK pose.
+            pole_data = None
+            if chain.pole_ctrl and len(fk_list) >= 2:
+                pole_bone = _bone(arm_obj, chain.pole_ctrl)
+                above = _bone(arm_obj, fk_list[0])  # thigh FK
+                below = _bone(arm_obj, fk_list[1])  # shin FK
+                if pole_bone and above and below:
+                    pole_data = (
                         pole_bone,
-                        base,
-                        chain_axis,
-                        radial_len,
-                        bend_dir,
+                        pole_bone.head.copy(),  # current pole world position
+                        below.head.copy(),  # knee world position
+                        above.head.copy(),  # hip world position (chain root)
+                        fk_tail,  # ankle world position (chain tip / IK target)
                     )
 
-                    _set_world_location(pole_bone, pole_pos)
-                    _auto_key(pole_bone, frame)
+            # Place IK ctrl to match FK end position.
+            rot_mat.translation = fk_tail
+            _set_world_matrix(ik_ctrl_bone, rot_mat)
+            _auto_key(ik_ctrl_bone, frame)
 
-        # Restore every constraint disabled for the FK read so the switch sees
-        # the original state.
-        for cns, influence in _fk_read_saved:
-            cns.influence = influence
-        if _fk_read_saved:
-            bpy.context.view_layer.update()
+            # Place pole target using the FK geometry captured above.
+            if pole_data:
+                pole_bone, pole_p0, knee_pos, root_pos, end_pos = pole_data
+                chain_axis = end_pos - root_pos
+                limb_len = chain_axis.length
+
+                if limb_len > 1e-8:
+                    chain_axis = chain_axis.normalized()
+                    t = (knee_pos - root_pos).dot(chain_axis)
+                    pivot = root_pos + chain_axis * t
+
+                    # True FK bend direction: the knee's offset from the hip→ankle
+                    # chord (perpendicular to the chain axis by construction).
+                    bend_dir = knee_pos - pivot
+
+                    # Skip when the limb is too straight to determine a reliable bend
+                    # direction (e.g. rest pose) — moving the pole then only adds error.
+                    if bend_dir.length > max(1e-5, 1e-3 * limb_len):
+                        bend_dir.normalize()
+
+                        # Preserve the pole's existing offset from the chain axis (its
+                        # axial position and radial distance); only re-aim the radial
+                        # direction. This makes the snap a no-op when the pole is
+                        # already correct, so a clean FK→IK round-trip leaves the pole
+                        # transform unchanged instead of jumping to a fixed distance.
+                        rel = pole_p0 - pivot
+                        axial = chain_axis * rel.dot(chain_axis)
+                        radial_len = (rel - axial).length or chain.pole_distance
+                        base = pivot + axial
+
+                        # Place the pole so the solve reproduces the FK bend, handling
+                        # the constraint's pole angle (and its per-side sign) by
+                        # measuring the bend the solver induces and cancelling it —
+                        # deterministic, so repeated clicks don't flip the side.
+                        pole_pos = self._match_pole(
+                            arm_obj,
+                            chain,
+                            ik_list,
+                            pole_bone,
+                            base,
+                            chain_axis,
+                            radial_len,
+                            bend_dir,
+                        )
+
+                        _set_world_location(pole_bone, pole_pos)
+                        _auto_key(pole_bone, frame)
+        finally:
+            _restore_influences(saved)
 
         return True
 
     @staticmethod
     def _match_pole(arm_obj, chain, ik_list, pole_bone, base, axis, radial_len, desired_dir):
-        """Place the pole so the IK solve reproduces the FK bend.
-
-        Rotating the pole around the chain axis rotates the IK bend plane — and so
-        the mid (knee/elbow) joint — by the same angle. So we aim the pole along
-        the FK bend direction, solve once, measure how far the solver's pole angle
-        rotated the resulting bend away from the FK direction, and cancel exactly
-        that angle. A single measure-and-correct pass lands the joint on the FK
-        position regardless of the constraint's pole_angle or its sign convention,
-        and it is deterministic — repeated clicks compute the same pole, so the
-        side never flips.
-
-        ``base`` is the pole's anchor on the chain axis (pivot + the pole's own
-        axial offset); the pole is kept at ``radial_len`` from it.
-        """
+        """Place the pole so that the IK solve reproduces the FK bend"""
         default = base + desired_dir * radial_len
         if not ik_list:
             return default
@@ -684,93 +766,22 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         if mid_ik is None:
             return default
 
-        # Temporarily force a clean IK solve: enable the IK constraint and disable
-        # any FK→IK copy constraints that would otherwise pin the IK bones to FK
-        # (the same ones apply_ikfk_switch toggles when switching to IK).
-        saved = []
-        end_ik = _bone(arm_obj, ik_list[-1])
-        if end_ik is not None:
-            for cns in end_ik.constraints:
-                if cns.type == "IK" and cns.subtarget == chain.ik_ctrl:
-                    saved.append((cns, cns.influence))
-                    cns.influence = 1.0
-                    break
+        # Temporarily force a clean IK solve, unpinning the IK bones from FK
+        saved = _override_influences(arm_obj, _ik_solve_changes(arm_obj, chain, ik_list))
+        try:
+            # Solve with the pole aimed along the FK bend direction and read the bend
+            # the solver actually produced (mid joint offset from the axis).
+            _set_world_location(pole_bone, default)  # triggers a view_layer update
+            achieved = mid_ik.head - base
+            achieved -= axis * achieved.dot(axis)
+        finally:
+            _restore_influences(saved)
 
-        fk_set = set(_split_bones(chain.fk_bones))
-        _copy_types = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
-        for ik_name in ik_list:
-            pb = _bone(arm_obj, ik_name)
-            if pb is None:
-                continue
-            for cns in pb.constraints:
-                if cns.type in _copy_types and getattr(cns, "subtarget", "") in fk_set:
-                    saved.append((cns, cns.influence))
-                    cns.influence = 0.0
-
-        # Solve with the pole aimed along the FK bend direction and read the bend
-        # the solver actually produced (mid joint offset from the axis).
-        _set_world_location(pole_bone, default)  # triggers a view_layer update
-        achieved = mid_ik.head - base
-        achieved -= axis * achieved.dot(axis)
-
-        result = default
         if achieved.length > 1e-7:
             # Rotate the pole back by the angle the solver introduced.
             err = _signed_angle(achieved, desired_dir, axis)
-            corrected_dir = Quaternion(axis, err) @ desired_dir
-            result = base + corrected_dir * radial_len
-
-        # Restore every constraint influence we touched.
-        for cns, influence in saved:
-            cns.influence = influence
-        bpy.context.view_layer.update()
-        return result
-
-    @staticmethod
-    def _force_ik_solve(arm_obj, chain, ik_list, copy_types):
-        """Force a clean IK solve so the chain reflects the IK controls.
-
-        Enables the IK constraint and the companion constraints that copy the IK
-        ctrl, and disables the FK→IK copies that would otherwise pin the IK bones
-        to the FK pose. Returns the (constraint, original_influence) pairs to
-        restore. When already in IK mode this only records the (unchanged) state.
-        """
-        saved = []
-
-        end_ik = _bone(arm_obj, ik_list[-1])
-        if end_ik is not None:
-            for cns in end_ik.constraints:
-                if cns.type == "IK" and cns.subtarget == chain.ik_ctrl:
-                    saved.append((cns, cns.influence))
-                    cns.influence = 1.0
-                    break
-
-        for pb in arm_obj.pose.bones:
-            for cns in pb.constraints:
-                if cns.type in copy_types and getattr(cns, "subtarget", "") == chain.ik_ctrl:
-                    saved.append((cns, cns.influence))
-                    cns.influence = 1.0
-
-        fk_set = set(_split_bones(chain.fk_bones))
-        for ik_name in ik_list:
-            pb = _bone(arm_obj, ik_name)
-            if pb is None:
-                continue
-            for cns in pb.constraints:
-                if cns.type in copy_types and getattr(cns, "subtarget", "") in fk_set:
-                    saved.append((cns, cns.influence))
-                    cns.influence = 0.0
-
-        if saved:
-            bpy.context.view_layer.update()
-        return saved
-
-    @staticmethod
-    def _restore_influences(saved):
-        for cns, influence in saved:
-            cns.influence = influence
-        if saved:
-            bpy.context.view_layer.update()
+            return base + Quaternion(axis, err) @ desired_dir * radial_len
+        return default
 
     def _snap_ik_to_fk(self, arm_obj, chain, frame):
         ik_list = _split_bones(chain.ik_bones)
@@ -791,21 +802,17 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
             # bone one slot left and mis-pair the chain. Skip the empty pairs below.
             fk_pairing = [n.strip() for n in chain.fk_bones.split(",")]
 
-        _companion_types = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
-
         # The IK pose only exists when the IK constraint is solving. If we're in FK
         # mode it is off and the chain tracks FK instead, so reading it now would
         # make IK→FK a no-op (you'd have to switch to IK first). Force a clean IK
         # solve while we read, then restore the constraints.
-        restore = self._force_ik_solve(arm_obj, chain, ik_list, _companion_types)
+        saved = _override_influences(arm_obj, _ik_solve_changes(arm_obj, chain, ik_list))
         try:
             # Capture the solved IK world matrices before changing anything: writing
             # a bone triggers a view_layer update that re-evaluates the IK solve and
             # can shift the remaining matrices.
             pairs = []
-            for ik_name, fk_name in zip(ik_list, fk_pairing):
-                if not ik_name or not fk_name:
-                    continue
+            for ik_name, fk_name in zip(ik_list, fk_pairing, strict=False):
                 ik_b = _bone(arm_obj, ik_name)
                 fk_b = _bone(arm_obj, fk_name)
                 if ik_b is None or fk_b is None:
@@ -822,12 +829,12 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
                 cnss = [
                     c
                     for c in pb.constraints
-                    if c.type in _companion_types and getattr(c, "subtarget", "") == chain.ik_ctrl
+                    if c.type in _COPY_TYPES and c.subtarget == chain.ik_ctrl
                 ]
                 if cnss:
                     companions.append((pb, pb.matrix.copy(), cnss))
         finally:
-            self._restore_influences(restore)
+            _restore_influences(saved)
 
         if not pairs:
             self.report({"ERROR"}, "No valid IK/FK bone pairs found")
@@ -837,16 +844,11 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         # matrices we write below bake into the basis instead of being overwritten:
         # the IK constraint (single-chain only — separate FK controls aren't driven
         # by it) and the tip's companion constraints.
-        if single_chain:
-            end_ik = _bone(arm_obj, ik_list[-1])
-            if end_ik is not None:
-                for cns in end_ik.constraints:
-                    if cns.type == "IK" and cns.subtarget == chain.ik_ctrl:
-                        _remove_driver_and_set(arm_obj, end_ik, cns, 0.0, frame)
-                        break
-        for pb, _mat, cnss in companions:
-            for cns in cnss:
-                _remove_driver_and_set(arm_obj, pb, cns, 0.0, frame)
+        off = [cns for _pb, _mat, cnss in companions for cns in cnss]
+        ik_cns = _ik_constraint(arm_obj, chain) if single_chain else None
+        if ik_cns is not None:
+            off.insert(0, ik_cns)
+        _set_values([(arm_obj, x.path_from_id("influence"), 0.0, True) for x in off], frame)
         bpy.context.view_layer.update()
 
         # Bake the chain (root→tip) then the tip/companion bones.
@@ -860,102 +862,56 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
         return True
 
 
-def _remove_driver_and_set(arm_obj, bone, cns, influence, frame):
-    """Remove any driver on cns.influence, set the value, and optionally keyframe it."""
-    data_path = f'pose.bones["{bone.name}"].constraints["{cns.name}"].influence'
-    if arm_obj.animation_data:
-        drv = arm_obj.animation_data.drivers.find(data_path)
-        if drv:
-            arm_obj.animation_data.drivers.remove(drv)
-    cns.influence = influence
-    if bpy.context.scene.tool_settings.use_keyframe_insert_auto:
-        arm_obj.keyframe_insert(data_path, frame=frame)
-
-
-def _find_bone_collection(armature, name):
-    """Look up a bone collection by name (including nested ones)."""
-    if not name:
-        return None
-    coll = None
-    if hasattr(armature, "collections_all"):
-        coll = armature.collections_all.get(name)
-    if coll is None:
-        coll = armature.collections.get(name)
-    return coll
-
-
-def _set_collection_visible(armature, coll_name, visible):
-    """Show/hide a bone collection, removing any driver on its visibility first."""
-    coll = _find_bone_collection(armature, coll_name)
-    if coll is None:
-        return
-    # Drop drivers on the collection visibility so the explicit toggle sticks.
-    # Collection visibility drivers live on the armature DATA's animation_data.
+def _visibility_path(armature, coll):
+    """Data path of the collection visibility, the one with a driver if any"""
+    name = bpy.utils.escape_identifier(coll.name)
+    paths = (coll.path_from_id("is_visible"), f'collections["{name}"].is_visible')
     ad = armature.animation_data
-    if ad:
-        needle = '"%s"' % coll_name
-        for drv in list(ad.drivers):
-            dp = drv.data_path
-            if dp.endswith("is_visible") and needle in dp:
-                ad.drivers.remove(drv)
-    coll.is_visible = visible
+    return next((x for x in paths if ad and ad.drivers.find(x)), paths[0])
 
 
 def apply_ikfk_switch(arm_obj, chain, direction, frame):
-    """Toggle the IK constraint and any companion constraints that target the IK ctrl.
-
-    Companion constraints (e.g. Copy Rotation on the hand/foot bone that point at
-    the IK ctrl) are toggled together with the main IK constraint so they stay
-    in sync without needing drivers. The chain's IK/FK bone collections (layers)
-    are shown/hidden to match the new mode.
-
-    direction is 'FK_TO_IK' or 'IK_TO_FK'.
-    """
-    influence = 1.0 if direction == "FK_TO_IK" else 0.0
-
-    # 1. Toggle the IK constraint on the chain end bone
+    """Switch the IK constraints of the chain and the visibility of its collections"""
     ik_list = _split_bones(chain.ik_bones)
     if not ik_list:
         return
-    end_bone = _bone(arm_obj, ik_list[-1])
-    if end_bone is not None:
-        for cns in end_bone.constraints:
-            if cns.type == "IK" and cns.subtarget == chain.ik_ctrl:
-                _remove_driver_and_set(arm_obj, end_bone, cns, influence, frame)
-                break
+    to_ik = direction == "FK_TO_IK"
+    influences = []
 
-    _COMPANION_TYPES = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
+    # 1. The IK constraint on the chain end bone
+    ik_cns = _ik_constraint(arm_obj, chain)
+    if ik_cns is not None:
+        influences.append((ik_cns, to_ik))
 
-    # 2. Toggle companion constraints on ALL pose bones that target ik_ctrl.
+    # 2. Companion constraints on ALL pose bones that target ik_ctrl.
     #    Covers e.g. Hand.l Copy Rotation → L_Arm_IK.
     for pb in arm_obj.pose.bones:
         for cns in pb.constraints:
-            if cns.type not in _COMPANION_TYPES:
-                continue
-            if getattr(cns, "subtarget", "") != chain.ik_ctrl:
-                continue
-            _remove_driver_and_set(arm_obj, pb, cns, influence, frame)
+            if cns.type in _COPY_TYPES and cns.subtarget == chain.ik_ctrl:
+                influences.append((cns, to_ik))
 
-    # 3. Toggle Copy constraints on IK chain bones that target FK chain bones.
+    # 3. Copy constraints on IK chain bones that target FK chain bones.
     #    Many rigs use Copy Rotation/Transform from FK→IK in FK mode so the IK
     #    chain tracks the FK animation. When switching to IK, these must be
     #    disabled so the IK solver can freely rotate all chain bones (including
     #    the first one, which otherwise stays locked to the FK rotation).
     fk_set = set(_split_bones(chain.fk_bones))
-    fk_influence = 0.0 if direction == "FK_TO_IK" else 1.0
     for ik_name in ik_list:
-        ik_pb = _bone(arm_obj, ik_name)
-        if not ik_pb:
-            continue
-        for cns in ik_pb.constraints:
-            if cns.type in _COMPANION_TYPES and getattr(cns, "subtarget", "") in fk_set:
-                _remove_driver_and_set(arm_obj, ik_pb, cns, fk_influence, frame)
+        pb = _bone(arm_obj, ik_name)
+        for cns in pb.constraints if pb is not None else []:
+            if cns.type in _COPY_TYPES and cns.subtarget in fk_set:
+                influences.append((cns, not to_ik))
+
+    targets = [(arm_obj, c.path_from_id("influence"), float(v), True) for c, v in influences]
 
     # 4. Show the bone collection for the new mode and hide the other one.
-    show_ik = direction == "FK_TO_IK"
-    _set_collection_visible(arm_obj.data, chain.ik_collection, show_ik)
-    _set_collection_visible(arm_obj.data, chain.fk_collection, not show_ik)
+    armature = arm_obj.data
+    for name, visible in ((chain.ik_collection, to_ik), (chain.fk_collection, not to_ik)):
+        coll = armature.collections_all.get(name) if name else None
+        if coll is not None:
+            targets.append((armature, _visibility_path(armature, coll), visible, False))
 
+    _set_values(targets, frame)
     arm_obj.update_tag()
     bpy.context.view_layer.update()
 
@@ -978,21 +934,12 @@ class MUSTARDUI_OT_IKFKSwitch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=0)
-        snapper = arm.MustardUI_IKFKSnapperSettings
-
-        if self.chain_index >= len(snapper.ikfk_chains):
-            self.report({"ERROR"}, "Invalid chain index")
-            return {"CANCELLED"}
-
-        chain = snapper.ikfk_chains[self.chain_index]
-        arm_obj = _arm_obj(arm)
-        if arm_obj is None:
-            self.report({"ERROR"}, "Cannot find armature object")
+        chain, arm_obj = _chain_and_object(self, context)
+        if chain is None:
             return {"CANCELLED"}
 
         snap_direction = "FK_TO_IK" if self.direction == "TO_IK" else "IK_TO_FK"
@@ -1009,11 +956,11 @@ class MUSTARDUI_OT_IKFKChainAdd(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         snapper = arm.MustardUI_IKFKSnapperSettings
         item = snapper.ikfk_chains.add()
         item.name = "Chain " + str(len(snapper.ikfk_chains))
@@ -1030,13 +977,13 @@ class MUSTARDUI_OT_IKFKChainRemove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if not res or arm is None:
             return False
         return len(arm.MustardUI_IKFKSnapperSettings.ikfk_chains) > 0
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         snapper = arm.MustardUI_IKFKSnapperSettings
         idx = snapper.ikfk_chains_index
         if idx < len(snapper.ikfk_chains):
@@ -1060,11 +1007,11 @@ class MUSTARDUI_OT_IKFKChainSwitch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         return res and arm is not None
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         snapper = arm.MustardUI_IKFKSnapperSettings
         chains = snapper.ikfk_chains
         index = snapper.ikfk_chains_index

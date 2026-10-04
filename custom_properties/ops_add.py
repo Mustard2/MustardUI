@@ -5,6 +5,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -16,6 +17,7 @@ from .misc import (
     mustardui_clean_prop,
     mustardui_prop_limits,
     mustardui_update_index_cp,
+    split_data_path,
 )
 
 
@@ -35,11 +37,11 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -81,35 +83,24 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        clipboard = context.window_manager.clipboard
-        blender_custom_property = "][" in clipboard
-        if not blender_custom_property:
-            if "." not in clipboard:
-                self.report(
-                    {"ERROR"},
-                    "MustardUI - This property does not support being added "
-                    "to MustardUI (no valid data path could be found).",
-                )
-                return {"FINISHED"}
-            rna, path = clipboard.rsplit(".", 1)
-        else:
-            path = clipboard
-            rna = ""
-
-        if blender_custom_property:
-            path, rem = path.rsplit("[", 1)
-            rna = path
-            path = "[" + rem
-        elif "[" in path:
-            path, rem = path.rsplit("[", 1)
+        split = split_data_path(context.window_manager.clipboard)
+        if split is None:
+            self.report(
+                {"ERROR"},
+                "MustardUI - This property does not support being added "
+                "to MustardUI (no valid data path could be found).",
+            )
+            return {"FINISHED"}
+        rna, path = split
+        blender_custom_property = path.startswith("[")
 
         # Check if the property was already added
         if not mustardui_check_cp(obj, rna, path):
             self.report({"ERROR"}, "MustardUI - This property was already added.")
             return {"FINISHED"}
 
-        # Try to find a better name than default_value for material nodes
-        if "node_tree.nodes" in rna:
+        # Try to find a better name than default_value for nodes
+        if ".nodes[" in rna:
             rna_node = rna.rsplit(".", 1)
 
             # Check for .type existence
@@ -162,9 +153,7 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
                 and hasattr(prop, "subtype")
             ):
                 description = (
-                    prop.description
-                    if ("node_tree.nodes" not in rna and "shape_keys" not in rna)
-                    else ""
+                    prop.description if (".nodes[" not in rna and "shape_keys" not in rna) else ""
                 )
                 prop_min, prop_max = mustardui_prop_limits(prop, addon_prefs)
                 try:
@@ -306,10 +295,10 @@ class MustardUI_Property_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -348,7 +337,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def move_index(self, uilist, index):
         """Move index of an item render queue while clamping it."""
@@ -359,7 +348,7 @@ class MustardUI_Property_Switch(bpy.types.Operator):
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         neighbour = index + (-1 if self.direction == "UP" else 1)

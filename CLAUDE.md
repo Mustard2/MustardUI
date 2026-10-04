@@ -18,7 +18,22 @@ ruff format .           # apply formatting
 
 Both must pass; the Blender build matrix only runs after the lint job succeeds. `armature/external/mhx` is excluded from Ruff (vendored code).
 
+Functional tests run headless in Blender (CI workflow `tests.yml`, same Blender matrix):
+
+```bash
+tests/run_blender.sh /Applications/Blender.app/Contents/MacOS/Blender            # all tests
+tests/run_blender.sh /Applications/Blender.app/Contents/MacOS/Blender -k Outfits  # filter by name
+```
+
+The script links the checkout as the `bl_ext.user_default.MustardUI` extension in a throwaway user resources dir. Tests (`tests/test_*.py`, stdlib `unittest`) build a synthetic model in `tests/helpers.py`; `BlenderTestCase` fails a test if any traceback is printed (e.g. from property update callbacks, which Blender swallows). `tests/test_ui.py` draws every registered panel and UI list against a fake layout that validates property names and operator ids. `/tests/` is excluded from the extension build in `blender_manifest.toml`.
+
 To run the add-on, install the package as a Blender Extension in Blender itself — do **not** zip/distribute from a working checkout for end users (releases come from the Releases page / extensions.blender.org).
+
+## Coding
+
+- Avoid using helper functions if they can be easily inlined
+- Keep the code simple and dry
+- Ask yourself it a senior experienced developer would accept your code. If not, improve it
 
 ## Architecture
 
@@ -38,13 +53,16 @@ Session-level (non-persistent UI) state lives on `Scene.MustardUI_Settings` (`se
 
 ### Resolving "which model are we acting on": `mustardui_active_object`
 
-`model_selection/active_object.py` is the single source of truth for figuring out the active model armature. **Operators and panels should call `mustardui_active_object(context, config=...)` rather than reaching into `context.active_object` directly.** It returns `(poll_result, armature)` and handles two selection modes (viewport-active-object vs. a panel-selected armature, including resolving a mesh to its armature via parent / armature modifier / Child Of constraint).
+`model_selection/active_object.py` is the single source of truth for figuring out the active model armature. **Operators and panels should call `mustardui_active_object(context, config=ModelMode...)` rather than reaching into `context.active_object` directly.** It returns `(poll_result, armature)` and handles two selection modes (viewport-active-object vs. a panel-selected armature, including resolving a mesh to its armature via parent / armature modifier / Child Of constraint).
 
-The `config` argument encodes both the mode and the poll meaning of the boolean:
-- `config=0` — user mode; poll true when the model UI is enabled (`MustardUI_enable`)
-- `config=1` — configuration mode; poll true when the model UI is **not** yet enabled (i.e. being configured)
-- `config=2` — quick-setup mode (uninitialized armature)
-- `config=-1` — return the armature regardless of state
+The `config` argument is a `ModelMode` (an `IntEnum` in the same module) that encodes both the mode and the poll meaning of the boolean:
+- `ModelMode.USER` — user mode; poll true when the model UI is enabled (`MustardUI_enable`)
+- `ModelMode.CONFIG` — configuration mode; poll true when the model UI is **not** yet enabled (i.e. being configured)
+- `ModelMode.QUICK_SETUP` — quick-setup mode (uninitialized armature)
+- `ModelMode.ANY` — return the armature regardless of state
+- `ModelMode.MODEL_TOOLKIT` — Model Toolkit panel; like `ANY`, but no armature while Viewport Model Selection is enabled
+
+Always pass a `ModelMode` member, never a bare int.
 
 Use `active_object_operator_poll(context, config=...)` in an operator's `poll()` classmethod for the standard gate (see any `ops_*.py`).
 
@@ -58,11 +76,11 @@ Within a feature package, files follow consistent prefixes — match them when a
 
 ### Configuration vs. user mode
 
-The add-on has two faces: a **Configuration** UI (model creators build the panel with no code) and the **user** UI. Many operators are config-only and gate on `config=1`. Keep this split in mind — a feature usually has both a configure-side panel (`menu/menu_configure_*.py`) and a user-side panel.
+The add-on has two faces: a **Configuration** UI (model creators build the panel with no code) and the **user** UI. Many operators are config-only and gate on `ModelMode.CONFIG`. Keep this split in mind — a feature usually has both a configure-side panel (`menu/menu_configure_*.py`) and a user-side panel.
 
 ## Conventions & contribution rules
 
 - `main` must stay **linear** — PRs are merged with **Squash and Merge**, no merge commits (see `Contributing.md`).
 - Version lives in three places that must stay in sync on release: `blender_manifest.toml` (`version`), `__init__.py` (`bl_info["version"]` tuple), and the git branch name (e.g. `2026.6.0`).
 - Do not post NSFW Blender files/images/videos in Issues or PRs.
-- Creator-facing tools live in `tools_creators/` (physics cages, bone physics, Spline IK rigs, etc.); end-user animator tools in `tools/`.
+- Creator-facing tools (the **Model Toolkit** panel, `menu/menu_model_toolkit.py`) live in `model_toolkit/`, one subpackage per panel section (`armature/`, `model/`, `outfits/`, `mesh/`, `physics/`, `optimization/`, plus `images/` for the node editor tools); end-user animator tools in `tools/`.

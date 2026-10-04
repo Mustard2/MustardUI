@@ -3,7 +3,7 @@ import random
 
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 class MustardUI_Tools_AutoBreath(bpy.types.Operator):
@@ -15,14 +15,14 @@ class MustardUI_Tools_AutoBreath(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if bpy.context.selected_pose_bones is not None:
             return res and len(bpy.context.selected_pose_bones) == 1
         return False
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         if len(bpy.context.selected_pose_bones) != 1:
@@ -65,16 +65,36 @@ class MustardUI_Tools_AutoBreath(bpy.types.Operator):
                     break
 
         # Compute quantities
-        freq = 2.0 * 3.14 * tools_settings.autobreath_frequency / (fps * 60)
-        amplitude = tools_settings.autobreath_amplitude / 2.0
+        period = fps * 60.0 / tools_settings.autobreath_frequency
+        amplitude = tools_settings.autobreath_amplitude
         sampling = tools_settings.autobreath_sampling
         rand = tools_settings.autobreath_random
 
-        # Create frames
-        for frame in range(frame_start, frame_end, sampling):
-            freq_eff = freq * (1.0 + random.uniform(-rand, rand))
+        # Inhale takes ~40% of each breath, exhale is the longer, passive part
+        inhale_ratio = 0.4
 
-            factor = (1.0 - math.cos(freq_eff * (frame - frame_start))) * amplitude
+        # Randomize period and depth per breath, not per frame
+        breaths = []
+        start = frame_start
+        while start <= frame_end:
+            length = period * (1.0 + random.uniform(-rand, rand))
+            depth = amplitude * (1.0 + random.uniform(-rand, rand))
+            breaths.append((start, length, depth))
+            start += length
+
+        # Create frames
+        index = 0
+        for frame in range(frame_start, frame_end + 1, sampling):
+            while frame >= breaths[index][0] + breaths[index][1]:
+                index += 1
+            start, length, depth = breaths[index]
+
+            t = (frame - start) / length
+            if t < inhale_ratio:
+                phase = t / inhale_ratio
+            else:
+                phase = 1.0 + (t - inhale_ratio) / (1.0 - inhale_ratio)
+            factor = (1.0 - math.cos(math.pi * phase)) * 0.5 * depth
 
             for i in range(3):
                 breath_bone.location[i] = rest_loc[i] * (1.0 + lock_loc[i] * factor)

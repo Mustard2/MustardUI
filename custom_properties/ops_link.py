@@ -3,6 +3,7 @@ from bpy.props import EnumProperty, StringProperty
 
 from ..misc.prop_utils import evaluate_path, evaluate_rna
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -10,6 +11,7 @@ from .misc import (
     mustardui_add_driver,
     mustardui_check_cp,
     mustardui_choose_cp,
+    split_data_path,
 )
 
 
@@ -29,11 +31,11 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         custom_props, nu = mustardui_choose_cp(obj, self.type, context.scene)
 
         prop = getattr(context, "button_prop", None)
@@ -78,13 +80,11 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                     return {"FINISHED"}
 
                 # Adjust the property path to be exported
-                rna, path = context.window_manager.clipboard.rsplit(".", 1)
-                if "][" in path:
-                    path, rem = path.rsplit("[", 1)
-                    rna = rna + "." + path
-                    path = "[" + rem
-                elif "[" in path:
-                    path, rem = path.rsplit("[", 1)
+                split = split_data_path(context.window_manager.clipboard)
+                if split is None:
+                    self.report({"ERROR"}, "MustardUI - Invalid selection.")
+                    return {"FINISHED"}
+                rna, path = split
 
                 if parent_prop.rna == rna and parent_prop.path == path:
                     self.report({"ERROR"}, "MustardUI - Can not link a property with itself.")
@@ -96,7 +96,7 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
 
                 switched_warning = False
                 for check_prop in custom_props:
-                    for i in range(0, len(check_prop.linked_properties)):
+                    for i in reversed(range(len(check_prop.linked_properties))):
                         if (
                             check_prop.linked_properties[i].rna == rna
                             and check_prop.linked_properties[i].path == path
@@ -165,28 +165,33 @@ class MustardUI_Property_RemoveLinked(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist, index = mustardui_choose_cp(obj, self.type, context.scene)
 
         if not 0 <= index < len(uilist):
             return {"FINISHED"}
 
-        # Remove custom property and driver
+        # Find the linked property
+        linked_properties = uilist[index].linked_properties
+        i = next(
+            (
+                i
+                for i, lp in enumerate(linked_properties)
+                if lp.rna == self.rna and lp.path == self.path
+            ),
+            -1,
+        )
+        if i == -1:
+            self.report({"WARNING"}, "MustardUI - The linked property was not found.")
+            return {"CANCELLED"}
+
+        # Remove the driver and the linked property
         driver_removed = self.clean_prop()
-
-        # Find the linked property index to remove it from the list
-        i = -1
-        for lp in uilist[index].linked_properties:
-            i += 1
-            if lp.rna == self.rna and lp.path == self.path:
-                break
-
-        if i != -1:
-            uilist[index].linked_properties.remove(i)
+        linked_properties.remove(i)
 
         obj.update_tag()
 

@@ -1,14 +1,15 @@
 import bpy
 
+from ..armature.helper_functions import outfits_update_armature_collections
 from ..custom_properties.misc import mustardui_cp_apply_on_switch
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
 from ..outfits.helper_functions import (
     find_layer_collection,
-    outfits_update_armature_collections,
     update_masks,
 )
 from .helper_functions import (
@@ -27,11 +28,11 @@ class MustardUI_HairVisibility(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         rig_settings = arm.MustardUI_RigSettings
         hair_collection = rig_settings.hair_collection
@@ -81,11 +82,11 @@ class MustardUI_HairVisibility_Extras(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         rig_settings = arm.MustardUI_RigSettings
         hair_extras_collection = rig_settings.hair_extras_collection
@@ -147,7 +148,7 @@ class MustardUI_HairVisibility_Extras_ParticleSystem(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         obj = context.scene.objects.get(self.obj_name)

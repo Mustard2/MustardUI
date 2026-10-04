@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .misc import get_cp_source
 
 
@@ -22,7 +22,7 @@ def morphs_to_json(morph_settings, rig_settings):
                 if kb:
                     val = kb.value
 
-            if abs(float(val)) > 0.001:
+            if isinstance(val, (int, float)) and abs(val) > 0.001:
                 data["morphs"].append(
                     {
                         "name": morph.name,
@@ -76,7 +76,7 @@ def morph_preset_default_update(self, context):
     if not self.default:
         return
 
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
     morphs_settings = arm.MustardUI_MorphsSettings
 
     for preset in morphs_settings.presets:
@@ -104,7 +104,7 @@ class MUSTARDUI_UL_Morphs_Presets_UIList(bpy.types.UIList):
     """UIList for Morph Presets"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         return res if obj is not None else False
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):

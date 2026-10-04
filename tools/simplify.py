@@ -1,12 +1,15 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..outfits.helper_functions import find_layer_collection
+from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..outfits.helper_functions import find_layer_collection, outfits_get_collection_items
 from ..outfits.ops_visibility import (
     switch_outfit_piece,
     update_model_after_pieces_switch,
 )
+
+# Objects, modifiers and collisions turned off by Simplify, stored on the Armature
+SIMPLIFY_DISABLED_PROP = "mustardui_simplify_disabled"
 
 
 class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
@@ -79,8 +82,6 @@ class MustardUI_SimplifySettings(bpy.types.PropertyGroup):
 
     simplify_morphs: bpy.props.BoolProperty(name="Disable Morphs", default=True)
 
-    simplify_morphs_freeze: bpy.props.BoolProperty(name="Freeze Morphs", default=True)
-
     simplify_physics: bpy.props.BoolProperty(name="Disable Physics", default=False)
 
     simplify_force_no_physics: bpy.props.BoolProperty(
@@ -126,11 +127,10 @@ def simplify_outfits(
         rig_settings.outfits_list = "Nude"
 
 
-def simplify_extras(rig_settings, enable):
+def simplify_extras(rig_settings, arm, enable):
     if rig_settings.extras_collection is None:
         return
 
-    arm = rig_settings.id_data
     scene_objects = bpy.context.scene.objects
 
     # The objects are switched one by one, then the whole model is updated once
@@ -203,7 +203,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is None:
             return False
 
@@ -217,7 +217,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
         settings = scene.MustardUI_Settings
         addon_prefs = context.preferences.addons[base_package].preferences
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         morphs_settings = arm.MustardUI_MorphsSettings
@@ -300,7 +300,7 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
 
         # Extras
         if simplify_settings.simplify_extras:
-            simplify_extras(rig_settings, simplify_settings.simplify_enable)
+            simplify_extras(rig_settings, arm, simplify_settings.simplify_enable)
 
         # Hair
         simplify_hair(
@@ -323,75 +323,65 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
                     setattr(settings, key, value)
                 del scene["mustardui_pre_simplify"]
 
+        enable = simplify_settings.simplify_enable
+
+        # What Simplify turns off, turned back on when it is disabled
+        disabled = arm.get(SIMPLIFY_DISABLED_PROP)
+        disabled = (
+            disabled.to_dict() if disabled else {"hidden": [], "modifiers": [], "collisions": []}
+        )
+
+        def disable_modifier(obj, mod):
+            if mod.show_viewport:
+                mod.show_viewport = False
+                disabled["modifiers"].append([obj.name, mod.name])
+
         # Particle Systems
-        if simplify_settings.simplify_particles and simplify_settings.simplify_enable:
+        if simplify_settings.simplify_particles and enable:
             if rig_settings.particle_systems_enable:
                 for ps in [
                     x for x in rig_settings.model_body.modifiers if x.type == "PARTICLE_SYSTEM"
                 ]:
-                    ps.show_viewport = not simplify_settings.simplify_enable
+                    disable_modifier(rig_settings.model_body, ps)
             if rig_settings.hair_collection and rig_settings.hair_enable_global_particles:
-                rig_settings.hair_global_particles = not simplify_settings.simplify_enable
+                rig_settings.hair_global_particles = False
                 for obj in rig_settings.hair_collection.objects:
                     for ps in [x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"]:
-                        ps.show_viewport = not simplify_settings.simplify_enable
+                        disable_modifier(obj, ps)
 
-        # Armature Children
-        child_all = [
-            x for x in rig_settings.model_armature_object.children if x != rig_settings.model_body
-        ]
-        child = child_all.copy()
+        # Armature Children, except the body, outfits, extras, hair and physics items
+        if simplify_settings.simplify_armature_child and enable:
+            excluded = {rig_settings.model_body}
+            colls = [x.collection for x in rig_settings.outfits_collections if x.collection]
+            if rig_settings.extras_collection:
+                colls.append(rig_settings.extras_collection)
+            for coll in colls:
+                excluded.update(outfits_get_collection_items(rig_settings, coll))
+            if rig_settings.hair_collection:
+                excluded.update(rig_settings.hair_collection.objects)
+            if physics_settings:
+                excluded.update(x.object for x in physics_settings.items if x.object)
 
-        if rig_settings.extras_collection:
-            items = (
-                rig_settings.extras_collection.all_objects
-                if rig_settings.extras_config_subcollections
-                else rig_settings.extras_collection.objects
-            )
-            for obj in [x for x in items if x in child_all]:
-                child.remove(obj)
-        if rig_settings.hair_collection:
-            for obj in [x for x in rig_settings.hair_collection.objects if x in child_all]:
-                child.remove(obj)
-        for col in rig_settings.outfits_collections:
-            items = (
-                col.collection.all_objects
-                if rig_settings.outfit_config_subcollections
-                else col.collection.objects
-            )
-            for obj in [x for x in items if x in child_all]:
-                child.remove(obj)
-        if physics_settings:
-            for obj in [x.object for x in physics_settings.items if x.object in child_all]:
-                child.remove(obj)
-
-        for c in child:
-            c.hide_viewport = (
-                simplify_settings.simplify_enable
-                if simplify_settings.simplify_armature_child
-                else False
-            )
-            for mod in c.modifiers:
-                if mod.type in [
-                    "SUBSURF",
-                    "SHRINKWRAP",
-                    "CORRECTIVE_SMOOTH",
-                    "SOLIDIFY",
-                    "PARTICLE_SYSTEM",
-                    "CLOTH",
-                ]:
-                    if simplify_settings.simplify_armature_child:
-                        mod.show_viewport = not simplify_settings.simplify_enable
+            for c in rig_settings.model_armature_object.children:
+                if c in excluded:
+                    continue
+                if not c.hide_viewport:
+                    c.hide_viewport = True
+                    disabled["hidden"].append(c.name)
+                for mod in c.modifiers:
+                    if mod.type in [
+                        "SUBSURF",
+                        "SHRINKWRAP",
+                        "CORRECTIVE_SMOOTH",
+                        "SOLIDIFY",
+                        "PARTICLE_SYSTEM",
+                        "CLOTH",
+                    ]:
+                        disable_modifier(c, mod)
 
         # Morphs
-        if morphs_settings and morphs_settings.enable_ui:
-            if simplify_settings.simplify_morphs and "DIFFEO_GENESIS" in morphs_settings.type:
-                morphs_settings.diffeomorphic_enable = not simplify_settings.simplify_enable
-            elif simplify_settings.simplify_morphs_freeze and morphs_settings.enable_freeze_morphs:
-                if (not morphs_settings.morphs_optimized and simplify_settings.simplify_enable) or (
-                    morphs_settings.morphs_optimized and not simplify_settings.simplify_enable
-                ):
-                    bpy.ops.mustardui.morphs_optimize()
+        if morphs_settings and morphs_settings.enable_ui and simplify_settings.simplify_morphs:
+            morphs_settings.diffeomorphic_enable = not simplify_settings.simplify_enable
 
         # Physics
         if (
@@ -402,25 +392,45 @@ class MUSTARDUI_OT_UpdateSimplify(bpy.types.Operator):
             physics_settings.enable_physics = not simplify_settings.simplify_enable
 
         # Force Disable Physics
-        if simplify_settings.simplify_force_no_physics and simplify_settings.simplify_enable:
+        if simplify_settings.simplify_force_no_physics and enable:
             for obj in context.scene.objects:
                 for mod in [
                     x for x in obj.modifiers if x.type in ["SOFT_BODY", "CLOTH", "COLLISION"]
                 ]:
                     if mod.type == "COLLISION" and obj.collision:
-                        obj.collision.use = not simplify_settings.simplify_enable
+                        if obj.collision.use:
+                            obj.collision.use = False
+                            disabled["collisions"].append(obj.name)
                     else:
-                        mod.show_viewport = not simplify_settings.simplify_enable
+                        disable_modifier(obj, mod)
                     if addon_prefs.debug:
                         print(f"MustardUI - Disabled {mod.type} modifier on: {obj.name}")
 
         # Force Disable Particles
-        if simplify_settings.simplify_force_no_particles and simplify_settings.simplify_enable:
+        if simplify_settings.simplify_force_no_particles and enable:
             for obj in context.scene.objects:
                 for ps in [x for x in obj.modifiers if x.type == "PARTICLE_SYSTEM"]:
-                    ps.show_viewport = not simplify_settings.simplify_enable
+                    disable_modifier(obj, ps)
                     if addon_prefs.debug:
                         print(f"MustardUI - Disabled {ps.type} modifier on: {obj.name}")
+
+        if enable:
+            arm[SIMPLIFY_DISABLED_PROP] = disabled
+        elif SIMPLIFY_DISABLED_PROP in arm:
+            for name in disabled["hidden"]:
+                obj = bpy.data.objects.get(name)
+                if obj is not None:
+                    obj.hide_viewport = False
+            for name, mod_name in disabled["modifiers"]:
+                obj = bpy.data.objects.get(name)
+                mod = obj.modifiers.get(mod_name) if obj is not None else None
+                if mod is not None:
+                    mod.show_viewport = True
+            for name in disabled["collisions"]:
+                obj = bpy.data.objects.get(name)
+                if obj is not None and obj.collision:
+                    obj.collision.use = True
+            del arm[SIMPLIFY_DISABLED_PROP]
 
         # Update all objects
         for obj in context.scene.objects:
@@ -441,6 +451,6 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(MustardUI_SimplifySettings)
-    bpy.utils.unregister_class(MUSTARDUI_OT_UpdateSimplify)
     del bpy.types.Armature.MustardUI_SimplifySettings
+    bpy.utils.unregister_class(MUSTARDUI_OT_UpdateSimplify)
+    bpy.utils.unregister_class(MustardUI_SimplifySettings)

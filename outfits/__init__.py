@@ -12,6 +12,7 @@ from . import (
     ops_visibility,
     ops_visibility_extras,
     ops_visibility_full,
+    toolkit,
     ui_list,
 )
 
@@ -29,6 +30,7 @@ def register():
     ops_rename_outfit.register()
     ops_select_config.register()
     ops_render_preview.register()
+    toolkit.register()
     ui_list.register()
     menu.register()
 
@@ -36,6 +38,7 @@ def register():
 def unregister():
     menu.unregister()
     ui_list.unregister()
+    toolkit.unregister()
     ops_render_preview.unregister()
     ops_select_config.unregister()
     ops_rename_outfit.unregister()

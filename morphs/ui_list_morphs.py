@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .misc import get_cp_source
 
 
@@ -14,7 +14,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if arm is None:
             return False
 
@@ -23,8 +23,7 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
-        rig_settings = arm.MustardUI_RigSettings
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = arm.MustardUI_MorphsSettings
 
         section = morphs_settings.sections[arm.mustardui_morphs_section_uilist_index]
@@ -34,24 +33,6 @@ class MustardUI_Morphs_Remove(bpy.types.Operator):
 
         if not 0 <= index < len(uilist):
             return {"FINISHED"}
-
-        # Remove the mute driver if available
-        if section.shape_keys:
-            shape_keys = rig_settings.model_body.data.shape_keys
-            if shape_keys:
-                morph = uilist[index]
-                try:
-                    driver_path = f'key_blocks["{morph.path}"].mute'
-                    fcurve = shape_keys.animation_data.drivers.find(driver_path)
-                    if fcurve:
-                        drv = fcurve.driver
-                        if drv.type == "SCRIPTED" and drv.expression == "abs(var) < 0.001":
-                            shape_keys.driver_remove(driver_path)
-
-                    # Unmute if muted
-                    shape_keys.key_blocks[morph.path].mute = False
-                except Exception:
-                    pass
 
         # Remove the collection from the Outfits Collections
         uilist.remove(index)
@@ -81,7 +62,7 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return obj is not None
 
     def move_index(self, uilist, index):
@@ -93,7 +74,7 @@ class MustardUI_Morphs_UIList_Switch(bpy.types.Operator):
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = obj.MustardUI_MorphsSettings
         uilist = morphs_settings.sections[obj.mustardui_morphs_section_uilist_index].morphs
         index = obj.mustardui_morphs_uilist_index
@@ -114,11 +95,11 @@ class MUSTARDUI_UL_Morphs_UIList(bpy.types.UIList):
     """UIList for Morphs"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return res if obj is not None else False
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
 
         body = rig_settings.model_body

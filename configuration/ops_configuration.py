@@ -6,6 +6,7 @@ from .. import __package__ as base_package
 from .. import bl_info
 from ..hair.helper_functions import set_selected_hair, store_current_hair
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -22,13 +23,13 @@ class MustardUI_Configuration(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         physics_settings = obj.MustardUI_PhysicsSettings
         tools_settings = obj.MustardUI_ToolsSettings
@@ -181,10 +182,9 @@ class MustardUI_Configuration(bpy.types.Operator):
                     if vec[0] == 0 and vec[1] == 0 and vec[2] == 0:
                         dt = datetime.today()
                     else:
-                        # Vector is (Year, Month, Day)
-                        # Converting depending on the date format used
+                        # Vector is (Month, Day, Year) for MDY formats, (Day, Month, Year) otherwise
                         if rig_settings.model_version_date_format in ["MDY", "MDY2"]:
-                            dt = datetime(vec[1], vec[2], vec[0])
+                            dt = datetime(vec[2], vec[0], vec[1])
                         else:
                             dt = datetime(vec[2], vec[1], vec[0])
                 except ValueError:

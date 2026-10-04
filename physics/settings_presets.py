@@ -1,11 +1,11 @@
 import bpy
 from mathutils import Vector
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 def physics_preset_poll(arm, physics_settings, type="CREATE"):
-    if arm.mustardui_physics_items_uilist_index < 0 or len(physics_settings.items) < 1:
+    if not 0 <= arm.mustardui_physics_items_uilist_index < len(physics_settings.items):
         return "ERROR", "MustardUI - Invalid Preset selected"
 
     obj = physics_settings.items[arm.mustardui_physics_items_uilist_index].object
@@ -93,8 +93,7 @@ def apply_settings(target, data, errors, debug):
 
         try:
             current = getattr(target, key)
-            value = restore_value(current, value)
-            setattr(target, key, value)
+            setattr(target, key, restore_value(current, value))
         except TypeError as e:
             msg = str(e)
             # Ignore Blender collection assignment mismatch
@@ -182,7 +181,7 @@ class MUSTARDUI_UL_Physics_Presets_UIList(bpy.types.UIList):
     """UIList for Physics Presets"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         return res if obj is not None else False
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):

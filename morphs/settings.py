@@ -1,5 +1,6 @@
 import bpy
 
+from .disable import morphs_enable_update
 from .settings_presets import MustardUI_Morph_Preset
 from .settings_section import MustardUI_Morph_Section
 
@@ -8,15 +9,6 @@ morphs_check_items = [
     ("DIFFEO_GENESIS_8", "Diffeomorphic Genesis 8", "Diffeomorphic Genesis 8"),
     ("DIFFEO_GENESIS_9", "Diffeomorphic Genesis 9", "Diffeomorphic Genesis 9"),
 ]
-
-
-# Function to update global collection properties
-def diffeomorphic_enable_update(self, context):
-    if self.diffeomorphic_enable:
-        bpy.ops.mustardui.morphs_enabledrivers()
-    else:
-        self.diffeomorphic_enable_settings = False
-        bpy.ops.mustardui.morphs_disabledrivers()
 
 
 class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
@@ -43,14 +35,6 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         description="Show Morph type icon in the UI",
     )
 
-    enable_freeze_morphs: bpy.props.BoolProperty(
-        default=False,
-        name="Enable Freeze Morphs",
-        description="If this option is enabled, the Freeze Morphs operator "
-        "will be shown in the Morphs panel.\nThis operator "
-        "disables the Morphs not in use to increase performance",
-    )
-
     # INTERNAL
 
     morphs_number: bpy.props.IntProperty(default=0)
@@ -61,19 +45,15 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
 
     presets: bpy.props.CollectionProperty(type=MustardUI_Morph_Preset)
 
-    morphs_optimized: bpy.props.BoolProperty(default=False)
-
-    use_shape_key_mute_drivers: bpy.props.BoolProperty(default=False)
-
     # DIFFEOMORPHIC support
 
-    # Switcher for Morphs (drivers, shape keys, etc.) in the Diffeomorphic case
+    # Switcher for Morphs (drivers, shape keys, etc.)
     diffeomorphic_enable: bpy.props.BoolProperty(
         default=True,
         name="Enable Morphs",
         description="Enabling morphs might affect performance. You can "
-        "disable them to increase performance",
-        update=diffeomorphic_enable_update,
+        "disable them to increase performance.\nDisabled morphs can not be changed",
+        update=morphs_enable_update,
     )
 
     # Panel morph search filters
@@ -98,10 +78,24 @@ class MustardUI_MorphsSettings(bpy.types.PropertyGroup):
         name="Morph Settings",
         description="Show the Morph Settings panel",
     )
-    diffeomorphic_enable_shapekeys: bpy.props.BoolProperty(
-        default=True,
+    mute_shape_keys: bpy.props.EnumProperty(
+        items=[
+            (
+                "ALL",
+                "All",
+                "Mute all the shape keys of the disabled morphs.\nThe model goes back "
+                "to its base shape, for the best performance",
+            ),
+            (
+                "UNUSED",
+                "Unused",
+                "Mute only the shape keys of the disabled morphs with null value.\n"
+                "The model keeps its current shape",
+            ),
+        ],
+        default="ALL",
         name="Mute Shape Keys",
-        description="Shape Keys will also be muted when the Morphs are disabled",
+        description="Shape keys muted when the Morphs are disabled",
     )
     diffeomorphic_enable_facs: bpy.props.BoolProperty(
         default=True,

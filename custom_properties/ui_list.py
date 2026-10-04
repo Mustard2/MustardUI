@@ -3,7 +3,8 @@ from bpy.props import BoolProperty, IntProperty, PointerProperty
 
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..text_storage.storage import settings_owner
 from .ops_set_section import MustardUI_Property_SetSection
 
 
@@ -19,7 +20,7 @@ def draw_item_by_type(
     index,
     cptype=0,
 ):
-    res, obj = mustardui_active_object(context, config=1)
+    res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
     rig_settings = obj.MustardUI_RigSettings
     addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -117,7 +118,7 @@ def filter_items_by_type(self, context, data, propname, cptype=0):
     items = getattr(data, propname)
     helper_funcs = bpy.types.UI_UL_list
     scene = context.scene
-    res, arm = mustardui_active_object(context, config=1)
+    res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
 
     if self.filter_name:
         flt_flags = helper_funcs.filter_items_by_name(
@@ -288,18 +289,18 @@ class MUSTARDUI_UL_Property_UIListOutfits(bpy.types.UIList):
             icon="SORT_DESC" if self.use_filter_sort_reverse else "SORT_ASC",
         )
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if not res:
             return
 
         row = layout.row(align=True)
         row.prop(
-            arm,
+            settings_owner(arm),
             "mustardui_property_uilist_outfits_filter_outfit",
             text="",
             icon="MOD_CLOTH",
         )
-        row.prop(arm, "mustardui_property_uilist_outfits_filter_piece", text="")
+        row.prop(settings_owner(arm), "mustardui_property_uilist_outfits_filter_piece", text="")
 
     def filter_items(self, context, data, propname):
         return filter_items_by_type(self, context, data, propname, cptype=1)
@@ -347,12 +348,17 @@ class MUSTARDUI_UL_Property_UIListHair(bpy.types.UIList):
             icon="SORT_DESC" if self.use_filter_sort_reverse else "SORT_ASC",
         )
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if not res:
             return
 
         row = layout.row(align=True)
-        row.prop(arm, "mustardui_property_uilist_hair_filter_object", text="", icon="CURVES")
+        row.prop(
+            settings_owner(arm),
+            "mustardui_property_uilist_hair_filter_object",
+            text="",
+            icon="CURVES",
+        )
 
     def filter_items(self, context, data, propname):
         return filter_items_by_type(self, context, data, propname, cptype=2)

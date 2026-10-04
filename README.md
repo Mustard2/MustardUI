@@ -21,7 +21,7 @@ MustardUI is a Blender extension that gives human models a clean, easy-to-use in
 * **Morphs support**: add morphs to any model, with dedicated support for Diffeomorphic Daz models.
 * **Automatic optimization**: as you use the UI, modifiers, shape keys, drivers and collections are toggled and muted for you to keep the Viewport fast.
 * **Custom Simplify**: disable modifiers and settings that slow down the viewport in one click.
-* **Creator tools**: add physics and optimize your model in a few clicks.
+* **Model Toolkit**: add physics and optimize your model in a few clicks.
 * ...and much more.
 
 <div style="display: flex; gap: 10px;">

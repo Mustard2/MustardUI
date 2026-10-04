@@ -37,6 +37,25 @@ def geometry_nodes_modifier_inputs(modifier):
     return drawable
 
 
+def node_group_has_simulation(node_group, visited=None):
+    if node_group is None:
+        return False
+
+    if visited is None:
+        visited = set()
+    if node_group.name in visited:
+        return False
+    visited.add(node_group.name)
+
+    for node in node_group.nodes:
+        if node.bl_idname == "GeometryNodeSimulationInput":
+            return True
+        if node.type == "GROUP" and node_group_has_simulation(node.node_tree, visited):
+            return True
+
+    return False
+
+
 def draw_geometry_nodes_modifier_inputs(layout, drawable):
     for label, target, prop_path in drawable:
         layout.prop(target, prop_path, text=label)

@@ -4,6 +4,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -155,10 +156,10 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -167,6 +168,19 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         if model_body is None or model_body.data is None:
             self.report({"ERROR"}, "MustardUI - A body mesh should be selected.")
             return {"FINISHED"}
+
+        # Paths stored by older versions depend on the active scene
+        if model_body.data.shape_keys is not None:
+            key_name = bpy.utils.escape_identifier(model_body.data.shape_keys.name)
+            keys_rna = f'bpy.data.shape_keys["{key_name}"]'
+            old_rna = (
+                f'bpy.context.scene.objects["{bpy.utils.escape_identifier(model_body.name)}"]'
+                ".data.shape_keys"
+            )
+            for cp in custom_props:
+                for item in [cp, *cp.linked_properties]:
+                    if item.rna.startswith(old_rna):
+                        item.rna = keys_rna + item.rna[len(old_rna) :]
 
         k = 0
         preserved = 0
@@ -268,7 +282,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 if "MustardUI Float" in shape_key.name:
                     preserved += add_custom_property(
                         obj,
-                        f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                        f'{keys_rna}.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Float - ") :],
                         "FLOAT",
@@ -280,7 +294,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 elif "MustardUI Bool" in shape_key.name:
                     preserved += add_custom_property(
                         obj,
-                        f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                        f'{keys_rna}.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Bool - ") :],
                         "BOOLEAN",

@@ -77,6 +77,8 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
         # Active action
         if src_ad.action:
             tgt_ad.action = src_ad.action.copy()
+            if hasattr(tgt_ad, "action_slot_handle"):
+                tgt_ad.action_slot_handle = src_ad.action_slot_handle
 
         # NLA tracks
         for src_track in src_ad.nla_tracks:
@@ -86,6 +88,10 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
             tgt_track.lock = src_track.lock
 
             for src_strip in src_track.strips:
+                # Transition, meta and sound strips have no action
+                if src_strip.action is None:
+                    continue
+
                 new_action = src_strip.action.copy()
 
                 tgt_strip = tgt_track.strips.new(
@@ -93,7 +99,13 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
                     start=int(src_strip.frame_start),
                     action=new_action,
                 )
+                if hasattr(tgt_strip, "action_slot_handle"):
+                    tgt_strip.action_slot_handle = src_strip.action_slot_handle
 
+                tgt_strip.action_frame_start = src_strip.action_frame_start
+                tgt_strip.action_frame_end = src_strip.action_frame_end
+                tgt_strip.scale = src_strip.scale
+                tgt_strip.repeat = src_strip.repeat
                 tgt_strip.frame_end = src_strip.frame_end
                 tgt_strip.blend_type = src_strip.blend_type
                 tgt_strip.extrapolation = src_strip.extrapolation

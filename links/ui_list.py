@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 
 
 class MustardUI_Links_UIList_Switch(bpy.types.Operator):
@@ -19,7 +19,7 @@ class MustardUI_Links_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return obj is not None
 
     def move_index(self, uilist, index):
@@ -31,7 +31,7 @@ class MustardUI_Links_UIList_Switch(bpy.types.Operator):
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist = obj.MustardUI_Links
         index = context.scene.mustardui_links_uilist_index
 
@@ -56,11 +56,11 @@ class MustardUI_Link_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return obj is not None
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist = obj.MustardUI_Links
         index = context.scene.mustardui_links_uilist_index
 
@@ -85,11 +85,11 @@ class MustardUI_Link_Add(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         return obj is not None
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist = obj.MustardUI_Links
 
         a = uilist.add()

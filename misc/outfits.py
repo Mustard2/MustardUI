@@ -1,3 +1,13 @@
+def outfits_get_collection_items(rig_settings, collection):
+    """Objects of an Outfits/Extras collection, honouring the sub-collections setting."""
+    use_sub = (
+        rig_settings.extras_config_subcollections
+        if collection == rig_settings.extras_collection
+        else rig_settings.outfit_config_subcollections
+    )
+    return collection.all_objects if use_sub else collection.objects
+
+
 def outfit_extract_items_from_collection(collection, subcollections):
     items = list(collection.all_objects if subcollections else collection.objects)
     item_set = set(items)
@@ -22,35 +32,24 @@ def outfit_poll_collection(self, object):
 
 # Poll function for the selection of mesh belonging to an outfit in pointer properties
 def outfit_poll_mesh(self, object):
-    rig_settings = self.id_data.MustardUI_RigSettings
-    if self.outfit_switcher_collection is not None:
-        items = (
-            self.outfit_switcher_collection.all_objects
-            if rig_settings.outfit_config_subcollections
-            else self.outfit_switcher_collection.objects
-        )
-        if object in [x for x in items]:
-            return object.type == "MESH"
-    return False
+    coll = self.outfit_switcher_collection
+    if coll is None or object.type not in {"MESH", "CURVES"}:
+        return False
+    return object in list(outfits_get_collection_items(self.id_data.MustardUI_RigSettings, coll))
 
 
 def outfit_poll_mesh_physics(self, object):
+    if self.outfit_collection is None or object == self.object or object.type != "MESH":
+        return False
+
     rig_settings = self.id_data.MustardUI_RigSettings
     physics_settings = self.id_data.MustardUI_PhysicsSettings
-    if self.outfit_collection is not None:
-        physics_items = [x.object for x in physics_settings.items]
-        items = []
-        for obj in (
-            self.outfit_collection.all_objects
-            if rig_settings.outfit_config_subcollections
-            else self.outfit_collection.objects
-        ):
-            if obj not in physics_items:
-                items.append(obj)
-        for children in [x.children for x in items]:
-            for obj in children:
-                if obj not in physics_items:
-                    items.append(obj)
-        if object in [x for x in items] and object != self.object:
-            return object.type == "MESH"
-    return False
+    physics_objects = {x.object for x in physics_settings.items}
+    pieces = set(
+        self.outfit_collection.all_objects
+        if rig_settings.outfit_config_subcollections
+        else self.outfit_collection.objects
+    )
+    pieces -= physics_objects
+
+    return object in pieces or (object not in physics_objects and object.parent in pieces)

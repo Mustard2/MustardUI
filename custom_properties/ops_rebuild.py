@@ -7,6 +7,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -129,11 +130,11 @@ class MustardUI_Property_FixPath(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=-1)
+        res, obj = mustardui_active_object(context, config=ModelMode.ANY)
         addon_prefs = context.preferences.addons[base_package].preferences
 
         invalid = 0
@@ -272,11 +273,11 @@ class MustardUI_Property_Rebuild(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Rebuild all custom properties

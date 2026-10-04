@@ -5,7 +5,7 @@ import bpy
 from ..configuration.naming_convention import strip_naming_convention
 from ..misc.outfits import outfit_extract_items_from_collection
 from ..misc.ui_collapse import ui_collapse_prop
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .misc import PieceDrawCache, mustardui_custom_properties_print
@@ -38,7 +38,7 @@ def draw_outfit_piece(
 
     col = layout.column(align=True)
     row = col.row(align=True)
-    for lvl in range(level):
+    for _ in range(level):
         row.label(text="", icon="BLANK1")
 
     children = cache.children.get(obj, ())
@@ -142,7 +142,7 @@ def draw_outfit_piece(
         )
         if check_show:
             row2 = col.row(align=True)
-            for lvl in range(level):
+            for _ in range(level):
                 row2.label(text="", icon="BLANK1")
             mustardui_custom_properties_print(
                 arm,
@@ -187,7 +187,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is not None:
             rig_settings = arm.MustardUI_RigSettings
@@ -213,7 +213,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -223,7 +223,7 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
         settings = bpy.context.scene.MustardUI_Settings
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         # Outfit list
@@ -253,10 +253,13 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
         ):
             row.prop(rig_settings, "hair_switch_with_outfit", text="", icon="CURVES")
 
+        row.operator("mustardui.model_toolkit_add_outfit_from_file", text="", icon="IMPORT")
+
         outfits_list = rig_settings.outfits_list
 
-        if outfits_list != "Nude":
-            collection = bpy.data.collections[outfits_list]
+        collection = bpy.data.collections.get(outfits_list)
+
+        if outfits_list != "Nude" and collection is not None:
             items = outfit_extract_items_from_collection(
                 collection, rig_settings.outfit_config_subcollections
             )
@@ -400,7 +403,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -420,7 +423,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
         return res and extras_avail
 
     def draw_header(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
@@ -440,7 +443,7 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         cache = PieceDrawCache(arm)
@@ -527,7 +530,7 @@ class PANEL_PT_MustardUI_Outfits_Optimize(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -547,7 +550,7 @@ class PANEL_PT_MustardUI_Outfits_Optimize(MainPanel, bpy.types.Panel):
         return res and global_properties_avail
 
     def draw_header(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout
@@ -566,7 +569,7 @@ class PANEL_PT_MustardUI_Outfits_Optimize(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         layout = self.layout

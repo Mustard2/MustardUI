@@ -2,7 +2,7 @@ import bpy
 
 from ..armature.external.mhx import panel as menu_mhx_panel
 from ..armature.external.mhx_defs import panel_poll
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from . import MainPanel
 
 
@@ -17,7 +17,7 @@ class PANEL_PT_MustardUI_Armature_External(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
@@ -26,7 +26,7 @@ class PANEL_PT_MustardUI_Armature_External(MainPanel, bpy.types.Panel):
             layout.label(text="MHX")
 
     def draw(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         ob = context.object
         if not (ob and ob.get("MhxRig", False)) or ob.data != obj:

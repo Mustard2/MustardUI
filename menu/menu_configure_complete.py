@@ -1,7 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -16,7 +16,7 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
@@ -25,7 +25,7 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         settings = bpy.context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
 
         # Configuration button
         col = layout.column(align=True)

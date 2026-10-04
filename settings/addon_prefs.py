@@ -2,6 +2,7 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty
 
 from .. import __package__ as base_package
+from ..text_storage import storage as text_storage
 
 
 class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
@@ -35,6 +36,14 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         "already have a UI configured.\n"
         "The full Configuration can still be used afterwards "
         "(enable it with Developer Tools).",
+    )
+
+    # Model Toolkit
+    model_toolkit: BoolProperty(
+        default=False,
+        name="Model Toolkit",
+        description="Show the Model Toolkit panel.\nIt contains tools to edit the model: "
+        "armature, mesh, physics, naming and optimizations",
     )
 
     # Limits of new custom properties
@@ -76,6 +85,29 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         description="Unlock experimental features throughout the add-on.\nNote that "
         "experimental features might not work properly yet, or be changed/removed "
         "from future versions",
+        update=lambda self, context: text_storage.apply(),
+    )
+
+    settings_storage: EnumProperty(
+        name="Settings Storage",
+        default="ARMATURE",
+        items=(
+            ("ARMATURE", "Armature", "Store the settings of the models in their Armatures"),
+            (
+                "TEXT",
+                "Text",
+                "Store the settings of the models in Text datablocks",
+            ),
+        ),
+        description="Datablock storing the settings of all the models",
+        update=lambda self, context: text_storage.apply(),
+    )
+
+    settings_storage_startup: BoolProperty(
+        default=True,
+        name="Use Armature at Startup",
+        description="Switch the Settings Storage to Armature each time Blender starts, to "
+        "avoid saving models with Text storage by mistake",
     )
 
     url_MustardUI = "https://github.com/Mustard2/MustardUI"
@@ -85,14 +117,16 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.prop(self, "developer", text="Developer Tools (for Model creators)")
+        col.prop(self, "model_toolkit")
         col.prop(self, "quick_setup")
+
+        col.separator()
+        col.prop(self, "developer", text="Developer Tools (for Model creators)")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
-        # col.separator()
-        # row = col.row()
-        # row.prop(self, "experimental")
+        col.separator()
+        col.prop(self, "experimental")
 
         row = layout.row(align=True)
         row.operator("wm.url_open", text="GitHub", icon="URL").url = self.url_MustardUI
@@ -105,6 +139,36 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             box = layout.box()
             box.label(text="Developer Settings", icon="PREFERENCES")
             box.prop(self, "new_property_limits")
+
+        if self.experimental:
+            box = layout.box()
+            box.label(text="Experimental", icon="EXPERIMENTAL")
+            row = box.row(align=True)
+            row.label(text="Settings Storage")
+            row.prop(self, "settings_storage", expand=True)
+            box.prop(self, "settings_storage_startup")
+
+            col = box.column(align=True)
+            col.label(text="Limitations:", icon="ERROR")
+            if self.settings_storage == "ARMATURE":
+                col.label(
+                    text="• Cycles also loads the textures of hidden outfits, which might increase "
+                    "memory (VRAM) usage.",
+                    icon="BLANK1",
+                )
+                col.label(
+                    text="• Hidden outfits also slow down the viewport, e.g. when switching "
+                    "outfits or posing.",
+                    icon="BLANK1",
+                )
+            else:
+                for text in (
+                    "Older MustardUI versions can not read the models saved with this option",
+                    "Linked or overridden models are not supported",
+                    "Keyframes and drivers on MustardUI settings stop working",
+                    "Every Armature in the file gets a hidden Text datablock",
+                ):
+                    col.label(text=f"• {text}", icon="BLANK1")
 
         if self.debug:
             box = layout.box()

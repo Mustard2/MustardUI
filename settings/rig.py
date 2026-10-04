@@ -3,6 +3,8 @@ import re
 import bpy
 from bpy.props import StringProperty
 
+from ..hair.helper_functions import store_current_hair
+from ..misc.enum_items import keep_enum_strings
 from ..misc.icons import get_hair_icon
 from ..misc.set_bool import set_bool
 from ..outfits.definitions import MustardUI_Outfit
@@ -14,9 +16,7 @@ from ..outfits.helper_functions import (
     update_masks,
 )
 from ..sections.definitions import MustardUI_SectionItem
-
-# Strings returned by outfits_list_make
-_outfits_list_strings = {}
+from ..text_storage.storage import text_of
 
 
 # Main class to store model settings
@@ -44,7 +44,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     # Poll function for the selection of armatures for the armature object
     def poll_armature(self, object):
         if object.type == "ARMATURE":
-            return object.data == self.id_data
+            return self.id_data in (object.data, text_of(object.data))
         return False
 
     model_armature_object: bpy.props.PointerProperty(
@@ -220,7 +220,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         name="Volume Preserve property",
         description="Creates a switcher on the UI to enable/disable "
         "the Preserve Volume option on the Armature "
-        "modifier",
+        "modifiers of the Body and children Objects",
     )
 
     # Material normals tool
@@ -387,11 +387,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         if previews:
             items = [(*item, i) for i, item in enumerate(items)]
 
-        strings = _outfits_list_strings
-        return [
-            tuple(strings.setdefault(x, x) if isinstance(x, str) else x for x in item)
-            for item in items
-        ]
+        return keep_enum_strings(items)
 
     # Function to update the visibility of the outfits/masks/armature layers when an
     # outfit is changed
@@ -775,15 +771,38 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
             if obj.type in {"MESH", "CURVES"}
         ]
 
-        return sorted(items)
+        return keep_enum_strings(sorted(items))
 
     # Function to update the requested hair
     def hair_list_update(self, context):
         bpy.ops.mustardui.hair_visibility()
 
+    # The selected hair is stored by name, as the number of an item is the position of the
+    # hair in the collection, which changes when an object before it is removed
+    hair_list_name: StringProperty(default="")
+
+    def hair_list_get(self):
+        numbers = {item[0]: item[4] for item in self.hair_list_make(bpy.context)}
+        if self.hair_list_name in numbers:
+            return numbers[self.hair_list_name]
+        # Renamed, removed or saved before the name was stored: the visible hair
+        visible = store_current_hair(self)
+        if visible in numbers:
+            return numbers[visible]
+        # Hidden hair in files saved before the name was stored keep their number
+        return self.get("hair_list", -1)
+
+    def hair_list_set(self, value):
+        numbers = {item[4]: item[0] for item in self.hair_list_make(bpy.context)}
+        self.hair_list_name = numbers.get(value, "")
+
     # Hair list
     hair_list: bpy.props.EnumProperty(
-        name="Hair List", items=hair_list_make, update=hair_list_update
+        name="Hair List",
+        items=hair_list_make,
+        get=hair_list_get,
+        set=hair_list_set,
+        update=hair_list_update,
     )
 
     hair_custom_properties_icons: bpy.props.BoolProperty(
@@ -1063,7 +1082,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
     model_version_date_vector: bpy.props.IntVectorProperty(
         name="Date",
         size=3,
-        min=1,
+        min=0,
         max=3000,
         default=(0, 0, 0),
         description="Date of the version: (Day, Month, Year) if "

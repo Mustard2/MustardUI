@@ -1,7 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .ops_add import MustardUI_PhysicsAddItem
 
 
@@ -14,7 +14,7 @@ class OUTLINER_MT_collection(bpy.types.Menu):
 
 def mustardui_physics_add_menu(self, context):
 
-    res, arm = mustardui_active_object(context, config=1)
+    res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
     physics_settings = arm.MustardUI_PhysicsSettings
     addon_prefs = context.preferences.addons[base_package].preferences
 

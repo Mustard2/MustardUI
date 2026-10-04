@@ -1,6 +1,7 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..tools.lipsync import can_create_action
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -16,11 +17,12 @@ class PANEL_PT_MustardUI_Tools(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is not None:
             return res and (
                 arm.MustardUI_ToolsSettings.autobreath_enable
                 or arm.MustardUI_ToolsSettings.autoeyelid_enable
+                or arm.MustardUI_ToolsSettings.lipsync_enable
                 or arm.MustardUI_ToolsSettings.bone_shrinkwrap_enable
             )
         return res
@@ -37,7 +39,7 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if not arm:
             return False
@@ -49,7 +51,7 @@ class PANEL_PT_MustardUI_Tools_AutoBreath(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         layout = self.layout
@@ -76,7 +78,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if not arm:
             return False
@@ -88,7 +90,7 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         layout = self.layout
@@ -100,6 +102,53 @@ class PANEL_PT_MustardUI_Tools_AutoEyelid(MainPanel, bpy.types.Panel):
         layout.operator("mustardui.tools_autoeyelid", icon="HIDE_OFF")
 
 
+class PANEL_PT_MustardUI_Tools_LipSync(MainPanel, bpy.types.Panel):
+    bl_parent_id = "PANEL_PT_MustardUI_Tools"
+    bl_idname = "PANEL_PT_MustardUI_Tools_LipSync"
+    bl_label = "Lip Sync"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
+
+        if not arm:
+            return False
+
+        if hasattr(arm.MustardUI_ToolsSettings, "lipsync_enable"):
+            return res and arm.MustardUI_ToolsSettings.lipsync_enable
+
+        return False
+
+    def draw(self, context):
+
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
+        tools_settings = arm.MustardUI_ToolsSettings
+
+        layout = self.layout
+
+        layout.prop(tools_settings, "lipsync_input", expand=True)
+        if tools_settings.lipsync_input == "TEXT":
+            layout.prop(tools_settings, "lipsync_text", text="")
+        elif tools_settings.lipsync_input == "ARPABET":
+            layout.prop(tools_settings, "lipsync_arpabet", text="")
+        else:
+            layout.prop(tools_settings, "lipsync_timed_text")
+
+        column = layout.column(align=True)
+        row = column.row(align=True)
+        row.enabled = tools_settings.lipsync_input != "TIMED"
+        row.prop(tools_settings, "lipsync_speed")
+        column.prop(tools_settings, "lipsync_intensity")
+        column.prop(tools_settings, "lipsync_smoothing")
+        layout.prop(tools_settings, "lipsync_interpolation")
+
+        if can_create_action(tools_settings):
+            layout.prop(tools_settings, "lipsync_new_action")
+
+        layout.operator("mustardui.tools_lipsync", icon="SPEAKER")
+
+
 class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
     bl_parent_id = "PANEL_PT_MustardUI_Tools"
     bl_idname = "PANEL_PT_MustardUI_Tools_BonesShrinkwrap"
@@ -108,7 +157,7 @@ class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if not arm:
             return False
@@ -120,7 +169,7 @@ class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         tools_settings = arm.MustardUI_ToolsSettings
 
         layout = self.layout
@@ -182,11 +231,13 @@ def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools)
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools_AutoBreath)
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools_AutoEyelid)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Tools_LipSync)
     bpy.utils.register_class(PANEL_PT_MustardUI_Tools_BonesShrinkwrap)
 
 
 def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_BonesShrinkwrap)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_LipSync)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoEyelid)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools_AutoBreath)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Tools)

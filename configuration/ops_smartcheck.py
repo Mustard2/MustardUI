@@ -1,8 +1,9 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..tools_creators.ops_optimize_mods import mask_vg_name
+from ..misc.move_modifier import move_modifier
+from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_toolkit.optimization.ops_optimize_mods import mask_vg_name
 
 
 def smartcheck_body_mask_from_vg(self, context, rig_settings):
@@ -50,10 +51,6 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
 
     insert_pos = arm_idx + 1 if arm_idx is not None else 0
 
-    # Temporarily set body as active for modifier_move_to_index
-    prev_active = context.view_layer.objects.active
-    context.view_layer.objects.active = body
-
     outfits_with_mask = 0
     for vg in body.vertex_groups:
         mod = next(
@@ -95,7 +92,7 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
             )
             mod.show_viewport = visible
             mod.show_render = visible
-            bpy.ops.object.modifier_move_to_index(modifier=mod.name, index=insert_pos)
+            move_modifier(body, mod, insert_pos)
             insert_pos += 1
             rig_settings.outfits_enable_global_mask = True
             break  # first-match wins: one outfit per VG
@@ -128,13 +125,11 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
         i for i, m in enumerate(body.modifiers) if m.name == mask_vg_name and m.type == "MASK"
     )
     if current_mask_idx != target_mask:
-        bpy.ops.object.modifier_move_to_index(modifier=mask_mod.name, index=target_mask)
+        move_modifier(body, mask_mod, target_mask)
         print(
             f"MustardUI Smart Check - Body Mask from Vertex Groups - "
             f"Mask repositioned to index {target_mask}"
         )
-
-    context.view_layer.objects.active = prev_active
 
     subdiv_idx = None
     mask_pos = None
@@ -225,7 +220,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         if arm is None:
             return False
 
@@ -239,7 +234,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 

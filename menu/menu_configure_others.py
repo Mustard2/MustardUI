@@ -1,7 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -16,7 +16,7 @@ class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
@@ -28,7 +28,7 @@ class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
 
         box = layout.box()
@@ -42,8 +42,9 @@ class PANEL_PT_MustardUI_InitPanel_Others(MainPanel, bpy.types.Panel):
         col = box.column()
         col.enabled = rig_settings.model_version_date_enable
         col.prop(rig_settings, "model_version_date_format", text="Format")
-        row = box.row(align=True)
+        row = col.row(align=True)
         row.prop(rig_settings, "model_version_date_vector", text="Date", expand=True)
+        row.operator("mustardui.version_date_today", text="", icon="TIME")
 
         box.separator()
 

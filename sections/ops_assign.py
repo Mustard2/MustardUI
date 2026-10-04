@@ -1,6 +1,7 @@
 import bpy
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -15,15 +16,16 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CONFIG):
             return False
 
-        res, obj = mustardui_active_object(context, config=1)
-        return len(obj.MustardUI_RigSettings.body_custom_properties_sections) > 0
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
+        sections = obj.MustardUI_RigSettings.body_custom_properties_sections
+        return 0 <= context.scene.mustardui_section_uilist_index < len(sections)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
 
@@ -40,7 +42,7 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
 
     def invoke(self, context, event):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
 
@@ -54,7 +56,7 @@ class MustardUI_Section_PropertyAssign(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
 

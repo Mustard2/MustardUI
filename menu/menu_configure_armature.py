@@ -2,7 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..armature.ik_fk_snapper import ikfk_snapper_available
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -17,19 +17,19 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
         if can_draw_ui():
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.developer
 
     def draw_header(self, context):
         layout = self.layout
-        layout.label(text="", icon="ARMATURE_DATA")
+        layout.label(text="", icon="OUTLINER_DATA_ARMATURE")
 
     def draw(self, context):
 
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         armature_settings = arm.MustardUI_ArmatureSettings
         rig_settings = arm.MustardUI_RigSettings
 
@@ -115,26 +115,28 @@ class PANEL_PT_MustardUI_InitPanel_Armature(MainPanel, bpy.types.Panel):
                     rows=rows,
                 )
 
-                child = bcoll.children[context.scene.mustardui_armature_uilist_index]
-                cbcoll_settings = child.MustardUI_ArmatureBoneCollection
+                index = context.scene.mustardui_armature_uilist_index
+                if 0 <= index < len(bcoll.children):
+                    child = bcoll.children[index]
+                    cbcoll_settings = child.MustardUI_ArmatureBoneCollection
 
-                col = box.column(align=True)
-                row = col.row()
-                row.enabled = not cbcoll_settings.outfit_switcher_enable
-                row.prop(cbcoll_settings, "icon")
-                row = col.row()
-                row.enabled = not cbcoll_settings.outfit_switcher_enable
-                row.prop(cbcoll_settings, "advanced")
-                row = col.row()
-                row.enabled = not cbcoll_settings.outfit_switcher_enable
-                row.prop(cbcoll_settings, "default")
+                    col = box.column(align=True)
+                    row = col.row()
+                    row.enabled = not cbcoll_settings.outfit_switcher_enable
+                    row.prop(cbcoll_settings, "icon")
+                    row = col.row()
+                    row.enabled = not cbcoll_settings.outfit_switcher_enable
+                    row.prop(cbcoll_settings, "advanced")
+                    row = col.row()
+                    row.enabled = not cbcoll_settings.outfit_switcher_enable
+                    row.prop(cbcoll_settings, "default")
 
-                col = box.column(align=True)
-                col.prop(cbcoll_settings, "outfit_switcher_enable")
-                if cbcoll_settings.outfit_switcher_enable:
-                    col.prop(cbcoll_settings, "outfit_switcher_collection", text="Collection")
-                    if cbcoll_settings.outfit_switcher_collection is not None:
-                        col.prop(cbcoll_settings, "outfit_switcher_object", text="Object")
+                    col = box.column(align=True)
+                    col.prop(cbcoll_settings, "outfit_switcher_enable")
+                    if cbcoll_settings.outfit_switcher_enable:
+                        col.prop(cbcoll_settings, "outfit_switcher_collection", text="Collection")
+                        if cbcoll_settings.outfit_switcher_collection is not None:
+                            col.prop(cbcoll_settings, "outfit_switcher_object", text="Object")
 
         if armature_settings.ikfk_snapper_enable and ikfk_snapper_available(arm):
             self._draw_ikfk_config(layout, arm)

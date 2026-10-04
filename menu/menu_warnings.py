@@ -1,6 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from ..warnings.check_addon_version import check_addon_version
 from ..warnings.ops_fix_eevee_normals import check_eevee_normals
@@ -25,7 +25,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     def poll(cls, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        poll, obj = mustardui_active_object(context, config=-1)
+        poll, obj = mustardui_active_object(context, config=ModelMode.ANY)
 
         if obj is not None:
             # If an old script is available, only this warning is shown
@@ -49,7 +49,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        poll, obj = mustardui_active_object(context, config=-1)
+        poll, obj = mustardui_active_object(context, config=ModelMode.ANY)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
