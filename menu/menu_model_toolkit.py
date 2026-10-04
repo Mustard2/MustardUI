@@ -280,6 +280,14 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_fireball", text="Fireball", icon="LIGHT_SUN")
         row.operator("mustardui.model_toolkit_remove_fireball", text="", icon="X")
 
+        row = layout.row(align=True)
+        row.label(text="", icon="NODE_MATERIAL")
+        row.separator()
+        row.operator(
+            "mustardui.model_toolkit_hex_dissolve", text="Hex Dissolve", icon="MESH_ICOSPHERE"
+        )
+        row.operator("mustardui.model_toolkit_remove_hex_dissolve", text="", icon="X")
+
 
 class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.types.Panel):
     header = ("Optimizations", "FORCE_WIND")

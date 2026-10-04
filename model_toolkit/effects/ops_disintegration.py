@@ -53,7 +53,8 @@ class MustardUI_ModelToolkit_Disintegration(bpy.types.Operator):
         control, low, high = new_control(objects, "Disintegration", CONTROL_TYPE)
         radius = (high - low).length / 2 * 1.25
         frame = context.scene.frame_current
-        for f, scale in ((frame, 0.001), (frame + self.duration, radius)):
+        # The current frame last, to leave the Control at its value
+        for f, scale in ((frame + self.duration, radius), (frame, 0.001)):
             control.scale = (scale, scale, scale)
             control.keyframe_insert("scale", frame=f)
 

@@ -31,6 +31,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_disintegration.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_ripple.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_fireball.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_hex_dissolve.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -42,8 +43,12 @@ class TestDisintegration(BlenderTestCase):
         self.assertEqual(control, effect.modifier_input(self.pants.modifiers[-1], "Control").value)
         self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_DISINTEGRATION")
 
-        scene = bpy.context.scene
+        # The Control is at its value of the current frame, without changing frame
         depsgraph = bpy.context.evaluated_depsgraph_get()
+        self.assertLess(control.scale.x, 0.01)
+        self.assertGreater(len(self.shirt.evaluated_get(depsgraph).data.polygons), 0)
+
+        scene = bpy.context.scene
         faces, points = [], []
         for frame in range(scene.frame_start, 13):
             scene.frame_set(frame)
@@ -216,3 +221,78 @@ class TestFireball(BlenderTestCase):
         self.assertFalse(names & set(bpy.data.objects.keys()))
         self.assertNotIn(collection, bpy.data.collections)
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_fireball.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestHexDissolve(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+        self.pants = bpy.data.objects["Casual - Pants"]
+        self.dress = bpy.data.objects["Formal - Dress"]
+        self.cloth = bpy.data.materials.new("Cloth")
+        for obj in (self.shirt, self.pants, self.dress):
+            obj.data.materials.append(self.cloth)
+        self.leather = bpy.data.materials.new("Leather")
+        self.pants.data.materials.append(self.leather)
+        set_active(self.shirt)
+        self.pants.select_set(True)
+
+    def surface(self, material):
+        nodes = material.node_tree.nodes
+        return nodes["Material Output"].inputs["Surface"].links[0].from_node
+
+    # The surface shaders are wrapped by the effect, bound to the growing Control
+    def test_hex_dissolve(self):
+        bpy.ops.mustardui.model_toolkit_hex_dissolve(duration=10)
+        controls = set()
+        for material in (self.cloth, self.leather):
+            group = self.surface(material)
+            self.assertEqual(group.node_tree.name, "MustardUI Hex Dissolve")
+            self.assertEqual(group.inputs["Shader"].links[0].from_node.type, "BSDF_PRINCIPLED")
+            controls.add(group.inputs["Control"].links[0].from_node.object)
+        self.assertEqual(len(controls), 1)
+        control = controls.pop()
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_HEX_DISSOLVE")
+        self.assertLess(control.scale.x, 0.01)
+
+        scene = bpy.context.scene
+        start = scene.frame_current
+        scene.frame_set(start)
+        self.assertLess(control.scale.x, 0.01)
+        scene.frame_set(start + 10)
+        self.assertGreater(control.scale.x, 0.5)
+
+    # Showing shrinks the Control instead
+    def test_show(self):
+        bpy.ops.mustardui.model_toolkit_hex_dissolve(duration=10, show=True)
+        control = self.surface(self.cloth).inputs["Control"].links[0].from_node.object
+        self.assertGreater(control.scale.x, 0.5)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        scene.frame_set(start)
+        self.assertGreater(control.scale.x, 0.5)
+        scene.frame_set(start + 10)
+        self.assertLess(control.scale.x, 0.01)
+
+    # Effects stack, and removing them restores the shaders and removes the Controls
+    def test_remove(self):
+        bpy.ops.mustardui.model_toolkit_hex_dissolve()
+        set_active(self.dress)
+        bpy.ops.mustardui.model_toolkit_hex_dissolve()
+        nodes = len(self.leather.node_tree.nodes)
+
+        bpy.ops.mustardui.model_toolkit_remove_hex_dissolve()
+        self.assertEqual(self.surface(self.cloth).type, "BSDF_PRINCIPLED")
+        self.assertEqual(self.surface(self.leather).node_tree.name, "MustardUI Hex Dissolve")
+        self.assertEqual(len(self.leather.node_tree.nodes), nodes)
+        controls = [x for x in bpy.data.objects if x.MustardUI_tools_creators_type]
+        self.assertEqual(len(controls), 1)
+
+        set_active(self.pants)
+        bpy.ops.mustardui.model_toolkit_remove_hex_dissolve()
+        self.assertEqual(self.surface(self.leather).type, "BSDF_PRINCIPLED")
+        self.assertEqual(len(self.leather.node_tree.nodes), nodes - 2)
+        self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_hex_dissolve.poll())
