@@ -77,7 +77,6 @@ class MustardUI_ModelToolkit_Disintegration(bpy.types.Operator):
         control.location = (low + high) / 2
         control.MustardUI_tools_creators_is_created = True
         control.MustardUI_tools_creators_type = "EFFECT_DISINTEGRATION"
-        # Margin for the irregular edge, which goes inside the sphere
         radius = (high - low).length / 2 * 1.25
         frame = context.scene.frame_current
         for f, scale in ((frame, 0.001), (frame + self.duration, radius)):
