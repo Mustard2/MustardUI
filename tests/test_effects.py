@@ -30,6 +30,7 @@ class TestDisintegration(BlenderTestCase):
     def test_unavailable(self):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_disintegration.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_ripple.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_fireball.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -166,3 +167,52 @@ class TestRipple(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_remove_ripple()
         self.assertNotIn("Ripple", self.grid.modifiers)
         self.assertNotIn(name, bpy.data.objects)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestFireball(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        bpy.context.scene.cursor.location = (0.0, 0.0, 1.0)
+        bpy.ops.mustardui.model_toolkit_fireball(radius=0.1)
+        self.fireball = bpy.data.objects["Fireball"]
+        self.control = effect.modifier_input(self.fireball.modifiers["Fireball"], "Control").value
+
+    # The core follows the Control, and the flames trail behind it
+    def test_fireball(self):
+        self.assertEqual(self.control.MustardUI_tools_creators_type, "EFFECT_FIREBALL")
+        self.assertEqual(bpy.context.active_object, self.control)
+        collection = self.fireball.users_collection[0]
+        self.assertIn(collection, bpy.context.scene.collection.children[:])
+        self.assertEqual(set(collection.objects), {self.fireball, self.control})
+        for lock in ("lock_location", "lock_rotation", "lock_scale"):
+            self.assertTrue(all(getattr(self.fireball, lock)))
+
+        scene = bpy.context.scene
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        for frame in range(scene.frame_start, scene.frame_start + 20):
+            self.control.location.x = (frame - scene.frame_start) * 0.05
+            scene.frame_set(frame)
+        geometry = self.fireball.evaluated_get(depsgraph).evaluated_geometry()
+
+        co = np.empty(len(geometry.mesh.vertices) * 3)
+        geometry.mesh.vertices.foreach_get("co", co)
+        np.testing.assert_allclose(co.reshape(-1, 3).mean(axis=0), self.control.location, atol=0.02)
+
+        co = np.empty(len(geometry.pointcloud.points) * 3)
+        geometry.pointcloud.points.foreach_get("co", co)
+        x = co.reshape(-1, 3)[:, 0]
+        self.assertGreater(len(x), 100)
+        self.assertLess(x.min(), self.control.location.x - 0.3)
+        self.assertIn("fireball_age", geometry.pointcloud.attributes)
+        self.assertIn("fireball_brightness", geometry.mesh.attributes)
+
+    # Removing from the Control removes the Fireball and its collection too
+    def test_remove(self):
+        names = {self.fireball.name, self.control.name}
+        collection = self.fireball.users_collection[0].name
+        bpy.ops.mustardui.model_toolkit_remove_fireball()
+        self.assertFalse(names & set(bpy.data.objects.keys()))
+        self.assertNotIn(collection, bpy.data.collections)
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_fireball.poll())
