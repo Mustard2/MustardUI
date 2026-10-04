@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_toolkit.effects.ops_disintegration import disintegration_available
 from ..model_toolkit.mesh.ops_smooth_shape_key import smooth_shape_key_draw_settings
 from ..model_toolkit.outfits.ops_fit_to_body import fit_to_body_draw_settings
 from ..model_toolkit.outfits.ops_squish import squish_draw_settings
@@ -250,6 +251,20 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Pan
         )
 
 
+class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Panel):
+    header = ("Effects", "SHADERFX")
+
+    def draw(self, context):
+        layout = self.layout
+
+        if not disintegration_available():
+            layout.label(text="Effects need Blender 5.2", icon="INFO")
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_disintegration", icon="PARTICLES")
+        row.operator("mustardui.model_toolkit_remove_disintegration", text="", icon="X")
+
+
 class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.types.Panel):
     header = ("Optimizations", "FORCE_WIND")
     guide = "Optimization"
@@ -290,11 +305,13 @@ def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Mesh)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Physics)
+    bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Effects)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Optimizations)
 
 
 def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Optimizations)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Effects)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Physics)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Mesh)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
