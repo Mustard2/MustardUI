@@ -42,6 +42,12 @@ class MustardUI_ModelToolkit_StickyStrands(bpy.types.Operator):
         objects = [x for x in context.selected_objects if x.type == "MESH" and x != target]
         objects = objects or [target]
 
+        # On the active mesh if the selected one is a collider, as physics colliding with it
+        # (e.g. cloth deforming the active mesh) would make a dependency cycle with the strands
+        colliders = [any(m.type == "COLLISION" for m in x.modifiers) for x in (*objects, target)]
+        if colliders == [True, False]:
+            objects, target = [target], objects[0]
+
         with bpy.data.libraries.load(RESOURCE) as (_, data):
             if NODE_GROUP not in bpy.data.node_groups:
                 data.node_groups = [NODE_GROUP]

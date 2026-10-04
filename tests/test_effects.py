@@ -567,6 +567,18 @@ class TestStickyStrands(BlenderTestCase):
         self.play(40)
         self.assertEqual(len(self.strands(lip)), 0)
 
+    # Not on a selected collider, for physics colliding with it not to make a dependency cycle
+    def test_collider(self):
+        lip = self.balls("Lip", 0.0)
+        finger = self.balls("Finger", 0.11)
+        lip.modifiers.new("Collision", "COLLISION")
+        set_active(finger)
+        lip.select_set(True)
+        bpy.ops.mustardui.model_toolkit_sticky_strands()
+        self.assertNotIn("Sticky Strands", lip.modifiers)
+        modifier = finger.modifiers["Sticky Strands"]
+        self.assertEqual(effect.modifier_input(modifier, "Target").value, lip)
+
     # The Control follows the mesh, for its strands not to disappear when it moves
     def test_follow(self):
         lip = self.pull(physics=False, moves=((0, 0.11),))
