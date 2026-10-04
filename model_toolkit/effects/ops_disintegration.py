@@ -32,7 +32,7 @@ def modifier_input(modifier, name):
 
 
 class MustardUI_ModelToolkit_Disintegration(bpy.types.Operator):
-    """Disintegrate the selected meshes into particles inside the sphere of a Control Empty, growing over them.\nThe edge of the cut is stored in the disintegration_edge attribute, to make it glow in the material"""  # noqa: E501
+    """Disintegrate the selected meshes into particles inside the sphere of a Control Empty, growing over them"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_disintegration"
     bl_label = "Add Disintegration"
