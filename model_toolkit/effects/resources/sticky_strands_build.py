@@ -140,6 +140,16 @@ def build_node_group():
     )
     add_input(
         ng,
+        "Smooth",
+        "NodeSocketInt",
+        panel,
+        default_value=0,
+        min_value=0,
+        max_value=100,
+        description="Iterations smoothing the shape of the strands",
+    )
+    add_input(
+        ng,
         "Flare Width",
         "NodeSocketFloat",
         panel,
@@ -1222,6 +1232,21 @@ def build_node_group():
         domain="EDGE",
     ).outputs[0]
     strands = t.node("GeometryNodeMeshToCurve", 57, 0, {"Mesh": edges}).outputs[0]
+
+    # Smoothed, keeping the ends on the surfaces and at the break
+    blurred = t.node(
+        "GeometryNodeBlurAttribute",
+        57,
+        -2,
+        {"Value": position, "Iterations": inputs["Smooth"]},
+        data_type="FLOAT_VECTOR",
+    ).outputs[0]
+    strands = t.node(
+        "GeometryNodeSetPosition",
+        57.5,
+        0,
+        {"Geometry": strands, "Selection": free, "Position": blurred},
+    ).outputs[0]
     strands = t.node(
         "GeometryNodeCurveSplineType", 58, 0, {"Curve": strands}, spline_type="CATMULL_ROM"
     ).outputs[0]

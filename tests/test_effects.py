@@ -588,6 +588,20 @@ class TestStickyStrands(BlenderTestCase):
         self.scene.frame_set(self.scene.frame_start)
         self.assertGreater(len(self.strands(lip)), 0)
 
+    # Smoothing the strands straightens their sag between the fixed ends
+    def test_smooth(self):
+        lip = self.pull(physics=False)
+        self.play(10)
+        modifier = lip.modifiers["Sticky Strands"]
+        sags = []
+        for smooth in (0, 30):
+            effect.modifier_input(modifier, "Smooth").value = smooth
+            lip.update_tag()
+            self.scene.frame_set(self.scene.frame_current)
+            co = self.strands(lip)
+            sags.append(co[np.abs(co[:, 0] - 0.1) < 0.01][:, 2].min())
+        self.assertGreater(sags[1], sags[0])
+
     # Without physics, the options change the strands on any frame, without a simulation cache
     def test_static_options(self):
         lip = self.pull(physics=False)
