@@ -1,3 +1,5 @@
+import contextlib
+
 import bpy
 
 
@@ -42,7 +44,8 @@ def execute_restoring_state(operator, context):
     try:
         result = operator._execute(context)
     except Exception:
-        state.restore_all(context)
+        with contextlib.suppress(RuntimeError):
+            state.restore_all(context)
         raise
     if "CANCELLED" in result:
         state.restore_all(context)
