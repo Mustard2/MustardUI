@@ -261,7 +261,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
             layout.label(text="Effects need Blender 5.2", icon="INFO")
 
         row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_disintegration", icon="PARTICLES")
+        row.operator(
+            "mustardui.model_toolkit_disintegration", text="Disintegration", icon="PARTICLES"
+        )
         row.operator("mustardui.model_toolkit_remove_disintegration", text="", icon="X")
 
 

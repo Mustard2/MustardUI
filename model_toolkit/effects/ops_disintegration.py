@@ -68,7 +68,10 @@ class MustardUI_ModelToolkit_Disintegration(bpy.types.Operator):
         low = Vector([min(c[i] for c in corners) for i in range(3)])
         high = Vector([max(c[i] for c in corners) for i in range(3)])
 
-        control = bpy.data.objects.new("Disintegration Control", None)
+        name = "Effect Control Disintegration"
+        if len(objects) == 1:
+            name = f"{objects[0].name} {name}"
+        control = bpy.data.objects.new(name, None)
         objects[0].users_collection[0].objects.link(control)
         control.empty_display_type = "SPHERE"
         control.location = (low + high) / 2
