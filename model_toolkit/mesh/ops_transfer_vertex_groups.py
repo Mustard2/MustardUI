@@ -199,7 +199,7 @@ class MustardUI_ModelToolkit_TransferVertexGroups_AddBones(bpy.types.Operator):
 
 
 class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
-    """Transfer selected vertex groups from active object to other selected objects.\nThe weights are copied where the surfaces are close and aligned, and filled smoothly from them elsewhere (e.g. skirts between the legs)"""  # noqa: E501
+    """Transfer selected vertex groups from active object to other selected objects"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_transfer_vertex_groups"
     bl_label = "Transfer Vertex Groups"

@@ -225,7 +225,7 @@ def transfer_shape_keys_steps(
 
 
 class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
-    """Transfer the Shape Keys from the Active Object to the other selected Objects, using the closest points on its surface"""  # noqa: E501
+    """Transfer the Shape Keys from the Active Object to the other selected Objects"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_transfer_shape_keys"
     bl_label = "Transfer Shape Keys"
