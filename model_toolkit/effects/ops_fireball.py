@@ -12,7 +12,7 @@ RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "fireball.blend"
 
 
 class MustardUI_ModelToolkit_Fireball(bpy.types.Operator):
-    """Add a fireball on a Control Empty at the 3D cursor, leaving a trail of flames as the Control moves"""  # noqa: E501
+    """Add a fireball on a Control Empty at the 3D cursor, leaving a trail of flames as the Control moves\nBlender 5.2 or above is required"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_fireball"
     bl_label = "Add Fireball"
@@ -24,10 +24,9 @@ class MustardUI_ModelToolkit_Fireball(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not effects_available():
-            cls.poll_message_set("Needs Blender 5.2")
-            return False
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        return effects_available() and active_object_operator_poll(
+            context, config=ModelMode.MODEL_TOOLKIT
+        )
 
     def execute(self, context):
         with bpy.data.libraries.load(RESOURCE) as (_, target):

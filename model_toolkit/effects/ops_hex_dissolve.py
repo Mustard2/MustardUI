@@ -30,7 +30,7 @@ def effect_control(node):
 
 
 class MustardUI_ModelToolkit_HexDissolve(bpy.types.Operator):
-    """Dissolve the materials of the selected meshes in glowing hexagons inside the sphere of a Control Empty, growing over them.\nMaterials shared with other objects dissolve on them too"""  # noqa: E501
+    """Dissolve the materials of the selected meshes in glowing hexagons inside the sphere of a Control Empty, growing over them.\nMaterials shared with other objects dissolve on them too\nBlender 5.2 or above is required"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_hex_dissolve"
     bl_label = "Add Hex Dissolve"
@@ -49,11 +49,10 @@ class MustardUI_ModelToolkit_HexDissolve(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not effects_available():
-            cls.poll_message_set("Needs Blender 5.2")
-            return False
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT) and bool(
-            materials(context.selected_objects)
+        return (
+            effects_available()
+            and active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+            and bool(materials(context.selected_objects))
         )
 
     def execute(self, context):

@@ -12,7 +12,7 @@ RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "ripple.blend")
 
 
 class MustardUI_ModelToolkit_Ripple(bpy.types.Operator):
-    """Ripple the selected meshes where the flattened sphere of a Control Empty cuts them, moving it to move the ripple"""  # noqa: E501
+    """Ripple the selected meshes where the flattened sphere of a Control Empty cuts them, moving it to move the ripple\nBlender 5.2 or above is required"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_ripple"
     bl_label = "Add Ripple"
@@ -20,11 +20,10 @@ class MustardUI_ModelToolkit_Ripple(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not effects_available():
-            cls.poll_message_set("Needs Blender 5.2")
-            return False
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT) and any(
-            x.type == "MESH" for x in context.selected_objects
+        return (
+            effects_available()
+            and active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+            and any(x.type == "MESH" for x in context.selected_objects)
         )
 
     def execute(self, context):

@@ -22,7 +22,7 @@ mesh_deform = importlib.import_module(ADDON + ".misc.mesh_deform")
 ops_transfer = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_transfer_vertex_groups")
 preview = importlib.import_module(ADDON + ".model_toolkit.mesh.shape_key_preview")
 intersection = importlib.import_module(ADDON + ".misc.mesh_intersection")
-squish = importlib.import_module(ADDON + ".model_toolkit.outfits.ops_squish")
+squish = importlib.import_module(ADDON + ".model_toolkit.effects.ops_squish")
 smooth_sk = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_smooth_shape_key")
 
 

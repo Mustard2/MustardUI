@@ -12,6 +12,7 @@ from helpers import (
     new_object,
     set_active,
 )
+from mathutils import Matrix
 
 effect = importlib.import_module(ADDON + ".model_toolkit.effects.effect")
 
@@ -32,6 +33,8 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_ripple.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_fireball.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_hex_dissolve.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -296,3 +299,329 @@ class TestHexDissolve(BlenderTestCase):
         self.assertEqual(len(self.leather.node_tree.nodes), nodes - 2)
         self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_hex_dissolve.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestWrap(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.ball = self.new_balls("Ball", (0.0,))
+        set_active(self.ball)
+
+    def new_balls(self, name, xs):
+        """Mesh of spheres along X at z = 3, with a Vertex Group for each"""
+        mesh = bpy.data.meshes.new(name)
+        bm = bmesh.new()
+        for x in xs:
+            bmesh.ops.create_uvsphere(
+                bm, u_segments=64, v_segments=32, radius=0.1, matrix=Matrix.Translation((x, 0, 0))
+            )
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = new_object(name, mesh)
+        obj.location = (0.0, 0.0, 3.0)
+        for i, x in enumerate(xs):
+            group = obj.vertex_groups.new(name=f"Ball {i}")
+            group.add([v.index for v in mesh.vertices if abs(v.co.x - x) < 0.11], 0.2, "REPLACE")
+        bpy.context.scene.cursor.location = obj.location
+        return obj
+
+    def points(self, obj):
+        # Changing the modifier inputs from Python does not tag the object
+        obj.update_tag()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        mesh = obj.evaluated_get(depsgraph).to_mesh()
+        return np.array([obj.matrix_world @ v.co for v in mesh.vertices]) - (0.0, 0.0, 3.0)
+
+    def distances(self, obj):
+        return np.linalg.norm(self.points(obj), axis=1)
+
+    # A new loop around the cursor tightens on the ball, resting on its surface
+    def test_rope(self):
+        bpy.ops.mustardui.model_toolkit_rope(radius=0.2)
+        rope = bpy.data.objects["Ball Rope"]
+        self.assertEqual(rope.MustardUI_tools_creators_type, "EFFECT_ROPE")
+        self.assertEqual(rope.parent, self.ball)
+        modifier = rope.modifiers["Rope"]
+        self.assertEqual(effect.modifier_input(modifier, "Target").value, self.ball)
+        self.assertEqual(effect.modifier_input(modifier, "Material").value.name, "MustardUI Rope")
+
+        radius = effect.modifier_input(modifier, "Radius").value
+        distances = self.distances(rope)
+        self.assertGreater(len(distances), 0)
+        self.assertGreater(distances.min(), 0.0995)
+        self.assertLess(distances.max(), 0.1 + 2 * radius + 0.001)
+
+        effect.modifier_input(modifier, "Offset").value = 0.01
+        self.assertGreater(self.distances(rope).min(), 0.1095)
+
+    # The tape lies on the ball, as thick as set
+    def test_tape(self):
+        bpy.ops.mustardui.model_toolkit_tape(radius=0.2)
+        tape = bpy.data.objects["Ball Tape"]
+        self.assertEqual(tape.MustardUI_tools_creators_type, "EFFECT_TAPE")
+        modifier = tape.modifiers["Tape"]
+        self.assertEqual(effect.modifier_input(modifier, "Material").value.name, "MustardUI Tape")
+
+        thickness = effect.modifier_input(modifier, "Thickness").value
+        distances = self.distances(tape)
+        self.assertGreater(len(distances), 0)
+        self.assertGreater(distances.min(), 0.0995)
+        self.assertLess(distances.max(), 0.1 + thickness + 0.001)
+        # Across the tape, along the axis of the loop
+        width = effect.modifier_input(modifier, "Width").value
+        self.assertAlmostEqual(np.ptp(self.points(tape)[:, 2]), width, delta=0.005)
+
+    # A Vertex Group as the Mask limits the targets, ignoring the rest
+    def test_vertex_group(self):
+        balls = self.new_balls("Balls", (-0.12, 0.12))
+        set_active(balls)
+        bpy.ops.mustardui.model_toolkit_rope(radius=0.3)
+        rope = bpy.data.objects["Balls Rope"]
+        self.assertGreater(self.points(rope)[:, 0].max(), 0.2)
+
+        mask = effect.modifier_input(rope.modifiers["Rope"], "Mask")
+        mask.type = "ATTRIBUTE"
+        mask.attribute_name = "Ball 0"
+        self.assertLess(self.points(rope)[:, 0].max(), 0.0)
+
+    # Smoothing rounds the corners where the rope leaves the balls, keeping it out of them
+    def test_smooth(self):
+        balls = self.new_balls("Balls", (-0.12, 0.12))
+        set_active(balls)
+        bpy.ops.mustardui.model_toolkit_rope(radius=0.3)
+        rope = bpy.data.objects["Balls Rope"]
+        sharp = self.points(rope)
+
+        effect.modifier_input(rope.modifiers["Rope"], "Smooth").value = 20
+        smooth = self.points(rope)
+        self.assertLess(len(smooth), len(sharp))
+        for x in (-0.12, 0.12):
+            self.assertGreater(np.linalg.norm(smooth - (x, 0, 0), axis=1).min(), 0.0995)
+
+    # The Vertex Group set as the Mask when adding, here with a low weight
+    def test_add_vertex_group(self):
+        balls = self.new_balls("Balls", (-0.12, 0.12))
+        set_active(balls)
+        bpy.ops.mustardui.model_toolkit_tape(radius=0.3, vertex_group="Ball 1")
+        tape = bpy.data.objects["Balls Tape"]
+        mask = effect.modifier_input(tape.modifiers["Tape"], "Mask")
+        self.assertEqual((mask.type, mask.attribute_name), ("ATTRIBUTE", "Ball 1"))
+        self.assertGreater(self.points(tape)[:, 0].min(), 0.0)
+
+    # Selected curves become ropes, kept when the Rope is removed
+    def test_selected_curves(self):
+        curve = bpy.data.curves.new("Lasso", "CURVE")
+        curve.dimensions = "3D"
+        spline = curve.splines.new("POLY")
+        spline.points.add(3)
+        for point, (x, y) in zip(spline.points, ((1, 0), (0, 1), (-1, 0), (0, -1)), strict=True):
+            point.co = (0.15 * x, 0.15 * y, 3.0, 1.0)
+        spline.use_cyclic_u = True
+        lasso = new_object("Lasso", curve)
+        lasso.select_set(True)
+        objects = len(bpy.data.objects)
+
+        bpy.ops.mustardui.model_toolkit_rope()
+        self.assertEqual(len(bpy.data.objects), objects)
+        self.assertIn("Rope", lasso.modifiers)
+        self.assertLess(self.distances(lasso).max(), 0.12)
+
+        bpy.ops.mustardui.model_toolkit_remove_rope()
+        self.assertNotIn("Rope", lasso.modifiers)
+        self.assertIn("Lasso", bpy.data.objects)
+
+    # The loops added are removed with their effect only
+    def test_remove(self):
+        bpy.ops.mustardui.model_toolkit_rope()
+        bpy.ops.mustardui.model_toolkit_tape()
+        rope, tape = bpy.data.objects["Ball Rope"], bpy.data.objects["Ball Tape"]
+        set_active(rope)
+        tape.select_set(True)
+        self.assertTrue(bpy.ops.mustardui.model_toolkit_remove_tape.poll())
+
+        bpy.ops.mustardui.model_toolkit_remove_rope()
+        self.assertNotIn("Ball Rope", bpy.data.objects)
+        self.assertIn("Ball Tape", bpy.data.objects)
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_rope.poll())
+
+        bpy.ops.mustardui.model_toolkit_remove_tape()
+        self.assertNotIn("Ball Tape", bpy.data.objects)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestStickyStrands(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        self.scene.cursor.location = (0.055, 0.0, 0.0)
+
+    def balls(self, name, *xs):
+        mesh = bpy.data.meshes.new(name)
+        bm = bmesh.new()
+        for x in xs:
+            matrix = Matrix.Translation((x, 0.0, 0.0))
+            bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=0.05, matrix=matrix)
+        bm.to_mesh(mesh)
+        bm.free()
+        return new_object(name, mesh)
+
+    def strands(self, obj):
+        """World positions of the strand vertices, an instance next to the mesh"""
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = obj.evaluated_get(depsgraph).evaluated_geometry()
+        references = geometry.instance_references()
+        meshes = [x.mesh for x in references if x.mesh]
+        co = np.empty(sum(len(x.vertices) for x in meshes) * 3)
+        if meshes:
+            meshes[0].vertices.foreach_get("co", co)
+        return co.reshape(-1, 3) + np.array(obj.location)
+
+    def pull(self, physics, moves=((0, 0.11), (10, 0.2), (30, 0.5))):
+        """Strands from a lip to a finger pulled away, stretching until frame 10, breaking after"""
+        lip = self.balls("Lip", 0.0)
+        finger = self.balls("Finger", 0.0)
+        start = self.scene.frame_start
+        for frame, x in moves:
+            finger.location.x = x
+            finger.keyframe_insert("location", frame=start + frame)
+        self.scene.frame_set(start)
+        set_active(finger)
+        lip.select_set(True)
+
+        # With two meshes, the Control is on the mesh where it is closest to the other one
+        self.scene.cursor.location = (1.0, 1.0, 1.0)
+        bpy.ops.mustardui.model_toolkit_sticky_strands(radius=0.03)
+        self.assertFalse(finger.modifiers)
+        self.assertTrue(finger.add_rest_position_attribute)
+        modifier = lip.modifiers["Sticky Strands"]
+        self.assertEqual(effect.modifier_input(modifier, "Target").value, finger)
+        control = effect.modifier_input(modifier, "Control").value
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_STICKY_STRANDS")
+        bpy.context.view_layer.update()
+        np.testing.assert_allclose(control.matrix_world.translation, (0.05, 0.0, 0.0), atol=0.001)
+        effect.modifier_input(modifier, "Break Length").value = 0.15
+        effect.modifier_input(modifier, "Elasticity").value = 0.0
+        effect.modifier_input(modifier, "Physics").value = physics
+        # Changing the modifier inputs from Python does not tag the object
+        lip.update_tag()
+        self.scene.frame_set(start)
+        return lip
+
+    def play(self, frames):
+        start = self.scene.frame_current + 1
+        for frame in range(start, start + frames):
+            self.scene.frame_set(frame)
+
+    # Strands stretch between the meshes, then break and dangle
+    def test_sticky_strands(self):
+        lip = self.pull(physics=True)
+        self.play(10)
+        co = self.strands(lip)
+        self.assertTrue(np.any(np.abs(co[:, 0] - 0.1) < 0.01))
+
+        self.play(40)
+        co = self.strands(lip)
+        self.assertGreater(len(co), 0)
+        self.assertFalse(np.any(np.abs(co[:, 0] - 0.25) < 0.05))
+        self.assertLess(co[:, 2].min(), -0.05)
+
+    # The break length, and the other strand options, apply while simulating
+    def test_live_options(self):
+        lip = self.pull(physics=True)
+        self.play(5)
+        effect.modifier_input(lip.modifiers["Sticky Strands"], "Break Length").value = 0.0
+        lip.update_tag()
+        self.play(45)
+        self.assertTrue(np.any(np.abs(self.strands(lip)[:, 0] - 0.25) < 0.05))
+
+    # Broken strands are replaced by new ones when the meshes touch again
+    def test_contact(self):
+        lip = self.pull(physics=True, moves=((0, 0.1), (10, 0.5), (30, 0.1), (40, 0.18)))
+        effect.modifier_input(
+            lip.modifiers["Sticky Strands"], "New Strands on Contact"
+        ).value = True
+        lip.update_tag()
+        self.scene.frame_set(self.scene.frame_start)
+        self.play(40)
+        self.assertTrue(np.any(np.abs(self.strands(lip)[:, 0] - 0.09) < 0.01))
+
+    # Meshes far apart are connected too, never breaking without Break Length
+    def test_far(self):
+        lip = self.pull(physics=True, moves=((0, 1.0),))
+        effect.modifier_input(lip.modifiers["Sticky Strands"], "Break Length").value = 0.0
+        lip.update_tag()
+        self.scene.frame_set(self.scene.frame_start)
+        self.play(10)
+        self.assertTrue(np.any(np.abs(self.strands(lip)[:, 0] - 0.5) < 0.01))
+
+    # Without physics, the strands hang between the meshes, and are removed when broken
+    def test_static(self):
+        lip = self.pull(physics=False)
+        self.play(10)
+        co = self.strands(lip)
+        self.assertTrue(np.any(np.abs(co[:, 0] - 0.1) < 0.01))
+
+        self.play(40)
+        self.assertEqual(len(self.strands(lip)), 0)
+
+    # The Control follows the mesh, for its strands not to disappear when it moves
+    def test_follow(self):
+        lip = self.pull(physics=False, moves=((0, 0.11),))
+        effect.modifier_input(lip.modifiers["Sticky Strands"], "Break Length").value = 0.0
+        lip.location.x = -0.5
+        lip.update_tag()
+        self.scene.frame_set(self.scene.frame_start)
+        self.assertGreater(len(self.strands(lip)), 0)
+
+    # Without physics, the options change the strands on any frame, without a simulation cache
+    def test_static_options(self):
+        lip = self.pull(physics=False)
+        effect.modifier_input(lip.modifiers["Sticky Strands"], "Break Length").value = 0.0
+        lip.update_tag()
+        self.play(5)
+        count = len(self.strands(lip))
+        effect.modifier_input(lip.modifiers["Sticky Strands"], "Count").value = 3
+        lip.update_tag()
+        self.scene.frame_set(self.scene.frame_current)
+        self.assertEqual(len(self.strands(lip)), count // 4)
+
+    # Without Target, the strands connect the mesh to itself, between the Vertex Groups
+    def test_self(self):
+        mouth = self.balls("Mouth", 0.0, 0.11)
+        for name, side in (("Upper", -1), ("Lower", 1)):
+            group = mouth.vertex_groups.new(name=name)
+            group.add(
+                [v.index for v in mouth.data.vertices if (v.co.x - 0.055) * side > 0],
+                1.0,
+                "REPLACE",
+            )
+        set_active(mouth)
+
+        bpy.ops.mustardui.model_toolkit_sticky_strands(radius=0.03)
+        modifier = mouth.modifiers["Sticky Strands"]
+        self.assertIsNone(effect.modifier_input(modifier, "Target").value)
+        for name, group in (("Start Vertex Group", "Upper"), ("End Vertex Group", "Lower")):
+            mask = effect.modifier_input(modifier, name)
+            mask.type = "ATTRIBUTE"
+            mask.attribute_name = group
+
+        # Changing the modifier inputs from Python does not tag the object
+        mouth.update_tag()
+        self.scene.frame_set(self.scene.frame_start)
+        co = self.strands(mouth)
+        self.assertGreater(len(co), 0)
+        self.assertTrue(np.any(np.abs(co[:, 0] - 0.055) < 0.005))
+
+    # The Control is removed with the Sticky Strands
+    def test_remove(self):
+        mouth = self.balls("Mouth", 0.0)
+        set_active(mouth)
+        bpy.ops.mustardui.model_toolkit_sticky_strands()
+        name = effect.modifier_input(mouth.modifiers["Sticky Strands"], "Control").value.name
+
+        bpy.ops.mustardui.model_toolkit_remove_sticky_strands()
+        self.assertNotIn("Sticky Strands", mouth.modifiers)
+        self.assertNotIn(name, bpy.data.objects)

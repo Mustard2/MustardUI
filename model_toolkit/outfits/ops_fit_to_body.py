@@ -12,6 +12,7 @@ from ...misc.mesh_deform import (
 )
 from ...misc.mesh_intersection import WindingNumbers
 from ...misc.ui_progress import run_steps
+from ..effects.ops_squish import SQUISH_ORIENTATION_DISTANCE, squisher_is_flipped
 from ..mesh.shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
@@ -27,7 +28,6 @@ from ..mesh.shape_key_preview import (
     write_shape_key,
 )
 from .fit_optimizer import FitOptimizer, outfit_metrics
-from .ops_squish import SQUISH_ORIENTATION_DISTANCE, squisher_is_flipped
 
 # Outfit vertices checked at a time by the live preview metrics
 CHECK_CHUNK = 2048

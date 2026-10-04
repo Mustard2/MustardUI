@@ -2,10 +2,9 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..model_toolkit.effects.effect import effects_available
+from ..model_toolkit.effects.ops_squish import squish_draw_settings
 from ..model_toolkit.mesh.ops_smooth_shape_key import smooth_shape_key_draw_settings
 from ..model_toolkit.outfits.ops_fit_to_body import fit_to_body_draw_settings
-from ..model_toolkit.outfits.ops_squish import squish_draw_settings
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
@@ -146,10 +145,6 @@ class PANEL_PT_MustardUI_ModelToolkit_Outfits(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_fit_to_body", icon="MOD_CLOTH")
         fit_to_body_draw_settings(layout, context)
 
-        row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_squish", icon="MOD_SHRINKWRAP")
-        squish_draw_settings(layout, context)
-
 
 class PANEL_PT_MustardUI_ModelToolkit_Mesh(ModelToolkitSection, bpy.types.Panel):
     header = ("Mesh", "MESH_DATA")
@@ -257,14 +252,27 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
     def draw(self, context):
         layout = self.layout
 
-        if not effects_available():
-            layout.label(text="Effects need Blender 5.2", icon="INFO")
+        row = layout.row(align=True)
+        row.label(text="", icon="SHAPEKEY_DATA")
+        row.separator()
+        row.operator("mustardui.model_toolkit_squish", icon="MOD_SHRINKWRAP")
+        squish_draw_settings(layout, context)
 
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
         row.separator()
         row.operator("mustardui.model_toolkit_ripple", text="Ripple", icon="MOD_WAVE")
         row.operator("mustardui.model_toolkit_remove_ripple", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator(
+            "mustardui.model_toolkit_sticky_strands", text="Sticky Strands", icon="STRANDS"
+        )
+        row.operator("mustardui.model_toolkit_remove_sticky_strands", text="", icon="X")
 
         layout.separator()
 
@@ -283,6 +291,20 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
             "mustardui.model_toolkit_hex_dissolve", text="Hex Dissolve", icon="MESH_ICOSPHERE"
         )
         row.operator("mustardui.model_toolkit_remove_hex_dissolve", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_rope", text="Rope", icon="CURVE_BEZCIRCLE")
+        row.operator("mustardui.model_toolkit_remove_rope", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_tape", text="Tape", icon="MOD_THICKNESS")
+        row.operator("mustardui.model_toolkit_remove_tape", text="", icon="X")
 
         layout.separator()
 

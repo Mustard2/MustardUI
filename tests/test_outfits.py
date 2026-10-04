@@ -19,7 +19,7 @@ from helpers import (
 )
 
 add_outfit = importlib.import_module(ADDON + ".outfits.toolkit.ops_add_outfit")
-squish = importlib.import_module(ADDON + ".model_toolkit.outfits.ops_squish")
+squish = importlib.import_module(ADDON + ".model_toolkit.effects.ops_squish")
 export = importlib.import_module(ADDON + ".outfits.toolkit.ops_export_outfits")
 cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
 
