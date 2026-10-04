@@ -263,22 +263,18 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
         row.separator()
+        row.operator("mustardui.model_toolkit_ripple", text="Ripple", icon="MOD_WAVE")
+        row.operator("mustardui.model_toolkit_remove_ripple", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
         row.operator(
             "mustardui.model_toolkit_disintegration", text="Disintegration", icon="PARTICLES"
         )
         row.operator("mustardui.model_toolkit_remove_disintegration", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_ripple", text="Ripple", icon="MOD_WAVE")
-        row.operator("mustardui.model_toolkit_remove_ripple", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_fireball", text="Fireball", icon="LIGHT_SUN")
-        row.operator("mustardui.model_toolkit_remove_fireball", text="", icon="X")
 
         row = layout.row(align=True)
         row.label(text="", icon="NODE_MATERIAL")
@@ -287,6 +283,14 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
             "mustardui.model_toolkit_hex_dissolve", text="Hex Dissolve", icon="MESH_ICOSPHERE"
         )
         row.operator("mustardui.model_toolkit_remove_hex_dissolve", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_fireball", text="Fireball", icon="LIGHT_SUN")
+        row.operator("mustardui.model_toolkit_remove_fireball", text="", icon="X")
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.types.Panel):
