@@ -131,6 +131,15 @@ class TestTransferShapeKeys(BlenderTestCase):
         bpy.context.view_layer.update()
         self.assertAlmostEqual(sks.key_blocks["Lift"].value, 0.6, places=5)
 
+        # Without the fallback, the keys without a Custom Property are transferred undriven
+        other = grid_object("Other", size=0.5, subdivisions=7, location=(0, 0, 0.001))
+        self.select(other, self.source)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="PROPERTY_EXCLUDE")
+        sks = other.data.shape_keys
+        self.assertIn("Raise", sks.key_blocks)
+        self.assertEqual(driver_id("Lift"), arm)
+        self.assertIsNone(sks.animation_data.drivers.find('key_blocks["Raise"].value'))
+
     # Offsets follow the object transforms
     def test_transformed_target(self):
         self.target.rotation_euler = (np.pi, 0.0, 0.0)

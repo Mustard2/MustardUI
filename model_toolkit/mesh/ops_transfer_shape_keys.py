@@ -25,6 +25,12 @@ LINK_ITEMS = (
         "Link the new Shape Keys to the Body Custom Property with their same name, if it "
         "drives the source Shape Key with that name.\nThe others are driven by the source ones",
     ),
+    (
+        "PROPERTY_EXCLUDE",
+        "Custom Property (Exclude)",
+        "Link the new Shape Keys to the Body Custom Property with their same name, if it "
+        "drives the source Shape Key with that name.\nThe others are not driven",
+    ),
 )
 
 
@@ -180,7 +186,7 @@ def transfer_shape_keys_steps(
 
     # Body Custom Properties driving the source Shape Key with their same name
     properties = {}
-    if link == "PROPERTY" and arm is not None:
+    if link in {"PROPERTY", "PROPERTY_EXCLUDE"} and arm is not None:
         blocks = source_sks.key_blocks
         properties = {
             cp.name: cp
@@ -245,7 +251,7 @@ def transfer_shape_keys_steps(
                 link_property(
                     arm, rna, "value", properties[sk.name], arm.MustardUI_CustomProperties
                 )
-            elif link != "NONE":
+            elif link in {"SOURCE", "PROPERTY"}:
                 link_shape_key_driver(target, new_sk.name, source, sk.name)
 
             created += 1
