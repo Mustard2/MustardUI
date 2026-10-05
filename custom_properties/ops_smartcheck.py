@@ -8,37 +8,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import mustardui_add_driver, mustardui_clean_prop
-
-
-def link_property(obj, rna, path, parent_prop, custom_props):
-    for check_prop in custom_props:
-        to_remove = []
-        for i in range(0, len(check_prop.linked_properties)):
-            if (
-                check_prop.linked_properties[i].rna == rna
-                and check_prop.linked_properties[i].path == path
-            ):
-                to_remove.append(i)
-        to_remove.reverse()
-        for i in to_remove:
-            check_prop.linked_properties.remove(i)
-
-    # Add driver
-    try:
-        mustardui_add_driver(obj, rna, path, parent_prop.prop_name)
-    except Exception:
-        print("MustardUI - Could not link property to " + parent_prop.prop_name)
-
-    # Add linked property to list
-    if rna not in [x.rna for x in parent_prop.linked_properties] or path not in [
-        x.path for x in parent_prop.linked_properties
-    ]:
-        lp = parent_prop.linked_properties.add()
-        lp.rna = rna
-        lp.path = path
-
-    return
+from .misc import link_property, mustardui_add_driver, mustardui_clean_prop
 
 
 # Add a custom property to the model

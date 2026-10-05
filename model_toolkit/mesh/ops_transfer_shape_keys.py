@@ -2,6 +2,7 @@ import bpy
 import numpy as np
 from mathutils.bvhtree import BVHTree
 
+from ...custom_properties.misc import link_property
 from ...misc.enum_items import keep_enum_strings
 from ...misc.mesh_deform import (
     kdtree,
@@ -10,8 +11,21 @@ from ...misc.mesh_deform import (
     triangle_barycentric,
     vertex_group_weights,
 )
+from ...misc.prop_utils import evaluate_rna
 from ...misc.ui_progress import run_steps
+from ...model_selection.active_object import ModelMode, mustardui_active_object
 from .shape_key_preview import link_shape_key_driver
+
+LINK_ITEMS = (
+    ("NONE", "None", "Do not drive the values of the new Shape Keys"),
+    ("SOURCE", "Source", "Drive the values of the new Shape Keys with the source ones"),
+    (
+        "PROPERTY",
+        "Custom Property",
+        "Link the new Shape Keys to the Body Custom Property with their same name, if it "
+        "drives the source Shape Key with that name.\nThe others are driven by the source ones",
+    ),
+)
 
 
 class MustardUI_ModelToolkit_TransferShapeKeys_Item(bpy.types.PropertyGroup):
@@ -119,7 +133,8 @@ def transfer_shape_keys_steps(
     overwrite=False,
     vertex_group="NONE",
     invert_vertex_group=False,
-    link=True,
+    link="SOURCE",
+    arm=None,
 ):
     """Transfer the Shape Keys, yielding the progress and returning the count"""
 
@@ -162,6 +177,16 @@ def transfer_shape_keys_steps(
     # Only the source vertices closest to the targets are needed
     used = np.unique(np.concatenate([indices.ravel() for _, _, _, indices, *_ in mappings]))
     source_delta = np.zeros_like(source_basis)
+
+    # Body Custom Properties driving the source Shape Key with their same name
+    properties = {}
+    if link == "PROPERTY" and arm is not None:
+        blocks = source_sks.key_blocks
+        properties = {
+            cp.name: cp
+            for cp in arm.MustardUI_CustomProperties
+            if cp.path == "value" and cp.name in blocks and evaluate_rna(cp.rna) == blocks[cp.name]
+        }
 
     created = 0
     for index, sk in enumerate(keys):
@@ -213,7 +238,14 @@ def transfer_shape_keys_steps(
                 new_sk.vertex_group = sk.vertex_group
 
             new_sk.value = sk.value
-            if link:
+            if sk.name in properties:
+                key = bpy.utils.escape_identifier(mesh.shape_keys.name)
+                name = bpy.utils.escape_identifier(sk.name)
+                rna = f'bpy.data.shape_keys["{key}"].key_blocks["{name}"]'
+                link_property(
+                    arm, rna, "value", properties[sk.name], arm.MustardUI_CustomProperties
+                )
+            elif link != "NONE":
                 link_shape_key_driver(target, new_sk.name, source, sk.name)
 
             created += 1
@@ -301,10 +333,11 @@ class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
         description="Invert the Vertex Group weights",
     )
 
-    link: bpy.props.BoolProperty(
-        name="Link to Source",
-        default=True,
-        description="Drive the values of the new Shape Keys with the source ones",
+    link: bpy.props.EnumProperty(
+        name="Link",
+        items=LINK_ITEMS,
+        default="SOURCE",
+        description="How the values of the new Shape Keys are driven",
     )
 
     @classmethod
@@ -421,6 +454,7 @@ class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
                 vertex_group=self.vertex_group,
                 invert_vertex_group=self.invert_vertex_group,
                 link=self.link,
+                arm=mustardui_active_object(context, config=ModelMode.ANY)[1],
             )
         )
 

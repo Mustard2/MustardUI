@@ -229,6 +229,24 @@ def mustardui_add_driver(obj, rna, path, prop_name, array_length=None):
             add_variable(driver[i], f"{data_path}[{i}]")
 
 
+# Link the property at rna.path to parent_prop, removing it from the other custom properties
+def link_property(obj, rna, path, parent_prop, custom_props):
+    for check_prop in custom_props:
+        for i in reversed(range(len(check_prop.linked_properties))):
+            lp = check_prop.linked_properties[i]
+            if lp.rna == rna and lp.path == path:
+                check_prop.linked_properties.remove(i)
+
+    try:
+        mustardui_add_driver(obj, rna, path, parent_prop.prop_name)
+    except Exception:
+        print("MustardUI - Could not link property to " + parent_prop.prop_name)
+
+    lp = parent_prop.linked_properties.add()
+    lp.rna = rna
+    lp.path = path
+
+
 def mustardui_reassign_default(obj, uilist, index, addon_prefs):
     if not 0 <= index < len(uilist):
         return

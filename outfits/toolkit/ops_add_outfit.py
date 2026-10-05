@@ -14,7 +14,7 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ...model_toolkit.mesh.ops_transfer_shape_keys import transfer_shape_keys_steps
+from ...model_toolkit.mesh.ops_transfer_shape_keys import LINK_ITEMS, transfer_shape_keys_steps
 from ...model_toolkit.mesh.ops_transfer_vertex_groups import transfer_vertex_groups
 from ...model_toolkit.mesh.shape_key_preview import create_followers_shape_keys, write_shape_key
 from ...model_toolkit.model.ops_naming import rename_object
@@ -500,10 +500,11 @@ class AddOutfitSettings:
         "the threshold.\nIf disabled, they are skipped",
     )
 
-    link: bpy.props.BoolProperty(
-        name="Link to Body",
-        default=True,
-        description="Drive the values of the new Shape Keys with the body ones",
+    link: bpy.props.EnumProperty(
+        name="Link",
+        items=LINK_ITEMS,
+        default="SOURCE",
+        description="How the values of the new Shape Keys are driven",
     )
 
     max_distance: bpy.props.FloatProperty(
@@ -861,6 +862,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
                 threshold=self.threshold,
                 overwrite=self.overwrite_shape_keys,
                 link=self.link,
+                arm=arm,
             )
             while True:
                 try:

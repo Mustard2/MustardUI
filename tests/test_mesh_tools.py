@@ -24,6 +24,7 @@ preview = importlib.import_module(ADDON + ".model_toolkit.mesh.shape_key_preview
 intersection = importlib.import_module(ADDON + ".misc.mesh_intersection")
 squish = importlib.import_module(ADDON + ".model_toolkit.effects.ops_squish")
 smooth_sk = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_smooth_shape_key")
+cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
 
 
 def grid_object(name, size=1.0, subdivisions=10, location=(0.0, 0.0, 0.0)):
@@ -89,6 +90,47 @@ class TestTransferShapeKeys(BlenderTestCase):
         fcurve = sks.animation_data.drivers.find('key_blocks["Lift"].value')
         self.assertIsNotNone(fcurve)
 
+    # Keys named as a Body Custom Property driving the source key are linked to it
+    def test_link_custom_property(self):
+        rig = new_object("Rig", bpy.data.armatures.new("Rig"))
+        self.source.parent = rig
+        bpy.context.scene.MustardUI_Settings.viewport_model_selection = True
+        arm = rig.data
+        raise_key = self.source.shape_key_add(name="Raise", from_mix=False)
+        for d in raise_key.data:
+            d.co.z += 0.1
+
+        # "Raise" drives the source "Lift", so it is not linked
+        source_rna = f'bpy.data.shape_keys["{self.source.data.shape_keys.name}"].key_blocks'
+        for name, key in (("Lift", "Lift"), ("Raise", "Lift")):
+            arm[name] = 0.0
+            cp = arm.MustardUI_CustomProperties.add()
+            cp.name, cp.prop_name, cp.path = name, name, "value"
+            cp.rna = f'{source_rna}["{key}"]'
+        cp_misc.mustardui_add_driver(arm, f'{source_rna}["Lift"]', "value", "Lift", 0)
+
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="PROPERTY")
+
+        sks = self.target.data.shape_keys
+        target_rna = f'bpy.data.shape_keys["{sks.name}"].key_blocks["Lift"]'
+        lift = arm.MustardUI_CustomProperties["Lift"]
+        self.assertEqual(
+            [(lp.rna, lp.path) for lp in lift.linked_properties], [(target_rna, "value")]
+        )
+        self.assertEqual(len(arm.MustardUI_CustomProperties["Raise"].linked_properties), 0)
+
+        def driver_id(name):
+            fcurve = sks.animation_data.drivers.find(f'key_blocks["{name}"].value')
+            return fcurve.driver.variables[0].targets[0].id
+
+        self.assertEqual(driver_id("Lift"), arm)
+        self.assertEqual(driver_id("Raise"), self.source)
+
+        arm["Lift"] = 0.6
+        arm.update_tag()
+        bpy.context.view_layer.update()
+        self.assertAlmostEqual(sks.key_blocks["Lift"].value, 0.6, places=5)
+
     # Offsets follow the object transforms
     def test_transformed_target(self):
         self.target.rotation_euler = (np.pi, 0.0, 0.0)
@@ -96,7 +138,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         self.target.location = (0.0, 0.0, 0.0)
         bpy.context.view_layer.update()
 
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link=False)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="NONE")
 
         offsets = key_offsets(self.target, "Lift")
         xs = np.array([v.co.x for v in self.target.data.vertices])
@@ -125,10 +167,10 @@ class TestTransferShapeKeys(BlenderTestCase):
         for d in noisy.data:
             d.co.z += 0.1 * (d.co.x + 1.0) + rng.uniform(-0.01, 0.01)
 
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link=False)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="NONE")
         plain = key_offsets(self.target, "Noisy")[:, 2]
         self.target.shape_key_remove(self.target.data.shape_keys.key_blocks["Noisy"])
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link=False, smooth=0.3)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="NONE", smooth=0.3)
         smooth = key_offsets(self.target, "Noisy")[:, 2]
 
         def noise(z):
