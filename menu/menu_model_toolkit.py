@@ -248,6 +248,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Pan
 
 class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Panel):
     header = ("Effects", "SHADERFX")
+    guide = "Effects"
 
     def draw(self, context):
         layout = self.layout
