@@ -463,7 +463,7 @@ class DeformTarget:
 
         # Iterations spreading the displacement over the distance, whatever the mesh density
         iterations = int(np.ceil(2.0 * (distance / length) ** 2)) if distance > 0.0 else 0
-        iterations = min(max(iterations, min_iterations), 2000)
+        iterations = min(max(iterations, min_iterations), 200)
         if not iterations:
             return disp
 
