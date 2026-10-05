@@ -68,7 +68,7 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
 
         tgt_ad = target.animation_data
 
-        # Clear target animation data
+        # Clear target animation data, keeping its drivers
         tgt_ad.action = None
 
         while tgt_ad.nla_tracks:
@@ -79,40 +79,70 @@ class MustardUI_Armature_TransferAnimation(bpy.types.Operator):
             tgt_ad.action = src_ad.action.copy()
             if hasattr(tgt_ad, "action_slot_handle"):
                 tgt_ad.action_slot_handle = src_ad.action_slot_handle
+        for attr in ("action_blend_type", "action_extrapolation", "action_influence", "use_nla"):
+            setattr(tgt_ad, attr, getattr(src_ad, attr))
 
         # NLA tracks
         for src_track in src_ad.nla_tracks:
             tgt_track = tgt_ad.nla_tracks.new()
-            tgt_track.name = src_track.name
-            tgt_track.mute = src_track.mute
-            tgt_track.lock = src_track.lock
+            for attr in ("name", "mute", "lock", "is_solo"):
+                setattr(tgt_track, attr, getattr(src_track, attr))
 
             for src_strip in src_track.strips:
                 # Transition, meta and sound strips have no action
                 if src_strip.action is None:
                     continue
 
-                new_action = src_strip.action.copy()
-
                 tgt_strip = tgt_track.strips.new(
                     name=src_strip.name,
                     start=int(src_strip.frame_start),
-                    action=new_action,
+                    action=src_strip.action.copy(),
                 )
                 if hasattr(tgt_strip, "action_slot_handle"):
                     tgt_strip.action_slot_handle = src_strip.action_slot_handle
 
-                tgt_strip.action_frame_start = src_strip.action_frame_start
-                tgt_strip.action_frame_end = src_strip.action_frame_end
-                tgt_strip.scale = src_strip.scale
-                tgt_strip.repeat = src_strip.repeat
-                tgt_strip.frame_end = src_strip.frame_end
-                tgt_strip.blend_type = src_strip.blend_type
-                tgt_strip.extrapolation = src_strip.extrapolation
-                tgt_strip.influence = src_strip.influence
-                tgt_strip.mute = src_strip.mute
-                tgt_strip.use_reverse = src_strip.use_reverse
-                tgt_strip.use_sync_length = src_strip.use_sync_length
+                # The range comes first, as it clamps the blending
+                for attr in (
+                    "action_frame_start",
+                    "action_frame_end",
+                    "scale",
+                    "repeat",
+                    "frame_end",
+                    "use_auto_blend",
+                    "blend_in",
+                    "blend_out",
+                    "blend_type",
+                    "extrapolation",
+                    "influence",
+                    "strip_time",
+                    "use_animated_influence",
+                    "use_animated_time",
+                    "use_animated_time_cyclic",
+                    "mute",
+                    "use_reverse",
+                    "use_sync_length",
+                ):
+                    setattr(tgt_strip, attr, getattr(src_strip, attr))
+
+                # Keyframes of the animated influence and time
+                for src_fc in src_strip.fcurves:
+                    tgt_fc = tgt_strip.fcurves.find(src_fc.data_path)
+                    tgt_fc.extrapolation = src_fc.extrapolation
+                    tgt_fc.keyframe_points.clear()
+                    tgt_fc.keyframe_points.add(len(src_fc.keyframe_points))
+                    for src_key, tgt_key in zip(
+                        src_fc.keyframe_points, tgt_fc.keyframe_points, strict=True
+                    ):
+                        for attr in (
+                            "co",
+                            "interpolation",
+                            "easing",
+                            "handle_left_type",
+                            "handle_right_type",
+                            "handle_left",
+                            "handle_right",
+                        ):
+                            setattr(tgt_key, attr, getattr(src_key, attr))
 
         self.report(
             {"INFO"},
