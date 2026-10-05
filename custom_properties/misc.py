@@ -385,3 +385,11 @@ def assign_pointers(custom_properties, addon_prefs):
             pointers_errors += 1
 
     return pointers_errors
+
+
+def get_clipboard(context, prop):
+    button_ptr = context.button_pointer
+    id_data = button_ptr.id_data
+    rel = button_ptr.path_from_id(prop.identifier)
+    path = f"{repr(id_data)}.{rel}".replace("'", '"')
+    return path

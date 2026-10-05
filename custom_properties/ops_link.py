@@ -8,6 +8,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from .misc import (
+    get_clipboard,
     mustardui_add_driver,
     mustardui_check_cp,
     mustardui_choose_cp,
@@ -80,7 +81,8 @@ class MustardUI_Property_MenuLink(bpy.types.Operator):
                     return {"FINISHED"}
 
                 # Adjust the property path to be exported
-                split = split_data_path(context.window_manager.clipboard)
+                clipboard = get_clipboard(context, prop)
+                split = split_data_path(clipboard)
                 if split is None:
                     self.report({"ERROR"}, "MustardUI - Invalid selection.")
                     return {"FINISHED"}

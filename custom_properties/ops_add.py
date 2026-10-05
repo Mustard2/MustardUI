@@ -11,6 +11,7 @@ from ..model_selection.active_object import (
 )
 from .misc import (
     assign_ptr,
+    get_clipboard,
     mustardui_add_driver,
     mustardui_check_cp,
     mustardui_choose_cp,
@@ -83,7 +84,8 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        split = split_data_path(context.window_manager.clipboard)
+        clipboard = get_clipboard(context, prop)
+        split = split_data_path(clipboard)
         if split is None:
             self.report(
                 {"ERROR"},
