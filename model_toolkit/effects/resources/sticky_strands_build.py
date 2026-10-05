@@ -529,6 +529,12 @@ def build_node_group():
     in_control = t.vmath("DOT_PRODUCT", in_control, in_control, x=-18, y=-3)
     density = t.math("LESS_THAN", in_control, 1.0, x=-17, y=-3)
     density = t.math("MULTIPLY", density, source_fields["Mask"], x=-16, y=-3)
+    # On the points, for the face area sum to average it like the distribution does: at face
+    # centers, the area is 0 when the sphere holds only vertices, making billions of candidates
+    captured = t.node("GeometryNodeCaptureAttribute", -15, -2, {"Geometry": source_placed})
+    captured.capture_items.new("FLOAT", "Density")
+    t.connect(density, captured.inputs["Density"])
+    source_placed, density = captured.outputs["Geometry"], captured.outputs["Density"]
     area = t.node("GeometryNodeInputMeshFaceArea", -17, -5).outputs[0]
     area = t.node(
         "GeometryNodeAttributeStatistic",

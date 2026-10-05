@@ -641,6 +641,22 @@ class TestStickyStrands(BlenderTestCase):
         self.assertGreater(len(co), 0)
         self.assertTrue(np.any(np.abs(co[:, 0] - 0.055) < 0.005))
 
+    # Faces larger than the Control, its sphere on a vertex holding no face center
+    def test_large_faces(self):
+        for name, z in (("Lip", 0.0), ("Finger", 0.02)):
+            mesh = bpy.data.meshes.new(name)
+            bm = bmesh.new()
+            matrix = Matrix.Translation((0.0, 0.0, z))
+            bmesh.ops.create_grid(bm, x_segments=2, y_segments=2, size=0.5, matrix=matrix)
+            bm.to_mesh(mesh)
+            bm.free()
+            set_active(new_object(name, mesh))
+        bpy.data.objects["Lip"].select_set(True)
+
+        bpy.ops.mustardui.model_toolkit_sticky_strands()
+        self.scene.frame_set(self.scene.frame_start)
+        self.assertGreater(len(self.strands(bpy.data.objects["Lip"])), 0)
+
     # The Control is removed with the Sticky Strands
     def test_remove(self):
         mouth = self.balls("Mouth", 0.0)
