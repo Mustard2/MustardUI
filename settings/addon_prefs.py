@@ -92,11 +92,11 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         name="Optimization",
         default="ARMATURE",
         items=(
-            ("ARMATURE", "Standard", "Store the settings of the models in their Armatures"),
+            ("ARMATURE", "Standard", "Standard set of optimizations.\nTested to work in all models without breaking functionalities"),
             (
                 "TEXT",
                 "Aggressive",
-                "Store the settings of the models in Text datablocks",
+                "More aggressive optimization.\nIt might break some functionalities. Please check the Limitations notice in the Addon settings",
             ),
         ),
         description="Optimization level",
