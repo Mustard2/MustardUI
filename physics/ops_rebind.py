@@ -295,6 +295,7 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
+        rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -308,7 +309,7 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
             return {"CANCELLED"}
 
         # Gather cages to check as targets of modifiers
-        cages = []
+        cages = [rig_settings.model_body]
         for item in [
             x for x in physics_settings.items if x.type == "CAGE" and x.object is not None
         ]:

@@ -65,7 +65,9 @@ class TestUI(BlenderTestCase):
         bpy.ops.mustardui.morphs_check()
         arm.MustardUI_PhysicsSettings.enable_ui = True
         bpy.ops.mustardui.configuration()
-        self.assertDrawsCleanly("PANEL_PT_MustardUI_Morphs")
+        bpy.context.scene.MustardUI_Settings.advanced = True
+        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_Morphs")
+        self.assertIn("PANEL_PT_MustardUI_Outfits_Extras", drawer.drawn)
 
     # Morphs panels draw with the settings open and the morphs disabled, for each type
     def test_draw_morphs_settings(self):

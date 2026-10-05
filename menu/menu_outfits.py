@@ -159,6 +159,10 @@ def draw_outfit_piece(
             toggle=True,
             icon="LOCKED" if obj.MustardUI_outfit_lock else "UNLOCKED",
         )
+    elif settings.advanced and physics_settings.enable_ui and obj.type == "MESH":
+        row.operator(
+            "mustardui.physics_rebind_single", text="", icon="FILE_REFRESH"
+        ).object_name = obj.name
 
     if not collapse:
         for c in children:

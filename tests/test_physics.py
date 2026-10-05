@@ -136,6 +136,24 @@ class TestPhysics(BlenderTestCase):
             spine.rotation_euler.x = 0.0
             np.testing.assert_allclose(evaluated_co(body), rest, atol=1e-5)
 
+    # Rebinding a single Extras piece rebinds it to both the cages and the body
+    def test_rebind_single(self):
+        glasses = bpy.data.objects["Extras - Glasses"]
+        targets = (self.cage, self.model["body"])
+        for target in targets:
+            deform = glasses.modifiers.new(target.name, "SURFACE_DEFORM")
+            deform.target = target
+            with bpy.context.temp_override(object=glasses):
+                bpy.ops.object.surfacedeform_bind(modifier=deform.name)
+        rest = evaluated_co(glasses)
+
+        # Inflating the targets moves the bound piece until it is rebound
+        for target in targets:
+            target.modifiers.new("Inflate", "DISPLACE").strength = 0.1
+        self.assertGreater(np.abs(evaluated_co(glasses) - rest).max(), 1e-3)
+        bpy.ops.mustardui.physics_rebind_single(object_name=glasses.name)
+        np.testing.assert_allclose(evaluated_co(glasses), rest, atol=1e-5)
+
 
 class TestOutfitsPhysicsSetup(BlenderTestCase):
     def setUp(self):
