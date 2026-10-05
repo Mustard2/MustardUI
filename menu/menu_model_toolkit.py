@@ -1,11 +1,14 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..model_toolkit.effects.ops_squish import squish_draw_settings
 from ..model_toolkit.mesh.ops_smooth_shape_key import smooth_shape_key_draw_settings
 from ..model_toolkit.outfits.ops_fit_to_body import fit_to_body_draw_settings
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -16,12 +19,10 @@ class PANEL_PT_MustardUI_ModelToolkit(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit
+        return addon_prefs.model_toolkit and active_object_operator_poll(
+            context, config=ModelMode.ANY
+        )
 
     def draw(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.ANY)
@@ -60,9 +61,6 @@ class ModelToolkitSection(MainPanel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
         return res and addon_prefs.model_toolkit and not (cls.creator_only and arm.MustardUI_enable)

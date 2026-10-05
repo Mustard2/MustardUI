@@ -5,7 +5,6 @@ from ..misc.geometry_nodes import (
     geometry_nodes_modifier_inputs,
 )
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -16,10 +15,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:

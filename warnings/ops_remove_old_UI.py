@@ -1,7 +1,9 @@
 import bpy
 from bpy.props import BoolProperty
 
-from .can_draw_ui import can_draw_ui
+
+def check_old_ui_scripts():
+    return any("mustard_ui.py" in text.name for text in bpy.data.texts)
 
 
 class MustardUI_Warnings_RemoveOldUI(bpy.types.Operator):
@@ -15,7 +17,7 @@ class MustardUI_Warnings_RemoveOldUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return can_draw_ui()
+        return check_old_ui_scripts()
 
     def invoke(self, context, event):
 

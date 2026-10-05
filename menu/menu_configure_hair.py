@@ -1,9 +1,12 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..text_storage.storage import settings_owner
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -14,12 +17,10 @@ class PANEL_PT_MustardUI_InitPanel_Hair(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(
+            context, config=ModelMode.CONFIG
+        )
 
     def draw_header(self, context):
         layout = self.layout

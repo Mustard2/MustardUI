@@ -5,7 +5,6 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -16,8 +15,6 @@ class PANEL_PT_MustardUI_SettingsPanel(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
         return active_object_operator_poll(context, config=ModelMode.USER)
 
     def draw(self, context):

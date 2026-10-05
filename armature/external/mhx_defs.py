@@ -1,5 +1,4 @@
 from ...model_selection.active_object import ModelMode, mustardui_active_object
-from ...warnings.can_draw_ui import can_draw_ui
 
 # MHX porting guide
 #
@@ -29,9 +28,6 @@ from ...warnings.can_draw_ui import can_draw_ui
 
 
 def panel_poll(cls, context):
-    if can_draw_ui():
-        return False
-
     res, arm = mustardui_active_object(context, config=ModelMode.USER)
     if not res or arm is None:
         return False

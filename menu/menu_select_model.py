@@ -3,8 +3,11 @@ from collections import Counter
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import MainPanel
 
 
@@ -14,15 +17,7 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-
-        if arm is None:
-            return False
-
-        return res
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def draw_header(self, context):
         settings = bpy.context.scene.MustardUI_Settings

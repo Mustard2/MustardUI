@@ -3,7 +3,6 @@ import bpy
 from ..armature.ik_fk_snapper import ikfk_snapper_available
 from ..misc.mirror import mirror_candidates
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -107,10 +106,6 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
         res, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         if obj is None:

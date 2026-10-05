@@ -11,7 +11,6 @@ from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..model_toolkit.physics.physics_presets import find_physics_modifier
 from ..physics.definitions_nodes import HAIR_DYNAMICS_NODE_GROUP, HAIR_DYNAMICS_SOCKETS
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .misc import PieceDrawCache, mustardui_custom_properties_print
 
@@ -115,10 +114,6 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
@@ -346,9 +341,6 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if not res or arm is None:
             return False
@@ -400,10 +392,6 @@ class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if not res or arm is None:
             return False
@@ -503,10 +491,6 @@ class PANEL_PT_MustardUI_Hair_Extras(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:

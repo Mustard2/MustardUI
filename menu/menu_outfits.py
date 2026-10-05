@@ -6,7 +6,6 @@ from ..configuration.naming_convention import strip_naming_convention
 from ..misc.outfits import outfit_extract_items_from_collection
 from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 from .misc import PieceDrawCache, mustardui_custom_properties_print
 
@@ -187,10 +186,6 @@ class PANEL_PT_MustardUI_Outfits(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is not None:

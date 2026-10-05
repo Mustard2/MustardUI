@@ -1,18 +1,20 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import MainPanel
 
 
 def _quick_setup_poll(context):
     """Common poll for the Quick Setup panel and its sub-panels."""
-    if can_draw_ui():
-        return False
-    res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
     addon_prefs = context.preferences.addons[base_package].preferences
-    return res and addon_prefs.quick_setup
+    return addon_prefs.quick_setup and active_object_operator_poll(
+        context, config=ModelMode.QUICK_SETUP
+    )
 
 
 def _is_scanned(context):

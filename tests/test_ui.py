@@ -50,6 +50,17 @@ class TestUI(BlenderTestCase):
         drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_Outfits")
         self.assertIn("PANEL_PT_MustardUI_Hair", drawer.drawn)
 
+    # An old UI script only adds a warning, without hiding the other panels
+    def test_draw_user_with_old_ui_script(self):
+        model = build_model()
+        configure_model(model)
+        bpy.data.texts.new("mustard_ui.py")
+        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_Warnings")
+        self.assertIn("PANEL_PT_MustardUI_Outfits", drawer.drawn)
+
+        bpy.ops.mustardui.warnings_remove_old_ui()
+        self.assertNotIn("PANEL_PT_MustardUI_Warnings", draw_all(bpy.context).drawn)
+
     # User panels draw with morphs and physics enabled
     def test_draw_user_with_features(self):
         model = build_model()
