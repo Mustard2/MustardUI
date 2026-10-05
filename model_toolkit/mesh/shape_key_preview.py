@@ -424,7 +424,7 @@ class MustardUI_ModelToolkit_PreviewReset(bpy.types.Operator):
 
 
 # Settings depending on the model, not saved in the presets
-PRESET_EXCLUDED = {"shape_key_name", "vertex_group", "rigid_group"}
+PRESET_EXCLUDED = {"shape_key_name", "vertex_group", "rigid_group", "squishers_rigid_group"}
 
 
 def preview_preset_classes(tool, label, settings_cls, settings_attr):
@@ -491,8 +491,8 @@ def preview_draw_vertex_group(col, settings, group, invert, obj, text):
     sub.prop(settings, invert, text="", icon="ARROW_LEFTRIGHT")
 
 
-def preview_draw_masks(layout, session, tool):
-    """Settings restricting where the tool acts, and the rigid parts"""
+def preview_draw_masks(layout, session, tool, rigid_active=False):
+    """Settings restricting where the tool acts, and the rigid parts, returning their column"""
 
     settings = session.settings
     obj = session.obj
@@ -512,7 +512,7 @@ def preview_draw_masks(layout, session, tool):
 
     children = len(session.solver.children)
     title = "Rigid Parts"
-    if settings.rigid_group or (settings.move_children and children):
+    if rigid_active or settings.rigid_group or (settings.move_children and children):
         title += " (active)"
     col = preview_section(layout, f"mustardui_{tool}_rigid", title, "MESH_CUBE", True)
     if col is not None:
@@ -522,6 +522,7 @@ def preview_draw_masks(layout, session, tool):
         row = col.row()
         row.enabled = bool(children)
         row.prop(settings, "move_children", text=f"Child Objects ({children})")
+    return col
 
 
 def preview_draw_footer(layout, session, info=True):

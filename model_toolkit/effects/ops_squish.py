@@ -11,9 +11,7 @@ from ...misc.mesh_deform import (
     DeformTarget,
     geometry_bvh,
     kdtree,
-    mesh_triangles,
     mesh_vertex_normals,
-    rest_coordinates,
     rest_geometry,
     smooth_deformation,
     write_vertex_group,
@@ -24,6 +22,7 @@ from ..mesh.shape_key_preview import (
     preview_draw_footer,
     preview_draw_masks,
     preview_draw_presets,
+    preview_draw_vertex_group,
     preview_preset_classes,
     preview_running,
     preview_section,
@@ -150,6 +149,20 @@ class MustardUI_ModelToolkit_SquishSettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
+    squishers_rigid_group: bpy.props.StringProperty(
+        name="Squishers Rigid Vertex Group",
+        description="Vertex Group of the rigid parts of the squishing objects (e.g. buttons), "
+        "which are moved without deforming them",
+        update=preview_settings_update,
+    )
+
+    invert_squishers_rigid_group: bpy.props.BoolProperty(
+        name="Invert",
+        default=False,
+        description="Invert the Squishers Rigid Vertex Group weights",
+        update=preview_settings_update,
+    )
+
     move_children: bpy.props.BoolProperty(
         name="Child Objects",
         default=True,
@@ -270,14 +283,15 @@ class SquisherFollower:
     def __init__(self, obj, target, body_bvh, key_name):
         self.obj = obj
         self.body_bvh = body_bvh
-        self.basis, self.co, self.mat3_inv = rest_coordinates(obj, key_name)
-        self.tris = mesh_triangles(obj.data)
+        self.mesh = DeformTarget(obj, key_name)
+        self.basis = self.mesh.basis
         self._normals = {}
 
         # The body triangle under each vertex, to follow its squish
-        self.under = np.zeros((len(self.co), 3), dtype=np.int64)
-        self.under_weights = np.zeros((len(self.co), 3))
-        for i, c in enumerate(self.co):
+        co = self.mesh.co
+        self.under = np.zeros((len(co), 3), dtype=np.int64)
+        self.under_weights = np.zeros((len(co), 3))
+        for i, c in enumerate(co):
             location, _, index, _ = body_bvh.find_nearest(Vector(c))
             if location is None:
                 continue
@@ -301,10 +315,10 @@ class SquisherFollower:
         if mode not in self._normals:
             volume = mode == "VOLUME"
             flipped = squisher_is_flipped(
-                self.co, self.tris, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, volume
+                self.mesh.co, self.mesh.tris, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, volume
             )
-            normals = mesh_vertex_normals(self.co, self.tris)
-            self._normals[mode] = normals * (-1.0 if flipped else 1.0) * (1.0 if volume else -1.0)
+            sign = (-1.0 if flipped else 1.0) * (1.0 if volume else -1.0)
+            self._normals[mode] = self.mesh.normals * sign
         normals = self._normals[mode]
 
         amount = np.full(len(normals), settings.tightness * settings.squishers_movement)
@@ -314,7 +328,16 @@ class SquisherFollower:
         if mode == "SURFACE" and solver.disp is not None:
             under = np.einsum("ijk,ij->ik", solver.disp[self.under], self.under_weights)
             amount = np.minimum(amount, np.einsum("ij,ij->i", under, normals))
-        return self.basis + (normals * amount[:, None]) @ self.mat3_inv.T
+        disp = normals * amount[:, None]
+
+        # Squishers without the Vertex Group are fully deformed
+        if settings.squishers_rigid_group:
+            islands = self.mesh.rigid_islands(
+                settings.squishers_rigid_group, settings.invert_squishers_rigid_group
+            )
+            if islands is not None:
+                disp = self.mesh.rigidify(disp, islands)
+        return self.mesh.local(disp)
 
 
 class SquishSolver:
@@ -766,7 +789,23 @@ def squish_draw_settings(layout, context):
         row.prop(settings, "bulge_radius", text="Radius")
         col.prop(settings, "smooth_distance")
 
-    preview_draw_masks(box, session, "squish")
+    # The squishers rigid parts only matter when they are moved
+    follower = next((x for x in session.solver.followers if isinstance(x, SquisherFollower)), None)
+    moving = follower is not None and follower.enabled(settings)
+    col = preview_draw_masks(
+        box, session, "squish", moving and bool(settings.squishers_rigid_group)
+    )
+    if col is not None and follower is not None:
+        sub = col.column()
+        sub.enabled = moving
+        preview_draw_vertex_group(
+            sub,
+            settings,
+            "squishers_rigid_group",
+            "invert_squishers_rigid_group",
+            follower.obj,
+            "Squishers",
+        )
 
     overriding = session.solver.overriding_modifiers()
     if overriding:

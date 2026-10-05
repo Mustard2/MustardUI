@@ -826,6 +826,42 @@ class TestSquish(BlenderTestCase):
         self.assertAlmostEqual(moved[centre], 0.005)
         self.assertLess(moved[corner], 0.004)
 
+    # The rigid parts of the moved squishers (e.g. buttons) move with a single translation
+    def test_squishers_rigid_group(self):
+        bpy.ops.mesh.primitive_grid_add(x_subdivisions=80, y_subdivisions=80, size=0.4)
+        body = bpy.context.active_object
+        bpy.ops.mesh.primitive_grid_add(x_subdivisions=40, y_subdivisions=40, size=0.2)
+        squisher = bpy.context.active_object
+        # A button over the border of the squisher, where its movement fades
+        bm = bmesh.new()
+        bm.from_mesh(squisher.data)
+        button = bmesh.ops.create_grid(
+            bm, x_segments=8, y_segments=8, size=0.01, matrix=Matrix.Translation((0.1, 0, 0.0005))
+        )["verts"]
+        button = [v.index for v in button]
+        bm.to_mesh(squisher.data)
+        bm.free()
+        squisher.vertex_groups.new(name="Button").add(button, 1.0, "REPLACE")
+
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
+        for name in ("tightness", "squishers_movement", "squishers_rigid_group"):
+            self.addCleanup(setattr, settings, name, getattr(settings, name))
+        settings.tightness = 0.005
+        settings.squishers_movement = 1.0
+
+        solver = squish.SquishSolver(body, [squisher], "Squish")
+        solver.solve(bpy.context, settings)
+        follower = next(x for x in solver.followers if x.obj == squisher)
+        moves = {}
+        for group in ("", "Button"):
+            settings.squishers_rigid_group = group
+            moves[group] = follower.shape(solver, settings) - follower.basis
+
+        self.assertGreater(np.ptp(moves[""][button], axis=0).max(), 1e-4)
+        self.assertLess(np.ptp(moves["Button"][button], axis=0).max(), 1e-9)
+        fabric = np.setdiff1d(np.arange(len(follower.basis)), button)
+        np.testing.assert_allclose(moves["Button"][fabric], moves[""][fabric])
+
     # The settings of the running preview go back to their defaults, but the Shape Key name
     def test_reset_settings(self):
         settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
