@@ -1,4 +1,6 @@
+import ast
 import math
+import re
 
 import bpy
 
@@ -50,13 +52,11 @@ def mustardui_prop_limits(prop, addon_prefs):
 # Function to check over all custom properties
 def split_data_path(data_path):
     """Split a data path into the (rna, path) of the custom properties, None if no property"""
-    if "][" in data_path:
-        rna, rem = data_path.rsplit("[", 1)
-        return rna, "[" + rem
-    if "." not in data_path:
+    # Last .attribute or ["custom property"], quoted names can contain . [ ] and \"
+    match = re.fullmatch(r'(.+?)(?:\.(\w+)|(\["(?:[^"\\]|\\.)*"\]))', data_path)
+    if match is None:
         return None
-    rna, path = data_path.rsplit(".", 1)
-    return rna, path.split("[", 1)[0]
+    return match[1], match[2] or match[3]
 
 
 def mustardui_check_cp(obj, rna, path):
@@ -387,9 +387,17 @@ def assign_pointers(custom_properties, addon_prefs):
     return pointers_errors
 
 
-def get_clipboard(context, prop):
-    button_ptr = context.button_pointer
-    id_data = button_ptr.id_data
-    rel = button_ptr.path_from_id(prop.identifier)
-    path = f"{repr(id_data)}.{rel}".replace("'", '"')
-    return path
+def get_data_path(context, prop):
+    """Full data path of the button property, as Copy Full Data Path writes it"""
+    ptr = context.button_pointer
+    name = prop.identifier
+    if name not in ptr.bl_rna.properties:
+        name = f'["{bpy.utils.escape_identifier(name)}"]'
+    rel = ptr.path_from_id(name)
+    # repr() quotes ID names Python-style, custom properties store escaped double quotes
+    id_path = re.sub(
+        r"\[('(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\")\]",
+        lambda m: f'["{bpy.utils.escape_identifier(ast.literal_eval(m[1]))}"]',
+        repr(ptr.id_data),
+    )
+    return id_path + rel if rel.startswith("[") else f"{id_path}.{rel}"

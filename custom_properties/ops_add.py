@@ -11,7 +11,7 @@ from ..model_selection.active_object import (
 )
 from .misc import (
     assign_ptr,
-    get_clipboard,
+    get_data_path,
     mustardui_add_driver,
     mustardui_check_cp,
     mustardui_choose_cp,
@@ -71,29 +71,14 @@ class MustardUI_Property_MenuAdd(bpy.types.Operator):
         prop = context.button_prop
 
         try:
-            result = bpy.ops.ui.copy_data_path_button(full_path=True)
+            rna, path = split_data_path(get_data_path(context, prop))
         except Exception:
-            self.report({"ERROR"}, "MustardUI - Invalid selection.")
-            return {"FINISHED"}
-
-        if "CANCELLED" in result:
             self.report(
                 {"ERROR"},
                 "MustardUI - This property does not support being added "
                 "to MustardUI (no valid data path could be found).",
             )
             return {"FINISHED"}
-
-        clipboard = get_clipboard(context, prop)
-        split = split_data_path(clipboard)
-        if split is None:
-            self.report(
-                {"ERROR"},
-                "MustardUI - This property does not support being added "
-                "to MustardUI (no valid data path could be found).",
-            )
-            return {"FINISHED"}
-        rna, path = split
         blender_custom_property = path.startswith("[")
 
         # Check if the property was already added

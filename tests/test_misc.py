@@ -1,10 +1,12 @@
 import importlib
+from types import SimpleNamespace
 
 import addon_utils
 import bpy
 from helpers import ADDON, BlenderTestCase, build_model, configure_model, new_object
 
 prop_utils = importlib.import_module(ADDON + ".misc.prop_utils")
+cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
 
 
 class TestRegister(BlenderTestCase):
@@ -146,3 +148,111 @@ class TestPropUtils(BlenderTestCase):
         cp.name, cp.rna, cp.path = "Hidden", 'bpy.data.collections["[Hidden]"]', "hide_viewport"
         bpy.ops.mustardui.property_fix_path()
         self.assertIn("Hidden", [x.name for x in arm.MustardUI_CustomProperties])
+
+
+class TestCustomPropertiesAdd(BlenderTestCase):
+    # Add and Link store escaped double-quoted paths, also for names with quotes
+    def test_add_and_link(self):
+        model = build_model("Hinata's")
+        configure_model(model, "Hinata's")
+        bpy.ops.mustardui.configuration()
+        arm = model["armature"].data
+        body = model["body"]
+        key = body.data.shape_keys
+        key.key_blocks["Smile"].name = "Mouth 'O'"
+        key.key_blocks["Blink"].name = 'Say "A"'
+        key_rna = f'bpy.data.shape_keys["{key.name}"].key_blocks'
+
+        def run(op, ptr, name, **kwargs):
+            prop = ptr.bl_rna.properties[name]
+            with bpy.context.temp_override(button_pointer=ptr, button_prop=prop):
+                op(**kwargs)
+
+        run(bpy.ops.mustardui.property_menuadd, key.key_blocks["Mouth 'O'"], "value")
+        run(bpy.ops.mustardui.property_menuadd, body.modifiers["Formal - Dress"], "show_viewport")
+        cps = arm.MustardUI_CustomProperties
+        self.assertEqual(
+            [(cp.rna, cp.path) for cp in cps],
+            [
+                (key_rna + "[\"Mouth 'O'\"]", "value"),
+                ('bpy.data.objects["Hinata\'s Body"].modifiers["Formal - Dress"]', "show_viewport"),
+            ],
+        )
+        self.assertIsNotNone(key.animation_data.drivers.find("key_blocks[\"Mouth 'O'\"].value"))
+
+        # Adding the same property again is refused
+        with self.assertRaisesRegex(RuntimeError, "already added"):
+            run(bpy.ops.mustardui.property_menuadd, key.key_blocks["Mouth 'O'"], "value")
+
+        run(
+            bpy.ops.mustardui.property_menulink,
+            key.key_blocks['Say "A"'],
+            "value",
+            parent_rna=cps[0].rna,
+            parent_path=cps[0].path,
+        )
+        self.assertEqual(
+            [(lp.rna, lp.path) for lp in cps[0].linked_properties],
+            [(key_rna + '["Say \\"A\\""]', "value")],
+        )
+
+    # Paths keep Copy Full Data Path quoting and resolve back, whatever the names contain
+    def test_get_data_path(self):
+        for name in (
+            "Plain",
+            "It's",
+            'Say "Hi"',
+            "Both 'a' \"b\"",
+            "'Edges'",
+            "Back\\slash",
+            "Quote\\'mix",
+            "Top [v2]",
+            'Tricky"]["x',
+            "Dot.name.001",
+            "Ünïcødé ✓",
+            "Tab\there",
+        ):
+            esc = bpy.utils.escape_identifier(name)
+            mesh = bpy.data.meshes.new(name)
+            mesh.from_pydata([(0, 0, 0), (1, 0, 0), (0, 1, 0)], [], [(0, 1, 2)])
+            obj = new_object(name, mesh)
+            obj[name] = 1.0
+            mod = obj.modifiers.new(name, "SUBSURF")
+            obj.shape_key_add(name="Basis")
+            key_block = obj.shape_key_add(name=name)
+            mesh.shape_keys.name = name
+            material = bpy.data.materials.new(name)
+            material.use_nodes = True
+            node = material.node_tree.nodes.new("ShaderNodeValue")
+            node.name = name
+            obj_path = f'bpy.data.objects["{esc}"]'
+
+            for ptr, prop, expected in (
+                (obj, obj.bl_rna.properties["location"], f"{obj_path}.location"),
+                (obj, SimpleNamespace(identifier=name), f'{obj_path}["{esc}"]'),
+                (
+                    mod,
+                    mod.bl_rna.properties["show_viewport"],
+                    f'{obj_path}.modifiers["{esc}"].show_viewport',
+                ),
+                (
+                    key_block,
+                    key_block.bl_rna.properties["value"],
+                    f'bpy.data.shape_keys["{esc}"].key_blocks["{esc}"].value',
+                ),
+                (
+                    node.outputs[0],
+                    node.outputs[0].bl_rna.properties["default_value"],
+                    f'bpy.data.materials["{esc}"].node_tree.nodes["{esc}"]'
+                    ".outputs[0].default_value",
+                ),
+            ):
+                with self.subTest(name=name, expected=expected):
+                    context = SimpleNamespace(button_pointer=ptr)
+                    data_path = cp_misc.get_data_path(context, prop)
+                    self.assertEqual(data_path, expected)
+                    rna, path = cp_misc.split_data_path(data_path)
+                    self.assertEqual(rna + ("" if path.startswith("[") else ".") + path, data_path)
+                    self.assertEqual(
+                        prop_utils.evaluate_rna(rna), ptr.id_data if ptr == obj else ptr
+                    )
