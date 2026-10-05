@@ -19,6 +19,7 @@ from ...misc.mesh_deform import (
 from ..mesh.shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
+    preview_draw_debug,
     preview_draw_footer,
     preview_draw_masks,
     preview_draw_presets,
@@ -33,6 +34,8 @@ from ..mesh.shape_key_preview import (
 
 SQUISHER_TYPES = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
 SQUISH_ORIENTATION_DISTANCE = 0.1
+# Body vertices checked at a time by the debug information
+SQUISH_CHECK_CHUNK = 2000
 # Depth allowed beyond the one of the closest squishing surface, see penetration
 SQUISH_DEPTH_TOLERANCE = 0.002
 # The Bulge settings scale these, for a visible bulge at their default values
@@ -367,6 +370,9 @@ class SquishSolver:
     def __init__(self, body, squishers, key_name):
         self.body = body
         self.squishers = squishers
+        # Set by the preview, to measure the result with check_steps
+        self.check = False
+        self.debug = []
         self.target = DeformTarget(body, key_name)
         self.body_bvh = BVHTree.FromPolygons(self.target.co.tolist(), self.target.tris.tolist())
         self.children = self.target.rigid_children(squishers)
@@ -532,6 +538,7 @@ class SquishSolver:
 
         target = self.target
         self.disp = None
+        self.debug = []
         weights = target.weights(settings.vertex_group, settings.invert_vertex_group)
         if weights is None:
             return target.basis, 0, "Vertex Group not found"
@@ -580,6 +587,7 @@ class SquishSolver:
         # Push again under the squishers the vertices moved out of them by the smoothing
         bvh = self.squishers_bvh(context, settings)[0]
         moved = np.nonzero((np.linalg.norm(disp, axis=1) > 0.0) & (weights > 0.0))[0]
+        pushed_again = np.zeros(target.n_verts)
         for _ in range(3):
             again = self.penetration(bvh, target.co + disp, moved, settings)
             # Rays from pushed vertices reach other layers: squished ones keep their depth,
@@ -590,6 +598,7 @@ class SquishSolver:
             if not np.any(again > 0.0):
                 break
             disp -= normals * again[:, None]
+            pushed_again += again
 
         disp *= (settings.factor * weights)[:, None]
 
@@ -600,7 +609,41 @@ class SquishSolver:
             disp = target.rigidify(disp, islands)
 
         self.disp = disp
+        moved = np.linalg.norm(disp, axis=1)
+        self.debug = [
+            ("Max Depth", f"{depth.max() * 1000:.1f} mm"),
+            (
+                "Pushed Again",
+                f"{np.count_nonzero(pushed_again)} ({pushed_again.max() * 1000:.1f} mm)",
+            ),
+            ("Moved Vertices", str(np.count_nonzero(moved > 1e-4))),
+            ("Max Movement", f"{moved.max() * 1000:.1f} mm"),
+            ("Left to Squish", "..."),
+        ]
         return target.local(disp), len(contact), ""
+
+    def check_steps(self, context, settings):
+        """Count the vertices left to squish by the last squish, a bit at a time"""
+
+        target = self.target
+        co = target.co + self.disp
+        bvh, squishers_co, _ = self.squishers_bvh(context, settings)
+        near = np.all(
+            (co >= squishers_co.min(axis=0) - 0.01) & (co <= squishers_co.max(axis=0) + 0.01),
+            axis=1,
+        )
+        # Still out of the squishing surfaces, or inside the squishing volumes
+        surface = settings.mode == "SURFACE"
+        left = 0
+        for k, i in enumerate(np.nonzero(near)[0]):
+            if k % SQUISH_CHECK_CHUNK == 0:
+                yield
+            v = Vector(co[i])
+            hit, normal, _, dist = bvh.find_nearest(v, 0.02)
+            if hit is None or dist < 0.0005 or ((v - hit).dot(normal) > 0.0) != surface:
+                continue
+            left += not surface or normal.dot(Vector(target.normals[i])) > 0.5
+        self.debug[-1] = ("Left to Squish", str(left))
 
     def overriding_modifiers(self):
         """Surface Deform modifiers of the body hiding the squish"""
@@ -846,6 +889,9 @@ def squish_draw_settings(layout, context):
             "Squishers",
         )
 
+    rows = [("Squished Vertices", str(session.count)), ("Time", f"{session.elapsed:.2f} s")]
+    preview_draw_debug(box, "squish", rows + session.solver.debug)
+
     overriding = session.solver.overriding_modifiers()
     if overriding:
         col = box.column(align=True)
@@ -853,7 +899,7 @@ def squish_draw_settings(layout, context):
         for name in overriding:
             col.label(text=name, icon="MOD_MESHDEFORM")
 
-    preview_draw_footer(box, session)
+    preview_draw_footer(box, session, info=False)
 
 
 def register():

@@ -525,6 +525,22 @@ def preview_draw_masks(layout, session, tool, rigid_active=False):
     return col
 
 
+def preview_draw_debug(layout, tool, rows):
+    """Debug section with the labels and values rows, when the debug information is shown"""
+
+    if not preview_debug():
+        return
+    col = preview_section(layout, f"mustardui_{tool}_debug", "Debug", "CONSOLE", True)
+    if col is None:
+        return
+    for label, value in rows:
+        split = col.split(factor=0.4)
+        row = split.row()
+        row.alignment = "RIGHT"
+        row.label(text=label)
+        split.label(text=value)
+
+
 def preview_draw_footer(layout, session, info=True):
     """Error, result toggle and finish buttons. The debug information too, with info"""
 

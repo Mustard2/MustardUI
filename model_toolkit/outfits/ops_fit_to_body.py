@@ -17,6 +17,7 @@ from ..mesh.shape_key_preview import (
     ShapeKeyPreviewOperator,
     create_followers_shape_keys,
     preview_debug,
+    preview_draw_debug,
     preview_draw_footer,
     preview_draw_masks,
     preview_draw_presets,
@@ -652,25 +653,17 @@ def fit_to_body_draw_settings(layout, context):
 
     preview_draw_masks(box, session, "fit")
 
-    if preview_debug() and (
-        col := preview_section(box, "mustardui_fit_debug", "Debug", "CONSOLE", True)
-    ):
-        metrics = session.solver.metrics
-        rows = [
-            ("Fitted Vertices", str(session.count)),
-            ("Iterations", str(session.solver.iterations)),
-            ("Time", f"{session.elapsed:.2f} s"),
-        ]
-        labels = ("Buried Vertices", "Through Body", "Self Intersections")
-        for index, label in enumerate(labels):
-            value = "..." if metrics is None else f"{metrics[0][index]} → {metrics[1][index]}"
-            rows.append((label, value))
-        for label, value in rows:
-            split = col.split(factor=0.4)
-            row = split.row()
-            row.alignment = "RIGHT"
-            row.label(text=label)
-            split.label(text=value)
+    metrics = session.solver.metrics
+    rows = [
+        ("Fitted Vertices", str(session.count)),
+        ("Iterations", str(session.solver.iterations)),
+        ("Time", f"{session.elapsed:.2f} s"),
+    ]
+    labels = ("Buried Vertices", "Through Body", "Self Intersections")
+    for index, label in enumerate(labels):
+        value = "..." if metrics is None else f"{metrics[0][index]} → {metrics[1][index]}"
+        rows.append((label, value))
+    preview_draw_debug(box, "fit", rows)
 
     preview_draw_footer(box, session, info=False)
 
