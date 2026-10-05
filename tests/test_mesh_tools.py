@@ -777,7 +777,28 @@ class TestSquish(BlenderTestCase):
         left = solver.penetration(bvh, solver.target.co + solver.disp, moved, settings)
         self.assertFalse(np.any(left > 0.0))
 
-    # The bulge pushes out the body around the squished area, and survives the smoothing
+    # Rays through a hole of the squisher reaching a far layer do not squish deep
+    def test_squish_far_layer(self):
+        bpy.ops.mesh.primitive_grid_add(x_subdivisions=80, y_subdivisions=80, size=0.4)
+        body = bpy.context.active_object
+        bpy.ops.mesh.primitive_grid_add(
+            x_subdivisions=40, y_subdivisions=40, size=0.2, location=(0.0, 0.0, -0.001)
+        )
+        squisher = bpy.context.active_object
+        bm = bmesh.new()
+        bm.from_mesh(squisher.data)
+        hole = [f for f in bm.faces if f.calc_center_median().length < 0.006]
+        bmesh.ops.delete(bm, geom=hole, context="FACES")
+        layer = Matrix.Translation((0.0, 0.0, -0.03))
+        bmesh.ops.create_grid(bm, x_segments=10, y_segments=10, size=0.1, matrix=layer)
+        bm.to_mesh(squisher.data)
+        bm.free()
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
+
+        solver = squish.SquishSolver(body, [squisher], "Squish")
+        solver.solve(bpy.context, settings)
+        self.assertLess(-solver.disp[:, 2].min(), 0.02)
+
     def test_bulge(self):
         bpy.ops.mesh.primitive_grid_add(x_subdivisions=80, y_subdivisions=80, size=0.4)
         body = bpy.context.active_object

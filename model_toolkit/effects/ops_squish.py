@@ -33,6 +33,8 @@ from ..mesh.shape_key_preview import (
 
 SQUISHER_TYPES = {"MESH", "CURVE", "SURFACE", "META", "FONT"}
 SQUISH_ORIENTATION_DISTANCE = 0.1
+# Depth allowed beyond the one of the closest squishing surface, see penetration
+SQUISH_DEPTH_TOLERANCE = 0.002
 # The Bulge settings scale these, for a visible bulge at their default values
 BULGE_STRENGTH = 1.5
 BULGE_RANGE = 1.5
@@ -482,8 +484,16 @@ class SquishSolver:
             if (surface and facing > 0.5) or (not surface and facing < 0.0):
                 # Squishers on the other side of thin parts (e.g. fingers) are ignored
                 through = self.body_bvh.ray_cast(v - n * 1e-4, -n, dist)
-                if through[0] is None or through[3] < 0.002:
-                    depth[i] = max(dist - eps + settings.offset, 0.0)
+                if through[0] is not None and through[3] >= 0.002:
+                    continue
+                # Rays reaching far parts of the squishers (e.g. across folds or fingers) are
+                # capped by the closest surface, at most twice as far with the facing above
+                if surface:
+                    near, near_normal, _, near_dist = bvh.find_nearest(v)
+                    outside = (v - near).dot(near_normal) > 0.0
+                    limit = 2.0 * near_dist if outside else 0.0
+                    dist = min(dist, limit + settings.tightness + SQUISH_DEPTH_TOLERANCE)
+                depth[i] = max(dist - eps + settings.offset, 0.0)
         return depth
 
     def bulge(self, depth, contact, weights, radius):
@@ -572,6 +582,11 @@ class SquishSolver:
         moved = np.nonzero((np.linalg.norm(disp, axis=1) > 0.0) & (weights > 0.0))[0]
         for _ in range(3):
             again = self.penetration(bvh, target.co + disp, moved, settings)
+            # Rays from pushed vertices reach other layers: squished ones keep their depth,
+            # the others stay within the deepest one
+            pushed = -np.einsum("ij,ij->i", disp, normals)
+            kept = np.maximum(depth + SQUISH_DEPTH_TOLERANCE - pushed, 0.0)
+            again = np.minimum(again, np.where(depth > 0.0, kept, depth.max()))
             if not np.any(again > 0.0):
                 break
             disp -= normals * again[:, None]
@@ -788,16 +803,21 @@ def squish_draw_settings(layout, context):
     if col is not None:
         col.prop(settings, "mode")
         col.prop(settings, "use_modifiers", text="Squishers Modifiers")
-        col.prop(settings, "max_depth")
-        col.prop(settings, "offset")
+
         col.separator()
-        col.prop(settings, "tightness")
+
+        col.prop(settings, "tightness", text="Tightness (Pressure)")
         sub = col.column(align=True)
         sub.enabled = settings.tightness > 0.0
         sub.prop(settings, "move_squishers")
         row = sub.row(align=True)
         row.enabled = settings.move_squishers
         row.prop(settings, "squishers_movement", text="Movement")
+
+        col.separator()
+
+        col.prop(settings, "max_depth")
+        col.prop(settings, "offset")
 
     col = preview_section(box, "mustardui_squish_shape", "Shape", "MOD_SMOOTH")
     if col is not None:

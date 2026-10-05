@@ -333,6 +333,15 @@ class DeformTarget:
         edges = np.empty(len(mesh.edges) * 2, dtype=np.int64)
         mesh.edges.foreach_get("vertices", edges)
         self.edges = edges.reshape(-1, 2)
+        self.edge_lengths = np.linalg.norm(
+            self.co[self.edges[:, 0]] - self.co[self.edges[:, 1]], axis=1
+        )
+        # Mean length of the edges of each vertex
+        counts = np.bincount(self.edges.ravel(), minlength=self.n_verts)
+        sums = np.bincount(
+            self.edges.ravel(), np.repeat(self.edge_lengths, 2), minlength=self.n_verts
+        )
+        self.vertex_lengths = np.maximum(sums / np.maximum(counts, 1), 1e-6)
 
         self._weights = {}
         self._influence = (None, None)
@@ -452,46 +461,68 @@ class DeformTarget:
         if not np.any(moving):
             return disp
         edges = self.edges
-        touching = moving[edges[:, 0]] | moving[edges[:, 1]]
-        # Only loose vertices move: nothing to smooth
-        if not np.any(touching):
-            return disp
-        length = np.median(
-            np.linalg.norm(self.co[edges[touching, 0]] - self.co[edges[touching, 1]], axis=1)
-        )
-        length = max(length, 1e-6)
 
-        # Iterations spreading the displacement over the distance, whatever the mesh density
-        iterations = int(np.ceil(2.0 * (distance / length) ** 2)) if distance > 0.0 else 0
-        iterations = min(max(iterations, min_iterations), 200)
-        if not iterations:
+        # Iterations of each vertex spreading the displacement over the distance, whatever the
+        # mesh density: the dense details iterate longer, without slowing down the rest
+        lengths = self.vertex_lengths
+        if distance > 0.0:
+            iterations = np.ceil(2.0 * (distance / lengths) ** 2)
+        else:
+            iterations = np.zeros(self.n_verts)
+        iterations = np.clip(iterations, min_iterations, 2000).astype(np.int64)
+        if not np.any(iterations[moving]):
             return disp
 
-        # Only the vertices the smoothing can reach
-        region = moving.copy()
-        for _ in range(
-            int(np.ceil(3.0 * max(distance, length * np.sqrt(iterations / 2.0)) / length))
-        ):
-            grow = region[edges[:, 0]] | region[edges[:, 1]]
-            if np.all(region[edges[grow].ravel()]):
-                break
-            region[edges[grow].ravel()] = True
-        indices = np.nonzero(region)[0]
-        remap = np.full(self.n_verts, -1, dtype=np.int64)
-        remap[indices] = np.arange(len(indices))
-        sub_edges = remap[edges[region[edges[:, 0]] & region[edges[:, 1]]]]
-        sub = disp[indices]
-        sub_contact = remap[contact]
+        # Only the vertices the smoothing can reach, by the path length along the edges
+        reach = 3.0 * max(distance, np.median(lengths[moving]) * np.sqrt(min_iterations / 2.0))
+        path = np.where(moving, 0.0, np.inf)
+        front = moving
+        while np.any(front):
+            touched = front[edges[:, 0]] | front[edges[:, 1]]
+            pairs = edges[touched]
+            through = self.edge_lengths[touched]
+            reached = path.copy()
+            np.minimum.at(reached, pairs[:, 1], path[pairs[:, 0]] + through)
+            np.minimum.at(reached, pairs[:, 0], path[pairs[:, 1]] + through)
+            reached[reached > reach] = np.inf
+            front = reached < path
+            path = reached
+        region = path < np.inf
+        inner = edges[region[edges[:, 0]] & region[edges[:, 1]]]
+        # Vertices without neighbours have nothing to average
+        iterations[np.bincount(inner.ravel(), minlength=self.n_verts) == 0] = 0
 
-        average = NeighbourAverage(sub_edges, len(indices))
-        for _ in range(iterations):
-            sub = 0.5 * sub + 0.5 * average(sub)
-            pushed = np.einsum("ij,ij->i", sub[sub_contact], directions)
-            missing = np.maximum(required - pushed, 0.0)
-            sub[sub_contact] += directions * missing[:, None]
+        # Ordered by their iterations, so that the running vertices are always the first ones
+        order = np.nonzero(region)[0]
+        order = order[np.argsort(-iterations[order], kind="stable")]
+        steps = iterations[order]
+        position = np.full(self.n_verts, -1, dtype=np.int64)
+        position[order] = np.arange(len(order))
+        linked = position[np.concatenate((inner, inner[:, ::-1]))]
+        linked = linked[np.argsort(linked[:, 0], kind="stable")]
+        neighbours = linked[:, 1]
+        counts = np.bincount(linked[:, 0], minlength=len(order))
+        ends = np.cumsum(counts)
+        starts = ends - counts
+        inverse = 1.0 / np.maximum(counts, 1)[:, None]
+        sorting = np.argsort(position[contact])
+        contact_rows = position[contact][sorting]
+        directions = directions[sorting]
+        required = required[sorting]
+
+        # Running vertices, and their contact ones, at each iteration
+        running = np.searchsorted(-steps, -np.arange(steps[0]), side="left")
+        running_contact = np.searchsorted(contact_rows, running)
+        sub = disp[order]
+        for k, c in zip(running, running_contact, strict=True):
+            average = np.add.reduceat(sub[neighbours[: ends[k - 1]]], starts[:k], axis=0)
+            sub[:k] = 0.5 * sub[:k] + 0.5 * (average * inverse[:k])
+            pushed = np.einsum("ij,ij->i", sub[contact_rows[:c]], directions[:c])
+            missing = np.maximum(required[:c] - pushed, 0.0)
+            sub[contact_rows[:c]] += directions[:c] * missing[:, None]
 
         disp = disp.copy()
-        disp[indices] = sub
+        disp[order] = sub
         return disp
 
     def local(self, disp):
