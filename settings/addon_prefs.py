@@ -95,12 +95,14 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             (
                 "ARMATURE",
                 "Standard",
-                "Standard set of optimizations.\nTested to work in all models without breaking functionalities",
+                "Standard set of optimizations.\nTested to work in all models without breaking "
+                "functionalities",
             ),
             (
                 "TEXT",
                 "Aggressive",
-                "More aggressive optimization.\nIt might break some functionalities. Please check the Limitations notice in the Addon settings",
+                "More aggressive optimization.\nIt might break some functionalities. Please check "
+                "the Limitations notice in the Addon settings",
             ),
         ),
         description="Optimization level",
@@ -172,7 +174,8 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                 for text in (
                     "Older MustardUI versions can not read the models saved with this option",
                     "Linked or overridden models are not supported",
-                    "Keyframes and drivers on MustardUI settings stop working (while Morphs and Custom properties work as intended)",
+                    "Keyframes and drivers on MustardUI settings stop working (while Morphs and "
+                    "Custom properties work as intended)",
                     "Every Armature in the file gets a hidden Text datablock",
                 ):
                     col.label(text=f"• {text}", icon="BLANK1")
