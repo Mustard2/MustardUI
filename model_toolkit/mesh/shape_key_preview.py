@@ -505,7 +505,10 @@ def preview_draw_masks(layout, session, tool, rigid_active=False):
         preview_draw_vertex_group(
             col, settings, "vertex_group", "invert_vertex_group", obj, "Vertex Group"
         )
-        col.prop(settings, "auto_influence", text="Around Intersections")
+
+        col.separator()
+
+        col.prop(settings, "auto_influence")
         row = col.row()
         row.enabled = settings.auto_influence
         row.prop(settings, "influence_radius", text="Radius")
