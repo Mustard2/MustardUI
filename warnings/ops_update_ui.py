@@ -4,7 +4,11 @@ from .. import __package__ as base_package
 from .. import bl_info
 from ..custom_properties.misc import assign_pointers
 from ..hair.helper_functions import set_selected_hair, store_current_hair
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ..outfits.helper_functions import rename_model_ids
 
 
@@ -39,8 +43,7 @@ class MustardUI_UpdateUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        poll, obj = mustardui_active_object(context, config=ModelMode.ANY)
-        return poll if obj is not None else False
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
         poll, arm = mustardui_active_object(context, config=ModelMode.ANY)

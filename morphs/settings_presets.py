@@ -1,6 +1,10 @@
 import bpy
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .misc import get_cp_source
 
 
@@ -104,8 +108,7 @@ class MUSTARDUI_UL_Morphs_Presets_UIList(bpy.types.UIList):
     """UIList for Morph Presets"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=ModelMode.USER)
-        return res if obj is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)

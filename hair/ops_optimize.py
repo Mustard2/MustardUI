@@ -50,8 +50,7 @@ class MustardUI_Hair_DisableViewport(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         poll, arm = mustardui_active_object(context, config=ModelMode.USER)

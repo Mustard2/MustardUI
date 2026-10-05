@@ -70,9 +70,10 @@ class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(
+            context, config=ModelMode.CONFIG
+        )
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)

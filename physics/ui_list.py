@@ -1,7 +1,11 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .settings_item import mustardui_physics_item_type_dict
 
 
@@ -48,8 +52,7 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return obj is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def move_index(self, uilist, index):
         """Move index of an item render queue while clamping it."""

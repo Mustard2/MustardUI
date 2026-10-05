@@ -3,7 +3,11 @@ import json
 import bpy
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .get_context import get_preset_context
 from .misc import check_preset_type, check_preset_version, get_unique_preset_name
 from .types import get_preset_definition, preset_type_items
@@ -31,8 +35,7 @@ class MustardUI_PresetExport(bpy.types.Operator, ExportHelper):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def invoke(self, context, event):
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
@@ -88,8 +91,7 @@ class MustardUI_PresetImport(bpy.types.Operator, ImportHelper):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.USER)

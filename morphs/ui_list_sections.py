@@ -1,7 +1,11 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Morphs_Section_Add(bpy.types.Operator):
@@ -13,8 +17,7 @@ class MustardUI_Morphs_Section_Add(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return obj is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
         res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
@@ -146,8 +149,7 @@ class MUSTARDUI_UL_Morphs_Section_UIList(bpy.types.UIList):
     """UIList for Morphs"""
 
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return res if obj is not None else False
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)

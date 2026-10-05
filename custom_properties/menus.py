@@ -5,7 +5,11 @@ from ..configuration.naming_convention import (
     strip_naming_convention_collection,
 )
 from ..misc.icons import get_hair_icon
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .ops_add import MustardUI_Property_MenuAdd
 from .ops_link import MustardUI_Property_MenuLink
 
@@ -301,9 +305,7 @@ class MUSTARDUI_MT_Property_LinkMenu(bpy.types.Menu):
 
     @classmethod
     def poll(cls, context):
-
-        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return res
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def draw(self, context):
 

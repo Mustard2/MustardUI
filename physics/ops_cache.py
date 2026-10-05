@@ -38,8 +38,7 @@ class MustardUI_Physics_BakeAll(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        return res
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 

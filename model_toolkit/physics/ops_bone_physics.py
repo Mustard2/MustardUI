@@ -1,6 +1,10 @@
 import bpy
 
-from ...model_selection.active_object import ModelMode, mustardui_active_object
+from ...model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 def check_bones_connections(selected_bones):
@@ -84,8 +88,7 @@ class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        if not res:
+        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
             return False
 
         armature = context.object
@@ -327,8 +330,7 @@ class MustardUI_ModelToolkit_BonePhysics_Clean(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        if not res:
+        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
             return False
 
         obj = context.object

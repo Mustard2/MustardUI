@@ -1,6 +1,10 @@
 import bpy
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 def detect_lip_map(armature):
@@ -226,8 +230,7 @@ class MUSTARDUI_OT_constraints_clear(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.USER)

@@ -1,7 +1,11 @@
 import bpy
 from bpy.props import EnumProperty, IntProperty
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 class MustardUI_Section_UIList_Switch(bpy.types.Operator):
@@ -19,8 +23,7 @@ class MustardUI_Section_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return obj is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def move_index(self, uilist, index):
         """Move index of an item render queue while clamping it."""
@@ -61,8 +64,7 @@ class MustardUI_Section_Delete(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return obj is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
         res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
@@ -99,8 +101,7 @@ class MustardUI_Section_Add(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return obj is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
         res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)

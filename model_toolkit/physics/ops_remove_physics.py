@@ -3,7 +3,11 @@ import re
 import bpy
 
 from ...misc.remove_objects import remove_objects
-from ...model_selection.active_object import ModelMode, mustardui_active_object
+from ...model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from ...physics.update_enable import named_after_cage
 
 # Vertex Groups the tools create on the meshes driven by the cages
@@ -212,8 +216,9 @@ class RemovePhysicsBase:
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        if not res or context.mode != "OBJECT":
+        if context.mode != "OBJECT" or not active_object_operator_poll(
+            context, config=ModelMode.MODEL_TOOLKIT
+        ):
             return False
         return bool(cages_from_selection(context, cls.detector))
 
@@ -305,8 +310,9 @@ class MustardUI_ModelToolkit_RemoveCollisionCage(RemovePhysicsBase, bpy.types.Op
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        if not res or context.mode != "OBJECT":
+        if context.mode != "OBJECT" or not active_object_operator_poll(
+            context, config=ModelMode.MODEL_TOOLKIT
+        ):
             return False
         return bool(cages_from_selection(context, is_collision_cage) or cls.from_sources(context))
 

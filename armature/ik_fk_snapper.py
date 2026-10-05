@@ -14,7 +14,11 @@ from bpy.props import (
 )
 from mathutils import Quaternion
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 _COPY_TYPES = {"COPY_ROTATION", "COPY_TRANSFORMS", "COPY_LOCATION"}
 
@@ -541,8 +545,7 @@ class MUSTARDUI_OT_IKFKDetect(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         # Works in both user and configuration mode
-        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
-        return arm is not None
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.ANY)
@@ -598,8 +601,7 @@ class MUSTARDUI_OT_IKFKSnap(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         chain, arm_obj = _chain_and_object(self, context)
@@ -934,8 +936,7 @@ class MUSTARDUI_OT_IKFKSwitch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
         chain, arm_obj = _chain_and_object(self, context)
@@ -956,8 +957,7 @@ class MUSTARDUI_OT_IKFKChainAdd(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
@@ -1007,8 +1007,7 @@ class MUSTARDUI_OT_IKFKChainSwitch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)

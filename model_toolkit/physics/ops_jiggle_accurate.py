@@ -9,7 +9,11 @@ from ... import __package__ as base_package
 from ...misc import mesh_cleanup
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
-from ...model_selection.active_object import ModelMode, mustardui_active_object
+from ...model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import physics_presets
 
 
@@ -187,9 +191,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         return (
-            res
+            active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
             and context.active_object is not None
             and context.active_object.type == "MESH"
             and context.mode == "EDIT_MESH"

@@ -1,7 +1,7 @@
 import bpy
 
 from ... import __package__ as base_package
-from ...model_selection.active_object import ModelMode, mustardui_active_object
+from ...model_selection.active_object import ModelMode, active_object_operator_poll
 
 # Naming convention
 IKSpline_Curve_Name = "MustardUI.IKSpline.Curve"
@@ -62,8 +62,7 @@ class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        if arm is None:
+        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
             return False
 
         if context.mode != "POSE" or not bpy.context.selected_pose_bones:
@@ -80,7 +79,7 @@ class MustardUI_ModelToolkit_IKSpline(bpy.types.Operator):
                 if constraint.type == "SPLINE_IK":
                     abort_aa = True
                     break
-        return res and not abort_aa
+        return not abort_aa
 
     def execute(self, context):
         addon_prefs = context.preferences.addons[base_package].preferences
