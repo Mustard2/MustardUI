@@ -41,7 +41,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     # Model Toolkit
     model_toolkit: BoolProperty(
         default=False,
-        name="Model Toolkit",
+        name="Show Model Toolkit",
         description="Show the Model Toolkit panel.\nIt contains tools to edit the model: "
         "armature, mesh, physics, naming and optimizations",
     )
