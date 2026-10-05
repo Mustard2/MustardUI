@@ -95,16 +95,6 @@ class PANEL_PT_MustardUI_ModelToolkit_Rig(ModelToolkitSection, bpy.types.Panel):
         row.operator("mustardui.model_toolkit_face_controller", icon="USER")
         row.operator("mustardui.model_toolkit_face_controller_remove", text="", icon="X")
 
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.operator(
-            "mustardui.model_toolkit_affect_transform",
-            text="Affect Transform on Bone Constraints",
-            icon="CONSTRAINT_BONE",
-        ).enable = True
-        row.operator("mustardui.model_toolkit_affect_transform", text="", icon="X").enable = False
-
 
 class PANEL_PT_MustardUI_ModelToolkit_Model(ModelToolkitSection, bpy.types.Panel):
     header = ("Model", "ARMATURE_DATA")
