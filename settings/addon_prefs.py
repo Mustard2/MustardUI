@@ -189,7 +189,6 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             box.label(text="Debug", icon="QUESTION_LARGE")
             col = box.column(align=True)
             col.operator("mustardui.fix_missing_ui", icon="GHOST_ENABLED")
-            col.operator("mustardui.debug_log", text="Create Log file", icon="FILE_TEXT")
 
 
 def register():
