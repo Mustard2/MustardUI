@@ -20,7 +20,7 @@ license = [
 ]
 
 [permissions]
-files = "Import/export templates from/to disk"
+files = "Import/export templates/presets or Blender files from/to disk"
 
 [build]
 # Blender defaults, plus the test suite and the effect resources build scripts
