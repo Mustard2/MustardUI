@@ -124,17 +124,12 @@ class FitOptimizer:
         self.face_normals = normals * np.where(outward == 0.0, 1.0, outward)[:, None]
 
         edges = target.edges
-        self.rest_lengths = np.linalg.norm(target.co[edges[:, 0]] - target.co[edges[:, 1]], axis=1)
-        self.edge = float(np.median(self.rest_lengths)) if len(edges) else 1e-3
+        self.edge = float(np.median(target.edge_lengths)) if len(edges) else 1e-3
         self.degree = np.maximum(np.bincount(edges.ravel(), minlength=target.n_verts), 1)
         self.history = []
         # Winding numbers of the body, shared with the metrics
         self.winding = winding
-        rest = target.co[target.tris]
-        self.rest_normals = triangle_normals(rest)
-        self.rest_areas = 0.5 * np.linalg.norm(
-            np.cross(rest[:, 1] - rest[:, 0], rest[:, 2] - rest[:, 0]), axis=1
-        )
+        self.set_rest(target.co)
         # Average of the neighbour vertices, for the preconditioning
         self.average = NeighbourAverage(edges, target.n_verts)
         # Patches grown along the edges from seeds spread in space, never across the pieces
@@ -154,6 +149,18 @@ class FitOptimizer:
         patch[alone] = len(seeds) + np.arange(len(alone))
         self.patch = patch
         self.patch_size = np.bincount(patch).astype(np.float64)
+
+    def set_rest(self, rest):
+        """Shape kept by the optimization"""
+
+        self.rest = rest
+        edges = self.target.edges
+        self.rest_lengths = np.linalg.norm(rest[edges[:, 0]] - rest[edges[:, 1]], axis=1)
+        corners = rest[self.target.tris]
+        self.rest_normals = triangle_normals(corners)
+        self.rest_areas = 0.5 * np.linalg.norm(
+            np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0]), axis=1
+        )
 
     def body_points(self, co, planes, gap):
         """Body vertices through or under the outfit triangles"""
@@ -232,7 +239,7 @@ class FitOptimizer:
             "ij,ij->i", co[found] - np.einsum("ij,ijk->ik", bary, co[corners]), normal
         )
         # Side at rest, when the vertex was over the same point of the triangle
-        rest = target.co
+        rest = self.rest
         rest_offset = rest[found] - np.einsum("ij,ijk->ik", bary, rest[corners])
         rest_normal = triangle_normals(rest[corners])
         rest_height = np.einsum("ij,ij->i", rest_offset, rest_normal)
@@ -358,7 +365,7 @@ class FitOptimizer:
 
         # Smooth displacement, keeping the details of the outfit
         edges = target.edges
-        disp = co - target.co
+        disp = co - self.rest
         lap = self.average(disp) - disp
         back = self.degree[:, None] * self.average(lap / self.degree[:, None])
         energy += stiffness * np.einsum("ij,ij->", lap, lap)
@@ -374,21 +381,22 @@ class FitOptimizer:
         scatter(grad, edges[:, 1], -force)
         return energy, grad
 
-    def run(self, co, free, settings):
-        """Optimize the outfit, yielding the progress"""
+    def run(self, co, free, settings, rest):
+        """Optimize the outfit keeping the rest shape, yielding the progress"""
 
         gap = settings.offset
         reach = gap + max(settings.max_depth, settings.fit_distance)
         max_step = MAX_STEP * self.edge
         points = np.nonzero(free)[0]
         target = self.target
+        self.set_rest(rest)
 
         # Pull of the outfit vertices near the body at rest, fading out with the distance
         distance = settings.fit_distance
         pull = np.zeros(target.n_verts)
         if distance > 0.0:
-            i, origins, normals = self.body_planes(target.co, range(target.n_verts), gap + distance)
-            height = self.plane_heights(target.co[i], origins, normals) - gap
+            i, origins, normals = self.body_planes(rest, range(target.n_verts), gap + distance)
+            height = self.plane_heights(rest[i], origins, normals) - gap
             # Full pull up to half the distance, then fading out
             t = np.clip(2.0 * height / distance - 1.0, 0.0, 1.0)
             near = (height > 0.0) & (height < distance)
@@ -403,7 +411,7 @@ class FitOptimizer:
         planes_cache = QueryCache(
             lambda co, stale: self.body_planes(co, stale, reach), target.n_verts, tolerance
         )
-        corners = target.co[target.tris]
+        corners = rest[target.tris]
         size = np.linalg.norm(corners - corners.mean(axis=1, keepdims=True), axis=2).max()
         centers_cache = QueryCache(
             lambda co, stale: self.body_planes(co, stale, gap + size), len(target.tris), tolerance

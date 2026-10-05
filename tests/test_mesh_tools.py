@@ -573,6 +573,27 @@ class TestFitToBody(BlenderTestCase):
         # The detail still sticks out of the surface around it
         self.assertGreater(radius[top] - radius[neighbours].mean(), 0.025)
 
+    # Smooth Sharp Features flattens the sharp details near the body, by its strength
+    def test_smooth_sharp(self):
+        for option in ("smooth_sharp", "sharp_angle", "sharp_strength", "smooth_distance"):
+            self.addCleanup(setattr, self.settings, option, getattr(self.settings, option))
+        self.settings.smooth_sharp = True
+        self.settings.sharp_angle = np.radians(5.0)
+        self.settings.smooth_distance = 0.2
+        mesh = self.outfit.data
+        top = int(np.argmax([v.co.z for v in mesh.vertices]))
+        mesh.vertices[top].co.z += 0.03
+        neighbours = [sum(e.vertices) - top for e in mesh.edges if top in e.vertices]
+        for strength in (1.0, 0.0):
+            self.settings.sharp_strength = strength
+            radius = self.solve()
+            detail = radius[top] - radius[neighbours].mean()
+            if strength:
+                self.assertLess(detail, 0.01)
+            else:
+                self.assertGreater(detail, 0.025)
+            self.assertGreater(radius.min(), 0.5)
+
     # The metrics count the outfit inside the body before the fit, and nothing after it
     def test_metrics(self):
         solver = fit_to_body.FitToBodySolver(self.outfit, [self.body], "Fit", check=True)

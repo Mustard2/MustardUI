@@ -1,3 +1,5 @@
+import math
+
 import bpy
 import numpy as np
 from mathutils import Vector
@@ -5,6 +7,7 @@ from mathutils.bvhtree import BVHTree
 
 from ...misc.mesh_deform import (
     DeformTarget,
+    NeighbourAverage,
     geometry_bvh,
     mesh_vertex_normals,
     rest_geometry,
@@ -28,7 +31,7 @@ from ..mesh.shape_key_preview import (
     preview_settings_update,
     write_shape_key,
 )
-from .fit_optimizer import FitOptimizer, outfit_metrics
+from .fit_optimizer import FitOptimizer, outfit_metrics, triangle_normals
 
 # Outfit vertices checked at a time by the live preview metrics
 CHECK_CHUNK = 2048
@@ -207,6 +210,33 @@ class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
+    smooth_sharp: bpy.props.BoolProperty(
+        name="Smooth Sharp Features",
+        default=False,
+        description="Smooth the sharp creases of the outfit near the body (e.g. steps under the "
+        "chest) over the Smooth distance.\nTubes and the borders of thick cloth are kept",
+        update=preview_settings_update,
+    )
+
+    sharp_angle: bpy.props.FloatProperty(
+        name="Sharpness",
+        default=math.radians(60.0),
+        min=0.0,
+        max=math.pi,
+        subtype="ANGLE",
+        description="Minimum angle between the faces of the creases to smooth",
+        update=preview_settings_update,
+    )
+
+    sharp_strength: bpy.props.FloatProperty(
+        name="Strength",
+        default=1.0,
+        min=0.0,
+        soft_max=10.0,
+        description="Strength of the smoothing of the sharp features",
+        update=preview_settings_update,
+    )
+
     self_collisions: bpy.props.BoolProperty(
         name="Self Collisions",
         default=True,
@@ -244,6 +274,7 @@ class FitToBodySolver:
         self._optimizer = {}
         self._outfit_flipped = None
         self._detect = (None, None)
+        self._sharp = (None, None)
         self.influence = None
 
     @staticmethod
@@ -307,7 +338,7 @@ class FitToBodySolver:
         buried = int(np.count_nonzero(np.abs(winding) > 0.5))
         self.metrics = (before, outfit_metrics(target.co + disp, target.tris, body_bvh, buried))
 
-    def optimize(self, context, settings, weights, disp):
+    def optimize(self, context, settings, weights, rest, disp):
         """Refine the fit minimizing the energy of the optimizer, yielding the progress"""
 
         target = self.target
@@ -325,7 +356,7 @@ class FitToBodySolver:
         free = weights > 0.0
         if self.influence is not None:
             free &= self.influence > 0.0
-        steps = self._optimizer[key].run(target.co + disp, free, settings)
+        steps = self._optimizer[key].run(rest + disp, free, settings, rest)
         while True:
             try:
                 factor, text = next(steps)
@@ -429,6 +460,65 @@ class FitToBodySolver:
             self._detect = (key, (*clipping, self.pulled(context, settings, weights)))
         return self._detect[1]
 
+    def sharp_rest(self, context, settings):
+        """Rest coordinates with the sharp creases near the body smoothed"""
+
+        key = (
+            self.body_key(settings),
+            settings.sharp_angle,
+            settings.sharp_strength,
+            settings.smooth_distance,
+            settings.offset,
+            settings.max_depth,
+            settings.fit_distance,
+        )
+        if self._sharp[0] == key:
+            return self._sharp[1]
+
+        target = self.target
+        co, tris = target.co, target.tris
+        rest = co.copy()
+        iterations = int(
+            np.ceil(2.0 * (settings.smooth_distance / np.median(target.edge_lengths)) ** 2)
+        )
+        if iterations:
+            # Vertices of the edges between faces at a sharp angle
+            normals = triangle_normals(co[tris])
+            edges = np.sort(tris[:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2), axis=1)
+            faces = np.repeat(np.arange(len(tris)), 3)
+            order = np.argsort(edges[:, 0] * target.n_verts + edges[:, 1], kind="stable")
+            edges, faces = edges[order], faces[order]
+            shared = np.nonzero(np.all(edges[1:] == edges[:-1], axis=1))[0]
+            cos = np.einsum("ij,ij->i", normals[faces[shared]], normals[faces[shared + 1]])
+            sharp = np.zeros(target.n_verts, dtype=bool)
+            sharp[edges[shared[cos < math.cos(settings.sharp_angle)]].ravel()] = True
+
+            # Only sheet creases, as the normals around tubes and thick borders cancel out
+            average = NeighbourAverage(target.edges, target.n_verts)
+            spread = target.normals
+            for _ in range(iterations):
+                spread = 0.5 * spread + 0.5 * average(spread)
+            coherence = np.linalg.norm(spread, axis=1)
+            sharp &= coherence > 0.5
+
+            body_bvh = self.body(context, self.body_key(settings))[0]
+            reach = settings.offset + max(settings.max_depth, settings.fit_distance)
+            creases = [
+                i
+                for i in np.nonzero(sharp)[0]
+                if body_bvh.find_nearest(Vector(co[i]), reach)[0] is not None
+            ]
+            if creases:
+                mask = target.influence(key, creases, settings.smooth_distance)
+                mask = (mask * np.clip(2.0 * coherence - 0.5, 0.0, 1.0))[:, None]
+                # Taubin smoothing, which does not shrink the outfit
+                for _ in range(math.ceil(settings.sharp_strength * iterations)):
+                    for factor in (0.5, -0.53):
+                        rest += factor * mask * (average(rest) - rest)
+
+        self._sharp = (key, rest)
+        return rest
+
     def solve(self, context, settings):
         """Return the Shape Key coordinates, the number of fitted vertices and the error"""
 
@@ -471,12 +561,15 @@ class FitToBodySolver:
             min_iterations=1,
         )
 
+        rest = self.sharp_rest(context, settings) if settings.smooth_sharp else target.co
+
         self.influence = None
         if settings.auto_influence:
             self.influence = target.influence(self._detect[0], fitted, settings.influence_radius)
             disp *= self.influence[:, None]
+            rest = target.co + (rest - target.co) * self.influence[:, None]
 
-        disp = yield from self.optimize(context, settings, weights, disp)
+        disp = yield from self.optimize(context, settings, weights, rest, disp)
 
         disp *= (settings.factor * weights)[:, None]
 
@@ -650,6 +743,12 @@ def fit_to_body_draw_settings(layout, context):
         col.prop(settings, "stiffness")
         col.prop(settings, "iterations")
         col.prop(settings, "self_collisions")
+        col.separator()
+        col.prop(settings, "smooth_sharp")
+        sub = col.column()
+        sub.enabled = settings.smooth_sharp
+        sub.prop(settings, "sharp_angle")
+        sub.prop(settings, "sharp_strength")
 
     preview_draw_masks(box, session, "fit")
 
