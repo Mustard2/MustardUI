@@ -89,25 +89,30 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     )
 
     settings_storage: EnumProperty(
-        name="Settings Storage",
+        name="Optimization",
         default="ARMATURE",
         items=(
-            ("ARMATURE", "Armature", "Store the settings of the models in their Armatures"),
+            ("ARMATURE", "Standard", "Store the settings of the models in their Armatures"),
             (
                 "TEXT",
-                "Text",
+                "Aggressive",
                 "Store the settings of the models in Text datablocks",
             ),
         ),
-        description="Datablock storing the settings of all the models",
+        description="Optimization level",
         update=lambda self, context: text_storage.apply(),
     )
 
     settings_storage_startup: BoolProperty(
         default=True,
-        name="Use Armature at Startup",
-        description="Switch the Settings Storage to Armature each time Blender starts, to "
-        "avoid saving models with Text storage by mistake",
+        name="Use Standard at Startup",
+        description="Switch the Optimization setting to Standard at Startup",
+    )
+
+    settings_storage_in_menu: BoolProperty(
+        default=False,
+        name="Show Optimization in UI Panel",
+        description="Show Optimization Status and Settings in the UI Panel",
     )
 
     url_MustardUI = "https://github.com/Mustard2/MustardUI"
@@ -142,11 +147,9 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
         if self.experimental:
             box = layout.box()
-            box.label(text="Experimental", icon="EXPERIMENTAL")
+            box.label(text="Optimization (Experimental)", icon="FORCE_WIND")
             row = box.row(align=True)
-            row.label(text="Settings Storage")
             row.prop(self, "settings_storage", expand=True)
-            box.prop(self, "settings_storage_startup")
 
             col = box.column(align=True)
             col.label(text="Limitations:", icon="ERROR")
@@ -169,6 +172,10 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
                     "Every Armature in the file gets a hidden Text datablock",
                 ):
                     col.label(text=f"• {text}", icon="BLANK1")
+
+            col = box.column(align=True)
+            col.prop(self, "settings_storage_startup")
+            col.prop(self, "settings_storage_in_menu")
 
         if self.debug:
             box = layout.box()

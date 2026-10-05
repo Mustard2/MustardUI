@@ -2,6 +2,7 @@ from collections import Counter
 
 import bpy
 
+from .. import __package__ as base_package
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
@@ -51,6 +52,7 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
+        addon_prefs = context.preferences.addons[base_package].preferences
 
         poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
@@ -112,6 +114,11 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                 )
                 row2.operator("mustardui.cleanmodel", text="", icon="BRUSH_DATA")
                 row2.operator("mustardui.remove", text="", icon="TRASH")
+
+        if addon_prefs.experimental and addon_prefs.settings_storage_in_menu:
+            layout.separator()
+            layout.label(text="Optimization (Experimental)", icon="FORCE_WIND")
+            layout.prop(addon_prefs, "settings_storage", expand=True)
 
 
 def register():
