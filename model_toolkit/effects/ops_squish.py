@@ -278,14 +278,16 @@ SquishPresetsMenu, SquishPresetAdd = preview_preset_classes(
 
 
 class SquisherFollower:
-    """Squishing object moved along its normals by the Tightness, not deeper than the body"""
+    """Squishing object moved by the Tightness, into the body for surfaces, inflating volumes"""
 
     def __init__(self, obj, target, body_bvh, key_name):
         self.obj = obj
         self.body_bvh = body_bvh
+        self.target = target
         self.mesh = DeformTarget(obj, key_name)
         self.basis = self.mesh.basis
-        self._normals = {}
+        self._volume_normals = None
+        self._inward = (None, None)
 
         # The body triangle under each vertex, to follow its squish
         co = self.mesh.co
@@ -299,6 +301,24 @@ class SquisherFollower:
             self.under[i] = tri
             self.under_weights[i] = poly_3d_calc([Vector(target.co[j]) for j in tri], location)
 
+    def inward(self, distance):
+        """Body normals under the vertices, averaged over the distance not to flip in its folds"""
+
+        if self._inward[0] == distance:
+            return self._inward[1]
+        target = self.target
+        normals = target.normals
+        if distance > 0.0:
+            normals = normals.copy()
+            kd = target.kdtree()
+            for i in np.unique(self.under):
+                near = [j for _, j, _ in kd.find_range(target.co[i], distance)]
+                normals[i] = target.normals[near].mean(axis=0)
+        # Not normalized: shorter where the normals cancel out, as over the folds
+        inward = -np.einsum("ijk,ij->ik", normals[self.under], self.under_weights)
+        self._inward = (distance, inward)
+        return inward
+
     def enabled(self, settings):
         return (
             settings.move_squishers
@@ -310,25 +330,24 @@ class SquisherFollower:
         if not self.enabled(settings):
             return self.basis
 
-        # Directions moving the vertices into the body, or inflating the volume
-        mode = settings.mode
-        if mode not in self._normals:
-            volume = mode == "VOLUME"
-            flipped = squisher_is_flipped(
-                self.mesh.co, self.mesh.tris, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, volume
-            )
-            sign = (-1.0 if flipped else 1.0) * (1.0 if volume else -1.0)
-            self._normals[mode] = self.mesh.normals * sign
-        normals = self._normals[mode]
-
-        amount = np.full(len(normals), settings.tightness * settings.squishers_movement)
+        amount = np.full(len(self.basis), settings.tightness * settings.squishers_movement)
         amount *= settings.factor
-        # Surfaces never deeper than the body under them, not to sink at their borders, and
-        # lifted by its bulge
-        if mode == "SURFACE" and solver.disp is not None:
-            under = np.einsum("ijk,ij->ik", solver.disp[self.under], self.under_weights)
-            amount = np.minimum(amount, np.einsum("ij,ij->i", under, normals))
-        disp = normals * amount[:, None]
+        if settings.mode == "VOLUME":
+            if self._volume_normals is None:
+                flipped = squisher_is_flipped(
+                    self.mesh.co, self.mesh.tris, self.body_bvh, SQUISH_ORIENTATION_DISTANCE, True
+                )
+                self._volume_normals = self.mesh.normals * (-1.0 if flipped else 1.0)
+            directions = self._volume_normals
+        else:
+            # Along the body normals, keeping the thickness of the double sided parts
+            directions = self.inward(settings.smooth_distance)
+            # Never deeper than the body under them, not to sink at their borders, and lifted
+            # by its bulge
+            if solver.disp is not None:
+                under = np.einsum("ijk,ij->ik", solver.disp[self.under], self.under_weights)
+                amount = np.minimum(amount, np.einsum("ij,ij->i", under, directions))
+        disp = directions * amount[:, None]
 
         # Squishers without the Vertex Group are fully deformed
         if settings.squishers_rigid_group:

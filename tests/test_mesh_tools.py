@@ -826,6 +826,27 @@ class TestSquish(BlenderTestCase):
         self.assertAlmostEqual(moved[centre], 0.005)
         self.assertLess(moved[corner], 0.004)
 
+    # Double sided squishers move into the body as a whole, keeping their thickness
+    def test_tightness_double_sided(self):
+        bpy.ops.mesh.primitive_grid_add(x_subdivisions=80, y_subdivisions=80, size=0.4)
+        body = bpy.context.active_object
+        bpy.ops.mesh.primitive_cube_add(size=1.0, scale=(0.1, 0.1, 0.002))
+        squisher = bpy.context.active_object
+        bpy.ops.object.transform_apply(scale=True)
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
+        for name in ("tightness", "squishers_movement", "bulge"):
+            self.addCleanup(setattr, settings, name, getattr(settings, name))
+        settings.tightness = 0.003
+        settings.squishers_movement = 1.0
+        settings.bulge = 0.0
+
+        solver = squish.SquishSolver(body, [squisher], "Squish")
+        solver.solve(bpy.context, settings)
+        follower = next(x for x in solver.followers if x.obj == squisher)
+        moved = follower.shape(solver, settings) - follower.basis
+        np.testing.assert_allclose(moved[:, :2], 0.0, atol=1e-6)
+        np.testing.assert_allclose(moved[:, 2], -0.003, atol=1e-4)
+
     # The rigid parts of the moved squishers (e.g. buttons) move with a single translation
     def test_squishers_rigid_group(self):
         bpy.ops.mesh.primitive_grid_add(x_subdivisions=80, y_subdivisions=80, size=0.4)
