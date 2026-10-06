@@ -725,7 +725,7 @@ class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator)
             write_vertex_group(solver.body, sk.name, solver.influence)
         create_followers_shape_keys(solver, settings, solver.body, sk.name)
         if settings.outfit_property:
-            squish_outfit_property(context, solver, sk.name, hidden=settings.custom_property_hidden)
+            squish_outfit_property(context, solver, sk.name, hidden=settings.outfit_property_hidden)
         self.report({"INFO"}, f"MustardUI - Shape Key '{sk.name}' created ({contact} vertices)")
         return {"FINISHED"}
 
