@@ -79,6 +79,11 @@ class MustardUI_ModelToolkit_SquishSettings(bpy.types.PropertyGroup):
         description="Drive the Shape Key with a hidden custom property of the MustardUI "
         "Outfit of the squishing objects, switched on and off with the Outfit",
     )
+    outfit_property_hidden: bpy.props.BoolProperty(
+        name="Hidden",
+        default=True,
+        description="The custom property is added as a hidden property of the MustardUI",
+    )
 
     mode: bpy.props.EnumProperty(
         name="Mode",
@@ -720,7 +725,7 @@ class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator)
             write_vertex_group(solver.body, sk.name, solver.influence)
         create_followers_shape_keys(solver, settings, solver.body, sk.name)
         if settings.outfit_property:
-            squish_outfit_property(context, solver, sk.name)
+            squish_outfit_property(context, solver, sk.name, hidden=settings.custom_property_hidden)
         self.report({"INFO"}, f"MustardUI - Shape Key '{sk.name}' created ({contact} vertices)")
         return {"FINISHED"}
 
@@ -743,7 +748,9 @@ class MustardUI_ModelToolkit_Squish(ShapeKeyPreviewOperator, bpy.types.Operator)
         message = super().preview_finish(context, session)
         if session.settings.outfit_property:
             name = session.settings.shape_key_name.strip() or session.key_name
-            squish_outfit_property(context, session.solver, name)
+            squish_outfit_property(
+                context, session.solver, name, hidden=session.settings.outfit_property_hidden
+            )
         return message
 
 
@@ -772,7 +779,7 @@ def squish_outfit(body, squishers):
     return None, None
 
 
-def squish_outfit_property(context, solver, key_name):
+def squish_outfit_property(context, solver, key_name, hidden=True):
     """Drive the Shape Key with a hidden Outfit custom property, on when the Outfit is shown"""
 
     arm, outfit = squish_outfit(solver.body, solver.squishers)
@@ -800,13 +807,13 @@ def squish_outfit_property(context, solver, key_name):
     cp = arm.MustardUI_CustomPropertiesOutfit.add()
     cp.rna = rna
     cp.path = "value"
-    cp.name = key_name
+    cp.name = "Squish"
     cp.prop_name = prop_name
     cp.type = "FLOAT"
     cp.subtype = key.key_blocks[key_name].bl_rna.properties["value"].subtype
     cp.icon = "SHAPEKEY_DATA"
     cp.is_animatable = True
-    cp.hidden = True
+    cp.hidden = hidden
     cp.cp_type = "OUTFIT"
     cp.outfit = outfit
     cp.outfit_piece = piece
@@ -841,6 +848,10 @@ def squish_draw_settings(layout, context):
         row = col.row()
         row.enabled = squish_outfit(session.solver.body, session.solver.squishers)[0] is not None
         row.prop(settings, "outfit_property")
+
+        row2 = row.row()
+        row2.enabled = settings.outfit_property
+        row2.prop(settings, "outfit_property_hidden")
 
     col = preview_section(box, "mustardui_squish_squishing", "Squishing", "MOD_SHRINKWRAP")
     if col is not None:
