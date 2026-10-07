@@ -3,7 +3,6 @@ import os
 
 import bpy
 
-from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from .effect import effects_available, is_effect, modifier_input
 
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "wrap.blend")
@@ -35,7 +34,6 @@ class AddWrap:
     def poll(cls, context):
         return (
             effects_available()
-            and active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
             and context.active_object is not None
             and context.active_object.type == "MESH"
         )
@@ -101,7 +99,7 @@ class RemoveWrap:
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT) and any(
+        return any(
             is_effect(m, cls.node_group) for x in context.selected_objects for m in x.modifiers
         )
 

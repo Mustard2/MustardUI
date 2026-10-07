@@ -9,6 +9,7 @@ from helpers import (
     BlenderTestCase,
     build_model,
     configure_model,
+    new_mesh_object,
     new_object,
     set_active,
 )
@@ -722,3 +723,16 @@ class TestStickyStrands(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_remove_sticky_strands()
         self.assertNotIn("Sticky Strands", mouth.modifiers)
         self.assertNotIn(name, bpy.data.objects)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestWithoutModel(BlenderTestCase):
+    # The effects work on any mesh, without a MustardUI model
+    def test_ripple(self):
+        cube = new_mesh_object("Cube")
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_ripple()
+        self.assertIn("Ripple", cube.modifiers)
+
+        bpy.ops.mustardui.model_toolkit_remove_ripple()
+        self.assertNotIn("Ripple", cube.modifiers)

@@ -80,13 +80,12 @@ class MustardUI_ModelToolkit_CreateCollisionCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        return any(x.type == "MESH" for x in context.selected_objects)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = obj.MustardUI_RigSettings
-        physics_settings = obj.MustardUI_PhysicsSettings
+        # Without a model, the result is not added to its Physics Panel
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
 
         def add_driver(source, target, prop, data_path, index=-1):
             """Add a driver to a property."""
@@ -346,11 +345,12 @@ class MustardUI_ModelToolkit_CreateCollisionCage(bpy.types.Operator):
         # Add created cages to the Physics Panel
         for cage in proxy_map.values():
             cage.MustardUI_tools_creators_type = "COLLISION"
-            if self.add_to_panel:
-                add_item = physics_settings.items.add()
+            if self.add_to_panel and res:
+                add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = cage
-                if rig_settings.model_name != "" and rig_settings.model_name not in cage.name:
-                    cage.name = f"{rig_settings.model_name} {cage.name}"
+                model_name = arm.MustardUI_RigSettings.model_name
+                if model_name != "" and model_name not in cage.name:
+                    cage.name = f"{model_name} {cage.name}"
                 add_item.type = "COLLISION"
 
             # Disable shadows for viewport/render
@@ -378,7 +378,9 @@ class MustardUI_ModelToolkit_CreateCollisionCage(bpy.types.Operator):
 
         layout.separator()
 
-        layout.prop(self, "add_to_panel")
+        row = layout.row()
+        row.enabled = active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        row.prop(self, "add_to_panel")
 
     def invoke(self, context, event):
         self.decimate_proxy = True

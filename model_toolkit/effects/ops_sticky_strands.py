@@ -5,7 +5,6 @@ from mathutils import Matrix
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
-from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from .effect import RemoveEffect, effects_available, modifier_input, new_control
 
 NODE_GROUP = "MustardUI Sticky Strands"
@@ -31,8 +30,8 @@ class MustardUI_ModelToolkit_StickyStrands(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return effects_available() and (
-            active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        return (
+            effects_available()
             and context.active_object is not None
             and context.active_object.type == "MESH"
         )

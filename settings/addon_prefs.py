@@ -132,11 +132,14 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         col.prop(self, "quick_setup")
 
         col.separator()
+
         col.prop(self, "developer", text="Developer Tools (for Model creators)")
         row = col.row()
         row.enabled = self.developer
         row.prop(self, "debug")
+
         col.separator()
+
         col.prop(self, "experimental")
 
         row = layout.row(align=True)

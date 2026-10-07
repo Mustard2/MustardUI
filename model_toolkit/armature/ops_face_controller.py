@@ -4,7 +4,11 @@ import re
 import bpy
 
 from ... import __package__ as base_package
-from ...model_selection.active_object import ModelMode, mustardui_active_object
+from ...model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 face_rig_current_version = 2
 
@@ -317,6 +321,15 @@ def compute_fixes(driver, var_out, armature, bone, sk, fac):
     return expression
 
 
+def face_armature(context):
+    """Armature of the model, or the active Armature without a model"""
+    res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+    if res:
+        return arm.MustardUI_RigSettings.model_armature_object
+    obj = context.active_object
+    return obj if obj is not None and obj.type == "ARMATURE" else None
+
+
 class MustardUI_ModelToolkit_FaceController(bpy.types.Operator):
     """Add a Face Controller rig to the model.\nIf another controller is available on the model, the tool can not is disabled"""  # noqa: E501
 
@@ -337,25 +350,16 @@ class MustardUI_ModelToolkit_FaceController(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        if arm is None:
+        model_armature = face_armature(context)
+        if model_armature is None:
             return False
 
-        rig_settings = arm.MustardUI_RigSettings
-        model_armature = rig_settings.model_armature_object
-
         # Check if the face controller rig is already available
-        for b in [x[0] for x in data]:
-            if b in model_armature.pose.bones:
-                return False
-
-        return res
+        return not any(x[0] in model_armature.pose.bones for x in data)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = arm.MustardUI_RigSettings
-        model_armature = rig_settings.model_armature_object
+        model_armature = face_armature(context)
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -517,9 +521,12 @@ class MustardUI_ModelToolkit_FaceController(bpy.types.Operator):
 
             bpy.ops.object.mode_set(mode="OBJECT")
 
-            if self.add_to_armature_panel:
+            # Without a model, there is no Armature panel to add the collection to
+            if self.add_to_armature_panel and active_object_operator_poll(
+                context, config=ModelMode.MODEL_TOOLKIT
+            ):
                 face_found = False
-                for bcoll in arm.collections_all:
+                for bcoll in model_armature.data.collections_all:
                     if bcoll.name == "Face Controllers":
                         bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
                         bcoll_settings.is_in_UI = True
@@ -528,12 +535,13 @@ class MustardUI_ModelToolkit_FaceController(bpy.types.Operator):
                         face_found = True
 
                 if face_found:
-                    index_face = arm.collections.find("Face")
-                    index = arm.collections.find("Face Controllers")
+                    bcolls = model_armature.data.collections
+                    index_face = bcolls.find("Face")
+                    index = bcolls.find("Face Controllers")
 
                     while index > index_face + 1:
-                        arm.collections.move(index, index - 1)
-                        index = arm.collections.find("Face Controllers")
+                        bcolls.move(index, index - 1)
+                        index = bcolls.find("Face Controllers")
 
             if addon_prefs.debug:
                 self.report(
@@ -550,11 +558,7 @@ class MustardUI_ModelToolkit_FaceController(bpy.types.Operator):
             return {"CANCELLED"}
 
     def invoke(self, context, event):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = arm.MustardUI_RigSettings
-        model_armature = rig_settings.model_armature_object
-
-        names = [b.name for b in model_armature.pose.bones]
+        names = [b.name for b in face_armature(context).pose.bones]
         if "head" in names:
             self.head_bone = "head"
         else:
@@ -567,13 +571,11 @@ class MustardUI_ModelToolkit_FaceController(bpy.types.Operator):
 
     def draw(self, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = arm.MustardUI_RigSettings
-        model_armature = rig_settings.model_armature_object
-
         layout = self.layout
-        layout.prop_search(self, "head_bone", model_armature.pose, "bones")
-        layout.prop(self, "add_to_armature_panel")
+        layout.prop_search(self, "head_bone", face_armature(context).pose, "bones")
+        row = layout.row()
+        row.enabled = active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        row.prop(self, "add_to_armature_panel")
 
 
 class MustardUI_ModelToolkit_FaceController_Remove(bpy.types.Operator):
@@ -592,26 +594,18 @@ class MustardUI_ModelToolkit_FaceController_Remove(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        if arm is None:
+        model_armature = face_armature(context)
+        if model_armature is None:
             return False
-
-        rig_settings = arm.MustardUI_RigSettings
-        model_armature = rig_settings.model_armature_object
 
         # Check if the face controller rig is already available
         # The "Squeeze" is a fix to allow old facial rigs to be removed (version 2)
-        for b in [x[0] for x in data if "Squeeze" not in x[0]]:
-            if b not in model_armature.pose.bones:
-                return False
-
-        return res
+        return all(x[0] in model_armature.pose.bones for x in data if "Squeeze" not in x[0])
 
     def execute(self, context):
 
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = arm.MustardUI_RigSettings
-        model_armature = rig_settings.model_armature_object
+        model_armature = face_armature(context)
 
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -686,16 +680,17 @@ class MustardUI_ModelToolkit_FaceController_Remove(bpy.types.Operator):
 
         # Finally remove the Bone Collections
         for brm in ["Face Controllers", "Face Controllers Not Implemented"]:
-            for bcoll in arm.collections_all:
+            for bcoll in model_armature.data.collections_all:
                 if bcoll.name == brm:
-                    arm.collections.remove(bcoll)
+                    model_armature.data.collections.remove(bcoll)
                     break
 
         # Return to Object Mode
         bpy.ops.object.mode_set(mode="OBJECT")
 
         # Set the face rig version
-        rig_settings.creator_tools_face_rig_version = face_rig_current_version
+        if res:
+            arm.MustardUI_RigSettings.creator_tools_face_rig_version = face_rig_current_version
 
         self.report({"INFO"}, "MustardUI - Controller successfully removed from the model.")
 

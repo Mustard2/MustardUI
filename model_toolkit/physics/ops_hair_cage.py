@@ -109,11 +109,7 @@ class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (
-            active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
-            and context.active_object
-            and context.active_object.type == "MESH"
-        )
+        return context.active_object and context.active_object.type == "MESH"
 
     def remove_temp_proxy(self, context):
         temp_proxy = bpy.data.objects.get(self.temp_proxy) if self.temp_proxy else None
@@ -133,8 +129,8 @@ class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
 
     def _execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        physics_settings = obj.MustardUI_PhysicsSettings
+        # Without a model, the result is not added to its Physics Panel
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         addon_prefs = context.preferences.addons[base_package].preferences
 
         self.remove_temp_proxy(context)
@@ -649,8 +645,8 @@ class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
             )
 
         # Add the object to the Physics Panel
-        if self.add_to_panel:
-            add_item = physics_settings.items.add()
+        if self.add_to_panel and res:
+            add_item = arm.MustardUI_PhysicsSettings.items.add()
             add_item.object = bpy.context.object
             add_item.type = "CAGE"
 
@@ -688,7 +684,9 @@ class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
 
         layout.separator()
 
-        layout.prop(self, "add_to_panel")
+        row = layout.row()
+        row.enabled = active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        row.prop(self, "add_to_panel")
 
     def invoke(self, context, event):
         bpy.ops.object.mode_set("INVOKE_DEFAULT", mode="OBJECT")

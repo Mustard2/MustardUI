@@ -2,7 +2,6 @@ import os
 
 import bpy
 
-from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from .effect import effects_available, new_control
 
 NODE_GROUP = "MustardUI Hex Dissolve"
@@ -49,11 +48,7 @@ class MustardUI_ModelToolkit_HexDissolve(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (
-            effects_available()
-            and active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
-            and bool(materials(context.selected_objects))
-        )
+        return effects_available() and bool(materials(context.selected_objects))
 
     def execute(self, context):
         objects = [x for x in context.selected_objects if materials([x])]
@@ -104,9 +99,7 @@ class MustardUI_ModelToolkit_RemoveHexDissolve(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT) and any(
-            effect_nodes(m) for m in materials(context.selected_objects)
-        )
+        return any(effect_nodes(m) for m in materials(context.selected_objects))
 
     def execute(self, context):
         controls = set()

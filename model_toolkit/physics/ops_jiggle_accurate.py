@@ -192,8 +192,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
-            and context.active_object is not None
+            context.active_object is not None
             and context.active_object.type == "MESH"
             and context.mode == "EDIT_MESH"
         )
@@ -203,9 +202,9 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
 
     def _execute(self, context):
 
+        # Without a model, the cages are not added to its Physics Panel nor parented to it
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = arm.MustardUI_RigSettings
-        physics_settings = arm.MustardUI_PhysicsSettings
+        parent = arm.MustardUI_RigSettings.model_armature_object if res else None
         addon_prefs = context.preferences.addons[base_package].preferences
 
         source = context.active_object
@@ -1045,8 +1044,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # Final setup
             # --------------------------------------------------------------
 
-            if self.parent_to_model and rig_settings.model_armature_object is not None:
-                parent = rig_settings.model_armature_object
+            if self.parent_to_model and parent is not None:
                 world = cage.matrix_world.copy()
                 cage.parent = parent
                 cage.matrix_parent_inverse = parent.matrix_world.inverted()
@@ -1064,8 +1062,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             cage.MustardUI_tools_creators_is_created = True
             cage.MustardUI_tools_creators_type = "JIGGLE_ACCURATE"
 
-            if self.add_to_panel:
-                add_item = physics_settings.items.add()
+            if self.add_to_panel and res:
+                add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = cage
                 add_item.type = "CAGE"
 
@@ -1187,6 +1185,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
         layout.prop(self, "name")
 
         col = layout.column(align=True)
+        col.enabled = active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
         col.prop(self, "parent_to_model")
         col.prop(self, "add_to_panel")
 

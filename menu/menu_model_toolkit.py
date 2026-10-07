@@ -19,33 +19,32 @@ class PANEL_PT_MustardUI_ModelToolkit(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        addon_prefs = context.preferences.addons[base_package].preferences
-        return addon_prefs.model_toolkit and active_object_operator_poll(
-            context, config=ModelMode.ANY
-        )
+        return context.preferences.addons[base_package].preferences.model_toolkit
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
-        settings = bpy.context.scene.MustardUI_Settings
+        if active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
+            return
 
-        if settings.viewport_model_selection and arm.MustardUI_created:
-            layout = self.layout
-            box = layout.box()
-            col = box.column(align=True)
-            col.label(text="Viewport Model selection should be", icon="ERROR")
-            col.label(text="disabled to use the Model Toolkit", icon="BLANK1")
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
+        settings = context.scene.MustardUI_Settings
+
+        box = self.layout.box()
+        col = box.column(align=True)
+        if settings.viewport_model_selection and arm is not None and arm.MustardUI_created:
+            col.label(text="Disable Viewport Model Selection", icon="INFO")
+            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
             box.operator(
                 "mustardui.viewportmodelselection",
                 text="Viewport Model Selection",
                 icon="VIEW3D",
                 depress=settings.viewport_model_selection,
             ).config = 1
-        elif settings.viewport_model_selection and not arm.MustardUI_created:
-            layout = self.layout
-            box = layout.box()
-            col = box.column(align=True)
-            col.label(text="Complete the first configuration", icon="ERROR")
-            col.label(text="to use the Model Toolkit", icon="BLANK1")
+        elif any(x.MustardUI_created for x in bpy.data.armatures):
+            col.label(text="Select a MustardUI model", icon="INFO")
+            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
+        else:
+            col.label(text="Configure a model with MustardUI", icon="INFO")
+            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
 
 
 class ModelToolkitSection(MainPanel):
@@ -56,14 +55,15 @@ class ModelToolkitSection(MainPanel):
     # Header label and icon, and page of the guide in the wiki
     header = ("", "NONE")
     guide = ""
-    # Creator-only sections are hidden once the model UI is enabled for users
+    # Creator-only sections need a model, and are hidden once the model UI is enabled
     creator_only = False
 
     @classmethod
     def poll(cls, context):
+        if not cls.creator_only:
+            return True
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.model_toolkit and not (cls.creator_only and arm.MustardUI_enable)
+        return res and not arm.MustardUI_enable
 
     def draw_header(self, context):
         layout = self.layout
@@ -159,7 +159,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Mesh(ModelToolkitSection, bpy.types.Panel)
         layout.separator()
 
         row = layout.row(align=True)
-        row.operator("mustardui.model_toolkit_select_preview_texture", icon="SHADING_SOLID")
+        sub = row.row(align=True)
+        # Without a model, it works on the selected objects
+        sub.enabled = bool(context.selected_objects) or active_object_operator_poll(
+            context, config=ModelMode.MODEL_TOOLKIT
+        )
+        sub.operator("mustardui.model_toolkit_select_preview_texture", icon="SHADING_SOLID")
         row.operator(
             "mustardui.model_toolkit_select_preview_texture", text="", icon="SCENE_DATA"
         ).scene = True

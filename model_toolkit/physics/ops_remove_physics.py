@@ -3,11 +3,6 @@ import re
 import bpy
 
 from ...misc.remove_objects import remove_objects
-from ...model_selection.active_object import (
-    ModelMode,
-    active_object_operator_poll,
-    mustardui_active_object,
-)
 from ...physics.update_enable import named_after_cage
 
 # Vertex Groups the tools create on the meshes driven by the cages
@@ -137,17 +132,33 @@ def used_vertex_groups(obj):
     return used
 
 
-def remove_cages(arm, cages, extra_modifiers=()):
+def remove_physics_items(objects):
+    """Remove the Physics Items of the objects from every model"""
+    for arm in bpy.data.armatures:
+        items = arm.MustardUI_PhysicsSettings.items
+        removed = [i for i, x in enumerate(items) if x.object in objects]
+        if not removed:
+            continue
+        for i in reversed(removed):
+            items.remove(i)
+        index = arm.mustardui_physics_items_uilist_index
+        arm.mustardui_physics_items_uilist_index = max(0, min(index, len(items) - 1))
+
+
+def remove_cages(cages, extra_modifiers=()):
     """Remove the cages with their modifiers, constraints, Vertex Groups and items"""
     cages = {c for c in cages if c is not None and c.name in bpy.data.objects}
     if not cages:
         return 0
 
     names = [c.name for c in cages]
-    physics_settings = arm.MustardUI_PhysicsSettings if arm is not None else None
     cage_names = set(names)
-    if physics_settings is not None:
-        cage_names.update(x.object.name for x in physics_settings.items if x.object)
+    cage_names.update(
+        x.object.name
+        for arm in bpy.data.armatures
+        for x in arm.MustardUI_PhysicsSettings.items
+        if x.object
+    )
 
     # Modifiers on the other meshes
     removed_groups = {}
@@ -185,15 +196,7 @@ def remove_cages(arm, cages, extra_modifiers=()):
                 if getattr(constraint, "target", None) in cages:
                     bone.constraints.remove(constraint)
 
-    # Physics Items
-    if physics_settings is not None:
-        for i in reversed(range(len(physics_settings.items))):
-            if physics_settings.items[i].object in cages:
-                physics_settings.items.remove(i)
-        index = arm.mustardui_physics_items_uilist_index
-        arm.mustardui_physics_items_uilist_index = max(
-            0, min(index, len(physics_settings.items) - 1)
-        )
+    remove_physics_items(cages)
 
     count = len(cages)
     remove_objects(list(cages))
@@ -216,9 +219,7 @@ class RemovePhysicsBase:
 
     @classmethod
     def poll(cls, context):
-        if context.mode != "OBJECT" or not active_object_operator_poll(
-            context, config=ModelMode.MODEL_TOOLKIT
-        ):
+        if context.mode != "OBJECT":
             return False
         return bool(cages_from_selection(context, cls.detector))
 
@@ -227,11 +228,10 @@ class RemovePhysicsBase:
         return set(), []
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         cages = cages_from_selection(context, self.detector)
         others, modifiers = self.collect(context, cages)
         collections = self.own_collections(cages | others)
-        count = remove_cages(arm, cages | others, modifiers)
+        count = remove_cages(cages | others, modifiers)
         for collection in collections:
             if not collection.all_objects and not collection.children:
                 bpy.data.collections.remove(collection)
@@ -310,9 +310,7 @@ class MustardUI_ModelToolkit_RemoveCollisionCage(RemovePhysicsBase, bpy.types.Op
 
     @classmethod
     def poll(cls, context):
-        if context.mode != "OBJECT" or not active_object_operator_poll(
-            context, config=ModelMode.MODEL_TOOLKIT
-        ):
+        if context.mode != "OBJECT":
             return False
         return bool(cages_from_selection(context, is_collision_cage) or cls.from_sources(context))
 

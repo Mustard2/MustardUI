@@ -183,8 +183,7 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
-            and context.active_object
+            context.active_object
             and context.active_object.type == "MESH"
             and bpy.context.mode == "EDIT_MESH"
         )
@@ -194,9 +193,9 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
 
     def _execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = obj.MustardUI_RigSettings
-        physics_settings = obj.MustardUI_PhysicsSettings
+        # Without a model, the cages are not added to its Physics Panel nor parented to it
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+        parent = arm.MustardUI_RigSettings.model_armature_object if res else None
         addon_prefs = context.preferences.addons[base_package].preferences
 
         # Check if vertices are selected before continuing
@@ -731,14 +730,13 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
             obj.MustardUI_tools_creators_type = "JIGGLE"
 
             # Add the object to the Physics Panel
-            if self.add_to_panel:
-                add_item = physics_settings.items.add()
+            if self.add_to_panel and res:
+                add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = obj
                 add_item.type = "CAGE"
 
             # Parent the object to the Model Armature
-            if self.parent_to_model and rig_settings.model_armature_object is not None:
-                parent = rig_settings.model_armature_object
+            if self.parent_to_model and parent is not None:
                 world = obj.matrix_world.copy()
                 obj.parent = parent
                 obj.matrix_parent_inverse = parent.matrix_world.inverted()
@@ -780,6 +778,7 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
         layout.prop(self, "name")
 
         col = layout.column(align=True)
+        col.enabled = active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
         col.prop(self, "parent_to_model")
         col.prop(self, "add_to_panel")
 

@@ -123,6 +123,16 @@ class TestUI(BlenderTestCase):
         settings.panel_model_selection_armature = model["armature"].data
         self.assertDrawsCleanly("PANEL_PT_MustardUI_Outfits")
 
+    # Model Toolkit hides only the creator sections, needing a model, without one
+    def test_draw_model_toolkit_without_model(self):
+        set_active(new_mesh_object("Cube"))
+        bpy.context.preferences.addons[ADDON].preferences.model_toolkit = True
+        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit")
+        for section in ("Rig", "Outfits", "Mesh", "Physics", "Effects"):
+            self.assertIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
+        for section in ("Model", "Optimizations"):
+            self.assertNotIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
+
     # Configuration panels draw with list indices past the end, as left by another model
     def test_draw_configuration_stale_indices(self):
         model = build_model()

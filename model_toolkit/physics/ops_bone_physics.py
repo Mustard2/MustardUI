@@ -5,6 +5,7 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from .ops_remove_physics import remove_physics_items
 
 
 def check_bones_connections(selected_bones):
@@ -88,9 +89,6 @@ class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
-            return False
-
         armature = context.object
 
         if armature and armature.type == "ARMATURE" and armature.mode == "POSE":
@@ -104,9 +102,9 @@ class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = obj.MustardUI_RigSettings
-        physics_settings = obj.MustardUI_PhysicsSettings
+        # Without a model, the result is not added to its Physics Panel
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+        model_name = arm.MustardUI_RigSettings.model_name if res else ""
 
         armature = context.object
         if bpy.app.version >= (5, 0, 0):
@@ -153,12 +151,8 @@ class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
             bpy.ops.object.mode_set(mode="OBJECT")
 
             # Create a new object for the curve and link it to the scene
-            if rig_settings.model_name != "" and armature.name != "":
-                bp_name = (
-                    f"{rig_settings.model_name} "
-                    f"{armature.name.replace(rig_settings.model_name, '')} "
-                    f"Bone Physics"
-                )
+            if model_name != "" and armature.name != "":
+                bp_name = f"{model_name} {armature.name.replace(model_name, '')} Bone Physics"
             else:
                 bp_name = "Bone Physics"
             curve_obj = bpy.data.objects.new(bp_name, curve_data)
@@ -277,8 +271,8 @@ class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
             bpy.context.view_layer.objects.active = co
 
             # Add the object to the Physics Panel
-            if self.add_to_panel:
-                add_item = physics_settings.items.add()
+            if self.add_to_panel and res:
+                add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = co
                 add_item.type = "BONES_DRIVER"
 
@@ -314,7 +308,9 @@ class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
 
         layout.separator()
 
-        layout.prop(self, "add_to_panel", emboss=True)
+        row = layout.row()
+        row.enabled = active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        row.prop(self, "add_to_panel", emboss=True)
 
     def invoke(self, context, event):
         self.pinned_bones = 1
@@ -330,9 +326,6 @@ class MustardUI_ModelToolkit_BonePhysics_Clean(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
-            return False
-
         obj = context.object
 
         if obj and obj.type == "MESH" and obj.mode == "OBJECT":
@@ -341,9 +334,6 @@ class MustardUI_ModelToolkit_BonePhysics_Clean(bpy.types.Operator):
         return False
 
     def execute(self, context):
-
-        res, obj = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        physics_settings = obj.MustardUI_PhysicsSettings
 
         curve_obj = context.object
 
@@ -362,16 +352,7 @@ class MustardUI_ModelToolkit_BonePhysics_Clean(bpy.types.Operator):
                 if constraint.type == "DAMPED_TRACK" and constraint.target == curve_obj:
                     bone.constraints.remove(constraint)
 
-        # Remove the item from the list if available
-        for i in reversed(range(len(physics_settings.items))):
-            if physics_settings.items[i].object == curve_obj:
-                physics_settings.items.remove(i)
-
-        # Keep the index of the Physics Items list in range
-        index = obj.mustardui_physics_items_uilist_index
-        obj.mustardui_physics_items_uilist_index = max(
-            0, min(index, len(physics_settings.items) - 1)
-        )
+        remove_physics_items({curve_obj})
 
         # Delete the curve object
         if curve_obj and curve_obj.name in bpy.data.objects:

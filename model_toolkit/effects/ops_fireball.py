@@ -2,7 +2,6 @@ import os
 
 import bpy
 
-from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from .effect import effects_available, is_effect, modifier_input
 
 NODE_GROUP = "MustardUI Fireball"
@@ -24,9 +23,7 @@ class MustardUI_ModelToolkit_Fireball(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return effects_available() and active_object_operator_poll(
-            context, config=ModelMode.MODEL_TOOLKIT
-        )
+        return effects_available()
 
     def execute(self, context):
         with bpy.data.libraries.load(RESOURCE) as (_, target):
@@ -85,9 +82,7 @@ class MustardUI_ModelToolkit_RemoveFireball(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT) and any(
-            cls.fireballs(context)
-        )
+        return any(cls.fireballs(context))
 
     def execute(self, context):
         fireballs = list(self.fireballs(context))

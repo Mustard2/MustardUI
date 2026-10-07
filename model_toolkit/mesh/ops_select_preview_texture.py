@@ -74,19 +74,22 @@ class MustardUI_ModelToolkit_SelectPreviewTexture(bpy.types.Operator):
 
     @classmethod
     def description(cls, context, properties):
-        target = "every object in the scene" if properties.scene else "the model"
+        if properties.scene:
+            target = "every object in the scene"
+        elif active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
+            target = "the model"
+        else:
+            target = "the selected objects"
         return f"Set Viewport Solid Mode preview texture for all materials of {target}"
 
-    @classmethod
-    def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
-
     def execute(self, context):
+        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         if self.scene:
             objects = context.scene.objects
-        else:
-            res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
+        elif res:
             objects = get_ui_mesh_objects(arm.MustardUI_RigSettings)
+        else:
+            objects = context.selected_objects
 
         # Materials shared by several objects are processed once
         materials = {slot.material for obj in objects for slot in obj.material_slots}

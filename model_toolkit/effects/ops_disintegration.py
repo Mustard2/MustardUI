@@ -2,7 +2,6 @@ import os
 
 import bpy
 
-from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from .effect import (
     RemoveEffect,
     add_effect_modifier,
@@ -33,11 +32,7 @@ class MustardUI_ModelToolkit_Disintegration(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (
-            effects_available()
-            and active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
-            and any(x.type == "MESH" for x in context.selected_objects)
-        )
+        return effects_available() and any(x.type == "MESH" for x in context.selected_objects)
 
     def execute(self, context):
         objects = [x for x in context.selected_objects if x.type == "MESH"]

@@ -1,8 +1,6 @@
 import bpy
 from mathutils import Vector
 
-from ...model_selection.active_object import ModelMode, active_object_operator_poll
-
 
 def effects_available():
     return bpy.app.version >= (5, 2, 0)
@@ -68,7 +66,7 @@ class RemoveEffect:
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT) and any(
+        return any(
             is_effect(m, cls.node_group) for x in context.selected_objects for m in x.modifiers
         )
 

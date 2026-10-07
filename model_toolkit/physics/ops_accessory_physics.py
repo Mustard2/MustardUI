@@ -9,7 +9,11 @@ from mathutils.bvhtree import BVHTree
 from ...misc.mesh_deform import kdtree, read_weights
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
-from ...model_selection.active_object import ModelMode, mustardui_active_object
+from ...model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import physics_presets
 
 PIN_GROUP = "Accessory Pin"
@@ -673,19 +677,20 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
         obj = context.active_object
-        if not res or obj is None or obj.type != "MESH":
+        if obj is None or obj.type != "MESH":
             return False
-        return obj != arm.MustardUI_RigSettings.model_body
+        return all(x.MustardUI_RigSettings.model_body != obj for x in bpy.data.armatures)
 
     def execute(self, context):
         return execute_restoring_state(self, context)
 
     def _execute(self, context):
+        # Without a model, the accessory needs its own Armature modifier, and is not added
+        # to the Physics Panel
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
-        rig_settings = arm.MustardUI_RigSettings
-        body = rig_settings.model_body
+        arm = arm if res else None
+        body = arm.MustardUI_RigSettings.model_body if arm else None
         target = context.active_object
 
         if context.object.mode != "OBJECT":
@@ -693,7 +698,7 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
 
         armature = next(
             (m.object for m in target.modifiers if m.type == "ARMATURE" and m.object),
-            rig_settings.model_armature_object,
+            arm.MustardUI_RigSettings.model_armature_object if arm else None,
         )
         if armature is None:
             self.report({"ERROR"}, "MustardUI - No armature found for the accessory")
@@ -720,9 +725,7 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             raise
 
     def build(self, context, arm, target, armature):
-        rig_settings = arm.MustardUI_RigSettings
-        physics_settings = arm.MustardUI_PhysicsSettings
-        body = rig_settings.model_body
+        body = arm.MustardUI_RigSettings.model_body if arm else None
 
         # Everything is computed in rest pose, on the first frame
         context.scene.frame_set(context.scene.frame_start)
@@ -887,7 +890,7 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
                 source = next(
                     (
                         x.object
-                        for x in physics_settings.items
+                        for x in (arm.MustardUI_PhysicsSettings.items if arm else [])
                         if x.type == "COLLISION" and x.object and x.object.type == "MESH"
                     ),
                     body,
@@ -918,7 +921,9 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
                 if location is not None and (co - location).dot(normal) < -0.002:
                     clipping += 1
 
-        if self.add_to_panel:
+        if self.add_to_panel and arm:
+            rig_settings = arm.MustardUI_RigSettings
+            physics_settings = arm.MustardUI_PhysicsSettings
             item = physics_settings.items.add()
             item.object = proxy
             item.type = "CAGE"
@@ -982,7 +987,9 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
         row.enabled = not self.collision_object
         row.prop(self, "collision_margin")
 
-        layout.prop(self, "add_to_panel")
+        row = layout.row()
+        row.enabled = active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
+        row.prop(self, "add_to_panel")
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=320)
