@@ -493,6 +493,24 @@ def build_node_group(text):
     def near(geometry, around, margin, x, y):
         """Faces of the geometry in the bounding box of the other one grown by the margin"""
         box = t.node("GeometryNodeBoundBox", x, y - 1, {"Geometry": around}).outputs
+        # The face centers, in the box grown by the face sizes too, to keep the faces larger than
+        # it: twice the average distance of the corners, at least the farthest one in quads
+        center = t.node(
+            "GeometryNodeFieldOnDomain",
+            x - 2,
+            y - 4,
+            {"Value": position},
+            data_type="FLOAT_VECTOR",
+            domain="FACE",
+        ).outputs[0]
+        size = t.node(
+            "GeometryNodeFieldOnDomain",
+            x - 1,
+            y - 4,
+            {"Value": t.vmath("DISTANCE", position, center, x=x - 1, y=y - 5)},
+            domain="CORNER",
+        ).outputs[0]
+        margin = t.math("MULTIPLY_ADD", size, 2.0, margin, x=x, y=y - 4)
         inside = [
             t.node(
                 "FunctionNodeCompare",

@@ -459,12 +459,14 @@ class TestStickyStrands(BlenderTestCase):
         self.scene = bpy.context.scene
         self.scene.cursor.location = (0.055, 0.0, 0.0)
 
-    def balls(self, name, *xs):
+    def balls(self, name, *xs, radius=0.05):
         mesh = bpy.data.meshes.new(name)
         bm = bmesh.new()
         for x in xs:
             matrix = Matrix.Translation((x, 0.0, 0.0))
-            bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=0.05, matrix=matrix)
+            bmesh.ops.create_uvsphere(
+                bm, u_segments=32, v_segments=16, radius=radius, matrix=matrix
+            )
         bm.to_mesh(mesh)
         bm.free()
         return new_object(name, mesh)
@@ -712,6 +714,18 @@ class TestStickyStrands(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_sticky_strands()
         self.scene.frame_set(self.scene.frame_start)
         self.assertGreater(len(self.strands(bpy.data.objects["Lip"])), 0)
+
+    # Faces larger than the strands, the flared ends staying on them and not pulled inside
+    def test_large_spheres(self):
+        lip = self.balls("Lip", 0.0, radius=1.0)
+        set_active(self.balls("Finger", 2.0, radius=1.0))
+        lip.select_set(True)
+
+        bpy.ops.mustardui.model_toolkit_sticky_strands()
+        self.scene.frame_set(self.scene.frame_start)
+        co = self.strands(lip)
+        self.assertGreater(len(co), 0)
+        self.assertGreater(np.linalg.norm(co, axis=1).min(), 0.95)
 
     # The Control is removed with the Sticky Strands
     def test_remove(self):
