@@ -157,7 +157,7 @@ class MustardUI_Configuration_SmartCheck(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     url_MustardUI_CustomProperties = (
-        "https://github.com/Mustard2/MustardUI/wiki/Creator-Body#custom-properties-smart-check"
+        "https://github.com/Mustard2/MustardUI/wiki/Creator-Model#custom-properties-smart-check"
     )
 
     smartcheck_custom_properties: bpy.props.BoolProperty(
