@@ -34,11 +34,23 @@ class Tree:
     def __init__(self, tree, spacing=(200, 200)):
         self.tree = tree
         self.spacing = spacing
+        self.frame = None
+        self.rows = set()
+
+    def section(self, label, row=False):
+        """Frame with the label, holding the nodes added next, starting a row of frames"""
+        self.frame = self.tree.nodes.new("NodeFrame")
+        self.frame.label = label
+        self.frame.label_size = 32
+        if row:
+            self.rows.add(self.frame)
 
     def node(self, idname, x, y, inputs=None, **props):
         """Node with the props set, and the inputs (by index or name) set or linked"""
         node = self.tree.nodes.new(idname)
         node.location = (x * self.spacing[0], y * self.spacing[1])
+        if idname != "NodeFrame":
+            node.parent = self.frame
         for key, value in props.items():
             setattr(node, key, value)
         for key, value in (inputs or {}).items():
@@ -86,6 +98,100 @@ class Tree:
             domain=domain,
         )
         return node.outputs["Geometry"]
+
+    def arrange(self):
+        """Layout of the section frames in rows, with the nodes in columns by their depth, and
+        copies of the input nodes in each section using them, not to link them across"""
+        nodes, links = self.tree.nodes, self.tree.links
+        inputs = [
+            n
+            for n in nodes
+            if n.bl_idname in INPUT_NODES and not any(s.is_linked for s in n.inputs)
+        ]
+        copies = {}
+        for node in inputs:
+            for link in [k for k in links if k.from_node == node]:
+                user = link.to_node
+                if user.parent == node.parent or link.to_socket.is_multi_input:
+                    continue
+                if (node, user.parent) not in copies:
+                    copy = nodes.new(node.bl_idname)
+                    copy.parent = user.parent
+                    copy.location_absolute = user.location_absolute
+                    if hasattr(node, "data_type"):
+                        copy.data_type = node.data_type
+                    for a, b in zip(node.inputs, copy.inputs, strict=True):
+                        b.default_value = a.default_value
+                    copies[node, user.parent] = copy
+                output = list(node.outputs).index(link.from_socket)
+                links.new(copies[node, user.parent].outputs[output], link.to_socket)
+        for node in inputs:
+            if not any(s.is_linked for s in node.outputs):
+                nodes.remove(node)
+        for node in [n for n in nodes if n.bl_idname == "NodeGroupInput"]:
+            for output in node.outputs:
+                output.hide = not output.is_linked
+
+        x = top = bottom = 0
+        for frame in [n for n in nodes if n.bl_idname == "NodeFrame"]:
+            # By the hand placed height, kept in each column
+            members = sorted(
+                [n for n in nodes if n.parent == frame], key=lambda n: -n.location_absolute.y
+            )
+            if not members:
+                continue
+            if frame in self.rows:
+                x, top = 0, bottom - 600
+            inner = [k for k in links if k.from_node.parent == k.to_node.parent == frame]
+            # Longest path from the section start
+            depth = dict.fromkeys(members, 0)
+            for _ in members:
+                for link in inner:
+                    depth[link.to_node] = max(depth[link.to_node], depth[link.from_node] + 1)
+            # Nodes without previous ones in the section right before their first user
+            for node in [n for n in members if not any(k.to_node == n for k in inner)]:
+                users = [depth[k.to_node] for k in inner if k.from_node == node]
+                depth[node] = min(users, default=1) - 1
+            columns = {}
+            for node in members:
+                columns.setdefault(depth[node], []).append(node)
+            for d in sorted(columns):
+                y = top
+                for node in columns[d]:
+                    node.location_absolute = (x, y)
+                    y -= node_height(node) + 40
+                bottom = min(bottom, y)
+                x += max(n.width for n in columns[d]) + 80
+            x += 400
+
+
+def node_height(node):
+    """Height of the node as drawn, estimated from its sockets and options"""
+    rows = sum(
+        4 if s.type == "VECTOR" and not s.is_linked and not s.is_output else 1
+        for s in (*node.inputs, *node.outputs)
+        if s.enabled and not s.hide
+    )
+    options = [
+        p
+        for p in node.bl_rna.properties
+        if p.type in {"ENUM", "BOOLEAN"}
+        and not p.is_readonly
+        and p.identifier not in bpy.types.Node.bl_rna.properties
+    ]
+    return 40 + 22 * (rows + len(options))
+
+
+# Nodes reading a value, the same in their copies anywhere in the tree
+INPUT_NODES = {
+    "NodeGroupInput",
+    "GeometryNodeInputIndex",
+    "GeometryNodeInputNamedAttribute",
+    "GeometryNodeInputNormal",
+    "GeometryNodeInputPosition",
+    "GeometryNodeSplineLength",
+    "GeometryNodeSplineParameter",
+}
 
 
 def write(name, datablocks, fake_user=False):

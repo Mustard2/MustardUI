@@ -343,6 +343,7 @@ def build_node_group(text):
     )
 
     t = Tree(ng, spacing=(200, 160))
+    t.section("Spaces and Target")
     inputs = t.node("NodeGroupInput", -30, 0).outputs
     position = t.node("GeometryNodeInputPosition", -30, -8).outputs[0]
     normal = t.node("GeometryNodeInputNormal", -30, -9).outputs[0]
@@ -442,6 +443,7 @@ def build_node_group(text):
     target, target_masked, target_rest, target_fields = surface(
         target_geometry, target_transform, inputs["End Vertex Group"], 0.5, -24, 4
     )
+    t.section("Surfaces")
     # Placed once on the deformed meshes for the simulation, or every frame without physics,
     # on the meshes at rest for the strands not to move around while they deform
     source_placed, target_placed = (
@@ -542,6 +544,7 @@ def build_node_group(text):
         )
         return t.vmath("ADD", line, t.vmath("SCALE", down, bow, x=x + 4, y=y - 2), x=x + 5, y=y)
 
+    t.section("Strand Starts")
     # Strand starts: inside the Control sphere, the Count points closest to the Target with a
     # random jitter, where the surfaces were touching
     in_control = t.node(
@@ -622,6 +625,7 @@ def build_node_group(text):
         domain="POINT",
     ).outputs[0]
 
+    t.section("Strand Ends")
     # Strand ends: on the masked Target, near the start offset at random
     offset = t.node(
         "FunctionNodeRandomValue",
@@ -663,6 +667,7 @@ def build_node_group(text):
         )
         return a, b, t.vmath("DISTANCE", a[0], b[0], x=x + 5, y=y - 2)
 
+    t.section("Strand Values")
     # Per strand: the distance and random values, from which the slack length, break length and
     # thickness follow the inputs, also while simulating
     _, _, distance = anchors(-7, -14)
@@ -704,6 +709,7 @@ def build_node_group(text):
     strand_thickness = t.math("MULTIPLY", strength, inputs["Thickness"], x=2, y=-13)
     strands = t.store(strands, "strand_length", "FLOAT", strand_slack, 1, 0)
 
+    t.section("Chains")
     # Chains of points between the ends, sagging as a parabola of the strand length
     strand = t.node("GeometryNodeCaptureAttribute", 3, 0, {"Geometry": strands})
     strand.capture_items.new("INT", "Strand")
@@ -738,6 +744,7 @@ def build_node_group(text):
         },
     ).outputs[0]
 
+    t.section("New Strands on Contact", row=True)
     # Simulation: follow the ends, stretch, break, swing and collide
     sim_in = t.node("GeometryNodeSimulationInput", 14, 0)
     sim_out = t.node("GeometryNodeSimulationOutput", 44, 0)
@@ -840,6 +847,7 @@ def build_node_group(text):
             },
             data_type=data_type,
         ).outputs[0]
+    t.section("Breaking")
     # Only while some strands are broken, not to place them every frame
     any_broken = t.node(
         "GeometryNodeAttributeStatistic", 15, 2, {"Geometry": state, "Attribute": was_broken}
@@ -881,6 +889,7 @@ def build_node_group(text):
     state = t.store(state, "strand_broken", "BOOLEAN", broken, 24, 0)
     broken = attribute("broken", "FLOAT", 24, -6)
 
+    t.section("Relaxing")
     # Stretched strands shrink back to their slack length, broken ones dangle
     length = attribute("length", "FLOAT", 22, -7)
     relax = t.math("MULTIPLY", inputs["Elasticity"], dt, x=22, y=-8, clamp=True)
@@ -892,6 +901,7 @@ def build_node_group(text):
     )
     state = t.store(state, "strand_length", "FLOAT", length, 26, 0)
 
+    t.section("Colliders")
     # Colliders: the meshes and the Colliders collection
     colliders = t.node(
         "GeometryNodeCollectionInfo",
@@ -927,6 +937,7 @@ def build_node_group(text):
     free = t.math("SUBTRACT", 1.0, pinned, x=30, y=-10)
     cut = attribute("cut", "FLOAT", 26, -12)
 
+    t.section("Substeps")
     # Substeps: Verlet integration, with the ends pinned
     steps_in = t.node("GeometryNodeRepeatInput", 27, 0, {"Iterations": inputs["Substeps"]})
     steps_out = t.node("GeometryNodeRepeatOutput", 43, 0)
@@ -969,6 +980,7 @@ def build_node_group(text):
     ).outputs[0]
     chain = t.store(chain, "strand_prev", "FLOAT_VECTOR", old.outputs["Position"], 32, 0)
 
+    t.section("Length Constraints")
     # Jacobi iterations of the length constraints, except at the break point
     iterations_in = t.node("GeometryNodeRepeatInput", 33, 0, {"Iterations": inputs["Iterations"]})
     iterations_out = t.node("GeometryNodeRepeatOutput", 38, 0)
@@ -1058,6 +1070,7 @@ def build_node_group(text):
     t.connect(chain, iterations_out.inputs["Geometry"])
     chain = iterations_out.outputs["Geometry"]
 
+    t.section("Long Range Attachments")
     # Long range attachments: no point farther from the attached ends than along the strand,
     # for the strands not to stretch under gravity
     after_cut = t.math("GREATER_THAN", in_curve, t.math("ADD", cut, 0.5, x=38, y=-21), x=39, y=-21)
@@ -1102,6 +1115,7 @@ def build_node_group(text):
             },
         ).outputs[0]
 
+    t.section("Collision")
     # Collision: points under the surfaces, not deeper than the Control radius, pushed out
     nearest = [
         t.node(
@@ -1151,7 +1165,10 @@ def build_node_group(text):
     ).outputs[0]
     t.connect(chain, steps_out.inputs["Geometry"])
     t.connect(steps_out.outputs["Geometry"], sim_out.inputs["Geometry"])
+    # The zone outputs after their last nodes
+    steps_out.parent = sim_out.parent = t.frame
 
+    t.section("Without Physics", row=True)
     # Without physics: the hanging chains, without the simulation zone not to need its cache,
     # removed when broken
     _, _, distance = anchors(40, 8)
@@ -1167,6 +1184,7 @@ def build_node_group(text):
         domain="POINT",
     ).outputs[0]
 
+    t.section("Radius")
     # Radius: pinched in the middle, flared on the surface, tapered at the break
     strands = t.node(
         "GeometryNodeSwitch",
@@ -1255,6 +1273,7 @@ def build_node_group(text):
     # For the shader: the factor along the whole strands, 0 and 1 on the meshes when broken too
     strands = t.store(strands, "sticky_factor", "FLOAT", spline["Factor"], 54.5, 0)
 
+    t.section("Strand Mesh")
     # Broken strands split in two at the break, by deleting that edge
     edges = t.node("GeometryNodeCurveToMesh", 55, 0, {"Curve": strands}).outputs[0]
     edges = t.node(
@@ -1310,6 +1329,7 @@ def build_node_group(text):
             "Fill Caps": True,
         },
     ).outputs[0]
+    t.section("Sticky Ends")
     # Sticky ends: the flared tips pulled onto the surfaces
     surfaces = t.node("GeometryNodeJoinGeometry", 60, -6)
     for geometry in (other_target, source):
@@ -1360,14 +1380,15 @@ def build_node_group(text):
         {"Geometry": strands, "Mode": "Matrix", "Transform": to_local},
     ).outputs[0]
 
-    note(t, text, 53, 6)
-
+    t.section("Output")
     # An instance, for the mesh not to be copied into a new one with the strands
     strands = t.node("GeometryNodeGeometryToInstance", 65.5, 0, {0: strands}).outputs[0]
     join = t.node("GeometryNodeJoinGeometry", 66, 0)
     t.connect(strands, join.inputs[0])
     t.connect(inputs["Geometry"], join.inputs[0])
     t.node("NodeGroupOutput", 67, 0, {0: join.outputs[0]})
+    t.arrange()
+    note(t, text, 0, 3)
     return ng
 
 
