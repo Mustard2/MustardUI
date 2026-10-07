@@ -71,7 +71,7 @@ class ModelToolkitSection(MainPanel):
         if self.guide:
             layout.operator(
                 "wm.url_open", text="", icon="QUESTION"
-            ).url = f"https://github.com/Mustard2/MustardUI/wiki/Creator-Tools-{self.guide}"
+            ).url = f"https://github.com/Mustard2/MustardUI/wiki/Model-Toolkit-{self.guide}"
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Rig(ModelToolkitSection, bpy.types.Panel):
