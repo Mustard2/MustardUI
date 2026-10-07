@@ -528,6 +528,61 @@ class TestStickyStrands(BlenderTestCase):
         self.assertFalse(np.any(np.abs(co[:, 0] - 0.25) < 0.05))
         self.assertLess(co[:, 2].min(), -0.05)
 
+    def attributes(self, obj):
+        """The strand attributes for the shader, by name"""
+        geometry = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
+        references = geometry.instance_references()
+        mesh = next(x.mesh for x in references if x.mesh)
+        self.assertNotIn("strand_length", mesh.attributes)
+        values = {}
+        for name in ("sticky_length", "sticky_factor", "sticky_length_normalized"):
+            values[name] = np.empty(len(mesh.vertices))
+            mesh.attributes[name].data.foreach_get("value", values[name])
+        return values
+
+    # The length, the factor along and the closeness to breaking are kept for the shader
+    def test_shader_attributes(self):
+        lip = self.pull(physics=True)
+        self.play(10)
+        values = self.attributes(lip)
+        self.assertGreater(values["sticky_length"].min(), 0.09)
+        self.assertAlmostEqual(values["sticky_factor"].min(), 0.0, places=3)
+        self.assertAlmostEqual(values["sticky_factor"].max(), 1.0, places=3)
+        self.assertGreater(values["sticky_length_normalized"].min(), 0.5)
+        self.assertLessEqual(values["sticky_length_normalized"].max(), 1.0)
+
+        # Never close to breaking without Break Length
+        effect.modifier_input(lip.modifiers["Sticky Strands"], "Break Length").value = 0.0
+        lip.update_tag()
+        self.scene.frame_set(self.scene.frame_current)
+        self.assertFalse(self.attributes(lip)["sticky_length_normalized"].any())
+
+    # The factor is along the whole strands, 0 and 1 only at the ends on the meshes
+    def test_shader_factor_broken(self):
+        lip = self.pull(physics=True)
+        self.play(40)
+        factor = self.attributes(lip)["sticky_factor"]
+        co = self.strands(lip)
+        ends = co[(factor < 0.02) | (factor > 0.98)]
+        finger = bpy.data.objects["Finger"].location
+        distance = np.minimum(np.linalg.norm(ends, axis=1), np.linalg.norm(ends - finger, axis=1))
+        self.assertLess(distance.max(), 0.07)
+        self.assertLess(co[:, 2].min(), -0.05)
+        # Not close to breaking anymore once broken
+        self.assertFalse(self.attributes(lip)["sticky_length_normalized"].any())
+
+    # Broken strands are not close to breaking anymore, also when placed already broken
+    def test_shader_broken_tension(self):
+        lip = self.pull(physics=True, moves=((0, 0.3),))
+        self.play(10)
+        self.assertFalse(self.attributes(lip)["sticky_length_normalized"].any())
+
+    # Without physics, the strands get closer to breaking as they stretch too
+    def test_static_tension(self):
+        lip = self.pull(physics=False)
+        self.play(10)
+        self.assertGreater(self.attributes(lip)["sticky_length_normalized"].min(), 0.5)
+
     # The break length, and the other strand options, apply while simulating
     def test_live_options(self):
         lip = self.pull(physics=True)

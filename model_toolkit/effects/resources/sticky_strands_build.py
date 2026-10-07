@@ -12,14 +12,32 @@ from build_utils import Tree, add_input, add_output, socket, write
 RESOURCE = "sticky_strands.blend"
 NODE_GROUP = "MustardUI Sticky Strands"
 MATERIAL = "MustardUI Sticky Strands"
+# Shown in the node trees, to document the strand attributes
+ATTRIBUTES = """\
+Attributes of the strands for the shader, read with Attribute nodes of Geometry type:
+- sticky_length: length of the strands, broken ones split in two
+- sticky_factor: 0 to 1 along the strands, from the mesh to the Target, also when broken
+- sticky_length_normalized: length relative to the Break Length, 1 when breaking, \
+0 without Break Length and once broken
+"""
 # Spacing of the points at the strand ends, relative to the average, to shape the flares
 END_SPACING = 0.2
 
 
-def build_node_group():
+def note(t, text, x, y):
+    """Frame showing the text, to document the node tree"""
+    t.node(
+        "NodeFrame", x, y, label="Shader Attributes", text=text, shrink=False, width=900, height=200
+    )
+
+
+def build_node_group(text):
     ng = bpy.data.node_groups.new(NODE_GROUP, "GeometryNodeTree")
     ng.is_modifier = True
-    ng.description = "Simulated strands of saliva or goo between the mesh and the Target"
+    ng.description = (
+        "Simulated strands of saliva or goo between the mesh and the Target, with the "
+        "sticky_length, sticky_factor and sticky_length_normalized attributes for the shader"
+    )
 
     add_output(ng, "Geometry", "NodeSocketGeometry")
     add_input(ng, "Geometry", "NodeSocketGeometry")
@@ -56,7 +74,13 @@ def build_node_group():
         description="Vertex Group of the Target where the strands end, "
         "or of the mesh itself without Target",
     )
-    add_input(ng, "Material", "NodeSocketMaterial", description="Material of the strands")
+    add_input(
+        ng,
+        "Material",
+        "NodeSocketMaterial",
+        description="Material of the strands, whose shader can read the sticky_length, "
+        "sticky_factor and sticky_length_normalized attributes",
+    )
     add_input(ng, "Seed", "NodeSocketInt", description="Seed of the random placement")
 
     panel = ng.interface.new_panel("Strands")
@@ -1161,8 +1185,8 @@ def build_node_group():
         x=48,
         y=-4,
     )
-    # Thinner closer to breaking, down to a third
-    thin = t.math(
+    # Closeness to breaking, 0 without Break Length as the division by 0 is 0
+    tension = t.math(
         "DIVIDE",
         attribute("length", "FLOAT", 45, -7),
         strand_break,
@@ -1170,7 +1194,8 @@ def build_node_group():
         y=-7,
         clamp=True,
     )
-    thin = t.math("MULTIPLY", thin, thin, x=47, y=-7)
+    # Thinner closer to breaking, down to a third
+    thin = t.math("MULTIPLY", tension, tension, x=47, y=-7)
     thin = t.math("MULTIPLY_ADD", thin, -0.65, 1.0, x=48, y=-7)
     along = t.math("SUBTRACT", spline_length["Length"], spline["Length"], x=45, y=-10)
     along = t.math("MINIMUM", along, spline["Length"], x=46, y=-10)
@@ -1218,10 +1243,17 @@ def build_node_group():
     for i, value in enumerate((pinch, thin, flare, tip, lumps)):
         radius = t.math("MULTIPLY", radius, value, x=50 + i, y=-3)
     strands = t.store(strands, "strand_radius", "FLOAT", radius, 53, 0)
+    # For the shader: the length relative to the break one, 0 once broken
+    unbroken = t.math("SUBTRACT", 1.0, broken, x=52, y=-18)
+    tension = t.math("MULTIPLY", tension, unbroken, x=53, y=-18)
+    strands = t.store(strands, "sticky_length_normalized", "FLOAT", tension, 53.5, 0)
     gap = t.math("COMPARE", from_cut, 0.5, 0.6, x=50, y=-15)
     strands = t.store(
         strands, "strand_gap", "FLOAT", t.math("MULTIPLY", gap, broken, x=51, y=-15), 54, 0
     )
+
+    # For the shader: the factor along the whole strands, 0 and 1 on the meshes when broken too
+    strands = t.store(strands, "sticky_factor", "FLOAT", spline["Factor"], 54.5, 0)
 
     # Broken strands split in two at the break, by deleting that edge
     edges = t.node("GeometryNodeCurveToMesh", 55, 0, {"Curve": strands}).outputs[0]
@@ -1259,6 +1291,8 @@ def build_node_group():
     strands = t.node(
         "GeometryNodeSetSplineResolution", 59, 0, {"Curve": strands, "Resolution": 4}
     ).outputs[0]
+    # For the shader: the length of the strands, broken ones split
+    strands = t.store(strands, "sticky_length", "FLOAT", spline_length["Length"], 59.5, 0)
     profile = t.node(
         "GeometryNodeCurvePrimitiveCircle",
         59,
@@ -1326,6 +1360,8 @@ def build_node_group():
         {"Geometry": strands, "Mode": "Matrix", "Transform": to_local},
     ).outputs[0]
 
+    note(t, text, 53, 6)
+
     # An instance, for the mesh not to be copied into a new one with the strands
     strands = t.node("GeometryNodeGeometryToInstance", 65.5, 0, {0: strands}).outputs[0]
     join = t.node("GeometryNodeJoinGeometry", 66, 0)
@@ -1335,8 +1371,8 @@ def build_node_group():
     return ng
 
 
-def build_material():
-    """Saliva: clear, wet and glossy, with a faint cloudy tint"""
+def build_material(text):
+    """Saliva: clear, wet and glossy, with a faint cloudy tint and milky ends"""
     material = bpy.data.materials.new(MATERIAL)
     material.node_tree.nodes.clear()
     # Refraction through the thin strands in EEVEE, and their light shadows
@@ -1344,6 +1380,16 @@ def build_material():
     material.thickness_mode = "SPHERE"
     material.use_transparent_shadow = True
     t = Tree(material.node_tree)
+    note(t, text, -6, 3.5)
+    # Example of the strand attributes: milky ends, clearing up as the strands stretch
+    factor, tension = (
+        t.node("ShaderNodeAttribute", -6, y, attribute_type="GEOMETRY", attribute_name=name)
+        for y, name in ((1, "sticky_factor"), (-1, "sticky_length_normalized"))
+    )
+    ends = t.math("MULTIPLY_ADD", factor.outputs["Fac"], 2.0, -1.0, x=-5, y=1)
+    ends = t.math("POWER", t.math("ABSOLUTE", ends, x=-4, y=1), 8.0, x=-3, y=1)
+    clear = t.math("SUBTRACT", 1.0, tension.outputs["Fac"], x=-4, y=-1)
+    milky = t.math("MULTIPLY", ends, clear, x=-2, y=0)
     saliva = t.node(
         "ShaderNodeBsdfPrincipled",
         0,
@@ -1352,7 +1398,7 @@ def build_material():
             "Base Color": (0.92, 0.95, 0.97, 1.0),
             "Roughness": 0.03,
             "IOR": 1.335,
-            "Transmission Weight": 1.0,
+            "Transmission Weight": t.math("MULTIPLY_ADD", milky, -0.4, 1.0, x=-1, y=0),
         },
     )
     t.node("ShaderNodeOutputMaterial", 2, 0, {"Surface": saliva.outputs[0]})
@@ -1360,4 +1406,6 @@ def build_material():
 
 
 if __name__ == "__main__":
-    write(RESOURCE, (build_node_group(), build_material()))
+    text = bpy.data.texts.new(NODE_GROUP)
+    text.write(ATTRIBUTES)
+    write(RESOURCE, (build_node_group(text), build_material(text)))
