@@ -630,6 +630,9 @@ class SquishSolver:
     def check_steps(self, context, settings):
         """Count the vertices left to squish by the last squish, a bit at a time"""
 
+        # Nothing squished, when the squishers do not touch the body
+        if self.disp is None:
+            return
         target = self.target
         co = target.co + self.disp
         bvh, squishers_co, _ = self.squishers_bvh(context, settings)

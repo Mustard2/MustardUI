@@ -920,6 +920,32 @@ class TestSquish(BlenderTestCase):
             preview.PREVIEW_SESSION = None
         self.assertNotEqual(solver.debug[-1][1], "...")
 
+    # Squishers not touching the body leave nothing to check
+    def test_preview_debug_no_contact(self):
+        bpy.ops.mesh.primitive_grid_add(x_subdivisions=40, y_subdivisions=40, size=0.4)
+        body = bpy.context.active_object
+        bpy.ops.mesh.primitive_plane_add(size=0.1, location=(0.0, 0.0, 0.05))
+        squisher = bpy.context.active_object
+        settings = bpy.context.window_manager.MustardUI_ModelToolkit_SquishSettings
+        preferences = bpy.context.preferences.addons[ADDON].preferences
+        self.addCleanup(setattr, preferences, "debug", preferences.debug)
+        preferences.debug = True
+
+        solver = squish.SquishSolver(body, [squisher], "Squish")
+        session = preview.ShapeKeyPreviewSession("SQUISH", body, "Squish", solver, settings)
+        preview.PREVIEW_SESSION = session
+        try:
+            operator = type(
+                "Operator", (preview.ShapeKeyPreviewOperator,), {"preview_verb": "squished"}
+            )()
+            operator.preview_update(bpy.context)
+            self.assertEqual(session.count, 0)
+            for _ in session.checks:
+                pass
+            session.restore()
+        finally:
+            preview.PREVIEW_SESSION = None
+
     # The moved squishers go in by the Tightness, but never deeper than the body under them
     def test_tightness_borders(self):
         bpy.ops.mesh.primitive_grid_add(x_subdivisions=80, y_subdivisions=80, size=0.4)
