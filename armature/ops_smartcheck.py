@@ -2,6 +2,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -27,11 +28,11 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
 
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -203,22 +204,22 @@ class MustardUI_Armature_SmartCheck(bpy.types.Operator):
 
             # Apply new preset
             for preset in reversed(preset_bone_collections):
-                for coll in obj.collections_all:
-                    if coll.name == preset[0] or coll.name == preset[1]:
-                        if preset[1] != "":
-                            coll.name = preset[1]
-                        coll.MustardUI_ArmatureBoneCollection.is_in_UI = True
-                        coll.MustardUI_ArmatureBoneCollection.default = preset[3]
-                        if preset[2] != "":
-                            coll.MustardUI_ArmatureBoneCollection.icon = preset[2]
-                        if addon_prefs.debug:
-                            print(
-                                "\nMustardUI - Smart Check - Armature layer "
-                                + str(preset[0])
-                                + " set."
-                            )
-                        obj.collections.move(coll.index, 0)
-                        found_colls += 1
+                # A collection already renamed by a previous run is not renamed again
+                coll = obj.collections_all.get(preset[1]) if preset[1] != "" else None
+                if coll is None:
+                    coll = obj.collections_all.get(preset[0])
+                if coll is None:
+                    continue
+                if preset[1] != "":
+                    coll.name = preset[1]
+                coll.MustardUI_ArmatureBoneCollection.is_in_UI = True
+                coll.MustardUI_ArmatureBoneCollection.default = preset[3]
+                if preset[2] != "":
+                    coll.MustardUI_ArmatureBoneCollection.icon = preset[2]
+                if addon_prefs.debug:
+                    print("\nMustardUI - Smart Check - Armature layer " + str(preset[0]) + " set.")
+                obj.collections.move(coll.index, 0)
+                found_colls += 1
 
         # Check for Outfit/Hair/Extras switcher
         outfits = 0

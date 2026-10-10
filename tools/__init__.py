@@ -3,6 +3,7 @@ from . import (
     auto_eyelid,
     bone_shrinkwrap,
     eevee_normals,
+    lipsync,
     settings,
     simplify,
 )
@@ -13,6 +14,7 @@ def register():
     eevee_normals.register()
     auto_eyelid.register()
     auto_breath.register()
+    lipsync.register()
     bone_shrinkwrap.register()
     simplify.register()
 
@@ -20,6 +22,7 @@ def register():
 def unregister():
     simplify.unregister()
     bone_shrinkwrap.unregister()
+    lipsync.unregister()
     auto_breath.unregister()
     auto_eyelid.unregister()
     eevee_normals.unregister()

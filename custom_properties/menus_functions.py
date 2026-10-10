@@ -1,4 +1,4 @@
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .menus import (
     MUSTARDUI_MT_Property_LinkMenu,
     MustardUI_Property_MenuAdd,
@@ -9,7 +9,7 @@ from .menus import (
 
 
 def mustardui_property_menuadd(self, context):
-    res, obj = mustardui_active_object(context, config=1)
+    res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
 
     if hasattr(context, "button_prop") and res:
         rig_settings = obj.MustardUI_RigSettings
@@ -89,7 +89,7 @@ def mustardui_property_menuadd(self, context):
 
 
 def mustardui_property_link(self, context):
-    res, obj = mustardui_active_object(context, config=1)
+    res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
 
     if hasattr(context, "button_prop") and res:
         self.layout.menu(MUSTARDUI_MT_Property_LinkMenu.bl_idname, icon="LINKED")

@@ -1,6 +1,7 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..misc.geometry_nodes import node_group_has_simulation
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from .helper_functions import set_full_resolution_preview
 
 
@@ -11,7 +12,7 @@ class MustardUI_Outfit(bpy.types.PropertyGroup):
 
     def poll_hair(self, object):
         context = bpy.context
-        _, arm = mustardui_active_object(context, config=1)
+        _, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
 
         if rig_settings.hair_collection is None:
@@ -46,8 +47,11 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
         if self.id_data.modifiers is None:
             return
 
+        # Only the Geometry Nodes simulations are switched
         for m in self.id_data.modifiers:
-            if m.type in ["CLOTH", "SOFT_BODY"] or (m.type == "NODES" and m.node_group):
+            if m.type in ["CLOTH", "SOFT_BODY"] or (
+                m.type == "NODES" and node_group_has_simulation(m.node_group)
+            ):
                 m.show_viewport = self.physics
                 m.show_render = self.physics
             elif m.type in ["COLLISION"]:
@@ -62,7 +66,7 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
 
     # Enable Physics based on current Physics Objects
     def update_enable_pi_physics(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = arm.MustardUI_PhysicsSettings
 
         for pi in [x for x in physics_settings.items if x is not None]:
@@ -78,7 +82,7 @@ class MustardUI_OutfitSettings(bpy.types.PropertyGroup):
 
     # Enable Collisions based on current Physics Objects
     def update_enable_pi_collisions(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = arm.MustardUI_PhysicsSettings
 
         for pi in [x for x in physics_settings.items if x is not None]:

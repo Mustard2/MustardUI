@@ -1,4 +1,6 @@
+import ast
 import math
+import re
 
 import bpy
 
@@ -48,6 +50,15 @@ def mustardui_prop_limits(prop, addon_prefs):
 
 
 # Function to check over all custom properties
+def split_data_path(data_path):
+    """Split a data path into the (rna, path) of the custom properties, None if no property"""
+    # Last .attribute or ["custom property"], quoted names can contain . [ ] and \"
+    match = re.fullmatch(r'(.+?)(?:\.(\w+)|(\["(?:[^"\\]|\\.)*"\]))', data_path)
+    if match is None:
+        return None
+    return match[1], match[2] or match[3]
+
+
 def mustardui_check_cp(obj, rna, path):
     for cp in obj.MustardUI_CustomProperties:
         if cp.rna == rna and cp.path == path:
@@ -218,6 +229,24 @@ def mustardui_add_driver(obj, rna, path, prop_name, array_length=None):
             add_variable(driver[i], f"{data_path}[{i}]")
 
 
+# Link the property at rna.path to parent_prop, removing it from the other custom properties
+def link_property(obj, rna, path, parent_prop, custom_props):
+    for check_prop in custom_props:
+        for i in reversed(range(len(check_prop.linked_properties))):
+            lp = check_prop.linked_properties[i]
+            if lp.rna == rna and lp.path == path:
+                check_prop.linked_properties.remove(i)
+
+    try:
+        mustardui_add_driver(obj, rna, path, parent_prop.prop_name)
+    except Exception:
+        print("MustardUI - Could not link property to " + parent_prop.prop_name)
+
+    lp = parent_prop.linked_properties.add()
+    lp.rna = rna
+    lp.path = path
+
+
 def mustardui_reassign_default(obj, uilist, index, addon_prefs):
     if not 0 <= index < len(uilist):
         return
@@ -279,7 +308,7 @@ def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_setting
     to_remove = []
 
     # Firstly set the custom property to their default value
-    for i, cp in enumerate(uilist):
+    for i in range(len(uilist)):
         mustardui_reassign_default(arm, uilist, i, addon_prefs)
 
     # Update everything
@@ -288,7 +317,7 @@ def mustardui_delete_all_custom_properties(arm, uilist, addon_prefs, rig_setting
     bpy.context.view_layer.update()
 
     # And then delete data
-    for i, cp in enumerate(uilist):
+    for i in range(len(uilist)):
         mustardui_clean_prop(arm, uilist, i, addon_prefs)
         to_remove.append(i)
     for i in reversed(to_remove):
@@ -356,3 +385,19 @@ def assign_pointers(custom_properties, addon_prefs):
             pointers_errors += 1
 
     return pointers_errors
+
+
+def get_data_path(context, prop):
+    """Full data path of the button property, as Copy Full Data Path writes it"""
+    ptr = context.button_pointer
+    name = prop.identifier
+    if name not in ptr.bl_rna.properties:
+        name = f'["{bpy.utils.escape_identifier(name)}"]'
+    rel = ptr.path_from_id(name)
+    # repr() quotes ID names Python-style, custom properties store escaped double quotes
+    id_path = re.sub(
+        r"\[('(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\")\]",
+        lambda m: f'["{bpy.utils.escape_identifier(ast.literal_eval(m[1]))}"]',
+        repr(ptr.id_data),
+    )
+    return id_path + rel if rel.startswith("[") else f"{id_path}.{rel}"

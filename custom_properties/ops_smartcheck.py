@@ -4,40 +4,11 @@ from rna_prop_ui import rna_idprop_ui_create
 from .. import __package__ as base_package
 from ..misc.prop_utils import evaluate_path
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
-from .misc import mustardui_add_driver, mustardui_clean_prop
-
-
-def link_property(obj, rna, path, parent_prop, custom_props):
-    for check_prop in custom_props:
-        to_remove = []
-        for i in range(0, len(check_prop.linked_properties)):
-            if (
-                check_prop.linked_properties[i].rna == rna
-                and check_prop.linked_properties[i].path == path
-            ):
-                to_remove.append(i)
-        to_remove.reverse()
-        for i in to_remove:
-            check_prop.linked_properties.remove(i)
-
-    # Add driver
-    try:
-        mustardui_add_driver(obj, rna, path, parent_prop.prop_name)
-    except Exception:
-        print("MustardUI - Could not link property to " + parent_prop.prop_name)
-
-    # Add linked property to list
-    if rna not in [x.rna for x in parent_prop.linked_properties] or path not in [
-        x.path for x in parent_prop.linked_properties
-    ]:
-        lp = parent_prop.linked_properties.add()
-        lp.rna = rna
-        lp.path = path
-
-    return
+from .misc import link_property, mustardui_add_driver, mustardui_clean_prop
 
 
 # Add a custom property to the model
@@ -142,7 +113,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     url_MustardUI_CustomProperties = (
-        "https://github.com/Mustard2/MustardUI/wiki/Creator-Body#custom-properties-smart-check"
+        "https://github.com/Mustard2/MustardUI/wiki/Creator-Model#custom-properties-smart-check"
     )
 
     skip_existing: bpy.props.BoolProperty(
@@ -155,10 +126,10 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = obj.MustardUI_RigSettings
         custom_props = obj.MustardUI_CustomProperties
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -167,6 +138,19 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
         if model_body is None or model_body.data is None:
             self.report({"ERROR"}, "MustardUI - A body mesh should be selected.")
             return {"FINISHED"}
+
+        # Paths stored by older versions depend on the active scene
+        if model_body.data.shape_keys is not None:
+            key_name = bpy.utils.escape_identifier(model_body.data.shape_keys.name)
+            keys_rna = f'bpy.data.shape_keys["{key_name}"]'
+            old_rna = (
+                f'bpy.context.scene.objects["{bpy.utils.escape_identifier(model_body.name)}"]'
+                ".data.shape_keys"
+            )
+            for cp in custom_props:
+                for item in [cp, *cp.linked_properties]:
+                    if item.rna.startswith(old_rna):
+                        item.rna = keys_rna + item.rna[len(old_rna) :]
 
         k = 0
         preserved = 0
@@ -268,7 +252,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 if "MustardUI Float" in shape_key.name:
                     preserved += add_custom_property(
                         obj,
-                        f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                        f'{keys_rna}.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Float - ") :],
                         "FLOAT",
@@ -280,7 +264,7 @@ class MustardUI_Property_SmartCheck(bpy.types.Operator):
                 elif "MustardUI Bool" in shape_key.name:
                     preserved += add_custom_property(
                         obj,
-                        f'bpy.context.scene.objects["{bpy.utils.escape_identifier(rig_settings.model_body.name)}"].data.shape_keys.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
+                        f'{keys_rna}.key_blocks["{bpy.utils.escape_identifier(shape_key.name)}"]',
                         "value",
                         shape_key.name[len("MustardUI Bool - ") :],
                         "BOOLEAN",

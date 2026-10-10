@@ -5,6 +5,7 @@ import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -19,7 +20,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def blinkFrame(self, frame, value, blink_driver, obj, type):
 
@@ -44,7 +45,7 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
 
     def execute(self, context):
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -60,8 +61,10 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
             math.ceil(fps * 0.25 * tools_settings.autoeyelid_blink_length),
         ]  # default: 100 - 250 ms
         blink_chance_per_half_second = (
-            2.0 * tools_settings.autoeyelid_blink_rate_per_minute / (60 * 2)
-        )  # calculated every half second, default: 26
+            tools_settings.autoeyelid_blink_rate_per_minute / 120
+        )  # calculated every half second, default: 26 per minute
+        # Whole frames, as fps can be fractional (e.g. 29.97)
+        half_second_frames = max(1, round(fps / 2))
 
         blink_drivers = []
         if tools_settings.autoeyelid_driver_type == "SHAPE_KEY":
@@ -76,14 +79,17 @@ class MustardUI_Tools_AutoEyelid(bpy.types.Operator):
 
         error = 0
 
-        for frame in range(frame_start, frame_end):
-            if frame % fps / 2 == 0:
+        next_blink_frame = frame_start
+        for frame in range(frame_start, frame_end, half_second_frames):
+            # Do not start a blink before the previous one ends
+            if frame >= next_blink_frame:
                 r = random.random()
                 if r < blink_chance_per_half_second:
                     rl = random.randint(blink_length_frames[0], blink_length_frames[1])
                     blinkStart = frame
                     blinkMid = frame + math.floor(rl / 2)
                     blinkEnd = frame + rl
+                    next_blink_frame = blinkEnd + 1
                     if addon_prefs.debug:
                         print(
                             "MustardUI Auto Blink: Frame: ",

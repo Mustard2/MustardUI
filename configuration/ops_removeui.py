@@ -5,10 +5,12 @@ from .. import __package__ as base_package
 from ..custom_properties.misc import mustardui_delete_all_custom_properties
 from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
 from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
+from ..text_storage.storage import remove_holder, system_properties
 
 
 class MustardUI_RemoveUI(bpy.types.Operator):
@@ -57,10 +59,10 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         remove_objects(ll)
 
     def remove_property(self, obj, name):
-        try:
-            del obj[name]
-        except Exception:
-            pass
+        # Both custom and add-on properties
+        for props in (obj, system_properties(obj)):
+            if props is not None and name in props:
+                del props[name]
 
     def other_models_objects(self, arm):
         # List the Objects belonging to the other MustardUI models in the file
@@ -106,16 +108,21 @@ class MustardUI_RemoveUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         arm_obj = rig_settings.model_armature_object
         addon_prefs = context.preferences.addons[base_package].preferences
         physics_settings = arm.MustardUI_PhysicsSettings
+
+        # Objects of the other MustardUI models, which are never deleted
+        other_models_objects = set()
+        if self.delete_objects and (self.delete_shared or self.delete_model_collections):
+            other_models_objects = self.other_models_objects(arm)
 
         # Store the leftover collections
         model_collections = set()
@@ -128,7 +135,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             objects += [x.object for x in physics_settings.items if x.object is not None]
             # Keep the Objects of other MustardUI models and, if shared data is kept,
             # the bones custom shapes
-            protected_objects = self.other_models_objects(arm)
+            protected_objects = set(other_models_objects)
             if self.delete_shared:
                 objects += custom_shapes
             else:
@@ -235,8 +242,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             if self.delete_shared:
                 for col_name in collision_collections:
                     col = bpy.data.collections.get(col_name)
-                    if col is not None:
-                        self.remove_data_col(context, col)
+                    if col is None:
+                        continue
+                    # Skip collections containing Objects of other MustardUI models
+                    if not other_models_objects.isdisjoint(col.all_objects):
+                        skipped_collections.add(col_name)
+                        continue
+                    self.remove_data_col(context, col)
 
         # Remove settings
         if self.delete_settings or self.delete_objects:
@@ -263,6 +275,7 @@ class MustardUI_RemoveUI(bpy.types.Operator):
             self.remove_property(arm, "MustardUI_SimplifySettings")
             self.remove_property(arm, "MustardUI_IKFKSnapperSettings")
             self.remove_property(arm, "MustardUI_Links")
+            remove_holder(arm)
 
             # Clear UI lists indices and filters
             self.remove_property(arm, "mustardui_morphs_uilist_index")
@@ -319,12 +332,11 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                         if child is not None:
                             bpy.data.collections.remove(child)
 
-                if skipped_collections:
-                    self.report(
-                        {"WARNING"},
-                        "MustardUI - Collections containing shared data were not deleted: "
-                        + ", ".join(sorted(skipped_collections)),
-                    )
+            if skipped_collections and addon_prefs.debug:
+                print(
+                    "MustardUI - Collections containing shared data were not deleted: "
+                    + ", ".join(sorted(skipped_collections))
+                )
 
             # Purge the data left without users
             bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
@@ -357,12 +369,13 @@ class MustardUI_RemoveUI(bpy.types.Operator):
         box = layout.box()
         col = box.column(align=True)
         col.label(
-            text="This is a highly destructive operation! Use it at your own risk!",
-            icon="ERROR",
+            text="Hover over each option to read what it removes before enabling it.",
+            icon="DOT",
         )
+        col.separator()
         col.label(
-            text="Move your cursor over a button to display its description.",
-            icon="BLANK1",
+            text="This permanently deletes the UI and model data. Save a backup first!",
+            icon="ERROR",
         )
 
         box = layout.box()

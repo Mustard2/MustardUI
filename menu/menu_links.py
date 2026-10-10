@@ -1,7 +1,6 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from . import MainPanel
 
 
@@ -12,17 +11,14 @@ class PANEL_PT_MustardUI_Links(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is not None:
             rig_settings = arm.MustardUI_RigSettings
             return res and rig_settings.links_enable and arm.MustardUI_Links
         return res
 
     def draw(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         layout = self.layout
 

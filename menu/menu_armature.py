@@ -2,8 +2,7 @@ import bpy
 
 from ..armature.ik_fk_snapper import ikfk_snapper_available
 from ..misc.mirror import mirror_candidates
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from . import MainPanel
 
 
@@ -107,11 +106,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         if obj is None:
             return res
@@ -142,7 +137,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
             return res and len(enabled_colls) > 0
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         armature_settings = obj.MustardUI_ArmatureSettings
 
         self.layout.prop(armature_settings, "show_viewport", text="", toggle=False)
@@ -150,7 +145,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
     def draw(self, context):
 
         settings = bpy.context.scene.MustardUI_Settings
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         armature_settings = obj.MustardUI_ArmatureSettings
         rig_settings = obj.MustardUI_RigSettings
 
@@ -235,7 +230,7 @@ class PANEL_PT_MustardUI_Armature_IKFKPanel(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if not arm:
             return False
         return (
@@ -245,7 +240,7 @@ class PANEL_PT_MustardUI_Armature_IKFKPanel(MainPanel, bpy.types.Panel):
         )
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         snapper = arm.MustardUI_IKFKSnapperSettings
         chains = snapper.ikfk_chains
         layout = self.layout

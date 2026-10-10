@@ -1,10 +1,14 @@
+from contextlib import contextmanager
+
 import bpy
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ..outfits.helper_functions import outfits_get_collection_items
 
 
 def bind_object(
@@ -100,6 +104,26 @@ def bind_object(
             m.show_viewport = hv
 
 
+@contextmanager
+def rest_pose(objects):
+    """Armatures deforming the objects in rest position while in the context"""
+    armatures = {
+        m.object.data
+        for obj in objects
+        for m in obj.modifiers
+        if m.type == "ARMATURE" and m.object is not None and m.object.type == "ARMATURE"
+    }
+    posed = [arm for arm in armatures if arm.pose_position == "POSE"]
+    for arm in posed:
+        arm.pose_position = "REST"
+    bpy.context.view_layer.update()
+    try:
+        yield
+    finally:
+        for arm in posed:
+            arm.pose_position = "POSE"
+
+
 class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
     """Rebind cages to the model meshes (Body, Outfits, Hair).\nDepending on the number of Physics Items, Blender might freeze for a while"""  # noqa: E501
 
@@ -115,11 +139,11 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=-1)
+        return active_object_operator_poll(context, config=ModelMode.ANY)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=-1)
+        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -159,16 +183,18 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
         ]:
             cages.append(item.object)
 
-        for obj in objects:
-            bind_object(
-                obj,
-                cages,
-                addon_prefs,
-                surface_deform=True,
-                mesh_deform=True,
-                corrective_smooth=True,
-                force=self.force,
-            )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose(objects + cages):
+            for obj in objects:
+                bind_object(
+                    obj,
+                    cages,
+                    addon_prefs,
+                    surface_deform=True,
+                    mesh_deform=True,
+                    corrective_smooth=True,
+                    force=self.force,
+                )
 
         self.report({"INFO"}, "MustardUI - Cages successfully re-bound.")
 
@@ -192,12 +218,11 @@ class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -208,13 +233,14 @@ class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
 
         # Gather items to re-bind cages on
         objects = [rig_settings.model_body]
-        collection = bpy.data.collections[self.outfit]
+        collection = bpy.data.collections.get(self.outfit)
+        items = outfits_get_collection_items(rig_settings, collection) if collection else []
 
-        if collection is None or len(collection.objects) < 1:
+        if len(items) < 1:
             self.report({"WARNING"}, "MustardUI - Nothing to bind.")
             return {"CANCELLED"}
 
-        for obj in [x for x in collection.objects if x.type == "MESH"]:
+        for obj in [x for x in items if x.type == "MESH"]:
             objects.append(obj)
 
         # Gather cages to check as targets of modifiers
@@ -224,16 +250,18 @@ class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
         ]:
             cages.append(item.object)
 
-        for obj in objects:
-            bind_object(
-                obj,
-                cages,
-                addon_prefs,
-                surface_deform=True,
-                mesh_deform=True,
-                corrective_smooth=True,
-                force=self.force,
-            )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose(objects + cages):
+            for obj in objects:
+                bind_object(
+                    obj,
+                    cages,
+                    addon_prefs,
+                    surface_deform=True,
+                    mesh_deform=True,
+                    corrective_smooth=True,
+                    force=self.force,
+                )
 
         self.report(
             {"INFO"},
@@ -260,12 +288,12 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
+        rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
 
@@ -273,24 +301,29 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
             return {"FINISHED"}
 
         # Gather items to re-bind cages on
-        obj = context.scene.objects[self.object_name]
+        obj = context.scene.objects.get(self.object_name)
+        if obj is None:
+            self.report({"WARNING"}, f'MustardUI - Object "{self.object_name}" not found.')
+            return {"CANCELLED"}
 
         # Gather cages to check as targets of modifiers
-        cages = []
+        cages = [rig_settings.model_body]
         for item in [
             x for x in physics_settings.items if x.type == "CAGE" and x.object is not None
         ]:
             cages.append(item.object)
 
-        bind_object(
-            obj,
-            cages,
-            addon_prefs,
-            surface_deform=True,
-            mesh_deform=True,
-            corrective_smooth=True,
-            force=self.force,
-        )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose([obj, *cages]):
+            bind_object(
+                obj,
+                cages,
+                addon_prefs,
+                surface_deform=True,
+                mesh_deform=True,
+                corrective_smooth=True,
+                force=self.force,
+            )
 
         self.report(
             {"INFO"},
@@ -317,12 +350,11 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
         addon_prefs = context.preferences.addons[base_package].preferences
@@ -365,16 +397,18 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
             cages.append(item.object)
             break
 
-        for obj in objects:
-            bind_object(
-                obj,
-                cages,
-                addon_prefs,
-                surface_deform=True,
-                mesh_deform=True,
-                corrective_smooth=True,
-                force=self.force,
-            )
+        # Bindings store the current shape, so they are made out of the pose
+        with rest_pose(objects + cages):
+            for obj in objects:
+                bind_object(
+                    obj,
+                    cages,
+                    addon_prefs,
+                    surface_deform=True,
+                    mesh_deform=True,
+                    corrective_smooth=True,
+                    force=self.force,
+                )
 
         self.report({"INFO"}, f'MustardUI - Cage "{self.cage_name}" successfully re-bound.')
 

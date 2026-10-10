@@ -1,5 +1,6 @@
 from array import array
 
+from ..misc.outfits import outfits_get_collection_items
 from ..misc.set_bool import set_bool
 
 # Largest image side copied into a full resolution preview
@@ -7,8 +8,7 @@ FULL_PREVIEW_MAX_SIZE = 1024
 
 
 def set_full_resolution_preview(image):
-    """Replace the image preview (limited to 256 pixels by Blender) with the full
-    resolution image, so that it stays sharp when drawn at large scales"""
+    """Use the full resolution image as preview, to keep it sharp"""
 
     if image is None:
         return
@@ -26,8 +26,7 @@ def set_full_resolution_preview(image):
 
 
 def find_layer_collection(layer_coll, collection):
-    """Recursively find the LayerCollection (view-layer wrapper that holds the
-    'exclude' flag) for a given collection, starting from a root layer collection."""
+    """LayerCollection of the collection, searched from the root one"""
     if layer_coll.collection == collection:
         return layer_coll
     for child in layer_coll.children:
@@ -37,13 +36,33 @@ def find_layer_collection(layer_coll, collection):
     return None
 
 
+def find_layer_collections(layer_coll, collections):
+    """find_layer_collection for several collections in one walk, stopping when all are found."""
+    wanted = set(collections)
+    result = {}
+
+    def _walk(lc):
+        coll = lc.collection
+        if coll in wanted and coll not in result:
+            result[coll] = lc
+            if len(result) == len(wanted):
+                return True
+        return any(_walk(child) for child in lc.children)
+
+    if wanted:
+        _walk(layer_coll)
+    return result
+
+
 def update_extras_visibility(context, rig_settings):
-    """Recursively hide/exclude each Extras (sub-)collection only when all its
-    objects are hidden.
-    Returns True if the whole tree is hidden, None if no Extras collection."""
+    """Hide the Extras collections with all their objects hidden"""
     extras = rig_settings.extras_collection
     if extras is None:
         return None
+
+    layer_colls = find_layer_collections(
+        context.view_layer.layer_collection, [extras, *extras.children_recursive]
+    )
 
     def _update(coll):
         children_hidden = [_update(child) for child in coll.children]
@@ -52,7 +71,7 @@ def update_extras_visibility(context, rig_settings):
         set_bool(coll, "hide_viewport", all_hidden)
         set_bool(coll, "hide_render", all_hidden)
 
-        lc = find_layer_collection(context.view_layer.layer_collection, coll)
+        lc = layer_colls.get(coll)
         if lc is not None:
             set_bool(lc, "exclude", all_hidden)
 
@@ -69,16 +88,6 @@ def outfits_get_collections(rig_settings):
     if rig_settings.extras_collection is not None:
         collections.append(rig_settings.extras_collection)
     return collections
-
-
-def outfits_get_collection_items(rig_settings, collection):
-    """Objects of an Outfits/Extras collection, honouring the sub-collections setting."""
-    use_sub = (
-        rig_settings.extras_config_subcollections
-        if collection == rig_settings.extras_collection
-        else rig_settings.outfit_config_subcollections
-    )
-    return collection.all_objects if use_sub else collection.objects
 
 
 def get_mask_pieces(rig_settings):
@@ -123,8 +132,7 @@ def get_mask_visibility(rig_settings):
 
 
 def update_obj_masks(context, obj, visibility, mask=True):
-    """Update the mask modifiers hosted by obj which are driven by the pieces in
-    visibility ({piece name: mask visibility})."""
+    """Update the mask modifiers of obj driven by the pieces"""
     for mod in obj.modifiers:
         if mod.type not in ("MASK", "VERTEX_WEIGHT_MIX"):
             continue
@@ -156,7 +164,7 @@ def update_obj_masks(context, obj, visibility, mask=True):
 
 
 def update_global_obj_mask(obj):
-    from ..tools_creators.ops_optimize_mods import mask_vg_name
+    from ..model_toolkit.optimization.ops_optimize_mods import mask_vg_name
 
     activate = any(
         mod.type == "VERTEX_WEIGHT_MIX" and mod.vertex_group_a == mask_vg_name and mod.show_viewport
@@ -182,65 +190,40 @@ def update_masks(context, rig_settings, visibility=None):
         update_global_obj_mask(obj)
 
 
-def outfits_update_armature_collections(
-    rig_settings, arm, is_extras_hidden=None, outfits=False, hair=False
-):
-    """Update visibility of armature bone collections like the outfit operator"""
+def rename_model_ids(arm, names, addon_prefs):
+    """Rename IDs of the model, updating masks and custom property paths"""
+    from ..custom_properties.misc import assign_pointers
+    from ..custom_properties.ops_rebuild import fix_custom_property_path
 
-    for bcoll in arm.collections_all:
-        bcoll_settings = bcoll.MustardUI_ArmatureBoneCollection
-        if not bcoll_settings.outfit_switcher_enable:
-            continue
-        if not bcoll_settings.outfit_switcher_collection:
-            continue
+    custom_properties_lists = [
+        arm.MustardUI_CustomProperties,
+        arm.MustardUI_CustomPropertiesOutfit,
+        arm.MustardUI_CustomPropertiesHair,
+    ]
+    # Store pointers to the IDs while the paths still resolve
+    for custom_properties in custom_properties_lists:
+        assign_pointers(custom_properties, addon_prefs)
 
-        switcher_collection = bcoll_settings.outfit_switcher_collection
+    renamed = {}
+    for id_block, name in names.items():
+        old_name = id_block.name
+        id_block.name = name
+        if id_block.name != old_name and id_block.id_type == "OBJECT":
+            renamed[old_name] = id_block.name
 
-        if (
-            outfits
-            and rig_settings.hair_collection is not None
-            and switcher_collection == rig_settings.hair_collection
-        ):
-            continue
-        if hair and switcher_collection not in {
-            rig_settings.hair_collection,
-            rig_settings.hair_extras_collection,
-        }:
-            continue
+    # Masks are linked to the pieces by name ("|" separated)
+    if renamed:
+        for obj, _ in get_mask_objects(arm.MustardUI_RigSettings):
+            for mod in obj.modifiers:
+                if mod.type not in ("MASK", "VERTEX_WEIGHT_MIX"):
+                    continue
+                parts = mod.name.split("|")
+                if any(x in renamed for x in parts):
+                    mod.name = "|".join(renamed.get(x, x) for x in parts)
 
-        use_subcollections = (
-            rig_settings.extras_config_subcollections
-            if switcher_collection == rig_settings.extras_collection
-            else rig_settings.outfit_config_subcollections
-        )
-
-        items = (
-            switcher_collection.all_objects if use_subcollections else switcher_collection.objects
-        )
-
-        visible = False
-        for ob in items:
-            if ob == bcoll_settings.outfit_switcher_object:
-                # If it is an Extras item, we should test if the collection
-                # is not hidden
-                is_extras_item = False
-                if rig_settings.extras_collection:
-                    is_extras_item = any(
-                        ob == extra for extra in rig_settings.extras_collection.all_objects
-                    )
-
-                if is_extras_item:
-                    visible = (
-                        not ob.hide_viewport
-                        and not bcoll_settings.outfit_switcher_collection.hide_viewport
-                        and not is_extras_hidden
-                    )
-                else:
-                    visible = (
-                        not ob.hide_viewport
-                        and not bcoll_settings.outfit_switcher_collection.hide_viewport
-                    )
-                break
-
-        if bcoll.is_visible != visible:
-            bcoll.is_visible = visible
+    fixed = 0
+    for custom_properties in custom_properties_lists:
+        for custom_prop in custom_properties:
+            res = fix_custom_property_path(arm, custom_properties, custom_prop, addon_prefs)
+            fixed += res == "FIXED"
+    return fixed

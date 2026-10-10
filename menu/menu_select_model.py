@@ -2,8 +2,12 @@ from collections import Counter
 
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from .. import __package__ as base_package
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import MainPanel
 
 
@@ -13,19 +17,11 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=0)
-
-        if arm is None:
-            return False
-
-        return res
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def draw_header(self, context):
         settings = bpy.context.scene.MustardUI_Settings
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         armatures = [x for x in bpy.data.armatures if x.MustardUI_created]
 
@@ -51,8 +47,9 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
         settings = bpy.context.scene.MustardUI_Settings
+        addon_prefs = context.preferences.addons[base_package].preferences
 
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         layout = self.layout
 
@@ -110,7 +107,13 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                     armature == settings.panel_model_selection_armature
                     and not settings.viewport_model_selection
                 )
+                row2.operator("mustardui.cleanmodel", text="", icon="BRUSH_DATA")
                 row2.operator("mustardui.remove", text="", icon="TRASH")
+
+        if addon_prefs.experimental and addon_prefs.settings_storage_in_menu:
+            layout.separator()
+            layout.label(text="Optimization (Experimental)", icon="FORCE_WIND")
+            layout.prop(addon_prefs, "settings_storage", expand=True)
 
 
 def register():

@@ -1,8 +1,11 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import MainPanel
 
 
@@ -13,19 +16,17 @@ class PANEL_PT_MustardUI_InitPanel_Complete(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(
+            context, config=ModelMode.CONFIG
+        )
 
     def draw(self, context):
 
         layout = self.layout
 
         settings = bpy.context.scene.MustardUI_Settings
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
 
         # Configuration button
         col = layout.column(align=True)

@@ -36,18 +36,17 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
         name="Morphs Source",
     )
 
-    freezable: bpy.props.BoolProperty(
+    can_disable: bpy.props.BoolProperty(
         default=True,
-        name="Freezable",
-        description="If disabled, morphs in this section will not be disabled when "
-        "using the Freeze Morphs option.\nThis is incompatible with the drivers on "
-        "the Mute property of Shape Keys",
+        name="Can Be Disabled",
+        description="Disable the morphs in this section when the Morphs are disabled.\n"
+        "If off, these morphs and the drivers depending on them stay active",
     )
     hidden: bpy.props.BoolProperty(
         default=False,
         name="Hidden",
         description="Hide the section for the UI.\nCan be useful to use the Morphs in "
-        "the list as just targets for the Freeze Morphs feature",
+        "the list as just targets for the Disable Morphs feature",
     )
 
     # Collapse button

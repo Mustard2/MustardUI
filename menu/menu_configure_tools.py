@@ -1,8 +1,11 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import MainPanel
 
 
@@ -13,12 +16,10 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(
+            context, config=ModelMode.CONFIG
+        )
 
     def draw_header(self, context):
         layout = self.layout
@@ -28,7 +29,7 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         tools_settings = arm.MustardUI_ToolsSettings
         simplify_settings = arm.MustardUI_SimplifySettings
@@ -37,9 +38,25 @@ class PANEL_PT_MustardUI_InitPanel_Tools(MainPanel, bpy.types.Panel):
         box.label(text="Enable Tools", icon="MODIFIER")
         col = box.column(align=True)
         col.prop(simplify_settings, "simplify_main_enable")
+
+        col.separator()
+
+        col.prop(tools_settings, "lipsync_enable")
         col.prop(tools_settings, "autobreath_enable")
         col.prop(tools_settings, "autoeyelid_enable")
         col.prop(tools_settings, "bone_shrinkwrap_enable")
+
+        if tools_settings.lipsync_enable:
+            box = layout.box()
+            box.label(text="Lip Sync Tool Settings", icon="SPEAKER")
+            box.prop(tools_settings, "lipsync_driver_type", text="Type")
+            col = box.column(align=True)
+            if tools_settings.lipsync_driver_type == "MORPH":
+                col.prop(tools_settings, "lipsync_source")
+            col.prop(tools_settings, "lipsync_prefix")
+            col.separator()
+            col.prop(tools_settings, "lipsync_substitutions")
+
         if tools_settings.autoeyelid_enable:
             box = layout.box()
             box.label(text="Auto Blink Tool Settings", icon="HIDE_OFF")

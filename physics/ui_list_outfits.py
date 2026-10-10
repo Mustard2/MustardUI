@@ -2,6 +2,7 @@ import bpy
 from bpy.props import IntProperty
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -16,10 +17,10 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if not active_object_operator_poll(context, config=1):
+        if not active_object_operator_poll(context, config=ModelMode.CONFIG):
             return False
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = arm.MustardUI_PhysicsSettings
         index = arm.mustardui_physics_items_uilist_index
 
@@ -30,7 +31,7 @@ class MustardUI_PhysicsItem_Outfits_Remove(bpy.types.Operator):
         )
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = arm.MustardUI_PhysicsSettings
 
         uilist = physics_settings.items[

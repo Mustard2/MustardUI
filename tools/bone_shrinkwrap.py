@@ -1,6 +1,10 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 
 
 def detect_lip_map(armature):
@@ -38,7 +42,7 @@ def detect_lip_map(armature):
         test = f"{prefix}Corner.{L}"
         if test in names:
 
-            def n(x):
+            def n(x, prefix=prefix):
                 return f"{prefix}{x}"
 
             return {
@@ -195,7 +199,7 @@ class MUSTARDUI_OT_constraint_apply(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -204,7 +208,7 @@ class MUSTARDUI_OT_constraint_apply(bpy.types.Operator):
         return res if target is not None else False
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         armature = arm.MustardUI_RigSettings.model_armature_object
 
@@ -226,11 +230,10 @@ class MUSTARDUI_OT_constraints_clear(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         armature = arm.MustardUI_RigSettings.model_armature_object
         cm = ConstraintManager("MUSTARDUI_LIPS")

@@ -1,8 +1,40 @@
 import bpy
 from bpy.props import IntProperty
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .settings_item import mustardui_physics_item_type_dict
+
+
+def physics_items_filter(uilist, items):
+    """Filter and sort Physics Items by object name, as items have no name"""
+    flt_flags = [uilist.bitflag_filter_item] * len(items)
+
+    if uilist.filter_name:
+        search = uilist.filter_name.lower()
+        for i, item in enumerate(items):
+            name = item.object.name if item.object else ""
+            if search not in name.lower():
+                flt_flags[i] &= ~uilist.bitflag_filter_item
+
+    if uilist.use_filter_invert:
+        for i in range(len(flt_flags)):
+            flt_flags[i] ^= uilist.bitflag_filter_item
+
+    if uilist.use_filter_sort_alpha:
+        sort_data = [
+            (i, item.object.name.lower() if item.object else "") for i, item in enumerate(items)
+        ]
+        flt_neworder = bpy.types.UI_UL_list.sort_items_helper(
+            sort_data, lambda e: e[1], uilist.use_filter_sort_reverse
+        )
+    else:
+        flt_neworder = []
+
+    return flt_flags, flt_neworder
 
 
 class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
@@ -20,8 +52,7 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, obj = mustardui_active_object(context, config=1)
-        return obj is not None
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def move_index(self, uilist, index):
         """Move index of an item render queue while clamping it."""
@@ -32,7 +63,7 @@ class MustardUI_PhysicsItems_UIList_Switch(bpy.types.Operator):
         return max(0, min(new_index, list_length))
 
     def execute(self, context):
-        res, obj = mustardui_active_object(context, config=1)
+        res, obj = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = obj.MustardUI_PhysicsSettings
         uilist = physics_settings.items
         index = obj.mustardui_physics_items_uilist_index
@@ -89,6 +120,9 @@ class MUSTARDUI_UL_PhysicsItems_UIList(bpy.types.UIList):
             )
         else:
             layout.label(text="Object not found!", icon="ERROR")
+
+    def filter_items(self, context, data, propname):
+        return physics_items_filter(self, getattr(data, propname))
 
 
 def register():

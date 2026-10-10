@@ -10,6 +10,7 @@ from bpy.props import (
 )
 
 from ..misc.icons import mustardui_icon_list
+from ..misc.outfits import outfits_get_collection_items
 
 
 class MustardUI_LinkedProperty(bpy.types.PropertyGroup):
@@ -81,17 +82,11 @@ class MustardUI_CustomProperty(bpy.types.PropertyGroup):
     # Poll function for the selection of mesh belonging to an outfit in
     # pointer properties
     def outfit_switcher_poll_mesh(self, obj):
-        if not self.outfit:
+        if not self.outfit or obj.type not in {"MESH", "CURVES"}:
             return False
-
-        rig_settings = self.id_data.MustardUI_RigSettings
-        items = (
-            self.outfit.all_objects
-            if rig_settings.outfit_config_subcollections
-            else self.outfit.objects
+        return obj in list(
+            outfits_get_collection_items(self.id_data.MustardUI_RigSettings, self.outfit)
         )
-
-        return obj.type == "MESH" and obj in list(items)
 
     outfit: PointerProperty(
         name="Outfit Collection",

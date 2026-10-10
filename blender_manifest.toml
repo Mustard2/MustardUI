@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "MustardUI"
-version = "2026.9.0"
+version = "2026.10.0"
 name = "MustardUI"
 tagline = "Easy-to-use UI for human characters"
 maintainer = "Mustard"
@@ -20,4 +20,14 @@ license = [
 ]
 
 [permissions]
-files = "Import/export templates from/to disk"
+files = "Import/export templates/presets or Blender files from/to disk"
+
+[build]
+# Blender defaults, plus the test suite and the effect resources build scripts
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".*",
+  "/*.zip",
+  "/tests/",
+  "/model_toolkit/effects/resources/*.py",
+]

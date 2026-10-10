@@ -6,9 +6,8 @@ from ..misc.geometry_nodes import (
 )
 from ..misc.mirror import check_mirror
 from ..misc.ui_collapse import ui_collapse_prop
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
-from ..warnings.can_draw_ui import can_draw_ui
 from . import MainPanel
 
 
@@ -200,10 +199,7 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
@@ -217,14 +213,14 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
 
     def draw_header(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         self.layout.prop(physics_settings, "enable_physics", text="", toggle=False)
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -262,10 +258,7 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         if obj is None:
             return False
@@ -282,7 +275,7 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
         return False
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -311,7 +304,7 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -340,10 +333,7 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         if obj is None:
             return False
@@ -359,7 +349,7 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         return False
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -381,7 +371,7 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -406,10 +396,7 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         if obj is None:
             return False
@@ -426,7 +413,7 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
         return False
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -455,7 +442,7 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -480,10 +467,7 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
 
         if obj is None:
             return False
@@ -500,7 +484,7 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
         return False
 
     def draw_header(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -512,7 +496,7 @@ class PANEL_PT_MustardUI_Physics_CollisionSettings(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout
@@ -537,10 +521,7 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, obj = mustardui_active_object(context, config=0)
+        res, obj = mustardui_active_object(context, config=ModelMode.USER)
         if obj:
             physics_settings = obj.MustardUI_PhysicsSettings
             if res:
@@ -549,7 +530,7 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         physics_settings = obj.MustardUI_PhysicsSettings
 
         layout = self.layout

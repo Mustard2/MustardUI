@@ -1,10 +1,16 @@
+from ..misc.set_bool import set_bool
+
+
 # Function to add an option to the object, if not already there
 def mustardui_add_morph(
-    collection, item, custom_property=True, custom_property_source="ARMATURE_OBJ"
+    collection, item, custom_property=True, custom_property_source="ARMATURE_OBJ", existing=None
 ):
-    for el in collection:
-        if el.path == item[1] and el.custom_property == custom_property:
+    if existing is not None:
+        if (item[1], custom_property) in existing:
             return
+        existing.add((item[1], custom_property))
+    elif any(el.path == item[1] and el.custom_property == custom_property for el in collection):
+        return
 
     add_item = collection.add()
     add_item.name = item[0]
@@ -151,13 +157,13 @@ def muteDazFcurves(
     useLocation=True,
     useRotation=True,
     useScale=True,
-    muteSK=True,
+    mute_used_sk=True,
     mutepJCM=False,
     mutefacs=False,
-    check_bones_rot=[],
-    check_bones_loc=[],
+    check_bones_rot=(),
+    check_bones_loc=(),
     muteexceptions=False,
-    exceptions=[],
+    exceptions="",
 ):
 
     if rig and rig.data.animation_data:
@@ -166,9 +172,9 @@ def muteDazFcurves(
                 if muteDazFcurves_facscheck(
                     mutefacs, fcu.data_path, check_bones_rot, check_bones_loc
                 ) and muteDazFcurves_exceptionscheck(muteexceptions, fcu.data_path, exceptions):
-                    fcu.mute = mute
+                    set_bool(fcu, "mute", mute)
                 else:
-                    fcu.mute = False
+                    set_bool(fcu, "mute", False)
 
     if rig and rig.animation_data:
         for fcu in rig.animation_data.drivers:
@@ -183,7 +189,7 @@ def muteDazFcurves(
                 ) and muteDazFcurves_facscheck(
                     mutefacs, fcu.data_path, check_bones_rot, check_bones_loc
                 ):
-                    fcu.mute = mute
+                    set_bool(fcu, "mute", mute)
 
     for ob in rig.children:
         if ob.type == "MESH":
@@ -197,11 +203,12 @@ def muteDazFcurves(
                         ) and muteDazFcurves_exceptionscheck(
                             muteexceptions, fcu.data_path, exceptions
                         ):
-                            fcu.mute = mute
+                            set_bool(fcu, "mute", mute)
                         else:
-                            fcu.mute = False
+                            set_bool(fcu, "mute", False)
                         sname = words[1]
-                        if sname in skeys.key_blocks.keys() and muteSK:
+                        skey = skeys.key_blocks.get(sname)
+                        if skey is not None:
                             if (
                                 "MustardUINotDisable" not in sname
                                 and pJCMcheck(sname, mutepJCM)
@@ -209,10 +216,13 @@ def muteDazFcurves(
                                     mutefacs, sname, check_bones_rot, check_bones_loc
                                 )
                             ):
-                                skey = skeys.key_blocks[sname]
                                 if muteDazFcurves_exceptionscheck(
                                     muteexceptions, sname, exceptions
                                 ):
-                                    skey.mute = mute
+                                    set_bool(
+                                        skey,
+                                        "mute",
+                                        mute and (mute_used_sk or abs(skey.value) < 0.001),
+                                    )
                                 else:
-                                    skey.mute = False
+                                    set_bool(skey, "mute", False)

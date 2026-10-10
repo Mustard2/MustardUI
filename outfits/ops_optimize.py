@@ -2,6 +2,7 @@ import bpy
 from bpy.props import IntProperty
 
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -18,10 +19,10 @@ class MustardUI_Outfits_SwitchGlobal(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=0)
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
 
         if rig_settings.outfits_enable_global_subsurface:
@@ -50,11 +51,10 @@ class MustardUI_Outfit_DisableViewport(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res if arm is not None else False
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def execute(self, context):
-        poll, arm = mustardui_active_object(context, config=0)
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
 
         if self.enable:
@@ -77,7 +77,7 @@ class MustardUI_Outfit_DisableViewport(bpy.types.Operator):
                 }
 
         simplify_outfits(rig_settings, self.enable)
-        simplify_extras(rig_settings, self.enable)
+        simplify_extras(rig_settings, arm, self.enable)
 
         if not self.enable:
             if "mustardui_outfit_show" in arm:

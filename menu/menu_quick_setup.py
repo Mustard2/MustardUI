@@ -1,23 +1,25 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import MainPanel
 
 
 def _quick_setup_poll(context):
     """Common poll for the Quick Setup panel and its sub-panels."""
-    if can_draw_ui():
-        return False
-    res, arm = mustardui_active_object(context, config=2)
     addon_prefs = context.preferences.addons[base_package].preferences
-    return res and addon_prefs.quick_setup
+    return addon_prefs.quick_setup and active_object_operator_poll(
+        context, config=ModelMode.QUICK_SETUP
+    )
 
 
 def _is_scanned(context):
     """True once the smart-check scan has resolved the model armature."""
-    res, arm = mustardui_active_object(context, config=2)
+    res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
     if not res or arm is None:
         return False
     return arm.MustardUI_RigSettings.model_armature_object is not None
@@ -55,7 +57,7 @@ class PANEL_PT_MustardUI_QuickSetup(MainPanel, bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=2)
+        res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
         rig_settings = arm.MustardUI_RigSettings
         scanned = rig_settings.model_armature_object is not None
 
@@ -87,7 +89,7 @@ class PANEL_PT_MustardUI_QuickSetup_Outfits(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=2)
+        res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
         rig_settings = arm.MustardUI_RigSettings
         count = sum(
             1
@@ -102,7 +104,7 @@ class PANEL_PT_MustardUI_QuickSetup_Outfits(MainPanel, bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=2)
+        res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
         rig_settings = arm.MustardUI_RigSettings
 
         collections = rig_settings.quick_setup_outfit_collections
@@ -142,7 +144,7 @@ class PANEL_PT_MustardUI_QuickSetup_Hair(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=2)
+        res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
         rig_settings = arm.MustardUI_RigSettings
         count = sum(
             1 for item in rig_settings.quick_setup_hair_objects if item.enabled and item.object
@@ -155,7 +157,7 @@ class PANEL_PT_MustardUI_QuickSetup_Hair(MainPanel, bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=2)
+        res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
         rig_settings = arm.MustardUI_RigSettings
 
         hair_objs = rig_settings.quick_setup_hair_objects
@@ -189,7 +191,7 @@ class PANEL_PT_MustardUI_QuickSetup_Armature(MainPanel, bpy.types.Panel):
     def draw_header(self, context):
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=2)
+        res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
         count = sum(1 for c in arm.collections_all if c.MustardUI_ArmatureBoneCollection.is_in_UI)
 
         row = layout.row(align=True)
@@ -199,7 +201,7 @@ class PANEL_PT_MustardUI_QuickSetup_Armature(MainPanel, bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=2)
+        res, arm = mustardui_active_object(context, config=ModelMode.QUICK_SETUP)
         rig_settings = arm.MustardUI_RigSettings
 
         rig_labels = {

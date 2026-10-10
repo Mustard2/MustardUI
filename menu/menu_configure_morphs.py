@@ -1,8 +1,11 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from . import MainPanel
 from .menu_configure import row_scale
 
@@ -14,12 +17,10 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(
+            context, config=ModelMode.CONFIG
+        )
 
     def draw_header(self, context):
         layout = self.layout
@@ -29,21 +30,13 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
 
         layout = self.layout
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         morphs_settings = arm.MustardUI_MorphsSettings
 
         box = layout.box()
         box.label(text="General", icon="MODIFIER")
         col = box.column(align=True)
         col.prop(morphs_settings, "enable_ui", text="Enable Morph Panel")
-
-        row = col.row()
-        row.enabled = (
-            not morphs_settings.type == "GENERIC"
-            if morphs_settings.use_shape_key_mute_drivers
-            else True
-        )
-        row.prop(morphs_settings, "enable_freeze_morphs")
 
         box = layout.box()
         box.label(text="Morphs Type", icon="ASSET_MANAGER")
@@ -88,38 +81,34 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                 "mustardui.morphs_section_items_switch", icon="TRIA_DOWN", text=""
             ).direction = "DOWN"
 
-            section = morphs_settings.sections[arm.mustardui_morphs_section_uilist_index]
+            index = arm.mustardui_morphs_section_uilist_index
+            sections = morphs_settings.sections
+            section = sections[index] if 0 <= index < len(sections) else None
 
-            col = box.column(align=True)
-            col.enabled = not section.is_internal
-            col.prop(section, "string")
+            if section is not None:
+                col = box.column(align=True)
+                col.enabled = not section.is_internal
+                col.prop(section, "string")
 
-            col.separator()
-            col.prop(section, "shape_keys")
+                col.separator()
+                col.prop(section, "shape_keys")
 
-            row = col.row()
-            row.prop(section, "custom_properties")
-            col2 = row.column()
-            col2.enabled = section.custom_properties
-            col2.prop(section, "custom_properties_source", text="")
+                row = col.row()
+                row.prop(section, "custom_properties")
+                col2 = row.column()
+                col2.enabled = section.custom_properties
+                col2.prop(section, "custom_properties_source", text="")
 
-            col.separator()
-            col.prop(section, "hidden")
+                col.separator()
+                col.prop(section, "hidden")
 
-            row = col.row()
-            row.enabled = (
-                morphs_settings.enable_freeze_morphs
-                and not morphs_settings.use_shape_key_mute_drivers
-            )
-            row.prop(section, "freezable")
+                col.separator()
+                col.prop(section, "icon")
 
-            col.separator()
-            col.prop(section, "icon")
+                # Available also for Diffeomorphic sections
+                box.prop(section, "can_disable")
 
-            if (
-                arm.mustardui_morphs_section_uilist_index > -1
-                and morphs_settings.sections[arm.mustardui_morphs_section_uilist_index].morphs
-            ):
+            if section is not None and section.morphs:
                 box = layout.box()
                 box.label(text="Morphs", icon="SHAPEKEY_DATA")
 
@@ -127,7 +116,7 @@ class PANEL_PT_MustardUI_InitPanel_Morphs(MainPanel, bpy.types.Panel):
                 row.template_list(
                     "MUSTARDUI_UL_Morphs_UIList",
                     "The_List",
-                    morphs_settings.sections[arm.mustardui_morphs_section_uilist_index],
+                    section,
                     "morphs",
                     arm,
                     "mustardui_morphs_uilist_index",

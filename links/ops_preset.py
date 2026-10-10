@@ -6,6 +6,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 from .. import __package__ as base_package
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -25,11 +26,13 @@ class MustardUI_Links_Export(bpy.types.Operator, ExportHelper):
     @classmethod
     def poll(cls, context):
         addon_prefs = context.preferences.addons[base_package].preferences
-        return active_object_operator_poll(context, config=1) and addon_prefs.developer
+        return (
+            active_object_operator_poll(context, config=ModelMode.CONFIG) and addon_prefs.developer
+        )
 
     def execute(self, context):
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
 
         if len(arm.MustardUI_Links) < 1:
             self.report({"WARNING"}, "MustardUI - No link to export.")
@@ -67,39 +70,36 @@ class MustardUI_Links_Import(bpy.types.Operator, ImportHelper):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(
+            context, config=ModelMode.CONFIG
+        )
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         uilist = arm.MustardUI_Links
 
-        n_import = 0
-
+        # Read and validate the whole file before touching the current links
         try:
-            if self.replace_links:
-                uilist.clear()
-
             with open(self.filepath, "r", encoding="utf-8") as f:
-                links_loaded = json.load(f)
-
-                for link in links_loaded:
-                    a = uilist.add()
-                    a.name = link["name"]
-                    a.url = link["url"]
-                    n_import = n_import + 1
-
-                index = len(uilist) - 1
-                context.scene.mustardui_links_uilist_index = index
-
+                links_loaded = [(str(x["name"]), str(x["url"])) for x in json.load(f)]
         except Exception:
             self.report({"ERROR"}, "MustardUI - Link file seems corrupted.")
             return {"FINISHED"}
 
+        if self.replace_links:
+            uilist.clear()
+
+        for name, url in links_loaded:
+            a = uilist.add()
+            a.name = name
+            a.url = url
+
+        context.scene.mustardui_links_uilist_index = len(uilist) - 1
+
         arm.update_tag()
 
-        self.report({"INFO"}, "MustardUI - " + str(n_import) + " links Imported.")
+        self.report({"INFO"}, "MustardUI - " + str(len(links_loaded)) + " links Imported.")
 
         return {"FINISHED"}
 

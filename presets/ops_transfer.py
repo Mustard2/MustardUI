@@ -1,15 +1,18 @@
 import bpy
 
+from ..misc.enum_items import keep_enum_strings
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
 from .get_context import get_preset_context
+from .misc import get_unique_preset_name
 from .types import preset_type_items
 
 
 def mustardui_get_characters(self, context):
-    res, arm = mustardui_active_object(context, config=0)
+    res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
     items = []
 
@@ -28,7 +31,7 @@ def mustardui_get_characters(self, context):
         except Exception:
             pass
 
-    return items
+    return keep_enum_strings(items)
 
 
 class MustardUI_PresetTransfer(bpy.types.Operator):
@@ -52,7 +55,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            active_object_operator_poll(context, config=0)
+            active_object_operator_poll(context, config=ModelMode.USER)
             and len(mustardui_get_characters(None, context)) > 0
         )
 
@@ -63,7 +66,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
         self.layout.prop(self, "target_character")
 
     def execute(self, context):
-        res, source_arm = mustardui_active_object(context, config=0)
+        res, source_arm = mustardui_active_object(context, config=ModelMode.USER)
 
         target_obj = context.scene.objects.get(self.target_character)
         if not target_obj or not target_obj.data:
@@ -82,12 +85,15 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Invalid preset index")
             return {"CANCELLED"}
 
+        new_name = src_preset.name
+
         # Morphs
         if self.preset_type == "MORPHS":
             trg_settings = target_arm.MustardUI_MorphsSettings
 
+            new_name = get_unique_preset_name(trg_settings.presets, src_preset.name)
             new_preset = trg_settings.presets.add()
-            new_preset.name = src_preset.name
+            new_preset.name = new_name
 
             new_preset.data = src_preset.data
 
@@ -99,8 +105,9 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
 
             trg_settings = target_arm.MustardUI_PhysicsSettings
 
+            new_name = get_unique_preset_name(trg_settings.presets, src_preset.name)
             new_preset = trg_settings.presets.add()
-            new_preset.name = src_preset.name
+            new_preset.name = new_name
 
             new_preset.data = src_preset.data
             new_preset.has_cloth = src_preset.has_cloth
@@ -108,9 +115,10 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
             new_preset.has_collision = src_preset.has_collision
 
         target_name = target_arm.MustardUI_RigSettings.model_name
+        renamed = f" as '{new_name}'" if new_name != src_preset.name else ""
         self.report(
             {"INFO"},
-            f"MustardUI - Preset '{src_preset.name}' transferred to {target_name}",
+            f"MustardUI - Preset '{src_preset.name}' transferred to {target_name}{renamed}",
         )
 
         return {"FINISHED"}

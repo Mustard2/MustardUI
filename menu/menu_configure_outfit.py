@@ -1,8 +1,12 @@
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
+from ..text_storage.storage import settings_owner
 from . import MainPanel
 
 
@@ -13,12 +17,10 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=1)
         addon_prefs = context.preferences.addons[base_package].preferences
-        return res and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(
+            context, config=ModelMode.CONFIG
+        )
 
     def draw_header(self, context):
         layout = self.layout
@@ -29,7 +31,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
         layout = self.layout
         scene = context.scene
 
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
         physics_settings = arm.MustardUI_PhysicsSettings
 
@@ -119,14 +121,15 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
                 "mustardui.rename_outfit", text="", icon="GREASEPENCIL"
             ).right_click_call = False
 
-            col2 = col.column(align=True)
-            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
+            index = scene.mustardui_outfits_uilist_index
+            outfits = rig_settings.outfits_collections
+            outfit = outfits[index] if 0 <= index < len(outfits) else None
 
-            outfit_collection = rig_settings.outfits_collections[
-                scene.mustardui_outfits_uilist_index
-            ].collection
-            if outfit_collection is not None:
-                op.single_outfit = outfit_collection.name
+            col2 = col.column(align=True)
+            col2.enabled = outfit is not None
+            op = col2.operator("mustardui.physics_outfits_setup", icon="PHYSICS", text="")
+            if outfit is not None and outfit.collection is not None:
+                op.single_outfit = outfit.collection.name
             else:
                 op.single_outfit = ""
 
@@ -141,24 +144,23 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             op.is_config = True
             op.delete_cp = True
 
-            outfit = rig_settings.outfits_collections[scene.mustardui_outfits_uilist_index]
+            if outfit is not None:
+                if rig_settings.hair_collection is not None:
+                    box.prop(outfit, "hair")
 
-            if rig_settings.hair_collection is not None:
-                box.prop(outfit, "hair")
-
-            if rig_settings.outfits_list_mode == "THUMBNAILS":
-                box2 = box.box()
-                row = box2.row()
-                row.template_ID(outfit, "preview", open="image.open", text="Thumbnail")
-                if outfit.collection is not None:
-                    row.operator(
-                        "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
-                    ).outfit = outfit.collection.name
-                if outfit.preview is not None:
-                    box2.template_icon(
-                        icon_value=outfit.preview.preview_ensure().icon_id,
-                        scale=rig_settings.outfits_list_previews_scale,
-                    )
+                if rig_settings.outfits_list_mode == "THUMBNAILS":
+                    box2 = box.box()
+                    row = box2.row()
+                    row.template_ID(outfit, "preview", open="image.open", text="Thumbnail")
+                    if outfit.collection is not None:
+                        row.operator(
+                            "mustardui.outfits_render_preview", text="", icon="RENDER_STILL"
+                        ).outfit = outfit.collection.name
+                    if outfit.preview is not None:
+                        box2.template_icon(
+                            icon_value=outfit.preview.preview_ensure().icon_id,
+                            scale=rig_settings.outfits_list_previews_scale,
+                        )
 
             # Custom properties
             box = layout.box()
@@ -171,7 +173,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
                 row.template_list(
                     "MUSTARDUI_UL_Property_UIListOutfits",
                     "The_List",
-                    arm,
+                    settings_owner(arm),
                     "MustardUI_CustomPropertiesOutfit",
                     scene,
                     "mustardui_property_uilist_outfits_index",

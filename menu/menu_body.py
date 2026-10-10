@@ -4,8 +4,7 @@ from ..misc.geometry_nodes import (
     draw_geometry_nodes_modifier_inputs,
     geometry_nodes_modifier_inputs,
 )
-from ..model_selection.active_object import mustardui_active_object
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import ModelMode, mustardui_active_object
 from . import MainPanel
 
 
@@ -16,11 +15,7 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-
-        if can_draw_ui():
-            return False
-
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         if arm is None:
             return False
@@ -32,8 +27,6 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             rig_settings.body_enable_subdiv
             or rig_settings.body_enable_smoothcorr
             or rig_settings.body_enable_solidify
-            or rig_settings.body_enable_material_normal_nodes
-            or rig_settings.body_enable_preserve_volume
             or rig_settings.body_enable_geometry_nodes
         )
 
@@ -49,52 +42,10 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
 
     def draw(self, context):
 
-        settings = bpy.context.scene.MustardUI_Settings
-
-        poll, obj = mustardui_active_object(context, config=0)
+        poll, obj = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = obj.MustardUI_RigSettings
 
         layout = self.layout
-
-        if (
-            rig_settings.body_enable_smoothcorr
-            or rig_settings.body_enable_solidify
-            or rig_settings.body_enable_material_normal_nodes
-            or rig_settings.body_enable_preserve_volume
-            or rig_settings.body_enable_geometry_nodes
-        ):
-            box = layout.box()
-            box.label(text="Global settings", icon="OUTLINER_OB_ARMATURE")
-
-            if (
-                rig_settings.body_enable_preserve_volume
-                or rig_settings.body_enable_geometry_nodes
-                or rig_settings.body_enable_solidify
-                or rig_settings.body_enable_smoothcorr
-            ):
-                col = box.column(align=True)
-
-                if rig_settings.body_enable_preserve_volume:
-                    col.prop(rig_settings, "body_preserve_volume")
-
-                if rig_settings.body_enable_smoothcorr:
-                    col.prop(rig_settings, "body_smooth_corr")
-
-                if rig_settings.body_enable_geometry_nodes:
-                    col.prop(rig_settings, "body_geometry_nodes")
-
-                if rig_settings.body_enable_solidify:
-                    col.prop(rig_settings, "body_solidify")
-
-            if rig_settings.body_enable_material_normal_nodes:
-                col = box.column(align=True)
-
-                row = col.row(align=True)
-                row.scale_x = 0.94
-                if context.scene.render.engine == "CYCLES" and settings.material_normal_nodes:
-                    row.alert = True
-                row.prop(settings, "material_normal_nodes", text="")
-                row.label(text="Eevee Optimized Normals")
 
         if rig_settings.body_enable_subdiv:
             box = layout.box()
@@ -112,6 +63,25 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
             row.prop(rig_settings, "body_subdiv_rend", text="Render")
             row.scale_x = 0.7
             row.prop(rig_settings, "body_subdiv_rend_lv")
+
+        if (
+            rig_settings.body_enable_smoothcorr
+            or rig_settings.body_enable_solidify
+            or rig_settings.body_enable_geometry_nodes
+        ):
+            box = layout.box()
+            box.label(text="Optimize", icon="FORCE_WIND")
+
+            col = box.column(align=True)
+
+            if rig_settings.body_enable_smoothcorr:
+                col.prop(rig_settings, "body_smooth_corr")
+
+            if rig_settings.body_enable_geometry_nodes:
+                col.prop(rig_settings, "body_geometry_nodes")
+
+            if rig_settings.body_enable_solidify:
+                col.prop(rig_settings, "body_solidify")
 
         # Geometry nodes as sections
         if rig_settings.model_body is None:

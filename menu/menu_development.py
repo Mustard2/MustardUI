@@ -3,8 +3,7 @@ import platform
 import bpy
 
 from .. import __package__ as base_package
-from ..model_selection.active_object import active_object_operator_poll
-from ..warnings.can_draw_ui import can_draw_ui
+from ..model_selection.active_object import ModelMode, active_object_operator_poll
 from . import MainPanel
 
 
@@ -16,9 +15,7 @@ class PANEL_PT_MustardUI_Development(MainPanel, bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         addon_prefs = context.preferences.addons[base_package].preferences
-        if can_draw_ui():
-            return False
-        return active_object_operator_poll(context, config=0) and addon_prefs.developer
+        return addon_prefs.developer and active_object_operator_poll(context, config=ModelMode.USER)
 
     def draw(self, context):
 

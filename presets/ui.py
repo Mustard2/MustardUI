@@ -1,6 +1,10 @@
 import bpy
 
-from ..model_selection.active_object import mustardui_active_object
+from ..model_selection.active_object import (
+    ModelMode,
+    active_object_operator_poll,
+    mustardui_active_object,
+)
 from .get_context import get_preset_context
 from .types import get_preset_definition, preset_type_items
 
@@ -29,8 +33,7 @@ class MustardUI_PresetsUI(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        res, arm = mustardui_active_object(context, config=0)
-        return res and arm is not None
+        return active_object_operator_poll(context, config=ModelMode.USER)
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=250)
@@ -39,7 +42,7 @@ class MustardUI_PresetsUI(bpy.types.Operator):
         return {"FINISHED"}
 
     def draw(self, context):
-        res, arm = mustardui_active_object(context, config=0)
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
 
         settings, presets, preset, index, index_prop = get_preset_context(arm, self.preset_type)
 

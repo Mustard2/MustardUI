@@ -1,7 +1,9 @@
 import bpy
 from bpy.props import EnumProperty, IntProperty
 
+from ..misc.enum_items import keep_enum_strings
 from ..model_selection.active_object import (
+    ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
@@ -9,18 +11,14 @@ from ..model_selection.active_object import (
 # Identifier used for the entry that removes the property from every section
 SECTION_NONE = "MUSTARDUI_SECTION_NONE"
 
-# Blender does not keep a reference to the strings returned by an EnumProperty items
-# callback, therefore they are stored here to avoid them being garbage collected
-sections_enum_items = []
-
 
 def sections_enum(self, context):
-    sections_enum_items.clear()
+    sections_enum_items = []
     sections_enum_items.append(
         (SECTION_NONE, "No Section", "Remove the property from any section", "RECORD_OFF", 0)
     )
 
-    res, arm = mustardui_active_object(context, config=1)
+    res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
     if res:
         rig_settings = arm.MustardUI_RigSettings
         for i, section in enumerate(rig_settings.body_custom_properties_sections):
@@ -34,7 +32,7 @@ def sections_enum(self, context):
                 )
             )
 
-    return sections_enum_items
+    return keep_enum_strings(sections_enum_items)
 
 
 class MustardUI_Property_SetSection(bpy.types.Operator):
@@ -49,10 +47,10 @@ class MustardUI_Property_SetSection(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return active_object_operator_poll(context, config=1)
+        return active_object_operator_poll(context, config=ModelMode.CONFIG)
 
     def execute(self, context):
-        res, arm = mustardui_active_object(context, config=1)
+        res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         custom_props = arm.MustardUI_CustomProperties
 
         if not 0 <= self.index < len(custom_props):
