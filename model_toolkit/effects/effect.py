@@ -46,12 +46,18 @@ def add_effect_modifier(obj, name, node_group, control):
     modifier.node_group = bpy.data.node_groups[node_group]
     modifier_input(modifier, "Control").value = control
 
-    # Before the subdivision, to work on the low poly mesh
-    subdivision = next(
-        (i for i, m in enumerate(obj.modifiers) if m.type in {"SUBSURF", "MULTIRES"}), None
+    # Before the subdivision, to work on the low poly mesh, and the strands, not to affect them.
+    # Multires can't have modifiers above it
+    index = next(
+        (
+            i
+            for i, m in enumerate(obj.modifiers)
+            if m.type == "SUBSURF" or is_effect(m, "MustardUI Sticky Strands")
+        ),
+        None,
     )
-    if subdivision is not None:
-        obj.modifiers.move(len(obj.modifiers) - 1, subdivision)
+    if index is not None:
+        obj.modifiers.move(len(obj.modifiers) - 1, index)
     return modifier
 
 
