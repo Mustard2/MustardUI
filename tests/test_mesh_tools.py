@@ -109,7 +109,7 @@ class TestTransferShapeKeys(BlenderTestCase):
             cp.rna = f'{source_rna}["{key}"]'
         cp_misc.mustardui_add_driver(arm, f'{source_rna}["Lift"]', "value", "Lift", 0)
 
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="PROPERTY")
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="PROPERTY")
 
         sks = self.target.data.shape_keys
         target_rna = f'bpy.data.shape_keys["{sks.name}"].key_blocks["Lift"]'
@@ -134,7 +134,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         # Without the fallback, the keys without a Custom Property are transferred undriven
         other = grid_object("Other", size=0.5, subdivisions=7, location=(0, 0, 0.001))
         self.select(other, self.source)
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="PROPERTY_EXCLUDE")
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="PROPERTY_EXCLUDE")
         sks = other.data.shape_keys
         self.assertIn("Raise", sks.key_blocks)
         self.assertEqual(driver_id("Lift"), arm)
@@ -147,7 +147,7 @@ class TestTransferShapeKeys(BlenderTestCase):
         self.target.location = (0.0, 0.0, 0.0)
         bpy.context.view_layer.update()
 
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="NONE")
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="NONE")
 
         offsets = key_offsets(self.target, "Lift")
         xs = np.array([v.co.x for v in self.target.data.vertices])
@@ -176,10 +176,10 @@ class TestTransferShapeKeys(BlenderTestCase):
         for d in noisy.data:
             d.co.z += 0.1 * (d.co.x + 1.0) + rng.uniform(-0.01, 0.01)
 
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="NONE")
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="NONE")
         plain = key_offsets(self.target, "Noisy")[:, 2]
         self.target.shape_key_remove(self.target.data.shape_keys.key_blocks["Noisy"])
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(link="NONE", smooth=0.3)
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="NONE", smooth=0.3)
         smooth = key_offsets(self.target, "Noisy")[:, 2]
 
         def noise(z):
