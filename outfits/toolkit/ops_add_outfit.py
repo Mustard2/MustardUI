@@ -500,7 +500,7 @@ class AddOutfitSettings:
         "the threshold.\nIf disabled, they are skipped",
     )
 
-    link: bpy.props.EnumProperty(
+    shape_key_link: bpy.props.EnumProperty(
         name="Link",
         items=LINK_ITEMS,
         default="SOURCE",
@@ -629,7 +629,7 @@ class AddOutfitSettings:
 
             col = body.column()
             col.prop(self, "overwrite_shape_keys")
-            col.prop(self, "link")
+            col.prop(self, "shape_key_link")
             col.separator()
             col.prop(self, "max_distance")
             col.prop(self, "smooth")
@@ -861,7 +861,7 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
                 smooth=self.smooth,
                 threshold=self.threshold,
                 overwrite=self.overwrite_shape_keys,
-                link=self.link,
+                link=self.shape_key_link,
                 arm=arm,
             )
             while True:
