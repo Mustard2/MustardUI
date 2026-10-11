@@ -339,7 +339,7 @@ class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
         description="Invert the Vertex Group weights",
     )
 
-    link: bpy.props.EnumProperty(
+    shape_key_link: bpy.props.EnumProperty(
         name="Link",
         items=LINK_ITEMS,
         default="SOURCE",
@@ -394,7 +394,7 @@ class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
         row = col.row(align=True)
         row.prop(self, "vertex_group")
         row.prop(self, "invert_vertex_group", text="", icon="ARROW_LEFTRIGHT")
-        col.prop(self, "link")
+        col.prop(self, "shape_key_link")
 
     def invoke(self, context, event):
         wm = context.window_manager
@@ -459,7 +459,7 @@ class MustardUI_ModelToolkit_TransferShapeKeys(bpy.types.Operator):
                 overwrite=self.overwrite,
                 vertex_group=self.vertex_group,
                 invert_vertex_group=self.invert_vertex_group,
-                link=self.link,
+                link=self.shape_key_link,
                 arm=mustardui_active_object(context, config=ModelMode.ANY)[1],
             )
         )
