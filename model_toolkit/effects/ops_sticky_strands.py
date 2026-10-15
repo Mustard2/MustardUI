@@ -5,7 +5,7 @@ from mathutils import Matrix
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
-from .effect import RemoveEffect, effects_available, modifier_input, new_control
+from .effect import RemoveEffect, effects_available, is_effect, modifier_input, new_control
 
 NODE_GROUP = "MustardUI Sticky Strands"
 MATERIAL = "MustardUI Sticky Strands"
@@ -138,11 +138,41 @@ class MustardUI_ModelToolkit_RemoveStickyStrands(RemoveEffect, bpy.types.Operato
     creators_type = CONTROL_TYPE
 
 
+class MustardUI_ModelToolkit_ConvertStickyStrands(RemoveEffect, bpy.types.Operator):
+    """Convert the Sticky Strands of the selected meshes at the current frame to new meshes parented to them, removing the modifiers and the Controls not used anymore"""  # noqa: E501
+
+    bl_idname = "mustardui.model_toolkit_convert_sticky_strands"
+    bl_label = "Convert Sticky Strands to Mesh"
+
+    effect = "Sticky Strands"
+    node_group = NODE_GROUP
+    creators_type = CONTROL_TYPE
+    done = "converted to meshes"
+
+    def execute(self, context):
+        # The strands are an instance, which applying the modifier would discard
+        depsgraph = context.evaluated_depsgraph_get()
+        for obj in context.selected_objects:
+            if not any(is_effect(m, NODE_GROUP) for m in obj.modifiers):
+                continue
+            geometry = obj.evaluated_get(depsgraph).evaluated_geometry()
+            for reference in geometry.instance_references():
+                if reference.mesh and "sticky_factor" in reference.mesh.attributes:
+                    mesh = reference.mesh.copy()
+                    mesh.name = f"{obj.name} Sticky Strands"
+                    strands = bpy.data.objects.new(mesh.name, mesh)
+                    obj.users_collection[0].objects.link(strands)
+                    strands.parent = obj
+        return super().execute(context)
+
+
 def register():
     bpy.utils.register_class(MustardUI_ModelToolkit_StickyStrands)
     bpy.utils.register_class(MustardUI_ModelToolkit_RemoveStickyStrands)
+    bpy.utils.register_class(MustardUI_ModelToolkit_ConvertStickyStrands)
 
 
 def unregister():
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_ConvertStickyStrands)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_RemoveStickyStrands)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_StickyStrands)

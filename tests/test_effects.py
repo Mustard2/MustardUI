@@ -752,6 +752,23 @@ class TestStickyStrands(BlenderTestCase):
         self.assertNotIn("Sticky Strands", mouth.modifiers)
         self.assertNotIn(name, bpy.data.objects)
 
+    # Converted to a mesh with the shader attributes, as applying the modifier discards them
+    def test_convert(self):
+        lip = self.pull(physics=True)
+        self.play(10)
+        co = self.strands(lip)
+        name = effect.modifier_input(lip.modifiers["Sticky Strands"], "Control").value.name
+
+        bpy.ops.mustardui.model_toolkit_convert_sticky_strands()
+        self.assertNotIn("Sticky Strands", lip.modifiers)
+        self.assertNotIn(name, bpy.data.objects)
+        strands = bpy.data.objects["Lip Sticky Strands"]
+        self.assertEqual(strands.parent, lip)
+        self.assertIn("sticky_factor", strands.data.attributes)
+        self.assertEqual(strands.data.materials[0].name, "MustardUI Sticky Strands")
+        converted = np.array([strands.matrix_world @ v.co for v in strands.data.vertices])
+        np.testing.assert_allclose(converted, co, atol=1e-5)
+
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestWithoutModel(BlenderTestCase):

@@ -266,6 +266,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator(
             "mustardui.model_toolkit_sticky_strands", text="Sticky Strands", icon="STRANDS"
         )
+        row.operator("mustardui.model_toolkit_convert_sticky_strands", text="", icon="MESH_DATA")
         row.operator("mustardui.model_toolkit_remove_sticky_strands", text="", icon="X")
 
         layout.separator()
