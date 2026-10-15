@@ -69,6 +69,7 @@ class RemoveEffect:
     effect = ""
     node_group = ""
     creators_type = ""
+    done = "removed"
 
     @classmethod
     def poll(cls, context):
@@ -93,5 +94,5 @@ class RemoveEffect:
             if control.MustardUI_tools_creators_type == self.creators_type:
                 bpy.data.objects.remove(control)
 
-        self.report({"INFO"}, f"MustardUI - {self.effect} removed.")
+        self.report({"INFO"}, f"MustardUI - {self.effect} {self.done}.")
         return {"FINISHED"}
