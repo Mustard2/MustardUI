@@ -957,6 +957,12 @@ class TestExportOutfits(BlenderTestCase):
             self.export("Tester Casual")
         self.assertFalse(os.path.exists(self.path))
 
+        # Exported without the links to the other model, which is not changed
+        self.assertEqual(self.export("Tester Casual", remove_links=True), {"FINISHED"})
+        with bpy.data.libraries.load(self.path) as (source, _):
+            self.assertEqual(list(source.armatures), ["Tester Armature"])
+        self.assertEqual(target.id, copy)
+
     # Outfits and Extras pieces are listed, with the shown Outfit chosen
     def test_export_items(self):
         self.model["armature"].data.MustardUI_RigSettings.outfits_list = "Tester Formal"
