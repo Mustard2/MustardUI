@@ -129,10 +129,12 @@ def closure(graph, roots, stop=()):
 class OutfitCopier:
     """Copies of the Outfits using the stand-ins of the model armature and body"""
 
-    def __init__(self, mapping, drags, queue):
+    def __init__(self, mapping, drags, queue, removed=()):
         # Original datablocks to their copies or stand-ins
         self.mapping = mapping
         self.drags = drags
+        # Datablocks cut wherever they are used
+        self.removed = removed
         self.copies = list(mapping.items())
         self.created = set(mapping.values())
         self.queue = list(queue)
@@ -143,11 +145,13 @@ class OutfitCopier:
         new = self.mapping.get(value)
         if new is not None:
             return new
-        if value in self.created or value not in self.drags:
+        if value in self.created:
             return value
-        if isinstance(value, NOT_COPIED):
+        if value in self.removed or (value in self.drags and isinstance(value, NOT_COPIED)):
             self.cut.append(f"{owner}: {value.name}")
             return None
+        if value not in self.drags:
+            return value
         new = value.copy()
         self.add(value, new)
         keys = getattr(value, "shape_keys", None)
@@ -303,6 +307,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         "file and the item",
     )
 
+    remove_links: bpy.props.BoolProperty(
+        name="Remove Links to Other Models",
+        default=False,
+        description="Remove the links of the Outfits to other models, like drivers or modifiers "
+        "using a leftover copy of the model, instead of stopping the export.\nThe model is not "
+        "changed",
+    )
+
     delete_outfits: bpy.props.BoolProperty(
         name="Delete Exported",
         default=False,
@@ -363,6 +375,7 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             col.prop(self, "separate_files")
             col.prop(self, "compress")
             body.column(heading="Images").prop(self, "pack_images", text="Pack")
+            body.column(heading="Other Models").prop(self, "remove_links", text="Remove Links")
             body.column(heading="Exported").prop(self, "delete_outfits", text="Delete")
 
     def invoke(self, context, event):
@@ -515,7 +528,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
 
         # Datablocks that would add the model to the file, through their users
         drags = closure(bpy.data.user_map(), heavy | {context.scene})
-        copier = OutfitCopier(mapping, drags, [mapping[o] for o in objects])
+        # Armatures and bodies of the other models
+        removed = set()
+        if self.remove_links:
+            removed = {a for a in bpy.data.armatures if a.MustardUI_created and a != arm}
+            removed |= {a.MustardUI_RigSettings.model_body for a in removed}
+            removed |= {o for o in bpy.data.objects if o.data in removed}
+            removed.discard(None)
+        copier = OutfitCopier(mapping, drags, [mapping[o] for o in objects], removed)
         copier.run()
         # After the pieces, as their data copies are used by the custom properties
         for cp in cps:
@@ -565,6 +585,8 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
                     f"the Outfits use another model ({', '.join(names)}), e.g. with drivers or "
                     "modifiers. Point them to this model"
                 )
+                if not self.remove_links:
+                    message += ", or enable Remove Links to Other Models"
             else:
                 message = "some Outfit data uses the model, which would be written in the file"
             self.report(
