@@ -1,5 +1,6 @@
 import os
 import re
+from collections import deque
 
 import bpy
 from bpy_extras.io_utils import ExportHelper
@@ -109,17 +110,18 @@ def export_fill_items(context):
 
 
 def closure(graph, roots, stop=()):
-    """Datablocks reached from the roots in the graph, not past the stop ones"""
+    """Datablocks reached from the roots in the graph, not past the stop ones, mapped to the one
+    they are first reached from"""
 
-    found = set(roots)
-    queue = list(roots)
+    found = dict.fromkeys(roots)
+    queue = deque(roots)
     while queue:
-        id_data = queue.pop()
+        id_data = queue.popleft()
         if id_data in stop:
             continue
         for linked in graph.get(id_data, ()):
             if linked not in found:
-                found.add(linked)
+                found[linked] = id_data
                 queue.append(linked)
     return found
 
@@ -528,20 +530,45 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
                 uses.setdefault(user, set()).add(id_data)
         forbidden = heavy | set(bpy.data.scenes)
         reached = closure(uses, written, forbidden)
-        leaks = reached & forbidden
+        leaks = reached.keys() & forbidden
         if leaks:
-            # The exported datablocks using the model ones, to find what to fix
-            users = {
-                f"{u.name} ({type(u).__name__}) uses {i.name} ({type(i).__name__})"
-                for i, us in bpy.data.user_map(subset=leaks).items()
-                for u in us & reached - forbidden
-            }
+            # Chains from the exported datablocks to the model ones, with the original names
+            originals = {c: o for o, c in copier.copies}
+            chains = []
+            others = set()
+            for leak in leaks:
+                chain = []
+                id_data = leak
+                while id_data is not None:
+                    original = originals.get(id_data, id_data)
+                    chain.append(f"{original.name} ({type(original).__name__})")
+                    # Another model, like a leftover copy of this one
+                    data = getattr(original, "data", original)
+                    if (
+                        isinstance(data, bpy.types.Armature)
+                        and data.MustardUI_created
+                        and data != arm
+                    ):
+                        others.add(data)
+                    id_data = reached[id_data]
+                chains.append(" > ".join(reversed(chain)))
+            print(
+                "MustardUI - Export stopped, the Outfits use the model through these datablocks, "
+                "each using the next:\n  " + "\n  ".join(sorted(chains))
+            )
 
-            print("MustardUI - Export stopped:\n  " + "\n  ".join(sorted(users)))
+            if others:
+                names = sorted(
+                    next((o.name for o in bpy.data.objects if o.data == d), d.name) for d in others
+                )
+                message = (
+                    f"the Outfits use another model ({', '.join(names)}), e.g. with drivers or "
+                    "modifiers. Point them to this model"
+                )
+            else:
+                message = "some Outfit data uses the model, which would be written in the file"
             self.report(
-                {"ERROR"},
-                "MustardUI - The Outfits still use the model (details in the console), "
-                "nothing exported",
+                {"ERROR"}, f"MustardUI - Nothing exported: {message} (details in the console)"
             )
             return None, None
 
