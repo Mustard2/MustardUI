@@ -62,7 +62,7 @@ def set_physics_item(physics_item, status):
     """Apply the enable status to the Physics Item object itself."""
     obj = physics_item.object
 
-    mod_types = {"COLLISION": {"COLLISION", "ARMATURE", "DISPLACE"}}.get(physics_item.type)
+    mod_types = {"COLLISION": {"COLLISION", "ARMATURE", "DISPLACE", "NODES"}}.get(physics_item.type)
 
     for modifier in obj.modifiers:
         if mod_types is not None and modifier.type not in mod_types:

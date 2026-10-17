@@ -238,6 +238,15 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Pan
             icon="PHYSICS",
         )
 
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.model_toolkit_particle_hair_to_curves",
+            text="Convert Particle Hair to Curves",
+            icon="CURVES",
+        )
+
 
 class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Panel):
     header = ("Effects", "SHADERFX")
