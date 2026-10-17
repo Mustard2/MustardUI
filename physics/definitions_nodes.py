@@ -55,6 +55,33 @@ HAIR_DYNAMICS_SOCKETS = {
     "angular_damping": "Socket_14",
     "effectors_collection": "Socket_27",
 }
+# Inputs added by MustardUI to its copy, by name as their identifiers follow the asset inputs
+HAIR_DYNAMICS_MUSTARDUI_SOCKETS = {
+    "simulation_space": "Simulation Space",
+    "pin_stiffness": "Pin Stiffness",
+}
+
+
+def hair_dynamics_input(modifier, key):
+    """Input of a Hair Dynamics modifier, None if its node group does not have it"""
+    identifier = HAIR_DYNAMICS_SOCKETS.get(key)
+    if identifier is None:
+        identifier = next(
+            (
+                x.identifier
+                for x in modifier.node_group.interface.items_tree
+                if x.item_type == "SOCKET"
+                and x.in_out == "INPUT"
+                and x.name == HAIR_DYNAMICS_MUSTARDUI_SOCKETS[key]
+            ),
+            None,
+        )
+    return getattr(modifier.properties.inputs, identifier, None) if identifier else None
+
+
+# Children of the particle hair converted to curves, and their on/off input
+HAIR_CHILDREN_MODIFIER = "Hair Children"
+HAIR_CHILDREN_SWITCH = "Children"
 
 hair_dynamics_available = cloth_dynamics_available
 

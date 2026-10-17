@@ -943,6 +943,26 @@ class TestExportOutfits(BlenderTestCase):
             target.images = ["Shirt Texture"]
         self.assertIsNone(target.images[0].packed_file)
 
+    # Not exported when the Outfits use another model, as it would add this one to the file
+    def test_export_other_model(self):
+        # Leftover copy of the model, out of the scene, with settings as custom properties
+        copy = self.model["armature"].data.copy()
+        copy["Settings"] = {"extras": self.model["extras"]}
+        bpy.data.objects.new("Tester Armature Copy", copy)
+        keys = bpy.data.objects["Casual - Shirt"].data.shape_keys
+        target = keys.animation_data.drivers[0].driver.variables[0].targets[0]
+        target.id_type, target.id = "ARMATURE", copy
+
+        with self.assertRaisesRegex(RuntimeError, r"another model \(Tester Armature Copy\)"):
+            self.export("Tester Casual")
+        self.assertFalse(os.path.exists(self.path))
+
+        # Exported without the links to the other model, which is not changed
+        self.assertEqual(self.export("Tester Casual", remove_links=True), {"FINISHED"})
+        with bpy.data.libraries.load(self.path) as (source, _):
+            self.assertEqual(list(source.armatures), ["Tester Armature"])
+        self.assertEqual(target.id, copy)
+
     # Outfits and Extras pieces are listed, with the shown Outfit chosen
     def test_export_items(self):
         self.model["armature"].data.MustardUI_RigSettings.outfits_list = "Tester Formal"

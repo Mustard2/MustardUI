@@ -1,5 +1,6 @@
 import bpy
 
+from ...misc.geometry_nodes import node_group_has_simulation
 from ...misc.move_modifier import move_modifier
 from ...physics.definitions_nodes import (
     CLOTH_DYNAMICS_NODE_GROUP,
@@ -463,7 +464,8 @@ def find_physics_modifier(obj):
         (
             m
             for m in obj.modifiers
-            if m.type in ("CLOTH", "SOFT_BODY", "COLLISION") or (m.type == "NODES" and m.node_group)
+            if m.type in ("CLOTH", "SOFT_BODY", "COLLISION")
+            or (m.type == "NODES" and node_group_has_simulation(m.node_group))
         ),
         None,
     )

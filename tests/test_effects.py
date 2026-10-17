@@ -153,6 +153,13 @@ class TestRipple(BlenderTestCase):
         self.assertLess(smooth.max(), sharp.max())
         self.assertGreater((smooth > 1e-6).sum(), (sharp > 1e-6).sum())
 
+    # Multires can't have modifiers above it
+    def test_multires(self):
+        self.grid.modifiers.clear()
+        self.grid.modifiers.new("Multires", "MULTIRES")
+        bpy.ops.mustardui.model_toolkit_ripple()
+        self.assertEqual([m.type for m in self.grid.modifiers], ["MULTIRES", "NODES"])
+
     # Only the vertices in the Vertex Group ripple
     def test_vertex_group(self):
         group = self.grid.vertex_groups.new(name="Soft")
@@ -616,6 +623,13 @@ class TestStickyStrands(BlenderTestCase):
         self.assertTrue(np.any(np.abs(self.strands(lip)[:, 0] - 0.5) < 0.01))
 
     # Without physics, the strands hang between the meshes, and are removed when broken
+    # Effects added later go before the strands, not to affect them
+    def test_effect_order(self):
+        lip = self.pull(physics=False)
+        set_active(lip)
+        bpy.ops.mustardui.model_toolkit_ripple()
+        self.assertEqual([m.name for m in lip.modifiers], ["Ripple", "Sticky Strands"])
+
     def test_static(self):
         lip = self.pull(physics=False)
         self.play(10)
@@ -737,6 +751,23 @@ class TestStickyStrands(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_remove_sticky_strands()
         self.assertNotIn("Sticky Strands", mouth.modifiers)
         self.assertNotIn(name, bpy.data.objects)
+
+    # Converted to a mesh with the shader attributes, as applying the modifier discards them
+    def test_convert(self):
+        lip = self.pull(physics=True)
+        self.play(10)
+        co = self.strands(lip)
+        name = effect.modifier_input(lip.modifiers["Sticky Strands"], "Control").value.name
+
+        bpy.ops.mustardui.model_toolkit_convert_sticky_strands()
+        self.assertNotIn("Sticky Strands", lip.modifiers)
+        self.assertNotIn(name, bpy.data.objects)
+        strands = bpy.data.objects["Lip Sticky Strands"]
+        self.assertEqual(strands.parent, lip)
+        self.assertIn("sticky_factor", strands.data.attributes)
+        self.assertEqual(strands.data.materials[0].name, "MustardUI Sticky Strands")
+        converted = np.array([strands.matrix_world @ v.co for v in strands.data.vertices])
+        np.testing.assert_allclose(converted, co, atol=1e-5)
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
