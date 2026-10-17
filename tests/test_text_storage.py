@@ -159,6 +159,16 @@ class TestTextStorage(BlenderTestCase):
         self.assertEqual(prefs.settings_storage, "TEXT")
         self.assertIn("MustardUI_data", storage.system_properties(self.arm))
 
+    # Settings read on the armature before they are moved back from the Text, as by a panel
+    # drawn while a file saved with Text storage loads, are replaced by the ones on the Text
+    def test_armature_read_before_conversion(self):
+        settings = self.snapshot(self.arm)
+        self.set_enabled(True)
+        storage._relocate(False)
+        self.assertIsNone(self.arm.MustardUI_RigSettings.model_armature_object)
+        storage._convert(False)
+        self.assertEqual(self.snapshot(self.arm), settings)
+
     # Text storage is active only with Experimental Features enabled
     def test_experimental(self):
         self.set_enabled(True)

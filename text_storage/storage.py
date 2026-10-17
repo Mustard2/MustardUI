@@ -109,6 +109,8 @@ def _move(source, target, names, delete_source):
     if names:
         target_props = system_properties(target, create=True)
         for name in names:
+            if name in target_props:
+                del target_props[name]
             target_props[name] = source_props[name]
             if delete_source:
                 del source_props[name]
