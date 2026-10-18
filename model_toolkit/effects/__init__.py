@@ -4,6 +4,7 @@ from . import (
     ops_hex_dissolve,
     ops_ripple,
     ops_squish,
+    ops_sticky_liquid,
     ops_sticky_strands,
     ops_wrap,
 )
@@ -17,9 +18,11 @@ def register():
     ops_hex_dissolve.register()
     ops_wrap.register()
     ops_sticky_strands.register()
+    ops_sticky_liquid.register()
 
 
 def unregister():
+    ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()
     ops_wrap.unregister()
     ops_hex_dissolve.unregister()

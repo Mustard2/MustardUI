@@ -33,6 +33,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_disintegration.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_ripple.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_fireball.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_sticky_liquid.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_hex_dissolve.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
@@ -767,6 +768,146 @@ class TestStickyStrands(BlenderTestCase):
         self.assertIn("sticky_factor", strands.data.attributes)
         self.assertEqual(strands.data.materials[0].name, "MustardUI Sticky Strands")
         converted = np.array([strands.matrix_world @ v.co for v in strands.data.vertices])
+        np.testing.assert_allclose(converted, co, atol=1e-5)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestStickyLiquid(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.armature = bpy.data.objects["Tester Armature"]
+        self.body = bpy.data.objects["Tester Body"]
+        # Facing out, as the liquid sticks on the side the normals face
+        self.body.data.flip_normals()
+        self.scene = bpy.context.scene
+        self.scene.cursor.location = (0.1, 0.0, 1.8)
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_sticky_liquid()
+        self.liquid = bpy.data.objects["Sticky Liquid"]
+        self.modifier = self.liquid.modifiers["Sticky Liquid"]
+        self.control = effect.modifier_input(self.modifier, "Control").value
+
+    def points(self):
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = self.liquid.evaluated_get(depsgraph).evaluated_geometry()
+        co = np.empty(len(geometry.pointcloud.points) * 3)
+        geometry.pointcloud.points.foreach_get("co", co)
+        return co.reshape(-1, 3)
+
+    # The liquid falls from the Control, sticks on the top of the body, and follows it as the
+    # armature deforms it
+    def test_sticky_liquid(self):
+        self.assertEqual(self.control.MustardUI_tools_creators_type, "EFFECT_STICKY_LIQUID")
+        self.assertEqual(bpy.context.active_object, self.control)
+        targets = effect.modifier_input(self.modifier, "Targets").value
+        self.assertEqual(set(targets.objects), {self.body})
+        self.assertTrue(self.body.add_rest_position_attribute)
+        self.assertTrue(all(self.liquid.lock_location))
+        # The mesh bakeable frame by frame, besides the simulation
+        self.assertEqual(
+            {(b.node.bl_idname, b.bake_mode) for b in self.modifier.bakes},
+            {("GeometryNodeSimulationOutput", "STILL"), ("GeometryNodeBake", "ANIMATION")},
+        )
+
+        # No liquid yet, and no warnings of the nodes making its mesh
+        self.scene.frame_set(self.scene.frame_start)
+        self.liquid.evaluated_get(bpy.context.evaluated_depsgraph_get())
+        self.assertFalse(list(self.modifier.node_warnings))
+
+        effect.modifier_input(self.modifier, "Mesh").value = False
+        self.liquid.update_tag()
+        bone = self.armature.pose.bones["spine"]
+        start = self.scene.frame_start
+        for frame, y in ((40, 0.0), (50, 0.2)):
+            bone.location.y = y
+            bone.keyframe_insert("location", frame=start + frame)
+        for frame in range(start, start + 41):
+            self.scene.frame_set(frame)
+        co = self.points()
+        self.assertGreater(len(co), 100)
+        np.testing.assert_allclose(co[:, 2], 1.501, atol=0.001)
+        self.assertLess(np.abs(co[:, :2]).max(), 0.5)
+
+        for frame in range(start + 41, start + 51):
+            self.scene.frame_set(frame)
+        np.testing.assert_allclose(self.points()[:, 2], 1.701, atol=0.001)
+
+        # The mesh of the liquid
+        effect.modifier_input(self.modifier, "Mesh").value = True
+        self.liquid.update_tag()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        mesh = self.liquid.evaluated_get(depsgraph).data
+        self.assertGreater(len(mesh.vertices), 100)
+        self.assertIn("liquid_color", mesh.attributes)
+
+    # Poured on a ball, the liquid drips from under it on strings, none without String Length
+    def test_strings(self):
+        mesh = bpy.data.meshes.new("Ball")
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=24, radius=0.15)
+        bm.to_mesh(mesh)
+        bm.free()
+        ball = new_object("Ball", mesh)
+        effect.modifier_input(self.modifier, "Targets").value.objects.link(ball)
+        self.control.location = (0.03, 0.0, 0.45)
+        effect.modifier_input(self.modifier, "Rate").value = 600.0
+        effect.modifier_input(self.modifier, "Mesh").value = False
+
+        def strings(length):
+            """Most points of the particles and their strings, the liquid dripping off"""
+            effect.modifier_input(self.modifier, "String Length").value = length
+            self.liquid.update_tag()
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            points = 0
+            for frame in range(self.scene.frame_start, self.scene.frame_start + 220):
+                self.scene.frame_set(frame)
+                geometry = self.liquid.evaluated_get(depsgraph).evaluated_geometry()
+                if geometry.pointcloud:
+                    points = max(points, len(geometry.pointcloud.points))
+            self.assertLess(self.points()[:, 2].min(), -0.17)
+            return points
+
+        self.assertEqual(strings(0.0), 600)
+        self.assertGreater(strings(0.1), 600)
+
+    # Removing from the Control removes the liquid, the Control and the collections, keeping the
+    # Targets
+    def test_remove(self):
+        collection = self.liquid.users_collection[0].name
+        names = {self.liquid.name, self.control.name}
+        bpy.ops.mustardui.model_toolkit_remove_sticky_liquid()
+        self.assertFalse(names & set(bpy.data.objects.keys()))
+        self.assertNotIn(collection, bpy.data.collections)
+        self.assertNotIn("Sticky Liquid Targets", bpy.data.collections)
+        self.assertIn(self.body.name, bpy.context.scene.objects)
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_sticky_liquid.poll())
+
+    # Converted to a mesh following the Target, with the shader attributes, removing the effect
+    def test_convert(self):
+        for frame in range(self.scene.frame_start, self.scene.frame_start + 30):
+            self.scene.frame_set(frame)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated = self.liquid.evaluated_get(depsgraph).data
+        co = np.array([v.co for v in evaluated.vertices])
+        self.assertGreater(len(co), 100)
+        collection = self.liquid.users_collection[0]
+        names = {self.liquid.name, self.control.name}
+
+        bpy.ops.mustardui.model_toolkit_convert_sticky_liquid()
+        self.assertFalse(names & set(bpy.data.objects.keys()))
+        self.assertNotIn("Sticky Liquid Targets", bpy.data.collections)
+        liquid = bpy.data.objects["Sticky Liquid Mesh"]
+        self.assertEqual(liquid.users_collection, (collection,))
+        self.assertEqual(liquid.parent, self.body)
+        self.assertFalse(liquid.modifiers)
+        self.assertIn("liquid_color", liquid.data.attributes)
+        self.assertIn("liquid_thin", liquid.data.attributes)
+        self.assertEqual(
+            list(liquid.data.materials), [bpy.data.materials["MustardUI Sticky Liquid"]]
+        )
+        self.assertEqual({p.material_index for p in liquid.data.polygons}, {0})
+        converted = np.array([liquid.matrix_world @ v.co for v in liquid.data.vertices])
         np.testing.assert_allclose(converted, co, atol=1e-5)
 
 
