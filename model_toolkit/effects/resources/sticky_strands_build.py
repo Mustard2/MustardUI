@@ -82,6 +82,21 @@ def build_node_group(text):
         "sticky_factor and sticky_length_normalized attributes",
     )
     add_input(ng, "Seed", "NodeSocketInt", description="Seed of the random placement")
+    add_input(
+        ng,
+        "Start Frame",
+        "NodeSocketInt",
+        default_value=1,
+        description="Frame where the strands appear, placed on the meshes and simulated from it",
+    )
+    add_input(
+        ng,
+        "End Frame",
+        "NodeSocketInt",
+        default_value=0,
+        min_value=0,
+        description="Last frame showing the strands, 0 to never end",
+    )
 
     panel = ng.interface.new_panel("Strands")
     add_input(
@@ -762,20 +777,43 @@ def build_node_group(text):
         },
     ).outputs[0]
 
+    t.section("Frame Range")
+    # Hidden before the Start Frame and after the End Frame
+    frame = t.node("GeometryNodeInputSceneTime", 12, -3).outputs["Frame"]
+    started = t.math("GREATER_THAN", frame, inputs["Start Frame"], x=13, y=-3)
+    ended = t.math("GREATER_THAN", frame, inputs["End Frame"], x=13, y=-4)
+    ended = t.math(
+        "MULTIPLY",
+        ended,
+        t.math("GREATER_THAN", inputs["End Frame"], 0.0, x=13, y=-5),
+        x=14,
+        y=-4,
+    )
+    hidden = t.math(
+        "MAXIMUM", t.math("LESS_THAN", frame, inputs["Start Frame"], x=13, y=-2), ended, x=15, y=-3
+    )
+
     t.section("New Strands on Contact", row=True)
     # Simulation: follow the ends, stretch, break, swing and collide
     sim_in = t.node("GeometryNodeSimulationInput", 14, 0)
     sim_out = t.node("GeometryNodeSimulationOutput", 44, 0)
     sim_in.pair_with_output(sim_out)
     t.connect(curves, sim_in.inputs["Geometry"])
-    dt = sim_in.outputs["Delta Time"]
+    # Placed again until the Start Frame, without moving on it as on the first simulated frame
+    dt = t.math("MULTIPLY", sim_in.outputs["Delta Time"], started, x=15, y=-1)
     spline = t.node("GeometryNodeSplineParameter", 26, -10).outputs
     in_curve = spline["Index"]
     spline_length = t.node("GeometryNodeSplineLength", 26, -11).outputs
     last = t.math("SUBTRACT", spline_length["Point Count"], 1.0, x=27, y=-11)
+    state = t.node(
+        "GeometryNodeSwitch",
+        15,
+        0,
+        {"Switch": started, "False": curves, "True": sim_in.outputs["Geometry"]},
+        input_type="GEOMETRY",
+    ).outputs[0]
 
     # New strands on contact: the broken strands placed again where the meshes touch
-    state = sim_in.outputs["Geometry"]
     contacts = t.node(
         "GeometryNodeDeleteGeometry",
         14,
@@ -1182,7 +1220,19 @@ def build_node_group(text):
         input_type="GEOMETRY",
     ).outputs[0]
     t.connect(chain, steps_out.inputs["Geometry"])
-    t.connect(steps_out.outputs["Geometry"], sim_out.inputs["Geometry"])
+    # Not simulated while hidden
+    simulated = t.node(
+        "GeometryNodeSwitch",
+        43.5,
+        0,
+        {
+            "Switch": hidden,
+            "False": steps_out.outputs["Geometry"],
+            "True": sim_in.outputs["Geometry"],
+        },
+        input_type="GEOMETRY",
+    ).outputs[0]
+    t.connect(simulated, sim_out.inputs["Geometry"])
     # The zone outputs after their last nodes
     steps_out.parent = sim_out.parent = t.frame
 
@@ -1210,6 +1260,9 @@ def build_node_group(text):
         2,
         {"Switch": inputs["Physics"], "False": static, "True": sim_out.outputs["Geometry"]},
         input_type="GEOMETRY",
+    ).outputs[0]
+    strands = t.node(
+        "GeometryNodeSwitch", 49.5, 2, {"Switch": hidden, "False": strands}, input_type="GEOMETRY"
     ).outputs[0]
     factor = spacing(in_curve, last, 43, -4)
     pinch = t.math("SINE", t.math("MULTIPLY", factor, math.pi, x=46, y=-4), x=47, y=-4)

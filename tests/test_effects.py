@@ -539,6 +539,30 @@ class TestStickyStrands(BlenderTestCase):
         self.assertFalse(np.any(np.abs(co[:, 0] - 0.25) < 0.05))
         self.assertLess(co[:, 2].min(), -0.05)
 
+    # Hidden outside the frame range, placed on the Start Frame where the meshes are then
+    def test_frame_range(self):
+        for physics in (True, False):
+            with self.subTest(physics=physics):
+                lip = self.pull(physics=physics)
+                modifier = lip.modifiers["Sticky Strands"]
+                start = effect.modifier_input(modifier, "Start Frame").value
+                self.assertEqual(start, self.scene.frame_start)
+                effect.modifier_input(modifier, "Start Frame").value = start + 5
+                effect.modifier_input(modifier, "End Frame").value = start + 8
+                lip.update_tag()
+                self.scene.frame_set(start)
+                self.play(4)
+                self.assertEqual(len(self.strands(lip)), 0)
+                self.play(1)
+                finger = bpy.data.objects["Finger"]
+                self.assertAlmostEqual(
+                    self.strands(lip)[:, 0].max(), finger.location.x - 0.05, delta=0.005
+                )
+                self.play(4)
+                self.assertEqual(len(self.strands(lip)), 0)
+                bpy.data.objects.remove(lip)
+                bpy.data.objects.remove(finger)
+
     def attributes(self, obj):
         """The strand attributes for the shader, by name"""
         geometry = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
