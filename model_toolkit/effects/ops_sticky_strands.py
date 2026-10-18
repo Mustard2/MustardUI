@@ -120,6 +120,7 @@ class MustardUI_ModelToolkit_StickyStrands(bpy.types.Operator):
             modifier.node_group = bpy.data.node_groups[NODE_GROUP]
             modifier_input(modifier, "Control").value = control
             modifier_input(modifier, "Material").value = bpy.data.materials[MATERIAL]
+            modifier_input(modifier, "Start Frame").value = context.scene.frame_start
             if obj != target:
                 modifier_input(modifier, "Target").value = target
 
