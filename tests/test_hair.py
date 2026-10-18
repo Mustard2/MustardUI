@@ -154,6 +154,26 @@ class TestParticleHairToCurves(BlenderTestCase):
             self.assertTrue(0 < offset.length <= radius + 1e-5)
             self.assertLess(abs(offset.dot(normals[guide.value].vector)), 1e-5)
 
+    # The particle hair is kept, with a copy of it as the surface of the curves
+    def test_convert_keep_particle_hair(self):
+        bpy.ops.mustardui.model_toolkit_particle_hair_to_curves(keep_particle_hair=True)
+
+        curves = bpy.data.objects["Hair Long Curves"]
+        surface = bpy.data.objects["Hair Long Surface"]
+        self.assertEqual(self.hair.name, "Hair Long")
+        self.assertIn(self.hair.name, self.model["hair"].objects)
+        self.assertIn("Hair", self.hair.modifiers)
+        self.assertNotIn(surface.name, self.model["hair"].objects)
+        self.assertFalse(surface.particle_systems)
+        self.assertEqual(curves.data.surface, surface)
+        self.assertEqual(curves.parent, surface)
+        self.assertEqual(len(curves.data.curves), 20)
+
+        # The curves are selected in place of the particle hair
+        self.assertEqual(self.rig_settings.hair_list, "Hair Long Curves")
+        self.assertFalse(curves.hide_viewport)
+        self.assertTrue(self.hair.hide_viewport)
+
     def curves_count(self):
         curves = bpy.data.objects["Hair Long"]
         return len(curves.evaluated_get(bpy.context.evaluated_depsgraph_get()).data.curves)
