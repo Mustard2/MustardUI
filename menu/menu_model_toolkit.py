@@ -125,6 +125,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Outfits(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_add_outfit", icon="ADD")
 
         row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_add_outfit_from_file", icon="IMPORT")
+
+        row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_export_outfits", icon="EXPORT")
 
         layout.separator()
