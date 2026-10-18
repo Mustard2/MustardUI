@@ -210,6 +210,16 @@ def build_node_group():
     )
     add_input(
         ng,
+        "Time Scale",
+        "NodeSocketFloat",
+        panel,
+        default_value=1.0,
+        min_value=0.01,
+        max_value=10.0,
+        description="Speed of the simulation, lower for slow motion",
+    )
+    add_input(
+        ng,
         "Substeps",
         "NodeSocketInt",
         panel,
@@ -412,7 +422,8 @@ def build_node_group():
     sim_out = t.node("GeometryNodeSimulationOutput", 40, 0)
     sim_in.pair_with_output(sim_out)
     sim_out.state_items.new("FLOAT", "Time")
-    dt = sim_in.outputs["Delta Time"]
+    # Seconds simulated in the frame
+    dt = t.math("MULTIPLY", sim_in.outputs["Delta Time"], inputs["Time Scale"], x=-17, y=2)
     stuck = attribute("stuck", "BOOLEAN", -18, -3)
 
     def from_rest(prefix, value, x, y):
@@ -1218,7 +1229,13 @@ def build_node_group():
     sweep = t.vmath(
         "SCALE",
         t.attribute("velocity", "FLOAT_VECTOR", 45, 2),
-        t.math("MINIMUM", t.math("DIVIDE", 2.0, inputs["Rate"], x=44, y=3), SWEEP, x=45, y=3),
+        t.math(
+            "MINIMUM",
+            t.math("DIVIDE", 2.0, inputs["Rate"], x=44, y=3),
+            t.math("MULTIPLY", inputs["Time Scale"], SWEEP, x=44, y=4),
+            x=45,
+            y=3,
+        ),
         x=46,
         y=2,
     )

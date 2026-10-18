@@ -841,6 +841,23 @@ class TestStickyLiquid(BlenderTestCase):
         self.assertGreater(len(mesh.vertices), 100)
         self.assertIn("liquid_color", mesh.attributes)
 
+    # At half the Time Scale the liquid moves as at twice the frame rate, slower than at full speed
+    def test_time_scale(self):
+        self.control.location = (5.0, 0.0, 1.8)
+        effect.modifier_input(self.modifier, "Mesh").value = False
+
+        def points(time_scale, fps):
+            effect.modifier_input(self.modifier, "Time Scale").value = time_scale
+            self.scene.render.fps = fps
+            self.liquid.update_tag()
+            for frame in range(self.scene.frame_start, self.scene.frame_start + 20):
+                self.scene.frame_set(frame)
+            return self.points()
+
+        half = points(0.5, 24)
+        np.testing.assert_allclose(half, points(1.0, 48), atol=1e-5)
+        self.assertLess(points(1.0, 24)[:, 2].mean(), half[:, 2].mean() - 0.3)
+
     # Poured on a ball, the liquid drips from under it on strings, none without String Length
     def test_strings(self):
         mesh = bpy.data.meshes.new("Ball")
