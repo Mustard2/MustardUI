@@ -708,6 +708,18 @@ class TestAddOutfit(BlenderTestCase):
         self.assertNotIn(outfit, self.model["armature"].users_collection)
         self.assertNotIn("Import", bpy.data.collections)
 
+    # Pieces following a bone with Child Of are not bound, or they would move twice
+    def test_child_of(self):
+        con = self.belt.constraints.new("CHILD_OF")
+        con.target = self.model["armature"]
+        con.subtarget = "spine"
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
+
+        self.assertIsNone(self.belt.parent)
+        self.assertEqual(len(self.belt.modifiers), 0)
+        self.assertEqual(len(self.belt.vertex_groups), 0)
+        self.assertEqual(self.top.parent, self.model["armature"])
+
 
 def outward_normals(obj):
     bm = bmesh.new()

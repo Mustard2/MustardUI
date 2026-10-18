@@ -846,10 +846,13 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         weights = 0
         for piece in pieces:
             yield done / total, f"{names[piece.name]} - Weights"
+            done += weights_unit
+            # Pieces following a bone with Child Of (e.g. earrings) would move twice if deformed
+            if any(c.type == "CHILD_OF" and c.target == arm_obj for c in piece.constraints):
+                continue
             bind_to_armature(piece, arm_obj)
             if self.transfer_weights:
                 weights += transfer_weights(context, body, arm_obj, piece, self.overwrite_weights)
-            done += weights_unit
 
         shape_keys = 0
         if keys:
