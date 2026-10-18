@@ -44,6 +44,9 @@ REFRESH_EVERY = 10
 ENERGY_TOLERANCE = 0.02
 # Movement after which the pairs of a vertex are searched again, relative to the median edge
 REQUERY_DISTANCE = 0.2
+# Checkpoints kept for less intersections only up to this energy relative to the current one, as
+# the earlier ones are not settled yet (e.g. bulging where the outfit is squeezed)
+KEEP_ENERGY = 1.5
 
 
 class FitMetrics(NamedTuple):
@@ -305,10 +308,10 @@ class FitOptimizer:
         i, origin, normal = terms["planes"]
         height = self.plane_heights(co[i], origin, normal) - gap
         missing = np.maximum(-height, 0.0)
-        above = np.where(pull[i] > 0.0, np.maximum(height, 0.0), 0.0)
+        above = np.maximum(height - pull[i], 0.0)
         energy += BODY_WEIGHT * np.dot(missing, missing)
-        energy += PULL_WEIGHT * np.dot(pull[i], above**2)
-        force = 2.0 * (PULL_WEIGHT * pull[i] * above - BODY_WEIGHT * missing)
+        energy += PULL_WEIGHT * np.dot(above, above)
+        force = 2.0 * (PULL_WEIGHT * above - BODY_WEIGHT * missing)
         grad[i] += force[:, None] * normal
 
         # Centers of the outfit triangles under the body push their corners out
@@ -391,16 +394,24 @@ class FitOptimizer:
         target = self.target
         self.set_rest(rest)
 
-        # Pull of the outfit vertices near the body at rest, fading out with the distance
+        # Height over the body the outfit vertices are pulled to
         distance = settings.fit_distance
-        pull = np.zeros(target.n_verts)
+        pull = np.full(target.n_verts, np.inf)
         if distance > 0.0:
-            i, origins, normals = self.body_planes(rest, range(target.n_verts), gap + distance)
-            height = self.plane_heights(rest[i], origins, normals) - gap
-            # Full pull up to half the distance, then fading out
-            t = np.clip(2.0 * height / distance - 1.0, 0.0, 1.0)
+            i, origins, normals = self.body_planes(rest, range(target.n_verts), reach)
+            height = np.zeros(target.n_verts)
+            height[i] = self.plane_heights(rest[i], origins, normals) - gap
+            # Pulled vertices and their move, full up to half the distance, then fading out
             near = (height > 0.0) & (height < distance)
-            pull[i] = np.where(near, 1.0 - t * t * (3.0 - 2.0 * t), 0.0)
+            t = np.clip(2.0 * height / distance - 1.0, 0.0, 1.0)
+            moves = np.stack((near, near * height * (1.0 - t * t * (3.0 - 2.0 * t))), axis=1)
+            # Average move of the pulled vertices around, so that the outfit does not bulge
+            # between them (e.g. over the cleavage)
+            for _ in range(int(np.ceil(2.0 * (settings.smooth_distance / self.edge) ** 2))):
+                moves = 0.5 * moves + 0.5 * self.average(moves)
+            move = moves[:, 1] / np.maximum(moves[:, 0], 0.5)
+            pulled = (move > 0.0) & (height > 0.0)
+            pull[pulled] = np.maximum(height - move, 0.0)[pulled]
 
         def evaluate(x):
             energy, grad = self.energy(x, terms, pull, gap, settings.stiffness)
@@ -451,7 +462,7 @@ class FitOptimizer:
         history = []
         self.history = [(0, energy, self.check(x, terms["planes"], gap))]
         # Only the optimized coordinates, the starting ones ignore the pull
-        best = (np.inf, x)
+        kept = []
         iterations = settings.iterations
         done = 0
         for it in range(iterations):
@@ -492,8 +503,8 @@ class FitOptimizer:
                 score = self.check(x, terms["planes"], gap)
                 previous = self.history[-1][1]
                 self.history.append((done, energy, score))
-                if score <= best[0]:
-                    best = (score, x.copy())
+                kept = [k for k in kept if k[0] < score and k[1] <= KEEP_ENERGY * energy]
+                kept.append((score, energy, x.copy()))
                 # Net progress over a whole cycle, as each refresh raises the energy again
                 if previous - energy < ENERGY_TOLERANCE * previous:
                     break
@@ -502,9 +513,10 @@ class FitOptimizer:
                 smoothed = self.precondition(grad, free)
                 history = []
 
-        if self.check(x, terms["planes"], gap) <= best[0]:
-            return x, done
-        return best[1], done
+        # Checkpoint with less intersections, the earliest kept as the scores increase
+        score = self.check(x, terms["planes"], gap)
+        kept = [k for k in kept if k[0] < score and k[1] <= KEEP_ENERGY * energy]
+        return (kept[0][2] if kept else x), done
 
     def precondition(self, q, free):
         """Spread the vector to the neighbour vertices, so that whole areas move together"""
