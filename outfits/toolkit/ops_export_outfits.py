@@ -10,7 +10,12 @@ from ...text_storage import storage as text_storage
 from ..helper_functions import outfits_get_collection_items, outfits_get_collections
 from ..ops_delete import delete_extras_pieces
 from .ops_add_outfit import add_outfit_model, outfit_default_name, parents
-from .ops_add_outfit_from_file import copy_id_property, copy_settings
+from .ops_add_outfit_from_file import (
+    copy_bones,
+    copy_id_property,
+    copy_settings,
+    outfit_bone_collections,
+)
 
 # Collections of geometry and other data without datablock pointers
 SKIP = {
@@ -511,8 +516,15 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         for copy in copies:
             copy.objects.link(model[arm_obj])
 
-        # Outfit custom properties of the exported Outfits on the stand-in armature
+        # Bones switched with the exported Outfits, with their parents to parent them by name
         collections = {c for c in mapping if isinstance(c, bpy.types.Collection)}
+        bone_collections = outfit_bone_collections(arm, collections, objects)
+        bones = {b for bc in bone_collections for b in bc.bones}
+        bones |= {p for b in bones for p in b.parent_recursive}
+        if bones:
+            copy_bones(context, arm_obj, model[arm_obj], {b.name for b in bones}, bone_collections)
+
+        # Outfit custom properties of the exported Outfits on the stand-in armature
         cps = model[arm].MustardUI_CustomPropertiesOutfit
         for cp in arm.MustardUI_CustomPropertiesOutfit:
             piece = cp.outfit_piece
@@ -540,6 +552,11 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         # After the pieces, as their data copies are used by the custom properties
         for cp in cps:
             copier.walk(cp, cp.name)
+        # Constraints of the bones and switched Outfits of their Bone Collections
+        if bones:
+            copier.walk(model[arm_obj].pose, model[arm_obj].name)
+            for bc in model[arm].collections_all:
+                copier.walk(bc, bc.name)
         copier.run()
         created.extend(c for o, c in copier.copies if c not in created)
 

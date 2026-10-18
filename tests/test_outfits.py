@@ -1143,3 +1143,110 @@ class TestExportOutfits(BlenderTestCase):
         self.assertEqual(
             {o for o in bpy.data.objects if o.type == "ARMATURE"}, {model["armature"], rig}
         )
+
+    # Bones switched with the Casual Outfit under the spine, deforming the pants, with sides not
+    # mirrored
+    def add_skirt(self, model):
+        arm = model["armature"]
+        bpy.context.view_layer.objects.active = arm
+        bpy.ops.object.mode_set(mode="EDIT")
+        edit_bones = arm.data.edit_bones
+        for name, x, z, parent in (
+            ("Skirt", 0.2, 1.0, "spine"),
+            ("Skirt Tip", 0.2, 0.8, "Skirt"),
+            ("Side.L", 0.1, 1.0, "spine"),
+            ("Side.R", -0.15, 1.0, "spine"),
+        ):
+            eb = edit_bones.new(name)
+            eb.head, eb.tail = (x, 0, z), (x, 0, z - 0.2)
+            eb.parent = edit_bones[parent]
+        edit_bones["Skirt Tip"].use_connect = True
+        bpy.ops.object.mode_set(mode="OBJECT")
+        con = arm.pose.bones["Skirt Tip"].constraints.new("COPY_ROTATION")
+        con.target, con.subtarget = arm, "Skirt"
+        pants = bpy.data.objects["Casual - Pants"]
+        pants.vertex_groups.new(name="Skirt").add([0], 1.0, "REPLACE")
+        # The sides switched with the pants only
+        for bc_name, names, piece in (
+            ("Skirt Bones", ("Skirt", "Skirt Tip"), None),
+            ("Side Bones", ("Side.L", "Side.R"), pants),
+        ):
+            bc = arm.data.collections.new(bc_name)
+            for name in names:
+                bc.assign(arm.data.bones[name])
+            switcher = bc.MustardUI_ArmatureBoneCollection
+            switcher.outfit_switcher_enable = True
+            switcher.outfit_switcher_collection = model["outfits"][0]
+            switcher.outfit_switcher_object = piece
+
+    def import_skirt(self, taken=False):
+        self.add_skirt(self.model)
+        self.export("Tester Casual")
+        reset_scene()
+        model = build_model("Other")
+        configure_model(model, "Other")
+        if taken:
+            self.add_skirt(model)
+        model["armature"].data.use_mirror_x = True
+        model["armature"].hide_viewport = True
+        select_model(model)
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.join(self.path, "Collection", ""),
+            files=[{"name": "Tester Casual"}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+        return model["armature"]
+
+    # The switched bones are added to the model, switched with the new Outfit
+    def test_round_trip_bones(self):
+        arm = self.import_skirt()
+        bones = arm.data.bones
+        self.assertEqual(bones["Skirt"].parent, bones["spine"])
+        self.assertEqual(bones["Skirt Tip"].parent, bones["Skirt"])
+        self.assertTrue(bones["Skirt Tip"].use_connect)
+        np.testing.assert_allclose(bones["Skirt Tip"].head_local, (0.2, 0, 0.8), atol=1e-6)
+        # Not moved by X-Axis Mirror
+        np.testing.assert_allclose(bones["Side.L"].head_local, (0.1, 0, 1.0), atol=1e-6)
+        np.testing.assert_allclose(bones["Side.R"].head_local, (-0.15, 0, 1.0), atol=1e-6)
+        self.assertTrue(arm.data.use_mirror_x)
+        self.assertTrue(arm.hide_viewport)
+        self.assertNotIn("Skirt", bpy.data.objects["Other Casual.001 - Shirt"].vertex_groups)
+        con = arm.pose.bones["Skirt Tip"].constraints[0]
+        self.assertEqual((con.target, con.subtarget), (arm, "Skirt"))
+        bc = arm.data.collections_all["Skirt Bones"]
+        self.assertEqual({b.name for b in bc.bones}, {"Skirt", "Skirt Tip"})
+        outfit = bpy.data.collections["Other Casual.001"]
+        pants = bpy.data.objects["Other Casual.001 - Pants"]
+        switcher = bc.MustardUI_ArmatureBoneCollection
+        self.assertTrue(switcher.outfit_switcher_enable)
+        self.assertEqual(
+            (switcher.outfit_switcher_collection, switcher.outfit_switcher_object), (outfit, None)
+        )
+        switcher = arm.data.collections_all["Side Bones"].MustardUI_ArmatureBoneCollection
+        self.assertEqual(
+            (switcher.outfit_switcher_collection, switcher.outfit_switcher_object), (outfit, pants)
+        )
+        self.assertIn("Skirt", pants.vertex_groups)
+
+    # Bones with a name taken on the model are renamed, with the Vertex Groups using them
+    def test_round_trip_bones_renamed(self):
+        arm = self.import_skirt(taken=True)
+        bones = arm.data.bones
+        self.assertEqual(bones["Skirt.001"].parent, bones["spine"])
+        self.assertEqual(bones["Skirt Tip.001"].parent, bones["Skirt.001"])
+        con = arm.pose.bones["Skirt Tip.001"].constraints[0]
+        self.assertEqual((con.target, con.subtarget), (arm, "Skirt.001"))
+        groups = bpy.data.objects["Other Casual.001 - Pants"].vertex_groups
+        self.assertIn("Skirt.001", groups)
+        self.assertNotIn("Skirt", groups)
+        bc = arm.data.collections_all["Skirt Bones.001"]
+        self.assertEqual({b.name for b in bc.bones}, {"Skirt.001", "Skirt Tip.001"})
+        self.assertEqual(
+            bc.MustardUI_ArmatureBoneCollection.outfit_switcher_collection,
+            bpy.data.collections["Other Casual.001"],
+        )
+        # The bones already on the model are not changed
+        self.assertEqual(
+            {b.name for b in arm.data.collections_all["Skirt Bones"].bones}, {"Skirt", "Skirt Tip"}
+        )
