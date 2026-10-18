@@ -465,6 +465,12 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
         "cages.\nAvailable from Blender 5.2",
         default=True,
     )
+    keep_particle_hair: bpy.props.BoolProperty(
+        name="Keep Particle Hair",
+        description="Keep the particle hair as a separate Hair, using a copy of it as the "
+        "surface of the curves",
+        default=False,
+    )
 
     @classmethod
     def poll(cls, context):
@@ -524,10 +530,11 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
                 add_surface_uv_map(emitter.data)
 
             # The hair keys are available on the evaluated emitter only
-            hidden = emitter.hide_viewport, hair_collection.hide_viewport
-            emitter.hide_viewport = hair_collection.hide_viewport = False
             mods = [x for x in emitter.modifiers if x.type == "PARTICLE_SYSTEM"]
             mods = [x for x in mods if x.particle_system.settings.type == "HAIR"]
+            hidden = emitter.hide_viewport, hair_collection.hide_viewport
+            shown = [x.show_viewport for x in mods]
+            emitter.hide_viewport = hair_collection.hide_viewport = False
             for mod in mods:
                 mod.show_viewport = True
             depsgraph = context.evaluated_depsgraph_get()
@@ -553,14 +560,30 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
                     systems.append(index)
 
             emitter.hide_viewport, hair_collection.hide_viewport = hidden
+            for mod, show in zip(mods, shown, strict=True):
+                mod.show_viewport = show
             if not strands:
                 self.report({"WARNING"}, f"MustardUI - {emitter.name} has no hair, skipped.")
                 continue
-            for mod in mods:
-                mod.show_viewport = mod.show_render = False
 
             name = emitter.name
-            emitter.name = f"{name} Surface"
+            if self.keep_particle_hair:
+                surface = emitter.copy()
+                surface.name = f"{name} Surface"
+                for mod in [x for x in surface.modifiers if x.type == "PARTICLE_SYSTEM"]:
+                    surface.modifiers.remove(mod)
+                name = f"{name} Curves"
+            else:
+                surface = emitter
+                surface.name = f"{name} Surface"
+                for mod in mods:
+                    mod.show_viewport = mod.show_render = False
+                for coll in list(surface.users_collection):
+                    coll.objects.unlink(surface)
+            # The surface the hair is attached to
+            surfaces.objects.link(surface)
+            surface.add_rest_position_attribute = True
+
             curves = bpy.data.hair_curves.new(name)
             curves.add_curves([len(x) for x in strands])
             strands = np.concatenate(strands)
@@ -568,8 +591,8 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
             curves.attributes.new(PIN_ATTRIBUTE, "FLOAT", "POINT").data.foreach_set(
                 "value", strands[:, 3]
             )
-            curves.surface = emitter
-            curves.surface_uv_map = emitter.data.uv_layers.active.name
+            curves.surface = surface
+            curves.surface_uv_map = surface.data.uv_layers.active.name
             curves.attributes.new("surface_uv_coordinate", "FLOAT2", "CURVE").data.foreach_set(
                 "vector", np.array(uvs).ravel()
             )
@@ -585,14 +608,8 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
 
             obj = bpy.data.objects.new(name, curves)
             hair_collection.objects.link(obj)
-            obj.parent = emitter
+            obj.parent = surface
             obj.hide_viewport, obj.hide_render = emitter.hide_viewport, emitter.hide_render
-
-            # The emitter is the surface the hair is attached to
-            for coll in list(emitter.users_collection):
-                coll.objects.unlink(emitter)
-            surfaces.objects.link(emitter)
-            emitter.add_rest_position_attribute = True
 
             if physics:
                 dynamics = obj.modifiers.new(HAIR_DYNAMICS_NODE_GROUP, "NODES")
@@ -614,8 +631,11 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
 
             children = obj.modifiers.new(HAIR_CHILDREN_MODIFIER, "NODES")
             children.node_group = hair_children_node_group(
-                f"{name} Children", emitter, [m.particle_system for m in mods]
+                f"{name} Children", surface, [m.particle_system for m in mods]
             )
+            # The curves replace the kept particle hair if selected
+            if rig_settings.hair_list == emitter.name:
+                rig_settings.hair_list = obj.name
             converted += 1
 
         if not converted:
@@ -629,6 +649,7 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
         row = layout.row()
         row.enabled = hair_dynamics_available()
         row.prop(self, "physics")
+        layout.prop(self, "keep_particle_hair")
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=300)
