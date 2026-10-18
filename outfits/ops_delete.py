@@ -125,6 +125,8 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
 
         bpy.data.collections.remove(col)
 
+        bpy.data.orphans_purge(do_recursive=True)
+
         # Turn off the masks of the deleted pieces, matched by name as on outfit switch
         visibility = get_mask_visibility(rig_settings)
         visibility.update(dict.fromkeys(deleted_names, False))
