@@ -3,6 +3,7 @@ import re
 
 import bpy
 
+from ...armature.helper_functions import outfits_update_armature_collections
 from ...custom_properties.misc import mustardui_add_driver
 from ...misc.prop_utils import evaluate_path, evaluate_rna
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
@@ -78,14 +79,14 @@ def replace_models(objects, armature, body):
     return list(replaced)
 
 
-def remove_unused(scene, before, replaced):
-    """Remove the appended datablocks not used by the appended Objects in the scene"""
+def remove_unused(scene, before, replaced, armature):
+    """Remove the appended datablocks not used by the appended Objects in the scene or the model"""
 
     appended = data_ids() - before
     in_scene = set(scene.objects)
     kept = {o for o in appended if isinstance(o, bpy.types.Object) and o in in_scene}
     kept -= set(replaced)
-    users = set(kept)
+    users = kept | {armature}
     for obj in kept:
         users.add(obj.data)
         if obj.type == "MESH" and obj.data.shape_keys is not None:
@@ -241,16 +242,26 @@ def model_path_problem(rna, path):
     return None
 
 
-def copy_settings(source, target):
-    """Copy the settings of a custom property, but its collections"""
+# Nested settings copied with their owner: bone colors and their custom colors
+NESTED = ("color", "custom")
 
-    for prop in source.bl_rna.properties:
-        if prop.identifier == "rna_type" or prop.is_readonly or prop.type == "COLLECTION":
+
+def copy_settings(source, target, skip=()):
+    """Copy the settings shared by two structs, with the nested colors, but the collections"""
+
+    for prop in target.bl_rna.properties:
+        pid = prop.identifier
+        if pid in skip or pid == "rna_type" or prop.type == "COLLECTION":
             continue
-        try:
-            setattr(target, prop.identifier, getattr(source, prop.identifier))
-        except (AttributeError, TypeError, ValueError):
-            pass
+        if not hasattr(source, pid):
+            continue
+        if prop.type == "POINTER" and pid in NESTED:
+            copy_settings(getattr(source, pid), getattr(target, pid))
+        elif not prop.is_readonly:
+            try:
+                setattr(target, pid, getattr(source, pid))
+            except (AttributeError, TypeError, ValueError):
+                pass
 
 
 def copy_id_property(source, name, target, new_name):
@@ -363,6 +374,184 @@ def remove_invalid_custom_properties(arm, start):
                 removed.append(f"{cp.name} (linked {lp.path})")
                 cp.linked_properties.remove(j)
     return removed
+
+
+def outfit_bone_collections(arm, colls, pieces):
+    """Outfit Switcher Bone Collections of the Outfits or pieces"""
+
+    found = []
+    for bc in arm.collections_all:
+        settings = bc.MustardUI_ArmatureBoneCollection
+        piece = settings.outfit_switcher_object
+        if settings.outfit_switcher_enable and (
+            piece in pieces if piece is not None else settings.outfit_switcher_collection in colls
+        ):
+            found.append(bc)
+    return found
+
+
+# Constraint armatures with their bone
+CONSTRAINT_TARGETS = (
+    ("target", "subtarget"),
+    ("pole_target", "pole_subtarget"),
+    ("space_object", "space_subtarget"),
+)
+
+
+def retarget(con, source, target, renamed):
+    """Use the target armature in place of the source one, with the renamed bones"""
+
+    for attr, sub in CONSTRAINT_TARGETS:
+        if getattr(con, attr, None) == source:
+            setattr(con, attr, target)
+            setattr(con, sub, renamed.get(getattr(con, sub), getattr(con, sub)))
+
+
+# Bone settings set apart: the rest place, the parent and the selection
+BONE_SKIP = {
+    "name",
+    "parent",
+    "use_connect",
+    "head",
+    "tail",
+    "matrix",
+    "length",
+    "roll",
+    "select",
+    "select_head",
+    "select_tail",
+}
+
+# Pose bones at rest, without the custom shape transform bone of the source armature
+POSE_SKIP = {
+    "name",
+    "location",
+    "rotation_quaternion",
+    "rotation_euler",
+    "rotation_axis_angle",
+    "scale",
+    "custom_shape_transform",
+}
+
+
+def copy_bones(context, source, target, names, bone_collections):
+    """Copy the bones with their constraints and Bone Collections, relative to the armature"""
+
+    bones = [b for b in source.data.bones if b.name in names]
+    existing = {b.name for b in target.data.bones}
+    view_layer = context.view_layer
+    # Edit Mode needs the armature in the View Layer, visible, active and the only one selected
+    linked = target.name not in view_layer.objects
+    if linked:
+        context.scene.collection.objects.link(target)
+        view_layer.update()
+    hidden = target.hide_viewport
+    target.hide_viewport = False
+    # X-Axis Mirror would move the bones of the other side to mirror the new ones
+    mirror = target.data.use_mirror_x
+    target.data.use_mirror_x = False
+    selected, active = context.selected_objects, view_layer.objects.active
+    for obj in selected:
+        obj.select_set(False)
+    view_layer.objects.active = target
+    try:
+        bpy.ops.object.mode_set(mode="EDIT")
+        edit_bones = target.data.edit_bones
+        renamed = {}
+        for bone in bones:
+            eb = edit_bones.new(bone.name)
+            # Taken names get a number suffix
+            renamed[bone.name] = eb.name
+            eb.head, eb.tail = (0, 0, 0), (0, bone.length, 0)
+            eb.matrix = bone.matrix_local
+            copy_settings(bone, eb, BONE_SKIP)
+        orphans = []
+        for bone in [b for b in bones if b.parent is not None]:
+            eb = edit_bones[renamed[bone.name]]
+            parent = bone.parent.name
+            if parent in renamed:
+                eb.parent = edit_bones[renamed[parent]]
+            elif parent in existing:
+                eb.parent = edit_bones[parent]
+            else:
+                orphans.append(f"{eb.name} (parent {parent})")
+                continue
+            eb.use_connect = bone.use_connect
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+        # Only the switched bones are posed, the others are only parents
+        switching = set(bone_collections)
+        switched = [b for b in bones if not switching.isdisjoint(b.collections)]
+        for bone in switched:
+            source_pose = source.pose.bones[bone.name]
+            pose = target.pose.bones[renamed[bone.name]]
+            copy_settings(source_pose, pose, POSE_SKIP)
+            for con in source_pose.constraints:
+                new = pose.constraints.new(con.type)
+                copy_settings(con, new)
+                retarget(new, source, target, renamed)
+
+        new_collections = {}
+        for bc in bone_collections:
+            new = target.data.collections.new(bc.name, parent=new_collections.get(bc.parent))
+            copy_settings(bc, new, {"name", "parent", "child_number"})
+            copy_settings(bc.MustardUI_ArmatureBoneCollection, new.MustardUI_ArmatureBoneCollection)
+            new_collections[bc] = new
+        for bone in switched:
+            for bc in bone.collections:
+                if bc in new_collections:
+                    new_collections[bc].assign(target.data.bones[renamed[bone.name]])
+    finally:
+        if target.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        target.hide_viewport = hidden
+        target.data.use_mirror_x = mirror
+        if linked:
+            context.scene.collection.objects.unlink(target)
+        else:
+            target.select_set(False)
+        for obj in selected:
+            obj.select_set(True)
+        view_layer.objects.active = active
+    return renamed, list(new_collections.values()), orphans
+
+
+def import_bones(context, arm_obj, appended):
+    """Add the switched bones of the appended models to the model, renaming the taken names"""
+
+    scene = context.scene
+    pieces = set(scene.objects) & appended
+    colls = set(scene.collection.children_recursive) & appended
+    rigs = [r for r in source_rigs(appended) if r.data.MustardUI_RigSettings.model_body is not None]
+    names, renamed, orphans = [], [], []
+    for rig in rigs:
+        bone_collections = outfit_bone_collections(rig.data, colls, pieces)
+        bones = {b.name for bc in bone_collections for b in bc.bones}
+        if not bones:
+            continue
+        new_names, new_collections, rig_orphans = copy_bones(
+            context, rig, arm_obj, bones, bone_collections
+        )
+        names += [bc.name for bc in new_collections]
+        orphans += rig_orphans
+        changed = {k: v for k, v in new_names.items() if k != v}
+        renamed += [f"{k} > {v}" for k, v in changed.items()]
+        if not changed:
+            continue
+
+        for obj in [o for o in appended if isinstance(o, bpy.types.Object)]:
+            for owner in (obj, *(obj.pose.bones if obj.pose is not None else ())):
+                for con in owner.constraints:
+                    retarget(con, rig, rig, changed)
+            if not any(m.type == "ARMATURE" and m.object == rig for m in obj.modifiers):
+                continue
+            groups = [(vg, changed[vg.name]) for vg in obj.vertex_groups if vg.name in changed]
+            # Through temporary names, as a new name can be the one of another renamed group
+            for i, (vg, _) in enumerate(groups):
+                vg.name = f"MustardUI Bone {i}"
+            for vg, name in groups:
+                vg.name = name
+    return names, renamed, orphans
 
 
 class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Operator):
@@ -496,9 +685,12 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
                     coll.name = coll.name[len(source_name) + 1 :]
         update_custom_property_paths(refs)
 
+        # Before the source models are replaced, as the bones are on them
+        bone_collections, renamed, orphans = import_bones(context, arm_obj, data_ids() - before)
+
         appended = [o for o in bpy.data.objects if o not in before]
         replaced = replace_models(appended, arm_obj, body)
-        remove_unused(context.scene, before, replaced)
+        remove_unused(context.scene, before, replaced, arm_obj)
 
         # Reported with the added Outfit
         issues = []
@@ -509,6 +701,14 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             if skipped:
                 print("MustardUI - Custom properties not imported:\n  " + "\n  ".join(skipped))
                 issues.append(f"{len(skipped)} custom properties skipped")
+
+        if renamed:
+            print("MustardUI - Bones renamed, as taken on the model:\n  " + "\n  ".join(renamed))
+        if orphans:
+            print(
+                "MustardUI - Bones without parent, missing on the model:\n  " + "\n  ".join(orphans)
+            )
+            issues.append(f"{len(orphans)} bones without parent")
 
         if self.remove_drivers:
             removed = remove_broken_drivers(data_ids() - before)
@@ -545,6 +745,14 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             model_name = arm.MustardUI_RigSettings.model_name
             settings["outfit_name"] = outfit_default_name(next(iter(groups)).name, model_name)
 
+        # Pieces switched by the imported Bone Collections, to switch them in their Outfit
+        switchers = []
+        for name in bone_collections:
+            switcher = arm.collections_all[name].MustardUI_ArmatureBoneCollection
+            piece = switcher.outfit_switcher_object
+            coll = switcher.outfit_switcher_collection
+            switchers.append((name, {piece} if piece is not None else set(coll.all_objects)))
+
         # Default piece names, as the appended pieces are not listed
         context.window_manager.MustardUI_ModelToolkit_AddOutfit_Items.clear()
         try:
@@ -553,6 +761,18 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             # The appended pieces are kept selected, to add them with Add Outfit
             self.report({"ERROR"}, str(error).removeprefix("Error: ").strip())
             return {"FINISHED"}
+
+        if switchers:
+            rig_settings = arm.MustardUI_RigSettings
+            outfits = [x.collection for x in rig_settings.outfits_collections]
+            outfits = [c for c in (*outfits, rig_settings.extras_collection) if c is not None]
+            for name, switched in switchers:
+                switcher = arm.collections_all[name].MustardUI_ArmatureBoneCollection
+                switcher.outfit_switcher_collection = next(
+                    (c for c in outfits if not switched.isdisjoint(c.all_objects)), None
+                )
+            outfits_update_armature_collections(rig_settings, arm)
+
         message = f"MustardUI - {len(pieces)} pieces added from '{os.path.basename(filepath)}'"
         if issues:
             message += f", {' and '.join(issues)} (details in the console)"
