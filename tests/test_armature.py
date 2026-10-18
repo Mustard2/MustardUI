@@ -147,3 +147,24 @@ class TestSplineIK(BlenderTestCase):
         bpy.context.view_layer.update()
         for name, head in zip(self.chain, rest_heads, strict=True):
             self.assertVectorsEqual(self.arm.pose.bones[name].head, head)
+
+
+class TestMhxPanels(BlenderTestCase):
+    # MHX panels poll with no active object or no armature object
+    def test_poll_without_objects(self):
+        model = build_model()
+        rig_settings = configure_model(model)
+        arm = model["armature"]
+        arm["MhxRig"] = "MHX"
+        rig_settings.model_rig_type = "mhx"
+        arm.data.MustardUI_ArmatureSettings.rig_specific_panel = True
+        settings = bpy.context.scene.MustardUI_Settings
+        settings.viewport_model_selection = False
+        settings.panel_model_selection_armature = arm.data
+
+        panel = bpy.types.MHX_PT_MustardUI_Animation
+        self.assertTrue(panel.poll(bpy.context))
+        bpy.context.view_layer.objects.active = None
+        self.assertFalse(panel.poll(bpy.context))
+        rig_settings.model_armature_object = None
+        self.assertFalse(panel.poll(bpy.context))
