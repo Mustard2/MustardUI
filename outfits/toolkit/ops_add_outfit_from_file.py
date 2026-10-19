@@ -1,5 +1,6 @@
 import os
 import re
+from contextlib import contextmanager
 
 import bpy
 
@@ -8,22 +9,22 @@ from ...custom_properties.misc import mustardui_add_driver
 from ...misc.prop_utils import evaluate_path, evaluate_rna
 from ...model_selection.active_object import ModelMode, active_object_operator_poll
 from ...text_storage import storage as text_storage
+from ..helper_functions import outfits_get_collection_items
+from ..ops_delete import delete_extras_pieces, delete_outfit_collection
 from .ops_add_outfit import (
     AddOutfitSettings,
     add_outfit_fill_shape_keys,
-    add_outfit_groups,
     add_outfit_model,
     add_outfit_pieces,
     custom_property_refs,
     fit_property,
     outfit_default_name,
+    parents,
+    piece_default_names,
     rna_id,
     rna_with_id,
     update_custom_property_paths,
 )
-
-# Blend file folders that can be appended, with their bpy.data collection
-ID_TYPES = {"Collection": "collections", "Object": "objects"}
 
 
 def data_ids():
@@ -434,11 +435,10 @@ POSE_SKIP = {
 }
 
 
-def copy_bones(context, source, target, names, bone_collections):
-    """Copy the bones with their constraints and Bone Collections, relative to the armature"""
+@contextmanager
+def armature_edit_mode(context, target):
+    """Edit Mode on the armature, restoring its visibility and the selection after"""
 
-    bones = [b for b in source.data.bones if b.name in names]
-    existing = {b.name for b in target.data.bones}
     view_layer = context.view_layer
     # Edit Mode needs the armature in the View Layer, visible, active and the only one selected
     linked = target.name not in view_layer.objects
@@ -456,7 +456,27 @@ def copy_bones(context, source, target, names, bone_collections):
     view_layer.objects.active = target
     try:
         bpy.ops.object.mode_set(mode="EDIT")
-        edit_bones = target.data.edit_bones
+        yield target.data.edit_bones
+    finally:
+        if target.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        target.hide_viewport = hidden
+        target.data.use_mirror_x = mirror
+        if linked:
+            context.scene.collection.objects.unlink(target)
+        else:
+            target.select_set(False)
+        for obj in selected:
+            obj.select_set(True)
+        view_layer.objects.active = active
+
+
+def copy_bones(context, source, target, names, bone_collections):
+    """Copy the bones with their constraints and Bone Collections, relative to the armature"""
+
+    bones = [b for b in source.data.bones if b.name in names]
+    existing = {b.name for b in target.data.bones}
+    with armature_edit_mode(context, target) as edit_bones:
         renamed = {}
         for bone in bones:
             eb = edit_bones.new(bone.name)
@@ -477,43 +497,84 @@ def copy_bones(context, source, target, names, bone_collections):
                 orphans.append(f"{eb.name} (parent {parent})")
                 continue
             eb.use_connect = bone.use_connect
-        bpy.ops.object.mode_set(mode="OBJECT")
 
-        # Only the switched bones are posed, the others are only parents
-        switching = set(bone_collections)
-        switched = [b for b in bones if not switching.isdisjoint(b.collections)]
-        for bone in switched:
-            source_pose = source.pose.bones[bone.name]
-            pose = target.pose.bones[renamed[bone.name]]
-            copy_settings(source_pose, pose, POSE_SKIP)
-            for con in source_pose.constraints:
-                new = pose.constraints.new(con.type)
-                copy_settings(con, new)
-                retarget(new, source, target, renamed)
+    # Only the switched bones are posed, the others are only parents
+    switching = set(bone_collections)
+    switched = [b for b in bones if not switching.isdisjoint(b.collections)]
+    for bone in switched:
+        source_pose = source.pose.bones[bone.name]
+        pose = target.pose.bones[renamed[bone.name]]
+        copy_settings(source_pose, pose, POSE_SKIP)
+        for con in source_pose.constraints:
+            new = pose.constraints.new(con.type)
+            copy_settings(con, new)
+            retarget(new, source, target, renamed)
 
-        new_collections = {}
-        for bc in bone_collections:
-            new = target.data.collections.new(bc.name, parent=new_collections.get(bc.parent))
-            copy_settings(bc, new, {"name", "parent", "child_number"})
-            copy_settings(bc.MustardUI_ArmatureBoneCollection, new.MustardUI_ArmatureBoneCollection)
-            new_collections[bc] = new
-        for bone in switched:
-            for bc in bone.collections:
-                if bc in new_collections:
-                    new_collections[bc].assign(target.data.bones[renamed[bone.name]])
-    finally:
-        if target.mode != "OBJECT":
-            bpy.ops.object.mode_set(mode="OBJECT")
-        target.hide_viewport = hidden
-        target.data.use_mirror_x = mirror
-        if linked:
-            context.scene.collection.objects.unlink(target)
-        else:
-            target.select_set(False)
-        for obj in selected:
-            obj.select_set(True)
-        view_layer.objects.active = active
+    new_collections = {}
+    for bc in bone_collections:
+        new = target.data.collections.new(bc.name, parent=new_collections.get(bc.parent))
+        copy_settings(bc, new, {"name", "parent", "child_number"})
+        copy_settings(bc.MustardUI_ArmatureBoneCollection, new.MustardUI_ArmatureBoneCollection)
+        new_collections[bc] = new
+    for bone in switched:
+        for bc in bone.collections:
+            if bc in new_collections:
+                new_collections[bc].assign(target.data.bones[renamed[bone.name]])
     return renamed, list(new_collections.values()), orphans
+
+
+def constraint_bones(owner, arm_obj):
+    """Bones of the armature targeted by the constraints"""
+
+    return {
+        getattr(con, sub)
+        for con in owner.constraints
+        for attr, sub in CONSTRAINT_TARGETS
+        if getattr(con, attr, None) == arm_obj
+    }
+
+
+def delete_switched_bones(context, arm_obj, colls, pieces):
+    """Delete the Bone Collections switched with the Outfits or pieces, with their bones not used
+    by the other objects or bones"""
+
+    arm = arm_obj.data
+    bone_collections = outfit_bone_collections(arm, colls, pieces)
+    names = {b.name for bc in bone_collections for b in bc.bones}
+    if not names:
+        return
+
+    # Bones used by the objects not deleted, through parents, weights and constraints
+    deleted = set(pieces) | {o for c in colls for o in c.all_objects}
+    used = set()
+    for obj in [o for o in bpy.data.objects if o not in deleted]:
+        if obj.parent == arm_obj and obj.parent_type == "BONE":
+            used.add(obj.parent_bone)
+        if any(m.type == "ARMATURE" and m.object == arm_obj for m in obj.modifiers):
+            used |= {vg.name for vg in obj.vertex_groups}
+        used |= constraint_bones(obj, arm_obj)
+        if obj.pose is not None:
+            for pose in obj.pose.bones:
+                if obj != arm_obj or pose.name not in names:
+                    used |= constraint_bones(pose, arm_obj)
+
+    # Parents and constraint targets of the bones kept are kept
+    removed = names - used
+    while True:
+        kept = [b for b in arm.bones if b.name not in removed]
+        keep = {p.name for b in kept for p in b.parent_recursive}
+        for bone in [b for b in kept if b.name in names]:
+            keep |= constraint_bones(arm_obj.pose.bones[bone.name], arm_obj)
+        if removed.isdisjoint(keep):
+            break
+        removed -= keep
+    empty = [bc.name for bc in bone_collections if {b.name for b in bc.bones} <= removed]
+
+    with armature_edit_mode(context, arm_obj) as edit_bones:
+        for name in removed:
+            edit_bones.remove(edit_bones[name])
+    for name in empty:
+        arm.collections.remove(arm.collections_all[name])
 
 
 def import_bones(context, arm_obj, appended):
@@ -554,24 +615,61 @@ def import_bones(context, arm_obj, appended):
     return names, renamed, orphans
 
 
+def append_outfits(filepath):
+    """Append the Outfits and Extras of a blend file, returning them with the Extras ones"""
+
+    with bpy.data.libraries.load(filepath, link=False) as (data_from, data_to):
+        data_to.collections = data_from.collections
+        data_to.armatures = data_from.armatures
+        data_to.objects = data_from.objects
+    # The appended models can store their settings in the other storage
+    text_storage.apply()
+
+    colls = [c for c in data_to.collections if c is not None]
+    arms = [a for a in data_to.armatures if a is not None]
+    settings = [a.MustardUI_RigSettings for a in arms]
+    extras = {s.extras_collection for s in settings} - {None}
+
+    # MustardUI models: their Outfits and Extras
+    models = [a.MustardUI_RigSettings for a in arms if a.MustardUI_created]
+    if models:
+        roots = [x.collection for s in models for x in s.outfits_collections]
+        return [c for c in roots if c is not None] + list(extras), extras
+
+    nested = {c for coll in colls for c in coll.children}
+    roots = [c for c in colls if c not in nested]
+    # Exported Outfits, with the Extras named after the model one if exported before it was stored
+    if any(s.model_body is not None for s in settings):
+        if not extras:
+            extras = {c for c in roots if re.sub(r"\.\d{3}$", "", c.name).endswith(" Extras")}
+        return roots, extras
+
+    # Other files: the collections are Outfits, the meshes in no collection Extras
+    meshes = [
+        o for o in data_to.objects if o is not None and o.type == "MESH" and not o.users_collection
+    ]
+    if not meshes:
+        return roots, set()
+    coll = bpy.data.collections.new(os.path.splitext(os.path.basename(filepath))[0])
+    for obj in {*meshes, *(p for m in meshes for p in parents(m) if not p.users_collection)}:
+        coll.objects.link(obj)
+    return [*roots, coll], {coll}
+
+
 class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Operator):
-    """Append Collections or Objects from another blend file, and add them to the model as
-    Outfits"""
+    """Append the Outfits and Extras of other blend files, and add them to the model.
+    In files not from MustardUI, the collections are Outfits and the meshes in no collection
+    Extras"""
 
     bl_idname = "mustardui.model_toolkit_add_outfit_from_file"
     bl_label = "Add Outfit from File"
     bl_options = {"UNDO", "PRESET"}
 
-    filepath: bpy.props.StringProperty(subtype="FILE_PATH", options={"HIDDEN", "SKIP_SAVE"})
     directory: bpy.props.StringProperty(subtype="DIR_PATH", options={"HIDDEN", "SKIP_SAVE"})
     files: bpy.props.CollectionProperty(
         type=bpy.types.OperatorFileListElement, options={"HIDDEN", "SKIP_SAVE"}
     )
-    filter_blender: bpy.props.BoolProperty(default=True, options={"HIDDEN"})
-    filter_blenlib: bpy.props.BoolProperty(default=True, options={"HIDDEN"})
-    filter_folder: bpy.props.BoolProperty(default=True, options={"HIDDEN"})
-    # Browse inside the blend files
-    filemode: bpy.props.IntProperty(default=1, options={"HIDDEN"})
+    filter_glob: bpy.props.StringProperty(default="*.blend", options={"HIDDEN"})
 
     fit: fit_property("NONE")
 
@@ -596,6 +694,13 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         "file (e.g. a Shape Key or a property not on the model).\nThey are listed in the console",
     )
 
+    overwrite: bpy.props.BoolProperty(
+        name="Overwrite",
+        default=False,
+        description="Delete the Outfits of the model with the name of a new one, and the Extras "
+        "pieces with the name of a new one, before adding them",
+    )
+
     @classmethod
     def poll(cls, context):
         return context.mode == "OBJECT" and active_object_operator_poll(
@@ -613,11 +718,63 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             col.prop(self, "import_custom_properties", text="Import")
             col = body.column(heading="Drivers")
             col.prop(self, "remove_drivers", text="Remove Broken")
+            body.column(heading="Existing").prop(self, "overwrite")
 
     def invoke(self, context, event):
         add_outfit_fill_shape_keys(context)
         context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
+
+    def delete_existing(self, context, arm, colls, to_extras, sources):
+        """Delete the Outfits and Extras pieces of the model with the names of the new ones"""
+
+        rig_settings = arm.MustardUI_RigSettings
+        meshes = {o for c in colls for o in c.all_objects if o.type == "MESH"}
+        pieces = [o for o in meshes if meshes.isdisjoint(parents(o))]
+        if self.destination == "EXTRAS":
+            to_extras = set(pieces)
+
+        # Outfit names as given by Add Outfit, without the name of the source models
+        outfit_pieces = [p for p in pieces if p not in to_extras]
+        old_outfits = []
+        if self.destination == "NEW" and outfit_pieces:
+            names = {self.outfit_name.strip()}
+            if not self.outfit_name.strip():
+                names = set()
+                for piece in outfit_pieces:
+                    name = piece.users_collection[0].name
+                    for source in sources:
+                        name = outfit_default_name(name, source)
+                    names.add(outfit_default_name(name, rig_settings.model_name))
+            if rig_settings.model_MustardUI_naming_convention:
+                names = {f"{rig_settings.model_name} {n}" for n in names}
+            old_outfits = [
+                x.collection
+                for x in rig_settings.outfits_collections
+                if x.collection is not None and x.collection.name in names
+            ]
+
+        # Extras pieces matched by name without the collection prefix, with their children
+        extras = rig_settings.extras_collection
+        keys = {piece_default_names([p.name])[0] for p in pieces if p in to_extras}
+        old_extras = set()
+        if extras is not None and keys:
+            items = outfits_get_collection_items(rig_settings, extras)
+            old_extras = {o for o in items if piece_default_names([o.name])[0] in keys}
+            old_extras |= {o for o in items if not old_extras.isdisjoint(parents(o))}
+
+        # Before the pieces, as their weights tell the bones still used
+        old_pieces = old_extras | {o for c in old_outfits for o in c.all_objects}
+        delete_switched_bones(
+            context, rig_settings.model_armature_object, set(old_outfits), old_pieces
+        )
+        for coll in old_outfits:
+            outfits = [x.collection for x in rig_settings.outfits_collections]
+            context.scene.mustardui_outfits_uilist_index = outfits.index(coll)
+            bpy.ops.mustardui.remove_outfit(is_config=True)
+            delete_outfit_collection(context, arm, coll)
+        if old_extras:
+            delete_extras_pieces(context, arm, old_extras, remove_empty=False)
 
     def execute(self, context):
         arm, arm_obj, body = add_outfit_model(context)
@@ -625,45 +782,52 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             self.report({"ERROR"}, "MustardUI - The model has no Armature or Body")
             return {"CANCELLED"}
 
-        filepath, id_type = os.path.split(os.path.normpath(bpy.path.abspath(self.directory)))
-        names = [f.name for f in self.files if f.name]
-        if id_type not in ID_TYPES or not os.path.isfile(filepath) or not names:
-            self.report({"ERROR"}, "MustardUI - Select Collections or Objects inside a blend file")
+        directory = bpy.path.abspath(self.directory)
+        paths = [os.path.join(directory, f.name) for f in self.files if f.name]
+        if not paths or not all(os.path.isfile(p) and p.endswith(".blend") for p in paths):
+            self.report({"ERROR"}, "MustardUI - Select blend files")
             return {"CANCELLED"}
-        if bpy.data.filepath and os.path.samefile(filepath, bpy.data.filepath):
-            self.report({"ERROR"}, "MustardUI - Select another blend file")
+        if bpy.data.filepath and any(os.path.samefile(p, bpy.data.filepath) for p in paths):
+            self.report({"ERROR"}, "MustardUI - Select other blend files than this one")
             return {"CANCELLED"}
 
         before = data_ids()
-        attr = ID_TYPES[id_type]
-        try:
-            with bpy.data.libraries.load(filepath, link=False) as (data_from, data_to):
-                available = set(getattr(data_from, attr))
-                setattr(data_to, attr, [n for n in names if n in available])
-        except OSError as error:
-            self.report({"ERROR"}, f"MustardUI - {error}")
-            return {"CANCELLED"}
-        items = [x for x in getattr(data_to, attr) if x is not None]
-        if not items:
-            self.report({"ERROR"}, "MustardUI - Nothing to append")
-            return {"CANCELLED"}
-        # The appended models can store their settings in the other storage
-        text_storage.apply()
+        roots, extras = [], set()
+        for path in paths:
+            try:
+                file_roots, file_extras = append_outfits(path)
+            except OSError as error:
+                bpy.data.batch_remove(data_ids() - before)
+                self.report({"ERROR"}, f"MustardUI - {error}")
+                return {"CANCELLED"}
+            roots += file_roots
+            extras |= file_extras
 
-        scene_coll = context.scene.collection
-        if id_type == "Collection":
-            # Children of other appended collections are already linked
-            nested = {c for coll in items for c in coll.children_recursive}
-            for coll in items:
-                if coll not in nested:
-                    scene_coll.children.link(coll)
-            colls = [c for coll in items for c in (coll, *coll.children_recursive)]
-        else:
-            coll = bpy.data.collections.new(os.path.splitext(os.path.basename(filepath))[0])
-            scene_coll.children.link(coll)
-            for obj in items:
-                coll.objects.link(obj)
-            colls = [coll]
+        # Children of other appended collections are already linked
+        nested = {c for coll in roots for c in coll.children_recursive}
+        for coll in roots:
+            if coll not in nested:
+                context.scene.collection.children.link(coll)
+        colls = [c for coll in roots for c in (coll, *coll.children_recursive)]
+
+        # Pieces going to the Extras, if the model has them
+        rig_settings = arm.MustardUI_RigSettings
+        to_extras = set()
+        if rig_settings.extras_collection is not None:
+            to_extras = {o for c in extras for o in c.all_objects}
+
+        sources = {
+            a.MustardUI_RigSettings.model_name
+            for a in data_ids() - before
+            if isinstance(a, bpy.types.Armature)
+        } - {""}
+
+        # Before the custom properties and bones are added, to keep their names
+        if self.overwrite:
+            appended = data_ids() - before
+            self.delete_existing(context, arm, colls, to_extras, sources)
+            # Without the deleted datablocks, as new ones can take their memory
+            before = data_ids() - appended
 
         # Before the source models are replaced, as the custom properties are on them
         start = len(arm.MustardUI_CustomPropertiesOutfit)
@@ -673,14 +837,9 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             )
 
         # Collections without the name of the model they come from
-        sources = {
-            a.MustardUI_RigSettings.model_name
-            for a in data_ids() - before
-            if isinstance(a, bpy.types.Armature)
-        }
         refs = custom_property_refs(arm)
         for coll in colls:
-            for source_name in sources - {""}:
+            for source_name in sources:
                 if coll.name.startswith(f"{source_name} "):
                     coll.name = coll.name[len(source_name) + 1 :]
         update_custom_property_paths(refs)
@@ -739,11 +898,9 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         settings = {n: getattr(self, n) for n in [*AddOutfitSettings.__annotations__, "fit"]}
         if self.destination != "OUTFIT":
             del settings["outfit"]
-        # Outfit named after the appended collection by default
-        groups = add_outfit_groups(pieces)
-        if not self.outfit_name.strip() and len(groups) == 1:
-            model_name = arm.MustardUI_RigSettings.model_name
-            settings["outfit_name"] = outfit_default_name(next(iter(groups)).name, model_name)
+        # Outfits named after the appended collections by default
+        if not self.outfit_name.strip():
+            settings["split"] = True
 
         # Pieces switched by the imported Bone Collections, to switch them in their Outfit
         switchers = []
@@ -753,17 +910,27 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             coll = switcher.outfit_switcher_collection
             switchers.append((name, {piece} if piece is not None else set(coll.all_objects)))
 
+        groups = (
+            ([p for p in pieces if p not in to_extras], settings),
+            ([p for p in pieces if p in to_extras], {**settings, "destination": "EXTRAS"}),
+        )
+
         # Default piece names, as the appended pieces are not listed
         context.window_manager.MustardUI_ModelToolkit_AddOutfit_Items.clear()
-        try:
-            bpy.ops.mustardui.model_toolkit_add_outfit(**settings)
-        except RuntimeError as error:
-            # The appended pieces are kept selected, to add them with Add Outfit
-            self.report({"ERROR"}, str(error).removeprefix("Error: ").strip())
-            return {"FINISHED"}
+        for group, group_settings in groups:
+            if not group:
+                continue
+            for obj in context.view_layer.objects:
+                obj.select_set(obj in group)
+            context.view_layer.objects.active = group[-1]
+            try:
+                bpy.ops.mustardui.model_toolkit_add_outfit(**group_settings)
+            except RuntimeError as error:
+                # The appended pieces are kept selected, to add them with Add Outfit
+                self.report({"ERROR"}, str(error).removeprefix("Error: ").strip())
+                return {"FINISHED"}
 
         if switchers:
-            rig_settings = arm.MustardUI_RigSettings
             outfits = [x.collection for x in rig_settings.outfits_collections]
             outfits = [c for c in (*outfits, rig_settings.extras_collection) if c is not None]
             for name, switched in switchers:
@@ -773,7 +940,8 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
                 )
             outfits_update_armature_collections(rig_settings, arm)
 
-        message = f"MustardUI - {len(pieces)} pieces added from '{os.path.basename(filepath)}'"
+        source = f"'{os.path.basename(paths[0])}'" if len(paths) == 1 else f"{len(paths)} files"
+        message = f"MustardUI - {len(pieces)} pieces added from {source}"
         if issues:
             message += f", {' and '.join(issues)} (details in the console)"
         self.report({"WARNING"} if issues else {"INFO"}, message)

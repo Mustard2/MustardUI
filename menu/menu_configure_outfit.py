@@ -217,6 +217,7 @@ class PANEL_PT_MustardUI_InitPanel_Outfit(MainPanel, bpy.types.Panel):
             op.single_outfit = rig_settings.extras_collection.name
         else:
             op.single_outfit = ""
+        row.operator("mustardui.delete_extras", text="", icon="TRASH")
         row = box.row()
         row.enabled = rig_settings.extras_collection is not None
         row.prop(rig_settings, "extras_config_subcollections")

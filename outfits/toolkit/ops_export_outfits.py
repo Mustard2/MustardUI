@@ -515,6 +515,10 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         # Appended with any Outfit, as it has the model name and custom properties
         for copy in copies:
             copy.objects.link(model[arm_obj])
+        # To add the Extras pieces to the Extras of the other model
+        model[arm].MustardUI_RigSettings.extras_collection = mapping.get(
+            rig_settings.extras_collection
+        )
 
         # Bones switched with the exported Outfits, with their parents to parent them by name
         collections = {c for c in mapping if isinstance(c, bpy.types.Collection)}
