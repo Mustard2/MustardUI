@@ -8,6 +8,7 @@ import bpy
 
 from ...misc.mesh_deform import read_weights, rest_geometry
 from ...misc.move_modifier import move_modifier
+from ...misc.surface_deform import surface_deform_bind
 from ...misc.ui_progress import status_progress
 from ...model_selection.active_object import (
     ModelMode,
@@ -292,14 +293,13 @@ def rebind_modifiers(context, objects, armature):
             # The binding is done when the modifier is evaluated
             mod.show_viewport = True
             if mod.type == "SURFACE_DEFORM":
-                bind = bpy.ops.object.surfacedeform_bind
-            else:
-                bind = bpy.ops.object.correctivesmooth_bind
+                surface_deform_bind(obj, mod)
+                continue
             with context.temp_override(object=obj, active_object=obj):
                 # The operator unbinds the bound modifiers
-                if bound(mod):
-                    bind(modifier=mod.name)
-                bind(modifier=mod.name)
+                if mod.is_bind:
+                    bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
+                bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
         context.view_layer.update()
     finally:
         armature.data.pose_position = pose_position
