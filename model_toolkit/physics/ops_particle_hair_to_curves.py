@@ -1,16 +1,17 @@
 import math
-import os
 
 import bpy
 import numpy as np
 from mathutils.bvhtree import BVHTree
 
+from ...misc.geometry_nodes import blender_node_group
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
 from ...physics.definitions_nodes import (
+    DYNAMICS_ASSET,
     HAIR_CHILDREN_MODIFIER,
     HAIR_CHILDREN_SWITCH,
     HAIR_DYNAMICS_MUSTARDUI_SOCKETS,
@@ -33,20 +34,6 @@ HAIR_DYNAMICS_INPUTS = {
     "linear_damping": 6.0,
     "angular_damping": 6.0,
 }
-
-
-def node_group(file, name):
-    """Node group of the Blender essentials assets, appended if not in the file"""
-    if name in bpy.data.node_groups:
-        return bpy.data.node_groups[name]
-    # Blender 4.x stores the assets in 'geometry_nodes', 5.x in 'nodes'
-    for folder in ("nodes", "geometry_nodes"):
-        path = os.path.join(bpy.utils.resource_path("LOCAL"), "datafiles", "assets", folder, file)
-        if os.path.isfile(path):
-            with bpy.data.libraries.load(path) as (source, target):
-                target.node_groups = [name]
-            return target.node_groups[0]
-    return None
 
 
 def add_surface_uv_map(mesh):
@@ -81,7 +68,7 @@ def hair_dynamics_node_group():
     name = f"{HAIR_DYNAMICS_NODE_GROUP} (MustardUI)"
     if name in bpy.data.node_groups:
         return bpy.data.node_groups[name]
-    ng = node_group("geometry_nodes_dynamics_assets.blend", HAIR_DYNAMICS_NODE_GROUP).copy()
+    ng = blender_node_group(DYNAMICS_ASSET, HAIR_DYNAMICS_NODE_GROUP).copy()
     ng.name = name
     ng.asset_clear()
     nodes, links = ng.nodes, ng.links
@@ -308,7 +295,7 @@ def simple_children_node_group():
     links.new(children, join.inputs[0])
     links.new(guides, join.inputs[0])
     clump = nodes.new("GeometryNodeGroup")
-    clump.node_tree = node_group("procedural_hair_node_assets.blend", "Clump Hair Curves")
+    clump.node_tree = blender_node_group("procedural_hair_node_assets.blend", "Clump Hair Curves")
     links.new(join.outputs[0], clump.inputs["Geometry"])
     links.new(group_input["Clump"], clump.inputs["Factor"])
     links.new(group_input["Clump Shape"], clump.inputs["Shape"])
@@ -403,7 +390,7 @@ def hair_children_node_group(name, emitter, systems):
             geometry = switch.outputs[0]
 
         profile = nodes.new("GeometryNodeGroup")
-        profile.node_tree = node_group(
+        profile.node_tree = blender_node_group(
             "procedural_hair_node_assets.blend", "Set Hair Curve Profile"
         )
         profile.inputs["Radius"].default_value = 0.5 * settings.radius_scale * settings.root_radius
@@ -430,7 +417,7 @@ def add_collider(obj):
     """Deforming collider for the Hair Dynamics"""
     if "Hair Collider" in obj.modifiers:
         return
-    group = node_group("geometry_nodes_dynamics_assets.blend", "Collider")
+    group = blender_node_group(DYNAMICS_ASSET, "Collider")
     mod = obj.modifiers.new("Hair Collider", "NODES")
     mod.node_group = group
     deforming = next(x for x in group.interface.items_tree if x.name == "Deforming")

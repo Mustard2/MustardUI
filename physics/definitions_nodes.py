@@ -1,10 +1,13 @@
-import os
-
 import bpy
+
+from ..misc.geometry_nodes import blender_asset
 
 # ----------------------------------------------------------------------------
 # Cloth Dynamics (Experimental) node group (Blender 5.2)
 # ----------------------------------------------------------------------------
+
+# Blender assets file of the Cloth and Hair Dynamics node groups
+DYNAMICS_ASSET = "geometry_nodes_dynamics_assets.blend"
 
 CLOTH_DYNAMICS_NODE_GROUP = "Cloth Dynamics (Experimental)"
 CLOTH_DYNAMICS_SOCKETS = {
@@ -23,18 +26,8 @@ CLOTH_DYNAMICS_SOCKETS = {
 }
 
 
-def cloth_dynamics_asset():
-    return os.path.join(
-        bpy.utils.resource_path("LOCAL"),
-        "datafiles",
-        "assets",
-        "nodes",
-        "geometry_nodes_dynamics_assets.blend",
-    )
-
-
 def cloth_dynamics_available():
-    return bpy.app.version >= (5, 2, 0) and os.path.isfile(cloth_dynamics_asset())
+    return bpy.app.version >= (5, 2, 0) and bool(blender_asset(DYNAMICS_ASSET))
 
 
 # ----------------------------------------------------------------------------
