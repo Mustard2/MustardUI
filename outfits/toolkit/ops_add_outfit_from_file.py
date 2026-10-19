@@ -11,6 +11,7 @@ from ...model_selection.active_object import ModelMode, active_object_operator_p
 from ...text_storage import storage as text_storage
 from ..helper_functions import outfits_get_collection_items
 from ..ops_delete import delete_extras_pieces, delete_outfit_collection
+from ..ops_visibility import switch_outfit_piece, update_model_after_pieces_switch
 from .ops_add_outfit import (
     AddOutfitSettings,
     add_outfit_fill_shape_keys,
@@ -951,6 +952,14 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
                     (c for c in outfits if not switched.isdisjoint(c.all_objects)), None
                 )
             outfits_update_armature_collections(rig_settings, arm)
+
+        # Only the last Extras piece shown, as many can slow down the viewport
+        hidden = (pieces if self.destination == "EXTRAS" else groups[1][0])[:-1]
+        if hidden:
+            switched = {}
+            for obj in hidden:
+                switched.update(switch_outfit_piece(arm, obj, shift=True))
+            update_model_after_pieces_switch(context, arm, hidden, switched)
 
         source = f"'{os.path.basename(paths[0])}'" if len(paths) == 1 else f"{len(paths)} files"
         message = f"MustardUI - {len(pieces)} pieces added from {source}"

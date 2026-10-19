@@ -1237,6 +1237,22 @@ class TestExportOutfits(BlenderTestCase):
         model = self.import_folder()
         self.assert_imported(model, {"Other Casual.001", "Other Formal.001"})
 
+    # Only the last Extras piece added is shown, with its children
+    def test_round_trip_extras_shown(self):
+        extras = self.model["extras"]
+        hat = new_mesh_object("Extras - Hat", extras, armature=self.model["armature"])
+        new_mesh_object("Extras - Feather", extras, size=0.1).parent = hat
+        self.export(extras=["Extras - Glasses", "Extras - Hat"])
+        model = self.import_folder()
+        imported = [o for o in model["extras"].all_objects if o.name.startswith("Other Extras")]
+        shown = {o.name for o in imported if not o.hide_viewport and not o.hide_render}
+        self.assertEqual(len(imported), 3)
+        self.assertIn(
+            shown,
+            ({"Other Extras - Glasses"}, {"Other Extras - Hat", "Other Extras - Hat Feather"}),
+        )
+        self.assertFalse(model["extras"].objects["Extras - Glasses"].hide_viewport)
+
     # With Overwrite, the Outfits and Extras pieces with the same names are replaced, keeping
     # the names of the custom properties
     def test_round_trip_overwrite(self):
