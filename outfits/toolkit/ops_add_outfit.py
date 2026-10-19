@@ -411,6 +411,9 @@ def fit_property(default):
 class AddOutfitSettings:
     """Settings of Add Outfit, shared with Add Outfit from File"""
 
+    # Outfit Name and One Outfit per Collection in the settings
+    choose_name = True
+
     destination: bpy.props.EnumProperty(
         name="Add to",
         items=(
@@ -549,7 +552,7 @@ class AddOutfitSettings:
 
         col = layout.column()
         col.prop(self, "destination")
-        if self.destination == "NEW":
+        if self.destination == "NEW" and self.choose_name:
             if pieces is None or len(add_outfit_groups(pieces)) > 1:
                 col.prop(self, "split")
             if not self.split:

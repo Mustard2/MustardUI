@@ -671,6 +671,21 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
     )
     filter_glob: bpy.props.StringProperty(default="*.blend", options={"HIDDEN"})
 
+    # Outfits named after their collections
+    choose_name = False
+
+    destination: bpy.props.EnumProperty(
+        name="Add to",
+        description="Where the pieces are added.\nThe pieces of the Extras of the files always "
+        "go to the Extras of the model",
+        items=(
+            ("NEW", "New Outfits", "Add a new Outfit for each collection, named after it"),
+            ("OUTFIT", "Outfit", "Add the pieces to an existing Outfit"),
+            ("EXTRAS", "Extras", "Add all the pieces to the Extras"),
+        ),
+        default="NEW",
+    )
+
     fit: fit_property("NONE")
 
     transfer_shape_keys: bpy.props.BoolProperty(
@@ -735,17 +750,14 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             to_extras = set(pieces)
 
         # Outfit names as given by Add Outfit, without the name of the source models
-        outfit_pieces = [p for p in pieces if p not in to_extras]
         old_outfits = []
-        if self.destination == "NEW" and outfit_pieces:
-            names = {self.outfit_name.strip()}
-            if not self.outfit_name.strip():
-                names = set()
-                for piece in outfit_pieces:
-                    name = piece.users_collection[0].name
-                    for source in sources:
-                        name = outfit_default_name(name, source)
-                    names.add(outfit_default_name(name, rig_settings.model_name))
+        if self.destination == "NEW":
+            names = set()
+            for piece in [p for p in pieces if p not in to_extras]:
+                name = piece.users_collection[0].name
+                for source in sources:
+                    name = outfit_default_name(name, source)
+                names.add(outfit_default_name(name, rig_settings.model_name))
             if rig_settings.model_MustardUI_naming_convention:
                 names = {f"{rig_settings.model_name} {n}" for n in names}
             old_outfits = [
@@ -898,9 +910,9 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         settings = {n: getattr(self, n) for n in [*AddOutfitSettings.__annotations__, "fit"]}
         if self.destination != "OUTFIT":
             del settings["outfit"]
-        # Outfits named after the appended collections by default
-        if not self.outfit_name.strip():
-            settings["split"] = True
+        # Outfits named after the appended collections
+        del settings["outfit_name"]
+        settings["split"] = True
 
         # Pieces switched by the imported Bone Collections, to switch them in their Outfit
         switchers = []
