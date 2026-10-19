@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import bpy
 
 from .. import __package__ as base_package
+from ..misc.surface_deform import surface_deform_bind
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -20,6 +21,8 @@ def bind_object(
     corrective_smooth=True,
     force=False,
 ):
+    # Corrective Smooth bindings change only after a rebound deform
+    rebound = False
     for m in obj.modifiers:
         if surface_deform and m.type == "SURFACE_DEFORM":
             target = m.target
@@ -28,25 +31,14 @@ def bind_object(
             if target in cages:
                 hv = target.hide_viewport
                 target.hide_viewport = False
-                if m.is_bound:
-                    with bpy.context.temp_override(object=obj):
-                        try:
-                            bpy.ops.object.surfacedeform_bind(modifier=m.name)
-                        except Exception:
-                            if addon_prefs.debug:
-                                print(obj.name + " modifier: " + m.name + " could not be bound")
-                    with bpy.context.temp_override(object=obj):
-                        try:
-                            bpy.ops.object.surfacedeform_bind(modifier=m.name)
-                        except Exception:
-                            pass
-                elif not m.is_bound and force:
-                    with bpy.context.temp_override(object=obj):
-                        try:
-                            bpy.ops.object.surfacedeform_bind(modifier=m.name)
-                        except Exception:
-                            if addon_prefs.debug:
-                                print(obj.name + " modifier: " + m.name + " could not be bound")
+                rebound |= m.is_bound or force
+                if m.is_bound or force:
+                    try:
+                        surface_deform_bind(obj, m)
+                    except Exception:
+                        pass
+                    if not m.is_bound and addon_prefs.debug:
+                        print(obj.name + " modifier: " + m.name + " could not be bound")
                 target.hide_viewport = hv
 
         elif mesh_deform and m.type == "MESH_DEFORM":
@@ -56,6 +48,7 @@ def bind_object(
             if target in cages:
                 hv = target.hide_viewport
                 target.hide_viewport = False
+                rebound |= m.is_bound or force
                 if m.is_bound:
                     with bpy.context.temp_override(object=obj):
                         try:
@@ -78,7 +71,7 @@ def bind_object(
                 target.hide_viewport = hv
 
         elif corrective_smooth and m.type == "CORRECTIVE_SMOOTH":
-            if m.rest_source != "BIND":
+            if m.rest_source != "BIND" or not rebound:
                 continue
             hv = m.show_viewport
             m.show_viewport = True

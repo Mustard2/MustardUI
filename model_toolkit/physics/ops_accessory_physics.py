@@ -9,6 +9,7 @@ from mathutils.bvhtree import BVHTree
 from ...misc.mesh_deform import kdtree, read_weights
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
+from ...misc.surface_deform import surface_deform_bind
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -553,10 +554,9 @@ def bind_surface_deform(context, obj, modifier):
     hidden = obj.hide_viewport
     obj.hide_viewport = False
     context.view_layer.update()
-    with context.temp_override(object=obj, active_object=obj):
-        bpy.ops.object.surfacedeform_bind(modifier=modifier.name)
+    bound = surface_deform_bind(obj, modifier)
     obj.hide_viewport = hidden
-    return modifier.is_bound
+    return bound
 
 
 class CreatedData:
