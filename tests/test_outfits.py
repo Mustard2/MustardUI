@@ -531,7 +531,6 @@ class TestAddOutfit(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
             directory=os.path.dirname(path),
             files=[{"name": os.path.basename(path)}],
-            split=True,
             fit="NONE",
         )
         arm = self.model["armature"]
@@ -548,6 +547,20 @@ class TestAddOutfit(BlenderTestCase):
         self.assertNotIn("Other Sporty", bpy.data.collections)
         # The pieces of the scene are not changed
         self.assertIsNone(self.top.parent)
+
+    # Added to an Outfit, the pieces of all the collections go to it
+    def test_from_file_to_outfit(self):
+        path = self.write_source()
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.dirname(path),
+            files=[{"name": os.path.basename(path)}],
+            destination="OUTFIT",
+            outfit="Tester Casual",
+            fit="NONE",
+        )
+        names = {o.name for o in bpy.data.collections["Tester Casual"].objects}
+        self.assertTrue({"Tester Casual - Shorts", "Tester Casual - Hat"} <= names)
+        self.assertEqual(len(self.rig_settings.outfits_collections), 2)
 
     # In other files, the collections are Outfits and the meshes in no collection Extras
     def test_from_file_extras(self):
