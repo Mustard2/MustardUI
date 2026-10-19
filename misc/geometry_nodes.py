@@ -1,4 +1,30 @@
+import os
+
 import bpy
+
+
+def blender_asset(file):
+    """Path of a node assets file bundled with Blender, empty if missing"""
+    # Blender 4.x stores the assets in 'geometry_nodes', 5.x in 'nodes'
+    for folder in ("nodes", "geometry_nodes"):
+        # Blender's lookup of the local, system and environment datafiles, only resolving folders
+        directory = bpy.utils.system_resource("DATAFILES", path=f"assets/{folder}")
+        path = os.path.join(directory, file)
+        if directory and os.path.isfile(path):
+            return path
+    return ""
+
+
+def blender_node_group(file, name):
+    """Node group of the Blender bundled assets, appended if not in the file"""
+    if name in bpy.data.node_groups:
+        return bpy.data.node_groups[name]
+    path = blender_asset(file)
+    if not path:
+        return None
+    with bpy.data.libraries.load(path) as (source, target):
+        target.node_groups = [x for x in source.node_groups if x == name]
+    return target.node_groups[0] if target.node_groups else None
 
 
 def geometry_nodes_modifier_inputs(modifier):

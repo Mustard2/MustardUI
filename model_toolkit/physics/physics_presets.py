@@ -1,11 +1,11 @@
 import bpy
 
-from ...misc.geometry_nodes import node_group_has_simulation
+from ...misc.geometry_nodes import blender_node_group, node_group_has_simulation
 from ...misc.move_modifier import move_modifier
 from ...physics.definitions_nodes import (
     CLOTH_DYNAMICS_NODE_GROUP,
     CLOTH_DYNAMICS_SOCKETS,
-    cloth_dynamics_asset,
+    DYNAMICS_ASSET,
     cloth_dynamics_available,
 )
 
@@ -376,18 +376,6 @@ def _apply_cloth(obj, preset, pin_group_name, structural_group_name):
     return cloth
 
 
-def _cloth_dynamics_node_group():
-    """Append the Cloth Dynamics node group, or reuse the one already in the file."""
-    node_group = bpy.data.node_groups.get(CLOTH_DYNAMICS_NODE_GROUP)
-    if node_group is not None:
-        return node_group
-
-    with bpy.data.libraries.load(cloth_dynamics_asset(), link=False) as (source, target):
-        target.node_groups = [n for n in source.node_groups if n == CLOTH_DYNAMICS_NODE_GROUP]
-
-    return target.node_groups[0] if target.node_groups else None
-
-
 def _apply_nodes(obj, preset, pin_group_name):
     identifier, name, description, inputs = preset
 
@@ -395,7 +383,7 @@ def _apply_nodes(obj, preset, pin_group_name):
 
     remove_physics(obj)
 
-    node_group = _cloth_dynamics_node_group()
+    node_group = blender_node_group(DYNAMICS_ASSET, CLOTH_DYNAMICS_NODE_GROUP)
     if node_group is None:
         return None
 
