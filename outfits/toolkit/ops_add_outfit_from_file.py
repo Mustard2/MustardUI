@@ -47,6 +47,28 @@ def source_rigs(objects):
     return models or rigs
 
 
+# Custom property of the exported pieces deformed by a single bone, with the bone name
+FOLLOWED_BONE = "MustardUI Followed Bone"
+
+
+def place_on_model_bones(objects, arm_obj):
+    """Move the pieces deformed by a single bone to the model bone with its name"""
+
+    for obj in [o for o in objects if FOLLOWED_BONE in o]:
+        name = obj.pop(FOLLOWED_BONE)
+        rig = obj.parent
+        if rig is None or rig.type != "ARMATURE" or obj.parent_type != "OBJECT":
+            continue
+        source = rig.data.bones.get(name)
+        target = arm_obj.data.bones.get(name)
+        if source is None or target is None:
+            continue
+        # In the armature space, as the matrices of the appended objects are not evaluated
+        offset = target.matrix_local @ source.matrix_local.inverted()
+        inverse = obj.matrix_parent_inverse
+        obj.matrix_basis = inverse.inverted() @ offset @ inverse @ obj.matrix_basis
+
+
 def replace_models(objects, armature, body):
     """Use the model armature and body in place of the appended ones, returning these"""
 
@@ -861,6 +883,7 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         bone_collections, renamed, orphans = import_bones(context, arm_obj, data_ids() - before)
 
         appended = [o for o in bpy.data.objects if o not in before]
+        place_on_model_bones(appended, arm_obj)
         replaced = replace_models(appended, arm_obj, body)
         remove_unused(context.scene, before, replaced, arm_obj)
 
@@ -892,6 +915,8 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         for coll in colls:
             coll.hide_viewport = coll.hide_render = coll.hide_select = False
         meshes = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
+        # Hidden again after being added, as their modifiers might have been disabled with them
+        hidden = [o for o in meshes if o.hide_viewport]
         for obj in meshes:
             obj.hide_viewport = obj.hide_render = obj.hide_select = False
 
@@ -953,13 +978,17 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
                 )
             outfits_update_armature_collections(rig_settings, arm)
 
-        # Only the last Extras piece shown, as many can slow down the viewport
-        hidden = (pieces if self.destination == "EXTRAS" else groups[1][0])[:-1]
-        if hidden:
+        # Shown as in the UI, with only the last Extras piece as many can slow down the viewport
+        for obj in hidden:
+            obj.hide_viewport = obj.hide_render = True
+        extras_added = pieces if self.destination == "EXTRAS" else groups[1][0]
+        shown = set(pieces) - set(extras_added[:-1])
+        switch = [p for p in pieces if p.hide_viewport == (p in shown)]
+        if switch:
             switched = {}
-            for obj in hidden:
+            for obj in switch:
                 switched.update(switch_outfit_piece(arm, obj, shift=True))
-            update_model_after_pieces_switch(context, arm, hidden, switched)
+            update_model_after_pieces_switch(context, arm, switch, switched)
 
         source = f"'{os.path.basename(paths[0])}'" if len(paths) == 1 else f"{len(paths)} files"
         message = f"MustardUI - {len(pieces)} pieces added from {source}"
