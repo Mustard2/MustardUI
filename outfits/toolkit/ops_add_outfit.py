@@ -741,8 +741,8 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         steps = self.steps(context, pieces, names, keys, targets)
         self._backup = PiecesBackup(pieces)
 
-        # Without a window (e.g. from scripts) all the steps are run at once
-        if context.window is None or bpy.app.background:
+        # Not invoked (e.g. from scripts or Add Outfit from File) all the steps are run at once
+        if context.window is None or bpy.app.background or not self.options.is_invoke:
             try:
                 for _ in steps:
                     pass

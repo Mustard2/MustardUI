@@ -399,8 +399,8 @@ class TestTextStorage(BlenderTestCase):
 
             self.set_enabled(not source_text)
             bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
-                directory=os.path.join(path, "Collection", ""),
-                files=[{"name": "Sporty"}],
+                directory=directory,
+                files=[{"name": "source.blend"}],
                 fit="NONE",
                 transfer_shape_keys=False,
             )
