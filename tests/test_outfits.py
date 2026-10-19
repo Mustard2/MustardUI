@@ -17,6 +17,7 @@ from helpers import (
     new_object,
     reset_scene,
 )
+from mathutils import Vector
 
 add_outfit = importlib.import_module(ADDON + ".outfits.toolkit.ops_add_outfit")
 squish = importlib.import_module(ADDON + ".model_toolkit.effects.ops_squish")
@@ -454,6 +455,21 @@ class TestAddOutfit(BlenderTestCase):
         self.assertEqual(self.top.users_collection[0].name, "Tester Casual.001")
         self.assertEqual(self.top.name, "Tester Casual.001 - Top")
         self.assertEqual(len(self.model["outfits"][0].objects), 2)
+
+    # Pieces already weighted to the deform bones are not changed, unless overwritten
+    def test_weighted_kept(self):
+        group = self.top.vertex_groups.new(name="head")
+        group.add(range(len(self.top.data.vertices)), 1.0, "REPLACE")
+        bpy.ops.mustardui.model_toolkit_add_outfit(outfit_name="Sporty", fit="NONE")
+        self.assertEqual([vg.name for vg in self.top.vertex_groups], ["head"])
+        self.assertIn("spine", self.belt.vertex_groups)
+
+    # Names with the naming convention keep the words they share
+    def test_piece_names(self):
+        names = add_outfit.piece_default_names(["Extras - Glasses A", "Extras - Glasses B.001"])
+        self.assertEqual(names, ["Glasses A", "Glasses B"])
+        names = add_outfit.piece_default_names(["GO Glasses A Mesh", "GO Glasses B Mesh"])
+        self.assertEqual(names, ["A", "B"])
 
     # The dialog lists the pieces and the body Shape Keys, and draws valid properties
     def test_dialog(self):
@@ -1171,6 +1187,56 @@ class TestExportOutfits(BlenderTestCase):
         matrix = model["armature"].matrix_world.inverted() @ shirt.matrix_world
         self.assertLess(max(abs(v) for row in matrix - relative for v in row), 1e-5)
 
+    # Pieces deformed by a single bone are moved to the model bone, keeping their weights
+    def test_round_trip_followed_bone(self):
+        glasses = bpy.data.objects["Extras - Glasses"]
+        glasses.vertex_groups["spine"].name = "head"
+        matrix = glasses.matrix_world.copy()
+        self.export(extras=["Extras - Glasses"])
+        reset_scene()
+        model = build_model("Other")
+        configure_model(model, "Other")
+        # Taller model
+        bpy.context.view_layer.objects.active = model["armature"]
+        bpy.ops.object.mode_set(mode="EDIT")
+        head = model["armature"].data.edit_bones["head"]
+        head.head.z += 0.1
+        head.tail.z += 0.1
+        bpy.ops.object.mode_set(mode="OBJECT")
+        select_model(model)
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.dirname(self.path),
+            files=[{"name": os.path.basename(self.path)}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+        glasses = bpy.data.objects["Other Extras - Glasses"]
+        bpy.context.view_layer.update()
+        moved = glasses.matrix_world.translation - matrix.translation
+        self.assertLess((moved - Vector((0, 0, 0.1))).length, 1e-5)
+        self.assertEqual([vg.name for vg in glasses.vertex_groups], ["head"])
+        self.assertNotIn(export.FOLLOWED_BONE, glasses)
+
+    # Pieces parented to a bone keep their place, and are not deformed by the armature too
+    def test_round_trip_bone_parent(self):
+        glasses = bpy.data.objects["Extras - Glasses"]
+        glasses.modifiers.clear()
+        glasses.vertex_groups.clear()
+        matrix = glasses.matrix_world.copy()
+        glasses.parent = self.model["armature"]
+        glasses.parent_type, glasses.parent_bone = "BONE", "head"
+        bpy.context.view_layer.update()
+        # Parent inverse as set by Parent to Bone, keeping the piece in place
+        glasses.matrix_parent_inverse = (glasses.matrix_world @ matrix.inverted()).inverted()
+        self.export(extras=["Extras - Glasses"])
+        model = self.import_folder()
+
+        glasses = bpy.data.objects["Other Extras - Glasses"]
+        bpy.context.view_layer.update()
+        self.assertEqual((glasses.parent, glasses.parent_bone), (model["armature"], "head"))
+        self.assertLess(max(abs(v) for row in glasses.matrix_world - matrix for v in row), 1e-5)
+        self.assertFalse(any(m.type == "ARMATURE" for m in glasses.modifiers))
+
     # The armature of an Outfit is kept, the one of the model replaced
     def test_round_trip_own_armature(self):
         formal = self.model["outfits"][1]
@@ -1237,20 +1303,26 @@ class TestExportOutfits(BlenderTestCase):
         model = self.import_folder()
         self.assert_imported(model, {"Other Casual.001", "Other Formal.001"})
 
-    # Only the last Extras piece added is shown, with its children
+    # Only the last Extras piece added is shown, with its children, following the armature also
+    # if hidden in the other model
     def test_round_trip_extras_shown(self):
         extras = self.model["extras"]
         hat = new_mesh_object("Extras - Hat", extras, armature=self.model["armature"])
         new_mesh_object("Extras - Feather", extras, size=0.1).parent = hat
+        for name in ("Extras - Glasses", "Extras - Hat"):
+            bpy.ops.mustardui.object_visibility(obj=name)
+        self.assertFalse(hat.modifiers["Armature"].show_viewport)
         self.export(extras=["Extras - Glasses", "Extras - Hat"])
         model = self.import_folder()
         imported = [o for o in model["extras"].all_objects if o.name.startswith("Other Extras")]
-        shown = {o.name for o in imported if not o.hide_viewport and not o.hide_render}
+        shown = [o for o in imported if not o.hide_viewport and not o.hide_render]
         self.assertEqual(len(imported), 3)
         self.assertIn(
-            shown,
+            {o.name for o in shown},
             ({"Other Extras - Glasses"}, {"Other Extras - Hat", "Other Extras - Hat Feather"}),
         )
+        for obj in shown:
+            self.assertTrue(all(m.show_viewport for m in obj.modifiers if m.type == "ARMATURE"))
         self.assertFalse(model["extras"].objects["Extras - Glasses"].hide_viewport)
 
     # With Overwrite, the Outfits and Extras pieces with the same names are replaced, keeping

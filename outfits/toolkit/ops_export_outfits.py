@@ -11,6 +11,7 @@ from ..helper_functions import outfits_get_collection_items, outfits_get_collect
 from ..ops_delete import delete_extras_pieces
 from .ops_add_outfit import add_outfit_model, outfit_default_name, parents
 from .ops_add_outfit_from_file import (
+    FOLLOWED_BONE,
     copy_bones,
     copy_id_property,
     copy_settings,
@@ -211,10 +212,14 @@ class OutfitCopier:
                 elif not prop.is_readonly:
                     new = self.replace(value, owner)
                     if new != value:
+                        # Setting the parent resets the parent inverse matrix
+                        inverse = struct.matrix_parent_inverse.copy() if pid == "parent" else None
                         try:
                             setattr(struct, pid, new)
                         except (AttributeError, TypeError, ValueError):
                             self.cut.append(f"{owner}: {value.name} (not replaced)")
+                        if inverse is not None:
+                            struct.matrix_parent_inverse = inverse
 
             elif prop.type == "COLLECTION" and pid not in SKIP:
                 for i, item in enumerate(value):
@@ -249,6 +254,27 @@ def copy_collection(coll, mapping, objects, keep=None):
         if child_copy is not None:
             new.children.link(child_copy)
     return new
+
+
+def followed_bone(obj, arm_obj):
+    """The only deform bone weighted on the piece deformed by the armature, if any"""
+
+    if obj.type != "MESH" or not any(
+        m.type == "ARMATURE" and m.object == arm_obj for m in obj.modifiers
+    ):
+        return None
+    deform = {b.name for b in arm_obj.data.bones if b.use_deform}
+    groups = {vg.index: vg.name for vg in obj.vertex_groups if vg.name in deform}
+    found = None
+    for v in obj.data.vertices:
+        for g in v.groups:
+            name = groups.get(g.group)
+            if name is None or g.weight <= 0 or name == found:
+                continue
+            if found is not None:
+                return None
+            found = name
+    return found
 
 
 def extras_keep(extras, pieces):
@@ -525,8 +551,15 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         bone_collections = outfit_bone_collections(arm, collections, objects)
         bones = {b for bc in bone_collections for b in bc.bones}
         bones |= {p for b in bones for p in b.parent_recursive}
-        if bones:
-            copy_bones(context, arm_obj, model[arm_obj], {b.name for b in bones}, bone_collections)
+        bone_names = {b.name for b in bones}
+        # Bones of the rigid pieces, to place them on the bone of the other model
+        for obj in objects:
+            name = followed_bone(obj, arm_obj)
+            if name is not None:
+                mapping[obj][FOLLOWED_BONE] = name
+                bone_names.add(name)
+        if bone_names:
+            copy_bones(context, arm_obj, model[arm_obj], bone_names, bone_collections)
 
         # Outfit custom properties of the exported Outfits on the stand-in armature
         cps = model[arm].MustardUI_CustomPropertiesOutfit
