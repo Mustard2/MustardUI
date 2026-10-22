@@ -3,9 +3,15 @@ import os
 import bpy
 from mathutils import Matrix
 from mathutils.bvhtree import BVHTree
-from mathutils.kdtree import KDTree
 
-from .effect import RemoveEffect, effects_available, is_effect, modifier_input, new_control
+from .effect import (
+    RemoveEffect,
+    effects_available,
+    is_effect,
+    modifier_input,
+    new_control,
+    parent_control,
+)
 
 NODE_GROUP = "MustardUI Sticky Strands"
 MATERIAL = "MustardUI Sticky Strands"
@@ -77,41 +83,9 @@ class MustardUI_ModelToolkit_StickyStrands(bpy.types.Operator):
             _, source, vertex = closest
         location = source.matrix_world @ vertex.co
 
-        # Parented to the bone deforming the vertex the most, found from its rest position, or
-        # to the mesh, for the Control to follow it. Not to the vertex, which would make a
-        # dependency cycle with the strands
-        rest = source.evaluated_get(depsgraph).data.attributes["rest_position"]
-        rest = rest.data[vertex.index].vector
-        kd = KDTree(len(source.data.vertices))
-        for x in source.data.vertices:
-            kd.insert(x.co, x.index)
-        kd.balance()
-        armature = next(
-            (m.object for m in source.modifiers if m.type == "ARMATURE" and m.object), None
-        )
-        bones = armature.pose.bones if armature else {}
-        group = max(
-            (
-                x
-                for x in source.data.vertices[kd.find(rest)[1]].groups
-                if source.vertex_groups[x.group].name in bones
-            ),
-            key=lambda x: x.weight,
-            default=None,
-        )
+        # Not parented to the vertex, which would make a dependency cycle with the strands
         control, _, _ = new_control(objects, "Sticky Strands", CONTROL_TYPE)
-        if group:
-            bone = bones[source.vertex_groups[group.group].name]
-            control.parent = armature
-            control.parent_type = "BONE"
-            control.parent_bone = bone.name
-            # The bone parent matrix is at its tail
-            parent = armature.matrix_world @ bone.matrix
-            parent.translation = armature.matrix_world @ bone.tail
-        else:
-            control.parent = source
-            parent = source.matrix_world
-        control.matrix_parent_inverse = parent.inverted()
+        parent_control(control, source, vertex, depsgraph)
         control.matrix_basis = Matrix.LocRotScale(location, None, (self.radius,) * 3)
 
         for obj in objects:
