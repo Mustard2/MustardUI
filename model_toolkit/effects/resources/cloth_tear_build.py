@@ -29,6 +29,13 @@ def build_node_group():
         "NodeSocketCollection",
         description="Collection of the Empties whose spheres tear the mesh",
     )
+    add_input(
+        ng,
+        "Pulls",
+        "NodeSocketCollection",
+        description="Collection of the Empties grabbing the cloth in their spheres on the Start "
+        "Frame, pulling it until it rips. Needs Physics",
+    )
 
     panel = ng.interface.new_panel("Tear")
     add_input(
@@ -369,6 +376,36 @@ def build_node_group():
         max_value=2.0,
         description="Friction coefficient of the pieces and of the released cloth sliding on the "
         "Collider and on the cloth",
+    )
+    add_input(
+        ng,
+        "Strength",
+        "NodeSocketFloat",
+        panel,
+        default_value=0.3,
+        min_value=0.01,
+        max_value=100.0,
+        description="Stretch of the cloth before it rips, relative to its length",
+    )
+    add_input(
+        ng,
+        "Reach",
+        "NodeSocketFloat",
+        panel,
+        default_value=0.3,
+        min_value=0.0,
+        max_value=100.0,
+        subtype="DISTANCE",
+        description="Distance from the Pulls where the cloth gets physics and is dragged along, "
+        "less and less, held by the body farther away. Large for the whole outfit",
+    )
+    add_input(
+        ng,
+        "In Hand",
+        "NodeSocketBool",
+        panel,
+        default_value=True,
+        description="Ripped off parts held by the Pulls, falling otherwise",
     )
 
     arrange_interface(ng)
@@ -1116,6 +1153,7 @@ def arrange_interface(ng):
         ("Threads", "Bridges", True, ("Share", "Bridge Length")),
         ("Physics", "Pieces", False, ("Piece Size", "Rip Out", "Push", "Lifetime")),
         ("Physics", "Released Cloth", False, ("Release", "Anchor")),
+        ("Physics", "Ripping", False, ("Reach", "Strength", "In Hand")),
         ("Physics", "Collisions", False, ("Collider", "Floor", "Friction", "Self Collision")),
         ("Physics", "Motion", False, ("Gravity", "Drag", "Damping", "Bending", "Time Scale")),
         ("Physics", "Solver", True, ("Substeps", "Iterations")),
@@ -1278,6 +1316,52 @@ def bend_partners(t, x, y):
             ).outputs[0]
         )
     return partners
+
+
+def correction(t, constraints, free, position, x, y):
+    """Corner field moving towards the rest lengths of the (vertex, other position, rest length,
+    stiffness or None) constraints, all the way towards a pinned point, half towards a free one"""
+    total = None
+    for i, (vertex, other, rest_length, stiffness) in enumerate(constraints):
+        y_i = y - 3 * i
+        other_free = t.node(
+            "GeometryNodeFieldAtIndex",
+            x,
+            y_i - 3,
+            {"Value": free, "Index": vertex},
+            data_type="FLOAT",
+            domain="POINT",
+        ).outputs[0]
+        weight = t.math("MULTIPLY_ADD", other_free, -0.5, 1.0, x=x + 1, y=y_i - 3)
+        if stiffness is not None:
+            weight = t.math("MULTIPLY", weight, stiffness, x=x + 2, y=y_i - 3)
+        towards = t.vmath("SUBTRACT", other, position, x=x, y=y_i)
+        current = t.math(
+            "MAXIMUM", t.vmath("LENGTH", towards, x=x, y=y_i - 1), 1e-9, x=x + 1, y=y_i - 1
+        )
+        stretch = t.math(
+            "MULTIPLY",
+            t.math(
+                "SUBTRACT",
+                1.0,
+                t.math("DIVIDE", rest_length, current, x=x + 1, y=y_i - 2),
+                x=x + 2,
+                y=y_i - 2,
+            ),
+            weight,
+            x=x + 3,
+            y=y_i - 2,
+        )
+        term = t.vmath("SCALE", towards, stretch, x=x + 2, y=y_i)
+        total = term if total is None else t.vmath("ADD", total, term, x=x + 3, y=y_i)
+    return t.node(
+        "GeometryNodeFieldOnDomain",
+        x + 4,
+        y,
+        {"Value": total},
+        data_type="FLOAT_VECTOR",
+        domain="CORNER",
+    ).outputs[0]
 
 
 def couple_groups(t, geometry, free, x, y):
@@ -1465,7 +1549,62 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
     position = t.node("GeometryNodeInputPosition", -4, -3).outputs[0]
     edge_ends = t.node("GeometryNodeInputMeshEdgeVertices", -4, -5).outputs
     edge_length = t.vmath("DISTANCE", edge_ends["Position 1"], edge_ends["Position 2"], x=-3, y=-5)
-    mesh = geometry
+
+    t.section("Pulls", row=True)
+    # Distance from the closest sphere of the Pulls, with the index of the Pull
+    pulls = t.node(
+        "GeometryNodeCollectionInfo",
+        -6,
+        2,
+        {"Collection": inputs["Pulls"], "Separate Children": True},
+        transform_space="RELATIVE",
+    ).outputs[0]
+    pull_count = t.node(
+        "GeometryNodeAttributeDomainSize", -6, 1, {"Geometry": pulls}, component="INSTANCES"
+    ).outputs["Instance Count"]
+    pull_in = t.node("GeometryNodeRepeatInput", -5, 0, {"Iterations": pull_count})
+    pull_out = t.node("GeometryNodeRepeatOutput", 0, 0)
+    pull_in.pair_with_output(pull_out)
+    t.connect(
+        t.store(geometry, ".cloth_tear_pull", "FLOAT", 1e9, -6, 0), pull_in.inputs["Geometry"]
+    )
+    pull = pull_in.outputs["Iteration"]
+    transform = control_transform(t, pulls, pull, -4, -2)
+    local = t.node(
+        "FunctionNodeTransformPoint",
+        -2,
+        -2,
+        {
+            "Vector": position,
+            "Transform": t.node("FunctionNodeInvertMatrix", -3, -2, {0: transform}).outputs[0],
+        },
+    ).outputs[0]
+    # In the units of the mesh, by the average scale of the Pull
+    scale = t.node("FunctionNodeSeparateTransform", -3, -3, {0: transform}).outputs["Scale"]
+    distance = t.math(
+        "MULTIPLY",
+        t.math("SUBTRACT", t.vmath("LENGTH", local, x=-1, y=-2), 1.0, x=0, y=-2),
+        t.vmath("DOT_PRODUCT", scale, (1 / 3, 1 / 3, 1 / 3), x=-2, y=-3),
+        x=1,
+        y=-2,
+    )
+    closer = t.math(
+        "LESS_THAN", distance, t.attribute(".cloth_tear_pull", "FLOAT", 0, -4), x=1, y=-4
+    )
+    mesh = pull_in.outputs["Geometry"]
+    for i, (name, data_type, value) in enumerate(
+        ((".cloth_tear_puller", "INT", pull), (".cloth_tear_pull", "FLOAT", distance))
+    ):
+        mesh = t.node(
+            "GeometryNodeStoreNamedAttribute",
+            -2 + i,
+            0,
+            {"Geometry": mesh, "Selection": closer, "Name": name, "Value": value},
+            data_type=data_type,
+        ).outputs[0]
+    t.connect(mesh, pull_out.inputs["Geometry"])
+    pull_out.parent = t.frame
+    mesh = pull_out.outputs["Geometry"]
 
     t.section("Pieces", row=True)
     # Pieces from the cells around the rest position, torn once most of their faces are inside
@@ -1551,20 +1690,120 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         ).outputs[0]
         for i, name in enumerate(("Geometry", "Pieces", "Cloth"))
     )
-    was = t.node(
-        "GeometryNodeSampleIndex",
-        3,
-        -3,
-        {"Geometry": state, "Value": t.attribute("torn", "FLOAT", 2, -4), "Index": index},
-        data_type="FLOAT",
-        domain="POINT",
-    ).outputs[0]
-    torn = t.math("MAXIMUM", was, t.math("MULTIPLY", touched, started, x=3, y=-4), x=4, y=-3)
+    was, ripped = (
+        t.node(
+            "GeometryNodeSampleIndex",
+            3,
+            -3 - i,
+            {"Geometry": state, "Value": t.attribute(name, "FLOAT", 2, -4 - i), "Index": index},
+            data_type="FLOAT",
+            domain="POINT",
+        ).outputs[0]
+        for i, name in enumerate(("torn", "ripped"))
+    )
+    # Touched by the Controls, or ripped by the Pulls on the previous frame
+    torn = t.math(
+        "MAXIMUM",
+        t.math("MAXIMUM", was, t.math("MULTIPLY", touched, started, x=3, y=-5), x=4, y=-4),
+        ripped,
+        x=4,
+        y=-3,
+    )
     island = t.node("GeometryNodeInputMeshIsland", 3, -6).outputs["Island Index"]
     mesh = t.store(mesh, ".cloth_tear_island", "INT", island, 3, 0, domain="FACE")
     anchor = t.math("GREATER_THAN", inputs["Anchor"], 0.5, x=2, y=-6)
     mesh = t.store(mesh, ".cloth_tear_anchor", "FLOAT", anchor, 3.5, 0)
+    # The cloth around the tear simulated, from where it was on the previous frame
+    was_released, simulated, simulated_prev, was_grab, was_grabber, was_offset, was_grip = (
+        t.node(
+            "GeometryNodeSampleIndex",
+            6,
+            -14 - i,
+            {"Geometry": cloth_state, "Value": value, "Index": index},
+            data_type=data_type,
+            domain="POINT",
+        ).outputs[0]
+        for i, (value, data_type) in enumerate(
+            (
+                (t.attribute("influence", "FLOAT", 5, -14), "FLOAT"),
+                (position, "FLOAT_VECTOR"),
+                (t.attribute("prev", "FLOAT_VECTOR", 5, -16), "FLOAT_VECTOR"),
+                (t.attribute("grab", "FLOAT", 5, -17), "FLOAT"),
+                (t.attribute("grabber", "INT", 5, -18), "INT"),
+                (t.attribute("offset", "FLOAT_VECTOR", 5, -19), "FLOAT_VECTOR"),
+                (t.attribute("grip", "FLOAT", 5, -20), "FLOAT"),
+            )
+        )
+    )
+    # Grabbed by the Pulls on the first simulated frame, in their space, or as before
+    grabbing = t.math(
+        "COMPARE",
+        frame,
+        t.math("ADD", inputs["Start Frame"], 1.0, x=1, y=-21),
+        0.5,
+        x=2,
+        y=-21,
+    )
+    puller = t.attribute(".cloth_tear_puller", "INT", 1, -22)
+    offset = t.node(
+        "FunctionNodeTransformPoint",
+        3,
+        -23,
+        {
+            "Vector": position,
+            "Transform": t.node(
+                "FunctionNodeInvertMatrix",
+                2,
+                -23,
+                {0: control_transform(t, pulls, puller, 1, -23)},
+            ).outputs[0],
+        },
+    ).outputs[0]
+    for i, (name, data_type, before, now) in enumerate(
+        (
+            (
+                ".cloth_tear_grab",
+                "FLOAT",
+                was_grab,
+                t.math(
+                    "LESS_THAN", t.attribute(".cloth_tear_pull", "FLOAT", 2, -24), 0.0, x=3, y=-24
+                ),
+            ),
+            (".cloth_tear_grabber", "INT", was_grabber, puller),
+            (".cloth_tear_offset", "FLOAT_VECTOR", was_offset, offset),
+            (
+                ".cloth_tear_grip",
+                "FLOAT",
+                was_grip,
+                t.attribute(".cloth_tear_pull", "FLOAT", 3, -25),
+            ),
+        )
+    ):
+        mesh = t.store(
+            mesh,
+            name,
+            data_type,
+            t.node(
+                "GeometryNodeSwitch",
+                4,
+                -21 - i,
+                {"Switch": grabbing, "False": before, "True": now},
+                input_type={"FLOAT_VECTOR": "VECTOR"}.get(data_type, data_type),
+            ).outputs[0],
+            3.6 + 0.1 * i,
+            0,
+        )
+    # Held by the body, never simulated
+    mesh = t.store(
+        mesh,
+        ".cloth_tear_held",
+        "FLOAT",
+        t.math("LESS_THAN", was_released, 1e-6, x=3, y=-25),
+        3.9,
+        0,
+    )
     mesh = t.store(mesh, ".cloth_tear_torn", "FLOAT", torn, 4, 0, domain="FACE")
+    mesh = t.store(mesh, ".cloth_tear_ripped", "FLOAT", ripped, 4.1, 0, domain="FACE")
     # The parts cut off from the top of their island fall too
     torn = t.attribute(".cloth_tear_torn", "FLOAT", 4, -5)
     height = t.node(
@@ -1628,7 +1867,11 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         "GREATER_THAN", t.attribute(".cloth_tear_anchor", "FLOAT", 12, -12), 0.0, x=13, y=-12
     )
     part = t.attribute(".cloth_tear_part", "INT", 12, -11)
-    part_top, part_anchored, island_anchored = (
+    grabbed, held = (
+        t.math("GREATER_THAN", t.attribute(name, "FLOAT", 12, -13 - i), 0.0, x=13, y=-13 - i)
+        for i, name in enumerate((".cloth_tear_grab", ".cloth_tear_held"))
+    )
+    part_top, part_anchored, island_anchored, part_grabbed, part_held = (
         t.node(
             "GeometryNodeAccumulateField",
             14,
@@ -1637,7 +1880,15 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             data_type="FLOAT",
             domain="FACE",
         ).outputs["Total"]
-        for i, (value, group) in enumerate(((at_top, part), (anchored, part), (anchored, island)))
+        for i, (value, group) in enumerate(
+            (
+                (at_top, part),
+                (anchored, part),
+                (anchored, island),
+                (grabbed, part),
+                (held, part),
+            )
+        )
     )
     supported = t.node(
         "GeometryNodeSwitch",
@@ -1647,6 +1898,18 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             "Switch": t.math("GREATER_THAN", island_anchored, 0.0, x=15, y=-11),
             "False": part_top,
             "True": part_anchored,
+        },
+        input_type="FLOAT",
+    ).outputs[0]
+    # The parts grabbed by the Pulls ripped off once not held by the body anymore
+    supported = t.node(
+        "GeometryNodeSwitch",
+        15.5,
+        -8,
+        {
+            "Switch": t.math("GREATER_THAN", part_grabbed, 0.0, x=15, y=-13),
+            "False": supported,
+            "True": part_held,
         },
         input_type="FLOAT",
     ).outputs[0]
@@ -1718,51 +1981,32 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         "FunctionNodeTransformPoint", 7, -2, {"Vector": position, "Transform": to_world}
     ).outputs[0]
     mesh = t.store(mesh, ".cloth_tear_posed", "FLOAT_VECTOR", posed, 7.5, 0)
-    # The cloth around the tear simulated, from where it was on the previous frame
-    was_released, simulated, simulated_prev = (
-        t.node(
-            "GeometryNodeSampleIndex",
-            6,
-            -14 - i,
-            {"Geometry": cloth_state, "Value": value, "Index": index},
-            data_type=data_type,
-            domain="POINT",
-        ).outputs[0]
-        for i, (value, data_type) in enumerate(
-            (
-                (t.attribute("influence", "FLOAT", 5, -14), "FLOAT"),
-                (position, "FLOAT_VECTOR"),
-                (t.attribute("prev", "FLOAT_VECTOR", 5, -16), "FLOAT_VECTOR"),
-            )
-        )
-    )
-    # How much it is simulated, smoothly less away from the jagged spheres of the Controls, from
-    # the Start Frame, never less than before
-    near = t.node(
-        "ShaderNodeMapRange",
-        7,
-        -18,
-        {
-            0: t.attribute(".cloth_tear_distance", "FLOAT", 6, -18),
-            2: t.math("MAXIMUM", inputs["Release"], 1e-6, x=6, y=-19),
-            3: 1.0,
-            4: 0.0,
-        },
-        interpolation_type="SMOOTHSTEP",
-    ).outputs[0]
-    near = t.math(
-        "MULTIPLY",
-        near,
+    # How much it is simulated, smoothly less away from the jagged spheres of the Controls and the
+    # spheres of the Pulls, from the Start Frame, never less than before
+    near = [
         t.math(
             "MULTIPLY",
-            started,
-            t.math("GREATER_THAN", inputs["Release"], 0.0, x=7, y=-20),
+            t.node(
+                "ShaderNodeMapRange",
+                7,
+                -18 - 3 * i,
+                {
+                    0: t.attribute(name, "FLOAT", 6, -18 - 3 * i),
+                    2: t.math("MAXIMUM", reach, 1e-6, x=6, y=-19 - 3 * i),
+                    3: 1.0,
+                    4: 0.0,
+                },
+                interpolation_type="SMOOTHSTEP",
+            ).outputs[0],
+            t.math("GREATER_THAN", reach, 0.0, x=7, y=-20 - 3 * i),
             x=8,
-            y=-20,
-        ),
-        x=8,
-        y=-18,
-    )
+            y=-18 - 3 * i,
+        )
+        for i, (name, reach) in enumerate(
+            ((".cloth_tear_distance", inputs["Release"]), (".cloth_tear_pull", inputs["Reach"]))
+        )
+    ]
+    near = t.math("MULTIPLY", t.math("MAXIMUM", *near, x=8.5, y=-18), started, x=8.7, y=-18)
     released = t.math("MAXIMUM", was_released, near, x=9, y=-17)
     mesh = t.store(mesh, ".cloth_tear_released", "FLOAT", released, 7.7, 0)
     mesh = t.store(mesh, ".cloth_tear_was", "FLOAT", was_released, 7.8, 0)
@@ -1778,6 +2022,57 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             ),
             "False": t.attribute(".cloth_tear_posed", "FLOAT_VECTOR", 7, -4),
             "True": t.attribute(".cloth_tear_simulated", "FLOAT_VECTOR", 7, -5),
+        },
+        input_type="VECTOR",
+    ).outputs[0]
+    # Where the Pull holding it is now, gathered to its center as a fist as it pulls away, to
+    # less than a third two radii away
+    holding = control_transform(t, pulls, t.attribute(".cloth_tear_grabber", "INT", 4, -7), 5, -7)
+    offset = t.attribute(".cloth_tear_offset", "FLOAT_VECTOR", 4, -6)
+    away = t.vmath(
+        "DISTANCE",
+        t.node(
+            "FunctionNodeTransformPoint", 6, -6, {"Vector": offset, "Transform": holding}
+        ).outputs[0],
+        position,
+        x=7,
+        y=-5,
+    )
+    reach = t.vmath(
+        "DOT_PRODUCT",
+        t.node("FunctionNodeSeparateTransform", 6, -8, {0: holding}).outputs["Scale"],
+        (2 / 3, 2 / 3, 2 / 3),
+        x=7,
+        y=-8,
+    )
+    gather = t.node("ShaderNodeMapRange", 8, -7, {0: away, 2: reach, 3: 1.0, 4: 0.3}).outputs[0]
+    held = t.node(
+        "FunctionNodeTransformPoint",
+        9,
+        -6,
+        {
+            "Vector": t.node(
+                "FunctionNodeTransformPoint",
+                8,
+                -6,
+                {
+                    "Vector": t.vmath("SCALE", offset, gather, x=7, y=-7),
+                    "Transform": holding,
+                },
+            ).outputs[0],
+            "Transform": to_world,
+        },
+    ).outputs[0]
+    world = t.node(
+        "GeometryNodeSwitch",
+        9,
+        -2,
+        {
+            "Switch": t.math(
+                "GREATER_THAN", t.attribute(".cloth_tear_grab", "FLOAT", 8, -7), 0.5, x=9, y=-7
+            ),
+            "False": world,
+            "True": held,
         },
         input_type="VECTOR",
     ).outputs[0]
@@ -1837,8 +2132,15 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         0,
         {
             "Geometry": mesh,
+            # The ripped faces opening up, not falling
             "Selection": t.math(
-                "LESS_THAN", t.attribute(".cloth_tear_new", "FLOAT", 10, -1), 0.5, x=11, y=-1
+                "MAXIMUM",
+                t.math(
+                    "LESS_THAN", t.attribute(".cloth_tear_new", "FLOAT", 10, -1), 0.5, x=11, y=-1
+                ),
+                t.attribute(".cloth_tear_ripped", "FLOAT", 10, -2),
+                x=11.5,
+                y=-1,
             ),
         },
         domain="FACE",
@@ -1958,7 +2260,20 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         )
     length = t.vmath("DISTANCE", ends[0][2], position, x=17, y=-6)
     spawned = t.store(spawned, ".cloth_piece_length", "FLOAT", length, 15, 0, domain="CORNER")
-    # Rest lengths of the bending pairs
+    # Rest lengths of the bending pairs, and of the diagonal for the shear
+    diagonal = t.node(
+        "GeometryNodeVertexOfCorner",
+        15,
+        -15,
+        {
+            0: t.node(
+                "GeometryNodeOffsetCornerInFace",
+                14,
+                -15,
+                {"Corner Index": corner, "Offset": 2},
+            ).outputs[0]
+        },
+    ).outputs[0]
     bend = t.node(
         "ShaderNodeCombineXYZ",
         17,
@@ -1978,7 +2293,9 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
                 x=16.5,
                 y=-12 - i,
             )
-            for i, (axis, partner) in enumerate(zip("XY", bend_partners(t, 7, -12), strict=True))
+            for i, (axis, partner) in enumerate(
+                zip("XYZ", (*bend_partners(t, 7, -12), diagonal), strict=True)
+            )
         },
     ).outputs[0]
     spawned = t.store(spawned, ".cloth_piece_bend", "FLOAT_VECTOR", bend, 15.5, 0, domain="CORNER")
@@ -2020,6 +2337,17 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             t.attribute(".cloth_tear_world", "FLOAT_VECTOR", 16, -4),
         ),
         (".cloth_tear_pin", "FLOAT", t.attribute(".cloth_tear_pinned", "FLOAT", 16, -5)),
+        (
+            ".cloth_tear_hold",
+            "FLOAT",
+            t.math(
+                "MULTIPLY",
+                t.attribute(".cloth_tear_grab", "FLOAT", 15, -6),
+                inputs["In Hand"],
+                x=16,
+                y=-6,
+            ),
+        ),
     ):
         sampled = t.node(
             "GeometryNodeSampleIndex",
@@ -2051,6 +2379,10 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         x=20,
         y=-5,
     )
+    # In the hand of the Pull grabbing them, not on the cloth
+    hold = t.attribute(".cloth_tear_hold", "FLOAT", 19, -8)
+    pin = t.math("MAXIMUM", pin, hold, x=20, y=-8)
+    linked = t.math("MULTIPLY", linked, t.math("SUBTRACT", 1.0, hold, x=20, y=9), x=21, y=9)
     link = t.math(
         "MULTIPLY_ADD",
         t.math("MULTIPLY", pin, linked, x=20, y=8),
@@ -2092,13 +2424,38 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         released, ".cloth_piece_bend", "FLOAT_VECTOR", bend, 20.2, 4, domain="CORNER"
     )
     released = t.store(released, ".cloth_piece_rest", "FLOAT", edge_length, 20.5, 4, domain="EDGE")
-    released = t.store(released, ".cloth_tear_target", "FLOAT_VECTOR", position, 21, 4)
+    # Following the body, or the Pull grabbing it
+    grabbed = t.attribute(".cloth_tear_grab", "FLOAT", 20, 7)
+    released = t.store(
+        released,
+        ".cloth_tear_target",
+        "FLOAT_VECTOR",
+        t.node(
+            "GeometryNodeSwitch",
+            21,
+            7,
+            {
+                "Switch": t.math("GREATER_THAN", grabbed, 0.5, x=20.5, y=8),
+                "False": position,
+                "True": t.attribute(".cloth_tear_world", "FLOAT_VECTOR", 20, 9),
+            },
+            input_type="VECTOR",
+        ).outputs[0],
+        21,
+        4,
+    )
     influence = t.attribute(".cloth_tear_released", "FLOAT", 21, 6)
     released = t.store(
         released,
         ".cloth_tear_free",
         "FLOAT",
-        t.math("GREATER_THAN", influence, 0.0, x=21.5, y=6),
+        t.math(
+            "MULTIPLY",
+            t.math("GREATER_THAN", influence, 0.0, x=21.5, y=6),
+            t.math("SUBTRACT", 1.0, grabbed, x=21.5, y=7),
+            x=22,
+            y=6,
+        ),
         22,
         4,
     )
@@ -2136,7 +2493,7 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
     pieces = solved.outputs[0]
 
     pieces = couple_groups(t, pieces, free, 26, -40)
-    for i, partner in enumerate(bend_partners(t, 20, -56)):
+    for i, partner in enumerate((*bend_partners(t, 20, -56), diagonal)):
         pieces = t.store(
             pieces, f".cloth_tear_bend_{i}", "INT", partner, 26.2 + 0.1 * i, 0, domain="CORNER"
         )
@@ -2158,13 +2515,26 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
     pieces = t.store(pieces, ".cloth_tear_piece", "INT", piece, 27.5, -48)
 
     t.section("Long Range Attachments")
-    # The pinned point closest along the cloth at rest, and that distance, not to stretch away
+    # The pinned point closest along the cloth at rest, and that distance, not to stretch away,
+    # not the points held by the Pulls
     paths = t.node(
         "GeometryNodeInputShortestEdgePaths",
         27,
         -3,
         {
-            "End Vertex": t.math("LESS_THAN", free, 0.5, x=26, y=-3),
+            "End Vertex": t.math(
+                "MULTIPLY",
+                t.math("LESS_THAN", free, 0.5, x=25, y=-3),
+                t.math(
+                    "LESS_THAN",
+                    t.attribute(".cloth_tear_grab", "FLOAT", 24, -4),
+                    0.5,
+                    x=25,
+                    y=-4,
+                ),
+                x=26,
+                y=-3,
+            ),
             "Edge Cost": t.attribute(".cloth_piece_rest", "FLOAT", 26, -4),
         },
     ).outputs
@@ -2314,9 +2684,10 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             domain="CORNER",
         ).outputs[0],
     )
-    # The edges, and the pairs across them through the corner for the Bending
-    constraints = [
-        (vertex, other, rest) for (_, vertex, other), rest in zip(ends, lengths, strict=True)
+    # The edges, then apart not to overshoot, averaged, the pairs across them through the corner
+    # for the Bending and the diagonals against shearing
+    edges = [
+        (vertex, other, rest, None) for (_, vertex, other), rest in zip(ends, lengths, strict=True)
     ]
     bend = t.node(
         "ShaderNodeSeparateXYZ",
@@ -2324,7 +2695,8 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         -16,
         {0: t.attribute(".cloth_piece_bend", "FLOAT_VECTOR", 22, -16)},
     ).outputs
-    for i in range(2):
+    pairs = []
+    for i, stiffness in enumerate((inputs["Bending"], inputs["Bending"], 1.0)):
         vertex = t.attribute(f".cloth_tear_bend_{i}", "INT", 22, -17 - i)
         other = t.node(
             "GeometryNodeFieldAtIndex",
@@ -2334,53 +2706,19 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             data_type="FLOAT_VECTOR",
             domain="POINT",
         ).outputs[0]
-        constraints.append((vertex, other, bend[i]))
-    correction = None
-    # The whole correction towards a pinned point, half towards a free one
-    for i, (vertex, other, rest_length) in enumerate(constraints):
-        y = -3 - 3 * i
-        other_free = t.node(
-            "GeometryNodeFieldAtIndex",
-            24,
-            y - 3,
-            {"Value": free, "Index": vertex},
-            data_type="FLOAT",
-            domain="POINT",
+        pairs.append((vertex, other, bend[i], t.math("DIVIDE", stiffness, 3.0, x=23, y=-21 - i)))
+    constrained = iterations_in.outputs["Geometry"]
+    for i, constraints in enumerate((edges, pairs)):
+        constrained = t.node(
+            "GeometryNodeSetPosition",
+            25 + 0.3 * i,
+            0,
+            {
+                "Geometry": constrained,
+                "Selection": free,
+                "Offset": correction(t, constraints, free, position, 24, -3 - 17 * i),
+            },
         ).outputs[0]
-        weight = t.math("MULTIPLY_ADD", other_free, -0.5, 1.0, x=25, y=y - 3)
-        towards = t.vmath("SUBTRACT", other, position, x=24, y=y)
-        current = t.math("MAXIMUM", t.vmath("LENGTH", towards, x=24, y=y - 1), 1e-9, x=25, y=y - 1)
-        if i > 1:
-            weight = t.math("MULTIPLY", weight, inputs["Bending"], x=26, y=y - 3)
-        stretch = t.math(
-            "MULTIPLY",
-            t.math(
-                "SUBTRACT",
-                1.0,
-                t.math("DIVIDE", rest_length, current, x=25, y=y - 2),
-                x=26,
-                y=y - 2,
-            ),
-            weight,
-            x=27,
-            y=y - 2,
-        )
-        term = t.vmath("SCALE", towards, stretch, x=26, y=y)
-        correction = term if correction is None else t.vmath("ADD", correction, term, x=27, y=-4)
-    correction = t.node(
-        "GeometryNodeFieldOnDomain",
-        27,
-        -2,
-        {"Value": correction},
-        data_type="FLOAT_VECTOR",
-        domain="CORNER",
-    ).outputs[0]
-    constrained = t.node(
-        "GeometryNodeSetPosition",
-        25,
-        0,
-        {"Geometry": iterations_in.outputs["Geometry"], "Selection": free, "Offset": correction},
-    ).outputs[0]
     t.connect(couple(t, constrained, free, 25.5, -32), iterations_out.inputs["Geometry"])
     pieces = iterations_out.outputs["Geometry"]
     # The released cloth pulled back to the body the less it is simulated, as a cube for the
@@ -2794,6 +3132,152 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         domain="POINT",
     ).outputs
     pieces = parts["Inverted"]
+    # Torn out around the grip once stretched past the Strength around it: on a ragged line about
+    # half the radius of the Pull out of its sphere, along weak lines along and across the Grain
+    grain = t.vmath("NORMALIZE", inputs["Grain"], x=28, y=-12)
+    along = t.vmath("SCALE", grain, t.vmath("DOT_PRODUCT", rest, grain, x=28, y=-13), x=29, y=-12)
+    across = t.vmath("SUBTRACT", rest, along, x=29, y=-13)
+    lines = [
+        t.node(
+            "ShaderNodeTexNoise",
+            31,
+            -12 - i,
+            {
+                "Vector": t.vmath(
+                    "ADD",
+                    t.vmath("SCALE", first, 25.0, x=30, y=-12 - i),
+                    t.vmath("SCALE", second, 4.0, x=30, y=-12.5 - i),
+                    x=30.5,
+                    y=-12 - i,
+                ),
+                "Detail": 2.0,
+            },
+            noise_dimensions="3D",
+        ).outputs["Fac"]
+        for i, (first, second) in enumerate(((across, along), (along, across)))
+    ]
+    puller = t.attribute(".cloth_tear_puller", "INT", 30, -16)
+    margin = t.math(
+        "MULTIPLY",
+        t.node(
+            "ShaderNodeMapRange",
+            32,
+            -10,
+            {0: t.math("MINIMUM", *lines, x=31.5, y=-10), 1: 0.25, 2: 0.6, 3: 0.2, 4: 0.8},
+        ).outputs[0],
+        t.vmath(
+            "DOT_PRODUCT",
+            t.node(
+                "FunctionNodeSeparateTransform",
+                31,
+                -16,
+                {0: control_transform(t, pulls, puller, 30, -17)},
+            ).outputs["Scale"],
+            (1 / 3, 1 / 3, 1 / 3),
+            x=32,
+            y=-16,
+        ),
+        x=33,
+        y=-10,
+    )
+    # As a float for the faces across the line
+    inside = t.node(
+        "GeometryNodeFieldOnDomain",
+        34,
+        -10,
+        {
+            "Value": t.math(
+                "LESS_THAN", t.attribute(".cloth_tear_grip", "FLOAT", 32, -11), margin, x=33, y=-11
+            )
+        },
+        data_type="FLOAT",
+        domain="POINT",
+    ).outputs[0]
+    across_line = t.math(
+        "MULTIPLY",
+        t.math("GREATER_THAN", inside, 0.0, x=35, y=-10),
+        t.math("LESS_THAN", inside, 1.0, x=35, y=-11),
+        x=36,
+        y=-10,
+    )
+    # Torn once stretched on average past the Strength along the line, or three times past it
+    # anywhere within, as at the edge of the grip
+    strain = t.node(
+        "GeometryNodeFieldOnDomain",
+        32,
+        -8,
+        {
+            "Value": t.math(
+                "DIVIDE",
+                edge_length,
+                t.math(
+                    "MAXIMUM",
+                    t.attribute(".cloth_piece_rest", "FLOAT", 29, -9),
+                    1e-9,
+                    x=30,
+                    y=-9,
+                ),
+                x=31,
+                y=-8,
+            )
+        },
+        data_type="FLOAT",
+        domain="EDGE",
+    ).outputs[0]
+    overstretched = t.math(
+        "MULTIPLY",
+        t.math("GREATER_THAN", inside, 0.0, x=33, y=-12),
+        t.math(
+            "GREATER_THAN",
+            strain,
+            t.math("MULTIPLY_ADD", inputs["Strength"], 3.0, 1.0, x=33, y=-13),
+            x=34,
+            y=-13,
+        ),
+        x=34,
+        y=-12,
+    )
+    total, count, overstretched = (
+        t.node(
+            "GeometryNodeAccumulateField",
+            35,
+            -8 - i,
+            {"Value": value, "Group ID": puller},
+            data_type="FLOAT",
+            domain="FACE",
+        ).outputs["Total"]
+        for i, value in enumerate(
+            (t.math("MULTIPLY", strain, across_line, x=34, y=-8), across_line, overstretched)
+        )
+    )
+    stretched = t.math(
+        "MAXIMUM",
+        t.math(
+            "GREATER_THAN",
+            t.math("DIVIDE", total, t.math("MAXIMUM", count, 1.0, x=35.5, y=-9), x=36, y=-8),
+            t.math("ADD", inputs["Strength"], 1.0, x=35.5, y=-10),
+            x=36.5,
+            y=-8,
+        ),
+        t.math("GREATER_THAN", overstretched, 0.0, x=36.5, y=-10),
+        x=37,
+        y=-8,
+    )
+    ripping = t.store(
+        parts["Selection"],
+        ".cloth_tear_rip",
+        "FLOAT",
+        t.math(
+            "MULTIPLY",
+            across_line,
+            stretched,
+            x=37,
+            y=-9,
+        ),
+        33,
+        -6,
+        domain="FACE",
+    )
 
     # Aging, removed after their Lifetime
     age = t.math("ADD", t.attribute(".cloth_piece_age", "FLOAT", 28, -3), dt, x=29, y=-3)
@@ -2827,6 +3311,10 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             ("influence", t.attribute(".cloth_tear_released", "FLOAT", 30, 8), "FLOAT"),
             (".in_zone", in_zone, "FLOAT"),
             (".rank", rank, "FLOAT"),
+            ("grab", t.attribute(".cloth_tear_grab", "FLOAT", 30, 9), "FLOAT"),
+            ("grabber", t.attribute(".cloth_tear_grabber", "INT", 30, 10), "INT"),
+            ("offset", t.attribute(".cloth_tear_offset", "FLOAT_VECTOR", 30, 11), "FLOAT_VECTOR"),
+            ("grip", t.attribute(".cloth_tear_grip", "FLOAT", 30, 12), "FLOAT"),
         )
     ):
         cloth_state = t.store(
@@ -2870,6 +3358,55 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         {"Geometry": cloth_state, "Selection": has_zone, "Position": solved[0]},
     ).outputs[0]
     cloth_state = t.store(cloth_state, "valid", "FLOAT", has_zone, 37, 3)
+    # The faces ripped, from the released cloth in the order of the zone
+    in_zone_face, zone_rank = (
+        t.node(
+            "GeometryNodeSampleIndex",
+            34,
+            -6 - i,
+            {"Geometry": mesh, "Value": value, "Index": index},
+            data_type="FLOAT",
+            domain="FACE",
+        ).outputs[0]
+        for i, value in enumerate(
+            (
+                zone,
+                t.node(
+                    "GeometryNodeAccumulateField",
+                    33,
+                    -7,
+                    {"Value": zone},
+                    data_type="FLOAT",
+                    domain="FACE",
+                ).outputs["Trailing"],
+            )
+        )
+    )
+    ripped = t.node(
+        "GeometryNodeSampleIndex",
+        35,
+        -6,
+        {
+            "Geometry": ripping,
+            "Value": t.attribute(".cloth_tear_rip", "FLOAT", 34, -9),
+            "Index": zone_rank,
+        },
+        data_type="FLOAT",
+        domain="FACE",
+    ).outputs[0]
+    # Only with Pulls, faster
+    ripped = t.node(
+        "GeometryNodeSwitch",
+        36,
+        -7,
+        {
+            "Switch": t.math("GREATER_THAN", pull_count, 0.0, x=35, y=-8),
+            "False": 0.0,
+            "True": t.math("MULTIPLY", ripped, in_zone_face, x=36, y=-6),
+        },
+        input_type="FLOAT",
+    ).outputs[0]
+    state = t.store(state, "ripped", "FLOAT", ripped, 36, 6)
     # Only what the next frame needs, the simulation cache storing every frame
     state, pieces, cloth_state = (
         remove(t, geometry, names, 37, 6 + i)
