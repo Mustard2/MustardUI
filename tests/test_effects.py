@@ -557,6 +557,52 @@ class TestClothTear(BlenderTestCase):
             bpy.data.objects.remove(curtain)
         self.assertLess(heights[1], heights[0] - 0.02)
 
+    # A Pull grabs the cloth and moves away along its normal, ripping it and holding the ripped
+    # part, or letting it fall, removed with the Cloth Tear
+    def test_cloth_rip(self):
+        held = []
+        for in_hand in (True, False):
+            curtain = self.curtain()
+            set_active(curtain)
+            scene = bpy.context.scene
+            start = scene.frame_current
+            scene.cursor.location = (0.0, 0.0, 1.0)
+            bpy.ops.mustardui.model_toolkit_cloth_rip(radius=0.04, distance=0.2, duration=10)
+            pull = bpy.context.view_layer.objects.active
+            modifier = curtain.modifiers["Cloth Tear"]
+            pulls = effect.modifier_input(modifier, "Pulls").value
+            self.assertEqual(list(pulls.objects), [pull])
+            self.assertTrue(effect.modifier_input(modifier, "Physics").value)
+            effect.modifier_input(modifier, "Collider").value = None
+            effect.modifier_input(modifier, "In Hand").value = in_hand
+            # Changing the modifier inputs from Python does not tag the object
+            curtain.update_tag()
+
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            for frame in range(start, start + 40):
+                scene.frame_set(frame)
+            end = np.array(pull.matrix_world.translation)
+            np.testing.assert_allclose(np.abs(end), (0.0, 0.2, 1.0), atol=1e-3)
+            data = curtain.evaluated_get(depsgraph).data
+            co = np.empty(len(data.vertices) * 3)
+            data.vertices.foreach_get("co", co)
+            co = co.reshape(-1, 3)
+            # Ripped, no cloth stretched between the curtain, rumpled around the hole, and the Pull
+            # anymore, above the floor
+            gap = np.abs(co[co[:, 2] > 0.5, 1])
+            self.assertEqual(((gap > 0.03) & (gap < 0.12)).sum(), 0)
+            self.assertLess(len(data.polygons), len(curtain.data.polygons))
+            held.append((np.linalg.norm(co - end, axis=1) < 0.06).sum())
+
+            names = (pull.name, pulls.name)
+            set_active(curtain)
+            bpy.ops.mustardui.model_toolkit_remove_cloth_tear()
+            self.assertNotIn(names[0], bpy.data.objects)
+            self.assertNotIn(names[1], bpy.data.collections)
+            bpy.data.objects.remove(curtain)
+        self.assertGreater(held[0], 20)
+        self.assertEqual(held[1], 0)
+
     # The Control is removed with the last Cloth Tear using it, with the Controls collections
     def test_remove(self):
         bpy.ops.mustardui.model_toolkit_cloth_tear()

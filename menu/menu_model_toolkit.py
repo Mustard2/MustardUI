@@ -312,6 +312,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.label(text="", icon="GEOMETRY_NODES")
         row.separator()
         row.operator("mustardui.model_toolkit_cloth_tear", text="Cloth Tear", icon="MOD_CLOTH")
+        row.operator(
+            "mustardui.model_toolkit_cloth_rip", text="Cloth Rip", icon="EMPTY_SINGLE_ARROW"
+        )
         row.operator("mustardui.model_toolkit_remove_cloth_tear", text="", icon="X")
 
         layout.separator()
