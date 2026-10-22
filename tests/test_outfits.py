@@ -23,6 +23,7 @@ add_outfit = importlib.import_module(ADDON + ".outfits.toolkit.ops_add_outfit")
 squish = importlib.import_module(ADDON + ".model_toolkit.effects.ops_squish")
 export = importlib.import_module(ADDON + ".outfits.toolkit.ops_export_outfits")
 cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
+menus = importlib.import_module(ADDON + ".custom_properties.menus")
 
 
 class TestOutfits(BlenderTestCase):
@@ -127,6 +128,34 @@ class TestOutfits(BlenderTestCase):
         bpy.ops.mustardui.delete_extras()
         self.assertEqual(len(items), 0)
         self.assertNotIn("Extras Cage", bpy.data.objects)
+
+    # The Add to Outfit menu lists Extras pieces grouped by sub-collection (#428)
+    def test_property_menu_extras_subcollections(self):
+        bpy.ops.mustardui.configuration()
+        extras = self.model["extras"]
+        glasses = bpy.data.objects["Extras - Glasses"]
+        new_collection("Tester Extras Glasses", extras).objects.link(glasses)
+        extras.objects.unlink(glasses)
+        self.rig_settings.extras_config_subcollections = True
+
+        class Context:
+            mustardui_propertyoutfitmenu_sel = extras
+
+            def __getattr__(self, name):
+                return getattr(bpy.context, name)
+
+        entries = []
+
+        class Layout(FakeLayout):
+            def operator(self, operator, *args, **kwargs):
+                entries.append(operator)
+                return super().operator(operator, *args, **kwargs)
+
+        drawer = Drawer()
+        menu = menus.OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu
+        menu.draw(FakeSelf(menu, Layout(drawer)), Context())
+        self.assertEqual(drawer.errors, [])
+        self.assertEqual(entries, ["mustardui.property_menuadd"])
 
 
 class TestAddOutfit(BlenderTestCase):
