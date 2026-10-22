@@ -14,6 +14,8 @@ from helpers import (
     set_active,
 )
 from mathutils import Matrix
+from mathutils.bvhtree import BVHTree
+from mathutils.kdtree import KDTree
 
 effect = importlib.import_module(ADDON + ".model_toolkit.effects.effect")
 
@@ -35,6 +37,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_fireball.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_sticky_liquid.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_hex_dissolve.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_tear.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
 
@@ -308,6 +311,307 @@ class TestHexDissolve(BlenderTestCase):
         self.assertEqual(len(self.leather.node_tree.nodes), nodes - 2)
         self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_hex_dissolve.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestClothTear(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+        self.pants = bpy.data.objects["Casual - Pants"]
+        bm = bmesh.new()
+        bm.from_mesh(self.shirt.data)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=10, use_grid_fill=True)
+        bm.to_mesh(self.shirt.data)
+        bm.free()
+        self.shirt.modifiers.new("Subdivision", "SUBSURF")
+        for name in ("Left", "Right"):
+            self.shirt.data.materials.append(bpy.data.materials.new(name))
+        for face in self.shirt.data.polygons:
+            face.material_index = face.center.x > 0.45
+        set_active(self.shirt)
+        self.pants.select_set(True)
+        # On the shirt corner
+        bpy.context.scene.cursor.location = (0.6, 0.6, 1.6)
+
+    def controls(self, obj):
+        modifier = obj.modifiers["Cloth Tear"]
+        return list(effect.modifier_input(modifier, "Controls").value.objects)
+
+    def threads(self, obj):
+        """Thread roots and materials, in an instance next to the mesh"""
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = obj.evaluated_get(depsgraph).evaluated_geometry()
+        references = geometry.instance_references()
+        meshes = [x.mesh for x in references if x.mesh]
+        if not meshes:
+            return np.empty((0, 3)), set()
+        mesh = meshes[0]
+        co = np.empty(len(mesh.vertices) * 3)
+        mesh.vertices.foreach_get("co", co)
+        # Rings of 3 points along the 5 points of each thread
+        roots = co.reshape(-1, 5, 3, 3)[:, 0].mean(axis=1)
+        return roots, {mesh.materials[p.material_index].name for p in mesh.polygons}
+
+    # The Control on the vertex closest to the 3D cursor, following its bone, grows to tear the
+    # meshes, leaving threads with the materials of the meshes on the edge
+    def test_cloth_tear(self):
+        bpy.ops.mustardui.model_toolkit_cloth_tear(radius=0.2, duration=10)
+        self.assertEqual([m.type for m in self.shirt.modifiers], ["ARMATURE", "NODES", "SUBSURF"])
+        modifier = self.shirt.modifiers["Cloth Tear"]
+        (control,) = self.controls(self.shirt)
+        self.assertEqual(self.controls(self.pants), [control])
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_CLOTH_TEAR")
+        self.assertEqual((control.parent_type, control.parent_bone), ("BONE", "spine"))
+        # Only in the Controls collections, in the scene out of the outfit collections
+        collections = {
+            effect.modifier_input(x.modifiers["Cloth Tear"], "Controls").value
+            for x in (self.shirt, self.pants)
+        }
+        self.assertEqual(set(control.users_collection), collections)
+        self.assertLessEqual(collections, set(bpy.context.scene.collection.children))
+        # Selected, to be moved or scaled right away
+        self.assertEqual(bpy.context.selected_objects, [control])
+        self.assertEqual(bpy.context.view_layer.objects.active, control)
+        bpy.context.view_layer.update()
+        np.testing.assert_allclose(control.matrix_world.translation, (0.55, 0.55, 1.55), atol=1e-5)
+        # Starting from a quarter of the Radius
+        self.assertAlmostEqual(control.scale.x, 0.05)
+
+        scene = bpy.context.scene
+        scene.frame_set(scene.frame_current + 10)
+        self.assertAlmostEqual(control.scale.x, 0.2)
+        # Nothing left inside the sphere, before the subdivision smoothing the edge
+        self.shirt.modifiers["Subdivision"].show_viewport = False
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        data = self.shirt.evaluated_get(depsgraph).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        distance = np.linalg.norm(co.reshape(-1, 3) - (0.55, 0.55, 1.55), axis=1)
+        self.assertGreater(distance.min(), 0.2 - 1e-5)
+        self.assertLess(len(data.polygons), len(self.shirt.data.polygons))
+        self.assertIn("cloth_tear_edge", data.attributes)
+        tree = BVHTree.FromPolygons(co.reshape(-1, 3).tolist(), [p.vertices for p in data.polygons])
+        roots, materials = self.threads(self.shirt)
+        self.assertGreater(len(roots), 0)
+        # The threads start on the edge of the tear
+        for root in roots:
+            self.assertLess(tree.find_nearest(root)[3], 1e-3)
+            self.assertAlmostEqual(np.linalg.norm(root - (0.55, 0.55, 1.55)), 0.2, delta=0.2 * 0.6)
+        self.assertEqual(materials, {"Left", "Right"})
+
+        effect.modifier_input(modifier, "Density").value = 0.0
+        # Changing the modifier inputs from Python does not tag the object
+        self.shirt.update_tag()
+        self.assertEqual(len(self.threads(self.shirt)[0]), 0)
+
+    # No warnings, as from removing missing attributes, without and with physics
+    def test_no_warnings(self):
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_cloth_tear()
+        modifier = self.shirt.modifiers["Cloth Tear"]
+        scene = bpy.context.scene
+        for physics in (False, True):
+            effect.modifier_input(modifier, "Physics").value = physics
+            self.shirt.update_tag()
+            for frame in range(scene.frame_current, scene.frame_current + 3):
+                scene.frame_set(frame)
+                bpy.context.evaluated_depsgraph_get()
+                self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # Without a tear, as with the Control away from the mesh, there are no threads
+    def test_no_tear(self):
+        bpy.ops.mustardui.model_toolkit_cloth_tear()
+        for control in self.controls(self.shirt):
+            control.animation_data_clear()
+            control.location.x += 5.0
+        self.shirt.modifiers["Subdivision"].show_viewport = False
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        data = self.shirt.evaluated_get(depsgraph).data
+        edge = np.empty(len(data.vertices))
+        data.attributes["cloth_tear_edge"].data.foreach_get("value", edge)
+        self.assertEqual(edge.max(), 0.0)
+        self.assertEqual(len(self.threads(self.shirt)[0]), 0)
+
+    # With physics, the torn pieces fall to the floor, colliding with the model body
+    def test_physics(self):
+        scene = bpy.context.scene
+        # On the side of the shirt, 5 cm out of the body
+        scene.cursor.location = (0.6, 0.0, 1.0)
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_cloth_tear(radius=0.2, duration=5, physics=True)
+        modifier = self.shirt.modifiers["Cloth Tear"]
+        self.assertTrue(effect.modifier_input(modifier, "Physics").value)
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, scene.frame_current)
+        body = bpy.data.objects["Tester Body"]
+        self.assertEqual(effect.modifier_input(modifier, "Collider").value, body)
+        # The collider normals outwards, as on a real body
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(body.data)
+        bm.free()
+        self.shirt.modifiers["Subdivision"].show_viewport = False
+        effect.modifier_input(modifier, "Rip Out").value = 1.0
+        self.shirt.update_tag()
+
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        for frame in range(scene.frame_current, scene.frame_current + 30):
+            scene.frame_set(frame)
+        data = self.shirt.evaluated_get(depsgraph).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        self.assertTrue(np.isfinite(co).all())
+        # Below the shirt, but not the floor
+        self.assertLess(co[:, 2].min(), 0.4)
+        self.assertGreater(co[:, 2].min(), 0.0)
+        # Not inside the body
+        inside = (np.abs(co[:, :2]) < 0.499).all(axis=1) & (np.abs(co[:, 2] - 1.0) < 0.499)
+        self.assertFalse(inside.any())
+        self.assertGreater(len(self.threads(self.shirt)[0]), 0)
+
+        # Not sliding once resting on the floor
+        floor = co[co[:, 2] < 0.01]
+        self.assertGreater(len(floor), 0)
+        for frame in range(scene.frame_current + 1, scene.frame_current + 4):
+            scene.frame_set(frame)
+        data = self.shirt.evaluated_get(depsgraph).data
+        later = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", later)
+        later = later.reshape(-1, 3)
+        kd = KDTree(len(later))
+        for i, point in enumerate(later):
+            kd.insert(point, i)
+        kd.balance()
+        self.assertLess(np.median([kd.find(point)[2] for point in floor]), 1e-5)
+
+    def curtain(self):
+        """Hanging sheet, from 0.75 to 1.25 high"""
+        mesh = bpy.data.meshes.new("Curtain")
+        bm = bmesh.new()
+        bmesh.ops.create_grid(
+            bm, x_segments=40, y_segments=40, size=0.25, matrix=Matrix.Rotation(1.5708, 4, "X")
+        )
+        bmesh.ops.translate(bm, verts=bm.verts, vec=(0.0, 0.0, 1.0))
+        bm.to_mesh(mesh)
+        bm.free()
+        return new_object("Curtain", mesh)
+
+    def tear(self, curtain, anchor="", release=0.0, across=True, rip_out=0.0):
+        """Curtain points, torn with physics across near its top, or in its middle"""
+        set_active(curtain)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        scene.cursor.location = (-0.25, 0.0, 1.15) if across else (0.0, 0.0, 1.0)
+        bpy.ops.mustardui.model_toolkit_cloth_tear(
+            radius=0.04 if across else 0.08, duration=1, physics=True, anchor=anchor
+        )
+        modifier = curtain.modifiers["Cloth Tear"]
+        effect.modifier_input(modifier, "Rip Out").value = rip_out
+        effect.modifier_input(modifier, "Release").value = release
+        # Not colliding with the model body around it
+        effect.modifier_input(modifier, "Collider").value = None
+        # Changing the modifier inputs from Python does not tag the object
+        curtain.update_tag()
+        (control,) = self.controls(curtain)
+        for frame, x in ((start, -0.3), (start + 10, 0.3)) if across else ():
+            control.location.x = x
+            control.keyframe_insert("location", frame=frame)
+
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        for frame in range(start, start + 40):
+            scene.frame_set(frame)
+        data = curtain.evaluated_get(depsgraph).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        return co.reshape(-1, 3)
+
+    # With physics, the cloth cut off from the top of the mesh falls, the rest stays
+    def test_physics_cut_off(self):
+        curtain = self.curtain()
+        z = self.tear(curtain)[:, 2]
+        self.assertGreater((z > 1.2).sum(), 40)
+        self.assertGreater((z < 0.05).sum(), len(curtain.data.vertices) / 2)
+
+    # With an Anchor at the bottom, the cloth cut off above it falls instead
+    def test_physics_anchor(self):
+        curtain = self.curtain()
+        curtain.vertex_groups.new(name="Hem").add(
+            [v.index for v in curtain.data.vertices if v.co.z < 0.8], 1.0, "REPLACE"
+        )
+        z = self.tear(curtain, anchor="Hem")[:, 2]
+        self.assertEqual((z > 1.2).sum(), 0)
+        self.assertGreater(((z > 0.75) & (z < 1.1)).sum(), len(curtain.data.vertices) / 2)
+
+    # With physics, the cloth around a hole sags when released, still without
+    def test_physics_release(self):
+        heights = []
+        for release in (0.0, 0.1):
+            curtain = self.curtain()
+            # The pieces ripped out to the floor, the cloth below the hole left
+            co = self.tear(curtain, release=release, across=False, rip_out=1.0)
+            below = co[(np.abs(co[:, 0]) < 0.05) & (co[:, 2] > 0.6) & (co[:, 2] < 0.95)]
+            heights.append(below[:, 2].max())
+            bpy.data.objects.remove(curtain)
+        self.assertLess(heights[1], heights[0] - 0.02)
+
+    # The Control is removed with the last Cloth Tear using it, with the Controls collections
+    def test_remove(self):
+        bpy.ops.mustardui.model_toolkit_cloth_tear()
+        (control,) = self.controls(self.shirt)
+        name = control.name
+        collections = {
+            effect.modifier_input(x.modifiers["Cloth Tear"], "Controls").value.name
+            for x in (self.shirt, self.pants)
+        }
+
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_cloth_tear()
+        self.assertNotIn("Cloth Tear", self.shirt.modifiers)
+        self.assertIn(name, bpy.data.objects)
+
+        set_active(self.pants)
+        bpy.ops.mustardui.model_toolkit_remove_cloth_tear()
+        self.assertNotIn("Cloth Tear", self.pants.modifiers)
+        self.assertNotIn(name, bpy.data.objects)
+        self.assertFalse(collections & set(bpy.data.collections.keys()))
+
+    # Another tear on a mesh adds its Control to the same modifier, the simulation needing a
+    # fixed mesh
+    def test_controls(self):
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_cloth_tear(physics=True)
+        bpy.context.scene.cursor.location = (-0.6, -0.6, 0.4)
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_cloth_tear(physics=True)
+        self.assertEqual(
+            [m.name for m in self.shirt.modifiers], ["Armature", "Cloth Tear", "Subdivision"]
+        )
+        controls = self.controls(self.shirt)
+        self.assertEqual(len(controls), 2)
+
+        # Torn at both Controls, without the loose pieces free to swing through them
+        effect.modifier_input(self.shirt.modifiers["Cloth Tear"], "Physics").value = False
+        self.shirt.update_tag()
+        self.shirt.modifiers["Subdivision"].show_viewport = False
+        scene = bpy.context.scene
+        for frame in range(scene.frame_current, scene.frame_current + 30):
+            scene.frame_set(frame)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        data = self.shirt.evaluated_get(depsgraph).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        for control in controls:
+            distance = np.linalg.norm(co - control.matrix_world.translation, axis=1)
+            self.assertGreater(distance.min(), control.matrix_world.to_scale().x * 0.99)
+
+        names = [x.name for x in controls]
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_cloth_tear()
+        self.assertFalse(set(names) & set(bpy.data.objects.keys()))
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

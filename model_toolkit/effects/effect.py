@@ -1,5 +1,6 @@
 import bpy
 from mathutils import Vector
+from mathutils.kdtree import KDTree
 
 
 def effects_available():
@@ -41,10 +42,45 @@ def new_control(objects, effect, creators_type):
     return control, low, high
 
 
-def add_effect_modifier(obj, name, node_group, control):
+def parent_control(control, obj, vertex, depsgraph):
+    """Parent the Control to the bone deforming the evaluated vertex the most, or to the mesh"""
+    # The vertex in the original mesh from its rest position
+    rest = obj.evaluated_get(depsgraph).data.attributes["rest_position"]
+    rest = rest.data[vertex.index].vector
+    kd = KDTree(len(obj.data.vertices))
+    for x in obj.data.vertices:
+        kd.insert(x.co, x.index)
+    kd.balance()
+    armature = next((m.object for m in obj.modifiers if m.type == "ARMATURE" and m.object), None)
+    bones = armature.pose.bones if armature else {}
+    group = max(
+        (
+            x
+            for x in obj.data.vertices[kd.find(rest)[1]].groups
+            if obj.vertex_groups[x.group].name in bones
+        ),
+        key=lambda x: x.weight,
+        default=None,
+    )
+    if group:
+        bone = bones[obj.vertex_groups[group.group].name]
+        control.parent = armature
+        control.parent_type = "BONE"
+        control.parent_bone = bone.name
+        # The bone parent matrix is at its tail
+        parent = armature.matrix_world @ bone.matrix
+        parent.translation = armature.matrix_world @ bone.tail
+    else:
+        control.parent = obj
+        parent = obj.matrix_world
+    control.matrix_parent_inverse = parent.inverted()
+
+
+def add_effect_modifier(obj, name, node_group, control=None):
     modifier = obj.modifiers.new(name, "NODES")
     modifier.node_group = bpy.data.node_groups[node_group]
-    modifier_input(modifier, "Control").value = control
+    if control:
+        modifier_input(modifier, "Control").value = control
 
     # Before the subdivision, to work on the low poly mesh, and the strands, not to affect them.
     # Multires can't have modifiers above it
