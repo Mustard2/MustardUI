@@ -5,6 +5,7 @@ from ..configuration.naming_convention import (
     strip_naming_convention_collection,
 )
 from ..misc.icons import get_hair_icon
+from ..misc.outfits import outfits_get_collection_items
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -71,11 +72,7 @@ class OUTLINER_MT_MustardUI_PropertyOutfitPieceMenu(bpy.types.Menu):
             op.hair_global = False
             op.hair = ""
 
-        items = (
-            context.mustardui_propertyoutfitmenu_sel.all_objects
-            if rig_settings.outfit_config_subcollections
-            else context.mustardui_propertyoutfitmenu_sel.objects
-        )
+        items = outfits_get_collection_items(rig_settings, context.mustardui_propertyoutfitmenu_sel)
         for obj in items:
             op = layout.operator(
                 MustardUI_Property_MenuAdd.bl_idname,
