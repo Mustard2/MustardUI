@@ -56,7 +56,7 @@ GRIP = 40.0
 WOBBLE = 30.0
 # Ripples of the film per meter, and their height in meters
 RIPPLE = 120.0
-RIPPLE_HEIGHT = 0.0002
+RIPPLE_HEIGHT = 0.001
 # Reflectance of water seen face on, and its share at grazing angles, the film being thin
 WATER_F0 = 0.02
 EDGE_FRESNEL = 0.5
@@ -66,10 +66,25 @@ MAX_COVER = 0.6
 DAMP_ROUGHNESS = 0.4
 DAMP_COAT = 0.35
 DAMP_MIST = 0.4
+# Half width of the transition from the damp skin to the film, in the noise of the patches
+FILM_EDGE = 0.12
 # Share of the normal smoothed by the water in the pools
-FILL = 0.8
+FILL = 0.2
+# Scale of the layers of tiny drops relative to Mist Scale, and their share of Mist
+MIST_LAYERS = ((0.4, 0.3), (1.0, 1.0), (2.3, 1.0), (5.0, 1.0))
+# Smallest tiny drops, relative to Mist Size
+MIST_SMALLEST = 0.2
+# Height of the sheets of film in meters at full Bump, at their edges and in the pools, and the
+# swells on them per meter
+SHEET = 0.001
+POOL = 0.0012
+SWELL = 45.0
+# Reflection of the tiny drops, relative to the film
+DROP_SHINE = 6.0
+# Light of the surface under the drops lost on their rim, in EEVEE
+DROP_RING = 0.3
 # Glints of the film per meter
-SPARKLE = 400.0
+SPARKLE = 150.0
 # Streaks per meter, across and along the vertical
 STREAK = (60.0, 60.0, 4.0)
 
@@ -564,23 +579,26 @@ def build_node_group():
         6.5,
         0,
     )
+    # On the deformed mesh, interpolated from where they were placed, the moved runners from their
+    # nearest rest position
+    for i, name in enumerate(("Posed", "Normal")):
+        drops = t.store(drops, f".wet_{name.lower()}", "FLOAT_VECTOR", captured[name], 6.8, -i)
+        sample = t.node(
+            "GeometryNodeSampleNearestSurface",
+            6,
+            2 + i,
+            {"Mesh": at_rest, "Value": captured[name]},
+            data_type="FLOAT_VECTOR",
+        ).outputs["Value"]
+        runners = t.store(runners, f".wet_{name.lower()}", "FLOAT_VECTOR", sample, 6.8, 2 + i)
     joined = t.node("GeometryNodeJoinGeometry", 7, 0)
     for points in (runners, drops):
         t.connect(points, joined.inputs[0])
     drops = joined.outputs[0]
 
-    # On the deformed mesh from their rest position, the larger and faster ones stretched down
-    posed, normal = (
-        t.node(
-            "GeometryNodeSampleNearestSurface",
-            8,
-            -2 - 2 * i,
-            {"Mesh": at_rest, "Value": captured[name]},
-            data_type="FLOAT_VECTOR",
-        ).outputs["Value"]
-        for i, name in enumerate(("Posed", "Normal"))
-    )
-    normal = t.vmath("NORMALIZE", normal, x=9, y=-4)
+    # The larger and faster ones stretched down
+    posed = t.attribute(".wet_posed", "FLOAT_VECTOR", 8, -2)
+    normal = t.vmath("NORMALIZE", t.attribute(".wet_normal", "FLOAT_VECTOR", 8, -4), x=9, y=-4)
     slope = t.vmath("SUBTRACT", down, t.vmath("PROJECT", down, normal, x=9, y=-6), x=10, y=-6)
     size = t.math("DIVIDE", drop_radius, inputs["Max Radius"], x=9, y=-8, clamp=True)
     stretch = t.math("MULTIPLY", t.vmath("LENGTH", slope, x=10, y=-7), size, x=11, y=-7)
@@ -1804,7 +1822,9 @@ def build_mist():
         "ShaderNodeTexVoronoi", 1, 0, {"Vector": inputs["Vector"], "Scale": inputs["Scale"]}
     ).outputs
     random = t.node("ShaderNodeSeparateColor", 2, -2, {0: voronoi["Color"]}).outputs
-    radius = t.math("MULTIPLY_ADD", random["Red"], 0.6, 0.4, x=3, y=-1)
+    # Mostly small, a few up to the full size
+    radius = t.math("MULTIPLY", random["Red"], random["Red"], x=2.5, y=-1)
+    radius = t.math("MULTIPLY_ADD", radius, 1.0 - MIST_SMALLEST, MIST_SMALLEST, x=3, y=-1)
     radius = t.math("MULTIPLY", radius, inputs["Size"], x=4, y=-1)
     # Dome over each drop, in meters
     inside = t.math("DIVIDE", voronoi["Distance"], radius, x=5, y=0)
@@ -1914,10 +1934,20 @@ def build_film(mist):
         "Ripples",
         "NodeSocketFloat",
         subtype="FACTOR",
-        default_value=0.5,
+        default_value=0.1,
         min_value=0.0,
         max_value=1.0,
         description="Uneven thickness of the film, rippling its reflections",
+    )
+    add_input(
+        ng,
+        "Bump",
+        "NodeSocketFloat",
+        subtype="FACTOR",
+        default_value=0.1,
+        min_value=0.0,
+        max_value=1.0,
+        description="Relief of the water, raised in sheets and pools whose edges catch the light",
     )
     add_input(
         ng,
@@ -1933,7 +1963,7 @@ def build_film(mist):
         ng,
         "Shine",
         "NodeSocketFloat",
-        default_value=2.0,
+        default_value=1.2,
         min_value=0.0,
         max_value=5.0,
         description="Strength of the film reflections, 1 for clear water",
@@ -1986,11 +2016,27 @@ def build_film(mist):
         5,
         {
             "Value": cover,
-            "From Min": t.math("SUBTRACT", edge, 0.05, x=2, y=4),
-            "From Max": t.math("ADD", edge, 0.05, x=2, y=3),
+            "From Min": t.math("SUBTRACT", edge, FILM_EDGE, x=2, y=4),
+            "From Max": t.math("ADD", edge, FILM_EDGE, x=2, y=3),
         },
         interpolation_type="SMOOTHSTEP",
     ).outputs[0]
+    streaks = t.node(
+        "ShaderNodeTexNoise",
+        1,
+        9,
+        {"Vector": t.vmath("MULTIPLY", rest, STREAK, x=0, y=9), "Scale": 1.0, "Detail": 2.0},
+    ).outputs["Fac"]
+    streaks = t.node(
+        "ShaderNodeMapRange",
+        2,
+        9,
+        {"Value": streaks, "From Min": 0.55, "From Max": 0.7},
+        interpolation_type="SMOOTHSTEP",
+    ).outputs[0]
+    # Water running down in the streaks
+    streaks = t.math("MULTIPLY", streaks, inputs["Streaks"], x=3, y=9)
+    film = t.math("MAXIMUM", film, streaks, x=3, y=5)
     pools = t.node(
         "ShaderNodeTexNoise",
         2,
@@ -2034,34 +2080,23 @@ def build_film(mist):
         x=4,
         y=-6,
     )
-    fine_scale = t.math("MULTIPLY", inputs["Mist Scale"], 2.3, x=2, y=-6)
-    coarse = t.node(
-        "ShaderNodeGroup",
-        3,
-        -3,
-        {0: rest, 1: inputs["Mist Scale"], 2: inputs["Mist Size"], 3: amount},
-        node_tree=mist,
-    ).outputs[0]
-    fine = t.node(
-        "ShaderNodeGroup",
-        3,
-        -5,
-        {0: rest, 1: fine_scale, 2: inputs["Mist Size"], 3: amount},
-        node_tree=mist,
-    ).outputs[0]
-    tiny = t.node(
-        "ShaderNodeGroup",
-        3,
-        -6,
-        {
-            0: rest,
-            1: t.math("MULTIPLY", inputs["Mist Scale"], 5.0, x=2, y=-7),
-            2: inputs["Mist Size"],
-            3: amount,
-        },
-        node_tree=mist,
-    ).outputs[0]
-    height = t.math("MAXIMUM", t.math("MAXIMUM", coarse, fine, x=4, y=-4), tiny, x=4.5, y=-4)
+    height, *layers = (
+        t.node(
+            "ShaderNodeGroup",
+            3,
+            -3 - i,
+            {
+                0: rest,
+                1: t.math("MULTIPLY", inputs["Mist Scale"], scale, x=2.5, y=-3 - i),
+                2: inputs["Mist Size"],
+                3: t.math("MULTIPLY", amount, share, x=2.5, y=-3.5 - i),
+            },
+            node_tree=mist,
+        ).outputs[0]
+        for i, (scale, share) in enumerate(MIST_LAYERS)
+    )
+    for i, layer in enumerate(layers):
+        height = t.math("MAXIMUM", height, layer, x=4 + 0.2 * i, y=-4)
     # The tiny drops smooth, their small glints not to blur away
     in_drop = t.math("GREATER_THAN", height, 0.0, x=5, y=-6)
     # On a film of uneven thickness
@@ -2091,6 +2126,29 @@ def build_film(mist):
         y=-10,
     )
     height = t.math("ADD", height, ripples, x=5, y=-5)
+    # Raised in sheets, swelling and thicker in the pools
+    swell = t.node(
+        "ShaderNodeTexNoise",
+        3,
+        -16,
+        {"Vector": rest, "Scale": SWELL, "Detail": 2.0, "Distortion": 0.5},
+    ).outputs["Fac"]
+    relief = t.math(
+        "MULTIPLY_ADD",
+        t.math("MULTIPLY", film, swell, x=4, y=-15),
+        2.0 * SHEET,
+        t.math("MULTIPLY", thick, POOL, x=4, y=-16),
+        x=5,
+        y=-15,
+    )
+    relief = t.math(
+        "MULTIPLY",
+        relief,
+        t.math("MULTIPLY", inputs["Bump"], wetness, x=5, y=-16),
+        x=6,
+        y=-15,
+    )
+    height = t.math("ADD", height, relief, x=6, y=-5)
     # The normal of the surface, or of the mesh without one
     surface = inputs["Normal"]
     linked = t.math("GREATER_THAN", t.vmath("LENGTH", surface, x=3, y=-8), 0.5, x=4, y=-8)
@@ -2117,7 +2175,10 @@ def build_film(mist):
         },
         data_type="VECTOR",
     ).outputs[1]
-    normal = t.node("ShaderNodeBump", 5, -4, {"Height": height, "Normal": surface}).outputs[0]
+    # The height in meters, not scaled down by the default Distance
+    normal = t.node(
+        "ShaderNodeBump", 5, -4, {"Distance": 1.0, "Height": height, "Normal": surface}
+    ).outputs[0]
     roughness = t.node(
         "ShaderNodeMix", 5, -6, {"Factor": film, "A": DAMP_ROUGHNESS, "B": inputs["Roughness"]}
     ).outputs[0]
@@ -2133,21 +2194,12 @@ def build_film(mist):
         "ShaderNodeMapRange",
         6,
         -12,
-        {"Value": sparkle, "From Min": 0.4, "From Max": 0.7},
+        {"Value": sparkle, "From Min": 0.55, "From Max": 0.7},
         interpolation_type="SMOOTHSTEP",
     ).outputs[0]
+    sparkle = t.math("MULTIPLY", sparkle, inputs["Sparkle"], x=7, y=-12)
     roughness = t.math(
-        "MULTIPLY",
-        roughness,
-        t.math(
-            "SUBTRACT",
-            1.0,
-            t.math("MULTIPLY", sparkle, inputs["Sparkle"], x=7, y=-12),
-            x=7.5,
-            y=-12,
-        ),
-        x=7,
-        y=-5,
+        "MULTIPLY", roughness, t.math("SUBTRACT", 1.0, sparkle, x=7.5, y=-12), x=7, y=-5
     )
 
     # Glossier patches and streaks, smoother and stronger
@@ -2161,29 +2213,22 @@ def build_film(mist):
         x=3,
         y=-9,
     )
-    streaks = t.node(
-        "ShaderNodeTexNoise",
-        2,
-        -11,
-        {"Vector": t.vmath("MULTIPLY", rest, STREAK, x=1, y=-11), "Scale": 1.0, "Detail": 2.0},
-    ).outputs["Fac"]
-    streaks = t.node(
-        "ShaderNodeMapRange",
-        3,
-        -11,
-        {"Value": streaks, "From Min": 0.55, "From Max": 0.7},
-        interpolation_type="SMOOTHSTEP",
-    ).outputs[0]
-    gloss = t.math(
-        "ADD", variation, t.math("MULTIPLY", streaks, inputs["Streaks"], x=4, y=-11), x=5, y=-10
-    )
+    gloss = t.math("ADD", variation, streaks, x=5, y=-10)
     roughness = t.math(
         "MULTIPLY", roughness, t.math("SUBTRACT", 1.0, gloss, x=6, y=-8, clamp=True), x=7, y=-6
     )
 
     # Darker under the film, a black emission scaling the shader
     black = t.node("ShaderNodeEmission", 5, 1, {"Color": (0.0, 0.0, 0.0, 1.0), "Strength": 0.0})
-    darken = t.math("MULTIPLY", inputs["Darken"], wetness, x=5, y=2)
+    # Darker in the glossier patches and streaks, the water thicker there
+    darken = t.math(
+        "MULTIPLY",
+        t.math("MULTIPLY", inputs["Darken"], wetness, x=5, y=2),
+        t.math("ADD", gloss, 1.0, x=5, y=3),
+        x=5.5,
+        y=2,
+        clamp=True,
+    )
     shader = t.node(
         "ShaderNodeMixShader", 6, 0, {0: darken, 1: inputs["Shader"], 2: black.outputs[0]}
     ).outputs[0]
@@ -2255,6 +2300,22 @@ def build_film(mist):
         y=-4,
         clamp=True,
     )
+    # Brighter in the tiny drops, gathering the light like the refracting ones, and in the glints
+    reflection = t.math(
+        "MULTIPLY",
+        reflection,
+        t.math(
+            "MULTIPLY_ADD",
+            t.math("MAXIMUM", in_drop, sparkle, x=8.2, y=-6),
+            DROP_SHINE - 1.0,
+            1.0,
+            x=8.5,
+            y=-6,
+        ),
+        x=8.8,
+        y=-4,
+        clamp=True,
+    )
     glossy = t.node(
         "ShaderNodeBsdfGlossy",
         9,
@@ -2279,7 +2340,6 @@ def build_material():
     """Clear water, letting the light through to the surface under it without caustics"""
     material = bpy.data.materials.new(MATERIAL)
     material.node_tree.nodes.clear()
-    material.use_raytrace_refraction = True
     material.use_transparent_shadow = True
     t = Tree(material.node_tree)
     water = t.node(
@@ -2293,7 +2353,6 @@ def build_material():
             "Transmission Weight": 1.0,
         },
     ).outputs[0]
-    clear = water
     # In Cycles reflecting the surroundings on the rim, as the light inside is reflected back there
     # but on the flat lines of water
     facing = t.node("ShaderNodeLayerWeight", -1, -3).outputs["Facing"]
@@ -2346,7 +2405,34 @@ def build_material():
     water = t.node("ShaderNodeMixShader", 1.5, -1, {0: drop, 1: film, 2: water}).outputs[0]
     surface = t.node("ShaderNodeMixShader", 1, 0, {0: through, 1: water, 2: transparent})
     t.node("ShaderNodeOutputMaterial", 2, 0, {"Surface": surface.outputs[0]}, target="CYCLES")
-    # EEVEE refracting the surface under the drops well, without caustics to fake
+    # EEVEE showing the surface under the drops, darker on the rim refracting it from around, as
+    # its refraction shows the world where the rays miss the screen, black in dark scenes
+    see = t.node(
+        "ShaderNodeBsdfTransparent",
+        0,
+        4,
+        {
+            "Color": t.node(
+                "ShaderNodeMapRange",
+                -0.5,
+                5,
+                {
+                    "Value": facing,
+                    "From Min": 0.5,
+                    "From Max": 0.9,
+                    "To Min": 1.0,
+                    "To Max": 1.0 - DROP_RING,
+                },
+                interpolation_type="SMOOTHSTEP",
+            ).outputs[0]
+        },
+    ).outputs[0]
+    clear = t.node(
+        "ShaderNodeMixShader",
+        1,
+        4,
+        {0: t.node("ShaderNodeFresnel", 0, 5, {"IOR": 1.33}).outputs[0], 1: see, 2: mirror},
+    ).outputs[0]
     water = t.node("ShaderNodeMixShader", 1.5, 2, {0: drop, 1: film, 2: clear}).outputs[0]
     surface = t.node(
         "ShaderNodeMixShader",
