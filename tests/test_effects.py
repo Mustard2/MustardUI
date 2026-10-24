@@ -1623,6 +1623,202 @@ class TestWet(BlenderTestCase):
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestMarks(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.body = bpy.data.objects["Tester Body"]
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+        # Points 5 cm apart
+        bm = bmesh.new()
+        bm.from_mesh(self.body.data)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=19, use_grid_fill=True)
+        bm.to_mesh(self.body.data)
+        bm.free()
+        self.body.modifiers.new("Subdivision", "SUBSURF")
+        self.skin = self.body.data.materials[0]
+        self.shirt.data.materials.append(self.skin)
+        # On the front of the body
+        bpy.context.scene.cursor.location = (0.1, -0.6, 1.0)
+
+    def add(self, obj, **settings):
+        set_active(obj)
+        bpy.ops.mustardui.model_toolkit_marks(radius=0.15, **settings)
+        return [m for m in obj.modifiers if effect.is_effect(m, "MustardUI Marks")][-1]
+
+    def marks(self, obj):
+        """World positions of the evaluated points, their edge distance, amount and shape"""
+        data = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        mark, color = (np.empty(len(data.vertices) * 4) for _ in range(2))
+        data.attributes["mark"].data.foreach_get("color", mark)
+        data.attributes["mark_color"].data.foreach_get("color", color)
+        mark, color = mark.reshape(-1, 4), color.reshape(-1, 4)
+        co = np.array([obj.matrix_world @ v.co for v in data.vertices])
+        return co, mark[:, 2], 1.0 - mark[:, 3], color[:, 3]
+
+    # The Control on the vertex closest to the 3D cursor, facing out of the mesh and following its
+    # bone, marks the points inside its sphere, tinting the base color of the materials
+    def test_marks(self):
+        bsdf = self.skin.node_tree.nodes["Principled BSDF"]
+        bsdf.inputs["Base Color"].default_value = (0.9, 0.7, 0.6, 1.0)
+        modifier = self.add(self.body)
+        self.assertEqual([m.type for m in self.body.modifiers][-2:], ["NODES", "SUBSURF"])
+        control = effect.modifier_input(modifier, "Control").value
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_MARKS")
+        self.assertEqual((control.parent_type, control.parent_bone), ("BONE", "spine"))
+        self.assertEqual(control.users_collection, (bpy.context.scene.collection,))
+        matrix = control.matrix_world
+        np.testing.assert_allclose(matrix.to_translation(), (0.1, -0.5, 1.0), atol=1e-5)
+        # Along the normal, inward on the test cube
+        np.testing.assert_allclose(matrix.to_3x3().col[2], (0.0, 0.15, 0.0), atol=1e-5)
+        np.testing.assert_allclose(matrix.to_3x3().col[1], (0.0, 0.0, 0.15), atol=1e-5)
+        data = self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        for name in ("mark", "mark_color"):
+            self.assertEqual(data.attributes[name].data_type, "FLOAT_COLOR")
+
+        # On the points of the mesh, not smoothed
+        self.body.modifiers["Subdivision"].show_viewport = False
+        co, edge, amount, shape = self.marks(self.body)
+        distance = np.linalg.norm(co - (0.1, -0.5, 1.0), axis=1)
+        np.testing.assert_allclose(edge, distance / 0.15 - 1.0, atol=1e-5)
+        self.assertGreater(amount[distance < 0.15].min(), 0.2)
+        self.assertLessEqual(amount.max(), 0.6 + 1e-6)
+        np.testing.assert_allclose(shape, 1.0)
+
+        tint = bsdf.inputs["Base Color"].links[0].from_node
+        self.assertEqual(tint.node_tree.name, "MustardUI Marks Tint")
+        np.testing.assert_allclose(tint.inputs["Color"].default_value, (0.9, 0.7, 0.6, 1.0))
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # A left hand print mirrors the Control, inside the palm and not above the fingers
+    def test_hand(self):
+        modifier = self.add(self.body, kind="HAND", left=True)
+        control = effect.modifier_input(modifier, "Control").value
+        self.assertLess(control.matrix_world.determinant(), 0.0)
+        co, edge, amount, shape = self.marks(self.body)
+        np.testing.assert_allclose(shape, -0.1)
+        for local, inside in (((0.0, -0.42, 0.0), True), ((0.0, 1.0, 0.0), False)):
+            nearest = np.linalg.norm(co - control.matrix_world @ Vector(local), axis=1).argmin()
+            self.assertEqual(edge[nearest] < 0.0, inside)
+            self.assertGreater(amount[nearest], 0.0)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # Lasting marks stay where the Control was, painting along its path, and fade
+    def test_lasting(self):
+        modifier = self.add(self.body)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        effect.modifier_input(modifier, "Lasting").value = True
+        effect.modifier_input(modifier, "Strength").value = 1.0
+        control = effect.modifier_input(modifier, "Control").value
+        control.keyframe_insert("location", frame=start)
+        location = control.location.copy()
+        # Sideways on the surface, then away from it (into the test cube, its normals inward)
+        control.location = location + control.matrix_basis.col[0].xyz.normalized() * 0.3
+        control.keyframe_insert("location", frame=start + 5)
+        control.location = location + control.matrix_basis.col[2].xyz.normalized() * 2.0
+        control.keyframe_insert("location", frame=start + 6)
+        self.body.update_tag()
+        for frame in range(start, start + 9):
+            scene.frame_set(frame)
+        co, edge, amount, _ = self.marks(self.body)
+        side = control.matrix_world.col[0].xyz.normalized()
+        for x in (0.0, 0.15, 0.3):
+            nearest = np.linalg.norm(co - Vector((0.1, -0.5, 1.0)) - side * x, axis=1).argmin()
+            self.assertLess(edge[nearest], -0.5)
+            self.assertGreater(amount[nearest], 0.2)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        effect.modifier_input(modifier, "Lasting").value = False
+        self.body.update_tag()
+        self.assertGreater(self.marks(self.body)[1].min(), 0.0)
+
+        effect.modifier_input(modifier, "Lasting").value = True
+        effect.modifier_input(modifier, "Fade").value = 0.1
+        self.body.update_tag()
+        for frame in range(start, start + 12):
+            scene.frame_set(frame)
+        _, edge, amount, _ = self.marks(self.body)
+        self.assertLess(amount[edge < 0.0].max(), 1e-6)
+
+    # A second mark keeps the first one, each with its own color
+    def test_stack(self):
+        self.add(self.body)
+        bpy.context.scene.cursor.location = (-0.2, -0.6, 1.2)
+        modifier = self.add(self.body, kind="BRUISE")
+        effect.modifier_input(modifier, "Color").value = (0.0, 0.0, 1.0, 1.0)
+        self.body.update_tag()
+        co, edge, _, shape = self.marks(self.body)
+        data = self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        color = np.empty(len(data.vertices) * 4)
+        data.attributes["mark_color"].data.foreach_get("color", color)
+        color = color.reshape(-1, 4)
+        for center, blue, falloff in (((0.1, -0.5, 1.0), 0.45, 1.0), ((-0.2, -0.5, 1.2), 1.0, 0.7)):
+            nearest = np.linalg.norm(co - center, axis=1).argmin()
+            self.assertLess(edge[nearest], -0.5)
+            self.assertAlmostEqual(color[nearest, 2], blue, places=5)
+            self.assertAlmostEqual(shape[nearest], falloff, places=5)
+
+    # The tint goes before the base color of the shaders, also behind mix shaders and in groups
+    def test_materials(self):
+        layered = bpy.data.materials.new("Layered")
+        nodes, links = layered.node_tree.nodes, layered.node_tree.links
+        bsdf = nodes["Principled BSDF"]
+        image = nodes.new("ShaderNodeTexImage")
+        links.new(image.outputs["Color"], bsdf.inputs["Base Color"])
+        group = bpy.data.node_groups.new("Skin Shader", "ShaderNodeTree")
+        group.interface.new_socket("Color", in_out="INPUT", socket_type="NodeSocketColor")
+        group.interface.new_socket("BSDF", in_out="OUTPUT", socket_type="NodeSocketShader")
+        skin = nodes.new("ShaderNodeGroup")
+        skin.node_tree = group
+        mix = nodes.new("ShaderNodeMixShader")
+        links.new(bsdf.outputs[0], mix.inputs[1])
+        links.new(skin.outputs[0], mix.inputs[2])
+        # Under a group wrapping the shader, with a color of its own
+        wrapper = bpy.data.node_groups.new("Glow", "ShaderNodeTree")
+        for name, socket_type in (("Shader", "NodeSocketShader"), ("Color", "NodeSocketColor")):
+            wrapper.interface.new_socket(name, in_out="INPUT", socket_type=socket_type)
+        wrapper.interface.new_socket("Shader", in_out="OUTPUT", socket_type="NodeSocketShader")
+        glow = nodes.new("ShaderNodeGroup")
+        glow.node_tree = wrapper
+        links.new(mix.outputs[0], glow.inputs["Shader"])
+        links.new(glow.outputs[0], nodes["Material Output"].inputs["Surface"])
+        self.shirt.data.materials.clear()
+        self.shirt.data.materials.append(layered)
+
+        self.add(self.shirt)
+        tint = bsdf.inputs["Base Color"].links[0].from_node
+        self.assertEqual(tint.inputs["Color"].links[0].from_node, image)
+        self.assertEqual(skin.inputs["Color"].links[0].from_node.node_tree, tint.node_tree)
+        self.assertFalse(glow.inputs["Color"].is_linked)
+
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_marks()
+        self.assertEqual(bsdf.inputs["Base Color"].links[0].from_node, image)
+        self.assertFalse(skin.inputs["Color"].is_linked)
+        self.assertEqual(len(nodes), 6)
+
+    # The tint stays on the materials of the other marked meshes, and the Controls are removed
+    def test_remove(self):
+        self.add(self.body)
+        self.add(self.shirt)
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_remove_marks()
+        self.assertFalse([m for m in self.body.modifiers if m.type == "NODES"])
+        bsdf = self.skin.node_tree.nodes["Principled BSDF"]
+        self.assertEqual(bsdf.inputs["Base Color"].links[0].from_node.type, "GROUP")
+        controls = [x for x in bpy.data.objects if x.MustardUI_tools_creators_type]
+        self.assertEqual(len(controls), 1)
+
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_marks()
+        self.assertFalse(bsdf.inputs["Base Color"].is_linked)
+        self.assertFalse([n for n in self.skin.node_tree.nodes if n.type == "GROUP"])
+        self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_marks.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestWithoutModel(BlenderTestCase):
     # The effects work on any mesh, without a MustardUI model
     def test_ripple(self):
