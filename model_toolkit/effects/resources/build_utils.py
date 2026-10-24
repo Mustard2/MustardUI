@@ -28,6 +28,32 @@ def add_output(tree, name, socket_type):
     return tree.interface.new_socket(name, in_out="OUTPUT", socket_type=socket_type)
 
 
+def arrange_interface(tree, panels):
+    """Inputs moved into panels, given as (parent or None, name, closed, toggle or None, sockets):
+    new panels are added to the parent, existing ones get the sockets, the toggle in the header"""
+
+    def item(name, item_type):
+        return next(
+            x for x in tree.interface.items_tree if x.name == name and x.item_type == item_type
+        )
+
+    for parent, name, closed, toggle, sockets in panels:
+        panel = next(
+            (x for x in tree.interface.items_tree if x.name == name and x.item_type == "PANEL"),
+            None,
+        )
+        if panel is None:
+            panel = tree.interface.new_panel(name, default_closed=closed)
+            if parent:
+                above = item(parent, "PANEL")
+                tree.interface.move_to_parent(panel, above, len(above.interface_items))
+        for socket in sockets:
+            tree.interface.move_to_parent(item(socket, "SOCKET"), panel, len(panel.interface_items))
+        if toggle:
+            tree.interface.move_to_parent(item(toggle, "SOCKET"), panel, 0)
+            item(toggle, "SOCKET").is_panel_toggle = True
+
+
 class Tree:
     """Node tree builder, placing the nodes on a grid"""
 
