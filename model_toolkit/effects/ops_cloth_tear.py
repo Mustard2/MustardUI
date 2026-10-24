@@ -74,8 +74,12 @@ class ClothTearControl:
             if self.physics and not modifier_input(modifier, "Physics").value:
                 modifier_input(modifier, "Physics").value = True
                 modifier_input(modifier, "Start Frame").value = frame
-                if body not in objects:
-                    modifier_input(modifier, "Collider").value = body
+                # The body in a collection, for more colliders to be added
+                if body is not None and body not in objects:
+                    colliders = bpy.data.collections.new(f"{obj.name} Cloth Colliders")
+                    context.scene.collection.children.link(colliders)
+                    colliders.objects.link(body)
+                    modifier_input(modifier, "Colliders").value = colliders
                 if self.anchor in obj.vertex_groups:
                     anchor = modifier_input(modifier, "Anchor")
                     anchor.type = "ATTRIBUTE"
@@ -202,7 +206,7 @@ class MustardUI_ModelToolkit_ClothRip(ClothTearControl, bpy.types.Operator):
 
 
 class MustardUI_ModelToolkit_RemoveClothTear(bpy.types.Operator):
-    """Remove the Cloth Tear and Cloth Rip from the selected meshes, with the Controls, the Pulls and their collections not used anymore"""  # noqa: E501
+    """Remove the Cloth Tear and Cloth Rip from the selected meshes, with the Controls, the Pulls and the collections not used anymore"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_remove_cloth_tear"
     bl_label = "Remove Cloth Tear"
@@ -213,7 +217,7 @@ class MustardUI_ModelToolkit_RemoveClothTear(bpy.types.Operator):
         return any(is_effect(m, NODE_GROUP) for x in context.selected_objects for m in x.modifiers)
 
     def execute(self, context):
-        inputs = ("Controls", "Pulls")
+        inputs = ("Controls", "Pulls", "Colliders")
         collections = set()
         for obj in context.selected_objects:
             for modifier in [m for m in obj.modifiers if is_effect(m, NODE_GROUP)]:
