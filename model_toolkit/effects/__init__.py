@@ -3,6 +3,7 @@ from . import (
     ops_disintegration,
     ops_fireball,
     ops_hex_dissolve,
+    ops_marks,
     ops_ripple,
     ops_squish,
     ops_sticky_liquid,
@@ -23,9 +24,11 @@ def register():
     ops_sticky_strands.register()
     ops_sticky_liquid.register()
     ops_wet.register()
+    ops_marks.register()
 
 
 def unregister():
+    ops_marks.unregister()
     ops_wet.unregister()
     ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()
