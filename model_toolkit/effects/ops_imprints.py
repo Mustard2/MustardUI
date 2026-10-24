@@ -50,10 +50,10 @@ PRESETS = {
         "Recovery": 0.0,
     },
     "CUSHION": {
-        "Depth": 0.06,
-        "Smooth": 4,
-        "Rim": -0.5,
-        "Rim Width": 0.08,
+        "Depth": 0.1,
+        "Smooth": 0,
+        "Softness": 0.12,
+        "Rim": 0.0,
         "Noise": 0.0,
         "Color": (1.0, 1.0, 1.0, 1.0),
         "Recovery": 2.0,
@@ -74,7 +74,7 @@ class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
             ("SNOW", "Snow", "Deep imprints with a small rim, lasting"),
             ("SAND", "Sand", "Shallow grainy imprints with a rim, lasting"),
             ("MUD", "Mud", "Dark imprints with a high rim, lasting"),
-            ("CUSHION", "Cushion", "Soft imprints sinking the surface around, filling back"),
+            ("CUSHION", "Cushion", "Soft surface wrapping around the Colliders, filling back"),
         ),
     )
 

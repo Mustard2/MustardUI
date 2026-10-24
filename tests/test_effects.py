@@ -1905,6 +1905,53 @@ class TestImprints(BlenderTestCase):
         np.testing.assert_allclose(height[side < 0.09], -0.03, atol=1e-4)
         np.testing.assert_allclose(height[side > 0.15], 0.0, atol=1e-6)
 
+    # A slab thinner than the reach of the rays is imprinted only where the body presses it
+    def test_slab(self):
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Diagonal((2.0, 2.0, 0.1, 1.0)))
+        bm.to_mesh(self.ground.data)
+        bm.free()
+        self.ground.location.z = 0.48
+        set_active(self.ground)
+        self.add(kind="SNOW")
+        co, _, _ = self.heights()
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        normal = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("normal", normal)
+        side = np.abs(co[:, :2]).max(axis=1)
+        top = (normal[2::3] > 0.9) & (side < 0.45)
+        bottom = (normal[2::3] < -0.9) & (side < 0.95)
+        np.testing.assert_allclose(co[top, 2], 0.5, atol=1e-4)
+        np.testing.assert_allclose(co[bottom, 2], 0.43, atol=1e-6)
+
+    # Soft imprints keep the pressed points on the body, and sink the surface around them
+    def test_soft(self):
+        set_active(self.ground)
+        modifier = self.add(kind="CUSHION")
+        self.assertGreater(effect.modifier_input(modifier, "Softness").value, 0.0)
+        co, height, _ = self.heights()
+        side = np.abs(co[:, :2]).max(axis=1)
+        np.testing.assert_allclose(height[side < 0.45], -0.03, atol=1e-4)
+        self.assertLess(height[(side > 0.51) & (side < 0.53)].max(), -0.003)
+        self.assertLess(height.max(), 1e-6)
+        # Fading away, untouched past the Softness from the box around the body
+        self.assertLess(np.abs(height[side > 0.8]).max(), 0.001)
+        np.testing.assert_allclose(height[side > 0.9], 0.0, atol=1e-6)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Bulging around the body with a Rim, the pressed points as deep
+        effect.modifier_input(modifier, "Rim").value = 0.5
+        self.ground.update_tag()
+        bulged = self.heights()[1]
+        np.testing.assert_allclose(bulged[side < 0.45], -0.03, atol=1e-4)
+        self.assertGreater((bulged - height)[(side > 0.5) & (side < 0.6)].max(), 0.003)
+        effect.modifier_input(modifier, "Rim").value = 0.0
+
+        # Crisp without Softness, the surface around left as it is
+        effect.modifier_input(modifier, "Softness").value = 0.0
+        self.ground.update_tag()
+        np.testing.assert_allclose(self.heights()[1][side > 0.51], 0.0, atol=1e-6)
+
     # A single point the rays pass by through a gap of the Colliders is imprinted as its neighbors
     def test_gap(self):
         cuts = (-0.1, -0.001, 0.001, 0.1)
@@ -1914,8 +1961,11 @@ class TestImprints(BlenderTestCase):
             for j in range(3)
             for i in range(3)
         ]
+        # With a lid above the ground, covering it
+        verts += [(x, y, 0.7) for y in cuts[::3] for x in cuts[::3]]
+        faces = [f for f in faces if f[0] != 5] + [(16, 17, 19, 18)]
         mesh = bpy.data.meshes.new("Plate")
-        mesh.from_pydata(verts, [], [f for f in faces if f[0] != 5])
+        mesh.from_pydata(verts, [], faces)
         plate = new_object("Plate", mesh)
         set_active(plate)
         self.ground.select_set(True)

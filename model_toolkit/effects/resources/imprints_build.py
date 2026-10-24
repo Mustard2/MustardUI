@@ -13,8 +13,22 @@ NODE_GROUP = "MustardUI Imprints"
 TINT = "MustardUI Imprints Tint"
 # Depths below the surface the Colliders are looked for, not to imprint parts far under it
 REACH = 3.0
+# Distance out of the surface a Collider covering a point is looked for
+OUTSIDE = 10.0
+# Start of the rays through the mesh, inside it not to hit the faces of the point
+SELF_OFFSET = 0.001
 # Blur iterations of the rim, at most
 RIM_ITERATIONS = 200
+# Rounds of the soft imprints spreading them keeping the pressed points as deep, on a copy of
+# the mesh merged to a fraction of the Softness, then pushing out of the Colliders the points
+# moved into them
+SOFT_ROUNDS = 128
+COARSE = 12.0
+# Blur iterations of the soft imprints back on the mesh, at most
+SMOOTH_ITERATIONS = 64
+# Fading of the soft imprints away from the pressed points, by round
+FADE = 2.0
+PUSH_ROUNDS = 2
 # Depth of the imprints tinted fully, relative to the Depth
 TINT_DEPTH = 0.4
 # Depth of the imprints the rim fades out to, relative to the Depth, not to rise inside them
@@ -71,8 +85,8 @@ def build_node_group():
         default_value=0.5,
         min_value=-2.0,
         max_value=2.0,
-        description="Height of the rim pushed up around the imprints, relative to their depth, "
-        "negative for a soft surface sinking around them",
+        description="Height of the rim pushed up around the imprints, or of the bulge around "
+        "the soft ones, relative to their depth, negative to sink the surface around them",
     )
     add_input(
         ng,
@@ -134,6 +148,20 @@ def build_node_group():
         min_value=0.0,
         description="Seconds for the deepest imprints to fill back, 0 to keep them",
     )
+    softness = add_input(
+        ng,
+        "Softness",
+        "NodeSocketFloat",
+        subtype="DISTANCE",
+        default_value=0.0,
+        min_value=0.0,
+        description="Distance the imprints spread over, the soft surface wrapping around the "
+        "Colliders as a cushion, 0 for crisp imprints as footprints",
+    )
+    # After Smooth, added last to keep the identifiers of the inputs before it
+    ng.interface.move(
+        softness, list(ng.interface.items_tree).index(ng.interface.items_tree["Smooth"]) + 1
+    )
     arrange_interface(ng, [(None, "Lasting", False, "Lasting", ["Start Frame", "Recovery"])])
 
     t = Tree(ng)
@@ -183,42 +211,50 @@ def build_node_group():
 
     t.section("Imprint")
     reach = t.math("MULTIPLY", inputs["Depth"], REACH, x=3, y=-6)
-    # Only the points near the Colliders cast a ray
-    box = t.node("GeometryNodeBoundBox", 3, -8, {"Geometry": colliders}).outputs
-    low = t.vmath("SUBTRACT", world, t.vmath("SUBTRACT", box["Min"], reach, x=4, y=-9), x=5, y=-8)
-    high = t.vmath("SUBTRACT", t.vmath("ADD", box["Max"], reach, x=4, y=-10), world, x=5, y=-10)
-    xyz = t.node(
-        "ShaderNodeSeparateXYZ", 6, -9, {0: t.vmath("MINIMUM", low, high, x=5.5, y=-9)}
-    ).outputs
-    near = t.math(
-        "GREATER_THAN",
-        t.math("MINIMUM", t.math("MINIMUM", xyz["X"], xyz["Y"], x=7, y=-9), xyz["Z"], x=8, y=-9),
-        0.0,
-        x=9,
-        y=-9,
-    )
-    # Up from under the surface, to the lowest Collider surface below it
-    ray = t.node(
+    # Within half the thickness of the mesh, pressed at most to its middle from either side
+    mesh = t.node(
+        "GeometryNodeTransform",
+        2,
+        -11,
+        {"Geometry": inputs["Geometry"], "Mode": "Matrix", "Transform": to_world},
+    ).outputs[0]
+    through = t.node(
         "GeometryNodeRaycast",
-        5,
-        -5,
+        3,
+        -11,
         {
-            "Target Geometry": colliders,
+            "Target Geometry": mesh,
             "Source Position": t.vmath(
-                "SUBTRACT", world, t.vmath("SCALE", normal, reach, x=4, y=-5), x=4.5, y=-5
+                "SUBTRACT", world, t.vmath("SCALE", normal, SELF_OFFSET, x=2, y=-12), x=2.5, y=-12
             ),
-            "Ray Direction": normal,
-            "Ray Length": reach,
+            "Ray Direction": t.vmath("SCALE", normal, -1.0, x=2, y=-13),
+            "Ray Length": t.math("MULTIPLY", reach, 2.0, x=2, y=-14),
         },
     ).outputs
-    depth = t.math(
-        "MINIMUM",
-        t.math("SUBTRACT", reach, ray["Hit Distance"], x=6, y=-5),
-        inputs["Depth"],
-        x=7,
-        y=-5,
+    half = t.math(
+        "MULTIPLY",
+        t.math("ADD", through["Hit Distance"], SELF_OFFSET, x=4, y=-11),
+        0.5,
+        x=4.5,
+        y=-11,
     )
-    depth = t.math("MULTIPLY", depth, ray["Is Hit"], x=8, y=-5)
+    reach = t.node(
+        "GeometryNodeSwitch",
+        5,
+        -10,
+        {
+            "Switch": through["Is Hit"],
+            "False": reach,
+            "True": t.math("MINIMUM", reach, half, x=5, y=-11),
+        },
+        input_type="FLOAT",
+    ).outputs[0]
+    geometry = t.store(geometry, ".imprint_reach", "FLOAT", reach, 5.5, 0)
+    reach = t.attribute(".imprint_reach", "FLOAT", 6, -10)
+    # Only the points near the Colliders cast a ray
+    box = t.node("GeometryNodeBoundBox", 3, -8, {"Geometry": colliders}).outputs
+    near = in_box(t, box, world, reach, 4, -9)
+    depth = pressed_depth(t, colliders, world, normal, reach, inputs["Depth"], 4, -5)
     depth = t.math("MULTIPLY", depth, inputs["Mask"], x=9, y=-5)
     store = t.node(
         "GeometryNodeStoreNamedAttribute",
@@ -275,19 +311,14 @@ def build_node_group():
         },
         domain="EDGE",
     ).outputs["Mean"]
-    spread = t.math("DIVIDE", inputs["Rim Width"], length, x=6, y=-6)
-    iterations = t.math(
-        "MINIMUM",
-        t.math("MULTIPLY", t.math("MULTIPLY", spread, spread, x=7, y=-6), 2.0, x=8, y=-6),
-        RIM_ITERATIONS,
-        x=9,
-        y=-6,
-    )
     blurred = t.node(
         "GeometryNodeBlurAttribute",
         10,
         -5,
-        {"Value": depth, "Iterations": t.math("ROUND", iterations, x=9.5, y=-7)},
+        {
+            "Value": depth,
+            "Iterations": blur_iterations(t, inputs["Rim Width"], length, RIM_ITERATIONS, 6, -6),
+        },
         data_type="FLOAT",
     ).outputs[0]
     rim = t.math(
@@ -328,9 +359,38 @@ def build_node_group():
         x=12,
         y=-9,
     )
-    height = t.math("MULTIPLY", height, t.math("MAXIMUM", noise, 0.0, x=13, y=-9), x=15, y=-4)
-    geometry = t.store(geometry, ".imprint_height", "FLOAT", height, 15.5, 0)
-    height = t.attribute(".imprint_height", "FLOAT", 15.5, -2)
+    noise = t.math("MAXIMUM", noise, 0.0, x=13, y=-9)
+    crisp = t.store(
+        geometry,
+        ".imprint_offset",
+        "FLOAT_VECTOR",
+        t.vmath("SCALE", normal, t.math("MULTIPLY", height, noise, x=14, y=-5), x=15, y=-4),
+        15,
+        -1,
+    )
+    soft = build_soft(t, inputs, geometry, colliders, box, world, normal, reach, depth, length)
+    soft = t.store(
+        soft,
+        ".imprint_offset",
+        "FLOAT_VECTOR",
+        t.vmath(
+            "SCALE", t.attribute(".imprint_offset", "FLOAT_VECTOR", 15, -7), noise, x=15.5, y=-6
+        ),
+        16,
+        -6,
+    )
+    geometry = t.node(
+        "GeometryNodeSwitch",
+        16.5,
+        0,
+        {
+            "Switch": t.math("GREATER_THAN", inputs["Softness"], 0.0, x=16, y=-2),
+            "False": crisp,
+            "True": soft,
+        },
+        input_type="GEOMETRY",
+    ).outputs[0]
+    offset = t.attribute(".imprint_offset", "FLOAT_VECTOR", 17, -2)
 
     # Smooth where displaced, not to show the faces of the imprints
     geometry = t.node(
@@ -340,7 +400,7 @@ def build_node_group():
         {
             "Geometry": geometry,
             "Selection": t.math(
-                "GREATER_THAN", t.math("ABSOLUTE", height, x=15.5, y=-1), 1e-6, x=16, y=-1
+                "GREATER_THAN", t.vmath("LENGTH", offset, x=17, y=-3), 1e-6, x=17.5, y=-3
             ),
         },
         domain="FACE",
@@ -349,7 +409,7 @@ def build_node_group():
         "FunctionNodeTransformDirection",
         16,
         -4,
-        {"Direction": t.vmath("SCALE", normal, height, x=15, y=-3), "Transform": to_local},
+        {"Direction": offset, "Transform": to_local},
     ).outputs[0]
     geometry = t.node(
         "GeometryNodeSetPosition", 17, 0, {"Geometry": geometry, "Offset": offset}
@@ -387,6 +447,381 @@ def build_node_group():
     t.node("NodeGroupOutput", 5, 0, {"Geometry": geometry})
     t.arrange()
     return ng
+
+
+def pressed_depth(t, colliders, position, normal, reach, limit, x, y):
+    """Depth the Colliders press the surface at the position, up from under it to their lowest
+    surface, only where they cover it"""
+    ray = t.node(
+        "GeometryNodeRaycast",
+        x + 1,
+        y,
+        {
+            "Target Geometry": colliders,
+            "Source Position": t.vmath(
+                "SUBTRACT", position, t.vmath("SCALE", normal, reach, x=x, y=y), x=x + 0.5, y=y
+            ),
+            "Ray Direction": normal,
+            "Ray Length": reach,
+        },
+    ).outputs
+    depth = t.math(
+        "MINIMUM",
+        t.math("SUBTRACT", reach, ray["Hit Distance"], x=x + 2, y=y),
+        limit,
+        x=x + 3,
+        y=y,
+    )
+    depth = t.math("MULTIPLY", depth, ray["Is Hit"], x=x + 4, y=y)
+    # Not seen through a mesh thinner than the reach
+    covered = t.node(
+        "GeometryNodeRaycast",
+        x + 1,
+        y - 2,
+        {
+            "Target Geometry": colliders,
+            "Source Position": position,
+            "Ray Direction": normal,
+            "Ray Length": OUTSIDE,
+        },
+    ).outputs["Is Hit"]
+    return t.math("MULTIPLY", depth, covered, x=x + 4.5, y=y)
+
+
+def blur_iterations(t, distance, length, limit, x, y):
+    """Blur iterations spreading a value over the distance, the edges being that long"""
+    spread = t.math("DIVIDE", distance, length, x=x, y=y)
+    iterations = t.math(
+        "MINIMUM",
+        t.math("MULTIPLY", t.math("MULTIPLY", spread, spread, x=x + 1, y=y), 2.0, x=x + 2, y=y),
+        limit,
+        x=x + 3,
+        y=y,
+    )
+    return t.math("ROUND", iterations, x=x + 3.5, y=y)
+
+
+def build_soft(t, inputs, geometry, colliders, box, world, normal, reach, depth, spacing):
+    """Geometry with the offsets of the soft imprints: spread over the Softness keeping the
+    pressed points as deep, on a coarser copy of the mesh, then the points moved into the
+    Colliders pushed out of them"""
+    inward = t.vmath("SCALE", normal, -1.0, x=0, y=-12)
+    pressed = t.vmath("SCALE", inward, depth, x=0.5, y=-13)
+    geometry = t.store(geometry, ".imprint_inward", "FLOAT_VECTOR", inward, 0.5, -11)
+    geometry = t.store(geometry, ".imprint_offset", "FLOAT_VECTOR", pressed, 1, -11)
+    # Each part of the mesh brought back from its own, its denser edges merged further away
+    island = t.node("GeometryNodeInputMeshIsland", 0.5, -15).outputs["Island Index"]
+    geometry = t.store(geometry, ".imprint_island", "INT", island, 1, -10)
+
+    # Around the Colliders in world space, its points about a seventh of the Softness apart
+    near = in_box(t, box, world, t.math("ADD", reach, inputs["Softness"], x=0, y=-16), 0.5, -16)
+    coarse = t.node(
+        "GeometryNodeDeleteGeometry",
+        1,
+        -12,
+        {"Geometry": geometry, "Selection": t.math("SUBTRACT", 1.0, near, x=1, y=-15)},
+        domain="POINT",
+    ).outputs[0]
+    coarse = t.node(
+        "GeometryNodeSetPosition", 1.5, -12, {"Geometry": coarse, "Position": world}
+    ).outputs[0]
+    coarse = t.node(
+        "GeometryNodeMergeByDistance",
+        2,
+        -12,
+        {
+            "Geometry": coarse,
+            "Mode": "Connected",
+            "Distance": t.math("DIVIDE", inputs["Softness"], COARSE, x=1.5, y=-14),
+        },
+    ).outputs[0]
+    edges = t.node("GeometryNodeInputMeshEdgeVertices", 2, -16).outputs
+    length = t.node(
+        "GeometryNodeAttributeStatistic",
+        2.5,
+        -15,
+        {
+            "Geometry": coarse,
+            "Attribute": t.vmath(
+                "DISTANCE", edges["Position 1"], edges["Position 2"], x=2.5, y=-16
+            ),
+        },
+        domain="EDGE",
+    ).outputs["Mean"]
+    rounds_in = t.node(
+        "GeometryNodeRepeatInput",
+        3,
+        -12,
+        {"Iterations": blur_iterations(t, inputs["Softness"], length, SOFT_ROUNDS, 2.5, -17)},
+    )
+    rounds_out = t.node("GeometryNodeRepeatOutput", 7, -12)
+    rounds_in.pair_with_output(rounds_out)
+    t.connect(coarse, rounds_in.inputs["Geometry"])
+    coarse_inward = t.vmath(
+        "NORMALIZE", t.attribute(".imprint_inward", "FLOAT_VECTOR", 3, -14), x=3.5, y=-14
+    )
+    # Sinking less and less away from the pressed points, as on an elastic foundation
+    ratio = t.math("DIVIDE", length, inputs["Softness"], x=3, y=-18)
+    keep = t.math(
+        "SUBTRACT",
+        1.0,
+        t.math("MULTIPLY", t.math("MULTIPLY", ratio, ratio, x=3.5, y=-18), FADE, x=4, y=-18),
+        x=4.5,
+        y=-18,
+        clamp=True,
+    )
+    kept = keep_pressed(
+        t,
+        t.vmath(
+            "SCALE",
+            t.node(
+                "GeometryNodeBlurAttribute",
+                4,
+                -13,
+                {"Value": t.attribute(".imprint_offset", "FLOAT_VECTOR", 3, -13), "Iterations": 1},
+                data_type="FLOAT_VECTOR",
+            ).outputs[0],
+            keep,
+            x=4.5,
+            y=-13,
+        ),
+        coarse_inward,
+        t.attribute(".imprint_depth", "FLOAT", 3, -15),
+        5,
+        -13,
+    )
+    t.connect(
+        t.store(rounds_in.outputs["Geometry"], ".imprint_offset", "FLOAT_VECTOR", kept, 6, -12),
+        rounds_out.inputs["Geometry"],
+    )
+
+    # Back on the mesh, the pressed points as deep
+    spread = t.node(
+        "GeometryNodeSampleNearestSurface",
+        8,
+        -13,
+        {
+            "Mesh": rounds_out.outputs["Geometry"],
+            "Value": t.attribute(".imprint_offset", "FLOAT_VECTOR", 7, -14),
+            "Group ID": t.attribute(".imprint_island", "INT", 7, -15),
+            "Sample Position": world,
+            "Sample Group ID": t.attribute(".imprint_island", "INT", 7, -16),
+        },
+        data_type="FLOAT_VECTOR",
+    ).outputs["Value"]
+    geometry = t.node(
+        "GeometryNodeStoreNamedAttribute",
+        10,
+        -11,
+        {
+            "Geometry": geometry,
+            "Name": ".imprint_offset",
+            "Value": spread,
+            "Selection": near,
+        },
+        data_type="FLOAT_VECTOR",
+        domain="POINT",
+    ).outputs[0]
+
+    # Smoothed over the size of the faces of the copy, not to show them, the pressed points as deep
+    # along the normals smoothed as much, not to tear apart the finer details as the piping
+    iterations = blur_iterations(t, length, spacing, SMOOTH_ITERATIONS, 9.5, -15)
+    geometry = t.store(
+        geometry,
+        ".imprint_smooth",
+        "FLOAT_VECTOR",
+        t.vmath(
+            "NORMALIZE",
+            t.node(
+                "GeometryNodeBlurAttribute",
+                10,
+                -16,
+                {"Value": inward, "Iterations": iterations},
+                data_type="FLOAT_VECTOR",
+            ).outputs[0],
+            x=10.5,
+            y=-16,
+        ),
+        10.5,
+        -11,
+    )
+    smooth = t.attribute(".imprint_smooth", "FLOAT_VECTOR", 11, -16)
+    smoothed = t.node(
+        "GeometryNodeBlurAttribute",
+        10.5,
+        -12,
+        {
+            "Value": t.attribute(".imprint_offset", "FLOAT_VECTOR", 10, -13),
+            "Iterations": iterations,
+        },
+        data_type="FLOAT_VECTOR",
+    ).outputs[0]
+    geometry = t.store(
+        geometry,
+        ".imprint_offset",
+        "FLOAT_VECTOR",
+        keep_pressed(t, smoothed, smooth, depth, 11, -13),
+        12,
+        -11,
+    )
+
+    for i in range(PUSH_ROUNDS):
+        offset = t.attribute(".imprint_offset", "FLOAT_VECTOR", 7 + 3 * i, -13)
+        # In all at most as deep as the Depth
+        left = t.math(
+            "MAXIMUM",
+            t.math(
+                "SUBTRACT",
+                inputs["Depth"],
+                t.vmath("DOT_PRODUCT", offset, smooth, x=7 + 3 * i, y=-18),
+                x=7.5 + 3 * i,
+                y=-18,
+            ),
+            0.0,
+            x=8 + 3 * i,
+            y=-18,
+        )
+        deeper = pressed_depth(
+            t,
+            colliders,
+            t.vmath("ADD", world, offset, x=7 + 3 * i, y=-14),
+            t.vmath("SCALE", smooth, -1.0, x=7 + 3 * i, y=-17),
+            reach,
+            left,
+            7 + 3 * i,
+            -16,
+        )
+        geometry = t.store(
+            geometry,
+            ".imprint_offset",
+            "FLOAT_VECTOR",
+            t.vmath(
+                "ADD",
+                offset,
+                t.vmath("SCALE", smooth, deeper, x=8 + 3 * i, y=-13),
+                x=9 + 3 * i,
+                y=-12,
+            ),
+            9 + 3 * i,
+            -11,
+        )
+    # Bulging around the pressed points over the Rim Width, the Rim being the share of the pressed
+    # volume moved into the ring around them
+    offset = t.attribute(".imprint_offset", "FLOAT_VECTOR", 13, -13)
+    iterations = blur_iterations(t, inputs["Rim Width"], spacing, RIM_ITERATIONS, 13, -18)
+    pressed = t.math("GREATER_THAN", depth, 0.0, x=13, y=-17)
+
+    def blur(value, y):
+        return t.node(
+            "GeometryNodeBlurAttribute",
+            14,
+            y,
+            {"Value": value, "Iterations": iterations},
+            data_type="FLOAT",
+        ).outputs[0]
+
+    # Rising from the pressed points, peaking at a third of the Rim Width: the pressed share of the
+    # points around, a half next to them, from 1 there to 0 at the Rim Width
+    out = t.math(
+        "SUBTRACT",
+        1.0,
+        t.math("MULTIPLY", blur(pressed, -17), 2.0, x=14.5, y=-17),
+        x=15,
+        y=-17,
+        clamp=True,
+    )
+    ring = t.math(
+        "MULTIPLY",
+        t.math(
+            "MULTIPLY",
+            out,
+            t.math("POWER", t.math("SUBTRACT", 1.0, out, x=15, y=-19), 2.0, x=15.5, y=-19),
+            x=16,
+            y=-18,
+        ),
+        t.math("MULTIPLY", t.math("SUBTRACT", 1.0, pressed, x=14, y=-20), 6.75, x=15, y=-20),
+        x=16.5,
+        y=-17,
+    )
+    geometry = t.store(geometry, ".imprint_ring", "FLOAT", ring, 15, -11)
+    ring = t.attribute(".imprint_ring", "FLOAT", 15.5, -17)
+    bulge = t.math(
+        "MULTIPLY",
+        t.math(
+            "DIVIDE",
+            t.math("MULTIPLY", ring, blur(depth, -14), x=15, y=-14),
+            t.math("MAXIMUM", blur(ring, -15), 1e-6, x=15, y=-15),
+            x=15.5,
+            y=-14,
+        ),
+        inputs["Rim"],
+        x=16,
+        y=-14,
+    )
+    # Smoothed not to rise all at once next to the pressed points, then up to the Colliders above,
+    # as against the body
+    bulge = t.math(
+        "MULTIPLY", blur(bulge, -16), t.math("SUBTRACT", 1.0, pressed, x=15, y=-21), x=16, y=-16
+    )
+    outward = t.vmath("SCALE", smooth, -1.0, x=16, y=-16)
+    hit = t.node(
+        "GeometryNodeRaycast",
+        16.5,
+        -16,
+        {
+            "Target Geometry": colliders,
+            "Source Position": t.vmath("ADD", world, offset, x=16, y=-15),
+            "Ray Direction": outward,
+            "Ray Length": bulge,
+        },
+    ).outputs
+    bulge = t.node(
+        "GeometryNodeSwitch",
+        17,
+        -14,
+        {"Switch": hit["Is Hit"], "False": bulge, "True": hit["Hit Distance"]},
+        input_type="FLOAT",
+    ).outputs[0]
+    bulged = t.vmath("ADD", offset, t.vmath("SCALE", outward, bulge, x=17, y=-15), x=17.5, y=-13)
+    return t.store(geometry, ".imprint_offset", "FLOAT_VECTOR", bulged, 18, -11)
+
+
+def in_box(t, box, position, margin, x, y):
+    """Whether the position is in the bounding box grown by the margin"""
+    low = t.vmath(
+        "SUBTRACT", position, t.vmath("SUBTRACT", box["Min"], margin, x=x, y=y), x=x + 1, y=y
+    )
+    high = t.vmath(
+        "SUBTRACT", t.vmath("ADD", box["Max"], margin, x=x, y=y - 1), position, x=x + 1, y=y - 1
+    )
+    xyz = t.node(
+        "ShaderNodeSeparateXYZ", x + 2, y, {0: t.vmath("MINIMUM", low, high, x=x + 1.5, y=y)}
+    ).outputs
+    return t.math(
+        "GREATER_THAN",
+        t.math(
+            "MINIMUM",
+            t.math("MINIMUM", xyz["X"], xyz["Y"], x=x + 3, y=y),
+            xyz["Z"],
+            x=x + 4,
+            y=y,
+        ),
+        0.0,
+        x=x + 5,
+        y=y,
+    )
+
+
+def keep_pressed(t, offset, inward, depth, x, y):
+    """Offset moving the pressed points at least as deep along their inward normal"""
+    short = t.math(
+        "MAXIMUM",
+        t.math("SUBTRACT", depth, t.vmath("DOT_PRODUCT", offset, inward, x=x, y=y), x=x + 0.5, y=y),
+        0.0,
+        x=x + 1,
+        y=y,
+    )
+    return t.vmath("ADD", offset, t.vmath("SCALE", inward, short, x=x + 1, y=y - 1), x=x + 1.5, y=y)
 
 
 def shallowest_neighbor(t, value, x, y):
