@@ -2,6 +2,9 @@ import bpy
 from mathutils import Vector
 from mathutils.kdtree import KDTree
 
+# Node with the settings of a shader effect, in the group shared by its materials
+SETTINGS = "MustardUI Settings"
+
 
 def effects_available():
     return bpy.app.version >= (5, 2, 0)
@@ -111,8 +114,41 @@ def shader_nodes(material, node_group):
     ]
 
 
+def settings_group(node_group):
+    """Group with the shader node group holding its settings, shared by the materials"""
+    tree = bpy.data.node_groups.get(f"{node_group} Settings")
+    if tree is not None:
+        return tree
+    source = bpy.data.node_groups[node_group]
+    tree = bpy.data.node_groups.new(f"{node_group} Settings", "ShaderNodeTree")
+    group_input = tree.nodes.new("NodeGroupInput")
+    group_output = tree.nodes.new("NodeGroupOutput")
+    settings = tree.nodes.new("ShaderNodeGroup")
+    settings.name = SETTINGS
+    settings.node_tree = source
+    # The shader and the inputs linked in each material pass through
+    for item in source.interface.items_tree:
+        if item.item_type != "SOCKET" or not (
+            item.in_out == "OUTPUT" or item.socket_type == "NodeSocketShader" or item.hide_value
+        ):
+            continue
+        socket = tree.interface.new_socket(
+            item.name, in_out=item.in_out, socket_type=item.socket_type
+        )
+        socket.hide_value = item.hide_value
+        if item.in_out == "OUTPUT":
+            tree.links.new(
+                settings.outputs[item.identifier], group_output.inputs[socket.identifier]
+            )
+            continue
+        if hasattr(item, "default_value"):
+            socket.default_value = item.default_value
+        tree.links.new(group_input.outputs[socket.identifier], settings.inputs[item.identifier])
+    return tree
+
+
 def wrap_shader(material, node_group):
-    """Group nodes of the shader node group added between the surface shaders and the outputs"""
+    """Group nodes of the shared settings added between the surface shaders and the outputs"""
     nodes, links = material.node_tree.nodes, material.node_tree.links
     groups = []
     for output in [n for n in nodes if n.type == "OUTPUT_MATERIAL"]:
@@ -120,7 +156,7 @@ def wrap_shader(material, node_group):
         if not surface.is_linked:
             continue
         group = nodes.new("ShaderNodeGroup")
-        group.node_tree = bpy.data.node_groups[node_group]
+        group.node_tree = settings_group(node_group)
         group.location = output.location
         output.location.x += 250
         links.new(surface.links[0].from_socket, group.inputs["Shader"])

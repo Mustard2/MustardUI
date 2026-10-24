@@ -262,13 +262,20 @@ class TestHexDissolve(BlenderTestCase):
     # The surface shaders are wrapped by the effect, bound to the growing Control
     def test_hex_dissolve(self):
         bpy.ops.mustardui.model_toolkit_hex_dissolve(duration=10)
-        controls = set()
+        controls, groups = set(), set()
         for material in (self.cloth, self.leather):
             group = self.surface(material)
-            self.assertEqual(group.node_tree.name, "MustardUI Hex Dissolve")
+            groups.add(group.node_tree)
             self.assertEqual(group.inputs["Shader"].links[0].from_node.type, "BSDF_PRINCIPLED")
             controls.add(group.inputs["Control"].links[0].from_node.object)
         self.assertEqual(len(controls), 1)
+        # The materials share the settings, held by the effect node in their group
+        (group,) = groups
+        self.assertEqual(group.name, "MustardUI Hex Dissolve Settings")
+        settings = group.nodes[effect.SETTINGS]
+        self.assertEqual(settings.node_tree.name, "MustardUI Hex Dissolve")
+        self.assertTrue(settings.inputs["Control"].is_linked)
+        self.assertFalse(settings.inputs["Edge Width"].is_linked)
         control = controls.pop()
         self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_HEX_DISSOLVE")
         self.assertLess(control.scale.x, 0.01)
@@ -301,7 +308,9 @@ class TestHexDissolve(BlenderTestCase):
 
         bpy.ops.mustardui.model_toolkit_remove_hex_dissolve()
         self.assertEqual(self.surface(self.cloth).type, "BSDF_PRINCIPLED")
-        self.assertEqual(self.surface(self.leather).node_tree.name, "MustardUI Hex Dissolve")
+        self.assertEqual(
+            self.surface(self.leather).node_tree.name, "MustardUI Hex Dissolve Settings"
+        )
         self.assertEqual(len(self.leather.node_tree.nodes), nodes)
         controls = [x for x in bpy.data.objects if x.MustardUI_tools_creators_type]
         self.assertEqual(len(controls), 1)
@@ -1409,7 +1418,7 @@ class TestWet(BlenderTestCase):
         self.assertEqual(data.attributes["wet"].data_type, "FLOAT_COLOR")
 
         output = self.skin.node_tree.nodes["Material Output"].inputs["Surface"].links[0].from_node
-        self.assertEqual(output.node_tree.name, "MustardUI Wet Film")
+        self.assertEqual(output.node_tree.name, "MustardUI Wet Film Settings")
         self.assertEqual(output.inputs["Shader"].links[0].from_node.type, "BSDF_PRINCIPLED")
 
         drops = self.drops(self.body)
