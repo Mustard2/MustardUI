@@ -7,6 +7,7 @@ from . import (
     ops_marks,
     ops_ripple,
     ops_select_object,
+    ops_shatter,
     ops_squish,
     ops_sticky_liquid,
     ops_sticky_strands,
@@ -22,6 +23,7 @@ def register():
     ops_fireball.register()
     ops_hex_dissolve.register()
     ops_cloth_tear.register()
+    ops_shatter.register()
     ops_wrap.register()
     ops_sticky_strands.register()
     ops_sticky_liquid.register()
@@ -39,6 +41,7 @@ def unregister():
     ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()
     ops_wrap.unregister()
+    ops_shatter.unregister()
     ops_cloth_tear.unregister()
     ops_hex_dissolve.unregister()
     ops_fireball.unregister()

@@ -40,6 +40,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_tear.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_shatter.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
 
@@ -2017,6 +2018,240 @@ class TestImprints(BlenderTestCase):
         self.assertEqual(stone.users_collection, (bpy.context.scene.collection,))
         self.assertFalse(self.snow.node_tree.nodes["Principled BSDF"].inputs[0].is_linked)
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_imprints.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestShatter(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        # A 2 x 0.2 x 2 m wall standing on the ground, away from the model
+        mesh = bpy.data.meshes.new("Wall")
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(2.0, 0.2, 2.0), verts=bm.verts)
+        bm.to_mesh(mesh)
+        bm.free()
+        self.brick = bpy.data.materials.new("Brick")
+        mesh.materials.append(self.brick)
+        self.wall = new_object("Wall", mesh)
+        self.wall.location = (3.0, 0.0, 1.0)
+        # A ball thrown through it at 3 m/s, hitting it at frame 12
+        self.ball = self.sphere("Ball", 0.15)
+        for frame, y in ((25, 1.5), (1, -1.5)):
+            self.ball.location = (3.1, y, 1.1)
+            self.ball.keyframe_insert("location", frame=frame)
+        self.scene.frame_set(1)
+
+    def sphere(self, name, radius):
+        mesh = bpy.data.meshes.new(name)
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=radius)
+        bm.to_mesh(mesh)
+        bm.free()
+        return new_object(name, mesh)
+
+    def add(self, obj, extras=False, **settings):
+        """Shatter of the object, without Debris and Smoke unless asked"""
+        set_active(obj)
+        if obj == self.wall:
+            self.ball.select_set(True)
+        bpy.ops.mustardui.model_toolkit_shatter(**settings)
+        modifier = obj.modifiers["Shatter"]
+        if not extras:
+            effect.modifier_input(modifier, "Debris").value = False
+            effect.modifier_input(modifier, "Smoke").value = False
+            obj.update_tag()
+        return modifier
+
+    def evaluate(self, obj):
+        """World positions of the evaluated vertices, faces, materials and volume"""
+        data = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3) + np.array(obj.matrix_world.translation)
+        bm = bmesh.new()
+        bm.from_mesh(data)
+        volume = bm.calc_volume(signed=True)
+        bm.free()
+        return co, len(data.polygons), [x and x.original for x in data.materials], volume
+
+    # The ball breaks a hole in the wall, the pieces around it falling on the floor and resting
+    # there, the others staying, all the pieces together keeping the volume of the wall
+    def test_shatter(self):
+        modifier = self.add(self.wall, kind="STONE")
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.ball])
+        self.assertEqual(effect.modifier_input(modifier, "Floor").value, 0.0)
+
+        faces = []
+        for frame in range(1, 81):
+            self.scene.frame_set(frame)
+            co, count, materials, volume = self.evaluate(self.wall)
+            faces.append(count)
+            self.assertTrue(np.isfinite(co).all(), f"frame {frame}")
+            self.assertAlmostEqual(volume, 0.8, delta=1e-3, msg=f"frame {frame}")
+            if frame == 13:
+                top = co[co[:, 2] > 1.9]
+            if frame == 79:
+                before = co
+        self.assertEqual(faces[:10], [6] * 10)
+        self.assertGreater(faces[-1], 100)
+        self.assertEqual(materials, [self.brick, None])
+        self.assertGreater(co[:, 2].min(), -0.003)
+        np.testing.assert_allclose(co, before, atol=1e-4)
+        # The top of the wall, far from the hole
+        np.testing.assert_allclose(np.sort(co[co[:, 2] > 1.9], axis=0), np.sort(top, axis=0))
+        # Some pieces passed through the wall
+        self.assertGreater(co[:, 1].max(), 0.3)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # An open mesh, as a window pane, breaks keeping its area
+    def test_open_mesh(self):
+        mesh = bpy.data.meshes.new("Pane")
+        mesh.from_pydata([(x, 0.0, z) for z in (0.5, 1.5) for x in (2.5, 3.5)], [], [(0, 1, 3, 2)])
+        pane = new_object("Pane", mesh)
+        set_active(pane)
+        self.ball.select_set(True)
+        bpy.ops.mustardui.model_toolkit_shatter(kind="GLASS")
+        effect.modifier_input(pane.modifiers["Shatter"], "Debris").value = False
+        pane.update_tag()
+        for frame in range(1, 40):
+            self.scene.frame_set(frame)
+            data = pane.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            area = sum(x.area for x in data.polygons)
+            self.assertAlmostEqual(area, 1.0, delta=1e-3, msg=f"frame {frame}")
+        self.assertGreater(len(data.polygons), 20)
+
+    # Too weak a hit leaves the wall whole
+    def test_strength(self):
+        effect.modifier_input(self.add(self.wall), "Strength").value = 10.0
+        self.wall.update_tag()
+        for frame in range(1, 30):
+            self.scene.frame_set(frame)
+        self.assertEqual(self.evaluate(self.wall)[1], 6)
+
+    # Without other selected meshes, the model body breaks it, and the floor: a closed glass
+    # dropped on the ground breaks into pieces scattered around and resting there
+    def test_drop(self):
+        glass = self.sphere("Glass", 0.1)
+        bpy.ops.object.select_all(action="DESELECT")
+        for frame, z in ((21, -1.0), (1, 1.0)):
+            glass.location = (-3.0, 0.0, z)
+            glass.keyframe_insert("location", frame=frame)
+        modifier = self.add(glass, kind="GLASS")
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [bpy.data.objects["Tester Body"]])
+
+        whole = self.evaluate(glass)[3]
+        for frame in range(1, 61):
+            self.scene.frame_set(frame)
+            co, count, _, volume = self.evaluate(glass)
+            self.assertAlmostEqual(volume, whole, delta=whole * 1e-3, msg=f"frame {frame}")
+        self.assertGreater(count, 200)
+        self.assertGreater(co[:, 2].min(), -0.003)
+        # Scattered, not only where it landed
+        self.assertGreater(np.abs(co[:, :2] - (-3.0, 0.0)).max(), 0.2)
+
+    # The pieces of a dropped glass overlap each other less with Piece Collisions
+    def test_piece_collisions(self):
+        glass = self.sphere("Glass", 0.1)
+        bpy.ops.object.select_all(action="DESELECT")
+        for frame, z in ((21, -1.0), (1, 1.0)):
+            glass.location = (-3.0, 0.0, z)
+            glass.keyframe_insert("location", frame=frame)
+        modifier = self.add(glass, kind="GLASS")
+        self.assertTrue(effect.modifier_input(modifier, "Piece Collisions").value)
+
+        overlaps = []
+        for enabled in (True, False):
+            effect.modifier_input(modifier, "Piece Collisions").value = enabled
+            glass.update_tag()
+            for frame in range(1, 49):
+                self.scene.frame_set(frame)
+            data = glass.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            bm = bmesh.new()
+            bm.from_mesh(data)
+            trees = []
+            seen = set()
+            for face in bm.faces:
+                if face in seen:
+                    continue
+                # The faces of the piece
+                piece, stack = {face}, [face]
+                while stack:
+                    for edge in stack.pop().edges:
+                        for other in edge.link_faces:
+                            if other not in piece:
+                                piece.add(other)
+                                stack.append(other)
+                seen |= piece
+                verts = list({v for f in piece for v in f.verts})
+                index = {v: i for i, v in enumerate(verts)}
+                trees.append(
+                    BVHTree.FromPolygons(
+                        [v.co.copy() for v in verts], [[index[v] for v in f.verts] for f in piece]
+                    )
+                )
+            bm.free()
+            overlaps.append(
+                sum(bool(a.overlap(b)) for i, a in enumerate(trees) for b in trees[i + 1 :])
+            )
+        self.assertLess(overlaps[0] * 2, overlaps[1])
+
+    # Debris chips are thrown from the cuts and rest on the floor, and dust rises as a volume
+    def test_debris_smoke(self):
+        modifier = self.add(self.wall, extras=True, kind="STONE")
+        self.assertTrue(effect.modifier_input(modifier, "Debris").value)
+        self.assertTrue(effect.modifier_input(modifier, "Smoke").value)
+        dust = effect.modifier_input(modifier, "Smoke Material").value
+        self.assertEqual(dust.name, "MustardUI Shatter Dust")
+
+        faces = {}
+        for enabled in (True, False):
+            effect.modifier_input(modifier, "Debris").value = enabled
+            self.wall.update_tag()
+            for frame in range(1, 61):
+                self.scene.frame_set(frame)
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            geometry = self.wall.evaluated_get(depsgraph).evaluated_geometry()
+            self.assertIsNotNone(geometry.volume)
+            co, faces[enabled], materials, _ = self.evaluate(self.wall)
+            self.assertGreater(co[:, 2].min(), -0.003)
+        # Chips of 20 faces
+        self.assertGreater(faces[True] - faces[False], 20 * 100)
+        self.assertEqual(materials, [self.brick, None])
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        effect.modifier_input(modifier, "Smoke").value = False
+        self.wall.update_tag()
+        self.scene.frame_set(60)
+        geometry = self.wall.evaluated_get(
+            bpy.context.evaluated_depsgraph_get()
+        ).evaluated_geometry()
+        self.assertIsNone(geometry.volume)
+
+    # The inner faces have the Material, else the one of the closest outer face
+    def test_inner_faces(self):
+        modifier = self.add(self.wall)
+        stone = bpy.data.materials.new("Stone")
+        effect.modifier_input(modifier, "Inner Faces").value = True
+        effect.modifier_input(modifier, "Material").value = stone
+        self.wall.update_tag()
+        for frame in range(1, 14):
+            self.scene.frame_set(frame)
+        data = self.wall.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        used = {data.materials[x.material_index].original for x in data.polygons}
+        self.assertEqual(used, {self.brick, stone})
+
+    # The Colliders collection is removed with the effect, keeping its objects in the scene
+    def test_remove(self):
+        name = effect.modifier_input(self.add(self.wall), "Colliders").value.name
+        bpy.ops.mustardui.model_toolkit_remove_shatter()
+        self.assertNotIn("Shatter", self.wall.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertIn(self.ball, list(self.scene.collection.objects))
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

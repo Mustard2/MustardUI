@@ -14,6 +14,7 @@ from ..model_toolkit.effects import (
     ops_imprints,
     ops_marks,
     ops_ripple,
+    ops_shatter,
     ops_sticky_liquid,
     ops_sticky_strands,
     ops_wet,
@@ -42,6 +43,7 @@ EFFECTS = (
     ("Disintegration", "PARTICLES", ops_disintegration.NODE_GROUP, None),
     ("Hex Dissolve", "MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP),
     ("Cloth Tear", "MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
+    ("Shatter", "MOD_EXPLODE", ops_shatter.NODE_GROUP, None),
     ("Rope", "CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None),
     ("Tape", "MOD_THICKNESS", ops_wrap.Tape.node_group, None),
     ("Fireball", "LIGHT_SUN", ops_fireball.NODE_GROUP, None),
@@ -356,6 +358,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
             "mustardui.model_toolkit_cloth_rip", text="Cloth Rip", icon="EMPTY_SINGLE_ARROW"
         )
         row.operator("mustardui.model_toolkit_remove_cloth_tear", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_shatter", text="Shatter", icon="MOD_EXPLODE")
+        row.operator("mustardui.model_toolkit_remove_shatter", text="", icon="X")
 
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
