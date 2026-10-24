@@ -14,6 +14,9 @@ NODE_GROUP = "MustardUI Cloth Tear"
 COLLISION = 0.002
 # Distance from the top of the cloth of the parts still holding it, when cut off
 SUPPORT = 0.02
+# Pleats of the cloth gathered by a Pull: height, in Pull radii, and frequency around it
+CRUMPLE = 0.15
+CRUMPLE_SCALE = 8.0
 # XPBD compliance of the bending pairs at half Bending, in m/N with points of 1 kg
 BEND_COMPLIANCE = 3e-5
 
@@ -274,6 +277,18 @@ def build_node_group():
         max_value=1.0,
         description="Vertex Group holding the cloth: the parts cut off from it fall. "
         "Without it, the parts cut off from the top of the cloth fall",
+    )
+    add_input(
+        ng,
+        "Shape",
+        "NodeSocketFloat",
+        panel,
+        default_value=0.5,
+        min_value=0.0,
+        max_value=1.0,
+        subtype="FACTOR",
+        description="Hold of the released cloth on the shape of the outfit, not to sag, less and "
+        "less towards the tear and the Pulls",
     )
     add_input(
         ng,
@@ -1037,6 +1052,7 @@ def build_node_group():
     threads = t.node(
         "GeometryNodeSetPosition", 5, -8, {"Geometry": threads, "Position": tear["Position"]}
     ).outputs[0]
+    threads = t.store(threads, ".cloth_tear_root", "FLOAT_VECTOR", tear["Position"], 5.2, -8)
     thread = t.node("GeometryNodeCaptureAttribute", 5, -8, {"Geometry": threads})
     thread.capture_items.new("INT", "Thread")
     t.connect(t.node("GeometryNodeInputIndex", 4, -10).outputs[0], thread.inputs["Thread"])
@@ -1072,6 +1088,121 @@ def build_node_group():
     threads = t.node(
         "GeometryNodeSetPosition", 9, -8, {"Geometry": duplicate["Geometry"], "Offset": offset}
     ).outputs[0]
+    # Not through the cloth, staying on the side of their root, nor in the Colliders
+    root = t.attribute(".cloth_tear_root", "FLOAT_VECTOR", 9, -16)
+    normal = t.node("GeometryNodeInputNormal", 9, -17).outputs[0]
+    for i, (surface, two_sided) in enumerate(
+        (
+            (cut, True),
+            (
+                t.node(
+                    "GeometryNodeRealizeInstances",
+                    9,
+                    -19,
+                    {
+                        "Geometry": t.node(
+                            "GeometryNodeCollectionInfo",
+                            8,
+                            -19,
+                            {"Collection": inputs["Colliders"]},
+                            transform_space="RELATIVE",
+                        ).outputs[0]
+                    },
+                ).outputs[0],
+                False,
+            ),
+        )
+    ):
+        y = -16 - 5 * i
+        nearest, outward = (
+            t.node(
+                "GeometryNodeSampleNearestSurface",
+                10,
+                y - j,
+                {"Mesh": surface, "Value": value, "Sample Position": position},
+                data_type="FLOAT_VECTOR",
+            ).outputs["Value"]
+            for j, value in enumerate((position, normal))
+        )
+        outward = t.vmath("NORMALIZE", outward, x=11, y=y - 1)
+        away = t.vmath("SUBTRACT", position, nearest, x=11, y=y)
+        side = t.vmath("DOT_PRODUCT", away, outward, x=12, y=y)
+        along = t.vmath(
+            "LENGTH",
+            t.vmath(
+                "SUBTRACT", away, t.vmath("SCALE", outward, side, x=12, y=y - 2), x=13, y=y - 2
+            ),
+            x=14,
+            y=y - 2,
+        )
+        if two_sided:
+            # The root clearly off that surface, not on the cloth next to it
+            root_side = t.vmath(
+                "DOT_PRODUCT",
+                t.vmath("SUBTRACT", root, nearest, x=11, y=y - 3),
+                outward,
+                x=12,
+                y=y - 3,
+            )
+            keep = t.math("SIGN", root_side, x=13, y=y - 3)
+            hit = t.math(
+                "MULTIPLY",
+                t.math(
+                    "LESS_THAN", t.math("MULTIPLY", side, keep, x=13, y=y), COLLISION, x=14, y=y
+                ),
+                t.math(
+                    "GREATER_THAN",
+                    t.math("ABSOLUTE", root_side, x=13, y=y - 4),
+                    COLLISION,
+                    x=14,
+                    y=y - 4,
+                ),
+                x=15,
+                y=y,
+            )
+        else:
+            keep = 1.0
+            # Without Colliders, nothing to sample
+            hit = t.math(
+                "MULTIPLY",
+                t.math("LESS_THAN", side, COLLISION, x=14, y=y),
+                t.math(
+                    "GREATER_THAN",
+                    t.node(
+                        "GeometryNodeAttributeDomainSize", 13, y - 4, {"Geometry": surface}
+                    ).outputs["Face Count"],
+                    0.0,
+                    x=14,
+                    y=y - 4,
+                ),
+                x=15,
+                y=y,
+            )
+        hit = t.math(
+            "MULTIPLY", hit, t.math("LESS_THAN", along, COLLISION, x=15, y=y - 2), x=16, y=y
+        )
+        threads = t.node(
+            "GeometryNodeSetPosition",
+            9.3 + 0.2 * i,
+            -8,
+            {
+                "Geometry": threads,
+                "Selection": hit,
+                "Position": t.vmath(
+                    "ADD",
+                    nearest,
+                    t.vmath(
+                        "SCALE",
+                        outward,
+                        t.math("MULTIPLY", keep, COLLISION, x=15, y=y - 3),
+                        x=16,
+                        y=y - 3,
+                    ),
+                    x=17,
+                    y=y - 3,
+                ),
+            },
+        ).outputs[0]
     threads = t.node(
         "GeometryNodePointsToCurves",
         10,
@@ -1155,7 +1286,7 @@ def arrange_interface(ng):
         ("Threads", "Tufts", True, ("Fibers", "Spread", "Randomness", "Droop", "Grain")),
         ("Threads", "Bridges", True, ("Share", "Bridge Length")),
         ("Physics", "Pieces", False, ("Piece Size", "Rip Out", "Push", "Lifetime")),
-        ("Physics", "Released Cloth", False, ("Release", "Anchor")),
+        ("Physics", "Released Cloth", False, ("Release", "Anchor", "Shape")),
         ("Physics", "Ripping", False, ("Reach", "Strength", "In Hand")),
         ("Physics", "Collisions", False, ("Colliders", "Floor", "Friction", "Self Collision")),
         ("Physics", "Motion", False, ("Gravity", "Drag", "Damping", "Bending", "Time Scale")),
@@ -2065,20 +2196,80 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
         y=-8,
     )
     gather = t.node("ShaderNodeMapRange", 8, -7, {0: away, 2: reach, 3: 1.0, 4: 0.3}).outputs[0]
+    # The rim kept on the cloth around, the inside gathered and crumpled in folds, the most
+    # halfway out
+    radius = t.vmath("LENGTH", offset, x=5, y=-10)
+    rim = t.node(
+        "ShaderNodeMapRange", 6, -10, {0: radius, 1: 0.5, 2: 1.0}, interpolation_type="SMOOTHSTEP"
+    ).outputs[0]
+    gather = t.math(
+        "MULTIPLY_ADD", t.math("SUBTRACT", 1.0, gather, x=7, y=-11), rim, gather, x=8, y=-11
+    )
+    folds = t.math(
+        "MULTIPLY",
+        t.math("SUBTRACT", 1.0, gather, x=7, y=-12),
+        t.math("MULTIPLY", radius, t.math("SUBTRACT", 1.0, radius, x=6, y=-13), x=7, y=-13),
+        x=8,
+        y=-12,
+    )
+    # Pleats along the normal of the cloth, around the center as gathered fabric, their height in
+    # Pull radii
+    pleats = t.math(
+        "MULTIPLY",
+        t.math(
+            "SUBTRACT",
+            t.node(
+                "ShaderNodeTexNoise",
+                5,
+                -9,
+                {
+                    "Vector": t.vmath("NORMALIZE", offset, x=4, y=-9),
+                    "Scale": CRUMPLE_SCALE,
+                    "Detail": 0.0,
+                },
+                noise_dimensions="3D",
+            ).outputs["Fac"],
+            0.5,
+            x=6,
+            y=-9,
+        ),
+        t.math(
+            "MULTIPLY",
+            t.math("MULTIPLY", folds, 8.0 * CRUMPLE, x=7, y=-13),
+            t.math("MULTIPLY", reach, 0.5, x=7, y=-14),
+            x=8,
+            y=-13,
+        ),
+        x=8,
+        y=-9,
+    )
+    crumple = t.vmath(
+        "SCALE",
+        t.node("GeometryNodeInputNormal", 7, -10).outputs[0],
+        pleats,
+        x=9,
+        y=-9,
+    )
     held = t.node(
         "FunctionNodeTransformPoint",
         9,
         -6,
         {
-            "Vector": t.node(
-                "FunctionNodeTransformPoint",
-                8,
-                -6,
-                {
-                    "Vector": t.vmath("SCALE", offset, gather, x=7, y=-7),
-                    "Transform": holding,
-                },
-            ).outputs[0],
+            "Vector": t.vmath(
+                "ADD",
+                t.node(
+                    "FunctionNodeTransformPoint",
+                    8,
+                    -6,
+                    {
+                        "Vector": t.vmath("SCALE", offset, gather, x=7, y=-7),
+                        "Transform": holding,
+                    },
+                ).outputs[0],
+                crumple,
+                x=8.5,
+                y=-6,
+            ),
             "Transform": to_world,
         },
     ).outputs[0]
@@ -2754,7 +2945,33 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
     t.connect(couple(t, constrained, free, 25.5, -32), iterations_out.inputs["Geometry"])
     pieces = iterations_out.outputs["Geometry"]
     # The released cloth pulled back to the body the less it is simulated, as a cube for the
-    # pull of every step to stay low away from the outer edge
+    # pull of every step to stay low away from the outer edge, and by the Shape, per frame,
+    # fading to the tear
+    outer = t.math(
+        "SUBTRACT", 1.0, t.attribute(".cloth_tear_influence", "FLOAT", 35, -52), x=36, y=-52
+    )
+    pull = t.math("POWER", outer, 3.0, x=36.5, y=-52)
+    shape = t.math(
+        "SUBTRACT",
+        1.0,
+        t.math(
+            "POWER",
+            t.math("SUBTRACT", 1.0, inputs["Shape"], x=35, y=-54),
+            t.math("DIVIDE", 1.0, inputs["Substeps"], x=35, y=-55),
+            x=36,
+            y=-54,
+        ),
+        x=36.5,
+        y=-54,
+    )
+    pull = t.math(
+        "MULTIPLY_ADD",
+        t.math("SUBTRACT", 1.0, pull, x=37, y=-53),
+        t.math("MULTIPLY", shape, outer, x=37, y=-54),
+        pull,
+        x=37.5,
+        y=-53,
+    )
     pieces = t.node(
         "GeometryNodeSetPosition",
         26.2,
@@ -2777,20 +2994,8 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
                     x=36,
                     y=-51,
                 ),
-                t.math(
-                    "POWER",
-                    t.math(
-                        "SUBTRACT",
-                        1.0,
-                        t.attribute(".cloth_tear_influence", "FLOAT", 35, -52),
-                        x=36,
-                        y=-52,
-                    ),
-                    3.0,
-                    x=36.5,
-                    y=-52,
-                ),
-                x=37,
+                pull,
+                x=38,
                 y=-51,
             ),
         },
