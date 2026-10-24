@@ -11,6 +11,7 @@ from ..model_toolkit.effects import (
     ops_disintegration,
     ops_fireball,
     ops_hex_dissolve,
+    ops_imprints,
     ops_marks,
     ops_ripple,
     ops_sticky_liquid,
@@ -37,6 +38,7 @@ EFFECTS = (
     ("Sticky Liquid", "MOD_FLUIDSIM", ops_sticky_liquid.NODE_GROUP, None),
     ("Wet", "MATFLUID", ops_wet.NODE_GROUP, ops_wet.FILM),
     ("Marks", "TPAINT_HLT", ops_marks.NODE_GROUP, None),
+    ("Imprints", "MOD_DISPLACE", ops_imprints.NODE_GROUP, None),
     ("Disintegration", "PARTICLES", ops_disintegration.NODE_GROUP, None),
     ("Hex Dissolve", "MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP),
     ("Cloth Tear", "MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
@@ -337,6 +339,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.separator()
         row.operator("mustardui.model_toolkit_marks", text="Marks", icon="TPAINT_HLT")
         row.operator("mustardui.model_toolkit_remove_marks", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_imprints", text="Imprints", icon="MOD_DISPLACE")
+        row.operator("mustardui.model_toolkit_remove_imprints", text="", icon="X")
 
         layout.separator()
 

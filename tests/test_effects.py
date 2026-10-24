@@ -41,6 +41,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -1825,6 +1826,147 @@ class TestMarks(BlenderTestCase):
         self.assertFalse([n for n in self.skin.node_tree.nodes if n.type == "GROUP"])
         self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_marks.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestImprints(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.body = bpy.data.objects["Tester Body"]
+        # A 2 m ground the body cube sinks 3 cm into
+        mesh = bpy.data.meshes.new("Ground")
+        mesh.from_pydata([(x, y, 0.0) for y in (-1, 1) for x in (-1, 1)], [], [(0, 1, 3, 2)])
+        self.ground = new_object("Ground", mesh)
+        self.ground.location.z = 0.53
+        self.snow = bpy.data.materials.new("Snow")
+        mesh.materials.append(self.snow)
+
+    def add(self, **settings):
+        bpy.ops.mustardui.model_toolkit_imprints(**settings)
+        modifier = self.ground.modifiers["Imprints"]
+        for name in ("Noise", "Smooth"):
+            effect.modifier_input(modifier, name).value = 0
+        self.ground.update_tag()
+        return modifier
+
+    def heights(self):
+        """World positions of the evaluated points, their height off the ground and tint amount"""
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3) @ np.array(self.ground.matrix_world.to_3x3()).T
+        co += self.ground.matrix_world.translation
+        imprint = np.empty(len(data.vertices) * 4)
+        data.attributes["imprint"].data.foreach_get("color", imprint)
+        return co, co[:, 2] - 0.53, 1.0 - imprint.reshape(-1, 4)[:, 3]
+
+    # The model body sinks into the ground, which is pushed up around it, tinting its material
+    def test_imprints(self):
+        set_active(self.ground)
+        modifier = self.add(kind="SNOW")
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.body])
+        self.assertIn(colliders, list(bpy.context.scene.collection.children))
+        # Subdivided to about 1 cm
+        self.assertEqual(effect.modifier_input(modifier, "Subdivisions").value, 8)
+
+        co, height, amount = self.heights()
+        side = np.abs(co[:, :2]).max(axis=1)
+        np.testing.assert_allclose(height[side < 0.45], -0.03, atol=1e-4)
+        rim = height[(side > 0.5) & (side < 0.53)]
+        self.assertGreater(rim.min(), 0.0)
+        self.assertGreater(rim.max(), 0.003)
+        np.testing.assert_allclose(height[side > 0.7], 0.0, atol=1e-6)
+        # Fully tinted from 40% of the Depth
+        np.testing.assert_allclose(amount[side < 0.45], 0.03 / (0.08 * 0.4), atol=1e-5)
+        np.testing.assert_allclose(amount[side > 0.7], 0.0, atol=1e-6)
+
+        bsdf = self.snow.node_tree.nodes["Principled BSDF"]
+        tint = bsdf.inputs["Base Color"].links[0].from_node
+        self.assertEqual(tint.node_tree.name, "MustardUI Imprints Tint")
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The other selected meshes are imprinted instead of the body, in world space
+    def test_colliders(self):
+        stone = new_mesh_object("Stone", size=0.1, z=0.6)
+        self.ground.scale = (2.0, 2.0, 0.5)
+        self.ground.rotation_euler.z = 0.3
+        set_active(stone)
+        self.ground.select_set(True)
+        bpy.context.view_layer.objects.active = self.ground
+        modifier = self.add(kind="SAND")
+        effect.modifier_input(modifier, "Rim").value = 0.0
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [stone])
+
+        co, height, _ = self.heights()
+        side = np.abs(co[:, :2]).max(axis=1)
+        np.testing.assert_allclose(height[side < 0.09], -0.03, atol=1e-4)
+        np.testing.assert_allclose(height[side > 0.15], 0.0, atol=1e-6)
+
+    # A single point the rays pass by through a gap of the Colliders is imprinted as its neighbors
+    def test_gap(self):
+        cuts = (-0.1, -0.001, 0.001, 0.1)
+        verts = [(x, y, 0.5) for y in cuts for x in cuts]
+        faces = [
+            (i + 4 * j, i + 1 + 4 * j, i + 5 + 4 * j, i + 4 + 4 * j)
+            for j in range(3)
+            for i in range(3)
+        ]
+        mesh = bpy.data.meshes.new("Plate")
+        mesh.from_pydata(verts, [], [f for f in faces if f[0] != 5])
+        plate = new_object("Plate", mesh)
+        set_active(plate)
+        self.ground.select_set(True)
+        bpy.context.view_layer.objects.active = self.ground
+        self.add()
+        co, height, _ = self.heights()
+        center = np.linalg.norm(co[:, :2], axis=1).argmin()
+        self.assertLess(np.linalg.norm(co[center, :2]), 1e-6)
+        self.assertAlmostEqual(height[center], -0.03, places=4)
+
+    # Lasting imprints stay after the body leaves, filling back in the Recovery
+    def test_lasting(self):
+        set_active(self.ground)
+        modifier = self.add(kind="MUD")
+        scene = bpy.context.scene
+        start = scene.frame_current
+        self.body.keyframe_insert("location", frame=start + 2)
+        self.body.location.z += 0.5
+        self.body.keyframe_insert("location", frame=start + 4)
+        for frame in range(start, start + 8):
+            scene.frame_set(frame)
+        co, height, _ = self.heights()
+        side = np.abs(co[:, :2]).max(axis=1)
+        np.testing.assert_allclose(height[side < 0.45], -0.03, atol=1e-4)
+
+        effect.modifier_input(modifier, "Lasting").value = False
+        self.ground.update_tag()
+        np.testing.assert_allclose(self.heights()[1], 0.0, atol=1e-6)
+
+        effect.modifier_input(modifier, "Lasting").value = True
+        effect.modifier_input(modifier, "Recovery").value = 0.1
+        self.ground.update_tag()
+        for frame in range(start, start + 12):
+            scene.frame_set(frame)
+        np.testing.assert_allclose(self.heights()[1], 0.0, atol=1e-6)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The Colliders collection goes with the effect, keeping the objects only in it in the scene
+    def test_remove(self):
+        set_active(self.ground)
+        modifier = self.add()
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        name = colliders.name
+        stone = new_mesh_object("Stone", colliders)
+        bpy.ops.mustardui.model_toolkit_remove_imprints()
+        self.assertNotIn("Imprints", self.ground.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertIn(self.body, list(bpy.context.scene.objects))
+        self.assertEqual(stone.users_collection, (bpy.context.scene.collection,))
+        self.assertFalse(self.snow.node_tree.nodes["Principled BSDF"].inputs[0].is_linked)
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_imprints.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
