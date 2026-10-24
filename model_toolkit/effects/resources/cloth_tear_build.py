@@ -14,6 +14,8 @@ NODE_GROUP = "MustardUI Cloth Tear"
 COLLISION = 0.002
 # Distance from the top of the cloth of the parts still holding it, when cut off
 SUPPORT = 0.02
+# XPBD compliance of the bending pairs at half Bending, in m/N with points of 1 kg
+BEND_COMPLIANCE = 3e-5
 
 
 def build_node_group():
@@ -248,10 +250,11 @@ def build_node_group():
     )
     add_input(
         ng,
-        "Collider",
-        "NodeSocketObject",
+        "Colliders",
+        "NodeSocketCollection",
         panel,
-        description="Mesh the pieces collide with, as the body",
+        description="Collection of the meshes the pieces and the released cloth collide with, as "
+        "the body",
     )
     add_input(
         ng,
@@ -375,7 +378,7 @@ def build_node_group():
         min_value=0.0,
         max_value=2.0,
         description="Friction coefficient of the pieces and of the released cloth sliding on the "
-        "Collider and on the cloth",
+        "Colliders and on the cloth",
     )
     add_input(
         ng,
@@ -1154,7 +1157,7 @@ def arrange_interface(ng):
         ("Physics", "Pieces", False, ("Piece Size", "Rip Out", "Push", "Lifetime")),
         ("Physics", "Released Cloth", False, ("Release", "Anchor")),
         ("Physics", "Ripping", False, ("Reach", "Strength", "In Hand")),
-        ("Physics", "Collisions", False, ("Collider", "Floor", "Friction", "Self Collision")),
+        ("Physics", "Collisions", False, ("Colliders", "Floor", "Friction", "Self Collision")),
         ("Physics", "Motion", False, ("Gravity", "Drag", "Damping", "Bending", "Time Scale")),
         ("Physics", "Solver", True, ("Substeps", "Iterations")),
     ):
@@ -1318,23 +1321,30 @@ def bend_partners(t, x, y):
     return partners
 
 
-def correction(t, constraints, free, position, x, y):
-    """Corner field moving towards the rest lengths of the (vertex, other position, rest length,
-    stiffness or None) constraints, all the way towards a pinned point, half towards a free one"""
+def correction(t, geometry, constraints, free, position, x, y):
+    """Geometry with the free points moved by one Jacobi XPBD step towards the rest lengths of the
+    (vertex, other position, rest length, share, compliance over the step squared or None)
+    constraints of each corner: all the way towards a pinned point, half towards a free one, less
+    the more compliant"""
     total = None
-    for i, (vertex, other, rest_length, stiffness) in enumerate(constraints):
+    for i, (vertex, other, rest_length, share, compliance) in enumerate(constraints):
         y_i = y - 3 * i
-        other_free = t.node(
-            "GeometryNodeFieldAtIndex",
-            x,
-            y_i - 3,
-            {"Value": free, "Index": vertex},
-            data_type="FLOAT",
-            domain="POINT",
-        ).outputs[0]
-        weight = t.math("MULTIPLY_ADD", other_free, -0.5, 1.0, x=x + 1, y=y_i - 3)
-        if stiffness is not None:
-            weight = t.math("MULTIPLY", weight, stiffness, x=x + 2, y=y_i - 3)
+        weight = t.math(
+            "ADD",
+            t.node(
+                "GeometryNodeFieldAtIndex",
+                x,
+                y_i - 3,
+                {"Value": free, "Index": vertex},
+                data_type="FLOAT",
+                domain="POINT",
+            ).outputs[0],
+            1.0,
+            x=x + 1,
+            y=y_i - 3,
+        )
+        if compliance is not None:
+            weight = t.math("ADD", weight, compliance, x=x + 2, y=y_i - 3)
         towards = t.vmath("SUBTRACT", other, position, x=x, y=y_i)
         current = t.math(
             "MAXIMUM", t.vmath("LENGTH", towards, x=x, y=y_i - 1), 1e-9, x=x + 1, y=y_i - 1
@@ -1348,19 +1358,28 @@ def correction(t, constraints, free, position, x, y):
                 x=x + 2,
                 y=y_i - 2,
             ),
-            weight,
+            t.math("DIVIDE", share, weight, x=x + 3, y=y_i - 3),
             x=x + 3,
             y=y_i - 2,
         )
-        term = t.vmath("SCALE", towards, stretch, x=x + 2, y=y_i)
-        total = term if total is None else t.vmath("ADD", total, term, x=x + 3, y=y_i)
+        term = t.vmath("SCALE", towards, stretch, x=x + 4, y=y_i)
+        total = term if total is None else t.vmath("ADD", total, term, x=x + 5, y=y_i)
     return t.node(
-        "GeometryNodeFieldOnDomain",
-        x + 4,
+        "GeometryNodeSetPosition",
+        x + 7,
         y,
-        {"Value": total},
-        data_type="FLOAT_VECTOR",
-        domain="CORNER",
+        {
+            "Geometry": geometry,
+            "Selection": free,
+            "Offset": t.node(
+                "GeometryNodeFieldOnDomain",
+                x + 6,
+                y,
+                {"Value": total},
+                data_type="FLOAT_VECTOR",
+                domain="CORNER",
+            ).outputs[0],
+        },
     ).outputs[0]
 
 
@@ -2560,14 +2579,15 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
     )
     pieces = jumps_out.outputs["Geometry"]
 
-    t.section("Collider")
+    t.section("Colliders")
     collider = t.node(
-        "GeometryNodeObjectInfo",
-        18,
+        "GeometryNodeCollectionInfo",
+        17,
         -10,
-        {"Object": inputs["Collider"]},
+        {"Collection": inputs["Colliders"]},
         transform_space="RELATIVE",
-    ).outputs["Geometry"]
+    ).outputs[0]
+    collider = t.node("GeometryNodeRealizeInstances", 18, -10, {"Geometry": collider}).outputs[0]
     collider = t.node(
         "GeometryNodeTransform",
         19,
@@ -2668,6 +2688,45 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
     pieces = t.store(pieces, ".cloth_piece_prev", "FLOAT_VECTOR", old.outputs["Position"], 23, 0)
 
     t.section("Length Constraints")
+    # The pairs across the edges through the corner for the Bending, compliant as it is lower,
+    # and the diagonals against shearing
+    bend = t.node(
+        "ShaderNodeSeparateXYZ",
+        21,
+        -16,
+        {0: t.attribute(".cloth_piece_bend", "FLOAT_VECTOR", 20, -16)},
+    ).outputs
+    pairs = []
+    for i in range(3):
+        vertex = t.attribute(f".cloth_tear_bend_{i}", "INT", 20, -17 - i)
+        other = t.node(
+            "GeometryNodeFieldAtIndex",
+            21,
+            -17 - i,
+            {"Value": position, "Index": vertex},
+            data_type="FLOAT_VECTOR",
+            domain="POINT",
+        ).outputs[0]
+        pairs.append((vertex, other, bend[i]))
+    # Infinite at no Bending, none at full, over the step squared
+    softness = t.math(
+        "SUBTRACT",
+        t.math("DIVIDE", 1.0, t.math("MAXIMUM", inputs["Bending"], 1e-6, x=19, y=-23), x=20, y=-23),
+        1.0,
+        x=21,
+        y=-23,
+    )
+    compliance = t.math(
+        "DIVIDE",
+        t.math("MULTIPLY", softness, BEND_COMPLIANCE, x=22, y=-23),
+        t.math("MULTIPLY", step, step, x=22, y=-24),
+        x=23,
+        y=-23,
+    )
+    # Bending once per step, as small steps XPBD, its iterations not making it stiffer
+    pieces = correction(
+        t, pieces, [(*pair, 0.5, compliance) for pair in pairs[:2]], free, position, 21, -26
+    )
     # Jacobi iterations of the edge lengths, from both edges of each corner
     iterations_in = t.node("GeometryNodeRepeatInput", 23, 0, {"Iterations": inputs["Iterations"]})
     iterations_out = t.node("GeometryNodeRepeatOutput", 26, 0)
@@ -2684,41 +2743,14 @@ def build_physics(t, inputs, geometry, controls, inside, to_world, to_local, ind
             domain="CORNER",
         ).outputs[0],
     )
-    # The edges, then apart not to overshoot, averaged, the pairs across them through the corner
-    # for the Bending and the diagonals against shearing
+    # The edges, then apart not to overshoot, the diagonals
     edges = [
-        (vertex, other, rest, None) for (_, vertex, other), rest in zip(ends, lengths, strict=True)
+        (vertex, other, rest, 1.0, None)
+        for (_, vertex, other), rest in zip(ends, lengths, strict=True)
     ]
-    bend = t.node(
-        "ShaderNodeSeparateXYZ",
-        23,
-        -16,
-        {0: t.attribute(".cloth_piece_bend", "FLOAT_VECTOR", 22, -16)},
-    ).outputs
-    pairs = []
-    for i, stiffness in enumerate((inputs["Bending"], inputs["Bending"], 1.0)):
-        vertex = t.attribute(f".cloth_tear_bend_{i}", "INT", 22, -17 - i)
-        other = t.node(
-            "GeometryNodeFieldAtIndex",
-            23,
-            -17 - i,
-            {"Value": position, "Index": vertex},
-            data_type="FLOAT_VECTOR",
-            domain="POINT",
-        ).outputs[0]
-        pairs.append((vertex, other, bend[i], t.math("DIVIDE", stiffness, 3.0, x=23, y=-21 - i)))
     constrained = iterations_in.outputs["Geometry"]
-    for i, constraints in enumerate((edges, pairs)):
-        constrained = t.node(
-            "GeometryNodeSetPosition",
-            25 + 0.3 * i,
-            0,
-            {
-                "Geometry": constrained,
-                "Selection": free,
-                "Offset": correction(t, constraints, free, position, 24, -3 - 17 * i),
-            },
-        ).outputs[0]
+    for i, constraints in enumerate((edges, [(*pairs[2], 1.0 / 3.0, None)])):
+        constrained = correction(t, constrained, constraints, free, position, 24, -3 - 17 * i)
     t.connect(couple(t, constrained, free, 25.5, -32), iterations_out.inputs["Geometry"])
     pieces = iterations_out.outputs["Geometry"]
     # The released cloth pulled back to the body the less it is simulated, as a cube for the

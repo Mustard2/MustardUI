@@ -445,7 +445,10 @@ class TestClothTear(BlenderTestCase):
         self.assertTrue(effect.modifier_input(modifier, "Physics").value)
         self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, scene.frame_current)
         body = bpy.data.objects["Tester Body"]
-        self.assertEqual(effect.modifier_input(modifier, "Collider").value, body)
+        # In a collection in the scene, for more colliders to be added
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [body])
+        self.assertIn(colliders, bpy.context.scene.collection.children[:])
         # The collider normals outwards, as on a real body
         bm = bmesh.new()
         bm.from_mesh(body.data)
@@ -512,7 +515,7 @@ class TestClothTear(BlenderTestCase):
         effect.modifier_input(modifier, "Rip Out").value = rip_out
         effect.modifier_input(modifier, "Release").value = release
         # Not colliding with the model body around it
-        effect.modifier_input(modifier, "Collider").value = None
+        effect.modifier_input(modifier, "Colliders").value = None
         # Changing the modifier inputs from Python does not tag the object
         curtain.update_tag()
         (control,) = self.controls(curtain)
@@ -573,7 +576,7 @@ class TestClothTear(BlenderTestCase):
             pulls = effect.modifier_input(modifier, "Pulls").value
             self.assertEqual(list(pulls.objects), [pull])
             self.assertTrue(effect.modifier_input(modifier, "Physics").value)
-            effect.modifier_input(modifier, "Collider").value = None
+            effect.modifier_input(modifier, "Colliders").value = None
             effect.modifier_input(modifier, "In Hand").value = in_hand
             # Changing the modifier inputs from Python does not tag the object
             curtain.update_tag()
@@ -1035,19 +1038,52 @@ class TestStickyStrands(BlenderTestCase):
         self.scene.frame_set(self.scene.frame_start)
         self.assertGreater(len(self.strands(lip)), 0)
 
+    # Broken strands swinging under the edge of an open mesh in the Colliders are not pushed
+    # through it to its top
+    def test_open_collider(self):
+        lip = self.pull(physics=True)
+        mesh = bpy.data.meshes.new("Floor")
+        mesh.from_pydata(
+            [(0, -0.1, 0), (0.2, -0.1, 0), (0.2, 0.1, 0), (0, 0.1, 0)], [], [(0, 1, 2, 3)]
+        )
+        colliders = bpy.data.collections.new("Colliders")
+        new_object("Floor", mesh, colliders).location.z = -0.07
+        effect.modifier_input(lip.modifiers["Sticky Strands"], "Colliders").value = colliders
+        lip.update_tag()
+        self.scene.frame_set(self.scene.frame_start)
+        before = self.strands(lip)
+        for _ in range(50):
+            self.play(1)
+            after = self.strands(lip)
+            if len(after) == len(before):
+                over = (after[:, 0] > 0.0) & (after[:, 0] < 0.2) & (np.abs(after[:, 1]) < 0.1)
+                through = over & (before[:, 2] < -0.075) & (after[:, 2] > -0.065)
+                self.assertFalse(through.any())
+            before = after
+
     # Smoothing the strands straightens their sag between the fixed ends
     def test_smooth(self):
-        lip = self.pull(physics=False)
-        self.play(10)
-        modifier = lip.modifiers["Sticky Strands"]
-        sags = []
-        for smooth in (0, 30):
-            effect.modifier_input(modifier, "Smooth").value = smooth
-            lip.update_tag()
-            self.scene.frame_set(self.scene.frame_current)
-            co = self.strands(lip)
-            sags.append(co[np.abs(co[:, 0] - 0.1) < 0.01][:, 2].min())
-        self.assertGreater(sags[1], sags[0])
+        for physics in (False, True):
+            with self.subTest(physics=physics):
+                lip = self.pull(physics=physics)
+                self.play(10)
+                modifier = lip.modifiers["Sticky Strands"]
+                # Not pulled onto the surfaces, which would hide moved ends
+                effect.modifier_input(modifier, "Sticky Ends").value = 0.0
+                sags, ends = [], []
+                for smooth in (0, 30):
+                    effect.modifier_input(modifier, "Smooth").value = smooth
+                    lip.update_tag()
+                    self.scene.frame_set(self.scene.frame_current)
+                    co = self.strands(lip)
+                    sags.append(co[np.abs(co[:, 0] - 0.1) < 0.01][:, 2].min())
+                    # Centers of the rings at the ends, turning with the strands next to them
+                    factor = self.attributes(lip)["sticky_factor"]
+                    ends.append(co[(factor < 0.001) | (factor > 0.999)].reshape(-1, 12, 3).mean(1))
+                self.assertGreater(sags[1], sags[0])
+                np.testing.assert_allclose(ends[1], ends[0], atol=1e-4)
+                bpy.data.objects.remove(lip)
+                bpy.data.objects.remove(bpy.data.objects["Finger"])
 
     # Without physics, the options change the strands on any frame, without a simulation cache
     def test_static_options(self):
