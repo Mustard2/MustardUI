@@ -13,16 +13,14 @@ from .effect import (
     new_control,
     parent_control,
     shader_nodes,
+    tint,
+    untint,
 )
 
 NODE_GROUP = "MustardUI Marks"
 TINT = "MustardUI Marks Tint"
 CONTROL_TYPE = "EFFECT_MARKS"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "marks.blend")
-# Inputs of the shaders and their node groups taking the base color
-COLOR_INPUTS = ("Base Color", "Diffuse Color", "Albedo", "Color")
-COLOR_NODES = {"BSDF_PRINCIPLED", "BSDF_DIFFUSE", "SUBSURFACE_SCATTERING", "GROUP"}
-
 # Radius and modifier inputs of each kind of mark
 PRESETS = {
     "BLUSH": (
@@ -48,49 +46,6 @@ PRESETS = {
         },
     ),
 }
-
-
-def color_inputs(socket):
-    """Base color inputs of the shaders linked to the shader socket, through mix and add shaders"""
-    if not socket.is_linked:
-        return
-    node = socket.links[0].from_node
-    shaders = [x for x in node.inputs if x.type == "SHADER"]
-    color = next((node.inputs[x] for x in COLOR_INPUTS if x in node.inputs), None)
-    # Groups wrapping shaders, as of other effects, are not shaders themselves
-    if node.type in COLOR_NODES and color and color.type == "RGBA" and not shaders:
-        yield color
-        return
-    for x in shaders:
-        yield from color_inputs(x)
-
-
-def tint(material):
-    """Marks Tint group nodes added before the base colors of the material shaders"""
-    nodes, links = material.node_tree.nodes, material.node_tree.links
-    outputs = [n for n in nodes if n.type == "OUTPUT_MATERIAL"]
-    sockets = {x for o in outputs for x in color_inputs(o.inputs["Surface"])}
-    for socket in sockets:
-        group = nodes.new("ShaderNodeGroup")
-        group.node_tree = bpy.data.node_groups[TINT]
-        group.location = (socket.node.location.x - 200, socket.node.location.y)
-        if socket.is_linked:
-            links.new(socket.links[0].from_socket, group.inputs["Color"])
-        else:
-            group.inputs["Color"].default_value = socket.default_value
-        links.new(group.outputs["Color"], socket)
-
-
-def untint(material, group):
-    """Remove the group node, giving its color to its users"""
-    nodes, links = material.node_tree.nodes, material.node_tree.links
-    color = group.inputs["Color"]
-    for socket in [x.to_socket for x in group.outputs["Color"].links]:
-        if color.is_linked:
-            links.new(color.links[0].from_socket, socket)
-        else:
-            socket.default_value = color.default_value
-    nodes.remove(group)
 
 
 class MustardUI_ModelToolkit_Marks(bpy.types.Operator):
@@ -179,7 +134,7 @@ class MustardUI_ModelToolkit_Marks(bpy.types.Operator):
             obj.update_tag()
         for material in materials(objects):
             if not shader_nodes(material, TINT):
-                tint(material)
+                tint(material, TINT)
 
         # The Control selected, to be moved or scaled right away
         for obj in objects:

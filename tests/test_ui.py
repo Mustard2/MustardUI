@@ -157,6 +157,8 @@ class TestUI(BlenderTestCase):
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_cloth_tear(physics=True)
         bpy.ops.mustardui.model_toolkit_fireball()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_imprints()
         self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_SceneEffects")
 
         # The effect objects and their Controls are selected from the panel
