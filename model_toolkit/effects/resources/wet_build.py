@@ -57,6 +57,11 @@ WOBBLE = 30.0
 # Ripples of the film per meter, and their height in meters
 RIPPLE = 120.0
 RIPPLE_HEIGHT = 0.0002
+# Reflectance of water seen face on, and its share at grazing angles, the film being thin
+WATER_F0 = 0.02
+EDGE_FRESNEL = 0.5
+# Most of the surface under the film hidden by its reflection, at grazing angles
+MAX_COVER = 0.6
 # Roughness, reflection and tiny drops of the damp skin between the patches of film
 DAMP_ROUGHNESS = 0.4
 DAMP_COAT = 0.35
@@ -2116,6 +2121,7 @@ def build_film(mist):
     roughness = t.node(
         "ShaderNodeMix", 5, -6, {"Factor": film, "A": DAMP_ROUGHNESS, "B": inputs["Roughness"]}
     ).outputs[0]
+    film_roughness = roughness
     roughness = t.math(
         "MULTIPLY", roughness, t.math("SUBTRACT", 1.0, in_drop, x=6, y=-6), x=6, y=-5
     )
@@ -2181,25 +2187,91 @@ def build_film(mist):
     shader = t.node(
         "ShaderNodeMixShader", 6, 0, {0: darken, 1: inputs["Shader"], 2: black.outputs[0]}
     ).outputs[0]
+    # Fresnel of water, lower at grazing angles where rougher, on the smooth normal not to
+    # outline the edges with the tiny drops
+    facing = t.node("ShaderNodeLayerWeight", 6, -4, {"Blend": 0.5, "Normal": surface}).outputs[
+        "Facing"
+    ]
+    edge = t.math(
+        "MULTIPLY",
+        t.math("SUBTRACT", 1.0, film_roughness, x=6, y=-6),
+        EDGE_FRESNEL,
+        x=6.5,
+        y=-6,
+    )
+    fresnel = t.math(
+        "MULTIPLY_ADD",
+        t.math("POWER", facing, 5.0, x=6.5, y=-4),
+        t.math("SUBTRACT", t.math("MAXIMUM", edge, WATER_F0, x=7, y=-6), WATER_F0, x=7, y=-5),
+        WATER_F0,
+        x=7,
+        y=-4,
+    )
+    wet = t.math(
+        "MULTIPLY",
+        wetness,
+        t.math("MULTIPLY_ADD", film, 1.0 - DAMP_COAT, DAMP_COAT, x=7, y=-7),
+        x=7.5,
+        y=-7,
+    )
+    coat = t.math("MULTIPLY", fresnel, wet, x=7.5, y=-3)
+    # The surface under the film dimmed by the reflected light, never hidden at grazing angles
+    shader = t.node(
+        "ShaderNodeMixShader",
+        8,
+        0,
+        {
+            0: t.math(
+                "MINIMUM",
+                t.math(
+                    "MULTIPLY",
+                    coat,
+                    t.math("MINIMUM", inputs["Shine"], 1.0, x=7.5, y=-2),
+                    x=7.8,
+                    y=-1,
+                ),
+                MAX_COVER,
+                x=8,
+                y=-1,
+            ),
+            1: shader,
+            2: black.outputs[0],
+        },
+    ).outputs[0]
+    # The reflection added, Shine and the glossier parts raising it where seen face on
+    boost = t.math(
+        "SUBTRACT",
+        t.math("MULTIPLY", inputs["Shine"], t.math("ADD", gloss, 1.0, x=7, y=-9), x=7.5, y=-9),
+        1.0,
+        x=8,
+        y=-9,
+    )
+    reflection = t.math(
+        "MULTIPLY_ADD",
+        t.math("MULTIPLY", wet, WATER_F0, x=8, y=-8),
+        boost,
+        t.math("MULTIPLY", coat, t.math("MINIMUM", inputs["Shine"], 1.0, x=7.5, y=-10), x=8, y=-10),
+        x=8.5,
+        y=-4,
+        clamp=True,
+    )
     glossy = t.node(
         "ShaderNodeBsdfGlossy",
-        6,
+        9,
         -2,
-        {"Color": (1.0, 1.0, 1.0, 1.0), "Roughness": roughness, "Normal": normal},
+        {
+            "Color": t.node(
+                "ShaderNodeCombineColor",
+                8.5,
+                -5,
+                {"Red": reflection, "Green": reflection, "Blue": reflection},
+            ).outputs[0],
+            "Roughness": roughness,
+            "Normal": normal,
+        },
     ).outputs[0]
-    fresnel = t.node("ShaderNodeFresnel", 6, -4, {"IOR": 1.33, "Normal": normal}).outputs[0]
-    coat = t.math("MULTIPLY", fresnel, wetness, x=7, y=-3)
-    coat = t.math("MULTIPLY", coat, t.math("ADD", gloss, 1.0, x=7, y=-5), x=8, y=-3)
-    coat = t.math(
-        "MULTIPLY",
-        coat,
-        t.math("MULTIPLY_ADD", film, 1.0 - DAMP_COAT, DAMP_COAT, x=8, y=-5),
-        x=8.2,
-        y=-3,
-    )
-    coat = t.math("MULTIPLY", coat, inputs["Shine"], x=8.5, y=-3, clamp=True)
-    shader = t.node("ShaderNodeMixShader", 8, 0, {0: coat, 1: shader, 2: glossy}).outputs[0]
-    t.node("NodeGroupOutput", 9, 0, {"Shader": shader})
+    shader = t.node("ShaderNodeAddShader", 10, 0, {0: shader, 1: glossy}).outputs[0]
+    t.node("NodeGroupOutput", 11, 0, {"Shader": shader})
     return ng
 
 
