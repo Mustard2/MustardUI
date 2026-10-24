@@ -502,7 +502,7 @@ class TestClothTear(BlenderTestCase):
         bm.free()
         return new_object("Curtain", mesh)
 
-    def tear(self, curtain, anchor="", release=0.0, across=True, rip_out=0.0):
+    def tear(self, curtain, anchor="", release=0.0, across=True, rip_out=0.0, shape=0.5):
         """Curtain points, torn with physics across near its top, or in its middle"""
         set_active(curtain)
         scene = bpy.context.scene
@@ -514,6 +514,7 @@ class TestClothTear(BlenderTestCase):
         modifier = curtain.modifiers["Cloth Tear"]
         effect.modifier_input(modifier, "Rip Out").value = rip_out
         effect.modifier_input(modifier, "Release").value = release
+        effect.modifier_input(modifier, "Shape").value = shape
         # Not colliding with the model body around it
         effect.modifier_input(modifier, "Colliders").value = None
         # Changing the modifier inputs from Python does not tag the object
@@ -559,6 +560,17 @@ class TestClothTear(BlenderTestCase):
             heights.append(below[:, 2].max())
             bpy.data.objects.remove(curtain)
         self.assertLess(heights[1], heights[0] - 0.02)
+
+    # The Shape holds the released cloth below the hole on the shape of the mesh, sagging less
+    def test_physics_shape(self):
+        heights = []
+        for shape in (0.0, 1.0):
+            curtain = self.curtain()
+            co = self.tear(curtain, release=0.1, across=False, rip_out=1.0, shape=shape)
+            below = co[(np.abs(co[:, 0]) < 0.05) & (co[:, 2] > 0.6) & (co[:, 2] < 0.95)]
+            heights.append(below[:, 2].max())
+            bpy.data.objects.remove(curtain)
+        self.assertGreater(heights[1], heights[0] + 0.01)
 
     # A Pull grabs the cloth and moves away along its normal, ripping it and holding the ripped
     # part, or letting it fall, removed with the Cloth Tear
