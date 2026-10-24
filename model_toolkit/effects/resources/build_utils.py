@@ -125,6 +125,46 @@ class Tree:
         )
         return node.outputs["Geometry"]
 
+    def strip(self, geometry, x, y):
+        """Geometry without its attributes but the position, not to interpolate them"""
+        names = self.node("GeometryNodeGetAttributeNames", x, y - 1, {0: geometry}).outputs[0]
+        length = self.node("GeometryNodeListLength", x + 1, y - 1, {0: names}, data_type="STRING")
+        start = self.node("GeometryNodeRepeatInput", x + 1, y)
+        end = self.node("GeometryNodeRepeatOutput", x + 5, y)
+        start.pair_with_output(end)
+        self.connect(length.outputs[0], start.inputs["Iterations"])
+        self.connect(geometry, start.inputs["Geometry"])
+        name = self.node(
+            "GeometryNodeListGetItem",
+            x + 2,
+            y - 1,
+            {"List": names, "Index": start.outputs["Iteration"]},
+            socket_type="STRING",
+        ).outputs[0]
+        builtin = self.node(
+            "FunctionNodeCompare",
+            x + 3,
+            y - 1,
+            {"A": name, "B": "position"},
+            data_type="STRING",
+            operation="EQUAL",
+        ).outputs[0]
+        removed = self.node(
+            "GeometryNodeRemoveAttribute",
+            x + 3,
+            y,
+            {"Geometry": start.outputs["Geometry"], "Name": name},
+        ).outputs[0]
+        kept = self.node(
+            "GeometryNodeSwitch",
+            x + 4,
+            y,
+            {"Switch": builtin, "False": removed, "True": start.outputs["Geometry"]},
+            input_type="GEOMETRY",
+        ).outputs[0]
+        self.connect(kept, end.inputs["Geometry"])
+        return end.outputs["Geometry"]
+
     def arrange(self):
         """Layout of the section frames in rows, with the nodes in columns by their depth, and
         copies of the input nodes in each section using them, not to link them across"""

@@ -97,6 +97,50 @@ def add_effect_modifier(obj, name, node_group, control=None):
     return modifier
 
 
+def materials(objects):
+    return {
+        s.material for x in objects for s in x.material_slots if s.material and s.material.node_tree
+    }
+
+
+def shader_nodes(material, node_group):
+    return [
+        n
+        for n in material.node_tree.nodes
+        if n.type == "GROUP" and n.node_tree and n.node_tree.name.startswith(node_group)
+    ]
+
+
+def wrap_shader(material, node_group):
+    """Group nodes of the shader node group added between the surface shaders and the outputs"""
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    groups = []
+    for output in [n for n in nodes if n.type == "OUTPUT_MATERIAL"]:
+        surface = output.inputs["Surface"]
+        if not surface.is_linked:
+            continue
+        group = nodes.new("ShaderNodeGroup")
+        group.node_tree = bpy.data.node_groups[node_group]
+        group.location = output.location
+        output.location.x += 250
+        links.new(surface.links[0].from_socket, group.inputs["Shader"])
+        links.new(group.outputs["Shader"], surface)
+        groups.append(group)
+    return groups
+
+
+def unwrap_shader(material, group):
+    """Remove the group node, linking its shader input to its users"""
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    shader = group.inputs["Shader"].links
+    for socket in [x.to_socket for x in group.outputs["Shader"].links]:
+        if shader:
+            links.new(shader[0].from_socket, socket)
+        if socket.node.type == "OUTPUT_MATERIAL":
+            socket.node.location = group.location
+    nodes.remove(group)
+
+
 class RemoveEffect:
     """Base of the operators removing an effect, and its Controls not used anymore"""
 

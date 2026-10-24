@@ -290,6 +290,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_convert_sticky_liquid", text="", icon="MESH_DATA")
         row.operator("mustardui.model_toolkit_remove_sticky_liquid", text="", icon="X")
 
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_wet", text="Wet", icon="MATFLUID")
+        row.operator("mustardui.model_toolkit_remove_wet", text="", icon="X")
+
         layout.separator()
 
         row = layout.row(align=True)

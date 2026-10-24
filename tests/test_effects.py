@@ -13,7 +13,7 @@ from helpers import (
     new_object,
     set_active,
 )
-from mathutils import Matrix
+from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
@@ -40,6 +40,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_tear.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -1348,6 +1349,277 @@ class TestStickyLiquid(BlenderTestCase):
         self.assertEqual({p.material_index for p in liquid.data.polygons}, {0})
         converted = np.array([liquid.matrix_world @ v.co for v in liquid.data.vertices])
         np.testing.assert_allclose(converted, co, atol=1e-5)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestWet(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.body = bpy.data.objects["Tester Body"]
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+        bm = bmesh.new()
+        bm.from_mesh(self.body.data)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=8, use_grid_fill=True)
+        bm.to_mesh(self.body.data)
+        bm.free()
+        self.body.modifiers.new("Subdivision", "SUBSURF")
+        self.skin = bpy.data.materials.new("Skin")
+        for obj in (self.body, self.shirt):
+            obj.data.materials.append(self.skin)
+        set_active(self.body)
+
+    def add(self, obj, density=200.0):
+        set_active(obj)
+        bpy.ops.mustardui.model_toolkit_wet()
+        modifier = obj.modifiers[-2 if obj == self.body else -1]
+        effect.modifier_input(modifier, "Density").value = density
+        obj.update_tag()
+        return modifier
+
+    def drops(self, obj):
+        """World positions of the drops, in their order"""
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        return np.array(
+            [
+                x.matrix_world.to_translation()
+                for x in depsgraph.object_instances
+                if x.is_instance and x.parent and x.parent.original == obj
+            ]
+        ).reshape(-1, 3)
+
+    def wetness(self, obj):
+        data = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        values = np.empty(len(data.vertices))
+        data.attributes["wetness"].data.foreach_get("value", values)
+        return values
+
+    # The Control covers the meshes following their bone, wetting them with drops on the surface
+    # and the film on their materials
+    def test_wet(self):
+        modifier = self.add(self.body)
+        self.assertEqual([m.type for m in self.body.modifiers][-2:], ["NODES", "SUBSURF"])
+        control = effect.modifier_input(modifier, "Control").value
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_WET")
+        self.assertEqual((control.parent_type, control.parent_bone), ("BONE", "spine"))
+        self.assertEqual(control.users_collection, (bpy.context.scene.collection,))
+        self.assertGreater(self.wetness(self.body).min(), 0.7)
+        # Read by the film, with the rest position, in a single attribute for EEVEE
+        data = self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        self.assertEqual(data.attributes["wet"].data_type, "FLOAT_COLOR")
+
+        output = self.skin.node_tree.nodes["Material Output"].inputs["Surface"].links[0].from_node
+        self.assertEqual(output.node_tree.name, "MustardUI Wet Film")
+        self.assertEqual(output.inputs["Shader"].links[0].from_node.type, "BSDF_PRINCIPLED")
+
+        drops = self.drops(self.body)
+        # Area of the cube times the density, fewer in the drier patches and between clusters
+        self.assertGreater(len(drops), 6 * 200 * 0.4)
+        self.assertLess(len(drops), 6 * 200)
+        np.testing.assert_allclose(np.abs(drops - (0, 0, 1)).max(axis=1), 0.5, atol=1e-5)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = self.body.evaluated_get(depsgraph).evaluated_geometry()
+        references = geometry.instance_references()
+        (mesh,) = [x.mesh for x in references if x.mesh]
+        materials = {mesh.materials[p.material_index].name for p in mesh.polygons}
+        self.assertEqual(materials, {"MustardUI Wet Drops"})
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The drops follow the deformed mesh
+    def test_follow(self):
+        self.add(self.body)
+        before = self.drops(self.body)
+        armature = self.body.parent
+        bone = armature.pose.bones["spine"]
+        bone.rotation_mode = "XYZ"
+        bone.rotation_euler = (0.3, 0.2, 0.0)
+        bpy.context.view_layer.update()
+        matrix = armature.matrix_world @ bone.matrix @ bone.bone.matrix_local.inverted()
+        moved = np.array([matrix @ Vector(x) for x in before])
+        np.testing.assert_allclose(self.drops(self.body), moved, atol=1e-5)
+
+    # Drying or shrinking the Control removes drops, the others staying in place
+    def test_dry(self):
+        modifier = self.add(self.body)
+        drops = {tuple(x) for x in self.drops(self.body).round(6)}
+        effect.modifier_input(modifier, "Wetness").value = 0.5
+        self.body.update_tag()
+        half = {tuple(x) for x in self.drops(self.body).round(6)}
+        self.assertLess(len(half), len(drops) * 0.7)
+        self.assertLessEqual(half, drops)
+
+        control = effect.modifier_input(modifier, "Control").value
+        control.scale = (0.5, 0.5, 0.5)
+        bpy.context.view_layer.update()
+        self.assertLess(self.wetness(self.body).min(), 0.01)
+        self.assertLessEqual({tuple(x) for x in self.drops(self.body).round(6)}, half)
+
+        effect.modifier_input(modifier, "Wetness").value = 0.0
+        self.body.update_tag()
+        self.assertEqual(len(self.drops(self.body)), 0)
+        self.assertEqual(self.wetness(self.body).max(), 0.0)
+
+    # A second Wet keeps the wetness of the first, adding drops only where it is wetter
+    def test_stack(self):
+        first = self.add(self.body)
+        effect.modifier_input(first, "Control").value.scale = (0.5, 0.5, 0.5)
+        bpy.context.view_layer.update()
+        drops = {tuple(x) for x in self.drops(self.body).round(6)}
+        self.add(self.body)
+        stacked = self.drops(self.body).round(6)
+        self.assertEqual(len({tuple(x) for x in stacked}), len(stacked))
+        self.assertLess(drops, {tuple(x) for x in stacked})
+        self.assertGreater(self.wetness(self.body).min(), 0.7)
+
+    # With physics the large drops run down from the Start Frame, leaving lines of water
+    def test_physics(self):
+        modifier = self.add(self.body)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        static = self.drops(self.body)
+        scene.frame_set(start + 1)
+        np.testing.assert_allclose(self.drops(self.body), static)
+
+        effect.modifier_input(modifier, "Physics").value = True
+        effect.modifier_input(modifier, "Start Frame").value = start
+        # Most of the large drops running right away
+        effect.modifier_input(modifier, "Run Rate").value = 20.0
+        self.body.update_tag()
+        counts, heights, lines = [], [], []
+        for frame in range(start, start + 14):
+            scene.frame_set(frame)
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            geometry = self.body.evaluated_get(depsgraph).evaluated_geometry()
+            points = geometry.instances_pointcloud()
+            ids = np.zeros(len(points.points), dtype=np.int32)
+            if ".wet_id" in points.attributes:
+                points.attributes[".wet_id"].data.foreach_get("value", ids)
+            references = geometry.instance_references()
+            lines.append(sum(len(x.mesh.vertices) for x in references if x.mesh))
+            drops = self.drops(self.body)
+            counts.append(len(drops))
+            # Height of each running drop
+            transforms = np.zeros(len(points.points) * 16)
+            points.attributes["instance_transform"].data.foreach_get("value", transforms)
+            z = transforms.reshape(-1, 4, 4)[:, 3, 2]
+            heights.append({i: x for i, x in zip(ids, z, strict=True) if i})
+        self.assertFalse(heights[0])
+        # Lower than they started, those still on the mesh
+        common = heights[3].keys() & heights[-1].keys()
+        self.assertGreater(len(common), 5)
+        self.assertLess(np.mean([heights[-1][i] - heights[3][i] for i in common]), -0.01)
+        # The drop mesh only, then with the lines growing
+        self.assertGreater(lines[2], lines[0])
+        self.assertGreater(lines[-1], lines[2])
+        # The drops not growing in number, only swept away
+        self.assertLess(max(counts), counts[0] * 1.05)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # With dripping, the running drops grow on the wet surface and drip from below, splashing on
+    # the floor
+    def test_dripping(self):
+        mesh = bpy.data.meshes.new("Ball")
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=24, radius=0.15)
+        bm.to_mesh(mesh)
+        bm.free()
+        ball = new_object("Ball", mesh)
+        ball.data.materials.append(self.skin)
+        modifier = self.add(ball, density=3000.0)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        for name, value in (
+            ("Physics", True),
+            ("Dripping", True),
+            ("Floor", -0.3),
+            ("Run Rate", 20.0),
+            ("Drip Radius", 0.0012),
+        ):
+            effect.modifier_input(modifier, name).value = value
+        effect.modifier_input(modifier, "Start Frame").value = start
+        ball.update_tag()
+        falling = 0
+        for frame in range(start, start + 80):
+            scene.frame_set(frame)
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            geometry = ball.evaluated_get(depsgraph).evaluated_geometry()
+            points = geometry.instances_pointcloud()
+            landed = np.zeros(len(points.points))
+            velocity = np.zeros(len(points.points) * 3)
+            if ".wet_landed" in points.attributes:
+                points.attributes[".wet_landed"].data.foreach_get("value", landed)
+                points.attributes[".wet_velocity"].data.foreach_get("vector", velocity)
+            moving = np.linalg.norm(velocity.reshape(-1, 3), axis=1) > 0
+            falling = max(falling, int((moving & (landed < 0.5)).sum()))
+        self.assertGreater(falling, 0)
+        self.assertGreater((landed > 0.5).sum(), 0)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The film gets the normal of the material, from its normal image outside the node groups
+    def test_normal(self):
+        nodes, links = self.skin.node_tree.nodes, self.skin.node_tree.links
+        image = nodes.new("ShaderNodeTexImage")
+        image.image = bpy.data.images.new("Normal", 4, 4)
+        normal_map = nodes.new("ShaderNodeNormalMap")
+        links.new(image.outputs["Color"], normal_map.inputs["Color"])
+        links.new(normal_map.outputs["Normal"], nodes["Principled BSDF"].inputs["Normal"])
+        # In a node group, as from importers
+        layered = bpy.data.materials.new("Layered")
+        self.shirt.data.materials.clear()
+        self.shirt.data.materials.append(layered)
+        group = bpy.data.node_groups.new("Skin Shader", "ShaderNodeTree")
+        group.interface.new_socket("Normal Image", in_out="INPUT", socket_type="NodeSocketColor")
+        group.interface.new_socket("BSDF", in_out="OUTPUT", socket_type="NodeSocketShader")
+        inner = group.nodes.new("ShaderNodeNormalMap")
+        bsdf = group.nodes.new("ShaderNodeBsdfPrincipled")
+        group.links.new(group.nodes.new("NodeGroupInput").outputs[0], inner.inputs["Color"])
+        group.links.new(inner.outputs["Normal"], bsdf.inputs["Normal"])
+        group.links.new(bsdf.outputs[0], group.nodes.new("NodeGroupOutput").inputs[0])
+        nodes = layered.node_tree.nodes
+        skin = nodes.new("ShaderNodeGroup")
+        skin.node_tree = group
+        outer = nodes.new("ShaderNodeTexImage")
+        outer.image = image.image
+        layered.node_tree.links.new(outer.outputs["Color"], skin.inputs[0])
+        layered.node_tree.links.new(skin.outputs[0], nodes["Material Output"].inputs["Surface"])
+
+        self.add(self.body)
+        self.add(self.shirt)
+        film = self.skin.node_tree.nodes["Material Output"].inputs["Surface"].links[0].from_node
+        self.assertEqual(film.inputs["Normal"].links[0].from_node, normal_map)
+        film = nodes["Material Output"].inputs["Surface"].links[0].from_node
+        copy = film.inputs["Normal"].links[0].from_node
+        self.assertEqual(copy.type, "NORMAL_MAP")
+        self.assertEqual(copy.inputs["Color"].links[0].from_node, outer)
+
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_wet()
+        self.assertFalse([n for n in nodes if n.type == "NORMAL_MAP"])
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_remove_wet()
+        self.assertIn(normal_map, list(self.skin.node_tree.nodes))
+
+    # The film stays on the materials of the other wet meshes, and the Controls are removed
+    def test_remove(self):
+        self.add(self.body)
+        self.add(self.shirt)
+        films = [n for n in self.skin.node_tree.nodes if n.type == "GROUP"]
+        self.assertEqual(len(films), 1)
+
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_remove_wet()
+        self.assertNotIn("Wet", self.body.modifiers)
+        self.assertEqual([n for n in self.skin.node_tree.nodes if n.type == "GROUP"], films)
+        controls = [x for x in bpy.data.objects if x.MustardUI_tools_creators_type]
+        self.assertEqual(len(controls), 1)
+
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_wet()
+        surface = self.skin.node_tree.nodes["Material Output"].inputs["Surface"]
+        self.assertEqual(surface.links[0].from_node.type, "BSDF_PRINCIPLED")
+        self.assertFalse([n for n in self.skin.node_tree.nodes if n.type == "GROUP"])
+        self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_wet.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
