@@ -28,6 +28,32 @@ def add_output(tree, name, socket_type):
     return tree.interface.new_socket(name, in_out="OUTPUT", socket_type=socket_type)
 
 
+def arrange_interface(tree, panels):
+    """Inputs moved into panels, given as (parent or None, name, closed, toggle or None, sockets):
+    new panels are added to the parent, existing ones get the sockets, the toggle in the header"""
+
+    def item(name, item_type):
+        return next(
+            x for x in tree.interface.items_tree if x.name == name and x.item_type == item_type
+        )
+
+    for parent, name, closed, toggle, sockets in panels:
+        panel = next(
+            (x for x in tree.interface.items_tree if x.name == name and x.item_type == "PANEL"),
+            None,
+        )
+        if panel is None:
+            panel = tree.interface.new_panel(name, default_closed=closed)
+            if parent:
+                above = item(parent, "PANEL")
+                tree.interface.move_to_parent(panel, above, len(above.interface_items))
+        for socket in sockets:
+            tree.interface.move_to_parent(item(socket, "SOCKET"), panel, len(panel.interface_items))
+        if toggle:
+            tree.interface.move_to_parent(item(toggle, "SOCKET"), panel, 0)
+            item(toggle, "SOCKET").is_panel_toggle = True
+
+
 class Tree:
     """Node tree builder, placing the nodes on a grid"""
 
@@ -98,6 +124,46 @@ class Tree:
             domain=domain,
         )
         return node.outputs["Geometry"]
+
+    def strip(self, geometry, x, y):
+        """Geometry without its attributes but the position, not to interpolate them"""
+        names = self.node("GeometryNodeGetAttributeNames", x, y - 1, {0: geometry}).outputs[0]
+        length = self.node("GeometryNodeListLength", x + 1, y - 1, {0: names}, data_type="STRING")
+        start = self.node("GeometryNodeRepeatInput", x + 1, y)
+        end = self.node("GeometryNodeRepeatOutput", x + 5, y)
+        start.pair_with_output(end)
+        self.connect(length.outputs[0], start.inputs["Iterations"])
+        self.connect(geometry, start.inputs["Geometry"])
+        name = self.node(
+            "GeometryNodeListGetItem",
+            x + 2,
+            y - 1,
+            {"List": names, "Index": start.outputs["Iteration"]},
+            socket_type="STRING",
+        ).outputs[0]
+        builtin = self.node(
+            "FunctionNodeCompare",
+            x + 3,
+            y - 1,
+            {"A": name, "B": "position"},
+            data_type="STRING",
+            operation="EQUAL",
+        ).outputs[0]
+        removed = self.node(
+            "GeometryNodeRemoveAttribute",
+            x + 3,
+            y,
+            {"Geometry": start.outputs["Geometry"], "Name": name},
+        ).outputs[0]
+        kept = self.node(
+            "GeometryNodeSwitch",
+            x + 4,
+            y,
+            {"Switch": builtin, "False": removed, "True": start.outputs["Geometry"]},
+            input_type="GEOMETRY",
+        ).outputs[0]
+        self.connect(kept, end.inputs["Geometry"])
+        return end.outputs["Geometry"]
 
     def arrange(self):
         """Layout of the section frames in rows, with the nodes in columns by their depth, and

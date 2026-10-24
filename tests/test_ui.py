@@ -1,3 +1,6 @@
+import importlib
+import unittest
+
 import bpy
 from fake_ui import draw_all
 from helpers import (
@@ -8,6 +11,8 @@ from helpers import (
     new_mesh_object,
     set_active,
 )
+
+effect = importlib.import_module(ADDON + ".model_toolkit.effects.effect")
 
 
 class TestUI(BlenderTestCase):
@@ -123,15 +128,43 @@ class TestUI(BlenderTestCase):
         settings.panel_model_selection_armature = model["armature"].data
         self.assertDrawsCleanly("PANEL_PT_MustardUI_Outfits")
 
-    # Model Toolkit hides only the creator sections, needing a model, without one
+    # Without a model and effects, Model Toolkit shows only the sections for any mesh
     def test_draw_model_toolkit_without_model(self):
         set_active(new_mesh_object("Cube"))
         bpy.context.preferences.addons[ADDON].preferences.model_toolkit = True
-        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit")
-        for section in ("Rig", "Outfits", "Mesh", "Physics", "Effects"):
+        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_Rig")
+        for section in ("Outfits", "Mesh", "Physics", "Effects"):
             self.assertIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
-        for section in ("Model", "Optimizations"):
-            self.assertNotIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
+        for section in ("", "_Model", "_Optimizations", "_SceneEffects"):
+            self.assertNotIn(f"PANEL_PT_MustardUI_ModelToolkit{section}", drawer.drawn)
+
+    # Scene Effects draws the effects in the scene, with their settings and materials
+    @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+    def test_draw_scene_effects(self):
+        cube = new_mesh_object("Cube")
+        cube.data.materials.append(bpy.data.materials.new("Cloth"))
+        set_active(cube)
+        bpy.context.preferences.addons[ADDON].preferences.model_toolkit = True
+        # Hidden without effects
+        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_Effects")
+        self.assertNotIn("PANEL_PT_MustardUI_ModelToolkit_SceneEffects", drawer.drawn)
+
+        bpy.ops.mustardui.model_toolkit_wet()
+        bpy.ops.mustardui.model_toolkit_hex_dissolve()
+        for _ in range(2):
+            set_active(cube)
+            bpy.ops.mustardui.model_toolkit_marks()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_cloth_tear(physics=True)
+        bpy.ops.mustardui.model_toolkit_fireball()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_imprints()
+        self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_SceneEffects")
+
+        # The effect objects and their Controls are selected from the panel
+        bpy.ops.mustardui.model_toolkit_select_object(name=cube.name)
+        self.assertEqual(bpy.context.selected_objects, [cube])
+        self.assertEqual(bpy.context.view_layer.objects.active, cube)
 
     # Configuration panels draw with list indices past the end, as left by another model
     def test_draw_configuration_stale_indices(self):

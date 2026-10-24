@@ -2,25 +2,18 @@ import os
 
 import bpy
 
-from .effect import effects_available, new_control
+from .effect import (
+    effects_available,
+    materials,
+    new_control,
+    shader_nodes,
+    unwrap_shader,
+    wrap_shader,
+)
 
 NODE_GROUP = "MustardUI Hex Dissolve"
 CONTROL_TYPE = "EFFECT_HEX_DISSOLVE"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "hex_dissolve.blend")
-
-
-def materials(objects):
-    return {
-        s.material for x in objects for s in x.material_slots if s.material and s.material.node_tree
-    }
-
-
-def effect_nodes(material):
-    return [
-        n
-        for n in material.node_tree.nodes
-        if n.type == "GROUP" and n.node_tree and n.node_tree.name.startswith(NODE_GROUP)
-    ]
 
 
 def effect_control(node):
@@ -69,20 +62,11 @@ class MustardUI_ModelToolkit_HexDissolve(bpy.types.Operator):
         # Wrap the surface shader of every output
         for material in materials(objects):
             nodes, links = material.node_tree.nodes, material.node_tree.links
-            for output in [n for n in nodes if n.type == "OUTPUT_MATERIAL"]:
-                surface = output.inputs["Surface"]
-                if not surface.is_linked:
-                    continue
-                group = nodes.new("ShaderNodeGroup")
-                group.node_tree = bpy.data.node_groups[NODE_GROUP]
-                group.location = output.location
+            for group in wrap_shader(material, NODE_GROUP):
                 coordinates = nodes.new("ShaderNodeTexCoord")
                 coordinates.object = control
-                coordinates.location = (output.location.x - 200, output.location.y)
-                output.location.x += 250
-                links.new(surface.links[0].from_socket, group.inputs["Shader"])
+                coordinates.location = (group.location.x - 200, group.location.y)
                 links.new(coordinates.outputs["Object"], group.inputs["Control"])
-                links.new(group.outputs["Shader"], surface)
             # Hidden parts should not cast shadows
             material.use_transparent_shadow = True
 
@@ -99,26 +83,22 @@ class MustardUI_ModelToolkit_RemoveHexDissolve(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return any(effect_nodes(m) for m in materials(context.selected_objects))
+        return any(shader_nodes(m, NODE_GROUP) for m in materials(context.selected_objects))
 
     def execute(self, context):
         controls = set()
         for material in materials(context.selected_objects):
-            nodes, links = material.node_tree.nodes, material.node_tree.links
-            for group in effect_nodes(material):
+            for group in shader_nodes(material, NODE_GROUP):
                 controls.add(effect_control(group))
-                shader = group.inputs["Shader"].links
-                for socket in [x.to_socket for x in group.outputs["Shader"].links]:
-                    if shader:
-                        links.new(shader[0].from_socket, socket)
-                    if socket.node.type == "OUTPUT_MATERIAL":
-                        socket.node.location = group.location
                 for link in group.inputs["Control"].links:
-                    nodes.remove(link.from_node)
-                nodes.remove(group)
+                    material.node_tree.nodes.remove(link.from_node)
+                unwrap_shader(material, group)
 
         used = {
-            effect_control(n) for m in bpy.data.materials if m.node_tree for n in effect_nodes(m)
+            effect_control(n)
+            for m in bpy.data.materials
+            if m.node_tree
+            for n in shader_nodes(m, NODE_GROUP)
         }
         for control in controls - used - {None}:
             if control.MustardUI_tools_creators_type == CONTROL_TYPE:

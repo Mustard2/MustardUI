@@ -5,6 +5,7 @@ from . import (
     ops_hair_cage,
     ops_jiggle,
     ops_jiggle_accurate,
+    ops_particle_hair_to_curves,
     ops_physics_assign,
     ops_remove_physics,
     physics_presets,
@@ -21,9 +22,11 @@ def register():
     ops_physics_assign.register()
     ops_accessory_physics.register()
     ops_remove_physics.register()
+    ops_particle_hair_to_curves.register()
 
 
 def unregister():
+    ops_particle_hair_to_curves.unregister()
     ops_remove_physics.unregister()
     ops_accessory_physics.unregister()
     ops_physics_assign.unregister()

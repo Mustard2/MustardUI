@@ -1,5 +1,12 @@
 import bpy
 from mathutils import Vector
+from mathutils.kdtree import KDTree
+
+# Node with the settings of a shader effect, in the group shared by its materials
+SETTINGS = "MustardUI Settings"
+# Inputs of the shaders and their node groups taking the base color
+COLOR_INPUTS = ("Base Color", "Diffuse Color", "Albedo", "Color")
+COLOR_NODES = {"BSDF_PRINCIPLED", "BSDF_DIFFUSE", "SUBSURFACE_SCATTERING", "GROUP"}
 
 
 def effects_available():
@@ -41,18 +48,179 @@ def new_control(objects, effect, creators_type):
     return control, low, high
 
 
-def add_effect_modifier(obj, name, node_group, control):
+def parent_control(control, obj, vertex, depsgraph):
+    """Parent the Control to the bone deforming the evaluated vertex the most, or to the mesh"""
+    # The vertex in the original mesh from its rest position
+    rest = obj.evaluated_get(depsgraph).data.attributes["rest_position"]
+    rest = rest.data[vertex.index].vector
+    kd = KDTree(len(obj.data.vertices))
+    for x in obj.data.vertices:
+        kd.insert(x.co, x.index)
+    kd.balance()
+    armature = next((m.object for m in obj.modifiers if m.type == "ARMATURE" and m.object), None)
+    bones = armature.pose.bones if armature else {}
+    group = max(
+        (
+            x
+            for x in obj.data.vertices[kd.find(rest)[1]].groups
+            if obj.vertex_groups[x.group].name in bones
+        ),
+        key=lambda x: x.weight,
+        default=None,
+    )
+    if group:
+        bone = bones[obj.vertex_groups[group.group].name]
+        control.parent = armature
+        control.parent_type = "BONE"
+        control.parent_bone = bone.name
+        # The bone parent matrix is at its tail
+        parent = armature.matrix_world @ bone.matrix
+        parent.translation = armature.matrix_world @ bone.tail
+    else:
+        control.parent = obj
+        parent = obj.matrix_world
+    control.matrix_parent_inverse = parent.inverted()
+
+
+def add_effect_modifier(obj, name, node_group, control=None):
     modifier = obj.modifiers.new(name, "NODES")
     modifier.node_group = bpy.data.node_groups[node_group]
-    modifier_input(modifier, "Control").value = control
+    if control:
+        modifier_input(modifier, "Control").value = control
 
-    # Before the subdivision, to work on the low poly mesh
-    subdivision = next(
-        (i for i, m in enumerate(obj.modifiers) if m.type in {"SUBSURF", "MULTIRES"}), None
+    # Before the subdivision, to work on the low poly mesh, and the strands, not to affect them.
+    # Multires can't have modifiers above it
+    index = next(
+        (
+            i
+            for i, m in enumerate(obj.modifiers)
+            if m.type == "SUBSURF" or is_effect(m, "MustardUI Sticky Strands")
+        ),
+        None,
     )
-    if subdivision is not None:
-        obj.modifiers.move(len(obj.modifiers) - 1, subdivision)
+    if index is not None:
+        obj.modifiers.move(len(obj.modifiers) - 1, index)
     return modifier
+
+
+def materials(objects):
+    return {
+        s.material for x in objects for s in x.material_slots if s.material and s.material.node_tree
+    }
+
+
+def shader_nodes(material, node_group):
+    return [
+        n
+        for n in material.node_tree.nodes
+        if n.type == "GROUP" and n.node_tree and n.node_tree.name.startswith(node_group)
+    ]
+
+
+def settings_group(node_group):
+    """Group with the shader node group holding its settings, shared by the materials"""
+    tree = bpy.data.node_groups.get(f"{node_group} Settings")
+    if tree is not None:
+        return tree
+    source = bpy.data.node_groups[node_group]
+    tree = bpy.data.node_groups.new(f"{node_group} Settings", "ShaderNodeTree")
+    group_input = tree.nodes.new("NodeGroupInput")
+    group_output = tree.nodes.new("NodeGroupOutput")
+    settings = tree.nodes.new("ShaderNodeGroup")
+    settings.name = SETTINGS
+    settings.node_tree = source
+    # The shader and the inputs linked in each material pass through
+    for item in source.interface.items_tree:
+        if item.item_type != "SOCKET" or not (
+            item.in_out == "OUTPUT" or item.socket_type == "NodeSocketShader" or item.hide_value
+        ):
+            continue
+        socket = tree.interface.new_socket(
+            item.name, in_out=item.in_out, socket_type=item.socket_type
+        )
+        socket.hide_value = item.hide_value
+        if item.in_out == "OUTPUT":
+            tree.links.new(
+                settings.outputs[item.identifier], group_output.inputs[socket.identifier]
+            )
+            continue
+        if hasattr(item, "default_value"):
+            socket.default_value = item.default_value
+        tree.links.new(group_input.outputs[socket.identifier], settings.inputs[item.identifier])
+    return tree
+
+
+def wrap_shader(material, node_group):
+    """Group nodes of the shared settings added between the surface shaders and the outputs"""
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    groups = []
+    for output in [n for n in nodes if n.type == "OUTPUT_MATERIAL"]:
+        surface = output.inputs["Surface"]
+        if not surface.is_linked:
+            continue
+        group = nodes.new("ShaderNodeGroup")
+        group.node_tree = settings_group(node_group)
+        group.location = output.location
+        output.location.x += 250
+        links.new(surface.links[0].from_socket, group.inputs["Shader"])
+        links.new(group.outputs["Shader"], surface)
+        groups.append(group)
+    return groups
+
+
+def unwrap_shader(material, group):
+    """Remove the group node, linking its shader input to its users"""
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    shader = group.inputs["Shader"].links
+    for socket in [x.to_socket for x in group.outputs["Shader"].links]:
+        if shader:
+            links.new(shader[0].from_socket, socket)
+        if socket.node.type == "OUTPUT_MATERIAL":
+            socket.node.location = group.location
+    nodes.remove(group)
+
+
+def color_inputs(socket):
+    """Base color inputs of the shaders linked to the shader socket, through mix and add shaders"""
+    if not socket.is_linked:
+        return
+    node = socket.links[0].from_node
+    shaders = [x for x in node.inputs if x.type == "SHADER"]
+    color = next((node.inputs[x] for x in COLOR_INPUTS if x in node.inputs), None)
+    # Groups wrapping shaders, as of other effects, are not shaders themselves
+    if node.type in COLOR_NODES and color and color.type == "RGBA" and not shaders:
+        yield color
+        return
+    for x in shaders:
+        yield from color_inputs(x)
+
+
+def tint(material, node_group):
+    """Group nodes added before the base colors of the material shaders, multiplying them"""
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    outputs = [n for n in nodes if n.type == "OUTPUT_MATERIAL"]
+    sockets = {x for o in outputs for x in color_inputs(o.inputs["Surface"])}
+    for socket in sockets:
+        group = nodes.new("ShaderNodeGroup")
+        group.node_tree = bpy.data.node_groups[node_group]
+        group.location = (socket.node.location.x - 200, socket.node.location.y)
+        if socket.is_linked:
+            links.new(socket.links[0].from_socket, group.inputs["Color"])
+        else:
+            group.inputs["Color"].default_value = socket.default_value
+        links.new(group.outputs["Color"], socket)
+
+
+def untint(material, group):
+    """Remove the group node, giving its color to its users"""
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    color = group.inputs["Color"]
+    for socket in [x.to_socket for x in group.outputs["Color"].links]:
+        if color.is_linked:
+            links.new(color.links[0].from_socket, socket)
+        else:
+            socket.default_value = color.default_value
+    nodes.remove(group)
 
 
 class RemoveEffect:
@@ -63,6 +231,7 @@ class RemoveEffect:
     effect = ""
     node_group = ""
     creators_type = ""
+    done = "removed"
 
     @classmethod
     def poll(cls, context):
@@ -87,5 +256,5 @@ class RemoveEffect:
             if control.MustardUI_tools_creators_type == self.creators_type:
                 bpy.data.objects.remove(control)
 
-        self.report({"INFO"}, f"MustardUI - {self.effect} removed.")
+        self.report({"INFO"}, f"MustardUI - {self.effect} {self.done}.")
         return {"FINISHED"}

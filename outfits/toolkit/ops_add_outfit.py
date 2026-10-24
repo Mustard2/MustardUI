@@ -8,6 +8,7 @@ import bpy
 
 from ...misc.mesh_deform import read_weights, rest_geometry
 from ...misc.move_modifier import move_modifier
+from ...misc.surface_deform import surface_deform_bind
 from ...misc.ui_progress import status_progress
 from ...model_selection.active_object import (
     ModelMode,
@@ -102,10 +103,12 @@ def add_outfit_children(pieces):
 
 
 def piece_default_names(names):
-    """Piece names without the naming convention prefix and the words shared by all"""
+    """Piece names without the naming convention prefix, or else the words shared by all"""
 
-    words = [re.sub(r"\.\d{3}$", "", n).split(" - ")[-1].split() for n in names]
-    if len(words) > 1:
+    names = [re.sub(r"\.\d{3}$", "", n) for n in names]
+    words = [n.split(" - ")[-1].split() for n in names]
+    # Names with the convention are already piece names, e.g. "Glasses A" and "Glasses B"
+    if len(words) > 1 and not any(" - " in n for n in names):
         shared = set.intersection(*(set(w) for w in words))
         if all(set(w) - shared for w in words):
             words = [[x for x in w if x not in shared] for w in words]
@@ -193,18 +196,18 @@ def transfer_weights(context, body, armature, target, overwrite):
     if overwrite:
         for vg in [vg for vg in target.vertex_groups if vg.name in bones]:
             target.vertex_groups.remove(vg)
-    written = [n for n in names if n not in target.vertex_groups]
-    if not written:
+    # Pieces already weighted, e.g. rigid ones following a single bone, are kept as they are
+    elif any(vg.name in bones for vg in target.vertex_groups):
         return 0
 
     # Default settings, not the ones changed in the Transfer Vertex Groups tool
     props = bpy.ops.mustardui.model_toolkit_transfer_vertex_groups.get_rna_type().properties
     settings = SimpleNamespace(**{p.identifier: getattr(p, "default", None) for p in props})
     source = (*rest_geometry(context, [body], [], False)[0], read_weights(body, names))
-    result = transfer_vertex_groups(context, source, names, target, written, settings)
+    result = transfer_vertex_groups(context, source, names, target, names, settings)
     if result is not None and not result[2]:
         print(f"MustardUI - Weights not filled on {target.name}, the closest ones are kept")
-    return sum(n in target.vertex_groups for n in written)
+    return sum(n in target.vertex_groups for n in names)
 
 
 def bind_to_armature(obj, armature):
@@ -292,14 +295,13 @@ def rebind_modifiers(context, objects, armature):
             # The binding is done when the modifier is evaluated
             mod.show_viewport = True
             if mod.type == "SURFACE_DEFORM":
-                bind = bpy.ops.object.surfacedeform_bind
-            else:
-                bind = bpy.ops.object.correctivesmooth_bind
+                surface_deform_bind(obj, mod)
+                continue
             with context.temp_override(object=obj, active_object=obj):
                 # The operator unbinds the bound modifiers
-                if bound(mod):
-                    bind(modifier=mod.name)
-                bind(modifier=mod.name)
+                if mod.is_bind:
+                    bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
+                bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
         context.view_layer.update()
     finally:
         armature.data.pose_position = pose_position
@@ -411,6 +413,9 @@ def fit_property(default):
 class AddOutfitSettings:
     """Settings of Add Outfit, shared with Add Outfit from File"""
 
+    # Outfit Name and One Outfit per Collection in the settings
+    choose_name = True
+
     destination: bpy.props.EnumProperty(
         name="Add to",
         items=(
@@ -484,7 +489,7 @@ class AddOutfitSettings:
         name="Overwrite",
         default=False,
         description="Replace all the deform bones Vertex Groups of the pieces with the body "
-        "ones.\nIf disabled, only the Vertex Groups missing on the pieces are added",
+        "ones.\nIf disabled, the pieces already weighted to the deform bones are not changed",
     )
 
     transfer_shape_keys: bpy.props.BoolProperty(
@@ -549,7 +554,7 @@ class AddOutfitSettings:
 
         col = layout.column()
         col.prop(self, "destination")
-        if self.destination == "NEW":
+        if self.destination == "NEW" and self.choose_name:
             if pieces is None or len(add_outfit_groups(pieces)) > 1:
                 col.prop(self, "split")
             if not self.split:
@@ -741,8 +746,8 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         steps = self.steps(context, pieces, names, keys, targets)
         self._backup = PiecesBackup(pieces)
 
-        # Without a window (e.g. from scripts) all the steps are run at once
-        if context.window is None or bpy.app.background:
+        # Not invoked (e.g. from scripts or Add Outfit from File) all the steps are run at once
+        if context.window is None or bpy.app.background or not self.options.is_invoke:
             try:
                 for _ in steps:
                     pass
@@ -846,10 +851,15 @@ class MustardUI_ModelToolkit_AddOutfit(AddOutfitSettings, bpy.types.Operator):
         weights = 0
         for piece in pieces:
             yield done / total, f"{names[piece.name]} - Weights"
+            done += weights_unit
+            # Pieces following a bone (e.g. earrings) would move twice if deformed
+            if (piece.parent == arm_obj and piece.parent_type == "BONE") or any(
+                c.type == "CHILD_OF" and c.target == arm_obj for c in piece.constraints
+            ):
+                continue
             bind_to_armature(piece, arm_obj)
             if self.transfer_weights:
                 weights += transfer_weights(context, body, arm_obj, piece, self.overwrite_weights)
-            done += weights_unit
 
         shape_keys = 0
         if keys:

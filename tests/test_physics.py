@@ -154,6 +154,62 @@ class TestPhysics(BlenderTestCase):
         bpy.ops.mustardui.physics_rebind_single(object_name=glasses.name)
         np.testing.assert_allclose(evaluated_co(glasses), rest, atol=1e-5)
 
+    # Only the Corrective Smooth modifiers after a rebound deform are rebound
+    def test_rebind_corrective_smooth(self):
+        glasses = bpy.data.objects["Extras - Glasses"]
+        before = glasses.modifiers.new("Before", "CORRECTIVE_SMOOTH")
+        glasses.modifiers.new(self.cage.name, "SURFACE_DEFORM").target = self.cage
+        after = glasses.modifiers.new("After", "CORRECTIVE_SMOOTH")
+        for smooth in (before, after):
+            smooth.rest_source = "BIND"
+
+        bpy.ops.mustardui.physics_rebind_single(object_name=glasses.name, force=True)
+        self.assertFalse(before.is_bind)
+        self.assertTrue(after.is_bind)
+
+    # Bindings are made without the cage subdivision, so they work at the lower levels
+    def test_rebind_subdivided_cage(self):
+        subsurf = self.cage.modifiers.new("Subdivision", "SUBSURF")
+        subsurf.levels = 1
+        glasses = bpy.data.objects["Extras - Glasses"]
+        deform = glasses.modifiers.new(self.cage.name, "SURFACE_DEFORM")
+        deform.target = self.cage
+
+        bpy.ops.mustardui.physics_rebind_single(object_name=glasses.name, force=True)
+        self.assertTrue(deform.is_bound)
+        self.assertTrue(subsurf.show_viewport)
+
+        subsurf.levels = 0
+        rest = evaluated_co(glasses)
+        self.cage.modifiers.new("Inflate", "DISPLACE").strength = 0.1
+        self.assertGreater(np.abs(evaluated_co(glasses) - rest).max(), 1e-3)
+
+    # Cages with concave faces are bound through a temporary Triangulate modifier
+    def test_rebind_concave_cage(self):
+        bm = bmesh.new()
+        bm.from_mesh(self.cage.data)
+        top = max(bm.edges, key=lambda e: e.verts[0].co.z + e.verts[1].co.z)
+        cut = bmesh.ops.subdivide_edges(bm, edges=[top], cuts=1)["geom_inner"][0]
+        cut.co.xy *= 0.2
+        bm.to_mesh(self.cage.data)
+        bm.free()
+
+        glasses = bpy.data.objects["Extras - Glasses"]
+        deform = glasses.modifiers.new(self.cage.name, "SURFACE_DEFORM")
+        deform.target = self.cage
+        with bpy.context.temp_override(object=glasses):
+            bpy.ops.object.surfacedeform_bind(modifier=deform.name)
+        self.assertFalse(deform.is_bound)
+
+        bpy.ops.mustardui.physics_rebind_single(object_name=glasses.name, force=True)
+        self.assertTrue(deform.is_bound)
+        self.assertNotIn("TRIANGULATE", [m.type for m in self.cage.modifiers])
+
+        # The binding follows the cage without the Triangulate modifier
+        rest = evaluated_co(glasses)
+        self.cage.modifiers.new("Inflate", "DISPLACE").strength = 0.1
+        self.assertGreater(np.abs(evaluated_co(glasses) - rest).max(), 1e-3)
+
 
 class TestOutfitsPhysicsSetup(BlenderTestCase):
     def setUp(self):
@@ -191,6 +247,18 @@ class TestOutfitsPhysicsSetup(BlenderTestCase):
             self.hat, [x.object for x in self.physics_settings.items[0].intersecting_objects]
         )
 
+    # New modifiers are bound after the Armature, leaving the piece subdivision shown
+    def test_piece_subdivision_kept(self):
+        shirt = bpy.data.objects["Casual - Shirt"]
+        subsurf = shirt.modifiers.new("Subdivision", "SUBSURF")
+        bpy.ops.mustardui.physics_outfits_setup()
+        deform = self.surface_deforms(shirt)[0]
+        self.assertTrue(deform.is_bound)
+        self.assertEqual(
+            [m.type for m in shirt.modifiers], ["ARMATURE", "SURFACE_DEFORM", "SUBSURF"]
+        )
+        self.assertTrue(subsurf.show_viewport)
+
     # The armature keeps its pose position
     def test_rest_position_kept(self):
         self.model["armature"].data.pose_position = "REST"
@@ -219,13 +287,13 @@ class TestOutfitsPhysicsSetup(BlenderTestCase):
         scene = bpy.context.scene
         scene.frame_current = 5
         self.physics_settings.enable_physics = True
-        original_bind = ops_outfits_setup.MustardUI_Physics_OutfitsSetup.bind
-        ops_outfits_setup.MustardUI_Physics_OutfitsSetup.bind = fail
+        original_bind = ops_outfits_setup.surface_deform_bind
+        ops_outfits_setup.surface_deform_bind = fail
         try:
             with self.assertRaisesRegex(RuntimeError, "Bind failed"):
                 bpy.ops.mustardui.physics_outfits_setup()
         finally:
-            ops_outfits_setup.MustardUI_Physics_OutfitsSetup.bind = original_bind
+            ops_outfits_setup.surface_deform_bind = original_bind
         # The expected error is printed
         self._stderr.buffer.seek(0)
         self._stderr.buffer.truncate()

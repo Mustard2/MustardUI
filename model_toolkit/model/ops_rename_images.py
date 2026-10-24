@@ -45,6 +45,10 @@ IMAGE_EXTENSIONS = {
 }
 
 
+# UDIM tile token at the end of a name (Skin.1001, Skin_<UDIM>)
+UDIM_TOKEN = re.compile(r"[._](?:<UDIM>|1\d{3})$")
+
+
 def strip_image_extension(name: str):
     # Remove the Blender duplicate suffixes (.001) and any image extension left in the name
     while True:
@@ -70,7 +74,9 @@ def available_file_path(directory: str, stem: str, ext: str, current_path: str):
 
 def make_node_label(name: str):
     parts = name.split("_")
-    return " ".join(p.upper() if p.upper() in {"AO", "UV"} else p.capitalize() for p in parts)
+    return " ".join(
+        p.upper() if p.upper() in {"AO", "UV", "<UDIM>"} else p.capitalize() for p in parts
+    )
 
 
 def detect_texture_type(name: str):
@@ -153,9 +159,6 @@ def extract_base_name(image_name: str, tex_type: str, zone: str):
     # Remove .001 etc
     name = re.sub(r"\.\d+$", "", image_name).lower()
 
-    # Remove ALL trailing type letters (sn, ns, rn, etc.)
-    name = re.sub(r"[dnrmseoha]+$", "", name)
-
     # Remove texture keywords
     type_words = [
         "diffuse",
@@ -210,6 +213,9 @@ def extract_base_name(image_name: str, tex_type: str, zone: str):
 
     for w in zone_words:
         name = name.replace(w, "")
+
+    # Remove ALL trailing type letters (sn, ns, rn, etc.), after the keywords to keep them whole
+    name = re.sub(r"[dnrmseoha]+$", "", name)
 
     # Remove separators
     name = re.sub(r"[_\-.]+", "_", name)
@@ -266,11 +272,20 @@ class MustardUI_RenameImageNodes_Update(bpy.types.Operator):
             model_name = sanitize_name(context.object.name) if context.object else ""
 
         for item in [x for x in collection if x.enabled and x.image is not None]:
+            # Images already renamed, also from other Materials, keep their name
+            if UDIM_TOKEN.sub("", item.image.name).endswith("_Texture"):
+                item.name = item.image.name
+                continue
+
             if item.image.filepath:
                 filename = bpy.path.basename(item.image.filepath)
                 original = os.path.splitext(filename)[0]
             else:
                 original = os.path.splitext(item.image.name)[0]
+
+            udim = UDIM_TOKEN.search(original)
+            if udim:
+                original = original[: udim.start()]
 
             tex_type = detect_texture_type(original)
             zone = detect_material_zone(
@@ -295,7 +310,7 @@ class MustardUI_RenameImageNodes_Update(bpy.types.Operator):
 
             parts.append("Texture")
 
-            item.name = sanitize_name("_".join(parts))
+            item.name = sanitize_name("_".join(parts)) + (udim.group() if udim else "")
 
         return {"FINISHED"}
 

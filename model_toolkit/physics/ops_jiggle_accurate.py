@@ -9,6 +9,7 @@ from ... import __package__ as base_package
 from ...misc import mesh_cleanup
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
+from ...misc.surface_deform import surface_deform_bind
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -949,8 +950,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # which removes the offending triangles, and the binding is attempted
             # once more
             for attempt in range(3):
-                bpy.ops.object.surfacedeform_bind(modifier=surface_deform.name)
-                if surface_deform.is_bound:
+                if surface_deform_bind(source, surface_deform):
                     break
 
                 bm = bmesh.new()
