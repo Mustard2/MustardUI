@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import bpy
 
 from .. import __package__ as base_package
@@ -9,6 +11,19 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from .helper_functions import get_mask_visibility, outfits_get_collection_items, update_masks
+
+
+@contextmanager
+def purge_new_orphans():
+    """Purge the data left unused by the block, keeping the data already unused before it"""
+
+    previous = {x.session_uid for x in bpy.data.user_map() if not x.users}
+    yield
+    # Repeated as removing the unused data frees the data it uses (e.g. images of materials)
+    while orphans := [
+        x for x in bpy.data.user_map() if not x.users and x.session_uid not in previous
+    ]:
+        bpy.data.batch_remove(orphans)
 
 
 def delete_collection_physics_items(arm, collection):
@@ -138,8 +153,8 @@ class MustardUI_DeleteOutfit(bpy.types.Operator):
             return {"FINISHED"}
 
         outfit_name = col.name
-        delete_outfit_collection(context, arm, col)
-        bpy.data.orphans_purge(do_recursive=True)
+        with purge_new_orphans():
+            delete_outfit_collection(context, arm, col)
 
         self.report({"INFO"}, f"MustardUI - Outfit '{outfit_name}' deleted.")
 
@@ -164,11 +179,11 @@ class MustardUI_DeleteExtras(bpy.types.Operator):
         rig_settings = arm.MustardUI_RigSettings
         extras = rig_settings.extras_collection
 
-        delete_collection_physics_items(arm, extras)
-        delete_extras_pieces(
-            context, arm, outfits_get_collection_items(rig_settings, extras), physics=False
-        )
-        bpy.data.orphans_purge(do_recursive=True)
+        with purge_new_orphans():
+            delete_collection_physics_items(arm, extras)
+            delete_extras_pieces(
+                context, arm, outfits_get_collection_items(rig_settings, extras), physics=False
+            )
 
         self.report({"INFO"}, "MustardUI - Extras deleted.")
 

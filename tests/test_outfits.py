@@ -108,6 +108,23 @@ class TestOutfits(BlenderTestCase):
         )
         self.assertNotIn("Formal - Dress", bpy.data.objects)
 
+    # Deleting an outfit purges the data it leaves unused, but not the data unused before
+    def test_delete_outfit_purge(self):
+        bpy.ops.mustardui.configuration()
+        material = bpy.data.materials.new("Dress Material")
+        material.use_nodes = True
+        image = bpy.data.images.new("Dress Image", 4, 4)
+        material.node_tree.nodes.new("ShaderNodeTexImage").image = image
+        bpy.data.objects["Formal - Dress"].data.materials.append(material)
+        bpy.data.materials.new("Unused Material")
+        bpy.data.images.new("Unused Image", 4, 4)
+        bpy.context.scene.mustardui_outfits_uilist_index = 1
+        bpy.ops.mustardui.delete_outfit(is_config=True)
+        self.assertNotIn("Dress Material", bpy.data.materials)
+        self.assertNotIn("Dress Image", bpy.data.images)
+        self.assertIn("Unused Material", bpy.data.materials)
+        self.assertIn("Unused Image", bpy.data.images)
+
     # Deleting the Extras removes the collection and its objects
     def test_delete_extras(self):
         bpy.ops.mustardui.configuration()

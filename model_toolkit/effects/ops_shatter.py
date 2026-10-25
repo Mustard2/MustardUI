@@ -140,6 +140,8 @@ class MustardUI_ModelToolkit_Shatter(bpy.types.Operator):
         modifier = target.modifiers.new("Shatter", "NODES")
         modifier.node_group = bpy.data.node_groups[NODE_GROUP]
         modifier_input(modifier, "Colliders").value = collection
+        # Blender 5.2.0 does not set the material inputs to their defaults
+        modifier_input(modifier, "Smoke Material").value = bpy.data.materials[DUST]
         corners = [target.matrix_world @ Vector(x) for x in target.bound_box]
         size = (Vector(map(max, *corners)) - Vector(map(min, *corners))).length
         for name, value in PRESETS[self.kind].items():

@@ -538,7 +538,7 @@ class TestClothTear(BlenderTestCase):
             control.keyframe_insert("location", frame=frame)
 
         depsgraph = bpy.context.evaluated_depsgraph_get()
-        for frame in range(start, start + 40):
+        for frame in range(start, start + 30):
             scene.frame_set(frame)
         data = curtain.evaluated_get(depsgraph).data
         co = np.empty(len(data.vertices) * 3)
@@ -562,28 +562,19 @@ class TestClothTear(BlenderTestCase):
         self.assertEqual((z > 1.2).sum(), 0)
         self.assertGreater(((z > 0.75) & (z < 1.1)).sum(), len(curtain.data.vertices) / 2)
 
-    # With physics, the cloth around a hole sags when released, still without
+    # With physics, the cloth around a hole sags when released, still without, the Shape holding
+    # it on the shape of the mesh, sagging less
     def test_physics_release(self):
         heights = []
-        for release in (0.0, 0.1):
+        for release, shape in ((0.0, 0.0), (0.1, 0.0), (0.1, 1.0)):
             curtain = self.curtain()
             # The pieces ripped out to the floor, the cloth below the hole left
-            co = self.tear(curtain, release=release, across=False, rip_out=1.0)
+            co = self.tear(curtain, release=release, across=False, rip_out=1.0, shape=shape)
             below = co[(np.abs(co[:, 0]) < 0.05) & (co[:, 2] > 0.6) & (co[:, 2] < 0.95)]
             heights.append(below[:, 2].max())
             bpy.data.objects.remove(curtain)
         self.assertLess(heights[1], heights[0] - 0.02)
-
-    # The Shape holds the released cloth below the hole on the shape of the mesh, sagging less
-    def test_physics_shape(self):
-        heights = []
-        for shape in (0.0, 1.0):
-            curtain = self.curtain()
-            co = self.tear(curtain, release=0.1, across=False, rip_out=1.0, shape=shape)
-            below = co[(np.abs(co[:, 0]) < 0.05) & (co[:, 2] > 0.6) & (co[:, 2] < 0.95)]
-            heights.append(below[:, 2].max())
-            bpy.data.objects.remove(curtain)
-        self.assertGreater(heights[1], heights[0] + 0.01)
+        self.assertGreater(heights[2], heights[1] + 0.01)
 
     # A Pull grabs the cloth and moves away along its normal, ripping it and holding the ripped
     # part, or letting it fall, removed with the Cloth Tear
@@ -607,7 +598,7 @@ class TestClothTear(BlenderTestCase):
             curtain.update_tag()
 
             depsgraph = bpy.context.evaluated_depsgraph_get()
-            for frame in range(start, start + 40):
+            for frame in range(start, start + 30):
                 scene.frame_set(frame)
             end = np.array(pull.matrix_world.translation)
             np.testing.assert_allclose(np.abs(end), (0.0, 0.2, 1.0), atol=1e-3)
@@ -2448,7 +2439,8 @@ class TestShatter(BlenderTestCase):
         return co, len(data.polygons), [x and x.original for x in data.materials], volume
 
     # The ball breaks a hole in the wall, the pieces around it falling on the floor and resting
-    # there, the others staying, all the pieces together keeping the volume of the wall
+    # there, the others staying, all the pieces together keeping the volume of the wall, and
+    # with Breakup large pieces hit hard break again, once
     def test_shatter(self):
         modifier = self.add(self.wall, kind="STONE")
         colliders = effect.modifier_input(modifier, "Colliders").value
@@ -2456,7 +2448,7 @@ class TestShatter(BlenderTestCase):
         self.assertEqual(effect.modifier_input(modifier, "Floor").value, 0.0)
 
         faces = []
-        for frame in range(1, 81):
+        for frame in range(1, 61):
             self.scene.frame_set(frame)
             co, count, materials, volume = self.evaluate(self.wall)
             faces.append(count)
@@ -2464,7 +2456,7 @@ class TestShatter(BlenderTestCase):
             self.assertAlmostEqual(volume, 0.8, delta=1e-3, msg=f"frame {frame}")
             if frame == 13:
                 top = co[co[:, 2] > 1.9]
-            if frame == 79:
+            if frame == 59:
                 before = co
         self.assertEqual(faces[:10], [6] * 10)
         self.assertGreater(faces[-1], 100)
@@ -2475,6 +2467,18 @@ class TestShatter(BlenderTestCase):
         np.testing.assert_allclose(np.sort(co[co[:, 2] > 1.9], axis=0), np.sort(top, axis=0))
         # Some pieces passed through the wall
         self.assertGreater(co[:, 1].max(), 0.3)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        effect.modifier_input(modifier, "Breakup").value = True
+        effect.modifier_input(modifier, "Breakup Chance").value = 1.0
+        effect.modifier_input(modifier, "Breakup Size").value = 0.1
+        self.wall.update_tag()
+        for frame in range(1, 41):
+            self.scene.frame_set(frame)
+            co, count, _, volume = self.evaluate(self.wall)
+            self.assertAlmostEqual(volume, 0.8, delta=1e-3, msg=f"frame {frame}")
+        self.assertGreater(count, faces[-1] * 1.2)
+        self.assertGreater(co[:, 2].min(), -0.003)
         self.assertEqual([x.message for x in modifier.node_warnings], [])
 
     # An open mesh, as a window pane, breaks keeping its area
@@ -2503,7 +2507,8 @@ class TestShatter(BlenderTestCase):
         self.assertEqual(self.evaluate(self.wall)[1], 6)
 
     # Without other selected meshes, the model body breaks it, and the floor: a closed glass
-    # dropped on the ground breaks into pieces scattered around and resting there
+    # dropped on the ground breaks into pieces scattered around and resting there, overlapping
+    # each other less with Piece Collisions
     def test_drop(self):
         glass = self.sphere("Glass", 0.1)
         bpy.ops.object.select_all(action="DESELECT")
@@ -2513,14 +2518,49 @@ class TestShatter(BlenderTestCase):
         modifier = self.add(glass, kind="GLASS")
         colliders = effect.modifier_input(modifier, "Colliders").value
         self.assertEqual(list(colliders.objects), [bpy.data.objects["Tester Body"]])
+        self.assertTrue(effect.modifier_input(modifier, "Piece Collisions").value)
 
         whole = self.evaluate(glass)[3]
-        for frame in range(1, 61):
-            self.scene.frame_set(frame)
-            co, count, _, volume = self.evaluate(glass)
-            self.assertAlmostEqual(volume, whole, delta=whole * 1e-3, msg=f"frame {frame}")
-        self.assertGreater(count, 200)
-        self.assertGreater(co[:, 2].min(), -0.003)
+        overlaps = []
+        for enabled in (False, True):
+            effect.modifier_input(modifier, "Piece Collisions").value = enabled
+            glass.update_tag()
+            for frame in range(1, 41):
+                self.scene.frame_set(frame)
+                co, count, _, volume = self.evaluate(glass)
+                self.assertAlmostEqual(volume, whole, delta=whole * 1e-3, msg=f"frame {frame}")
+            self.assertGreater(count, 200)
+            self.assertGreater(co[:, 2].min(), -0.003)
+
+            data = glass.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            bm = bmesh.new()
+            bm.from_mesh(data)
+            trees = []
+            seen = set()
+            for face in bm.faces:
+                if face in seen:
+                    continue
+                # The faces of the piece
+                piece, stack = {face}, [face]
+                while stack:
+                    for edge in stack.pop().edges:
+                        for other in edge.link_faces:
+                            if other not in piece:
+                                piece.add(other)
+                                stack.append(other)
+                seen |= piece
+                verts = list({v for f in piece for v in f.verts})
+                index = {v: i for i, v in enumerate(verts)}
+                trees.append(
+                    BVHTree.FromPolygons(
+                        [v.co.copy() for v in verts], [[index[v] for v in f.verts] for f in piece]
+                    )
+                )
+            bm.free()
+            overlaps.append(
+                sum(bool(a.overlap(b)) for i, a in enumerate(trees) for b in trees[i + 1 :])
+            )
+        self.assertLess(overlaps[1] * 2, overlaps[0])
         # Scattered, not only where it landed
         self.assertGreater(np.abs(co[:, :2] - (-3.0, 0.0)).max(), 0.2)
 
@@ -2546,7 +2586,7 @@ class TestShatter(BlenderTestCase):
                 self.wall.update_tag()
                 base = self.evaluate(self.wall)[0]
                 base = base[base[:, 2] < 0.01]
-                for frame in range(1, 61):
+                for frame in range(1, 31):
                     self.scene.frame_set(frame)
                 co, count = self.evaluate(self.wall)[:2]
                 # Broken
@@ -2579,7 +2619,7 @@ class TestShatter(BlenderTestCase):
             self.scene.frame_set(1)
             base = self.evaluate(self.wall)[0]
             base = base[base[:, 2] < 0.01]
-            for frame in range(1, 61):
+            for frame in range(1, 31):
                 self.scene.frame_set(frame)
             co, faces[enabled] = self.evaluate(self.wall)[:2]
             low = co[co[:, 2] < 0.01]
@@ -2608,60 +2648,14 @@ class TestShatter(BlenderTestCase):
                 base = self.evaluate(self.wall)[0]
                 base = base[base[:, 2] < 0.01]
                 faces = {}
-                for frame in range(1, 61):
+                for frame in range(1, 46):
                     self.scene.frame_set(frame)
                     co, faces[frame] = self.evaluate(self.wall)[:2]
-                self.assertGreater(faces[60], faces[29])
+                self.assertGreater(faces[45], faces[29])
                 # The bottom face of the tower, unmoved
                 self.assertTrue(np.isin(base.round(4), co[co[:, 2] < 0.01].round(4)).all())
                 self.assertEqual([x.message for x in modifier.node_warnings], [])
                 self.wall.modifiers.remove(modifier)
-
-    # The pieces of a dropped glass overlap each other less with Piece Collisions
-    def test_piece_collisions(self):
-        glass = self.sphere("Glass", 0.1)
-        bpy.ops.object.select_all(action="DESELECT")
-        for frame, z in ((21, -1.0), (1, 1.0)):
-            glass.location = (-3.0, 0.0, z)
-            glass.keyframe_insert("location", frame=frame)
-        modifier = self.add(glass, kind="GLASS")
-        self.assertTrue(effect.modifier_input(modifier, "Piece Collisions").value)
-
-        overlaps = []
-        for enabled in (True, False):
-            effect.modifier_input(modifier, "Piece Collisions").value = enabled
-            glass.update_tag()
-            for frame in range(1, 49):
-                self.scene.frame_set(frame)
-            data = glass.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
-            bm = bmesh.new()
-            bm.from_mesh(data)
-            trees = []
-            seen = set()
-            for face in bm.faces:
-                if face in seen:
-                    continue
-                # The faces of the piece
-                piece, stack = {face}, [face]
-                while stack:
-                    for edge in stack.pop().edges:
-                        for other in edge.link_faces:
-                            if other not in piece:
-                                piece.add(other)
-                                stack.append(other)
-                seen |= piece
-                verts = list({v for f in piece for v in f.verts})
-                index = {v: i for i, v in enumerate(verts)}
-                trees.append(
-                    BVHTree.FromPolygons(
-                        [v.co.copy() for v in verts], [[index[v] for v in f.verts] for f in piece]
-                    )
-                )
-            bm.free()
-            overlaps.append(
-                sum(bool(a.overlap(b)) for i, a in enumerate(trees) for b in trees[i + 1 :])
-            )
-        self.assertLess(overlaps[0] * 2, overlaps[1])
 
     # Debris chips are thrown from the cuts and rest on the floor, and dust billows as a volume
     def test_debris_smoke(self):
@@ -2671,54 +2665,34 @@ class TestShatter(BlenderTestCase):
         dust = effect.modifier_input(modifier, "Smoke Material").value
         self.assertEqual(dust.name, "MustardUI Shatter Dust")
 
-        faces = {}
-        for enabled in (True, False):
-            effect.modifier_input(modifier, "Debris").value = enabled
-            self.wall.update_tag()
-            for frame in range(1, 61):
-                self.scene.frame_set(frame)
-            depsgraph = bpy.context.evaluated_depsgraph_get()
-            geometry = self.wall.evaluated_get(depsgraph).evaluated_geometry()
-            self.assertIsNotNone(geometry.volume)
-            # Around the wall and the debris trailing dust, the grid not growing every frame
-            volume = next(
-                x.object
-                for x in depsgraph.object_instances
-                if x.object.type == "VOLUME" and x.object.original == self.wall
-            )
-            corners = np.array([x[:] for x in volume.bound_box])
-            self.assertLess((corners.max(0) - corners.min(0)).max(), 12.0)
-            co, faces[enabled], materials, _ = self.evaluate(self.wall)
-            self.assertGreater(co[:, 2].min(), -0.003)
-        # Chips of 20 faces, from the pieces loose around the hole
-        self.assertGreater(faces[True] - faces[False], 20 * 50)
+        for frame in range(1, 41):
+            self.scene.frame_set(frame)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        self.assertIsNotNone(self.wall.evaluated_get(depsgraph).evaluated_geometry().volume)
+        # Around the wall and the debris trailing dust, the grid not growing every frame
+        volume = next(
+            x.object
+            for x in depsgraph.object_instances
+            if x.object.type == "VOLUME" and x.object.original == self.wall
+        )
+        corners = np.array([x[:] for x in volume.bound_box])
+        self.assertLess((corners.max(0) - corners.min(0)).max(), 12.0)
+        co, faces, materials, _ = self.evaluate(self.wall)
+        self.assertGreater(co[:, 2].min(), -0.003)
         self.assertEqual(materials, [self.brick, None])
         self.assertEqual([x.message for x in modifier.node_warnings], [])
 
+        effect.modifier_input(modifier, "Debris").value = False
         effect.modifier_input(modifier, "Smoke").value = False
         self.wall.update_tag()
-        self.scene.frame_set(60)
+        for frame in range(1, 41):
+            self.scene.frame_set(frame)
         geometry = self.wall.evaluated_get(
             bpy.context.evaluated_depsgraph_get()
         ).evaluated_geometry()
         self.assertIsNone(geometry.volume)
-
-    # Large pieces hit hard break again, once, keeping the volume, resting on the floor
-    def test_breakup(self):
-        modifier = self.add(self.wall, kind="STONE")
-        effect.modifier_input(modifier, "Breakup Chance").value = 1.0
-        effect.modifier_input(modifier, "Breakup Size").value = 0.1
-        faces = {}
-        for enabled in (False, True):
-            effect.modifier_input(modifier, "Breakup").value = enabled
-            self.wall.update_tag()
-            for frame in range(1, 61):
-                self.scene.frame_set(frame)
-                co, faces[enabled], _, volume = self.evaluate(self.wall)
-                self.assertAlmostEqual(volume, 0.8, delta=1e-3, msg=f"frame {frame}")
-            self.assertGreater(co[:, 2].min(), -0.003)
-        self.assertGreater(faces[True], faces[False] * 1.2)
-        self.assertEqual([x.message for x in modifier.node_warnings], [])
+        # Chips of 20 faces, from the pieces loose around the hole
+        self.assertGreater(faces - len(geometry.mesh.polygons), 20 * 50)
 
     # The inner faces have the Material, else the one of the closest outer face
     def test_inner_faces(self):

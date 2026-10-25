@@ -94,6 +94,8 @@ class MustardUI_ModelToolkit_DustPuff(bpy.types.Operator):
         modifier = ground.modifiers.new("Dust Puff", "NODES")
         modifier.node_group = bpy.data.node_groups[NODE_GROUP]
         modifier_input(modifier, "Colliders").value = collection
+        # Blender 5.2.0 does not set the material inputs to their defaults
+        modifier_input(modifier, "Dust Material").value = bpy.data.materials[DUST]
         for name, value in PRESETS[self.kind].items():
             modifier_input(modifier, name).value = value
         modifier_input(modifier, "Start Frame").value = context.scene.frame_current

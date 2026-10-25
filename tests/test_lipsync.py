@@ -124,6 +124,35 @@ class TestLipSync(BlenderTestCase):
             # Blender adds .001 to duplicate names
             self.assertTrue(owner.animation_data.action.name.startswith("HelloWorldThisIsALipSync"))
 
+    # Reset sets the visemes to 0 and keeps their keyframes
+    def test_reset(self):
+        self.arm_obj.data[PREFIX + "M"] = 0.0
+        for mode, source, owner, path in (
+            (
+                "SHAPE_KEY",
+                "ARMATURE_OBJ",
+                self.body.data.shape_keys,
+                f'key_blocks["{PREFIX}M"].value',
+            ),
+            ("MORPH", "ARMATURE_DATA", self.arm_obj.data, f'["{PREFIX}M"]'),
+        ):
+            self.tools.lipsync_driver_type = mode
+            self.tools.lipsync_source = source
+            self.tools.lipsync_input = "ARPABET"
+            self.tools.lipsync_arpabet = "M"
+            self.assertEqual(bpy.ops.mustardui.tools_lipsync(), {"FINISHED"})
+            fc = self.fcurves(owner)[path]
+            keys = len(fc.keyframe_points)
+            bpy.context.scene.frame_set(
+                round(max(fc.keyframe_points, key=lambda kp: kp.co[1]).co[0])
+            )
+            self.assertGreater(owner.path_resolve(path), 0.1)
+
+            self.assertEqual(bpy.ops.mustardui.tools_lipsync_reset(), {"FINISHED"})
+            bpy.context.view_layer.update()
+            self.assertEqual(owner.path_resolve(path), 0.0)
+            self.assertEqual(len(self.fcurves(owner)[path].keyframe_points), keys)
+
     # Lip sync panels draw cleanly for every driver type and input
     def test_draw_panels(self):
         for mode in ("SHAPE_KEY", "MORPH"):
