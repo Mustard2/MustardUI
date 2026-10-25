@@ -73,7 +73,11 @@ FILL = 0.2
 # Scale of the layers of tiny drops relative to Mist Scale, and their share of Mist
 MIST_LAYERS = ((0.4, 0.3), (1.0, 1.0), (2.3, 1.0), (5.0, 1.0))
 # Smallest tiny drops, relative to Mist Size
-MIST_SMALLEST = 0.2
+MIST_SMALLEST = 0.4
+# Bending of the outlines of the tiny drops, relative to the largest ones
+LUMPS = 0.4
+# Radius in meters of the drops half as high as a sphere, flattened by their weight
+CAPILLARY = 0.0007
 # Height of the sheets of film in meters at full Bump, at their edges and in the pools, and the
 # swells on them per meter
 SHEET = 0.001
@@ -87,6 +91,13 @@ DROP_RING = 0.3
 SPARKLE = 150.0
 # Streaks per meter, across and along the vertical
 STREAK = (60.0, 60.0, 4.0)
+# Cells of the trails per meter, across and along the vertical, their meander relative to the
+# cells, half width and height in meters, and their runs per meter
+TRAIL = (60.0, 60.0, 0.5)
+MEANDER = 0.5
+TRAIL_WIDTH = 0.0005
+TRAIL_HEIGHT = 0.0002
+TRAIL_RUN = (30.0, 30.0, 4.0)
 
 
 def build_node_group():
@@ -1812,7 +1823,7 @@ def build_mist():
     ng = bpy.data.node_groups.new(MIST, "ShaderNodeTree")
     add_input(ng, "Vector", "NodeSocketVector", hide_value=True)
     add_input(ng, "Scale", "NodeSocketFloat", default_value=500.0)
-    add_input(ng, "Size", "NodeSocketFloat", default_value=0.35)
+    add_input(ng, "Size", "NodeSocketFloat", default_value=0.45)
     add_input(ng, "Amount", "NodeSocketFloat", default_value=0.5)
     add_output(ng, "Height", "NodeSocketFloat")
 
@@ -1826,17 +1837,18 @@ def build_mist():
     radius = t.math("MULTIPLY", random["Red"], random["Red"], x=2.5, y=-1)
     radius = t.math("MULTIPLY_ADD", radius, 1.0 - MIST_SMALLEST, MIST_SMALLEST, x=3, y=-1)
     radius = t.math("MULTIPLY", radius, inputs["Size"], x=4, y=-1)
-    # Dome over each drop, in meters
+    # Dome over each drop, in meters, the larger ones flattened by their weight
     inside = t.math("DIVIDE", voronoi["Distance"], radius, x=5, y=0)
     inside = t.math(
         "MULTIPLY_ADD", inside, t.math("MULTIPLY", inside, -1.0, x=5, y=1), 1.0, x=6, y=0
     )
     height = t.math("SQRT", t.math("MAXIMUM", inside, 0.0, x=7, y=0), x=8, y=0)
-    height = t.math("MULTIPLY", height, radius, x=9, y=0)
-    height = t.math("DIVIDE", height, inputs["Scale"], x=10, y=0)
+    radius = t.math("DIVIDE", radius, inputs["Scale"], x=5, y=-1)
+    flat = t.math("MULTIPLY_ADD", radius, 1.0 / CAPILLARY, 1.0, x=6, y=-1)
+    height = t.math("MULTIPLY", height, t.math("DIVIDE", radius, flat, x=7, y=-1), x=9, y=0)
     present = t.math("LESS_THAN", random["Green"], inputs["Amount"], x=9, y=-2)
-    height = t.math("MULTIPLY", height, present, x=11, y=0)
-    t.node("NodeGroupOutput", 12, 0, {"Height": height})
+    height = t.math("MULTIPLY", height, present, x=10, y=0)
+    t.node("NodeGroupOutput", 11, 0, {"Height": height})
     return ng
 
 
@@ -1876,7 +1888,7 @@ def build_film(mist):
         "Mist",
         "NodeSocketFloat",
         subtype="FACTOR",
-        default_value=0.8,
+        default_value=1.0,
         min_value=0.0,
         max_value=1.0,
         description="Amount of tiny drops in the film",
@@ -1894,7 +1906,7 @@ def build_film(mist):
         "Mist Size",
         "NodeSocketFloat",
         subtype="FACTOR",
-        default_value=0.35,
+        default_value=0.45,
         min_value=0.0,
         max_value=0.5,
         description="Size of the tiny drops, relative to their spacing",
@@ -1904,7 +1916,7 @@ def build_film(mist):
         "Mist Patches",
         "NodeSocketFloat",
         subtype="FACTOR",
-        default_value=0.6,
+        default_value=0.3,
         min_value=0.0,
         max_value=1.0,
         description="Tiny drops gathered in patches, fewer between them",
@@ -1927,7 +1939,7 @@ def build_film(mist):
         default_value=0.4,
         min_value=0.0,
         max_value=1.0,
-        description="Glossier streaks running down, along the vertical of the rest pose",
+        description="Glossier streaks and trails running down, along the vertical of the rest pose",
     )
     add_input(
         ng,
@@ -2080,13 +2092,21 @@ def build_film(mist):
         x=4,
         y=-6,
     )
+    # Lumpy outlines, each octave of the noise bending the drops of its size alike
+    largest = t.math("MULTIPLY", inputs["Mist Scale"], MIST_LAYERS[0][0], x=1, y=-3)
+    lumps = t.node(
+        "ShaderNodeTexNoise", 1.5, -3, {"Vector": rest, "Scale": largest, "Detail": 4.0}
+    ).outputs["Color"]
+    lumpy = t.vmath(
+        "MULTIPLY_ADD", lumps, t.math("DIVIDE", LUMPS, largest, x=1.5, y=-2), rest, x=2, y=-2.5
+    )
     height, *layers = (
         t.node(
             "ShaderNodeGroup",
             3,
             -3 - i,
             {
-                0: rest,
+                0: lumpy,
                 1: t.math("MULTIPLY", inputs["Mist Scale"], scale, x=2.5, y=-3 - i),
                 2: inputs["Mist Size"],
                 3: t.math("MULTIPLY", amount, share, x=2.5, y=-3.5 - i),
@@ -2097,6 +2117,74 @@ def build_film(mist):
     )
     for i, layer in enumerate(layers):
         height = t.math("MAXIMUM", height, layer, x=4 + 0.2 * i, y=-4)
+    # Trails of the drops run down, along the edges of tall cells meandering on the vertical of
+    # the rest pose, broken in runs, where the surface is steep
+    meander = t.node(
+        "ShaderNodeTexNoise", 1, -19, {"Vector": rest, "Scale": TRAIL[0], "Detail": 3.0}
+    ).outputs["Color"]
+    meander = t.vmath("MULTIPLY_ADD", meander, (MEANDER / TRAIL[0],) * 3, rest, x=2, y=-19)
+    trails = t.node(
+        "ShaderNodeTexVoronoi",
+        3,
+        -19,
+        {"Vector": t.vmath("MULTIPLY", meander, TRAIL, x=2.5, y=-19), "Scale": 1.0},
+        feature="DISTANCE_TO_EDGE",
+    ).outputs["Distance"]
+    trails = t.node(
+        "ShaderNodeMapRange",
+        4,
+        -19,
+        {
+            "Value": trails,
+            "From Min": TRAIL_WIDTH * TRAIL[0],
+            "From Max": 0.5 * TRAIL_WIDTH * TRAIL[0],
+        },
+        interpolation_type="SMOOTHSTEP",
+    ).outputs[0]
+    runs = t.node(
+        "ShaderNodeTexNoise",
+        3,
+        -21,
+        {"Vector": t.vmath("MULTIPLY", rest, TRAIL_RUN, x=2.5, y=-21), "Scale": 1.0},
+    ).outputs["Fac"]
+    # More runs with Streaks, none without
+    low = t.math("MULTIPLY_ADD", inputs["Streaks"], -0.4, 0.7, x=3, y=-23)
+    runs = t.node(
+        "ShaderNodeMapRange",
+        4,
+        -21,
+        {"Value": runs, "From Min": low, "From Max": t.math("ADD", low, 0.05, x=3.5, y=-24)},
+        interpolation_type="SMOOTHSTEP",
+    ).outputs[0]
+    steep = t.node(
+        "ShaderNodeMapRange",
+        4,
+        -22,
+        {
+            "Value": t.math(
+                "ABSOLUTE",
+                t.node(
+                    "ShaderNodeSeparateXYZ",
+                    3,
+                    -22,
+                    {0: t.node("ShaderNodeNewGeometry", 2, -22).outputs["Normal"]},
+                ).outputs["Z"],
+                x=3.5,
+                y=-22,
+            ),
+            "From Min": 0.6,
+            "From Max": 0.35,
+        },
+        interpolation_type="SMOOTHSTEP",
+    ).outputs[0]
+    runs = t.math(
+        "MULTIPLY", runs, t.math("GREATER_THAN", inputs["Streaks"], 0.0, x=4, y=-23), x=4.5, y=-23
+    )
+    trails = t.math("MULTIPLY", trails, t.math("MULTIPLY", runs, steep, x=4.5, y=-21), x=5, y=-19)
+    trails = t.math(
+        "MULTIPLY", trails, t.math("MULTIPLY", wetness, TRAIL_HEIGHT, x=4.5, y=-20), x=5.5, y=-19
+    )
+    height = t.math("MAXIMUM", height, trails, x=5, y=-4)
     # The tiny drops smooth, their small glints not to blur away
     in_drop = t.math("GREATER_THAN", height, 0.0, x=5, y=-6)
     # On a film of uneven thickness
