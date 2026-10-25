@@ -8,6 +8,7 @@ from ..model_selection.active_object import (
 )
 from ..model_toolkit.effects import (
     ops_cloth_tear,
+    ops_crush,
     ops_disintegration,
     ops_dust_puff,
     ops_fireball,
@@ -48,6 +49,7 @@ EFFECTS = (
     ("Hex Dissolve", "MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP),
     ("Cloth Tear", "MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
     ("Shatter", "MOD_EXPLODE", ops_shatter.NODE_GROUP, None),
+    ("Crush", "MOD_MESHDEFORM", ops_crush.NODE_GROUP, None),
     ("Rope", "CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None),
     ("Tape", "MOD_THICKNESS", ops_wrap.Tape.node_group, None),
     ("Fireball", "LIGHT_SUN", ops_fireball.NODE_GROUP, None),
@@ -380,6 +382,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.separator()
         row.operator("mustardui.model_toolkit_shatter", text="Shatter", icon="MOD_EXPLODE")
         row.operator("mustardui.model_toolkit_remove_shatter", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_crush", text="Crush", icon="MOD_MESHDEFORM")
+        row.operator("mustardui.model_toolkit_remove_crush", text="", icon="X")
 
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")

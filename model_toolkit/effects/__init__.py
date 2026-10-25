@@ -1,5 +1,6 @@
 from . import (
     ops_cloth_tear,
+    ops_crush,
     ops_disintegration,
     ops_dust_puff,
     ops_fireball,
@@ -26,6 +27,7 @@ def register():
     ops_hex_dissolve.register()
     ops_cloth_tear.register()
     ops_shatter.register()
+    ops_crush.register()
     ops_wrap.register()
     ops_sticky_strands.register()
     ops_sticky_liquid.register()
@@ -47,6 +49,7 @@ def unregister():
     ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()
     ops_wrap.unregister()
+    ops_crush.unregister()
     ops_shatter.unregister()
     ops_cloth_tear.unregister()
     ops_hex_dissolve.unregister()

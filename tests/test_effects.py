@@ -44,6 +44,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_crush.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -2714,6 +2715,292 @@ class TestShatter(BlenderTestCase):
         self.assertNotIn("Shatter", self.wall.modifiers)
         self.assertNotIn(name, bpy.data.collections)
         self.assertIn(self.ball, list(self.scene.collection.objects))
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestCrush(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        # A 2 x 1 x 1 m box on the ground, away from the model
+        mesh = bpy.data.meshes.new("Box")
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Diagonal((2.0, 1.0, 1.0, 1.0)))
+        bm.to_mesh(mesh)
+        bm.free()
+        self.box = new_object("Box", mesh)
+        self.box.location = (3.0, 0.0, 0.5)
+        # A 40 cm block pressing it down to 30 cm at frame 10, then lifted off by frame 20
+        self.block = new_mesh_object("Block", size=0.2, z=0.0)
+        for frame, z in ((1, 1.7), (10, 0.5), (14, 0.5), (20, 1.7)):
+            self.block.location = (3.0, 0.0, z)
+            self.block.keyframe_insert("location", frame=frame)
+        self.scene.frame_set(1)
+
+    def add(self, **settings):
+        """Crush of the box by the block, without Bulge, Crumple and Buckle"""
+        set_active(self.block)
+        self.box.select_set(True)
+        bpy.context.view_layer.objects.active = self.box
+        bpy.ops.mustardui.model_toolkit_crush(**settings)
+        modifier = self.box.modifiers["Crush"]
+        effect.modifier_input(modifier, "Subdivisions").value = 5
+        for name in ("Bulge", "Crumple", "Buckle"):
+            effect.modifier_input(modifier, name).value = 0.0
+        self.box.update_tag()
+        return modifier
+
+    def evaluate(self, end):
+        """World positions of the evaluated vertices at the end frame, simulated from the first"""
+        for frame in range(1, end + 1):
+            self.scene.frame_set(frame)
+        data = self.box.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        return co.reshape(-1, 3) @ np.array(self.box.matrix_world.to_3x3()).T + np.array(
+            self.box.matrix_world.translation
+        )
+
+    # The top under the block is pressed down to it and stays there after the block leaves, the
+    # top around bent down less and less, the bottom on the ground untouched
+    def test_crush(self):
+        modifier = self.add(kind="METAL")
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.block])
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, 1)
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Flat Height").value, 0.1, 6)
+
+        rest = self.evaluate(1)
+        top = rest[:, 2] > 0.999
+        under = top & (np.abs(rest[:, 0] - 3.0) < 0.15) & (np.abs(rest[:, 1]) < 0.15)
+        co = self.evaluate(12)
+        np.testing.assert_allclose(co[under, 2], 0.3, atol=1e-3)
+        self.assertTrue((co[:, 2] <= rest[:, 2] + 1e-6).all())
+        np.testing.assert_allclose(co[rest[:, 2] < 1e-6, 2], 0.0, atol=1e-6)
+        np.testing.assert_allclose(co[:, :2], rest[:, :2], atol=1e-6)
+        # Rising at most as steeply as the slope around the block
+        side = np.abs(rest[:, 0] - 3.0)
+        aside = top & (np.abs(rest[:, 1]) < 0.15)
+        heights = []
+        for distance in (0.3125, 0.5):
+            near = aside & (np.abs(side - distance) < 0.01)
+            heights.append(co[near, 2].mean())
+            self.assertLess(co[near, 2].max(), 0.3 + distance - 0.2 + 0.02)
+            self.assertGreater(co[near, 2].min(), 0.3)
+        self.assertLess(heights[0], heights[1])
+        np.testing.assert_allclose(self.evaluate(30), co, atol=1e-6)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # Without Lasting the box gets back as it was once the block leaves
+    def test_not_lasting(self):
+        modifier = self.add()
+        effect.modifier_input(modifier, "Lasting").value = False
+        self.box.update_tag()
+        rest = self.evaluate(1)
+        self.assertLess(self.evaluate(12)[:, 2].min(), 0.31)
+        np.testing.assert_allclose(self.evaluate(30), rest, atol=1e-6)
+
+    # Pressed down into the ground, the box is flattened to the Flat Height, its top above its
+    # bottom, never under the ground
+    def test_flat(self):
+        for frame in (10, 14):
+            self.block.location.z = 0.1
+            self.block.keyframe_insert("location", frame=frame)
+        modifier = self.add()
+        flat = effect.modifier_input(modifier, "Flat Height").value
+        rest = self.evaluate(1)
+        under = (np.abs(rest[:, 0] - 3.0) < 0.15) & (np.abs(rest[:, 1]) < 0.15)
+        co = self.evaluate(30)
+        np.testing.assert_allclose(co[under & (rest[:, 2] > 0.999), 2], flat, atol=1e-3)
+        np.testing.assert_allclose(co[under & (rest[:, 2] < 1e-6), 2], 0.0, atol=1e-6)
+        self.assertGreater(co[:, 2].min(), -1e-6)
+
+    # A larger Stiffness bends the top down further away from the block
+    def test_stiffness(self):
+        modifier = self.add()
+        rest = self.evaluate(1)
+        far = (rest[:, 2] > 0.999) & (np.abs(np.abs(rest[:, 0] - 3.0) - 0.75) < 0.01)
+        heights = []
+        for stiffness in (0.1, 2.0):
+            effect.modifier_input(modifier, "Stiffness").value = stiffness
+            self.box.update_tag()
+            heights.append(self.evaluate(12)[far, 2].mean())
+        self.assertLess(heights[1], heights[0] - 0.05)
+
+    # The sides squeezed bulge out, and fold with Crumple, the top under the block only sinking
+    def test_bulge_crumple(self):
+        modifier = self.add()
+        rest = self.evaluate(1)
+        sides = np.abs(np.abs(rest[:, 1]) - 0.5) < 1e-6
+        under = (
+            (rest[:, 2] > 0.999) & (np.abs(rest[:, 0] - 3.0) < 0.15) & (np.abs(rest[:, 1]) < 0.15)
+        )
+        plain = self.evaluate(12)
+        self.assertLess(np.abs(plain[:, 1]).max(), 0.5 + 1e-6)
+
+        effect.modifier_input(modifier, "Bulge").value = 1.0
+        self.box.update_tag()
+        bulged = self.evaluate(12)
+        self.assertGreater(np.abs(bulged[sides, 1]).max(), 0.55)
+        self.assertTrue((np.abs(bulged[sides, 1]) > 0.5 - 1e-6).all())
+
+        effect.modifier_input(modifier, "Bulge").value = 0.0
+        effect.modifier_input(modifier, "Crumple").value = 1.0
+        self.box.update_tag()
+        crumpled = self.evaluate(12)
+        self.assertGreater(np.abs(crumpled[sides] - plain[sides]).max(), 0.005)
+        # Creased under the block only down, not into it
+        self.assertLess(crumpled[under, 2].max(), 0.3 + 1e-3)
+        self.assertLess(crumpled[under, 2].min(), 0.3 - 0.005)
+
+    # Buckling bends the top at a few creases, flatter between them, never above the block
+    def test_buckle(self):
+        modifier = self.add()
+        rest = self.evaluate(1)
+        top = (rest[:, 2] > 0.999) & (np.abs(rest[:, 1]) < 1e-3)
+        order = np.argsort(rest[top, 0])
+        steep = {}
+        for buckle in (0.0, 1.0):
+            effect.modifier_input(modifier, "Buckle").value = buckle
+            self.box.update_tag()
+            co = self.evaluate(12)
+            # Share of the rise along the top taken by its steepest quarter of steps
+            rise = np.sort(np.abs(np.diff(co[top][order, 2])))[::-1]
+            steep[buckle] = rise[: len(rise) // 4].sum() / rise.sum()
+            self.assertLess(co[top & (np.abs(rest[:, 0] - 3.0) < 0.15), 2].max(), 0.3 + 1e-3)
+        self.assertGreater(steep[1.0], steep[0.0] + 0.15)
+
+    # A turned, scaled box is crushed where the block is in the world
+    def test_transformed(self):
+        self.box.data.transform(Matrix.Scale(0.5, 4))
+        self.box.scale = (2.0, 2.0, 2.0)
+        self.box.rotation_euler.z = 0.5
+        modifier = self.add()
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Flat Height").value, 0.1, 5)
+        rest = self.evaluate(1)
+        under = (
+            (rest[:, 2] > 0.999) & (np.abs(rest[:, 0] - 3.0) < 0.15) & (np.abs(rest[:, 1]) < 0.15)
+        )
+        np.testing.assert_allclose(self.evaluate(12)[under, 2], 0.3, atol=1e-3)
+
+    # A curved mesh nothing touches stays as it is, folds and bulge included
+    def test_untouched(self):
+        bm = bmesh.new()
+        bmesh.ops.create_cone(
+            bm,
+            cap_ends=True,
+            segments=32,
+            radius1=0.5,
+            radius2=0.5,
+            depth=2.0,
+            matrix=Matrix.Rotation(np.pi / 2, 4, "Y"),
+        )
+        bm.to_mesh(self.box.data)
+        bm.free()
+        set_active(self.block)
+        self.box.select_set(True)
+        bpy.context.view_layer.objects.active = self.box
+        bpy.ops.mustardui.model_toolkit_crush(kind="METAL")
+        modifier = self.box.modifiers["Crush"]
+        effect.modifier_input(modifier, "Subdivisions").value = 0
+        self.box.update_tag()
+        rest = np.array([x.co[:] for x in self.box.data.vertices]) + [3.0, 0.0, 0.5]
+        np.testing.assert_allclose(self.evaluate(1), rest, atol=1e-6)
+
+    def add_wheels(self):
+        """Two 20 cm cubes as wheels in the box mesh, by its sides, in the Wheels group, a 10 cm
+        hub touching the first one"""
+        bm = bmesh.new()
+        bm.from_mesh(self.box.data)
+        boxes = ((0.5, -0.62, -0.4, 0.2), (-0.5, 0.62, -0.4, 0.2), (0.5, -0.77, -0.4, 0.1))
+        for x, y, z, size in boxes:
+            bmesh.ops.create_cube(bm, size=size, matrix=Matrix.Translation((x, y, z)))
+        bm.to_mesh(self.box.data)
+        bm.free()
+        group = self.box.vertex_groups.new(name="Wheels")
+        group.add(range(8, 24), 1.0, "REPLACE")
+
+    def thrown(self, **settings):
+        """Rest and final positions of the points of the box crushed with Loose Parts"""
+        modifier = self.add()
+        effect.modifier_input(modifier, "Loose Parts").value = True
+        for name, value in settings.items():
+            effect.modifier_input(modifier, name).value = value
+        self.box.update_tag()
+        return self.evaluate(1), self.evaluate(40)
+
+    # The parts in the group are thrown off to the sides and rest on the ground, moved as rigid
+    # bodies with the parts touching them, the box staying crushed
+    def test_loose_parts(self):
+        self.add_wheels()
+        rest, co = self.thrown()
+        wheels = np.abs(rest[:, 1]) > 0.51
+        np.testing.assert_allclose(co[wheels, :2], rest[wheels, :2], atol=1e-6)
+
+        parts = effect.modifier_input(self.box.modifiers["Crush"], "Parts")
+        parts.type = "ATTRIBUTE"
+        parts.attribute_name = "Wheels"
+        self.box.update_tag()
+        co = self.evaluate(40)
+        np.testing.assert_allclose(co[~wheels], self.evaluate(30)[~wheels], atol=1e-6)
+        for side in (-1, 1):
+            wheel = wheels & (np.sign(rest[:, 1]) == side)
+            # Out to the side, turned as they go
+            self.assertGreater(abs(co[wheel, 1].mean()) - abs(rest[wheel, 1].mean()), 0.15)
+            self.assertAlmostEqual(co[wheel, 2].min(), 0.0, delta=0.01)
+            np.testing.assert_allclose(
+                np.linalg.norm(co[wheel][:, None] - co[wheel][None], axis=2),
+                np.linalg.norm(rest[wheel][:, None] - rest[wheel][None], axis=2),
+                atol=1e-4,
+            )
+        self.assertEqual([x.message for x in self.box.modifiers["Crush"].node_warnings], [])
+
+    # A part under the block is crushed with the box, not thrown, and the thrown ones come to rest
+    def test_pinned_and_resting(self):
+        self.add_wheels()
+        bm = bmesh.new()
+        bm.from_mesh(self.box.data)
+        bmesh.ops.create_cube(bm, size=0.1, matrix=Matrix.Translation((0.0, 0.0, -0.3)))
+        bm.to_mesh(self.box.data)
+        bm.free()
+        rest, co = self.thrown(Chance=1.0, **{"Part Size": 0.5})
+        seat = np.linalg.norm(rest[:, :2] - [3.0, 0.0], axis=1) < 0.08
+        seat &= rest[:, 2] < 0.26
+        np.testing.assert_allclose(co[seat, :2], rest[seat, :2], atol=1e-6)
+        wheels = np.abs(rest[:, 1]) > 0.51
+        self.assertGreater(np.linalg.norm(co[wheels, :2] - rest[wheels, :2], axis=1).max(), 0.15)
+        # Lying still on the ground
+        np.testing.assert_allclose(self.evaluate(60)[wheels], self.evaluate(70)[wheels], atol=1e-3)
+        self.assertAlmostEqual(self.evaluate(70)[wheels, 2].min(), 0.0, delta=0.01)
+
+    # Without the group, the parts smaller than the Part Size are thrown by Chance
+    def test_chance(self):
+        self.add_wheels()
+        for chance, thrown in ((1.0, True), (0.0, False)):
+            rest, co = self.thrown(Chance=chance, **{"Part Size": 0.5})
+            for side in (-1, 1):
+                wheel = (np.abs(rest[:, 1]) > 0.51) & (np.sign(rest[:, 1]) == side)
+                moved = np.linalg.norm(co[wheel, :2].mean(0) - rest[wheel, :2].mean(0))
+                self.assertEqual(moved > 0.15, thrown)
+                self.assertEqual(np.abs(co[wheel] - rest[wheel]).max() > 1e-6, thrown)
+            self.box.modifiers.remove(self.box.modifiers["Crush"])
+
+    # Without other selected meshes the model body is the Collider
+    def test_body(self):
+        set_active(self.box)
+        bpy.ops.mustardui.model_toolkit_crush()
+        colliders = effect.modifier_input(self.box.modifiers["Crush"], "Colliders").value
+        self.assertEqual(list(colliders.objects), [bpy.data.objects["Tester Body"]])
+
+    # The Colliders collection is removed with the effect, keeping its objects in the scene
+    def test_remove(self):
+        name = effect.modifier_input(self.add(), "Colliders").value.name
+        bpy.ops.mustardui.model_toolkit_remove_crush()
+        self.assertNotIn("Crush", self.box.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertIn(self.block, list(self.scene.collection.objects))
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_crush.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

@@ -161,6 +161,8 @@ class TestUI(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_imprints()
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_dust_puff()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_crush()
         self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_SceneEffects")
 
         # The effect objects and their Controls are selected from the panel
