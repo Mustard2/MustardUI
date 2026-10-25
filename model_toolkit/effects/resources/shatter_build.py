@@ -61,6 +61,14 @@ def build_inputs(ng):
         description="Distance from the impact of the pieces coming loose, the others staying "
         "until a Collider hits them",
     )
+    add_input(
+        ng,
+        "Floor Support",
+        "NodeSocketBool",
+        panel,
+        description="The pieces of a still mesh touching the floor staying, the others only while "
+        "held by them through staying pieces, as in a building",
+    )
     add_input(ng, "Seed", "NodeSocketInt", panel, description="Random pattern of the cracks")
 
     panel = ng.interface.new_panel("Inner Faces", default_closed=True)
@@ -136,7 +144,17 @@ def build_inputs(ng):
         default_value=0.2,
         min_value=0.0,
         max_value=1.0,
-        description="Speed kept bouncing off the floor and the Colliders",
+        description="Speed kept bouncing off the floor and the Colliders, by the small pieces",
+    )
+    add_input(
+        ng,
+        "Heavy Size",
+        "NodeSocketFloat",
+        panel,
+        subtype="DISTANCE",
+        default_value=0.3,
+        min_value=0.0,
+        description="Radius of the pieces landing without bouncing, the smaller ones bouncing more",
     )
     add_input(
         ng,
@@ -199,6 +217,47 @@ def build_inputs(ng):
         description="Speed of the simulation",
     )
 
+    panel = ng.interface.new_panel("Breakup", default_closed=True)
+    add_input(
+        ng,
+        "Breakup",
+        "NodeSocketBool",
+        panel,
+        description="Large loose pieces breaking again when hit hard enough, of closed meshes",
+    ).is_panel_toggle = True
+    add_input(
+        ng,
+        "Breakup Chance",
+        "NodeSocketFloat",
+        panel,
+        subtype="FACTOR",
+        default_value=0.5,
+        min_value=0.0,
+        max_value=1.0,
+        description="Chance of a piece hit by the floor or the Colliders faster than the Strength "
+        "to break",
+    )
+    add_input(
+        ng,
+        "Breakup Pieces",
+        "NodeSocketInt",
+        panel,
+        default_value=4,
+        min_value=2,
+        max_value=100,
+        description="Pieces a piece breaks into",
+    )
+    add_input(
+        ng,
+        "Breakup Size",
+        "NodeSocketFloat",
+        panel,
+        subtype="DISTANCE",
+        default_value=0.1,
+        min_value=0.0,
+        description="Radius under which the pieces do not break again",
+    )
+
     panel = ng.interface.new_panel("Debris", default_closed=True)
     add_input(
         ng,
@@ -215,7 +274,8 @@ def build_inputs(ng):
         default_value=150,
         min_value=0,
         max_value=10000,
-        description="Chips thrown when the mesh breaks",
+        description="Chips thrown by the pieces as they get loose, all of them once all the "
+        "mesh is",
     )
     add_input(
         ng,
@@ -226,6 +286,29 @@ def build_inputs(ng):
         default_value=0.01,
         min_value=0.0,
         description="Size of the largest chips",
+    )
+    add_input(
+        ng,
+        "Debris Speed",
+        "NodeSocketFloat",
+        panel,
+        subtype="FACTOR",
+        default_value=0.6,
+        min_value=0.0,
+        max_value=10.0,
+        description="Speed of the chips thrown out of the cuts, as a share of the speed of the "
+        "hit, the smaller ones faster",
+    )
+    add_input(
+        ng,
+        "Debris Rise",
+        "NodeSocketFloat",
+        panel,
+        subtype="FACTOR",
+        default_value=0.5,
+        min_value=0.0,
+        max_value=10.0,
+        description="Upward throw of the chips",
     )
 
     panel = ng.interface.new_panel("Smoke", default_closed=True)
@@ -244,7 +327,8 @@ def build_inputs(ng):
         default_value=100,
         min_value=0,
         max_value=10000,
-        description="Puffs of smoke making the dust cloud",
+        description="Puffs of dust out of the pieces as they get loose, all of them once all the "
+        "mesh is",
     )
     add_input(
         ng,
@@ -262,9 +346,28 @@ def build_inputs(ng):
         "NodeSocketFloat",
         panel,
         subtype="TIME_ABSOLUTE",
-        default_value=2.0,
+        default_value=3.0,
         min_value=0.0,
         description="Seconds the dust lasts, in average",
+    )
+    add_input(
+        ng,
+        "Smoke Rise",
+        "NodeSocketFloat",
+        panel,
+        default_value=-0.1,
+        description="Speed of the dust rising, in m/s, settling to the floor when negative",
+    )
+    add_input(
+        ng,
+        "Smoke Swirl",
+        "NodeSocketFloat",
+        panel,
+        subtype="FACTOR",
+        default_value=1.0,
+        min_value=0.0,
+        max_value=10.0,
+        description="Turbulence of the air carrying the dust",
     )
     add_input(
         ng,
@@ -496,9 +599,28 @@ def detect(t, mesh, colliders, inputs, dt, x, y):
     return t.math("GREATER_THAN", count, 0.5, x=x + 16, y=y - 6), impact, push
 
 
-def fracture(t, mesh, impact, inputs, x, y):
+def is_closed(t, mesh, x, y):
+    """Whether all the edges of the mesh have two faces"""
+    faces = t.node("GeometryNodeInputMeshEdgeNeighbors", x, y).outputs["Face Count"]
+    faces = statistic(t, mesh, faces, True, "FLOAT", x + 1, y, "EDGE")
+    return t.node(
+        "FunctionNodeBooleanMath",
+        x + 2,
+        y,
+        {
+            0: t.math("COMPARE", faces["Min"], 2.0, 0.1, x=x + 2, y=y - 1),
+            1: t.math("COMPARE", faces["Max"], 2.0, 0.1, x=x + 2, y=y - 2),
+        },
+        operation="AND",
+    ).outputs[0]
+
+
+def fracture(t, mesh, impact, inputs, x, y, count=None, spread=None, seed=None):
     """Zone splitting the mesh in the Voronoi cells of seeds around the impact, the pieces as
-    instances around their centers"""
+    instances around their centers, by default as many as the Pieces over the Spread"""
+    count = inputs["Pieces"] if count is None else count
+    spread = inputs["Spread"] if spread is None else spread
+    seed = inputs["Seed"] if seed is None else seed
     index = t.node("GeometryNodeInputIndex", x, y - 3).outputs[0]
     position = t.node("GeometryNodeInputPosition", x, y - 4).outputs[0]
     bounds = t.node("GeometryNodeBoundBox", x, y - 2, {"Geometry": mesh})
@@ -506,49 +628,35 @@ def fracture(t, mesh, impact, inputs, x, y):
     size = t.vmath("LENGTH", t.vmath("SUBTRACT", high, low, x=x, y=y - 6), x=x + 1, y=y - 6)
     margin = t.math("MULTIPLY_ADD", size, 0.05, 0.001, x=x + 2, y=y - 6)
 
-    # Closed when all the edges have two faces
-    faces = t.node("GeometryNodeInputMeshEdgeNeighbors", x, y - 8).outputs["Face Count"]
-    faces = statistic(t, mesh, faces, True, "FLOAT", x + 1, y - 8, "EDGE")
-    closed = t.node(
-        "FunctionNodeBooleanMath",
-        x + 2,
-        y - 8,
-        {
-            0: t.math("COMPARE", faces["Min"], 2.0, 0.1, x=x + 2, y=y - 9),
-            1: t.math("COMPARE", faces["Max"], 2.0, 0.1, x=x + 2, y=y - 10),
-        },
-        operation="AND",
-    ).outputs[0]
+    closed = is_closed(t, mesh, x, y - 8)
 
     # Seeds denser at the impact
     direction = t.node(
         "FunctionNodeRandomValue",
         x + 1,
         y - 2,
-        {"Min": (-1, -1, -1), "Max": (1, 1, 1), "Seed": inputs["Seed"]},
+        {"Min": (-1, -1, -1), "Max": (1, 1, 1), "Seed": seed},
         data_type="FLOAT_VECTOR",
     ).outputs["Value"]
     distance = t.node(
         "FunctionNodeRandomValue",
         x + 1,
         y - 3,
-        {"Seed": t.math("ADD", inputs["Seed"], 1, x=x, y=y - 5)},
+        {"Seed": t.math("ADD", seed, 1, x=x, y=y - 5)},
         data_type="FLOAT",
     ).outputs
     distance = t.math(
         "MULTIPLY",
         t.math("POWER", socket(distance, "Value"), 2.0, x=x + 2, y=y - 3),
-        inputs["Spread"],
+        spread,
         x=x + 3,
         y=y - 3,
     )
     direction = t.vmath("NORMALIZE", direction, x=x + 2, y=y - 2)
-    seed = t.vmath("MULTIPLY_ADD", direction, distance, impact, x=x + 4, y=y - 2)
+    point = t.vmath("MULTIPLY_ADD", direction, distance, impact, x=x + 4, y=y - 2)
     # On the surface, for each cell to cut some of the mesh, also of hollow ones
-    seed = nearest(t, mesh, position, "FLOAT_VECTOR", seed, x + 5, y - 2)[0]
-    seeds = t.node(
-        "GeometryNodePoints", x + 7, y, {"Count": inputs["Pieces"], "Position": seed}
-    ).outputs[0]
+    point = nearest(t, mesh, position, "FLOAT_VECTOR", point, x + 5, y - 2)[0]
+    seeds = t.node("GeometryNodePoints", x + 7, y, {"Count": count, "Position": point}).outputs[0]
     # Not too close, the cells of close seeds failing
     spacing = t.math("MULTIPLY", size, 0.01, x=x + 7, y=y - 6)
     seeds = t.node(
@@ -722,11 +830,10 @@ def fracture(t, mesh, impact, inputs, x, y):
     return each_out
 
 
-def bodies_of(t, each, mesh, impact, push, inputs, x, y):
-    """Pieces and their hull points, and the points of the pieces, with their state"""
+def cells(t, each, x, y):
+    """Pieces of the fracture zone and their points at their centers, without the cells out of
+    the mesh"""
     index = t.node("GeometryNodeInputIndex", x, y - 3).outputs[0]
-    position = t.node("GeometryNodeInputPosition", x, y - 4).outputs[0]
-    # Without the cells out of the mesh
     empty = t.math("LESS_THAN", each.outputs["Faces"], 1, x=x, y=y - 2)
     bodies = t.node(
         "GeometryNodeDeleteGeometry",
@@ -751,8 +858,14 @@ def bodies_of(t, each, mesh, impact, push, inputs, x, y):
         y,
         {"Geometry": bodies, "Position": each.outputs["Center"]},
     ).outputs[0]
+    inertia = t.math("MAXIMUM", each.outputs["Inertia"], 1e-8, x=x + 2, y=y - 2)
+    return pieces, t.store(bodies, ".shatter_inertia", "FLOAT", inertia, x + 3, y)
 
-    # Convex hull points of each piece, around its center, for the collisions
+
+def hulls(t, pieces, bodies, x, y):
+    """Convex hull points and face planes of each piece, around its center, for the collisions,
+    with their first index and count, and the radius of the piece, on the points of the pieces"""
+    index = t.node("GeometryNodeInputIndex", x, y - 3).outputs[0]
     hull_in = t.node("GeometryNodeForeachGeometryElementInput", x + 2, y + 2, {"Geometry": pieces})
     hull_out = t.node("GeometryNodeForeachGeometryElementOutput", x + 5, y + 2, domain="INSTANCE")
     hull_in.pair_with_output(hull_out)
@@ -861,9 +974,16 @@ def bodies_of(t, each, mesh, impact, push, inputs, x, y):
         y - 3,
         "INSTANCE",
     )
-    bodies = t.store(bodies, ".shatter_radius", "FLOAT", radius, x + 7, y)
-    inertia = t.math("MAXIMUM", each.outputs["Inertia"], 1e-8, x=x + 9, y=y - 2)
-    bodies = t.store(bodies, ".shatter_inertia", "FLOAT", inertia, x + 9, y)
+    return t.store(bodies, ".shatter_radius", "FLOAT", radius, x + 7, y), hull, planes
+
+
+def bodies_of(t, each, mesh, impact, push, inputs, x, y):
+    """Pieces and their hull points, and the points of the pieces, with their state"""
+    position = t.node("GeometryNodeInputPosition", x, y - 4).outputs[0]
+    pieces, bodies = cells(t, each, x, y)
+    bodies, hull, planes = hulls(t, pieces, bodies, x + 4, y)
+    x += 3
+    radius = t.attribute(".shatter_radius", "FLOAT", x + 11, y - 13)
 
     # Loose around the impact, with the velocity of the mesh, the push of the Colliders and a
     # scatter away from the impact, fading with the distance
@@ -875,6 +995,17 @@ def bodies_of(t, each, mesh, impact, push, inputs, x, y):
         y=y - 5,
     )
     loose = t.math("LESS_THAN", falloff, 1.0, x=x + 9, y=y - 5)
+    # All of a moving mesh, only a still one holding its pieces
+    carried = t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 7, y - 15)
+    carried = nearest(t, mesh, carried, "FLOAT_VECTOR", position, x + 8, y - 15)[0]
+    moving_mesh = t.math(
+        "GREATER_THAN",
+        t.vmath("LENGTH", carried, x=x + 9, y=y - 15),
+        STILL_SPEED,
+        x=x + 10,
+        y=y - 15,
+    )
+    loose = t.math("MAXIMUM", loose, moving_mesh, x=x + 10, y=y - 5)
     fade = t.math("SUBTRACT", 1.0, falloff, x=x + 9, y=y - 6, clamp=True)
     speed = t.math(
         "MULTIPLY", t.vmath("LENGTH", push, x=x + 9, y=y - 7), inputs["Scatter"], x=x + 10, y=y - 7
@@ -898,9 +1029,7 @@ def bodies_of(t, each, mesh, impact, push, inputs, x, y):
         y=y - 8,
     )
     added = t.vmath("SCALE", added, fade, x=x + 13, y=y - 8)
-    moving = t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 8, y - 11)
-    moving = nearest(t, mesh, moving, "FLOAT_VECTOR", position, x + 9, y - 11)[0]
-    moving = t.vmath("ADD", moving, added, x=x + 14, y=y - 8)
+    moving = t.vmath("ADD", carried, added, x=x + 14, y=y - 8)
     bodies = t.store(bodies, ".shatter_velocity", "FLOAT_VECTOR", moving, x + 14, y)
     # Spinning with the scatter speed at their radius, not too fast for the tiny pieces
     radius = t.math("MAXIMUM", radius, 0.05, x=x + 12, y=y - 12)
@@ -911,7 +1040,583 @@ def bodies_of(t, each, mesh, impact, push, inputs, x, y):
     bodies = t.store(bodies, ".shatter_spin", "FLOAT_VECTOR", spin, x + 14.5, y)
     bodies = t.store(bodies, ".shatter_loose", "FLOAT", loose, x + 15, y)
     bodies = t.store(bodies, ".shatter_rotation", "QUATERNION", None, x + 16, y)
+    # Breaking up only solid pieces, the cuts of open ones adding faces
+    solid = is_closed(t, mesh, x + 15, y - 14)
+    bodies = t.store(bodies, ".shatter_solid", "FLOAT", solid, x + 17, y)
     return pieces, bodies, hull, planes
+
+
+def anchored(t, bodies, hull, mesh, inputs, x, y):
+    """Bodies with the pieces of a still mesh touching the floor anchored by the Floor Support,
+    not loose"""
+    position = t.node("GeometryNodeInputPosition", x, y - 2).outputs[0]
+    piece = t.attribute(".shatter_piece", "INT", x, y - 3)
+    height = socket(
+        t.node(
+            "ShaderNodeSeparateXYZ",
+            x + 2,
+            y - 2,
+            {
+                0: t.vmath(
+                    "ADD",
+                    position,
+                    sample(t, bodies, position, piece, "FLOAT_VECTOR", x + 1, y - 3),
+                    x=x + 1,
+                    y=y - 2,
+                )
+            },
+        ).outputs,
+        "Z",
+    )
+    lowest = t.node(
+        "GeometryNodeFieldMinAndMax",
+        x + 3,
+        y - 2,
+        {"Value": height, "Group ID": piece},
+        data_type="FLOAT",
+    ).outputs["Min"]
+    first = t.attribute(".shatter_first", "INT", x + 3, y - 4)
+    lowest = sample(t, hull, lowest, first, "FLOAT", x + 4, y - 2)
+    floor = t.math("MULTIPLY_ADD", inputs["Margin"], 2.0, inputs["Floor"], x=x + 4, y=y - 4)
+    grounded = t.math(
+        "LESS_THAN", lowest, t.math("ADD", floor, 0.001, x=x + 5, y=y - 4), x=x + 6, y=y - 2
+    )
+    carried = t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 4, y - 6)
+    carried = nearest(t, mesh, carried, "FLOAT_VECTOR", position, x + 5, y - 6)[0]
+    still = t.math(
+        "LESS_THAN", t.vmath("LENGTH", carried, x=x + 6, y=y - 6), STILL_SPEED, x=x + 7, y=y - 6
+    )
+    held = t.math(
+        "MULTIPLY",
+        t.math("MULTIPLY", grounded, still, x=x + 7, y=y - 3),
+        inputs["Floor Support"],
+        x=x + 8,
+        y=y - 3,
+    )
+    bodies = t.store(bodies, ".shatter_anchored", "FLOAT", held, x + 8, y)
+    loose = t.math(
+        "MULTIPLY",
+        t.attribute(".shatter_loose", "FLOAT", x + 8, y - 5),
+        t.math("SUBTRACT", 1.0, held, x=x + 9, y=y - 4),
+        x=x + 10,
+        y=y - 4,
+    )
+    return t.store(bodies, ".shatter_loose", "FLOAT", loose, x + 10, y)
+
+
+def breakup(t, bodies, pieces, inputs, x, y):
+    """Bodies and pieces with the large loose pieces hit hard enough in the frame broken once,
+    by the Breakup Chance, around their lowest point, the hulls of all the pieces, and whether
+    any broke"""
+    index = t.node("GeometryNodeInputIndex", x, y - 2).outputs[0]
+    position = t.node("GeometryNodeInputPosition", x, y - 3).outputs[0]
+    frame = t.node("GeometryNodeInputSceneTime", x, y - 4).outputs["Frame"]
+    chance = t.node(
+        "FunctionNodeRandomValue",
+        x + 1,
+        y - 5,
+        {"Seed": t.math("ADD", inputs["Seed"], frame, x=x, y=y - 5)},
+        data_type="FLOAT",
+    ).outputs
+    conditions = (
+        t.math("LESS_THAN", socket(chance, "Value"), inputs["Breakup Chance"], x=x + 2, y=y - 5),
+        t.math(
+            "GREATER_THAN",
+            t.attribute(".shatter_radius", "FLOAT", x + 1, y - 6),
+            inputs["Breakup Size"],
+            x=x + 2,
+            y=y - 6,
+        ),
+        t.math(
+            "GREATER_THAN",
+            t.attribute(".shatter_impact", "FLOAT", x + 1, y - 7),
+            inputs["Strength"],
+            x=x + 2,
+            y=y - 7,
+        ),
+        t.attribute(".shatter_loose", "FLOAT", x + 1, y - 8),
+        t.attribute(".shatter_solid", "FLOAT", x + 1, y - 10),
+        # Once, the new pieces would keep breaking in the same hit
+        t.math(
+            "SUBTRACT", 1.0, t.attribute(".shatter_parted", "FLOAT", x + 1, y - 9), x=x + 2, y=y - 9
+        ),
+    )
+    breaking = conditions[0]
+    for i, condition in enumerate(conditions[1:]):
+        breaking = t.math("MULTIPLY", breaking, condition, x=x + 3 + i * 0.3, y=y - 5)
+    breaking = t.math("GREATER_THAN", breaking, 0.5, x=x + 4, y=y - 5)
+    bodies = t.store(bodies, ".shatter_breaking", "BOOLEAN", breaking, x + 4, y)
+    breaking = t.attribute(".shatter_breaking", "BOOLEAN", x + 4, y - 7)
+    any_breaking = statistic(
+        t,
+        bodies,
+        t.attribute(".shatter_breaking", "FLOAT", x + 4, y - 9),
+        True,
+        "FLOAT",
+        x + 5,
+        y - 9,
+    )["Max"]
+    any_breaking = t.math("GREATER_THAN", any_breaking, 0.5, x=x + 6, y=y - 9)
+
+    # Each breaking piece where it is, cut around its lowest point
+    each_in = t.node(
+        "GeometryNodeForeachGeometryElementInput",
+        x + 5,
+        y,
+        {"Geometry": bodies, "Selection": breaking},
+    )
+    each_out = t.node("GeometryNodeForeachGeometryElementOutput", x + 30, y, domain="POINT")
+    each_in.pair_with_output(each_out)
+    each_out.generation_items.new("GEOMETRY", "Pieces")
+    element = each_in.outputs["Element"]
+
+    def of(name, data_type, yy):
+        value = position if name is None else t.attribute(name, data_type, x + 6, y - yy)
+        return sample(t, element, value, 0, data_type, x + 7, y - yy)
+
+    center = of(None, "FLOAT_VECTOR", 2)
+    rotation = of(".shatter_rotation", "QUATERNION", 3)
+    moving = of(".shatter_velocity", "FLOAT_VECTOR", 4)
+    spin = of(".shatter_spin", "FLOAT_VECTOR", 5)
+    piece = t.node(
+        "GeometryNodeDeleteGeometry",
+        x + 7,
+        y,
+        {
+            "Geometry": pieces,
+            "Selection": t.node(
+                "FunctionNodeCompare",
+                x + 6,
+                y - 7,
+                {"A": index, "B": each_in.outputs["Index"]},
+                data_type="INT",
+                operation="NOT_EQUAL",
+            ).outputs[0],
+        },
+        domain="INSTANCE",
+    ).outputs[0]
+    piece = t.node("GeometryNodeRealizeInstances", x + 8, y, {"Geometry": piece}).outputs[0]
+    piece = t.node(
+        "GeometryNodeTransform",
+        x + 9,
+        y,
+        {"Geometry": piece, "Translation": center, "Rotation": rotation},
+    ).outputs[0]
+    lowest = statistic(
+        t,
+        piece,
+        socket(t.node("ShaderNodeSeparateXYZ", x + 8, y - 9, {0: position}).outputs, "Z"),
+        True,
+        "FLOAT",
+        x + 9,
+        y - 9,
+    )["Min"]
+    xyz = t.node("ShaderNodeSeparateXYZ", x + 9, y - 11, {0: center}).outputs
+    impact = t.node(
+        "ShaderNodeCombineXYZ",
+        x + 10,
+        y - 10,
+        {0: socket(xyz, "X"), 1: socket(xyz, "Y"), 2: lowest},
+    ).outputs[0]
+    seed = t.math(
+        "MULTIPLY_ADD",
+        each_in.outputs["Index"],
+        13,
+        t.math("ADD", inputs["Seed"], frame, x=x + 9, y=y - 13),
+        x=x + 10,
+        y=y - 12,
+    )
+    zone = fracture(
+        t,
+        piece,
+        impact,
+        inputs,
+        x + 11,
+        y - 20,
+        count=inputs["Breakup Pieces"],
+        spread=of(".shatter_radius", "FLOAT", 6),
+        seed=seed,
+    )
+    parts, points = cells(t, zone, x + 26, y)
+    # Moving and spinning as the piece
+    arm = t.vmath("SUBTRACT", position, center, x=x + 27, y=y - 3)
+    points = t.store(
+        points,
+        ".shatter_velocity",
+        "FLOAT_VECTOR",
+        t.vmath(
+            "ADD",
+            moving,
+            t.vmath("CROSS_PRODUCT", spin, arm, x=x + 28, y=y - 3),
+            x=x + 29,
+            y=y - 3,
+        ),
+        x + 28,
+        y,
+    )
+    for i, (name, data_type, value) in enumerate(
+        (
+            (".shatter_spin", "FLOAT_VECTOR", spin),
+            (".shatter_loose", "FLOAT", 1.0),
+            (".shatter_awake", "FLOAT", 1.0),
+            (".shatter_parted", "FLOAT", 1.0),
+            (".shatter_shed", "FLOAT", 0.0),
+            (".shatter_rotation", "QUATERNION", None),
+        )
+    ):
+        points = t.store(points, name, data_type, value, x + 28.5 + i * 0.3, y)
+    t.connect(points, each_out.inputs["Geometry"])
+    t.connect(parts, each_out.inputs["Pieces"])
+
+    # The other pieces with the new ones, linked in the same order
+    breaking_piece = sample(t, bodies, breaking, index, "BOOLEAN", x + 30, y + 3, "POINT")
+    kept_pieces = t.node(
+        "GeometryNodeDeleteGeometry",
+        x + 31,
+        y + 2,
+        {"Geometry": pieces, "Selection": breaking_piece},
+        domain="INSTANCE",
+    ).outputs[0]
+    kept = t.node(
+        "GeometryNodeDeleteGeometry", x + 31, y, {"Geometry": bodies, "Selection": breaking}
+    ).outputs[0]
+    joined_bodies = t.node("GeometryNodeJoinGeometry", x + 32, y)
+    joined_pieces = t.node("GeometryNodeJoinGeometry", x + 32, y + 2)
+    for target, kept_geometry, new in (
+        (joined_bodies, kept, each_out.outputs["Generation_0"]),
+        (joined_pieces, kept_pieces, each_out.outputs["Pieces"]),
+    ):
+        t.connect(kept_geometry, target.inputs[0])
+        t.connect(new, target.inputs[0])
+    pieces = joined_pieces.outputs[0]
+    bodies, hull, planes = hulls(t, pieces, joined_bodies.outputs[0], x + 33, y)
+    return bodies, pieces, hull, planes, any_breaking
+
+
+def rehit(t, bodies, pieces, hull, planes, colliders, inputs, dt, x, y):
+    """Bodies, pieces and hulls with the still piece the Colliders hit fast enough broken as the
+    mesh at the first hit, or only loose when small, and whether it was hit"""
+    index = t.node("GeometryNodeInputIndex", x, y - 2).outputs[0]
+    placed = cuts(t, pieces, bodies, x, y)[0]
+    placed = t.node(
+        "GeometryNodeDeleteGeometry",
+        x + 7,
+        y,
+        {
+            "Geometry": placed,
+            "Selection": t.math(
+                "GREATER_THAN",
+                t.attribute(".shatter_loose", "FLOAT", x + 6, y - 2),
+                0.5,
+                x=x + 7,
+                y=y - 2,
+            ),
+        },
+    ).outputs[0]
+    hit, impact, push = detect(t, placed, colliders, inputs, dt, x + 8, y)
+    # The still piece closest to the hit
+    struck = t.node(
+        "GeometryNodeSampleNearestSurface",
+        x + 26,
+        y - 4,
+        {
+            "Mesh": placed,
+            "Value": t.attribute(".shatter_body", "INT", x + 25, y - 5),
+            "Sample Position": impact,
+        },
+        data_type="INT",
+    ).outputs["Value"]
+    other = t.node(
+        "FunctionNodeCompare",
+        x + 27,
+        y - 6,
+        {"A": t.attribute(".shatter_body", "INT", x + 26, y - 6), "B": struck},
+        data_type="INT",
+        operation="NOT_EQUAL",
+    ).outputs[0]
+    mesh = t.node(
+        "GeometryNodeDeleteGeometry", x + 28, y, {"Geometry": placed, "Selection": other}
+    ).outputs[0]
+
+    def of_struck(name, yy):
+        return t.node(
+            "GeometryNodeSampleNearestSurface",
+            x + 26,
+            y - yy,
+            {
+                "Mesh": placed,
+                "Value": t.attribute(name, "FLOAT", x + 25, y - yy - 1),
+                "Sample Position": impact,
+            },
+            data_type="FLOAT",
+        ).outputs["Value"]
+
+    # Broken when larger than the Break Radius, or anchored on the floor and not tiny by the
+    # Spread, its parts on the floor staying, in a share of the Pieces; else only getting loose,
+    # when not anchored
+    radius = of_struck(".shatter_radius", 8)
+    anchored_struck = t.math(
+        "GREATER_THAN", of_struck(".shatter_anchored", 10), 0.5, x=x + 27, y=y - 10
+    )
+    large = t.node(
+        "FunctionNodeBooleanMath",
+        x + 28,
+        y - 8,
+        {
+            0: t.math("GREATER_THAN", radius, inputs["Break Radius"], x=x + 27, y=y - 8),
+            1: t.node(
+                "FunctionNodeBooleanMath",
+                x + 27.5,
+                y - 9,
+                {
+                    0: anchored_struck,
+                    1: t.math(
+                        "GREATER_THAN",
+                        radius,
+                        t.math("MULTIPLY", inputs["Spread"], 0.1, x=x + 26, y=y - 12),
+                        x=x + 27,
+                        y=y - 12,
+                    ),
+                },
+                operation="AND",
+            ).outputs[0],
+        },
+        operation="OR",
+    ).outputs[0]
+    count = t.math(
+        "MAXIMUM",
+        t.math("DIVIDE", inputs["Pieces"], 4.0, x=x + 27, y=y - 11),
+        4.0,
+        x=x + 28,
+        y=y - 11,
+    )
+    each = fracture(t, mesh, impact, inputs, x + 29, y, count=count)
+    new_pieces, new_bodies, new_hull, _ = bodies_of(t, each, mesh, impact, push, inputs, x + 56, y)
+    new_bodies = anchored(t, new_bodies, new_hull, mesh, inputs, x + 74, y)
+
+    # The other pieces with the new ones, linked in the same order
+    gone = t.node(
+        "FunctionNodeCompare",
+        x + 84,
+        y - 3,
+        {"A": index, "B": struck},
+        data_type="INT",
+        operation="EQUAL",
+    ).outputs[0]
+    joined = {}
+    for i, (old, new, domain) in enumerate(
+        ((bodies, new_bodies, "POINT"), (pieces, new_pieces, "INSTANCE"))
+    ):
+        kept = t.node(
+            "GeometryNodeDeleteGeometry",
+            x + 85,
+            y + i * 2,
+            {"Geometry": old, "Selection": gone},
+            domain=domain,
+        ).outputs[0]
+        join = t.node("GeometryNodeJoinGeometry", x + 86, y + i * 2)
+        t.connect(kept, join.inputs[0])
+        t.connect(new, join.inputs[0])
+        joined[domain] = join.outputs[0]
+    broken = hulls(t, joined["INSTANCE"], joined["POINT"], x + 87, y)
+
+    freed = t.math(
+        "MULTIPLY",
+        gone,
+        t.math(
+            "SUBTRACT",
+            1.0,
+            t.attribute(".shatter_anchored", "FLOAT", x + 83, y - 10),
+            x=x + 84,
+            y=y - 10,
+        ),
+        x=x + 84.5,
+        y=y - 9,
+    )
+    loose = bodies
+    for i, name in enumerate((".shatter_loose", ".shatter_awake")):
+        value = t.math(
+            "MAXIMUM", t.attribute(name, "FLOAT", x + 84, y - 8 - i), freed, x=x + 85, y=y - 8 - i
+        )
+        loose = t.store(loose, name, "FLOAT", value, x + 86 + i * 0.5, y - 8)
+    outputs = [
+        switch(t, large, kept, new, "GEOMETRY", x + 95, y - i)
+        for i, (kept, new) in enumerate(
+            (
+                (loose, broken[0]),
+                (pieces, joined["INSTANCE"]),
+                (hull, broken[1]),
+                (planes, broken[2]),
+            )
+        )
+    ]
+    return (*outputs, hit)
+
+
+def support_graph(t, placed, bodies, x, y):
+    """Graph of the pieces, at their centers, linked where they share a cut, with the ones
+    anchored on the floor"""
+    position = t.node("GeometryNodeInputPosition", x, y - 2).outputs[0]
+    index = t.node("GeometryNodeInputIndex", x, y - 3).outputs[0]
+    body = t.attribute(".shatter_body", "INT", x, y - 4)
+    # A point of another piece in the same place: the pieces share a cut there
+    closest = t.node("GeometryNodeIndexOfNearest", x + 1, y - 2, {"Position": position}).outputs[
+        "Index"
+    ]
+    other = sample(t, placed, body, closest, "INT", x + 2, y - 4)
+    apart = t.vmath(
+        "DISTANCE",
+        position,
+        sample(t, placed, position, closest, "FLOAT_VECTOR", x + 2, y - 2),
+        x=x + 3,
+        y=y - 2,
+    )
+    shared = t.math(
+        "MULTIPLY",
+        t.math("LESS_THAN", apart, 1e-4, x=x + 4, y=y - 2),
+        t.math(
+            "SUBTRACT", 1.0, t.math("COMPARE", body, other, 0.5, x=x + 3, y=y - 5), x=x + 4, y=y - 5
+        ),
+        x=x + 5,
+        y=y - 3,
+    )
+    links = t.node("GeometryNodeMeshToPoints", x + 2, y, {"Mesh": placed}).outputs[0]
+    links = t.store(links, ".shatter_other", "INT", other, x + 3, y)
+    links = t.node(
+        "GeometryNodeDeleteGeometry",
+        x + 6,
+        y,
+        {"Geometry": links, "Selection": t.math("LESS_THAN", shared, 0.5, x=x + 6, y=y - 3)},
+    ).outputs[0]
+    # An edge between the centers of the two pieces of each link
+    line = t.node("GeometryNodeMeshLine", x + 6, y - 6, {"Count": 2}).outputs[0]
+    links = t.node(
+        "GeometryNodeInstanceOnPoints", x + 7, y, {"Points": links, "Instance": line}
+    ).outputs[0]
+    links = t.node("GeometryNodeRealizeInstances", x + 8, y, {"Geometry": links}).outputs[0]
+    end = t.node(
+        "GeometryNodeSwitch",
+        x + 9,
+        y - 3,
+        {
+            "Switch": t.math("FLOORED_MODULO", index, 2, x=x + 8, y=y - 3),
+            "False": body,
+            "True": t.attribute(".shatter_other", "INT", x + 8, y - 4),
+        },
+        input_type="INT",
+    ).outputs[0]
+    links = t.node(
+        "GeometryNodeSetPosition",
+        x + 10,
+        y,
+        {
+            "Geometry": links,
+            "Position": sample(t, bodies, position, end, "FLOAT_VECTOR", x + 9, y - 5),
+        },
+    ).outputs[0]
+    # Each piece a vertex, also without links
+    graph = t.node("GeometryNodeJoinGeometry", x + 11, y)
+    t.connect(links, graph.inputs[0])
+    t.connect(
+        t.node("GeometryNodePointsToVertices", x + 10, y - 7, {"Points": bodies}).outputs[0],
+        graph.inputs[0],
+    )
+    graph = t.node(
+        "GeometryNodeMergeByDistance", x + 12, y, {"Geometry": graph.outputs[0], "Distance": 1e-5}
+    ).outputs[0]
+    piece = t.node(
+        "GeometryNodeSampleNearest",
+        x + 12,
+        y - 3,
+        {"Geometry": bodies, "Sample Position": position},
+    ).outputs[0]
+    anchored = sample(
+        t,
+        bodies,
+        t.attribute(".shatter_anchored", "FLOAT", x + 12, y - 4),
+        piece,
+        "FLOAT",
+        x + 13,
+        y - 3,
+    )
+    return t.store(graph, ".shatter_anchored", "FLOAT", anchored, x + 14, y)
+
+
+def supported(t, bodies, graph, x, y):
+    """Bodies with the still pieces not held by an anchored one through still pieces loose"""
+    position = t.node("GeometryNodeInputPosition", x, y - 2).outputs[0]
+
+    def matching(geometry, target, xx, yy):
+        """Index of the closest point of the target, and whether it is in the same place"""
+        closest = t.node(
+            "GeometryNodeSampleNearest", xx, yy, {"Geometry": target, "Sample Position": position}
+        ).outputs[0]
+        apart = t.vmath(
+            "DISTANCE",
+            position,
+            sample(t, target, position, closest, "FLOAT_VECTOR", xx + 1, yy),
+            x=xx + 2,
+            y=yy,
+        )
+        return closest, t.math("LESS_THAN", apart, 1e-4, x=xx + 3, y=yy)
+
+    # The graph of the still pieces
+    piece, same = matching(graph, bodies, x, y - 3)
+    loose = sample(
+        t,
+        bodies,
+        t.attribute(".shatter_loose", "FLOAT", x + 3, y - 5),
+        piece,
+        "FLOAT",
+        x + 4,
+        y - 5,
+    )
+    still = t.math(
+        "MULTIPLY", same, t.math("LESS_THAN", loose, 0.5, x=x + 5, y=y - 5), x=x + 6, y=y - 4
+    )
+    graph = t.node(
+        "GeometryNodeDeleteGeometry",
+        x + 7,
+        y - 1,
+        {"Geometry": graph, "Selection": t.math("LESS_THAN", still, 0.5, x=x + 7, y=y - 4)},
+    ).outputs[0]
+    island = t.node("GeometryNodeInputMeshIsland", x + 7, y - 6).outputs["Island Index"]
+    held = t.node(
+        "GeometryNodeAccumulateField",
+        x + 8,
+        y - 5,
+        {"Value": t.attribute(".shatter_anchored", "FLOAT", x + 7, y - 7), "Group ID": island},
+        data_type="FLOAT",
+    ).outputs["Total"]
+    graph = t.store(
+        graph,
+        ".shatter_held",
+        "FLOAT",
+        t.math("GREATER_THAN", held, 0.5, x=x + 9, y=y - 5),
+        x + 9,
+        y - 1,
+    )
+
+    # Loose where not held
+    vertex, same = matching(bodies, graph, x + 10, y - 3)
+    held = sample(
+        t,
+        graph,
+        t.attribute(".shatter_held", "FLOAT", x + 13, y - 5),
+        vertex,
+        "FLOAT",
+        x + 14,
+        y - 5,
+    )
+    dropped = t.math(
+        "MULTIPLY", same, t.math("SUBTRACT", 1.0, held, x=x + 15, y=y - 5), x=x + 16, y=y - 4
+    )
+    for i, name in enumerate((".shatter_loose", ".shatter_awake")):
+        value = t.math(
+            "MAXIMUM", t.attribute(name, "FLOAT", x + 16, y - 6 - i), dropped, x=x + 17, y=y - 5 - i
+        )
+        bodies = t.store(bodies, name, "FLOAT", value, x + 18 + i * 0.5, y)
+    return bodies
 
 
 def turned(t, rotation, spin, scale, x, y):
@@ -946,6 +1651,10 @@ def times(t, transform, vector, x, y):
 
 
 AXES = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+# Speed of the mesh under which it holds the pieces outside the Break Radius, in m/s
+STILL_SPEED = 0.2
+# Cells of the dust grid along each side, at most
+MAX_CELLS = 96
 # Speed under which the touching pieces rest, in m/s
 REST_SPEED = 0.1
 # Frames at rest before a piece sleeps, not moving until woken by a hit at the speed, in m/s
@@ -1202,6 +1911,23 @@ def contacts(t, bodies, hull, colliders, inputs, h, x, y):
         y=y - 7,
     )
     approach = t.vmath("DOT_PRODUCT", relative, normal, x=x + 10, y=y - 3)
+    # Not pushed out more than the Collider or the floor came in over the substep, else thrown far
+    coming = t.math(
+        "MAXIMUM", t.math("MULTIPLY", along, -1.0, x=x + 11, y=y - 9), 0.0, x=x + 12, y=y - 9
+    )
+    depth = t.math(
+        "MINIMUM",
+        depth,
+        t.math(
+            "ADD",
+            coming,
+            t.math("MULTIPLY_ADD", h, PUSH_OUT_SPEED, inputs["Margin"], x=x + 12, y=y - 10),
+            x=x + 13,
+            y=y - 10,
+        ),
+        x=x + 12,
+        y=y - 1,
+    )
     depth = t.math("MULTIPLY", depth, touching, x=x + 12, y=y - 2)
     for i, (name, data_type, value) in enumerate(
         (
@@ -1811,6 +2537,7 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
     )
     bodies = t.store(bodies, ".shatter_awake", "FLOAT", awake, x - 3, y - 48)
     bodies = t.store(bodies, ".shatter_was_awake", "FLOAT", awake, x - 2.5, y - 48)
+    bodies = t.store(bodies, ".shatter_impact", "FLOAT", 0.0, x - 2, y - 48)
     # Contacts between the pieces to check in the frame
     found, found_bodies = pairs(t, bodies, hull, planes, inputs, dt, x - 80, y - 40)
     enabled = inputs["Piece Collisions"]
@@ -2024,7 +2751,26 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
         t.math(
             "MULTIPLY",
             approach,
-            t.math("MULTIPLY", inputs["Bounce"], -1.0, x=x + 65, y=y - 19),
+            t.math(
+                "MULTIPLY",
+                inputs["Bounce"],
+                t.math(
+                    "SUBTRACT",
+                    t.math(
+                        "DIVIDE",
+                        fields.body(".shatter_radius", "FLOAT"),
+                        t.math("MAXIMUM", inputs["Heavy Size"], 1e-6, x=x + 63, y=y - 21),
+                        x=x + 64,
+                        y=y - 20,
+                    ),
+                    1.0,
+                    x=x + 64.5,
+                    y=y - 20,
+                    clamp=True,
+                ),
+                x=x + 65,
+                y=y - 19,
+            ),
             x=x + 66,
             y=y - 18,
         ),
@@ -2229,6 +2975,20 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
     hit = t.math(
         "GREATER_THAN", sample(t, hull, hit, first, "FLOAT", x + 87, y - 8), 0.5, x=x + 88, y=y - 8
     )
+    # Not the ones anchored on the floor, as the ground
+    hit = t.math(
+        "MULTIPLY",
+        hit,
+        t.math(
+            "SUBTRACT",
+            1.0,
+            t.attribute(".shatter_anchored", "FLOAT", x + 87, y - 10),
+            x=x + 88,
+            y=y - 10,
+        ),
+        x=x + 88.5,
+        y=y - 8,
+    )
     stays = t.attribute(".shatter_loose", "FLOAT", x + 88, y - 9)
     bodies = t.store(
         bodies,
@@ -2269,6 +3029,35 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
         x + 90,
         y,
     )
+    # Hardest hit by the floor or the Colliders in the frame, for the breakup
+    hit = t.math(
+        "MULTIPLY",
+        t.math(
+            "MULTIPLY",
+            t.attribute(".shatter_approach", "FLOAT", x + 85, y - 15),
+            -1.0,
+            x=x + 86,
+            y=y - 15,
+        ),
+        t.attribute(".shatter_touching", "FLOAT", x + 85, y - 16),
+        x=x + 87,
+        y=y - 15,
+    )
+    hit = t.node(
+        "GeometryNodeFieldMinAndMax",
+        x + 88,
+        y - 15,
+        {"Value": hit, "Group ID": t.attribute(".shatter_piece", "INT", x + 87, y - 16)},
+        data_type="FLOAT",
+    ).outputs["Max"]
+    hit = t.math(
+        "MAXIMUM",
+        t.attribute(".shatter_impact", "FLOAT", x + 89, y - 16),
+        sample(t, hull, hit, first, "FLOAT", x + 89, y - 15),
+        x=x + 90,
+        y=y - 15,
+    )
+    bodies = t.store(bodies, ".shatter_impact", "FLOAT", hit, x + 91, y)
     t.connect(bodies, steps_out.inputs["Geometry"])
 
     # Frames still: near where the piece was at the start of the count, which restarts when it
@@ -2342,33 +3131,55 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
 
 
 def cuts(t, pieces, bodies, x, y):
-    """The pieces where they break with the inner faces of the loose ones selected, their area,
-    and the velocity, spin and center of the piece on its points"""
+    """The pieces where they are with the inner faces of the ones just loose selected, the area
+    of all the inner faces, and the velocity, spin and center of the piece on its points"""
     index = t.node("GeometryNodeInputIndex", x, y - 2).outputs[0]
     position = t.node("GeometryNodeInputPosition", x, y - 3).outputs[0]
     bodies = t.store(bodies, ".shatter_center", "FLOAT_VECTOR", position, x + 1, y)
+    bodies = t.store(bodies, ".shatter_body", "INT", index, x + 1.5, y)
     placed = t.node(
         "GeometryNodeInstanceOnPoints",
         x + 2,
         y,
-        {"Points": bodies, "Instance": pieces, "Pick Instance": True, "Instance Index": index},
+        {
+            "Points": bodies,
+            "Instance": pieces,
+            "Pick Instance": True,
+            "Instance Index": index,
+            "Rotation": t.attribute(".shatter_rotation", "QUATERNION", x + 1, y - 4),
+        },
     ).outputs[0]
     placed = t.node("GeometryNodeRealizeInstances", x + 3, y, {"Geometry": placed}).outputs[0]
     material = t.node("GeometryNodeInputMaterialIndex", x + 3, y - 2).outputs[0]
     placed = t.store(placed, ".shatter_material", "INT", material, x + 4, y, domain="FACE")
-    loose = t.math(
-        "GREATER_THAN", t.attribute(".shatter_loose", "FLOAT", x + 3, y - 4), 0.5, x=x + 4, y=y - 4
-    )
+    inner = t.attribute(".shatter_inner", "BOOLEAN", x + 3, y - 3)
     selection = t.node(
         "FunctionNodeBooleanMath",
         x + 4,
         y - 3,
-        {0: t.attribute(".shatter_inner", "BOOLEAN", x + 3, y - 3), 1: loose},
+        {0: inner, 1: shedding(t, x + 3, y - 4)},
         operation="AND",
     ).outputs[0]
     area = t.node("GeometryNodeInputMeshFaceArea", x + 4, y - 5).outputs[0]
-    area = statistic(t, placed, area, selection, "FLOAT", x + 5, y - 5, "FACE")["Sum"]
+    area = statistic(t, placed, area, inner, "FLOAT", x + 5, y - 5, "FACE")["Sum"]
     return placed, selection, t.math("MAXIMUM", area, 1e-6, x=x + 6, y=y - 5)
+
+
+def shedding(t, x, y):
+    """Whether the piece is loose and did not shed its debris and dust yet"""
+    return t.math(
+        "GREATER_THAN",
+        t.math(
+            "SUBTRACT",
+            t.attribute(".shatter_loose", "FLOAT", x, y),
+            t.attribute(".shatter_shed", "FLOAT", x, y - 1),
+            x=x + 0.5,
+            y=y,
+        ),
+        0.5,
+        x=x + 1,
+        y=y,
+    )
 
 
 def scattered(t, placed, selection, area, amount, seed, x, y):
@@ -2382,10 +3193,17 @@ def scattered(t, placed, selection, area, amount, seed, x, y):
             "Mesh": placed,
             "Selection": selection,
             "Density": t.math("DIVIDE", amount, area, x=x, y=y - 3),
-            "Seed": seed,
+            "Seed": t.math(
+                "ADD",
+                seed,
+                t.node("GeometryNodeInputSceneTime", x - 1, y - 5).outputs["Frame"],
+                x=x,
+                y=y - 4,
+            ),
         },
         distribute_method="RANDOM",
-    ).outputs["Points"]
+    ).outputs
+    points = t.store(points["Points"], ".shatter_out", "FLOAT_VECTOR", points["Normal"], x + 1.5, y)
     center = t.attribute(".shatter_center", "FLOAT_VECTOR", x + 1, y - 4)
     spin = t.vmath(
         "CROSS_PRODUCT",
@@ -2425,20 +3243,31 @@ def emit_debris(t, placed, selection, area, push, inputs, x, y):
     spinning, as flat stones of different sizes"""
     random = randomized(t, inputs, x + 8, y - 8)
     chips = scattered(t, placed, selection, area, inputs["Debris Amount"], inputs["Seed"], x, y)
-    scatter = t.math(
+    # Thrown out of the cut, up by the Debris Rise, faster for the smaller ones
+    shrink = random(0.4, 1.0, 15, 19, "FLOAT")
+    speed = t.math(
         "MULTIPLY_ADD",
         t.vmath("LENGTH", push, x=x + 10, y=y - 11),
-        inputs["Scatter"],
-        0.3,
+        inputs["Debris Speed"],
+        0.5,
         x=x + 11,
         y=y - 11,
     )
-    scatter = t.vmath("SCALE", random((-1, -1, -1), (1, 1, 1), 11, 12), scatter, x=x + 12, y=y - 11)
+    speed = t.math("DIVIDE", speed, t.math("SQRT", shrink, x=x + 11, y=y - 12), x=x + 12, y=y - 11)
+    away = t.vmath(
+        "ADD",
+        t.attribute(".shatter_out", "FLOAT_VECTOR", x + 9, y - 13),
+        t.vmath("SCALE", random((-1, -1, -1), (1, 1, 1), 11, 12), 0.7, x=x + 10, y=y - 12),
+        x=x + 11,
+        y=y - 13,
+    )
+    up = t.node("ShaderNodeCombineXYZ", x + 10, y - 14, {"Z": inputs["Debris Rise"]}).outputs[0]
+    away = t.vmath("NORMALIZE", t.vmath("ADD", away, up, x=x + 12, y=y - 13), x=x + 13, y=y - 13)
     moving = t.vmath(
         "ADD",
         t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 12, y - 9),
-        scatter,
-        x=x + 13,
+        t.vmath("SCALE", away, speed, x=x + 13, y=y - 11),
+        x=x + 14,
         y=y - 9,
     )
     chips = t.store(chips, ".shatter_velocity", "FLOAT_VECTOR", moving, x + 13, y)
@@ -2451,9 +3280,7 @@ def emit_debris(t, placed, selection, area, push, inputs, x, y):
         {0: random((0, 0, 0), (6.3, 6.3, 6.3), 13, 16)},
     ).outputs[0]
     chips = t.store(chips, ".shatter_rotation", "QUATERNION", rotation, x + 15, y)
-    size = t.math(
-        "MULTIPLY", random(0.4, 1.0, 15, 19, "FLOAT"), inputs["Debris Size"], x=x + 10, y=y - 19
-    )
+    size = t.math("MULTIPLY", shrink, inputs["Debris Size"], x=x + 10, y=y - 19)
     scale = t.vmath(
         "MULTIPLY", random((1.0, 0.5, 0.25), (1.0, 1.0, 0.6), 14, 18), size, x=x + 11, y=y - 18
     )
@@ -2698,12 +3525,23 @@ def debris_step(t, debris, colliders, inputs, dt, x, y):
 
 
 def emit_smoke(t, placed, selection, area, push, inputs, x, y):
-    """Puffs of dust out of the cuts, with a part of the velocity of their piece, scattered"""
+    """Puffs of dust blown out of the cuts, with a part of the velocity of their piece"""
     random = randomized(t, inputs, x + 5, y - 8)
     seed = t.math("ADD", inputs["Seed"], 20, x=x, y=y - 1)
     puff = scattered(t, placed, selection, area, inputs["Smoke Amount"], seed, x, y)
-    direction = t.vmath("NORMALIZE", random((-1, -1, -1), (1, 1, 1), 21, 0), x=x + 7, y=y - 8)
-    speed = t.math("MULTIPLY", t.vmath("LENGTH", push, x=x + 6, y=y - 10), 0.3, x=x + 7, y=y - 10)
+    # Out of the cuts, as the debris
+    direction = t.vmath(
+        "ADD",
+        t.attribute(".shatter_out", "FLOAT_VECTOR", x + 5, y - 7),
+        t.vmath("SCALE", random((-1, -1, -1), (1, 1, 1), 21, 0), 0.7, x=x + 6, y=y - 8),
+        x=x + 7,
+        y=y - 7,
+    )
+    direction = t.vmath("NORMALIZE", direction, x=x + 7, y=y - 8)
+    speed = t.math("MULTIPLY", t.vmath("LENGTH", push, x=x + 6, y=y - 10), 0.4, x=x + 7, y=y - 10)
+    # Most near the cut, some blown far, not as a shell
+    burst = t.math("POWER", random(0.2, 1.0, 24, 3, "FLOAT"), 2.0, x=x + 7, y=y - 12)
+    speed = t.math("MULTIPLY", speed, burst, x=x + 8, y=y - 10)
     carried = t.vmath(
         "SCALE",
         t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 6, y - 11),
@@ -2723,83 +3561,561 @@ def emit_smoke(t, placed, selection, area, push, inputs, x, y):
 
 
 def smoke_step(t, smoke, inputs, dt, x, y):
-    """Smoke slowed by the air, rising and swirling, gone at the end of its life"""
-    position = t.node("GeometryNodeInputPosition", x, y - 2).outputs[0]
-    time = t.node("GeometryNodeInputSceneTime", x, y - 3).outputs["Seconds"]
-    swirl = t.node(
-        "ShaderNodeTexNoise",
-        x + 1,
-        y - 3,
-        {"Vector": t.vmath("SCALE", position, 3.0, x=x + 1, y=y - 2), "W": time, "Scale": 1.0},
-        noise_dimensions="4D",
-    ).outputs["Color"]
-    swirl = t.vmath("SUBTRACT", swirl, (0.5, 0.5, 0.5), x=x + 2, y=y - 3)
-    lift = t.vmath(
-        "ADD", t.vmath("SCALE", swirl, 3.0, x=x + 3, y=y - 3), (0.0, 0.0, 0.3), x=x + 4, y=y - 3
+    """Puffs slowed by the air and rising with it, spreading along the floor they reach, kept
+    while their dust is there"""
+    position = t.node("GeometryNodeInputPosition", x, y - 6).outputs[0]
+    moving = t.attribute(".shatter_velocity", "FLOAT_VECTOR", x, y - 1)
+    up = t.node("ShaderNodeCombineXYZ", x, y - 3, {"Z": inputs["Smoke Rise"]}).outputs[0]
+    drag = t.math("MULTIPLY", dt, 2.0, x=x, y=y - 4, clamp=True)
+    moving = t.vmath(
+        "ADD",
+        moving,
+        t.vmath("SCALE", t.vmath("SUBTRACT", up, moving, x=x + 1, y=y - 3), drag, x=x + 2, y=y - 3),
+        x=x + 3,
+        y=y - 1,
     )
-    moving = t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 3, y - 1)
-    moving = t.vmath("ADD", moving, t.vmath("SCALE", lift, dt, x=x + 5, y=y - 3), x=x + 6, y=y - 1)
-    drag = t.math(
-        "SUBTRACT", 1.0, t.math("MULTIPLY", dt, 2.0, x=x + 5, y=y - 5), x=x + 6, y=y - 5, clamp=True
+    point = t.vmath(
+        "ADD", position, t.vmath("SCALE", moving, dt, x=x + 3, y=y - 5), x=x + 4, y=y - 5
     )
-    moving = t.vmath("SCALE", moving, drag, x=x + 7, y=y - 1)
-    smoke = t.store(smoke, ".shatter_velocity", "FLOAT_VECTOR", moving, x + 7, y)
-    smoke = t.node(
-        "GeometryNodeSetPosition",
-        x + 8,
-        y,
-        {"Geometry": smoke, "Offset": t.vmath("SCALE", moving, dt, x=x + 8, y=y - 2)},
+    # On the floor, the speed down turned along it
+    xyz = t.node("ShaderNodeSeparateXYZ", x + 4, y - 7, {0: point}).outputs
+    landed = t.math("LESS_THAN", socket(xyz, "Z"), inputs["Floor"], x=x + 5, y=y - 7)
+    velocity = t.node("ShaderNodeSeparateXYZ", x + 4, y - 9, {0: moving}).outputs
+    along = t.node(
+        "ShaderNodeCombineXYZ", x + 5, y - 9, {0: socket(velocity, "X"), 1: socket(velocity, "Y")}
     ).outputs[0]
-    age = t.math("ADD", t.attribute(".shatter_age", "FLOAT", x + 8, y - 3), dt, x=x + 9, y=y - 3)
-    smoke = t.store(smoke, ".shatter_age", "FLOAT", age, x + 9, y)
+    scatter = socket(
+        t.node(
+            "FunctionNodeRandomValue",
+            x + 4,
+            y - 11,
+            {"Min": (-1, -1, 0), "Max": (1, 1, 0), "Seed": inputs["Seed"]},
+            data_type="FLOAT_VECTOR",
+        ).outputs,
+        "Value",
+    )
+    away = t.vmath(
+        "NORMALIZE", t.vmath("ADD", along, scatter, x=x + 6, y=y - 10), x=x + 7, y=y - 10
+    )
+    fall = t.math(
+        "ABSOLUTE",
+        t.math("MINIMUM", socket(velocity, "Z"), 0.0, x=x + 5, y=y - 12),
+        x=x + 6,
+        y=y - 12,
+    )
+    spread = t.vmath(
+        "ADD", along, t.vmath("SCALE", away, fall, x=x + 8, y=y - 11), x=x + 9, y=y - 10
+    )
+    moving = switch(t, landed, moving, spread, "VECTOR", x + 10, y - 2)
+    point = t.node(
+        "ShaderNodeCombineXYZ",
+        x + 6,
+        y - 6,
+        {
+            0: socket(xyz, "X"),
+            1: socket(xyz, "Y"),
+            2: t.math("MAXIMUM", socket(xyz, "Z"), inputs["Floor"], x=x + 5, y=y - 8),
+        },
+    ).outputs[0]
+    smoke = t.store(smoke, ".shatter_velocity", "FLOAT_VECTOR", moving, x + 11, y)
+    smoke = t.node(
+        "GeometryNodeSetPosition", x + 12, y, {"Geometry": smoke, "Position": point}
+    ).outputs[0]
+    age = t.math("ADD", t.attribute(".shatter_age", "FLOAT", x + 12, y - 3), dt, x=x + 13, y=y - 3)
+    smoke = t.store(smoke, ".shatter_age", "FLOAT", age, x + 13, y)
     old = t.math(
         "GREATER_THAN",
-        t.attribute(".shatter_age", "FLOAT", x + 9, y - 4),
-        t.attribute(".shatter_life", "FLOAT", x + 9, y - 5),
-        x=x + 10,
+        t.attribute(".shatter_age", "FLOAT", x + 13, y - 4),
+        t.math(
+            "MULTIPLY", t.attribute(".shatter_life", "FLOAT", x + 13, y - 5), 3.0, x=x + 14, y=y - 5
+        ),
+        x=x + 15,
         y=y - 4,
     )
     return t.node(
-        "GeometryNodeDeleteGeometry", x + 11, y, {"Geometry": smoke, "Selection": old}
+        "GeometryNodeDeleteGeometry", x + 16, y, {"Geometry": smoke, "Selection": old}
     ).outputs[0]
 
 
-def smoke_volume(t, smoke, inputs, x, y):
-    """Volume of the smoke, each point growing with its age and shrinking at its end"""
-    life = t.math(
+def smoke_solver(t, dust, puffs, debris, inputs, dt, x, y):
+    """Dust carried by the air rising and swirling as the curl of a noise, fed by the young
+    puffs over their life and the flying debris, fading over its lifetime, on a grid around them
+    and the dust"""
+    position = t.node("GeometryNodeInputPosition", x, y - 2).outputs[0]
+    size = inputs["Smoke Size"]
+    # The flying debris trailing dust
+    flying = t.node(
+        "GeometryNodeDeleteGeometry",
+        x - 4,
+        y - 9,
+        {
+            "Geometry": debris,
+            "Selection": t.math(
+                "LESS_THAN",
+                t.vmath(
+                    "LENGTH",
+                    t.attribute(".shatter_velocity", "FLOAT_VECTOR", x - 6, y - 10),
+                    x=x - 5,
+                    y=y - 10,
+                ),
+                1.0,
+                x=x - 5,
+                y=y - 9,
+            ),
+        },
+    ).outputs[0]
+    movers = t.node("GeometryNodeJoinGeometry", x - 1, y - 9)
+    t.connect(flying, movers.inputs[0])
+    t.connect(puffs, movers.inputs[0])
+    movers = movers.outputs[0]
+    # Around the puffs and the dust carried away from them, not its faded cells, still active,
+    # else the grid grows every frame
+    old = t.node(
+        "GeometryNodeGetNamedGrid",
+        x - 2,
+        y - 6,
+        {"Volume": dust, "Name": "density"},
+        data_type="FLOAT",
+    ).outputs["Grid"]
+    dense = t.node("GeometryNodeGridToPoints", x - 1, y - 6, {"Grid": old}, data_type="FLOAT")
+    dense = t.node(
+        "GeometryNodeDeleteGeometry",
+        x - 0.5,
+        y - 6,
+        {
+            "Geometry": dense.outputs["Points"],
+            "Selection": t.math("LESS_THAN", dense.outputs["Value"], 0.005, x=x - 1, y=y - 7),
+        },
+    ).outputs[0]
+    around = t.node("GeometryNodeJoinGeometry", x, y - 4)
+    t.connect(dense, around.inputs[0])
+    t.connect(movers, around.inputs[0])
+    bounds = t.node("GeometryNodeBoundBox", x + 1, y - 4, {"Geometry": around.outputs[0]}).outputs
+    margin = t.math("MULTIPLY", size, 2.0, x=x + 1, y=y - 6)
+    low = t.vmath("SUBTRACT", bounds["Min"], margin, x=x + 2, y=y - 4)
+    extent = t.vmath(
+        "SUBTRACT", t.vmath("ADD", bounds["Max"], margin, x=x + 2, y=y - 5), low, x=x + 3, y=y - 5
+    )
+    # Cubic voxels, at most MAX_CELLS along each side
+    sides = t.node("ShaderNodeSeparateXYZ", x + 3, y - 7, {0: extent}).outputs
+    largest = t.math(
+        "MAXIMUM",
+        t.math("MAXIMUM", socket(sides, "X"), socket(sides, "Y"), x=x + 4, y=y - 7),
+        socket(sides, "Z"),
+        x=x + 5,
+        y=y - 7,
+    )
+    voxel = t.math(
+        "MAXIMUM",
+        t.math("MULTIPLY", size, 0.3, x=x + 4, y=y - 3),
+        t.math("DIVIDE", largest, MAX_CELLS, x=x + 5, y=y - 8),
+        x=x + 6,
+        y=y - 3,
+    )
+    cells = t.vmath("CEIL", t.vmath("DIVIDE", extent, voxel, x=x + 6, y=y - 5), x=x + 7, y=y - 5)
+    high = t.vmath("ADD", low, t.vmath("SCALE", cells, voxel, x=x + 8, y=y - 6), x=x + 9, y=y - 4)
+    cells = t.node("ShaderNodeSeparateXYZ", x + 8, y - 5, {0: cells}).outputs
+    topology = t.node(
+        "GeometryNodeCubeGridTopology",
+        x + 8,
+        y - 4,
+        {
+            "Bounds Min": low,
+            "Bounds Max": high,
+            "Resolution X": socket(cells, "X"),
+            "Resolution Y": socket(cells, "Y"),
+            "Resolution Z": socket(cells, "Z"),
+        },
+    ).outputs[0]
+
+    def to_grid(value, data_type, name, xx, yy):
+        node = t.node(
+            "GeometryNodeFieldToGrid", xx, yy, {"Topology": topology}, data_type="BOOLEAN"
+        )
+        node.grid_items.new(data_type, name)
+        t.connect(value, node.inputs[name])
+        return node.outputs[name]
+
+    def sampled(grid, data_type, xx, yy):
+        return t.node(
+            "GeometryNodeSampleGrid",
+            xx,
+            yy,
+            {"Grid": grid, "Position": position},
+            data_type=data_type,
+        ).outputs[0]
+
+    # Air: eddies about twice the size of the puffs, turning at the Smoke Swirl, rising
+    time = t.node("GeometryNodeInputSceneTime", x + 8, y - 8).outputs["Seconds"]
+    eddy = t.math("MULTIPLY", size, 2.0, x=x + 8, y=y - 9)
+    noise = t.node(
+        "ShaderNodeTexNoise",
+        x + 9,
+        y - 8,
+        {
+            "Vector": t.vmath("DIVIDE", position, eddy, x=x + 9, y=y - 9),
+            "W": t.math("MULTIPLY", time, 0.5, x=x + 9, y=y - 10),
+        },
+        noise_dimensions="4D",
+    ).outputs["Color"]
+    potential = to_grid(
+        t.vmath("SUBTRACT", noise, (0.5,) * 3, x=x + 10, y=y - 8),
+        "VECTOR",
+        "Potential",
+        x + 11,
+        y - 8,
+    )
+    curl = t.node("GeometryNodeGridCurl", x + 12, y - 8, {"Grid": potential}).outputs[0]
+    swirl = t.math(
+        "MULTIPLY",
+        inputs["Smoke Swirl"],
+        t.math("MULTIPLY", eddy, 0.25, x=x + 11, y=y - 11),
+        x=x + 12,
+        y=y - 10,
+    )
+    air = t.vmath("SCALE", sampled(curl, "VECTOR", x + 13, y - 8), swirl, x=x + 14, y=y - 8)
+    # Slowing down on the floor, settling there
+    height = socket(t.node("ShaderNodeSeparateXYZ", x + 12, y - 15, {0: position}).outputs, "Z")
+    landing = t.math(
         "DIVIDE",
-        t.attribute(".shatter_age", "FLOAT", x, y - 2),
-        t.attribute(".shatter_life", "FLOAT", x, y - 3),
-        x=x + 1,
-        y=y - 2,
+        t.math("SUBTRACT", height, inputs["Floor"], x=x + 13, y=y - 15),
+        t.math("MULTIPLY", size, 2.0, x=x + 13, y=y - 16),
+        x=x + 14,
+        y=y - 15,
         clamp=True,
     )
-    growing = t.math("MULTIPLY_ADD", life, 1.5, 0.5, x=x + 2, y=y - 2)
-    fading = t.math("SUBTRACT", 1.0, t.math("POWER", life, 4.0, x=x + 2, y=y - 3), x=x + 3, y=y - 3)
+    up = t.node(
+        "ShaderNodeCombineXYZ",
+        x + 14,
+        y - 10,
+        {"Z": t.math("MULTIPLY", inputs["Smoke Rise"], landing, x=x + 14, y=y - 11)},
+    ).outputs[0]
+    air = t.vmath("ADD", air, up, x=x + 15, y=y - 8)
+    # Blown by the puffs and the debris near them
+    closest = t.node(
+        "GeometryNodeSampleNearest",
+        x + 12,
+        y - 12,
+        {"Geometry": movers, "Sample Position": position},
+    ).outputs[0]
+    puff = sample(t, movers, position, closest, "FLOAT_VECTOR", x + 13, y - 12)
+    blown = sample(
+        t,
+        movers,
+        t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 12, y - 13),
+        closest,
+        "FLOAT_VECTOR",
+        x + 13,
+        y - 13,
+    )
+    near = t.math(
+        "SUBTRACT",
+        1.0,
+        t.math(
+            "DIVIDE",
+            t.vmath("DISTANCE", position, puff, x=x + 14, y=y - 12),
+            t.math("MULTIPLY", size, 2.0, x=x + 14, y=y - 14),
+            x=x + 15,
+            y=y - 12,
+        ),
+        x=x + 16,
+        y=y - 12,
+        clamp=True,
+    )
+    air = t.vmath("ADD", air, t.vmath("SCALE", blown, near, x=x + 17, y=y - 12), x=x + 18, y=y - 9)
+    air = to_grid(air, "VECTOR", "Air", x + 19, y - 8)
+
+    # Carried and fading, fed by the puffs in the first half of their life
+    carried = t.node(
+        "GeometryNodeGridAdvect",
+        x + 17,
+        y - 13,
+        # Less diffusing than the default, not to blur the dust in a ball
+        {"Grid": old, "Velocity": air, "Time Step": dt, "Integration Scheme": "MacCormack"},
+        data_type="FLOAT",
+    ).outputs[0]
+    # Thinning from the top of the dust, over half the Smoke Lifetime there and one and a half
+    # at the bottom
+    top = t.node("GeometryNodeBoundBox", x + 14, y - 17, {"Geometry": dense}).outputs
+    top = [
+        socket(t.node("ShaderNodeSeparateXYZ", x + 15, y - 17 - i, {0: top[name]}).outputs, "Z")
+        for i, name in enumerate(("Min", "Max"))
+    ]
+    above = t.math(
+        "DIVIDE",
+        t.math("SUBTRACT", height, top[0], x=x + 16, y=y - 17),
+        t.math(
+            "MAXIMUM",
+            t.math("SUBTRACT", top[1], top[0], x=x + 16, y=y - 18),
+            1e-3,
+            x=x + 17,
+            y=y - 18,
+        ),
+        x=x + 17,
+        y=y - 17,
+        clamp=True,
+    )
+    fade = t.math(
+        "EXPONENT",
+        t.math(
+            "DIVIDE",
+            t.math("MULTIPLY", dt, -1.0, x=x + 16, y=y - 15),
+            t.math(
+                "MULTIPLY",
+                inputs["Smoke Lifetime"],
+                t.math("SUBTRACT", 1.5, above, x=x + 17, y=y - 16),
+                x=x + 18,
+                y=y - 16,
+            ),
+            x=x + 17,
+            y=y - 15,
+        ),
+        x=x + 18,
+        y=y - 15,
+    )
+    life = t.math(
+        "DIVIDE",
+        t.attribute(".shatter_age", "FLOAT", x + 8, y - 17),
+        t.attribute(".shatter_life", "FLOAT", x + 8, y - 18),
+        x=x + 9,
+        y=y - 17,
+    )
+    young = t.node(
+        "GeometryNodeDeleteGeometry",
+        x + 10,
+        y - 16,
+        {"Geometry": puffs, "Selection": t.math("GREATER_THAN", life, 1.0, x=x + 10, y=y - 17)},
+    ).outputs[0]
+    # With a puff of no size, for the grid to exist without young puffs
+    dummy = t.node(
+        "GeometryNodePoints", x + 9, y - 19, {"Count": 1, "Position": low, "Radius": 0.0}
+    ).outputs[0]
+    dummy = t.store(dummy, ".shatter_life", "FLOAT", -1.0, x + 10, y - 19)
+    joined = t.node("GeometryNodeJoinGeometry", x + 11, y - 16)
+    t.connect(dummy, joined.inputs[0])
+    t.connect(young, joined.inputs[0])
+    young = joined.outputs[0]
+    # Feeding less and less as the puffs age
+    radius = t.math("MULTIPLY_ADD", life, -0.7, 1.0, x=x + 10, y=y - 18)
+    # At least a voxel, else the grid misses them
+    radius = t.math(
+        "MAXIMUM",
+        t.math("MULTIPLY", radius, size, x=x + 11, y=y - 17),
+        voxel,
+        x=x + 11,
+        y=y - 18,
+    )
+    real = t.attribute(".shatter_life", "FLOAT", x + 10, y - 20)
     radius = t.math(
         "MULTIPLY",
-        t.math("MULTIPLY", growing, fading, x=x + 3, y=y - 2),
-        inputs["Smoke Size"],
-        x=x + 4,
-        y=y - 2,
+        radius,
+        t.math("GREATER_THAN", real, 0.0, x=x + 11, y=y - 20),
+        x=x + 12,
+        y=y - 18,
     )
-    volume = t.node(
+    source = t.node(
         "GeometryNodePointsToVolume",
-        x + 5,
-        y,
+        x + 12,
+        y - 16,
         {
-            "Points": smoke,
+            "Points": young,
             "Density": 1.0,
             "Resolution Mode": "Size",
-            "Voxel Size": t.math("MULTIPLY", inputs["Smoke Size"], 0.2, x=x + 4, y=y - 4),
+            "Voxel Size": voxel,
             "Radius": radius,
         },
     ).outputs[0]
+    source = t.node(
+        "GeometryNodeGetNamedGrid",
+        x + 13,
+        y - 16,
+        {"Volume": source, "Name": "density"},
+        data_type="FLOAT",
+    ).outputs["Grid"]
+    # Streaks along the way of the debris over the frame, fed more
+    streaks = t.node(
+        "GeometryNodeDuplicateElements", x + 10, y - 22, {"Geometry": flying, "Amount": 3}
+    ).outputs
+    back = t.vmath(
+        "SCALE",
+        t.attribute(".shatter_velocity", "FLOAT_VECTOR", x + 10, y - 24),
+        t.math(
+            "MULTIPLY",
+            dt,
+            t.math("DIVIDE", streaks["Duplicate Index"], -3.0, x=x + 10, y=y - 25),
+            x=x + 11,
+            y=y - 25,
+        ),
+        x=x + 12,
+        y=y - 24,
+    )
+    streaks = t.node(
+        "GeometryNodeSetPosition", x + 12, y - 22, {"Geometry": streaks["Geometry"], "Offset": back}
+    ).outputs[0]
+    with_dummy = t.node("GeometryNodeJoinGeometry", x + 12.5, y - 21)
+    t.connect(dummy, with_dummy.inputs[0])
+    t.connect(streaks, with_dummy.inputs[0])
+    trails = t.node(
+        "GeometryNodePointsToVolume",
+        x + 13,
+        y - 22,
+        {
+            "Points": with_dummy.outputs[0],
+            "Density": 1.5,
+            "Resolution Mode": "Size",
+            "Voxel Size": voxel,
+            "Radius": t.math(
+                "MULTIPLY",
+                t.math(
+                    "MAXIMUM",
+                    t.math("MULTIPLY", size, 0.5, x=x + 12, y=y - 26),
+                    voxel,
+                    x=x + 13,
+                    y=y - 26,
+                ),
+                t.math(
+                    "GREATER_THAN",
+                    t.attribute(".shatter_life", "FLOAT", x + 12, y - 27),
+                    -0.5,
+                    x=x + 13,
+                    y=y - 27,
+                ),
+                x=x + 14,
+                y=y - 26,
+            ),
+        },
+    ).outputs[0]
+    trails = t.node(
+        "GeometryNodeGetNamedGrid",
+        x + 14,
+        y - 22,
+        {"Volume": trails, "Name": "density"},
+        data_type="FLOAT",
+    ).outputs["Grid"]
+    feed = t.math("MULTIPLY", dt, 4.0, x=x + 14, y=y - 18)
+    density = t.math(
+        "MULTIPLY_ADD",
+        t.math(
+            "ADD",
+            sampled(source, "FLOAT", x + 15, y - 16),
+            sampled(trails, "FLOAT", x + 15, y - 22),
+            x=x + 16,
+            y=y - 18,
+        ),
+        feed,
+        t.math("MULTIPLY", sampled(carried, "FLOAT", x + 18, y - 13), fade, x=x + 19, y=y - 13),
+        x=x + 20,
+        y=y - 14,
+    )
+    density = t.math("MINIMUM", density, 1.0, x=x + 21, y=y - 14)
+    # Not under the floor
+    above = t.math(
+        "GREATER_THAN",
+        socket(t.node("ShaderNodeSeparateXYZ", x + 20, y - 16, {0: position}).outputs, "Z"),
+        inputs["Floor"],
+        x=x + 21,
+        y=y - 16,
+    )
+    density = t.math("MULTIPLY", density, above, x=x + 21.5, y=y - 14)
+    density = to_grid(density, "FLOAT", "Density", x + 22, y - 14)
+    # Without the faded cells, not to grow the grid
+    density = t.node(
+        "GeometryNodeGridPrune",
+        x + 23.5,
+        y - 14,
+        {"Grid": density, "Mode": "Threshold", "Threshold": 0.005},
+        data_type="FLOAT",
+    ).outputs[0]
+    volume = t.node(
+        "GeometryNodeVolumeCube",
+        x + 23,
+        y - 12,
+        {"Resolution X": 2, "Resolution Y": 2, "Resolution Z": 2},
+    ).outputs[0]
+    volume = t.node(
+        "GeometryNodeGetNamedGrid",
+        x + 24,
+        y - 12,
+        {"Volume": volume, "Name": "density", "Remove": True},
+        data_type="FLOAT",
+    ).outputs["Volume"]
     return t.node(
-        "GeometryNodeSetMaterial",
+        "GeometryNodeStoreNamedGrid",
+        x + 25,
+        y - 12,
+        {"Volume": volume, "Name": "density", "Grid": density},
+        data_type="FLOAT",
+    ).outputs[0]
+
+
+def rendered(t, dust, size, x, y):
+    """Dust billowing by a noise slowly changing, blurred for soft edges, with the coordinates in
+    Smoke Size for the details of the material"""
+    grid = t.node(
+        "GeometryNodeGetNamedGrid", x, y, {"Volume": dust, "Name": "density"}, data_type="FLOAT"
+    ).outputs
+    position = t.node("GeometryNodeInputPosition", x, y - 4).outputs[0]
+    weight = t.node(
+        "GeometryNodeSampleGrid",
+        x + 0.5,
+        y - 3,
+        {"Grid": grid["Grid"], "Position": position},
+        data_type="FLOAT",
+    ).outputs[0]
+    coordinates = t.vmath("DIVIDE", position, size, x=x + 1, y=y - 4)
+    time = t.node("GeometryNodeInputSceneTime", x, y - 6).outputs["Seconds"]
+    # Billows: the edge of the dust pushed in and out by the noise
+    noise = t.node(
+        "ShaderNodeTexNoise",
+        x + 1.5,
+        y - 6,
+        {
+            "Vector": coordinates,
+            "W": t.math("MULTIPLY", time, 0.3, x=x + 1, y=y - 6),
+            "Scale": 1.0,
+            "Detail": 3.0,
+        },
+        noise_dimensions="4D",
+    ).outputs["Fac"]
+    billows = t.node(
+        "ShaderNodeMapRange",
+        x + 2.5,
+        y - 5,
+        {
+            0: t.math(
+                "MULTIPLY", weight, t.math("ADD", noise, 0.5, x=x + 2, y=y - 6), x=x + 2, y=y - 5
+            ),
+            1: 0.15,
+            2: 0.5,
+        },
+        interpolation_type="SMOOTHSTEP",
+        clamp=True,
+    ).outputs[0]
+    grids = t.node("GeometryNodeFieldToGrid", x + 3.5, y - 3, {"Topology": grid["Grid"]})
+    grids.grid_items.new("FLOAT", "Density")
+    grids.grid_items.new("VECTOR", "Rest")
+    t.connect(billows, grids.inputs["Density"])
+    t.connect(coordinates, grids.inputs["Rest"])
+    soft = t.node(
+        "GeometryNodeGridMean",
+        x + 4.5,
+        y - 1,
+        {"Grid": grids.outputs["Density"], "Width": 1, "Iterations": 1},
+        data_type="FLOAT",
+    ).outputs[0]
+    volume = t.node(
+        "GeometryNodeStoreNamedGrid",
+        x + 5,
+        y,
+        {"Volume": grid["Volume"], "Name": "density", "Grid": soft},
+        data_type="FLOAT",
+    ).outputs[0]
+    return t.node(
+        "GeometryNodeStoreNamedGrid",
         x + 6,
         y,
-        {"Geometry": volume, "Material": inputs["Smoke Material"]},
+        {"Volume": volume, "Name": "rest", "Grid": grids.outputs["Rest"]},
+        data_type="VECTOR_FLOAT",
     ).outputs[0]
 
 
@@ -2840,11 +4156,36 @@ def build_node_group():
     sim_in = t.node("GeometryNodeSimulationInput", -6, 0)
     sim_out = t.node("GeometryNodeSimulationOutput", 0, 0)
     sim_in.pair_with_output(sim_out)
-    for name in ("Colliders", "Pieces", "Bodies", "Hull", "Planes", "Debris", "Smoke"):
+    for name in (
+        "Colliders",
+        "Pieces",
+        "Bodies",
+        "Hull",
+        "Planes",
+        "Debris",
+        "Smoke",
+        "Dust",
+        "Support",
+    ):
         sim_out.state_items.new("GEOMETRY", name)
     sim_out.state_items.new("BOOLEAN", "Broken")
     t.connect(positions(t, mesh, -8, 0), sim_in.inputs["Geometry"])
     t.connect(positions(t, colliders, -8, -3), sim_in.inputs["Colliders"])
+    # An empty grid of dust to start from
+    empty = t.node(
+        "GeometryNodeVolumeCube",
+        -8,
+        -8,
+        {
+            "Density": 0.0,
+            "Min": (0.0, 0.0, 0.0),
+            "Max": (0.001, 0.001, 0.001),
+            "Resolution X": 2,
+            "Resolution Y": 2,
+            "Resolution Z": 2,
+        },
+    ).outputs[0]
+    t.connect(empty, sim_in.inputs["Dust"])
     dt = t.math("MULTIPLY", sim_in.outputs["Delta Time"], started, x=-5, y=-4)
     dt = t.math("MULTIPLY", dt, inputs["Time Scale"], x=-4, y=-4)
     mesh = velocity(t, mesh, sim_in.outputs["Geometry"], dt, -5, 2)
@@ -2866,6 +4207,7 @@ def build_node_group():
     t.section("Fracture", row=True)
     each = fracture(t, mesh, impact, inputs, 0, 0)
     pieces, bodies, hull, planes = bodies_of(t, each, mesh, impact, push, inputs, 27, 0)
+    bodies = anchored(t, bodies, hull, mesh, inputs, 45, 0)
     bodies_new = bodies
 
     t.section("State", row=True)
@@ -2874,9 +4216,6 @@ def build_node_group():
         (("Pieces", pieces), ("Bodies", bodies), ("Hull", hull), ("Planes", planes))
     ):
         state[name] = switch(t, breaking, sim_in.outputs[name], new, "GEOMETRY", 0, -i)
-    t.connect(state["Pieces"], sim_out.inputs["Pieces"])
-    t.connect(state["Hull"], sim_out.inputs["Hull"])
-    t.connect(state["Planes"], sim_out.inputs["Planes"])
     broken = t.node(
         "FunctionNodeBooleanMath", 0, -4, {0: was_broken, 1: breaking}, operation="OR"
     ).outputs[0]
@@ -2899,21 +4238,99 @@ def build_node_group():
     speed = t.vmath("LENGTH", t.attribute(".shatter_velocity", "FLOAT_VECTOR", -4, -7), x=-3, y=-7)
     speed = statistic(t, bodies, speed, True, "FLOAT", -2, -7)["Max"]
     near = crop(t, colliders, low, high, speed, dt, inputs["Margin"], -1, -2)
-    bodies = step(t, bodies, state["Hull"], state["Planes"], near, inputs, dt, 0, 0)
-    t.connect(
-        switch(t, broken, state["Bodies"], bodies, "GEOMETRY", 41, 0), sim_out.inputs["Bodies"]
+    # Broken again where a Collider hits the still pieces
+    *hit_again, again = rehit(
+        t, bodies, state["Pieces"], state["Hull"], state["Planes"], near, inputs, dt, 2, -40
     )
+    again = t.node(
+        "FunctionNodeBooleanMath", 92, -40, {0: again, 1: was_broken}, operation="AND"
+    ).outputs[0]
+    for name, broken_again in zip(("Bodies", "Pieces", "Hull", "Planes"), hit_again, strict=True):
+        state[name] = switch(t, again, state[name], broken_again, "GEOMETRY", 93, -40)
+    # The support between the pieces where they broke, at the break or again
+    support = sim_in.outputs["Support"]
+    for i, (now, new_pieces, new_bodies) in enumerate(
+        (
+            (again, state["Pieces"], state["Bodies"]),
+            (breaking, pieces, bodies_new),
+        )
+    ):
+        placed = cuts(t, new_pieces, new_bodies, 94, -44 - i * 4)[0]
+        graph = support_graph(t, placed, new_bodies, 98, -44 - i * 4)
+        support = switch(t, now, support, graph, "GEOMETRY", 114, -44 - i * 4)
+    support = switch(t, inputs["Floor Support"], None, support, "GEOMETRY", 115, -44)
+    t.connect(support, sim_out.inputs["Support"])
+    bodies = step(t, state["Bodies"], state["Hull"], state["Planes"], near, inputs, dt, 0, 0)
+    *broken_up, any_breaking = breakup(t, bodies, state["Pieces"], inputs, 42, -12)
+    final = {}
+    splitting = t.node(
+        "FunctionNodeBooleanMath",
+        79,
+        -14,
+        {0: inputs["Breakup"], 1: any_breaking},
+        operation="AND",
+    ).outputs[0]
+    for i, (name, kept, split) in enumerate(
+        zip(
+            ("Bodies", "Pieces", "Hull", "Planes"),
+            (bodies, state["Pieces"], state["Hull"], state["Planes"]),
+            broken_up,
+            strict=True,
+        )
+    ):
+        geometry = switch(t, splitting, kept, split, "GEOMETRY", 80, -i)
+        if name == "Bodies":
+            # Falling where not held anymore
+            holding = t.node(
+                "FunctionNodeBooleanMath",
+                81,
+                -2,
+                {0: inputs["Floor Support"], 1: broken},
+                operation="AND",
+            ).outputs[0]
+            geometry = switch(
+                t, holding, geometry, supported(t, geometry, support, 82, -4), "GEOMETRY", 85, 0
+            )
+            geometry = switch(t, broken, state["Bodies"], geometry, "GEOMETRY", 86, 0)
+        final[name] = geometry
 
     t.section("Debris and Smoke", row=True)
-    placed, selection, area = cuts(t, pieces, bodies_new, -10, 0)
-    emitted = emit_debris(t, placed, selection, area, push, inputs, 0, 0)
-    debris = switch(t, breaking, sim_in.outputs["Debris"], emitted, "GEOMETRY", 18, 0)
-    debris = switch(t, inputs["Debris"], None, debris, "GEOMETRY", 19, 0)
-    t.connect(debris_step(t, debris, near, inputs, dt, 20, 0), sim_out.inputs["Debris"])
-    smoke = emit_smoke(t, placed, selection, area, push, inputs, 0, -24)
-    smoke = switch(t, breaking, sim_in.outputs["Smoke"], smoke, "GEOMETRY", 18, -24)
-    smoke = switch(t, inputs["Smoke"], None, smoke, "GEOMETRY", 19, -24)
-    t.connect(smoke_step(t, smoke, inputs, dt, 20, -24), sim_out.inputs["Smoke"])
+    # Out of the pieces as they get loose, at the break, not held anymore or broken up
+    placed, selection, area = cuts(t, final["Pieces"], final["Bodies"], -6, 0)
+    any_shedding = statistic(t, final["Bodies"], shedding(t, -4, -8), True, "FLOAT", -2, -8)
+    any_shedding = t.math("GREATER_THAN", any_shedding["Max"], 0.5, x=-1, y=-8)
+    # The push of the Colliders only at the break
+    push = t.vmath("SCALE", push, breaking, x=-1, y=-10)
+    for i, (name, emitted) in enumerate(
+        (
+            ("Debris", emit_debris(t, placed, selection, area, push, inputs, 0, 0)),
+            ("Smoke", emit_smoke(t, placed, selection, area, push, inputs, 0, -24)),
+        )
+    ):
+        joined = t.node("GeometryNodeJoinGeometry", 18, -i * 24)
+        t.connect(sim_in.outputs[name], joined.inputs[0])
+        t.connect(switch(t, any_shedding, None, emitted, "GEOMETRY", 17, -i * 24), joined.inputs[0])
+        final[name] = switch(t, inputs[name], None, joined.outputs[0], "GEOMETRY", 19, -i * 24)
+    debris = debris_step(t, final["Debris"], near, inputs, dt, 20, 0)
+    t.connect(debris, sim_out.inputs["Debris"])
+    smoke = smoke_step(t, final["Smoke"], inputs, dt, 20, -24)
+    t.connect(smoke, sim_out.inputs["Smoke"])
+    dust = smoke_solver(t, sim_in.outputs["Dust"], smoke, debris, inputs, dt, 30, -24)
+    # Only once broken
+    smoking = t.node(
+        "FunctionNodeBooleanMath", 59, -26, {0: inputs["Smoke"], 1: broken}, operation="AND"
+    ).outputs[0]
+    t.connect(switch(t, smoking, None, dust, "GEOMETRY", 60, -24), sim_out.inputs["Dust"])
+    final["Bodies"] = t.store(
+        final["Bodies"],
+        ".shatter_shed",
+        "FLOAT",
+        t.attribute(".shatter_loose", "FLOAT", 60, -2),
+        61,
+        0,
+    )
+    for name in ("Bodies", "Pieces", "Hull", "Planes"):
+        t.connect(final[name], sim_out.inputs[name])
 
     t.section("Output", row=True)
     rotation = t.attribute(".shatter_rotation", "QUATERNION", 41, -2)
@@ -2981,7 +4398,23 @@ def build_node_group():
         45,
         -8,
         {
-            "Geometry": smoke_volume(t, sim_out.outputs["Smoke"], inputs, 42, -8),
+            "Geometry": t.node(
+                "GeometryNodeSetMaterial",
+                44,
+                -8,
+                {
+                    "Geometry": switch(
+                        t,
+                        inputs["Smoke"],
+                        None,
+                        rendered(t, sim_out.outputs["Dust"], inputs["Smoke Size"], 43, -10),
+                        "GEOMETRY",
+                        43.8,
+                        -8,
+                    ),
+                    "Material": inputs["Smoke Material"],
+                },
+            ).outputs[0],
             "Mode": "Matrix",
             "Transform": to_local,
         },
@@ -2997,22 +4430,33 @@ def build_node_group():
 
 
 def build_dust_material():
-    """Grey dust, wispy by a noise"""
+    """Grey dust, its shape from the grid, finer wisps by a noise moving with it"""
     material = bpy.data.materials.new(DUST)
     material.node_tree.nodes.clear()
     t = Tree(material.node_tree, spacing=(1, 1))
-    density = t.node("ShaderNodeAttribute", -800, 0, attribute_name="density").outputs["Fac"]
+    density = t.node("ShaderNodeAttribute", -1000, 0, attribute_name="density").outputs["Fac"]
+    # In Smoke Size, for the details to scale with the dust
+    space = t.node("ShaderNodeAttribute", -1000, -200, attribute_name="rest").outputs["Vector"]
     noise = t.node(
-        "ShaderNodeTexNoise", -800, -200, {"Scale": 6.0, "Detail": 4.0, "Roughness": 0.6}
+        "ShaderNodeTexNoise",
+        -800,
+        -200,
+        {"Vector": space, "Scale": 4.0, "Detail": 4.0, "Roughness": 0.6},
     ).outputs["Fac"]
-    wisps = t.node("ShaderNodeMapRange", -550, -200, {0: noise, 1: 0.35, 2: 0.75}, clamp=True)
+    wisps = t.node("ShaderNodeMapRange", -550, -200, {0: noise, 1: 0.3, 2: 0.6}, clamp=True)
     density = t.math("MULTIPLY", density, wisps.outputs[0], x=-300, y=0)
-    density = t.math("MULTIPLY", density, 12.0, x=-150, y=0)
+    density = t.math("MULTIPLY", density, 5.0, x=-150, y=0)
     volume = t.node(
         "ShaderNodeVolumePrincipled",
         0,
         0,
-        {"Color": (0.55, 0.52, 0.48, 1.0), "Density": density, "Anisotropy": 0.3},
+        {
+            "Color": (0.8, 0.77, 0.72, 1.0),
+            "Density": density,
+            "Anisotropy": 0.3,
+            # Read above, not to square it
+            "Density Attribute": "",
+        },
     )
     t.node("ShaderNodeOutputMaterial", 300, 0, {"Volume": volume.outputs[0]})
     return material

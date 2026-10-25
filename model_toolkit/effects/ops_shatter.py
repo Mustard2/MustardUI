@@ -7,6 +7,7 @@ from ...model_selection.active_object import ModelMode, mustardui_active_object
 from .effect import effects_available, is_effect, modifier_input
 
 NODE_GROUP = "MustardUI Shatter"
+DUST = "MustardUI Shatter Dust"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "shatter.blend")
 
 # Modifier inputs of each material, the distances as a share of the size of the mesh
@@ -19,11 +20,17 @@ PRESETS = {
         "Push": 0.3,
         "Scatter": 0.6,
         "Bounce": 0.3,
+        "Heavy Size": 0.3,
         "Friction": 0.4,
+        "Breakup": True,
+        "Breakup Size": 0.15,
         "Debris": True,
         "Debris Amount": 200,
         "Debris Size": 0.015,
         "Smoke": False,
+        "Smoke Amount": 200,
+        "Smoke Size": 0.06,
+        "Smoke Rise": -0.03,
     },
     "CERAMIC": {
         "Pieces": 25,
@@ -33,11 +40,17 @@ PRESETS = {
         "Push": 0.3,
         "Scatter": 0.4,
         "Bounce": 0.2,
+        "Heavy Size": 0.2,
         "Friction": 0.6,
+        "Breakup": True,
+        "Breakup Size": 0.2,
         "Debris": True,
         "Debris Amount": 100,
         "Debris Size": 0.02,
         "Smoke": False,
+        "Smoke Amount": 200,
+        "Smoke Size": 0.08,
+        "Smoke Rise": -0.03,
     },
     "STONE": {
         "Pieces": 60,
@@ -47,16 +60,30 @@ PRESETS = {
         "Push": 0.6,
         "Scatter": 0.2,
         "Bounce": 0.1,
+        "Heavy Size": 0.1,
         "Friction": 0.8,
+        "Floor Support": True,
+        "Breakup": True,
+        "Breakup Size": 0.1,
         "Debris": True,
         "Debris Amount": 150,
         "Debris Size": 0.012,
         "Smoke": True,
-        "Smoke Amount": 150,
+        "Smoke Amount": 300,
         "Smoke Size": 0.09,
+        "Smoke Rise": -0.03,
     },
 }
-DISTANCES = {"Spread", "Break Radius", "Debris Size", "Smoke Size"}
+DISTANCES = {
+    "Spread",
+    "Break Radius",
+    "Heavy Size",
+    "Breakup Size",
+    "Debris Size",
+    "Smoke Size",
+    # A speed, in sizes per second
+    "Smoke Rise",
+}
 
 
 class MustardUI_ModelToolkit_Shatter(bpy.types.Operator):
@@ -92,6 +119,13 @@ class MustardUI_ModelToolkit_Shatter(bpy.types.Operator):
             body = arm.MustardUI_RigSettings.model_body if res else None
             colliders = [body] if body is not None and body != target else []
 
+        # A copy left by a removed Shatter replaced, it could be of an older version
+        group = bpy.data.node_groups.get(NODE_GROUP)
+        if group is not None and not group.users:
+            bpy.data.node_groups.remove(group)
+            dust = bpy.data.materials.get(DUST)
+            if dust is not None and not dust.users:
+                bpy.data.materials.remove(dust)
         with bpy.data.libraries.load(RESOURCE) as (_, data):
             if NODE_GROUP not in bpy.data.node_groups:
                 data.node_groups = [NODE_GROUP]

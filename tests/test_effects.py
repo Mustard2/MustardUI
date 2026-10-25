@@ -2060,8 +2060,8 @@ class TestShatter(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_shatter(**settings)
         modifier = obj.modifiers["Shatter"]
         if not extras:
-            effect.modifier_input(modifier, "Debris").value = False
-            effect.modifier_input(modifier, "Smoke").value = False
+            for name in ("Breakup", "Debris", "Smoke"):
+                effect.modifier_input(modifier, name).value = False
             obj.update_tag()
         return modifier
 
@@ -2154,6 +2154,99 @@ class TestShatter(BlenderTestCase):
         # Scattered, not only where it landed
         self.assertGreater(np.abs(co[:, :2] - (-3.0, 0.0)).max(), 0.2)
 
+    # With Floor Support, the pieces standing on the floor of a tower all broken loose stay,
+    # those not resting on them falling; without, all of them move
+    def test_floor_support(self):
+        # A 0.6 x 0.4 x 3 m tower
+        self.wall.data.transform(Matrix.Diagonal((0.3, 2.0, 1.5, 1.0)))
+        self.wall.location = (3.0, 0.0, 1.5)
+        # In few pieces, the ball hits the ones anchored too, thrown faster
+        for support, pieces in ((True, 60), (False, 60), (True, 4)):
+            with self.subTest(support=support, pieces=pieces):
+                if pieces < 60:
+                    self.ball.animation_data_clear()
+                    for frame, y in ((9, 1.5), (1, -1.5)):
+                        self.ball.location = (3.1, y, 1.1)
+                        self.ball.keyframe_insert("location", frame=frame)
+                self.scene.frame_set(1)
+                modifier = self.add(self.wall, kind="STONE")
+                effect.modifier_input(modifier, "Pieces").value = pieces
+                effect.modifier_input(modifier, "Break Radius").value = 10.0
+                effect.modifier_input(modifier, "Floor Support").value = support
+                self.wall.update_tag()
+                base = self.evaluate(self.wall)[0]
+                base = base[base[:, 2] < 0.01]
+                for frame in range(1, 61):
+                    self.scene.frame_set(frame)
+                co, count = self.evaluate(self.wall)[:2]
+                # Broken
+                self.assertGreater(count, 6)
+                low = co[co[:, 2] < 0.01]
+                # The bottom face of the tower, unmoved
+                still = len(low) >= len(base) and np.isin(base.round(4), low.round(4)).all()
+                self.assertEqual(still, support)
+                self.assertGreater(co[:, 2].min(), -0.003)
+                self.assertLess(co[:, 2].max(), 2.9)
+                self.wall.modifiers.remove(modifier)
+
+    # Pieces getting loose after the break, hit or not held anymore, throw debris too, and the
+    # ones anchored on the floor stay even when hit
+    def test_late_loose(self):
+        # A 0.6 x 0.4 x 3 m tower in a few pieces, few loose at the break
+        self.wall.data.transform(Matrix.Diagonal((0.3, 2.0, 1.5, 1.0)))
+        self.wall.location = (3.0, 0.0, 1.5)
+        # The ball hitting it high
+        for frame, y in ((25, 1.5), (1, -1.5)):
+            self.ball.location = (3.1, y, 2.2)
+            self.ball.keyframe_insert("location", frame=frame)
+        modifier = self.add(self.wall, kind="STONE")
+        effect.modifier_input(modifier, "Pieces").value = 12
+        effect.modifier_input(modifier, "Break Radius").value = 0.05
+        faces = {}
+        for enabled in (True, False):
+            effect.modifier_input(modifier, "Debris").value = enabled
+            self.wall.update_tag()
+            self.scene.frame_set(1)
+            base = self.evaluate(self.wall)[0]
+            base = base[base[:, 2] < 0.01]
+            for frame in range(1, 61):
+                self.scene.frame_set(frame)
+            co, faces[enabled] = self.evaluate(self.wall)[:2]
+            low = co[co[:, 2] < 0.01]
+            # The bottom face of the tower, unmoved
+            self.assertTrue(np.isin(base.round(4), low.round(4)).all())
+        self.assertGreater(faces[True] - faces[False], 20 * 10)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # A second hit breaks the still pieces again where it hits, also the ones anchored on the
+    # floor when all the others got loose at the first, the base staying
+    def test_second_hit(self):
+        # A 0.6 x 0.4 x 3 m tower, hit high then low
+        self.wall.data.transform(Matrix.Diagonal((0.3, 2.0, 1.5, 1.0)))
+        self.wall.location = (3.0, 0.0, 1.5)
+        self.ball.animation_data_clear()
+        for frame, y, z in ((1, -1.5, 2.2), (9, 1.5, 2.2), (30, 1.5, 0.4), (38, -1.5, 0.4)):
+            self.ball.location = (3.1, y, z)
+            self.ball.keyframe_insert("location", frame=frame)
+        for kind in ("STONE", "GLASS"):
+            with self.subTest(kind=kind):
+                self.scene.frame_set(1)
+                modifier = self.add(self.wall, kind=kind)
+                effect.modifier_input(modifier, "Pieces").value = 12
+                effect.modifier_input(modifier, "Floor Support").value = True
+                self.wall.update_tag()
+                base = self.evaluate(self.wall)[0]
+                base = base[base[:, 2] < 0.01]
+                faces = {}
+                for frame in range(1, 61):
+                    self.scene.frame_set(frame)
+                    co, faces[frame] = self.evaluate(self.wall)[:2]
+                self.assertGreater(faces[60], faces[29])
+                # The bottom face of the tower, unmoved
+                self.assertTrue(np.isin(base.round(4), co[co[:, 2] < 0.01].round(4)).all())
+                self.assertEqual([x.message for x in modifier.node_warnings], [])
+                self.wall.modifiers.remove(modifier)
+
     # The pieces of a dropped glass overlap each other less with Piece Collisions
     def test_piece_collisions(self):
         glass = self.sphere("Glass", 0.1)
@@ -2200,7 +2293,7 @@ class TestShatter(BlenderTestCase):
             )
         self.assertLess(overlaps[0] * 2, overlaps[1])
 
-    # Debris chips are thrown from the cuts and rest on the floor, and dust rises as a volume
+    # Debris chips are thrown from the cuts and rest on the floor, and dust billows as a volume
     def test_debris_smoke(self):
         modifier = self.add(self.wall, extras=True, kind="STONE")
         self.assertTrue(effect.modifier_input(modifier, "Debris").value)
@@ -2217,10 +2310,18 @@ class TestShatter(BlenderTestCase):
             depsgraph = bpy.context.evaluated_depsgraph_get()
             geometry = self.wall.evaluated_get(depsgraph).evaluated_geometry()
             self.assertIsNotNone(geometry.volume)
+            # Around the wall and the debris trailing dust, the grid not growing every frame
+            volume = next(
+                x.object
+                for x in depsgraph.object_instances
+                if x.object.type == "VOLUME" and x.object.original == self.wall
+            )
+            corners = np.array([x[:] for x in volume.bound_box])
+            self.assertLess((corners.max(0) - corners.min(0)).max(), 12.0)
             co, faces[enabled], materials, _ = self.evaluate(self.wall)
             self.assertGreater(co[:, 2].min(), -0.003)
-        # Chips of 20 faces
-        self.assertGreater(faces[True] - faces[False], 20 * 100)
+        # Chips of 20 faces, from the pieces loose around the hole
+        self.assertGreater(faces[True] - faces[False], 20 * 50)
         self.assertEqual(materials, [self.brick, None])
         self.assertEqual([x.message for x in modifier.node_warnings], [])
 
@@ -2231,6 +2332,23 @@ class TestShatter(BlenderTestCase):
             bpy.context.evaluated_depsgraph_get()
         ).evaluated_geometry()
         self.assertIsNone(geometry.volume)
+
+    # Large pieces hit hard break again, once, keeping the volume, resting on the floor
+    def test_breakup(self):
+        modifier = self.add(self.wall, kind="STONE")
+        effect.modifier_input(modifier, "Breakup Chance").value = 1.0
+        effect.modifier_input(modifier, "Breakup Size").value = 0.1
+        faces = {}
+        for enabled in (False, True):
+            effect.modifier_input(modifier, "Breakup").value = enabled
+            self.wall.update_tag()
+            for frame in range(1, 61):
+                self.scene.frame_set(frame)
+                co, faces[enabled], _, volume = self.evaluate(self.wall)
+                self.assertAlmostEqual(volume, 0.8, delta=1e-3, msg=f"frame {frame}")
+            self.assertGreater(co[:, 2].min(), -0.003)
+        self.assertGreater(faces[True], faces[False] * 1.2)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
 
     # The inner faces have the Material, else the one of the closest outer face
     def test_inner_faces(self):
