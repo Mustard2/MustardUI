@@ -46,4 +46,4 @@ jobs:
           rm blender.tar.xz
 
       - name: Run tests
-        run: tests/run_blender.sh "$BLENDER_DIR/blender"
+        run: tests/run_blender.sh "$BLENDER_DIR/blender" -j

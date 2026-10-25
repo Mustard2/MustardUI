@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the MustardUI test suite headless.
-# Usage: tests/run_blender.sh /path/to/blender [-k test_name_pattern]
+# Usage: tests/run_blender.sh /path/to/blender [-R regex] [-E regex] [-j [N]] [-N] [-V]
 set -euo pipefail
 
 BLENDER="${1:?Usage: $0 /path/to/blender [-k pattern]}"
@@ -14,5 +14,5 @@ mkdir -p "$RESOURCES/extensions/user_default"
 ln -s "$REPO" "$RESOURCES/extensions/user_default/MustardUI"
 
 BLENDER_USER_RESOURCES="$RESOURCES" "$BLENDER" \
-  --background --factory-startup --python-exit-code 1 \
+  --background --factory-startup --quiet --python-exit-code 1 \
   --python "$REPO/tests/run.py" -- "$@"
