@@ -2,6 +2,7 @@ from . import (
     ops_cloth_tear,
     ops_disintegration,
     ops_fireball,
+    ops_foam,
     ops_hex_dissolve,
     ops_imprints,
     ops_marks,
@@ -28,6 +29,7 @@ def register():
     ops_sticky_strands.register()
     ops_sticky_liquid.register()
     ops_wet.register()
+    ops_foam.register()
     ops_marks.register()
     ops_imprints.register()
     ops_select_object.register()
@@ -37,6 +39,7 @@ def unregister():
     ops_select_object.unregister()
     ops_imprints.unregister()
     ops_marks.unregister()
+    ops_foam.unregister()
     ops_wet.unregister()
     ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()

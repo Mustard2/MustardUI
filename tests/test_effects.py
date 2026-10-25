@@ -1634,6 +1634,233 @@ class TestWet(BlenderTestCase):
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestFoam(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.body = bpy.data.objects["Tester Body"]
+        # Points 5 cm apart
+        bm = bmesh.new()
+        bm.from_mesh(self.body.data)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=19, use_grid_fill=True)
+        bm.to_mesh(self.body.data)
+        bm.free()
+        self.body.modifiers.new("Subdivision", "SUBSURF")
+        # Normals out, unlike the test cube
+        mesh = bpy.data.meshes.new("Ball")
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=64, v_segments=32, radius=0.15)
+        bm.to_mesh(mesh)
+        bm.free()
+        self.ball = new_object("Ball", mesh)
+
+    def add(self, obj, cursor, **settings):
+        bpy.context.scene.cursor.location = cursor
+        set_active(obj)
+        bpy.ops.mustardui.model_toolkit_foam(radius=0.1, **settings)
+        return [m for m in obj.modifiers if effect.is_effect(m, "MustardUI Foam")][-1]
+
+    def foam(self, obj):
+        """World positions of the foam points and of the bubbles, and the foam meshes"""
+        shell, bubbles, meshes = [], [], []
+        for x in bpy.context.evaluated_depsgraph_get().object_instances:
+            if not (x.is_instance and x.parent and x.parent.original == obj):
+                continue
+            if "foam" in x.object.data.attributes:
+                meshes.append(x.object.data)
+                shell += [x.matrix_world @ v.co for v in x.object.data.vertices]
+            else:
+                bubbles.append(x.matrix_world.to_translation())
+        return np.array(shell).reshape(-1, 3), np.array(bubbles).reshape(-1, 3), meshes
+
+    def films(self, obj):
+        """Film thickness of each bubble, random for each one"""
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = obj.evaluated_get(depsgraph).evaluated_geometry()
+        points = geometry.instances_pointcloud()
+        values = np.zeros(len(points.points))
+        if "foam_film" in points.attributes:
+            points.attributes["foam_film"].data.foreach_get("value", values)
+        return set(values.round(3))
+
+    # The Control on the vertex closest to the 3D cursor, in the Controls collection, follows its
+    # bone, the foam and the bubbles inside its sphere
+    def test_foam(self):
+        modifier = self.add(self.body, (0.1, -0.6, 1.0))
+        self.assertEqual([m.type for m in self.body.modifiers][-2:], ["NODES", "SUBSURF"])
+        controls = effect.modifier_input(modifier, "Controls").value
+        self.assertIn(controls, bpy.context.scene.collection.children_recursive)
+        (control,) = controls.objects
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_FOAM")
+        self.assertEqual((control.parent_type, control.parent_bone), ("BONE", "spine"))
+        self.assertEqual(control.users_collection, (controls,))
+        self.assertEqual(bpy.context.view_layer.objects.active, control)
+        np.testing.assert_allclose(
+            control.matrix_world.to_translation(), (0.1, -0.5, 1.0), atol=1e-5
+        )
+        np.testing.assert_allclose(control.matrix_world.to_scale(), (0.1, 0.1, 0.1), atol=1e-5)
+
+        shell, bubbles, (mesh,) = self.foam(self.body)
+        self.assertGreater(len(shell), 100)
+        self.assertGreater(len(bubbles), 20)
+        # Within the ragged border of the sphere
+        for points in (shell, bubbles):
+            self.assertLess(np.linalg.norm(points - (0.1, -0.5, 1.0), axis=1).max(), 0.13)
+        materials = {mesh.materials[p.material_index].name for p in mesh.polygons}
+        self.assertEqual(materials, {"MustardUI Foam"})
+        for name, data_type in (
+            ("foam", "FLOAT_COLOR"),
+            ("foam_color", "FLOAT_COLOR"),
+            ("foam_bubbles", "FLOAT_VECTOR"),
+        ):
+            self.assertEqual(mesh.attributes[name].data_type, data_type)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = self.body.evaluated_get(depsgraph).evaluated_geometry()
+        materials = {
+            x.mesh.materials[p.material_index].name
+            for x in geometry.instance_references()
+            if x.mesh and "foam" not in x.mesh.attributes
+            for p in x.mesh.polygons
+        }
+        self.assertEqual(materials, {"MustardUI Foam Bubbles"})
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # Puffy over the mesh up to the Thickness, the bubbles sitting on it
+    def test_height(self):
+        modifier = self.add(self.ball, (0.0, -0.2, 0.0))
+        thickness = effect.modifier_input(modifier, "Thickness").value
+        size = effect.modifier_input(modifier, "Bubble Size").value
+        radius = effect.modifier_input(modifier, "Max Radius").value
+        shell, bubbles, _ = self.foam(self.ball)
+        mesh = self.ball.data
+        bvh = BVHTree.FromPolygons(
+            [v.co for v in mesh.vertices], [p.vertices for p in mesh.polygons]
+        )
+
+        def height(points):
+            """Signed distance over the faces of the ball"""
+            return np.array(
+                [(Vector(x) - hit).dot(n) for x in points for hit, n, *_ in [bvh.find_nearest(x)]]
+            )
+
+        self.assertGreater(height(shell).min(), 0.0)
+        self.assertGreater(height(shell).max(), 0.6 * thickness)
+        self.assertLess(height(shell).max(), thickness + size + 0.001)
+        self.assertGreater(height(bubbles).min(), 0.0)
+        self.assertLess(height(bubbles).max(), thickness + size + radius)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The foam and the bubbles follow the deformed mesh
+    def test_follow(self):
+        self.add(self.body, (0.1, -0.6, 1.0))
+        shell, bubbles, _ = self.foam(self.body)
+        armature = self.body.parent
+        bone = armature.pose.bones["spine"]
+        bone.rotation_mode = "XYZ"
+        bone.rotation_euler = (0.3, 0.2, 0.0)
+        bpy.context.view_layer.update()
+        matrix = armature.matrix_world @ bone.matrix @ bone.bone.matrix_local.inverted()
+        moved, moved_bubbles, _ = self.foam(self.body)
+        np.testing.assert_allclose(moved, [matrix @ Vector(x) for x in shell], atol=1e-5)
+        np.testing.assert_allclose(moved_bubbles, [matrix @ Vector(x) for x in bubbles], atol=1e-5)
+
+    # Less Amount washes the foam away from its border, keeping the other bubbles
+    def test_amount(self):
+        modifier = self.add(self.ball, (0.0, -0.2, 0.0))
+        shell, _, _ = self.foam(self.ball)
+        films = self.films(self.ball)
+        effect.modifier_input(modifier, "Amount").value = 0.5
+        self.ball.update_tag()
+        half, _, _ = self.foam(self.ball)
+        self.assertLess(len(half), len(shell) * 0.7)
+        self.assertLess(len(self.films(self.ball)), len(films) * 0.7)
+        self.assertLessEqual(self.films(self.ball), films)
+
+        effect.modifier_input(modifier, "Amount").value = 0.0
+        self.ball.update_tag()
+        shell, bubbles, meshes = self.foam(self.ball)
+        self.assertEqual((len(shell), len(bubbles)), (0, 0))
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The bubbles pop at random from the Start Frame, the others staying
+    def test_pop(self):
+        modifier = self.add(self.ball, (0.0, -0.2, 0.0))
+        scene = bpy.context.scene
+        start = scene.frame_current
+        effect.modifier_input(modifier, "Pop Rate").value = 1.0
+        self.ball.update_tag()
+        films = self.films(self.ball)
+        scene.frame_set(start + scene.render.fps)
+        popped = self.films(self.ball)
+        # About exp(-1) of them left after a second
+        self.assertLess(len(popped), len(films) * 0.5)
+        self.assertGreater(len(popped), len(films) * 0.2)
+        self.assertLessEqual(popped, films)
+        scene.frame_set(start)
+        self.assertEqual(self.films(self.ball), films)
+
+    # Adding Foam again adds a Control to the Foam of the mesh, the foam inside both spheres
+    def test_controls(self):
+        modifier = self.add(self.ball, (0.0, -0.2, 0.0))
+        self.add(self.ball, (0.0, 0.2, 0.0))
+        self.assertEqual([m.type for m in self.ball.modifiers], ["NODES"])
+        self.assertEqual(len(effect.modifier_input(modifier, "Controls").value.objects), 2)
+        shell, _, meshes = self.foam(self.ball)
+        self.assertEqual(len(meshes), 1)
+        self.assertGreater(shell[:, 1].max(), 0.1)
+        self.assertLess(shell[:, 1].min(), -0.1)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # With Sliding the foam and its bubbles slide down the side of the mesh from the Start Frame
+    def test_slide(self):
+        modifier = self.add(self.ball, (-0.2, 0.0, 0.03))
+        scene = bpy.context.scene
+        start = scene.frame_current
+        still, still_bubbles, _ = self.foam(self.ball)
+        # Past the frames simulated next, as the simulation keeps the frames it cached
+        scene.frame_set(start + 40)
+        moved, moved_bubbles, _ = self.foam(self.ball)
+        np.testing.assert_allclose(moved, still)
+
+        effect.modifier_input(modifier, "Sliding").value = True
+        effect.modifier_input(modifier, "Speed").value = 0.05
+        self.ball.update_tag()
+        for frame in range(start, start + 25):
+            scene.frame_set(frame)
+        moved, moved_bubbles, _ = self.foam(self.ball)
+        # About a second at half to one and a half the Speed on the vertical side
+        for before, after in ((still, moved), (still_bubbles, moved_bubbles)):
+            drop = before[:, 2].mean() - after[:, 2].mean()
+            self.assertGreater(drop, 0.01)
+            self.assertLess(drop, 0.08)
+        # Leaving a thin trail up to where it started, gone without Trail
+        self.assertGreater(moved[:, 2].max(), still[:, 2].max() - 0.01)
+        effect.modifier_input(modifier, "Trail").value = 0.0
+        self.ball.update_tag()
+        moved, _, _ = self.foam(self.ball)
+        self.assertLess(moved[:, 2].max(), still[:, 2].max() - 0.01)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The Controls and their collections not used anymore are removed
+    def test_remove(self):
+        self.add(self.ball, (0.0, -0.2, 0.0))
+        self.add(self.body, (0.1, -0.6, 1.0))
+        set_active(self.ball)
+        bpy.ops.mustardui.model_toolkit_remove_foam()
+        self.assertFalse([m for m in self.ball.modifiers if m.type == "NODES"])
+        controls = [x for x in bpy.data.objects if x.MustardUI_tools_creators_type]
+        self.assertEqual(len(controls), 1)
+        self.assertEqual(
+            [x.name for x in bpy.data.collections if "Foam" in x.name], ["Tester Body Foam"]
+        )
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_remove_foam()
+        self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
+        self.assertFalse([x for x in bpy.data.collections if "Foam" in x.name])
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_foam.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestMarks(BlenderTestCase):
     def setUp(self):
         super().setUp()
