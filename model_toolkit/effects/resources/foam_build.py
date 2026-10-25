@@ -101,9 +101,12 @@ LACE_RIM = 0.92
 LACE_GAP = 0.8
 # Share of the Lace over which the foam fades out at its border
 FADE = 1.0
+# Depth of the foam letting through 1/e of the light, relative to Thickness: thin foam is a
+# milky veil over the surface
+SEE_DEPTH = 0.3
 ROUGHNESS = (0.4, 0.08)
 # Light scattering in the foam, relative to Bubble Size
-SCATTER = 1.5
+SCATTER = 6.0
 # Shade variation of the foam per meter
 SHADE = 30.0
 
@@ -898,7 +901,7 @@ def build_node_group():
         },
     ).outputs[0]
     shell = t.store(shell, "foam_color", "FLOAT_COLOR", color, 5, 0)
-    # Fading out at the border
+    # Seen through where thin, fading out at the border
     fade = t.node(
         "ShaderNodeMapRange",
         8,
@@ -911,6 +914,9 @@ def build_node_group():
         },
         interpolation_type="SMOOTHSTEP",
     ).outputs[0]
+    depth = t.math("MULTIPLY", inputs["Thickness"], -SEE_DEPTH, x=6, y=-10)
+    dense = t.math("EXPONENT", t.math("DIVIDE", height, depth, x=7, y=-10), x=8, y=-10)
+    fade = t.math("MULTIPLY", fade, t.math("SUBTRACT", 1.0, dense, x=9, y=-10), x=9, y=-8)
     bubbles = t.node(
         "ShaderNodeCombineXYZ",
         9,
