@@ -14,5 +14,5 @@ mkdir -p "$RESOURCES/extensions/user_default"
 ln -s "$REPO" "$RESOURCES/extensions/user_default/MustardUI"
 
 BLENDER_USER_RESOURCES="$RESOURCES" "$BLENDER" \
-  --background --factory-startup --quiet --python-exit-code 1 \
+  --background --factory-startup --python-exit-code 1 \
   --python "$REPO/tests/run.py" -- "$@"

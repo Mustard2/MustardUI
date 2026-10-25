@@ -81,7 +81,7 @@ def parallel(ids, jobs):
     todo, results = queue.Queue(), queue.Queue()
     for test_id in ids:
         todo.put(test_id)
-    command = [bpy.app.binary_path, "--background", "--factory-startup", "--quiet"]
+    command = [bpy.app.binary_path, "--background", "--factory-startup"]
     command += ["--python", __file__, "--", "--worker"]
 
     def drive():

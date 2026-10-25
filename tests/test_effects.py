@@ -2448,7 +2448,7 @@ class TestShatter(BlenderTestCase):
         self.assertEqual(effect.modifier_input(modifier, "Floor").value, 0.0)
 
         faces = []
-        for frame in range(1, 61):
+        for frame in range(1, 81):
             self.scene.frame_set(frame)
             co, count, materials, volume = self.evaluate(self.wall)
             faces.append(count)
@@ -2456,7 +2456,7 @@ class TestShatter(BlenderTestCase):
             self.assertAlmostEqual(volume, 0.8, delta=1e-3, msg=f"frame {frame}")
             if frame == 13:
                 top = co[co[:, 2] > 1.9]
-            if frame == 59:
+            if frame == 79:
                 before = co
         self.assertEqual(faces[:10], [6] * 10)
         self.assertGreater(faces[-1], 100)
@@ -2586,7 +2586,7 @@ class TestShatter(BlenderTestCase):
                 self.wall.update_tag()
                 base = self.evaluate(self.wall)[0]
                 base = base[base[:, 2] < 0.01]
-                for frame in range(1, 31):
+                for frame in range(1, 61):
                     self.scene.frame_set(frame)
                 co, count = self.evaluate(self.wall)[:2]
                 # Broken
