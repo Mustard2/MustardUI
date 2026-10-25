@@ -88,13 +88,15 @@ def add_effect_modifier(obj, name, node_group, control=None):
     if control:
         modifier_input(modifier, "Control").value = control
 
-    # Before the subdivision, to work on the low poly mesh, and the strands, not to affect them.
-    # Multires can't have modifiers above it
+    # Before the subdivision, to work on the low poly mesh, and the strands and dust puffs, not to
+    # affect them. Multires can't have modifiers above it
     index = next(
         (
             i
             for i, m in enumerate(obj.modifiers)
-            if m.type == "SUBSURF" or is_effect(m, "MustardUI Sticky Strands")
+            if m.type == "SUBSURF"
+            or is_effect(m, "MustardUI Sticky Strands")
+            or is_effect(m, "MustardUI Dust Puff")
         ),
         None,
     )

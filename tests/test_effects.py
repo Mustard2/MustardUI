@@ -43,6 +43,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_shatter.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -2245,6 +2246,148 @@ class TestImprints(BlenderTestCase):
         self.assertEqual(stone.users_collection, (bpy.context.scene.collection,))
         self.assertFalse(self.snow.node_tree.nodes["Principled BSDF"].inputs[0].is_linked)
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_imprints.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestDustPuff(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        # A 4 m ground away from the model
+        mesh = bpy.data.meshes.new("Ground")
+        mesh.from_pydata([(x, y, 0.0) for y in (2, 6) for x in (-2, 2)], [], [(0, 1, 3, 2)])
+        self.dirt = bpy.data.materials.new("Dirt")
+        mesh.materials.append(self.dirt)
+        mesh.color_attributes.new("tint", "FLOAT_COLOR", "POINT")
+        self.ground = new_object("Ground", mesh)
+        # A 20 cm block falling at 2 m/s, landing at frame 10
+        self.block = new_mesh_object("Block", size=0.1, z=0.0)
+        for frame in range(1, 31):
+            self.block.location = (0.0, 4.0, 0.1 + max(10 - frame, 0) * 2.0 / 24)
+            self.block.keyframe_insert("location", frame=frame)
+        self.scene.frame_set(1)
+
+    def add(self, **settings):
+        set_active(self.block)
+        self.ground.select_set(True)
+        bpy.context.view_layer.objects.active = self.ground
+        bpy.ops.mustardui.model_toolkit_dust_puff(**settings)
+        return self.ground.modifiers["Dust Puff"]
+
+    def evaluate(self, end):
+        """Evaluated geometry at the end frame, simulated from the first"""
+        for frame in range(1, end + 1):
+            self.scene.frame_set(frame)
+        return self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
+
+    def grains(self, geometry):
+        """Geometry of the grains instance, None without grains"""
+        references = geometry.instance_references()
+        return references[0] if references else None
+
+    # Dust and grains are kicked up where the block lands, the grains resting on the ground
+    def test_dust_puff(self):
+        modifier = self.add(kind="SAND")
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.block])
+        self.assertEqual(self.ground.modifiers[-1], modifier)
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, 1)
+        dust = effect.modifier_input(modifier, "Dust Material").value
+        self.assertEqual(dust.name, "MustardUI Dust Puff Dust")
+
+        geometry = self.evaluate(9)
+        self.assertIsNone(self.grains(geometry))
+        self.assertIsNone(geometry.volume)
+
+        geometry = self.evaluate(30)
+        self.assertIsNotNone(geometry.volume)
+        self.assertEqual(len(geometry.mesh.polygons), 1)
+        grains = self.grains(geometry)
+        mesh = grains.mesh
+        self.assertGreater(len(mesh.polygons), 20 * 20)
+        # Chips of 20 faces with the material of the ground, without its attributes
+        self.assertEqual([x and x.original for x in mesh.materials], [self.dirt, None])
+        index = np.empty(len(mesh.polygons), dtype=np.int32)
+        mesh.polygons.foreach_get("material_index", index)
+        self.assertEqual(index.max(), 0)
+        self.assertNotIn("tint", mesh.attributes)
+        co = np.array([v.co[:] for v in mesh.vertices])
+        self.assertGreater(co[:, 2].min(), -0.002)
+        self.assertLess(co[:, 2].max(), 0.01)
+        self.assertGreater(np.linalg.norm(co[:, :2] - [0.0, 4.0], axis=1).max(), 0.12)
+        # The dust around the block, not growing every frame
+        volume = next(
+            x.object
+            for x in bpy.context.evaluated_depsgraph_get().object_instances
+            if x.object.type == "VOLUME" and x.object.original == self.ground
+        )
+        corners = np.array([x[:] for x in volume.bound_box])
+        self.assertLess((corners.max(0) - corners.min(0)).max(), 2.0)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Grains only when enabled
+        effect.modifier_input(modifier, "Grains").value = False
+        self.ground.update_tag()
+        geometry = self.evaluate(30)
+        self.assertIsNone(self.grains(geometry))
+
+    # In a Ring the dust is blown out flat and further, instead of billowing around the block
+    def test_ring(self):
+        modifier = self.add(kind="DUST")
+        spread = {}
+        for ring in (0.0, 1.0):
+            effect.modifier_input(modifier, "Ring").value = ring
+            self.ground.update_tag()
+            self.evaluate(20)
+            volume = next(
+                x.object
+                for x in bpy.context.evaluated_depsgraph_get().object_instances
+                if x.object.type == "VOLUME" and x.object.original == self.ground
+            )
+            corners = np.array([x[:] for x in volume.bound_box])
+            spread[ring] = (corners.max(0) - corners.min(0))[:2].min()
+        self.assertGreater(spread[1.0], spread[0.0] * 1.15)
+
+    # A block resting on the ground, or touching it slower than the Min Speed, kicks nothing
+    def test_resting(self):
+        modifier = self.add(kind="DUST")
+        effect.modifier_input(modifier, "Min Speed").value = 3.0
+        self.ground.update_tag()
+        geometry = self.evaluate(20)
+        self.assertIsNone(self.grains(geometry))
+        self.assertIsNone(geometry.volume)
+
+    # Without other selected meshes the model body is the Collider
+    def test_body(self):
+        set_active(self.ground)
+        bpy.ops.mustardui.model_toolkit_dust_puff()
+        colliders = effect.modifier_input(self.ground.modifiers["Dust Puff"], "Colliders").value
+        self.assertEqual(list(colliders.objects), [bpy.data.objects["Tester Body"]])
+
+    # Imprints added after it go before it, the grains not tinted by them
+    def test_with_imprints(self):
+        modifier = self.add(kind="SAND")
+        bpy.ops.mustardui.model_toolkit_imprints(kind="SAND")
+        self.assertEqual([m.name for m in self.ground.modifiers], ["Imprints", "Dust Puff"])
+        effect.modifier_input(self.ground.modifiers["Imprints"], "Subdivisions").value = 4
+        self.ground.update_tag()
+        geometry = self.evaluate(20)
+        self.assertEqual(len(geometry.mesh.polygons), 256)
+        grains = self.grains(geometry)
+        self.assertNotIn("imprint", grains.mesh.attributes)
+        self.assertIsNotNone(geometry.volume)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # The Colliders collection goes with the effect, keeping its objects in the scene
+    def test_remove(self):
+        modifier = self.add()
+        name = effect.modifier_input(modifier, "Colliders").value.name
+        bpy.ops.mustardui.model_toolkit_remove_dust_puff()
+        self.assertNotIn("Dust Puff", self.ground.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertEqual(self.block.users_collection, (bpy.context.scene.collection,))
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_dust_puff.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
