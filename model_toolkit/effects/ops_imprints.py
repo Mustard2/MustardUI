@@ -10,6 +10,7 @@ from .effect import (
     is_effect,
     materials,
     modifier_input,
+    remove_with_colliders,
     shader_nodes,
     tint,
     untint,
@@ -146,26 +147,10 @@ class MustardUI_ModelToolkit_RemoveImprints(bpy.types.Operator):
         return any(is_effect(m, NODE_GROUP) for x in context.selected_objects for m in x.modifiers)
 
     def execute(self, context):
-        collections = set()
-        for obj in context.selected_objects:
-            for modifier in [m for m in obj.modifiers if is_effect(m, NODE_GROUP)]:
-                collections.add(modifier_input(modifier, "Colliders").value)
-                obj.modifiers.remove(modifier)
-
+        remove_with_colliders(context, NODE_GROUP)
         imprinted = [
             x for x in bpy.data.objects if any(is_effect(m, NODE_GROUP) for m in x.modifiers)
         ]
-        used = {
-            modifier_input(m, "Colliders").value
-            for x in imprinted
-            for m in x.modifiers
-            if is_effect(m, NODE_GROUP)
-        }
-        for collection in collections - used - {None}:
-            # The objects only in the collection kept in the scene
-            for obj in [x for x in collection.objects if len(x.users_collection) == 1]:
-                context.scene.collection.objects.link(obj)
-            bpy.data.collections.remove(collection)
         for material in materials(context.selected_objects) - materials(imprinted):
             for group in shader_nodes(material, TINT):
                 untint(material, group)

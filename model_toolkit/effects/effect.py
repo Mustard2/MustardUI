@@ -223,6 +223,27 @@ def untint(material, group):
     nodes.remove(group)
 
 
+def remove_with_colliders(context, node_group):
+    """Remove the effect from the selected objects, and its Colliders not used anymore"""
+    collections = set()
+    for obj in context.selected_objects:
+        for modifier in [m for m in obj.modifiers if is_effect(m, node_group)]:
+            collections.add(modifier_input(modifier, "Colliders").value)
+            obj.modifiers.remove(modifier)
+
+    used = {
+        modifier_input(m, "Colliders").value
+        for x in bpy.data.objects
+        for m in x.modifiers
+        if is_effect(m, node_group)
+    }
+    for collection in collections - used - {None}:
+        # The objects only in the collection kept in the scene
+        for obj in [x for x in collection.objects if len(x.users_collection) == 1]:
+            context.scene.collection.objects.link(obj)
+        bpy.data.collections.remove(collection)
+
+
 class RemoveEffect:
     """Base of the operators removing an effect, and its Controls not used anymore"""
 
