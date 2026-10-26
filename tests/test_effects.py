@@ -46,6 +46,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_motes.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_crush.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
@@ -3093,6 +3094,106 @@ class TestCrush(BlenderTestCase):
         self.assertNotIn(name, bpy.data.collections)
         self.assertIn(self.block, list(self.scene.collection.objects))
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_crush.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestDustMotes(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        # Away from the box, not to fade the motes
+        self.camera = new_object("Camera", bpy.data.cameras.new("Camera"))
+        self.camera.location = (0.0, -10.0, 1.0)
+        self.scene.camera = self.camera
+        self.body = bpy.data.objects["Tester Body"]
+
+    def add(self, **settings):
+        set_active(self.body)
+        self.body.select_set(False)
+        bpy.ops.mustardui.model_toolkit_dust_motes(**settings)
+        return bpy.context.active_object
+
+    def motes(self, box, frame=1):
+        """Positions in world space, radii and ids of the motes at the frame"""
+        self.scene.frame_set(frame)
+        geometry = box.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
+        points = geometry.pointcloud
+        co = np.empty(len(points.points) * 3)
+        points.attributes["position"].data.foreach_get("vector", co)
+        co = np.c_[co.reshape(-1, 3), np.ones(len(points.points))] @ np.array(box.matrix_world).T
+        radius = np.empty(len(points.points))
+        points.attributes["radius"].data.foreach_get("value", radius)
+        ids = np.empty(len(points.points), dtype=np.int32)
+        points.attributes["id"].data.foreach_get("value", ids)
+        return co[:, :3], radius, ids, geometry
+
+    # A box around the model body, full of slow motes, and a haze in a Sunbeam
+    def test_dust_motes(self):
+        box = self.add(kind="SUNBEAM")
+        self.assertEqual(box.users_collection, (self.scene.collection,))
+        modifier = box.modifiers["Dust Motes"]
+        self.assertEqual(
+            effect.modifier_input(modifier, "Motes Material").value.name, "MustardUI Dust Motes"
+        )
+        corners = np.array([v.co[:] for v in box.data.vertices]) + box.location[:]
+        low, high = corners.min(0), corners.max(0)
+        body = np.array([self.body.matrix_world @ Vector(x) for x in self.body.bound_box])
+        np.testing.assert_allclose(low, body.min(0) - [0.75, 0.75, 0.0], atol=1e-5)
+        np.testing.assert_allclose(high, body.max(0) + 0.75, atol=1e-5)
+
+        co, radius, ids, geometry = self.motes(box)
+        # About the Density per cubic meter, a few faded at the sides
+        expected = 800.0 * np.prod(high - low)
+        self.assertGreater(len(co), expected * 0.7)
+        self.assertLessEqual(len(co), expected)
+        self.assertTrue(np.all((co > low - 0.01) & (co < high + 0.01)))
+        self.assertGreater(radius.min(), 0.0)
+        self.assertAlmostEqual(np.median(radius) * 2, 0.0012 * 0.8, delta=0.0003)
+        for name in ("dust_motes_light", "dust_motes_color"):
+            self.assertIn(name, geometry.pointcloud.attributes)
+        self.assertIsNotNone(geometry.volume)
+        # The box edges, to see it
+        self.assertEqual((len(geometry.mesh.edges), len(geometry.mesh.polygons)), (12, 0))
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Very slow, about the Swirl Speed
+        later, _, later_ids, _ = self.motes(box, 25)
+        common, a, b = np.intersect1d(ids, later_ids, return_indices=True)
+        speed = np.median(np.linalg.norm(later[b] - co[a], axis=1))
+        self.assertGreater(speed, 0.002)
+        self.assertLess(speed, 0.01)
+
+        # No haze in a Room
+        bpy.ops.mustardui.model_toolkit_remove_dust_motes()
+        _, _, _, geometry = self.motes(self.add(kind="ROOM"))
+        self.assertIsNone(geometry.volume)
+
+    # Scaling the box keeps the motes per cubic meter and their size
+    def test_scale(self):
+        box = self.add()
+        co, radius, _, _ = self.motes(box)
+        box.scale = (2.0, 2.0, 2.0)
+        bpy.context.view_layer.update()
+        scaled, scaled_radius, _, _ = self.motes(box)
+        self.assertAlmostEqual(len(scaled) / len(co), 8.0, delta=0.6)
+        self.assertAlmostEqual(np.median(scaled_radius) * 2, np.median(radius), delta=1e-4)
+
+    # The motes shrink away in front of the camera
+    def test_camera_fade(self):
+        box = self.add()
+        self.camera.location = box.location + Vector((0.0, 0.0, 0.8))
+        co, radius, _, _ = self.motes(box)
+        near = np.linalg.norm(co - self.camera.location[:], axis=1) < 0.15
+        self.assertGreater(near.sum(), 3)
+        self.assertLess(radius[near].mean(), radius.mean() * 0.3)
+
+    def test_remove(self):
+        box = self.add()
+        self.assertTrue(bpy.ops.mustardui.model_toolkit_remove_dust_motes.poll())
+        bpy.ops.mustardui.model_toolkit_remove_dust_motes()
+        self.assertNotIn(box, list(bpy.data.objects))
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_dust_motes.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

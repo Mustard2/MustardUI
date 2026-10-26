@@ -10,6 +10,7 @@ from ..model_toolkit.effects import (
     ops_cloth_tear,
     ops_crush,
     ops_disintegration,
+    ops_dust_motes,
     ops_dust_puff,
     ops_fireball,
     ops_foam,
@@ -45,6 +46,7 @@ EFFECTS = (
     ("Marks", "TPAINT_HLT", ops_marks.NODE_GROUP, None),
     ("Imprints", "MOD_DISPLACE", ops_imprints.NODE_GROUP, None),
     ("Dust Puff", "FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None),
+    ("Dust Motes", "PARTICLE_POINT", ops_dust_motes.NODE_GROUP, None),
     ("Disintegration", "PARTICLES", ops_disintegration.NODE_GROUP, None),
     ("Hex Dissolve", "MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP),
     ("Cloth Tear", "MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
@@ -365,6 +367,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.separator()
         row.operator("mustardui.model_toolkit_dust_puff", text="Dust Puff", icon="FORCE_TURBULENCE")
         row.operator("mustardui.model_toolkit_remove_dust_puff", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_dust_motes", text="Dust Motes", icon="PARTICLE_POINT")
+        row.operator("mustardui.model_toolkit_remove_dust_motes", text="", icon="X")
 
         layout.separator()
 
