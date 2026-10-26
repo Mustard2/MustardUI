@@ -36,6 +36,9 @@ FRICTION = 0.5
 REST_SPEED = 0.2
 # Share of the grain lifetime they shrink away in
 SHRINK = 0.2
+# Size past which the dust gets thinner per meter, by the square root, for large clouds
+# not to render solid
+THIN_SIZE = 0.1
 
 
 def build_inputs(ng):
@@ -1267,6 +1270,14 @@ def rendered(t, dust, inputs, x, y):
         interpolation_type="SMOOTHSTEP",
         clamp=True,
     ).outputs[0]
+    thin = t.math(
+        "SQRT",
+        t.math("DIVIDE", THIN_SIZE, inputs["Size"], x=x + 2.5, y=y - 7),
+        x=x + 3,
+        y=y - 7,
+        clamp=True,
+    )
+    billows = t.math("MULTIPLY", billows, thin, x=x + 3, y=y - 6)
     grids = t.node("GeometryNodeFieldToGrid", x + 3.5, y - 3, {"Topology": grid["Grid"]})
     for data_type, name, value in (
         ("FLOAT", "Density", billows),

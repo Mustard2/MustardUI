@@ -1,4 +1,6 @@
 import importlib
+import os
+import tempfile
 import unittest
 
 import bmesh
@@ -2350,6 +2352,60 @@ class TestDustPuff(BlenderTestCase):
         self.assertIsNone(self.grains(geometry))
         self.assertIsNone(geometry.volume)
 
+    # A giant Collider gets dust as large as it, lasting longer, with as many puffs per hit
+    def test_giant(self):
+        modifier = self.add(kind="DUST")
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Size").value, 0.06)
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Amount").value, 3000.0)
+        bpy.ops.mustardui.model_toolkit_remove_dust_puff()
+        # Two blocks far apart are not one giant
+        other = new_mesh_object("Other Block", size=0.1, z=0.0)
+        other.location.x = 30.0
+        bpy.context.view_layer.update()
+        set_active(other)
+        self.block.select_set(True)
+        self.ground.select_set(True)
+        bpy.context.view_layer.objects.active = self.ground
+        bpy.ops.mustardui.model_toolkit_dust_puff(kind="DUST")
+        modifier = self.ground.modifiers["Dust Puff"]
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Size").value, 0.06)
+        bpy.ops.mustardui.model_toolkit_remove_dust_puff()
+        bpy.data.objects.remove(other)
+        # 34 m, 20 times a person
+        self.block.scale = (170.0,) * 3
+        bpy.context.view_layer.update()
+        modifier = self.add(kind="DUST")
+        inputs = {
+            k: effect.modifier_input(modifier, k).value
+            for k in ("Size", "Contact", "Min Speed", "Lifetime", "Amount")
+        }
+        expected = {
+            "Size": 0.06 * 20,
+            "Contact": 0.01 * 20,
+            "Min Speed": 0.15 * 20**0.5,
+            "Lifetime": 1.5 * 20**0.5,
+            "Amount": 3000.0 * 20**-2.5,
+        }
+        for name, value in expected.items():
+            self.assertAlmostEqual(inputs[name], value, places=4, msg=name)
+
+    # Large dust is thinner per meter, not to render solid
+    def test_thin(self):
+        import openvdb
+
+        modifier = self.add(kind="DUST")
+        peaks = {}
+        for size in (0.06, 0.4):
+            effect.modifier_input(modifier, "Size").value = size
+            self.ground.update_tag()
+            path = os.path.join(tempfile.mkdtemp(), "dust.vdb")
+            geometry = self.evaluate(14)
+            geometry.volume.grids.save(path)
+            peaks[size] = openvdb.read(path, "density").evalMinMax()[1]
+        # By the square root of the size past 10 cm
+        self.assertGreater(peaks[0.06], 0.6)
+        self.assertLessEqual(peaks[0.4], 0.5 + 1e-4)
+
     # Without other selected meshes the model body is the Collider
     def test_body(self):
         set_active(self.ground)
@@ -2413,6 +2469,17 @@ class TestShatter(BlenderTestCase):
         bm.to_mesh(mesh)
         bm.free()
         return new_object(name, mesh)
+
+    def box(self, name, size, location):
+        mesh = bpy.data.meshes.new(name)
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=size, verts=bm.verts)
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = new_object(name, mesh)
+        obj.location = location
+        return obj
 
     def add(self, obj, extras=False, **settings):
         """Shatter of the object, without Debris and Smoke unless asked"""
@@ -2506,6 +2573,31 @@ class TestShatter(BlenderTestCase):
         for frame in range(1, 30):
             self.scene.frame_set(frame)
         self.assertEqual(self.evaluate(self.wall)[1], 6)
+
+    # A giant foot sweeping through a 60 m wall and planted on the floor throws the pieces less,
+    # all of them staying finite and none made out of nothing at the origin
+    def test_giant(self):
+        bpy.ops.object.select_all(action="DESELECT")
+        wall = self.box("Giant Wall", (60.0, 6.0, 60.0), (90.0, 0.0, 30.0))
+        foot = self.box("Foot", (15.0, 36.0, 9.0), (96.0, -45.0, 15.0))
+        for frame in range(1, 121):
+            u = min((frame - 1) / 108, 1.0)
+            foot.location = (96.0, -45.0 + 90.0 * u, 15.0 - 10.5 * u)
+            foot.keyframe_insert("location", frame=frame)
+        self.scene.frame_set(1)
+        set_active(wall)
+        foot.select_set(True)
+        bpy.ops.mustardui.model_toolkit_shatter(kind="STONE")
+        modifier = wall.modifiers["Shatter"]
+        throw = (36.0 / effect.PERSON_SIZE) ** -0.25
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Push").value, 0.6 * throw, 4)
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Scatter").value, 0.2 * throw, 4)
+        for frame in range(1, 121):
+            self.scene.frame_set(frame)
+            co = self.evaluate(wall)[0]
+            self.assertTrue(np.isfinite(co).all(), f"frame {frame}")
+            self.assertGreater(np.linalg.norm(co, axis=1).min(), 1.0, f"frame {frame}")
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
 
     # Without other selected meshes, the model body breaks it, and the floor: a closed glass
     # dropped on the ground breaks into pieces scattered around and resting there, overlapping

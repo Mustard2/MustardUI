@@ -7,6 +7,8 @@ SETTINGS = "MustardUI Settings"
 # Inputs of the shaders and their node groups taking the base color
 COLOR_INPUTS = ("Base Color", "Diffuse Color", "Albedo", "Color")
 COLOR_NODES = {"BSDF_PRINCIPLED", "BSDF_DIFFUSE", "SUBSURFACE_SCATTERING", "GROUP"}
+# Size of the Colliders the effects are made for, a person
+PERSON_SIZE = 1.7
 
 
 def effects_available():
@@ -19,6 +21,15 @@ def is_effect(modifier, node_group):
         and modifier.node_group is not None
         and modifier.node_group.name.startswith(node_group)
     )
+
+
+def colliders_scale(colliders):
+    """How many times larger than a person the largest Collider is, at least 1, e.g. a giant"""
+    size = PERSON_SIZE
+    for obj in colliders:
+        corners = [obj.matrix_world @ Vector(x) for x in obj.bound_box]
+        size = max(size, *(Vector(map(max, *corners)) - Vector(map(min, *corners))))
+    return size / PERSON_SIZE
 
 
 def modifier_input(modifier, name):

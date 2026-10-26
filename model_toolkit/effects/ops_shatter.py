@@ -4,7 +4,7 @@ import bpy
 from mathutils import Vector
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
-from .effect import effects_available, is_effect, modifier_input
+from .effect import colliders_scale, effects_available, is_effect, modifier_input
 
 NODE_GROUP = "MustardUI Shatter"
 DUST = "MustardUI Shatter Dust"
@@ -85,6 +85,11 @@ DISTANCES = {
     "Smoke Rise",
 }
 
+# Inputs throwing the pieces, lowered by this power of the scale of Colliders larger than a person,
+# not to blow the mesh away at their speeds
+THROWS = ("Push", "Scatter", "Debris Speed")
+THROW_POWER = -0.25
+
 
 class MustardUI_ModelToolkit_Shatter(bpy.types.Operator):
     """Shatter the active mesh into pieces where the other selected meshes, or the model body, hit it fast enough, or when it falls on the floor.\nMore objects can be added to the Colliders collection of the effect\nBlender 5.2 or above is required"""  # noqa: E501
@@ -146,6 +151,9 @@ class MustardUI_ModelToolkit_Shatter(bpy.types.Operator):
         size = (Vector(map(max, *corners)) - Vector(map(min, *corners))).length
         for name, value in PRESETS[self.kind].items():
             modifier_input(modifier, name).value = value * size if name in DISTANCES else value
+        throw = colliders_scale(colliders) ** THROW_POWER
+        for name in THROWS:
+            modifier_input(modifier, name).value *= throw
         # On the ground, or under the mesh if lower
         modifier_input(modifier, "Floor").value = min(0.0, *(x.z for x in corners))
         modifier_input(modifier, "Start Frame").value = context.scene.frame_current

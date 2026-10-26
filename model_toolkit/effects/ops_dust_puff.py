@@ -3,7 +3,13 @@ import os
 import bpy
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
-from .effect import effects_available, is_effect, modifier_input, remove_with_colliders
+from .effect import (
+    colliders_scale,
+    effects_available,
+    is_effect,
+    modifier_input,
+    remove_with_colliders,
+)
 
 NODE_GROUP = "MustardUI Dust Puff"
 DUST = "MustardUI Dust Puff Dust"
@@ -41,6 +47,21 @@ PRESETS = {
         "Grain Size": 0.0025,
         "Grain Lifetime": 1.5,
     },
+}
+
+# Powers of the scale of Colliders larger than a person the inputs are multiplied by: the
+# distances, the speeds and times by its square root, as for a person that large moving naturally,
+# and fewer puffs per area and speed, as many per hit as for a person
+SCALING = {
+    "Size": 1.0,
+    "Contact": 1.0,
+    "Grain Size": 1.0,
+    "Min Speed": 0.5,
+    "Rise": 0.5,
+    "Lifetime": 0.5,
+    "Grain Lifetime": 0.5,
+    "Amount": -2.5,
+    "Grain Amount": -2.5,
 }
 
 
@@ -98,6 +119,9 @@ class MustardUI_ModelToolkit_DustPuff(bpy.types.Operator):
         modifier_input(modifier, "Dust Material").value = bpy.data.materials[DUST]
         for name, value in PRESETS[self.kind].items():
             modifier_input(modifier, name).value = value
+        scale = colliders_scale(colliders)
+        for name, power in SCALING.items():
+            modifier_input(modifier, name).value *= scale**power
         modifier_input(modifier, "Start Frame").value = context.scene.frame_current
         # Changing the modifier inputs from Python does not tag the object
         ground.update_tag()

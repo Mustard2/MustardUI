@@ -656,6 +656,13 @@ def fracture(t, mesh, impact, inputs, x, y, count=None, spread=None, seed=None):
     point = t.vmath("MULTIPLY_ADD", direction, distance, impact, x=x + 4, y=y - 2)
     # On the surface, for each cell to cut some of the mesh, also of hollow ones
     point = nearest(t, mesh, position, "FLOAT_VECTOR", point, x + 5, y - 2)[0]
+    # None for an empty mesh, else its cells would be kept whole by the boolean
+    faces = t.node(
+        "GeometryNodeAttributeDomainSize", x + 5, y + 1, {"Geometry": mesh}, component="MESH"
+    ).outputs["Face Count"]
+    count = t.math(
+        "MULTIPLY", count, t.math("GREATER_THAN", faces, 0, x=x + 6, y=y + 1), x=x + 6.5, y=y + 1
+    )
     seeds = t.node("GeometryNodePoints", x + 7, y, {"Count": count, "Position": point}).outputs[0]
     # Not too close, the cells of close seeds failing
     spacing = t.math("MULTIPLY", size, 0.01, x=x + 7, y=y - 6)
@@ -974,7 +981,22 @@ def hulls(t, pieces, bodies, x, y):
         y - 3,
         "INSTANCE",
     )
-    return t.store(bodies, ".shatter_radius", "FLOAT", radius, x + 7, y), hull, planes
+    bodies = t.store(bodies, ".shatter_radius", "FLOAT", radius, x + 7, y)
+    # Flat slivers with no inertia blow the solve up
+    inertia = t.math(
+        "MAXIMUM",
+        t.attribute(".shatter_inertia", "FLOAT", x + 7, y - 2),
+        t.math(
+            "MULTIPLY",
+            t.math("MULTIPLY", radius, radius, x=x + 6.5, y=y - 3),
+            INERTIA_FLOOR,
+            x=x + 7,
+            y=y - 3,
+        ),
+        x=x + 7.5,
+        y=y - 2,
+    )
+    return t.store(bodies, ".shatter_inertia", "FLOAT", inertia, x + 8, y), hull, planes
 
 
 def bodies_of(t, each, mesh, impact, push, inputs, x, y):
@@ -1667,6 +1689,11 @@ SLEEP_TURN = 0.2
 PUSH_OUT_SPEED = 0.25
 # Regularization of the rigid solves, for pieces with too few contacts
 REGULARIZATION = 1e-1
+# Smallest inertia per unit mass, as a share of the radius squared
+INERTIA_FLOOR = 0.01
+# Smoke Size past which the dust gets thinner per meter, by the square root, for large clouds
+# not to render solid
+THIN_SIZE = 1.0
 
 
 def rigid_solve(t, sources, project, target, x, y):
@@ -4091,6 +4118,10 @@ def rendered(t, dust, size, x, y):
         interpolation_type="SMOOTHSTEP",
         clamp=True,
     ).outputs[0]
+    thin = t.math(
+        "SQRT", t.math("DIVIDE", THIN_SIZE, size, x=x + 2.5, y=y - 7), x=x + 3, y=y - 7, clamp=True
+    )
+    billows = t.math("MULTIPLY", billows, thin, x=x + 3, y=y - 6)
     grids = t.node("GeometryNodeFieldToGrid", x + 3.5, y - 3, {"Topology": grid["Grid"]})
     grids.grid_items.new("FLOAT", "Density")
     grids.grid_items.new("VECTOR", "Rest")
