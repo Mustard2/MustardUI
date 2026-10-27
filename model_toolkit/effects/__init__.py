@@ -1,4 +1,5 @@
 from . import (
+    ops_aura,
     ops_cloth_tear,
     ops_crush,
     ops_disintegration,
@@ -38,11 +39,13 @@ def register():
     ops_imprints.register()
     ops_dust_puff.register()
     ops_dust_motes.register()
+    ops_aura.register()
     ops_select_object.register()
 
 
 def unregister():
     ops_select_object.unregister()
+    ops_aura.unregister()
     ops_dust_motes.unregister()
     ops_dust_puff.unregister()
     ops_imprints.unregister()

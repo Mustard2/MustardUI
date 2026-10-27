@@ -163,6 +163,8 @@ class TestUI(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_dust_puff()
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_crush()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_aura()
         bpy.ops.mustardui.model_toolkit_dust_motes()
         self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_SceneEffects")
 

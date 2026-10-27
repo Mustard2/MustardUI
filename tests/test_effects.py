@@ -48,6 +48,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_motes.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_crush.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_aura.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
@@ -3207,3 +3208,250 @@ class TestWithoutModel(BlenderTestCase):
 
         bpy.ops.mustardui.model_toolkit_remove_ripple()
         self.assertNotIn("Ripple", cube.modifiers)
+
+
+# Attributes of the spark streaks, no mesh attributes copied to them
+STREAK_ATTRIBUTES = {"position", "material_index", "aura_spark"}
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestAura(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        self.armature = bpy.data.objects["Tester Armature"]
+        self.body = bpy.data.objects["Tester Body"]
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+        self.start = self.scene.frame_current
+        set_active(self.body)
+        self.shirt.select_set(True)
+
+    def add(self, **settings):
+        bpy.ops.mustardui.model_toolkit_aura(
+            **{"pulses": 2, "duration": 10, "pause": 4, **settings}
+        )
+        return effect.modifier_input(self.body.modifiers["Aura"], "Control").value
+
+    def evaluated(self, obj, frame):
+        self.scene.frame_set(frame)
+        return obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
+
+    def stepped(self, obj, frame):
+        """Geometry at the frame after all the frames from the start, for the sparks to simulate"""
+        for f in range(self.start, frame):
+            self.scene.frame_set(f)
+        return self.evaluated(obj, frame)
+
+    def streaks(self, geometry):
+        """Number of spark streaks, tubes of two rings of 4 vertices"""
+        references = geometry.instance_references()
+        return len(references[0].mesh.vertices) // 8 if references else 0
+
+    def glow(self, geometry):
+        glow = np.empty(len(geometry.mesh.vertices) * 3)
+        geometry.mesh.attributes["aura_glow"].data.foreach_get("vector", glow)
+        return glow.reshape(-1, 3)
+
+    def surface(self, material):
+        nodes = material.node_tree.nodes
+        return nodes["Material Output"].inputs["Surface"].links[0].from_node
+
+    # The meshes glow and throw sparks in pulses by the Glow of a Control at the feet of the model
+    def test_aura(self):
+        world = self.armature.matrix_world.copy()
+        control = self.add()
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_AURA")
+        self.assertEqual(control.users_collection, (self.scene.collection,))
+        self.assertEqual(control.parent, self.armature)
+        meshes = [x for x in self.armature.children if x.type == "MESH" and x.visible_get()]
+        corners = np.array([x.matrix_world @ Vector(c) for x in meshes for c in x.bound_box])
+        low, high = corners.min(0), corners.max(0)
+        np.testing.assert_allclose(
+            control.matrix_world.translation, [*(low[:2] + high[:2]) / 2, low[2]], atol=1e-6
+        )
+        modifier = self.body.modifiers["Aura"]
+        self.assertEqual([m.type for m in self.body.modifiers], ["ARMATURE", "MASK", "NODES"])
+        self.assertEqual(effect.modifier_input(modifier, "Control").value, control)
+        # Without the hands and feet of an MHX model, no Hot Spots
+        self.assertIsNone(effect.modifier_input(modifier, "Hot Spots").value)
+        self.assertEqual(effect.modifier_input(modifier, "Body Glow").value, 1.0)
+
+        # Glowing and throwing sparks in a pulse, the model left in place
+        geometry = self.stepped(self.body, self.start + 6)
+        self.assertEqual(self.armature.parent, None)
+        np.testing.assert_allclose(self.armature.matrix_world, world, atol=1e-6)
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Glow").value, 1.0, places=4)
+        glow = self.glow(geometry)
+        # Without Hot Spots, an even outline glow and no fill
+        self.assertGreater(glow[:, 0].min(), 0.0)
+        self.assertAlmostEqual(glow[:, 0].mean(), 1.0, delta=0.35)
+        self.assertEqual(np.abs(glow[:, 1:]).max(), 0.0)
+        (reference,) = geometry.instance_references()
+        streaks = reference.mesh
+        # Amount per square meter per second of Glow, about 0.2 s of it by now
+        area = 6 * (2 * 0.5) ** 2
+        self.assertAlmostEqual(self.streaks(geometry), 80.0 * area * 0.2, delta=80.0 * area * 0.08)
+        self.assertEqual(streaks.materials[0].name, "MustardUI Aura Sparks")
+        self.assertEqual(
+            {x.name for x in streaks.attributes if not x.name.startswith(".")},
+            STREAK_ATTRIBUTES,
+        )
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+        # The sparks flying on in the pause
+        geometry = self.stepped(self.body, self.start + 13)
+        self.assertNotIn("aura_glow", geometry.mesh.attributes)
+        self.assertGreater(self.streaks(geometry), 50)
+
+        # The skin glows under its shader
+        material = self.body.material_slots[0].material
+        group = self.surface(material)
+        self.assertEqual(group.node_tree.name, "MustardUI Aura Glow Settings")
+        self.assertEqual(group.inputs["Shader"].links[0].from_node.type, "BSDF_PRINCIPLED")
+
+    # Sparks rise up the Control from the surface while flying, as streaks fading to their tails
+    def test_sparks(self):
+        self.add(duration=48)
+        geometry = self.stepped(self.body, self.start + 14)
+        reference = geometry.instance_references()[0]
+        streaks = reference.mesh
+        n = len(streaks.vertices)
+        co, light = np.empty(n * 3), np.empty(n * 3)
+        streaks.attributes["position"].data.foreach_get("vector", co)
+        streaks.attributes["aura_spark"].data.foreach_get("vector", light)
+        # Rings of the head and of the tail of each streak
+        co, light = co.reshape(-1, 2, 4, 3), light.reshape(-1, 2, 4, 3)
+        centers = co.mean(2)
+        radius = np.linalg.norm(co - centers[:, :, None], axis=3).mean(2)
+        heads, tails = centers[:, 0], centers[:, 1]
+        light = light.max(2)
+        # The rise lifts the sparks off the top face on average
+        self.assertGreater(heads[:, 2].max(), 1.5)
+        self.assertGreater(np.mean(heads[:, 2]), 1.0)
+        # Tails the Length behind the heads, below them, thinner and dark
+        np.testing.assert_allclose(np.linalg.norm(heads - tails, axis=1), 0.05, atol=1e-4)
+        self.assertGreater(np.mean(heads[:, 2] > tails[:, 2]), 0.9)
+        np.testing.assert_allclose(radius[:, 1], radius[:, 0] * 0.3, atol=1e-6)
+        # Up to the Size, 4 mm thick, times 1.5 at most
+        self.assertLess(radius[:, 0].max(), 0.004 / 2 * 1.5 + 1e-6)
+        self.assertGreater(radius[:, 0].max(), 0.001)
+        self.assertGreater(light[:, 0].max(), 1.0)
+        self.assertEqual(np.abs(light[:, 1]).max(), 0.0)
+
+    # Sparks fly on after the Glow ends, until their Lifetime, at most 1.3 times 2 s
+    def test_linger(self):
+        control = self.add(duration=12, pulses=1)
+        # The Glow fades out at frame 15, 2 frames after the pulse
+        geometry = self.stepped(self.body, self.start + 16)
+        self.assertEqual(control["Glow"], 0.0)
+        self.assertGreater(self.streaks(geometry), 50)
+        self.assertGreater(self.streaks(self.stepped(self.body, self.start + 60)), 0)
+        self.assertEqual(self.streaks(self.stepped(self.body, self.start + 16 + 64)), 0)
+
+    # On MHX models, Empties on the bones of the hands and feet glow, nothing else
+    def test_hot_spots(self):
+        set_active(self.armature)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bone = self.armature.data.edit_bones.new("hand.L")
+        bone.head, bone.tail = (0.0, -0.5, 0.3), (0.0, -0.5, 0.5)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        self.body.vertex_groups.new(name="hand.L").add([0, 1], 1.0, "REPLACE")
+        # Little weight, not part of the hand
+        self.body.vertex_groups.new(name="f_index.01.L").add([2], 0.3, "REPLACE")
+        set_active(self.body)
+        self.shirt.select_set(True)
+        self.add()
+
+        spots = effect.modifier_input(self.body.modifiers["Aura"], "Hot Spots").value
+        self.assertEqual(spots.name, "Tester Armature Aura Hot Spots")
+        self.assertIn(spots, list(self.scene.collection.children))
+        (empty,) = spots.objects
+        self.assertEqual(empty.name, "Tester Armature Aura Hand.L")
+        self.assertEqual((empty.parent, empty.parent_type), (self.armature, "BONE"))
+        self.assertEqual(empty.parent_bone, "hand.L")
+        self.assertEqual(empty.MustardUI_tools_creators_type, "EFFECT_AURA_HOT_SPOT")
+        # Around the two vertices of the hand
+        bpy.context.view_layer.update()
+        np.testing.assert_allclose(empty.matrix_world.translation, (0.0, -0.5, 0.5), atol=1e-5)
+        self.assertAlmostEqual(empty.matrix_world.to_scale().x, 0.5 * 1.15, places=5)
+        # On all the meshes of the model, the outline only on the Hot Spots
+        for obj in (self.body, self.shirt):
+            modifier = obj.modifiers["Aura"]
+            self.assertEqual(effect.modifier_input(modifier, "Hot Spots").value, spots)
+            self.assertEqual(effect.modifier_input(modifier, "Body Glow").value, 0.0)
+
+        # Glowing inside the sphere, outline and fill, nothing out of it, without shimmer
+        effect.modifier_input(self.body.modifiers["Aura"], "Shimmer").value = 0.0
+        self.body.update_tag()
+        glow = self.glow(self.evaluated(self.body, self.start + 6))
+        # Vertices at 87% of the radius, fully glowing inside 90% of it with the Softness 0.2
+        np.testing.assert_allclose(glow[:2], [[3.0, 1.0, 0.0]] * 2, atol=1e-4)
+        self.assertEqual(np.abs(glow[2:]).max(), 0.0)
+        # Softer, fading out from 75% to 125% of the radius
+        effect.modifier_input(self.body.modifiers["Aura"], "Softness").value = 0.5
+        self.body.update_tag()
+        glow = self.glow(self.evaluated(self.body, self.start + 6))
+        hot = 0.76**2 * (3 - 2 * 0.76)
+        np.testing.assert_allclose(glow[:2, 0], 3.0 * hot, atol=0.05)
+        self.assertEqual(np.abs(glow[2:]).max(), 0.0)
+
+        # A fifth of the sparks off the Hot Spots without Body Glow, the Empty away from the shirt
+        empty.matrix_world = Matrix.Translation((10.0, 0.0, 0.0)) @ empty.matrix_world
+        bpy.context.view_layer.update()
+        few = self.streaks(self.stepped(self.shirt, self.start + 10))
+        effect.modifier_input(self.shirt.modifiers["Aura"], "Body Glow").value = 1.0
+        self.shirt.update_tag()
+        many = self.streaks(self.stepped(self.shirt, self.start + 10))
+        self.assertGreater(few, 0)
+        self.assertAlmostEqual(few / many, 0.2, delta=0.1)
+
+    # The glow is under the mixes with transparency, given the alpha of the shaders
+    def test_transparency(self):
+        material = bpy.data.materials.new("Lashes")
+        nodes, links = material.node_tree.nodes, material.node_tree.links
+        principled = nodes["Principled BSDF"]
+        alpha = nodes.new("ShaderNodeValue")
+        links.new(alpha.outputs[0], principled.inputs["Alpha"])
+        mix = nodes.new("ShaderNodeMixShader")
+        links.new(nodes.new("ShaderNodeBsdfTransparent").outputs[0], mix.inputs[1])
+        links.new(principled.outputs[0], mix.inputs[2])
+        links.new(mix.outputs[0], nodes["Material Output"].inputs["Surface"])
+        self.shirt.data.materials.append(material)
+        self.add()
+        self.assertEqual(self.surface(material), mix)
+        group = mix.inputs[2].links[0].from_node
+        self.assertEqual(group.node_tree.name, "MustardUI Aura Glow Settings")
+        self.assertEqual(group.inputs["Opacity"].links[0].from_node, alpha)
+
+    # Removing it from all the meshes removes the Control, the Hot Spots and the glow
+    def test_remove(self):
+        set_active(self.armature)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bone = self.armature.data.edit_bones.new("foot.R")
+        bone.head, bone.tail = (0.0, 0.5, 0.3), (0.0, 0.5, 0.5)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        self.body.vertex_groups.new(name="foot.R").add([2, 3], 1.0, "REPLACE")
+        set_active(self.body)
+        self.shirt.select_set(True)
+        control = self.add()
+        spots = effect.modifier_input(self.body.modifiers["Aura"], "Hot Spots").value
+        # An Empty added by hand, kept in the scene
+        mine = new_object("Mine", collection=spots)
+
+        # Removed from the body only, the shirt keeps the Control and the Hot Spots
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_remove_aura()
+        self.assertNotIn("Aura", self.body.modifiers)
+        self.assertFalse(self.body.animation_data and self.body.animation_data.drivers)
+        self.assertIn(control, list(bpy.data.objects))
+        self.assertIn(spots, list(bpy.data.collections))
+
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_aura()
+        self.assertNotIn(control, list(bpy.data.objects))
+        self.assertNotIn(spots, list(bpy.data.collections))
+        self.assertFalse([x for x in bpy.data.objects if x.name.startswith("Tester Armature Aura")])
+        self.assertEqual(mine.users_collection, (self.scene.collection,))
+        skin = self.body.material_slots[0].material
+        self.assertEqual(self.surface(skin).type, "BSDF_PRINCIPLED")
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_aura.poll())
