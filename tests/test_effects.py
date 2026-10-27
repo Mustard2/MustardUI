@@ -2533,8 +2533,10 @@ class TestShatter(BlenderTestCase):
         self.assertEqual(materials, [self.brick, None])
         self.assertGreater(co[:, 2].min(), -0.003)
         np.testing.assert_allclose(co, before, atol=1e-4)
-        # The top of the wall, far from the hole
-        np.testing.assert_allclose(np.sort(co[co[:, 2] > 1.9], axis=0), np.sort(top, axis=0))
+        # The top of the wall, far from the hole, staying: the ball may break the pieces under it
+        # again, still cut where they are
+        self.assertAlmostEqual(co[:, 2].max(), 2.0, delta=1e-4)
+        self.assertTrue(np.isin(top.round(4), co[co[:, 2] > 1.9].round(4)).all())
         # Some pieces passed through the wall
         self.assertGreater(co[:, 1].max(), 0.3)
         self.assertEqual([x.message for x in modifier.node_warnings], [])
@@ -2693,6 +2695,81 @@ class TestShatter(BlenderTestCase):
                 self.assertGreater(co[:, 2].min(), -0.003)
                 self.assertLess(co[:, 2].max(), 2.9)
                 self.wall.modifiers.remove(modifier)
+
+    # With floors, a 6 x 6 x 9 m tower rammed through its ground floor breaks in pieces of a
+    # single floor keeping its volume, the floors over it coming down on its rubble; without, the
+    # pieces span the floors. The floors also from the faces of boxes stacked as floors of 4, 3, 2 m
+    def test_floors(self):
+        bpy.ops.object.select_all(action="DESELECT")
+        ram = self.box("Ram", (3.0, 8.0, 2.3), (3.0, 0.0, 1.45))
+        bm = bmesh.new()
+        bm.from_mesh(ram.data)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=8, use_grid_fill=True)
+        bm.to_mesh(ram.data)
+        bm.free()
+        for frame in range(1, 26):
+            ram.location.x = 3.0 + 0.75 * (frame - 1)
+            ram.keyframe_insert("location", frame=frame)
+        for heights, floor_height, faces in (
+            ((9,), 3.0, False),
+            ((9,), 0.0, False),
+            ((4, 3, 2), 0.0, True),
+        ):
+            with self.subTest(floor_height=floor_height, faces=faces):
+                self.scene.frame_set(1)
+                mesh = bpy.data.meshes.new("Tower")
+                bm = bmesh.new()
+                for bottom, height in zip(np.cumsum((0,) + heights), heights, strict=False):
+                    verts = bmesh.ops.create_cube(bm, size=1.0)["verts"]
+                    bmesh.ops.scale(bm, vec=(6.0, 6.0, height), verts=verts)
+                    bmesh.ops.translate(bm, vec=(12.0, 0.0, bottom + height / 2), verts=verts)
+                bm.to_mesh(mesh)
+                bm.free()
+                tower = new_object("Tower", mesh)
+                set_active(tower)
+                ram.select_set(True)
+                bpy.ops.mustardui.model_toolkit_shatter(kind="STONE")
+                modifier = tower.modifiers["Shatter"]
+                for name in ("Breakup", "Debris", "Smoke"):
+                    effect.modifier_input(modifier, name).value = False
+                effect.modifier_input(modifier, "Floor Support").value = True
+                effect.modifier_input(modifier, "Floor Height").value = floor_height
+                effect.modifier_input(modifier, "Floors from Faces").value = faces
+                tower.update_tag()
+                levels = np.array((3.0, 6.0) if floor_height else (4.0, 7.0))
+                for frame in range(1, 31):
+                    self.scene.frame_set(frame)
+                    co, count, _, volume = self.evaluate(tower)
+                    self.assertAlmostEqual(volume, 324.0, delta=0.01, msg=f"frame {frame}")
+                    if frame == 8:
+                        self.assertGreater(count, 30)
+                        # How far the pieces reach into another floor, the loose ones moving a bit
+                        bm = bmesh.new()
+                        bm.from_mesh(
+                            tower.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+                        )
+                        across, seen = 0.0, set()
+                        for face in bm.faces:
+                            if face in seen:
+                                continue
+                            piece, stack = {face}, [face]
+                            while stack:
+                                for edge in stack.pop().edges:
+                                    stack += [f for f in edge.link_faces if f not in piece]
+                                    piece.update(edge.link_faces)
+                            seen |= piece
+                            z = [v.co.z for f in piece for v in f.verts]
+                            reach = np.minimum(max(z) - levels, levels - min(z)).max()
+                            across = max(across, reach)
+                        bm.free()
+                        self.assertEqual(across < 0.5, bool(floor_height or faces))
+                # With floors the ones over it let go, landing on its rubble, else held by it
+                if floor_height or faces:
+                    self.assertLess(co[:, 2].max(), 9.0 - 0.05)
+                else:
+                    self.assertAlmostEqual(co[:, 2].max(), 9.0, delta=1e-3)
+                self.assertEqual([x.message for x in modifier.node_warnings], [])
+                bpy.data.objects.remove(tower)
 
     # Pieces getting loose after the break, hit or not held anymore, throw debris too, and the
     # ones anchored on the floor stay even when hit
