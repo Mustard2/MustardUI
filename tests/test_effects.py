@@ -3079,6 +3079,77 @@ class TestCrush(BlenderTestCase):
         rest = np.array([x.co[:] for x in self.box.data.vertices]) + [3.0, 0.0, 0.5]
         np.testing.assert_allclose(self.evaluate(1), rest, atol=1e-6)
 
+    def tower(self, **settings):
+        """The box as a 2 x 2 x 9 m tower cut every 1.5 m, its floors of 3 m, pressed down by a
+        slab wider than it, crushed by the Building preset without Bulge and Crumple"""
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=5, use_grid_fill=True)
+        bmesh.ops.transform(bm, matrix=Matrix.Diagonal((2.0, 2.0, 9.0, 1.0)), verts=bm.verts)
+        bm.to_mesh(self.box.data)
+        bm.free()
+        self.box.data.materials.append(bpy.data.materials.new("Concrete"))
+        self.box.location = (3.0, 0.0, 4.5)
+        self.block.animation_data_clear()
+        self.block.data.transform(Matrix.Diagonal((8.0, 8.0, 1.0, 1.0)))
+        # Holding 1.5 m down from frame 10 to 15, then 5 m down at frame 30
+        for frame, z in ((1, 9.5), (10, 7.7), (15, 7.7), (30, 4.2)):
+            self.block.location = (3.0, 0.0, z)
+            self.block.keyframe_insert("location", frame=frame)
+        self.scene.frame_set(1)
+        set_active(self.block)
+        self.box.select_set(True)
+        bpy.context.view_layer.objects.active = self.box
+        bpy.ops.mustardui.model_toolkit_crush(kind="BUILDING")
+        modifier = self.box.modifiers["Crush"]
+        for name, value in {"Subdivisions": 0, "Bulge": 0.0, "Crumple": 0.0, **settings}.items():
+            effect.modifier_input(modifier, name).value = value
+        self.box.update_tag()
+        return modifier
+
+    # The floors under the slab crushed one after the other from the top, each down to its
+    # rubble before the one under it gives, the floors under it untouched; without floors the top
+    # floor is squeezed most at its top
+    def test_floors(self):
+        modifier = self.tower(Debris=False)
+        self.assertEqual(effect.modifier_input(modifier, "Floor Height").value, 3.0)
+        rest = self.evaluate(1)
+        # 1.5 m down the top floor half as high, all of it; 5 m down, it is 0.45 m of rubble and
+        # the floor under it 0.55 m
+        for frame, heights in (
+            (14, ((0.0, 0.0), (4.5, 4.5), (6.0, 6.0), (7.5, 6.75), (9.0, 7.5))),
+            (40, ((0.0, 0.0), (3.0, 3.0), (4.5, 3.275), (6.0, 3.55), (7.5, 3.775), (9.0, 4.0))),
+        ):
+            co = self.evaluate(frame)
+            for height, crushed in heights:
+                level = np.abs(rest[:, 2] - height) < 1e-3
+                np.testing.assert_allclose(co[level, 2], crushed, atol=0.02, err_msg=f"{height} m")
+        effect.modifier_input(modifier, "Floor Height").value = 0.0
+        self.box.update_tag()
+        co = self.evaluate(14)
+        self.assertGreater(co[np.abs(rest[:, 2] - 7.5) < 1e-3, 2].min(), 7.1)
+
+    # Debris chips are thrown out of the sides only once crushed, with the material of the mesh,
+    # and come to rest on the ground
+    def test_debris(self):
+        self.tower()
+        faces = []
+        for frame in range(1, 81):
+            self.scene.frame_set(frame)
+            data = self.box.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            faces.append(len(data.polygons))
+            if frame == 78:
+                before = np.array([x.co[:] for x in data.vertices])
+        self.assertEqual(faces[:2], [faces[0]] * 2)
+        self.assertGreater(faces[-1], faces[0] + 20 * 10)
+        chips = [data.materials[p.material_index] for p in data.polygons[faces[0] :]]
+        self.assertTrue(all(x is not None and x.name == "Concrete" for x in chips))
+        co = np.array([x.co[:] for x in data.vertices])
+        # Resting on the ground, 4.5 m under the origin of the tower
+        self.assertGreater(co[:, 2].min(), -4.5 - 1e-3)
+        np.testing.assert_allclose(co, before, atol=0.01)
+        self.assertEqual([x.message for x in self.box.modifiers["Crush"].node_warnings], [])
+
     def add_wheels(self):
         """Two 20 cm cubes as wheels in the box mesh, by its sides, in the Wheels group, a 10 cm
         hub touching the first one"""

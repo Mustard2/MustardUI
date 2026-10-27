@@ -48,12 +48,28 @@ PRESETS = {
         "Crumple Size": 0.05,
         "Buckle": 0.0,
     },
+    # Floors of 3 m, whatever its size
+    "BUILDING": {
+        "Stiffness": 0.02,
+        "Flat Height": 0.03,
+        "Floor Height": 3.0,
+        "Bulge": 0.5,
+        "Crumple": 0.3,
+        "Crumple Size": 0.01,
+        "Buckle": 0.0,
+        "Debris": True,
+    },
 }
 DISTANCES = {"Stiffness", "Crumple Size"}
 # Size of the largest loose parts thrown by chance, and their speed in sizes per second, as a share
 # of the size of the mesh
 PART_SIZE = 0.15
 SPEED = 1.0
+# Size and speed of the debris chips as shares of the size of the mesh, and about how many there
+# are once all of it is crushed
+DEBRIS_SIZE = 0.01
+DEBRIS_SPEED = 0.1
+DEBRIS_CHIPS = 1000
 
 
 class MustardUI_ModelToolkit_Crush(bpy.types.Operator):
@@ -69,6 +85,11 @@ class MustardUI_ModelToolkit_Crush(bpy.types.Operator):
             ("METAL", "Metal", "Stiff, buckling at a few creases around the Colliders"),
             ("CARDBOARD", "Cardboard", "Large folds and bulging sides"),
             ("CLAY", "Clay", "Smooth, squashed and spreading out to the sides"),
+            (
+                "BUILDING",
+                "Building",
+                "Floors of 3 m crushed one after the other from the top, throwing debris",
+            ),
         ),
     )
 
@@ -125,6 +146,9 @@ class MustardUI_ModelToolkit_Crush(bpy.types.Operator):
         modifier_input(modifier, "Flat Height").value *= extent.z
         modifier_input(modifier, "Part Size").value = PART_SIZE * size
         modifier_input(modifier, "Speed").value = SPEED * size
+        modifier_input(modifier, "Debris Size").value = DEBRIS_SIZE * size
+        modifier_input(modifier, "Debris Speed").value = DEBRIS_SPEED * size
+        modifier_input(modifier, "Debris Amount").value = DEBRIS_CHIPS / max(size * size, 1e-6)
         modifier_input(modifier, "Start Frame").value = context.scene.frame_current
         modifier_input(modifier, "Subdivisions").value = levels
         # Changing the modifier inputs from Python does not tag the object

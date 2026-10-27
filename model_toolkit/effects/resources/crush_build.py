@@ -23,6 +23,7 @@ FADE = 2.0
 # Steepest rise of the mesh around the crush, not to leave thin parts standing, found by jump
 # flooding with offsets halving from this many cells
 SLOPE = 1.0
+FLOOR_SLOPE = 2.0
 JUMP = 128
 NEIGHBORS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy]
 # Share of the depth under the top of the mesh the crush fades out by, the parts under it
@@ -30,6 +31,21 @@ NEIGHBORS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy]
 COLLAPSE = 0.85
 # Depth of the folds at full Crumple, relative to their size
 FOLD_DEPTH = 0.3
+# Share of its height a floor keeps crushed, as its slab and rubble
+RUBBLE = 0.15
+# Debris chips: speed up as a share of their speed out, bounce, speed kept sliding on the plane
+DEBRIS_RISE = 0.15
+DEBRIS_BOUNCE = 0.2
+DEBRIS_SLIDE = 0.6
+# Chips squeezed out at this times the speed their side is crushed, fanning out by up to this
+# angle in radians from it
+DEBRIS_EJECT = 1.5
+DEBRIS_FAN = 0.6
+# Parts chips are thrown from, at least this share of the size of the mesh
+DEBRIS_PART = 0.2
+# Thickness of the chips over their size, and their tilt in radians, so they lie on the plane
+CHIP_FLAT = 0.4
+CHIP_TILT = 0.15
 # Buckles: depth between the creases relative to the Crumple Size, share of it the creases take,
 # and how unevenly they run
 BUCKLE_STEP = 3.0
@@ -229,6 +245,52 @@ def build_node_group():
     ng.interface.move(
         buckle, list(ng.interface.items_tree).index(ng.interface.items_tree["Crumple Size"]) + 1
     )
+    floors = add_input(
+        ng,
+        "Floor Height",
+        "NodeSocketFloat",
+        subtype="DISTANCE",
+        default_value=0.0,
+        min_value=0.0,
+        description="Height of the floors of a building, crushed one after the other from the top "
+        "down to slabs of rubble, the ones under them standing, 0 for none",
+    )
+    ng.interface.move(
+        floors, list(ng.interface.items_tree).index(ng.interface.items_tree["Flat Height"]) + 1
+    )
+    add_input(
+        ng,
+        "Debris",
+        "NodeSocketBool",
+        default_value=False,
+        description="Throw chips of the sides out as they are crushed, resting on the plane under "
+        "the mesh",
+    )
+    add_input(
+        ng,
+        "Debris Amount",
+        "NodeSocketFloat",
+        default_value=1.0,
+        min_value=0.0,
+        description="Chips thrown per square meter of the sides crushed all the way",
+    )
+    add_input(
+        ng,
+        "Debris Size",
+        "NodeSocketFloat",
+        subtype="DISTANCE",
+        default_value=0.05,
+        min_value=0.0,
+        description="Size of the largest chips",
+    )
+    add_input(
+        ng,
+        "Debris Speed",
+        "NodeSocketFloat",
+        default_value=1.0,
+        min_value=0.0,
+        description="Speed of the chips thrown out, in meters per second",
+    )
     arrange_interface(
         ng,
         [
@@ -240,6 +302,7 @@ def build_node_group():
                 None,
                 ["Loose Parts", "Parts", "Chance", "Part Size", "Speed", "Bounce"],
             ),
+            (None, "Debris", True, "Debris", ["Debris Amount", "Debris Size", "Debris Speed"]),
         ],
     )
 
@@ -267,9 +330,20 @@ def build_node_group():
         x=1,
         y=-2,
     )
-    stiffness, flat, size, part_size, speed = (
+    stiffness, flat, size, part_size, speed, storey, chip, chip_speed = (
         t.math("DIVIDE", inputs[name], scale, x=2, y=-3 - i)
-        for i, name in enumerate(("Stiffness", "Flat Height", "Crumple Size", "Part Size", "Speed"))
+        for i, name in enumerate(
+            (
+                "Stiffness",
+                "Flat Height",
+                "Crumple Size",
+                "Part Size",
+                "Speed",
+                "Floor Height",
+                "Debris Size",
+                "Debris Speed",
+            )
+        )
     )
     box = t.node("GeometryNodeBoundBox", 0, -7, {"Geometry": inputs["Geometry"]}).outputs
     low = t.node("ShaderNodeSeparateXYZ", 1, -7, {0: box["Min"]}).outputs
@@ -628,6 +702,24 @@ def build_node_group():
     grid = t.store(
         grid, ".crush_slope", "FLOAT", t.attribute(".crush_pressed", "FLOAT", 4, -2), 4.5, 0
     )
+    # Rise per cell, steeper for floors: buildings fail straight down, not in a ramp
+    rise = t.math(
+        "MULTIPLY",
+        spacing,
+        t.node(
+            "GeometryNodeSwitch",
+            3,
+            -6,
+            {
+                "Switch": t.math("GREATER_THAN", inputs["Floor Height"], 0.0, x=2.5, y=-6),
+                "False": SLOPE,
+                "True": FLOOR_SLOPE,
+            },
+            input_type="FLOAT",
+        ).outputs[0],
+        x=3.5,
+        y=-6,
+    )
     jumps_in = t.node("GeometryNodeRepeatInput", 5, 0, {"Iterations": JUMP.bit_length() + 1})
     jumps_out = t.node("GeometryNodeRepeatOutput", 12, 0)
     jumps_in.pair_with_output(jumps_out)
@@ -713,7 +805,7 @@ def build_node_group():
             t.math(
                 "MULTIPLY",
                 jump,
-                t.math("MULTIPLY", spacing, (dx * dx + dy * dy) ** 0.5 * SLOPE, x=8.5, y=y - 1),
+                t.math("MULTIPLY", rise, (dx * dx + dy * dy) ** 0.5, x=8.5, y=y - 1),
                 x=9,
                 y=y - 1,
             ),
@@ -870,7 +962,104 @@ def build_node_group():
         y=-5,
     )
     crushed = t.math("MAXIMUM", t.math("SUBTRACT", h, sink, x=6, y=-2), flattened, x=6.5, y=-2)
+    # With floors, crushed one after the other from the top
+    storeys = t.math("GREATER_THAN", inputs["Floor Height"], 0.0, x=5, y=-20)
+    # Each of the four columns around the point crushed by its floors, mixed after, only the
+    # columns reaching up to it: next to a column lower or empty, as out of the walls, mixing
+    # their top and depth would leave it hanging
+    blended = [pancaked(t, h, top, depth, storey, -20, -20)]
+    weights, values = [], []
+    for i, (value, weight) in enumerate(
+        bilinear(
+            t,
+            grid,
+            t.node(
+                "ShaderNodeCombineXYZ",
+                -30,
+                -40,
+                {
+                    "X": t.attribute(".crush_top", "FLOAT", -31, -40),
+                    "Y": t.attribute(".crush_final", "FLOAT", -31, -41),
+                },
+            ).outputs[0],
+            cells,
+            middle,
+            spacing,
+            co,
+            -28,
+            -40,
+            corners=True,
+        )
+    ):
+        column = t.node("ShaderNodeSeparateXYZ", -24, -40 - 30 * i, {0: value}).outputs
+        reach = t.math(
+            "GREATER_THAN",
+            column["X"],
+            t.math("SUBTRACT", h, spacing, x=-24, y=-42 - 30 * i),
+            x=-23.5,
+            y=-41 - 30 * i,
+        )
+        weights.append(t.math("MULTIPLY", weight, reach, x=-23, y=-41 - 30 * i))
+        values.append(pancaked(t, h, column["X"], column["Y"], storey, -22, -40 - 30 * i))
+    total = t.math(
+        "ADD",
+        t.math("ADD", weights[0], weights[1], x=0, y=-160),
+        t.math("ADD", weights[2], weights[3], x=0, y=-161),
+        x=0.5,
+        y=-160,
+    )
+    reached = t.math("GREATER_THAN", total, 1e-6, x=1, y=-161)
+    mixed = []
+    for k in range(4):
+        part = [
+            t.math("MULTIPLY", w, v[k], x=1, y=-162 - 4 * k - j)
+            for j, (w, v) in enumerate(zip(weights, values, strict=True))
+        ]
+        part = t.math(
+            "DIVIDE",
+            t.math(
+                "ADD",
+                t.math("ADD", part[0], part[1], x=1.5, y=-162 - 4 * k),
+                t.math("ADD", part[2], part[3], x=1.5, y=-163 - 4 * k),
+                x=2,
+                y=-162 - 4 * k,
+            ),
+            t.math("MAXIMUM", total, 1e-6, x=1.5, y=-164 - 4 * k),
+            x=2.5,
+            y=-162 - 4 * k,
+        )
+        mixed.append(
+            t.node(
+                "GeometryNodeSwitch",
+                3,
+                -162 - 4 * k,
+                {"Switch": reached, "False": blended[0][k], "True": part},
+                input_type="FLOAT",
+            ).outputs[0]
+        )
+    pancake, floor_share, floor_lost, along = mixed
+    crushed = t.node(
+        "GeometryNodeSwitch",
+        6.8,
+        -2,
+        {"Switch": storeys, "False": crushed, "True": pancake},
+        input_type="FLOAT",
+    ).outputs[0]
     move = t.math("SUBTRACT", h, crushed, x=7, y=-2)
+    # How far the point is crushed, for the debris: its floor, or its column
+    spilled = t.node(
+        "GeometryNodeSwitch",
+        7,
+        -20,
+        {
+            "Switch": storeys,
+            "False": t.math(
+                "DIVIDE", depth, t.math("MAXIMUM", top, 1e-6, x=6, y=-21), x=6.5, y=-20, clamp=True
+            ),
+            "True": floor_share,
+        },
+        input_type="FLOAT",
+    ).outputs[0]
 
     # Sides bulging out as a barrel, most halfway up, away from the middle of the mesh, and
     # crumpled where crushed, the same for the layers on top of each other, as both sides of a
@@ -898,16 +1087,36 @@ def build_node_group():
             for i, axis in enumerate("XY")
         },
     ).outputs[0]
+    # With floors each crushed floor bulging out as its walls fold, its rubble spilling
+    swell = t.node(
+        "GeometryNodeSwitch",
+        8,
+        -7.5,
+        {
+            "Switch": storeys,
+            "False": t.math("MULTIPLY", move, barrel, x=7.5, y=-7.5),
+            "True": t.math(
+                "MULTIPLY",
+                floor_lost,
+                t.math(
+                    "MULTIPLY",
+                    t.math(
+                        "MULTIPLY", along, t.math("SUBTRACT", 1.0, along, x=6.5, y=-23), x=7, y=-23
+                    ),
+                    4.0,
+                    x=7.5,
+                    y=-23,
+                ),
+                x=7.8,
+                y=-23,
+            ),
+        },
+        input_type="FLOAT",
+    ).outputs[0]
     bulge = t.vmath(
         "SCALE",
         t.vmath("NORMALIZE", away, x=8, y=-6),
-        t.math(
-            "MULTIPLY",
-            t.math("MULTIPLY", move, inputs["Bulge"], x=8, y=-7),
-            barrel,
-            x=8.5,
-            y=-7,
-        ),
+        t.math("MULTIPLY", swell, inputs["Bulge"], x=8.5, y=-7),
         x=9,
         y=-6,
     )
@@ -1050,6 +1259,21 @@ def build_node_group():
         {"Switch": inputs["Loose Parts"], "False": geometry, "True": kept},
         input_type="GEOMETRY",
     ).outputs[0]
+    geometry = t.store(geometry, ".crush_spill", "FLOAT", spilled, 12.7, 0)
+    geometry = t.store(
+        geometry,
+        ".crush_lost",
+        "FLOAT",
+        t.node(
+            "GeometryNodeSwitch",
+            12.5,
+            -22,
+            {"Switch": storeys, "False": move, "True": floor_lost},
+            input_type="FLOAT",
+        ).outputs[0],
+        12.8,
+        0,
+    )
     geometry = t.node(
         "GeometryNodeSetPosition",
         13,
@@ -1060,6 +1284,7 @@ def build_node_group():
             "Position": moved,
         },
     ).outputs[0]
+    crushed_geometry = geometry
 
     t.section("Loose Parts", row=True)
     thrown = build_parts(
@@ -1070,6 +1295,19 @@ def build_node_group():
         30,
         0,
         {"Switch": inputs["Loose Parts"], "False": geometry, "True": thrown},
+        input_type="GEOMETRY",
+    ).outputs[0]
+    t.section("Debris", row=True)
+    chips = build_debris(t, inputs, crushed_geometry, started, floor, scale, chip, chip_speed)
+    # The mesh linked last, for its materials to come first, as the last linked comes first
+    with_chips = t.node("GeometryNodeJoinGeometry", 30.5, 1)
+    t.connect(chips, with_chips.inputs[0])
+    t.connect(geometry, with_chips.inputs[0])
+    geometry = t.node(
+        "GeometryNodeSwitch",
+        30.8,
+        0,
+        {"Switch": inputs["Debris"], "False": geometry, "True": with_chips.outputs[0]},
         input_type="GEOMETRY",
     ).outputs[0]
     geometry = t.node(
@@ -1595,6 +1833,406 @@ def build_parts(t, inputs, geometry, focus, started, floor, spacing, scale, part
     ).outputs[0]
 
 
+def build_debris(t, inputs, geometry, started, floor, scale, size, speed):
+    """Chips thrown out of the sides as they are crushed, as many as the share they got crushed
+    in the frame, falling and coming to rest on the plane under the mesh, from the Start Frame"""
+    index = t.node("GeometryNodeInputIndex", 0, -3).outputs[0]
+    frame = t.node("GeometryNodeInputSceneTime", 0, -4).outputs["Frame"]
+    position = t.node("GeometryNodeInputPosition", 0, -5).outputs[0]
+    now = t.node("GeometryNodeMeshToPoints", 1, 2, {"Mesh": geometry}).outputs[0]
+    none = t.node("GeometryNodePoints", 1, 0, {"Count": 0}).outputs[0]
+    sim_in = t.node("GeometryNodeSimulationInput", 2, 0)
+    sim_out = t.node("GeometryNodeSimulationOutput", 22, 0)
+    sim_in.pair_with_output(sim_out)
+    sim_out.state_items.new("GEOMETRY", "Spill")
+    t.connect(none, sim_in.inputs["Geometry"])
+    t.connect(now, sim_in.inputs["Spill"])
+    dt = sim_in.outputs["Delta Time"]
+    # Crushed more since the frame before, on the sides
+    spill = t.attribute(".crush_spill", "FLOAT", 2, -3)
+    more = t.math(
+        "MAXIMUM",
+        t.math(
+            "SUBTRACT",
+            spill,
+            t.node(
+                "GeometryNodeSampleIndex",
+                3,
+                -3,
+                {"Geometry": sim_in.outputs["Spill"], "Value": spill, "Index": index},
+                data_type="FLOAT",
+                domain="POINT",
+            ).outputs[0],
+            x=4,
+            y=-3,
+        ),
+        0.0,
+        x=4.5,
+        y=-3,
+    )
+    mesh = t.store(geometry, ".crush_more", "FLOAT", more, 5, 2)
+    # How fast it is crushed, the chips squeezed out the faster
+    lost = t.attribute(".crush_lost", "FLOAT", 2, -6)
+    rate = t.math(
+        "DIVIDE",
+        t.math(
+            "MAXIMUM",
+            t.math(
+                "SUBTRACT",
+                lost,
+                t.node(
+                    "GeometryNodeSampleIndex",
+                    3,
+                    -6,
+                    {"Geometry": sim_in.outputs["Spill"], "Value": lost, "Index": index},
+                    data_type="FLOAT",
+                    domain="POINT",
+                ).outputs[0],
+                x=4,
+                y=-6,
+            ),
+            0.0,
+            x=4.5,
+            y=-6,
+        ),
+        t.math("MAXIMUM", dt, 1e-4, x=4, y=-7),
+        x=5,
+        y=-6,
+    )
+    mesh = t.store(mesh, ".crush_rate", "FLOAT", rate, 5.2, 2)
+    mesh = t.store(
+        mesh,
+        ".crush_chip_mat",
+        "INT",
+        t.node("GeometryNodeInputMaterialIndex", 4.5, 4).outputs[0],
+        5.5,
+        2,
+        domain="FACE",
+    )
+    normal_z = t.node(
+        "ShaderNodeSeparateXYZ", 5, 5, {0: t.node("GeometryNodeInputNormal", 4.5, 5).outputs[0]}
+    ).outputs["Z"]
+    sides = t.math("SUBTRACT", 1.0, t.math("MULTIPLY", normal_z, normal_z, x=5.5, y=5), x=6, y=5)
+    # Only from the large parts, as walls: the small ones are the Loose Parts
+    island = t.node("GeometryNodeInputMeshIsland", 3, 7).outputs["Island Index"]
+    span = t.vmath(
+        "DISTANCE",
+        extreme(t, position, island, "Max", 4, 7, "FLOAT_VECTOR"),
+        extreme(t, position, island, "Min", 4, 8, "FLOAT_VECTOR"),
+        x=4.5,
+        y=7,
+    )
+    box = t.node("GeometryNodeBoundBox", 3, 9, {"Geometry": geometry}).outputs
+    large = t.math(
+        "GREATER_THAN",
+        span,
+        t.math(
+            "MULTIPLY",
+            t.vmath("DISTANCE", box["Max"], box["Min"], x=4, y=9),
+            DEBRIS_PART,
+            x=4.5,
+            y=9,
+        ),
+        x=5,
+        y=7,
+    )
+    mesh = t.store(mesh, ".crush_large", "FLOAT", large, 5.8, 2)
+    sides = t.math("MULTIPLY", sides, t.attribute(".crush_large", "FLOAT", 5.5, 6), x=6.3, y=5)
+    thrown = t.node(
+        "GeometryNodeDistributePointsOnFaces",
+        7,
+        2,
+        {
+            "Mesh": mesh,
+            "Density": t.math(
+                "MULTIPLY",
+                t.math(
+                    "MULTIPLY",
+                    inputs["Debris Amount"],
+                    t.math("MULTIPLY", scale, scale, x=6, y=4),
+                    x=6.5,
+                    y=4,
+                ),
+                t.math(
+                    "MULTIPLY",
+                    t.attribute(".crush_more", "FLOAT", 6, 3),
+                    sides,
+                    x=6.5,
+                    y=3,
+                    clamp=True,
+                ),
+                x=6.8,
+                y=3.5,
+            ),
+            "Seed": frame,
+        },
+        distribute_method="RANDOM",
+    )
+    # Out from the side, fanning out, at Debris Speed and faster the faster it is crushed, a
+    # little up, each at its own speed and size
+    normal = t.node("ShaderNodeSeparateXYZ", 8, 0, {0: thrown.outputs["Normal"]}).outputs
+    rand = t.node(
+        "FunctionNodeRandomValue",
+        8.5,
+        -2,
+        {"Min": (0.3, 0.0, 0.3), "Max": (1.0, 1.0, 1.0), "Seed": frame},
+        data_type="FLOAT_VECTOR",
+    ).outputs["Value"]
+    rand = t.node("ShaderNodeSeparateXYZ", 9, -2, {0: rand}).outputs
+    turn = t.node(
+        "FunctionNodeRandomValue",
+        8.5,
+        -4,
+        {"Min": -DEBRIS_FAN, "Max": DEBRIS_FAN, "Seed": t.math("ADD", frame, 7, x=8, y=-5)},
+        data_type="FLOAT",
+    ).outputs["Value"]
+    cos, sin = (t.math(op, turn, x=9, y=-4 - k) for k, op in enumerate(("COSINE", "SINE")))
+    out = t.vmath(
+        "NORMALIZE",
+        t.node(
+            "ShaderNodeCombineXYZ",
+            9.5,
+            0,
+            {
+                "X": t.math(
+                    "SUBTRACT",
+                    t.math("MULTIPLY", normal["X"], cos, x=9, y=0),
+                    t.math("MULTIPLY", normal["Y"], sin, x=9, y=-1),
+                    x=9.3,
+                    y=0,
+                ),
+                "Y": t.math(
+                    "ADD",
+                    t.math("MULTIPLY", normal["X"], sin, x=9, y=-2),
+                    t.math("MULTIPLY", normal["Y"], cos, x=9, y=-3),
+                    x=9.3,
+                    y=-2,
+                ),
+            },
+        ).outputs[0],
+        x=10,
+        y=0,
+    )
+    squeezed = t.node(
+        "GeometryNodeSampleNearestSurface",
+        9,
+        -6,
+        {
+            "Mesh": mesh,
+            "Value": t.attribute(".crush_rate", "FLOAT", 8.5, -6),
+            "Sample Position": position,
+        },
+        data_type="FLOAT",
+    ).outputs["Value"]
+    fast = t.math(
+        "MULTIPLY",
+        t.math("MULTIPLY_ADD", squeezed, DEBRIS_EJECT, speed, x=9.5, y=-6),
+        rand["X"],
+        x=10,
+        y=-6,
+    )
+    velocity = t.vmath(
+        "ADD",
+        t.vmath("SCALE", out, fast, x=10.5, y=-1),
+        t.node(
+            "ShaderNodeCombineXYZ",
+            10.5,
+            -3,
+            {
+                "Z": t.math(
+                    "MULTIPLY",
+                    fast,
+                    t.math("MULTIPLY", rand["Y"], DEBRIS_RISE, x=10, y=-4),
+                    x=10.3,
+                    y=-3,
+                )
+            },
+        ).outputs[0],
+        x=11,
+        y=-1,
+    )
+    new = t.store(thrown.outputs["Points"], ".crush_velocity", "FLOAT_VECTOR", velocity, 11, 0)
+    new = t.store(
+        new, ".crush_size", "FLOAT", t.math("MULTIPLY", rand["Z"], size, x=10.5, y=-4), 11.5, 0
+    )
+    # The material of the face each chip came from
+    face = t.node(
+        "GeometryNodeSampleNearest",
+        11.5,
+        -6,
+        {"Geometry": geometry, "Sample Position": position},
+        domain="FACE",
+    ).outputs[0]
+    new = t.store(
+        new,
+        ".crush_chip_mat",
+        "INT",
+        t.node(
+            "GeometryNodeSampleIndex",
+            12,
+            -6,
+            {
+                "Geometry": geometry,
+                "Value": t.node("GeometryNodeInputMaterialIndex", 11.5, -7).outputs[0],
+                "Index": face,
+            },
+            data_type="INT",
+            domain="FACE",
+        ).outputs[0],
+        12.5,
+        0,
+    )
+    # The ones thrown before falling, bouncing a little on the plane and sliding to a stop
+    chips = sim_in.outputs["Geometry"]
+    moving = t.vmath(
+        "SUBTRACT",
+        t.attribute(".crush_velocity", "FLOAT_VECTOR", 12, -3),
+        t.node(
+            "ShaderNodeCombineXYZ",
+            12,
+            -4,
+            {
+                "Z": t.math(
+                    "MULTIPLY", t.math("DIVIDE", GRAVITY, scale, x=11, y=-5), dt, x=11.5, y=-5
+                )
+            },
+        ).outputs[0],
+        x=13,
+        y=-3,
+    )
+    moved = t.node(
+        "ShaderNodeSeparateXYZ",
+        14,
+        -2,
+        {0: t.vmath("ADD", position, t.vmath("SCALE", moving, dt, x=13, y=-5), x=13.5, y=-5)},
+    ).outputs
+    rest = t.math(
+        "ADD",
+        floor,
+        t.math("MULTIPLY", t.attribute(".crush_size", "FLOAT", 13, -7), CHIP_FLAT, x=13.5, y=-7),
+        x=14,
+        y=-7,
+    )
+    landed = t.math("LESS_THAN", moved["Z"], rest, x=14.5, y=-6)
+    v = t.node("ShaderNodeSeparateXYZ", 14, -9, {0: moving}).outputs
+    kept = t.math(
+        "SUBTRACT", 1.0, t.math("MULTIPLY", landed, 1.0 - DEBRIS_SLIDE, x=14.5, y=-10), x=15, y=-10
+    )
+    bounced = t.node(
+        "ShaderNodeCombineXYZ",
+        15.5,
+        -9,
+        {
+            "X": t.math("MULTIPLY", v["X"], kept, x=15, y=-9),
+            "Y": t.math("MULTIPLY", v["Y"], kept, x=15, y=-11),
+            "Z": t.node(
+                "GeometryNodeSwitch",
+                15,
+                -12,
+                {
+                    "Switch": landed,
+                    "False": v["Z"],
+                    "True": t.math(
+                        "MULTIPLY",
+                        t.math("ABSOLUTE", v["Z"], x=14.5, y=-12),
+                        DEBRIS_BOUNCE,
+                        x=14.8,
+                        y=-12,
+                    ),
+                },
+                input_type="FLOAT",
+            ).outputs[0],
+        },
+    ).outputs[0]
+    chips = t.node(
+        "GeometryNodeSetPosition",
+        16,
+        0,
+        {
+            "Geometry": chips,
+            "Position": t.node(
+                "ShaderNodeCombineXYZ",
+                15.5,
+                -6,
+                {
+                    "X": moved["X"],
+                    "Y": moved["Y"],
+                    "Z": t.math("MAXIMUM", moved["Z"], rest, x=15, y=-6),
+                },
+            ).outputs[0],
+        },
+    ).outputs[0]
+    chips = t.store(chips, ".crush_velocity", "FLOAT_VECTOR", bounced, 16.5, 0)
+    joined = t.node("GeometryNodeJoinGeometry", 17, 0)
+    t.connect(chips, joined.inputs[0])
+    t.connect(new, joined.inputs[0])
+    chips = t.node(
+        "GeometryNodeSwitch",
+        18,
+        0,
+        {"Switch": started, "False": none, "True": joined.outputs[0]},
+        input_type="GEOMETRY",
+    ).outputs[0]
+    t.connect(chips, sim_out.inputs["Geometry"])
+    t.connect(now, sim_out.inputs["Spill"])
+    # Each chip a flattened ico sphere turned its own way, with the material of its side
+    shape = t.node(
+        "GeometryNodeTransform",
+        23,
+        -3,
+        {
+            "Geometry": t.node(
+                "GeometryNodeMeshIcoSphere", 22.5, -3, {"Radius": 1.0, "Subdivisions": 1}
+            ).outputs["Mesh"],
+            "Scale": (1.0, 0.75, CHIP_FLAT),
+        },
+    ).outputs[0]
+    # With the materials of the mesh, for the chips to keep their indices: one of its faces shrunk
+    # to a point, an empty mesh losing them, linked last, as the last linked comes first
+    one = t.node(
+        "GeometryNodeDeleteGeometry",
+        22,
+        -5,
+        {"Geometry": geometry, "Selection": t.math("GREATER_THAN", index, 0, x=21.5, y=-6)},
+        domain="FACE",
+    ).outputs[0]
+    slots = t.node("GeometryNodeJoinGeometry", 23.5, -4)
+    t.connect(shape, slots.inputs[0])
+    t.connect(
+        t.node(
+            "GeometryNodeTransform", 22.8, -5, {"Geometry": one, "Scale": (0.0, 0.0, 0.0)}
+        ).outputs[0],
+        slots.inputs[0],
+    )
+    shape = slots.outputs[0]
+    # Turned about the vertical, a little tilted, lying flat once landed
+    turn = t.node(
+        "FunctionNodeRandomValue",
+        23,
+        -5,
+        {"Min": (-CHIP_TILT, -CHIP_TILT, 0.0), "Max": (CHIP_TILT, CHIP_TILT, 6.3), "ID": index},
+        data_type="FLOAT_VECTOR",
+    ).outputs["Value"]
+    placed = t.node(
+        "GeometryNodeInstanceOnPoints",
+        24,
+        0,
+        {
+            "Points": sim_out.outputs["Geometry"],
+            "Instance": shape,
+            "Rotation": turn,
+            "Scale": t.attribute(".crush_size", "FLOAT", 23.5, -2),
+        },
+    ).outputs[0]
+    placed = t.node("GeometryNodeRealizeInstances", 25, 0, {"Geometry": placed}).outputs[0]
+    return t.node(
+        "GeometryNodeSetMaterialIndex",
+        26,
+        0,
+        {"Geometry": placed, "Material Index": t.attribute(".crush_chip_mat", "INT", 25.5, -2)},
+    ).outputs[0]
+
+
 def found_parts(t, inputs, geometry, rest, spacing, part_size):
     """Found once at the Start Frame: a point by island with its part, -1 for the islands
     staying, the islands in the Parts group or smaller than the Part Size joined where touching; a
@@ -2024,6 +2662,112 @@ def buckled(t, depth, pressed, co, size, amount, x, y):
     return t.math("MAXIMUM", blended, pressed, x=x + 7, y=y)
 
 
+def pancaked(t, h, top, depth, height, x, y):
+    """Height of each point with the depth taken floor by floor from the top of its column, each
+    floor squashed to its rubble before the one under it gives, the share of its floor crushed,
+    how much it lost and where the point is up its floor"""
+
+    def m(operation, *values, dx=0.0, dy=0.0, clamp=False):
+        return t.math(operation, *values, x=x + dx, y=y + dy, clamp=clamp)
+
+    def pick(condition, true, false, dx, dy):
+        return t.node(
+            "GeometryNodeSwitch",
+            x + dx,
+            y + dy,
+            {"Switch": condition, "False": false, "True": true},
+            input_type="FLOAT",
+        ).outputs[0]
+
+    height = m("MAXIMUM", height, 1e-4)
+    give = m("MULTIPLY", height, 1.0 - RUBBLE, dy=-1)
+    rubble = m("MULTIPLY", height, RUBBLE, dy=-2)
+    floors = m("MAXIMUM", m("CEIL", m("DIVIDE", top, height, dx=1), dx=2), 1.0, dx=3)
+    under_top = m("MULTIPLY", m("SUBTRACT", floors, 1.0, dx=3, dy=-1), height, dx=4, dy=-1)
+    # The top floor, maybe lower than the others, gives first
+    top_floor = m("MAXIMUM", m("SUBTRACT", top, under_top, dx=5, dy=-1), 1e-6, dx=6, dy=-1)
+    top_give = m("MULTIPLY", top_floor, 1.0 - RUBBLE, dx=6, dy=-2)
+    top_lost = m("MINIMUM", depth, top_give, dx=7, dy=-1)
+    # Then the floors under it, from the top: the ones past gone, the next one giving
+    rest = m(
+        "MINIMUM",
+        m("MAXIMUM", m("SUBTRACT", depth, top_lost, dx=7, dy=-3), 0.0, dx=8, dy=-3),
+        m("MULTIPLY", m("SUBTRACT", floors, 1.0, dx=7, dy=-4), give, dx=8, dy=-4),
+        dx=9,
+        dy=-3,
+    )
+    gone = m("FLOOR", m("DIVIDE", rest, give, dx=10, dy=-3), dx=11, dy=-3)
+    lost = m("SUBTRACT", rest, m("MULTIPLY", gone, give, dx=11, dy=-4), dx=12, dy=-3)
+    giving = m("SUBTRACT", m("SUBTRACT", floors, 2.0, dx=12, dy=-5), gone, dx=13, dy=-5)
+    level = m(
+        "MINIMUM",
+        m("FLOOR", m("DIVIDE", h, height, dx=1, dy=-6), dx=2, dy=-6),
+        m("SUBTRACT", floors, 1.0, dx=2, dy=-7),
+        dx=3,
+        dy=-6,
+    )
+    up = m(
+        "DIVIDE",
+        m("SUBTRACT", h, m("MULTIPLY", level, height, dx=3, dy=-8), dx=4, dy=-8),
+        height,
+        dx=5,
+        dy=-8,
+        clamp=True,
+    )
+    below = m("LESS_THAN", level, giving, dx=14, dy=-6)
+    at = m("COMPARE", level, giving, 0.1, dx=14, dy=-7)
+    base = m("MULTIPLY", giving, height, dx=14, dy=-8)
+    at_height = m("MULTIPLY_ADD", up, m("SUBTRACT", height, lost, dx=15, dy=-9), base, dx=16, dy=-8)
+    over_height = m(
+        "ADD",
+        m("ADD", base, m("SUBTRACT", height, lost, dx=15, dy=-10), dx=16, dy=-10),
+        m(
+            "MULTIPLY",
+            m(
+                "ADD",
+                m("SUBTRACT", m("SUBTRACT", level, giving, dx=14, dy=-11), 1.0, dx=15, dy=-11),
+                up,
+                dx=16,
+                dy=-11,
+            ),
+            rubble,
+            dx=17,
+            dy=-11,
+        ),
+        dx=18,
+        dy=-10,
+    )
+    lower = pick(below, h, pick(at, at_height, over_height, 18, -9), 19, -8)
+    lower_lost = pick(below, 0.0, pick(at, lost, give, 18, -12), 19, -12)
+    # The top floor on what is left under it
+    on_top = m("GREATER_THAN", m("SUBTRACT", h, under_top, dx=8, dy=-14), -1e-6, dx=9, dy=-14)
+    up_top = m(
+        "DIVIDE", m("SUBTRACT", h, under_top, dx=9, dy=-15), top_floor, dx=10, dy=-15, clamp=True
+    )
+    top_height = m(
+        "MULTIPLY_ADD",
+        up_top,
+        m("SUBTRACT", top_floor, top_lost, dx=11, dy=-16),
+        m("SUBTRACT", under_top, rest, dx=11, dy=-17),
+        dx=12,
+        dy=-16,
+    )
+    # Points over the top found on the grid, as on curved sides, as far over the new top
+    top_height = m(
+        "ADD",
+        top_height,
+        m("MAXIMUM", m("SUBTRACT", h, top, dx=12, dy=-18), 0.0, dx=13, dy=-18),
+        dx=13,
+        dy=-16,
+    )
+    crushed = pick(on_top, top_height, lower, 20, -14)
+    floor_lost = pick(on_top, top_lost, lower_lost, 20, -15)
+    share = m(
+        "DIVIDE", floor_lost, pick(on_top, top_give, give, 20, -17), dx=21, dy=-16, clamp=True
+    )
+    return crushed, share, floor_lost, pick(on_top, up_top, up, 20, -18)
+
+
 def limited(t, vector, length, x, y, rest=0.0):
     """Vector shortened to the length at most, zero if shorter than the rest length"""
     size = t.vmath("LENGTH", vector, x=x, y=y - 1)
@@ -2042,9 +2786,9 @@ def limited(t, vector, length, x, y, rest=0.0):
     )
 
 
-def bilinear(t, grid, value, cells, middle, spacing, co, x, y):
+def bilinear(t, grid, value, cells, middle, spacing, co, x, y, corners=False):
     """Vector of the grid at the position of the point on the plane, mixed between the four grid
-    points around it, the grid rows along Y"""
+    points around it, the grid rows along Y, or the four of them with their weights"""
     cell, share = [], []
     for i, axis in enumerate("XY"):
         corner = t.math(
@@ -2105,6 +2849,22 @@ def bilinear(t, grid, value, cells, middle, spacing, co, x, y):
         )
         return socket(node.outputs, "Result")
 
+    if corners:
+        rest = [t.math("SUBTRACT", 1.0, x_, x=x + 2.5, y=y - 12 - i) for i, x_ in enumerate(share)]
+        return [
+            (
+                at(dx, dy, y - 2 * (2 * dy + dx)),
+                t.math(
+                    "MULTIPLY",
+                    share[0] if dx else rest[0],
+                    share[1] if dy else rest[1],
+                    x=x + 3.5,
+                    y=y - 14 - 2 * dy - dx,
+                ),
+            )
+            for dy in (0, 1)
+            for dx in (0, 1)
+        ]
     return mix(
         mix(at(0, 0, y), at(1, 0, y - 2), share[0], y),
         mix(at(0, 1, y - 4), at(1, 1, y - 6), share[0], y - 4),
