@@ -5,7 +5,7 @@ from ..misc.geometry_nodes import (
     geometry_nodes_modifier_inputs,
 )
 from ..misc.mirror import check_mirror
-from ..misc.ui_collapse import ui_collapse_prop
+from ..misc.ui_collapse import ui_collapse_panel
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
 from . import MainPanel
@@ -29,8 +29,11 @@ def cloth_panel(layout, pi, mod):
     col.separator()
     col.prop(cloth, "pin_stiffness")
 
-    if ui_collapse_prop(layout, pi, "collapse_cloth_stiffness", "Stiffness"):
-        col = layout.column(align=True)
+    uid = f"MustardUI_Physics_{pi.object.name}"
+
+    body = ui_collapse_panel(layout, f"{uid}_Stiffness", "Stiffness")
+    if body:
+        col = body.column(align=True)
         if cloth.bending_model == "ANGULAR":
             col.prop(cloth, "tension_stiffness", text="Tension")
             col.prop(cloth, "compression_stiffness", text="Compression")
@@ -39,8 +42,9 @@ def cloth_panel(layout, pi, mod):
         col.prop(cloth, "shear_stiffness", text="Shear")
         col.prop(cloth, "bending_stiffness", text="Bending")
 
-    if ui_collapse_prop(layout, pi, "collapse_cloth_damping", "Damping"):
-        col = layout.column(align=True)
+    body = ui_collapse_panel(layout, f"{uid}_Damping", "Damping")
+    if body:
+        col = body.column(align=True)
         if cloth.bending_model == "ANGULAR":
             col.prop(cloth, "tension_damping", text="Tension")
             col.prop(cloth, "compression_damping", text="Compression")
@@ -49,61 +53,43 @@ def cloth_panel(layout, pi, mod):
         col.prop(cloth, "shear_damping", text="Shear")
         col.prop(cloth, "bending_damping", text="Bending")
 
-    if ui_collapse_prop(layout, pi, "collapse_cloth_internal_springs", "Internal Springs"):
-        col = layout.column(align=True)
+    body = ui_collapse_panel(layout, f"{uid}_InternalSprings", "Internal Springs")
+    if body:
+        col = body.column(align=True)
         col.prop(cloth, "internal_tension_stiffness", text="Tension")
         col.prop(cloth, "internal_compression_stiffness", text="Compression")
-        col = layout.column(align=True)
+        col = body.column(align=True)
         col.prop(cloth, "internal_tension_stiffness_max", text="Max Tension")
         col.prop(cloth, "internal_compression_stiffness_max", text="Max Compression")
 
-    if ui_collapse_prop(layout, pi, "collapse_cloth_pressure", "Pressure"):
-        col = layout.column(align=True)
+    body = ui_collapse_panel(layout, f"{uid}_Pressure", "Pressure")
+    if body:
+        col = body.column(align=True)
         col.prop(cloth, "uniform_pressure_force")
         col.prop(cloth, "pressure_factor")
 
-    if ui_collapse_prop(layout, pi, "collapse_cloth_cache", "Cache"):
+    body = ui_collapse_panel(layout, f"{uid}_Cache", "Cache")
+    if body:
         cache = mod.point_cache
-        row = layout.row(align=True)
+        row = body.row(align=True)
         row.prop(cache, "frame_start")
         row.prop(cache, "frame_end")
         row.prop(pi, "unique_cache_frames", icon="TRACKING_REFINE_BACKWARDS", text="")
 
-    row = layout.row(align=True)
     collisions = mod.collision_settings
-    row.prop(
-        pi,
-        "collapse_cloth_collisions",
-        icon="DOWNARROW_HLT" if not pi.collapse_cloth_collisions else "RIGHTARROW",
-        icon_only=True,
-        emboss=False,
-    )
-    row.prop(collisions, "use_collision", text="")
-    row.label(text="Collisions")
-
-    if not pi.collapse_cloth_collisions:
-        collisions = mod.collision_settings
-        col = layout.column(align=True)
+    header, body = layout.panel(f"{uid}_Collisions", default_closed=True)
+    header.prop(collisions, "use_collision", text="Collisions")
+    if body:
+        col = body.column(align=True)
         col.prop(collisions, "distance_min", slider=True, text="Distance")
         col.prop(collisions, "impulse_clamp")
-        col = layout.column(align=True)
+        col = body.column(align=True)
         col.prop(collisions, "collection", text="Collection")
 
-    row = layout.row(align=True)
-    collisions = mod.collision_settings
-    row.prop(
-        pi,
-        "collapse_cloth_self_collisions",
-        icon="DOWNARROW_HLT" if not pi.collapse_cloth_self_collisions else "RIGHTARROW",
-        icon_only=True,
-        emboss=False,
-    )
-    row.prop(collisions, "use_self_collision", text="")
-    row.label(text="Self Collisions")
-
-    if not pi.collapse_cloth_self_collisions:
-        collisions = mod.collision_settings
-        col = layout.column(align=True)
+    header, body = layout.panel(f"{uid}_SelfCollisions", default_closed=True)
+    header.prop(collisions, "use_self_collision", text="Self Collisions")
+    if body:
+        col = body.column(align=True)
         col.prop(collisions, "self_friction", slider=True, text="Friction")
         col.prop(collisions, "self_distance_min", slider=True, text="Minimum Distance")
         col.prop(collisions, "self_impulse_clamp", slider=True, text="Impulse Clamping")
@@ -149,8 +135,9 @@ def cloth_dynamics_panel(layout, pi, mod):
             continue
         col.prop(entry, "value", text=label)
 
-    if ui_collapse_prop(layout, pi, "collapse_cloth_dynamics_advanced", "Advanced"):
-        col = layout.column(align=True)
+    body = ui_collapse_panel(layout, f"MustardUI_Physics_{pi.object.name}_Advanced", "Advanced")
+    if body:
+        col = body.column(align=True)
         for key, label in CLOTH_DYNAMICS_UI_ADVANCED_FIELDS:
             socket = CLOTH_DYNAMICS_SOCKETS.get(key)
             entry = getattr(inputs, socket, None) if socket else None
@@ -171,9 +158,10 @@ def soft_body_panel(layout, pi, mod):
     col.prop(softbody, "mass")
     col.prop(softbody, "speed")
 
-    if ui_collapse_prop(layout, pi, "collapse_softbody_cache", "Cache"):
+    body = ui_collapse_panel(layout, f"MustardUI_Physics_{pi.object.name}_Cache", "Cache")
+    if body:
         cache = mod.point_cache
-        row = layout.row(align=True)
+        row = body.row(align=True)
         row.prop(cache, "frame_start")
         row.prop(cache, "frame_end")
         row.prop(pi, "unique_cache_frames", icon="TRACKING_REFINE_BACKWARDS", text="")

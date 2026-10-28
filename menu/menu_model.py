@@ -74,41 +74,33 @@ def draw_section(
         and (not section.advanced or (section.advanced and settings.advanced))
         and draw_sub
     ):
-        box = layout
-
         # Header
-        row = layout.row(align=False)
         if section.collapsable:
-            row.prop(
-                section,
-                "collapsed",
-                icon="DOWNARROW_HLT" if not section.collapsed else "RIGHTARROW",
-                icon_only=True,
-                emboss=False,
-            )
-        if section.icon != "" and section.icon != "NONE":
-            row.label(text=section.name, icon=section.icon)
+            header, body = layout.panel(f"MustardUI_Section_{obj.name}_{section.name}")
         else:
-            row.label(text=section.name)
-        row.operator(
+            header, body = layout.row(align=False), layout.box()
+        if section.icon != "" and section.icon != "NONE":
+            header.label(text=section.name, icon=section.icon)
+        else:
+            header.label(text=section.name)
+        header.operator(
             "mustardui.section_property_default", text="", icon="LOOP_BACK"
         ).section_id = section_id
 
         # Properties
-        if not section.collapsed:
-            box = layout.box()
+        if body:
             if section.description != "":
-                box2 = box.box()
+                box = body.box()
                 label_multiline(
                     context=context,
                     text=section.description,
-                    parent=box2,
+                    parent=box,
                     icon=section.description_icon,
                 )
             for prop in custom_properties_section:
-                draw_property(box, obj, settings, rig_settings, prop)
+                draw_property(body, obj, settings, rig_settings, prop)
 
-        return box, not section.collapsed
+        return body, body is not None
 
     return layout, False
 

@@ -7,7 +7,7 @@ from ..misc.geometry_nodes import (
     draw_geometry_nodes_modifier_inputs,
     geometry_nodes_modifier_inputs,
 )
-from ..misc.ui_collapse import ui_collapse_prop
+from ..misc.ui_collapse import ui_collapse_panel
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..model_toolkit.physics.physics_presets import find_physics_modifier
 from ..physics.definitions_nodes import (
@@ -290,7 +290,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     )
 
 
-def hair_dynamics_panel(layout, rig_settings, mod):
+def hair_dynamics_panel(layout, mod):
     # Generic nodes
     if not (mod.node_group and mod.node_group.name.startswith(HAIR_DYNAMICS_NODE_GROUP)):
         col = layout.column(align=True)
@@ -329,8 +329,11 @@ def hair_dynamics_panel(layout, rig_settings, mod):
             continue
         col.prop(entry, "value", text=label)
 
-    if ui_collapse_prop(layout, rig_settings, "collapse_hair_dynamics_advanced", "Advanced"):
-        col = layout.column(align=True)
+    body = ui_collapse_panel(
+        layout, f"MustardUI_HairDynamics_{mod.id_data.name}_Advanced", "Advanced"
+    )
+    if body:
+        col = body.column(align=True)
         for key, label in HAIR_DYNAMICS_UI_ADVANCED_FIELDS:
             entry = hair_dynamics_input(mod, key)
             if entry is None:
@@ -392,7 +395,7 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
         if modifier is None:
             return
 
-        hair_dynamics_panel(layout, rig_settings, modifier)
+        hair_dynamics_panel(layout, modifier)
 
 
 def hair_children_inputs(context, rig_settings):

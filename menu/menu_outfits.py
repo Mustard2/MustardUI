@@ -4,7 +4,6 @@ import bpy
 
 from ..configuration.naming_convention import strip_naming_convention
 from ..misc.outfits import outfit_extract_items_from_collection
-from ..misc.ui_collapse import ui_collapse_prop
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from . import MainPanel
 from .misc import PieceDrawCache, mustardui_custom_properties_print
@@ -41,17 +40,13 @@ def draw_outfit_piece(
         row.label(text="", icon="BLANK1")
 
     children = cache.children.get(obj, ())
-    collapse = False
+    collapse = bool(children) and obj.MustardUI_OutfitSettings.collapse_children
     if children:
-        collapse = not ui_collapse_prop(
-            row,
+        row.prop(
             obj.MustardUI_OutfitSettings,
             "collapse_children",
-            "",
-            icon="",
-            align=False,
-            use_layout=True,
-            emboss=True,
+            icon="RIGHTARROW" if collapse else "DOWNARROW_HLT",
+            icon_only=True,
             invert_checkbox=True,
         )
 
@@ -475,18 +470,9 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
                     rig_settings.model_MustardUI_naming_convention,
                 )
 
-                row = layout.row(align=True)
-                expanded = ui_collapse_prop(
-                    row,
-                    child,
-                    "MustardUI_extras_collapse",
-                    child_label,
-                    icon="OUTLINER_COLLECTION",
-                    use_layout=True,
-                    invert_checkbox=True,
-                )
-
-                row.operator(
+                header, body = layout.panel(f"MustardUI_Extras_{child.name}")
+                header.label(text=child_label, icon="OUTLINER_COLLECTION")
+                header.operator(
                     "mustardui.extras_collection_visibility",
                     text="",
                     icon=(
@@ -495,8 +481,8 @@ class PANEL_PT_MustardUI_Outfits_Extras(MainPanel, bpy.types.Panel):
                     depress=child.MustardUI_extras_show,
                 ).collection = child.name
 
-                if expanded:
-                    col = layout.column()
+                if body:
+                    col = body.column()
                     col.enabled = child.MustardUI_extras_show
                     for obj in sorted(citems, key=lambda x: x.name):
                         draw_outfit_piece(

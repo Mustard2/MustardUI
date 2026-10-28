@@ -216,7 +216,6 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                 self.remove_property(obj, "MustardUI_outfit_visibility")
                 self.remove_property(obj, "MustardUI_outfit_lock")
             for col in set(collections):
-                self.remove_property(col, "MustardUI_extras_collapse")
                 self.remove_property(col, "MustardUI_extras_show")
 
         # Remove or delete outfits
