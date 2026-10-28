@@ -3817,6 +3817,16 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
         "SCALE", t.vmath("ADD", moving, gravity, x=x + 4, y=y - 5), drag, x=x + 5, y=y - 5
     )
     bodies = t.store(bodies, ".shatter_velocity", "FLOAT_VECTOR", moving, x + 6, y)
+    # Speed of the fastest point of the piece
+    speed = t.math(
+        "MULTIPLY_ADD",
+        t.vmath("LENGTH", spin, x=x + 4, y=y - 11),
+        t.attribute(".shatter_radius", "FLOAT", x + 4, y - 12),
+        t.vmath("LENGTH", moving, x=x + 4, y=y - 13),
+        x=x + 5,
+        y=y - 11,
+    )
+    bodies = t.store(bodies, ".shatter_speed", "FLOAT", speed, x + 6.5, y)
     step_scale = t.math("MULTIPLY", h, loose, x=x + 6, y=y - 7)
     bodies = t.node(
         "GeometryNodeSetPosition",
@@ -4166,7 +4176,6 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
         y=y - 34,
     )
     spin = t.vmath("ADD", spin, twisting, x=x + 88, y=y - 34)
-    # Resting when touching and slow, as the friction between pieces only slows their sliding
     fastest = t.math(
         "MULTIPLY_ADD",
         t.vmath("LENGTH", spin, x=x + 88, y=y - 38),
@@ -4175,6 +4184,70 @@ def step(t, bodies, hull, planes, colliders, inputs, dt, x, y):
         x=x + 89,
         y=y - 37,
     )
+    # Not faster than it was or than the bounce off what pushes it, else squeezed pieces fly
+    pushing = [
+        sample(
+            t,
+            geometry,
+            t.node(
+                "GeometryNodeFieldMinAndMax",
+                x + 85,
+                y - 44 - i,
+                {
+                    "Value": t.math(
+                        "MULTIPLY",
+                        t.vmath(
+                            "LENGTH",
+                            t.attribute(".shatter_surface", "FLOAT_VECTOR", x + 83, y - 44 - i),
+                            x=x + 84,
+                            y=y - 44 - i,
+                        ),
+                        t.attribute(".shatter_touching", "FLOAT", x + 83, y - 45 - i),
+                        x=x + 84.5,
+                        y=y - 44 - i,
+                    ),
+                    "Group ID": t.attribute(".shatter_piece", "INT", x + 84, y - 45 - i),
+                },
+                data_type="FLOAT",
+            ).outputs["Max"],
+            row,
+            "FLOAT",
+            x + 86,
+            y - 44 - i,
+        )
+        for i, (geometry, row) in enumerate(sources)
+    ]
+    limit = t.math(
+        "MAXIMUM",
+        t.attribute(".shatter_speed", "FLOAT", x + 86, y - 43),
+        t.math(
+            "MULTIPLY",
+            t.math("MAXIMUM", *pushing, x=x + 87, y=y - 44),
+            t.math("ADD", inputs["Bounce"], 1.0, x=x + 87, y=y - 45),
+            x=x + 88,
+            y=y - 44,
+        ),
+        x=x + 89,
+        y=y - 43,
+    )
+    limit = t.math("ADD", limit, PUSH_OUT_SPEED, x=x + 90, y=y - 43)
+    kept = t.math(
+        "MINIMUM",
+        t.math(
+            "DIVIDE",
+            limit,
+            t.math("MAXIMUM", fastest, 1e-9, x=x + 90, y=y - 44),
+            x=x + 91,
+            y=y - 43,
+        ),
+        1.0,
+        x=x + 92,
+        y=y - 43,
+    )
+    moving = t.vmath("SCALE", moving, kept, x=x + 92, y=y - 31)
+    spin = t.vmath("SCALE", spin, kept, x=x + 92, y=y - 35)
+    fastest = t.math("MINIMUM", fastest, limit, x=x + 93, y=y - 37)
+    # Resting when touching and slow, as the friction between pieces only slows their sliding
     touched = t.node(
         "GeometryNodeAccumulateField",
         x + 86,
