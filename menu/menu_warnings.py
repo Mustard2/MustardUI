@@ -1,10 +1,10 @@
 import bpy
 
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..warnings.check_addon_version import check_addon_version
-from ..warnings.ops_fix_eevee_normals import check_eevee_normals
-from ..warnings.ops_remove_old_UI import check_old_ui_scripts
-from ..warnings.ops_update_ui import is_ui_update
+from ..ui_warnings.check_addon_version import check_addon_version
+from ..ui_warnings.ops_fix_eevee_normals import check_eevee_normals
+from ..ui_warnings.ops_remove_old_UI import check_old_ui_scripts
+from ..ui_warnings.ops_update_ui import is_ui_update
 from . import MainPanel
 
 
