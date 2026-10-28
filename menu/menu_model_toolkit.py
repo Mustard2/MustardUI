@@ -358,30 +358,6 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_marks", text="Marks", icon="TPAINT_HLT")
         row.operator("mustardui.model_toolkit_remove_marks", text="", icon="X")
 
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_imprints", text="Imprints", icon="MOD_DISPLACE")
-        row.operator("mustardui.model_toolkit_remove_imprints", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_dust_puff", text="Dust Puff", icon="FORCE_TURBULENCE")
-        row.operator("mustardui.model_toolkit_remove_dust_puff", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_dust_motes", text="Dust Motes", icon="PARTICLE_POINT")
-        row.operator("mustardui.model_toolkit_remove_dust_motes", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_aura", text="Aura", icon="LIGHT_POINT")
-        row.operator("mustardui.model_toolkit_remove_aura", text="", icon="X")
-
         layout.separator()
 
         row = layout.row(align=True)
@@ -392,18 +368,6 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
             "mustardui.model_toolkit_cloth_rip", text="Cloth Rip", icon="EMPTY_SINGLE_ARROW"
         )
         row.operator("mustardui.model_toolkit_remove_cloth_tear", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_shatter", text="Shatter", icon="MOD_EXPLODE")
-        row.operator("mustardui.model_toolkit_remove_shatter", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_crush", text="Crush", icon="MOD_MESHDEFORM")
-        row.operator("mustardui.model_toolkit_remove_crush", text="", icon="X")
 
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
@@ -420,6 +384,38 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
             "mustardui.model_toolkit_hex_dissolve", text="Hex Dissolve", icon="MESH_ICOSPHERE"
         )
         row.operator("mustardui.model_toolkit_remove_hex_dissolve", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_aura", text="Aura", icon="LIGHT_POINT")
+        row.operator("mustardui.model_toolkit_remove_aura", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_shatter", text="Shatter", icon="MOD_EXPLODE")
+        row.operator("mustardui.model_toolkit_remove_shatter", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_crush", text="Crush", icon="MOD_MESHDEFORM")
+        row.operator("mustardui.model_toolkit_remove_crush", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_imprints", text="Imprints", icon="MOD_DISPLACE")
+        row.operator("mustardui.model_toolkit_remove_imprints", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_dust_puff", text="Dust Puff", icon="FORCE_TURBULENCE")
+        row.operator("mustardui.model_toolkit_remove_dust_puff", text="", icon="X")
 
         layout.separator()
 
@@ -442,6 +438,14 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.separator()
         row.operator("mustardui.model_toolkit_fireball", text="Fireball", icon="LIGHT_SUN")
         row.operator("mustardui.model_toolkit_remove_fireball", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_dust_motes", text="Dust Motes", icon="PARTICLE_POINT")
+        row.operator("mustardui.model_toolkit_remove_dust_motes", text="", icon="X")
 
 
 def effect_draw_inputs(layout, modifier):
