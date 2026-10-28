@@ -2053,6 +2053,24 @@ class TestMarks(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_marks.poll())
 
 
+def small_islands(mesh, size):
+    """Whether each vertex is in a loose part of at most that many vertices"""
+    parent = list(range(len(mesh.vertices)))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for edge in mesh.edges:
+        a, b = find(edge.vertices[0]), find(edge.vertices[1])
+        parent[a] = b
+    roots = np.array([find(i) for i in range(len(parent))])
+    _, inverse, counts = np.unique(roots, return_inverse=True, return_counts=True)
+    return counts[inverse] <= size
+
+
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestImprints(BlenderTestCase):
     def setUp(self):
@@ -2172,10 +2190,11 @@ class TestImprints(BlenderTestCase):
         self.assertGreater((bulged - height)[(side > 0.5) & (side < 0.6)].max(), 0.003)
         effect.modifier_input(modifier, "Rim").value = 0.0
 
-        # Crisp without Softness, the surface around left as it is
+        # Crisp without Softness, the surface around left as it is, less subdivided around
         effect.modifier_input(modifier, "Softness").value = 0.0
         self.ground.update_tag()
-        np.testing.assert_allclose(self.heights()[1][side > 0.51], 0.0, atol=1e-6)
+        co, height, _ = self.heights()
+        np.testing.assert_allclose(height[np.abs(co[:, :2]).max(axis=1) > 0.51], 0.0, atol=1e-6)
 
     # A single point the rays pass by through a gap of the Colliders is imprinted as its neighbors
     def test_gap(self):
@@ -2227,6 +2246,155 @@ class TestImprints(BlenderTestCase):
             scene.frame_set(frame)
         np.testing.assert_allclose(self.heights()[1], 0.0, atol=1e-6)
         self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # Subdivided only near the body, the far parts of the ground left as they are
+    def test_subdivided_near(self):
+        set_active(self.ground)
+        self.add(kind="SNOW")
+        co, _, _ = self.heights()
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        self.assertLess(len(data.polygons), 4**8 * 3 // 4)
+        side = np.abs(co[:, :2]).max(axis=1)
+        # About 8 mm apart near the body, the corners far from it
+        self.assertGreater((side < 0.6).sum(), 15000)
+        self.assertLess((side > 0.9).sum(), 500)
+
+    # Cracks spread from the imprints up to their length, grooved and drawn by the shader attribute,
+    # and the surface around them breaks into slabs tilted by the rim, sharp apart
+    def test_cracks(self):
+        set_active(self.ground)
+        modifier = self.add(kind="ASPHALT")
+        effect.modifier_input(modifier, "Debris").value = False
+        self.ground.update_tag()
+        co, height, _ = self.heights()
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        crack = np.empty(len(data.vertices) * 4)
+        data.attributes["imprint_crack"].data.foreach_get("color", crack)
+        crack = crack.reshape(-1, 4)
+        # On the cracks, within the unit vector to them
+        cracked = (crack[:, 3] < 0.5) & (np.linalg.norm(crack[:, :3], axis=1) < 1.0)
+        side = np.abs(co[:, :2]).max(axis=1)
+        outside = side > 0.52
+        self.assertGreater((cracked & outside).sum(), 100)
+        self.assertLess(height[outside].min(), -0.002)
+        slab = np.empty(len(data.vertices) * 4)
+        data.attributes["imprint_slab"].data.foreach_get("color", slab)
+        self.assertGreater((slab.reshape(-1, 4)[:, 3] < 1.0)[outside].sum(), 100)
+        self.assertGreater(height[outside].max(), 0.01)
+        sharp = np.zeros(len(data.edges), dtype=bool)
+        data.attributes["sharp_edge"].data.foreach_get("value", sharp)
+        self.assertGreater(sharp.sum(), 100)
+        # Not past the Crack Length and the slabs
+        reach = sum(
+            effect.modifier_input(modifier, x).value
+            for x in ("Crack Length", "Slab Size", "Rim Width", "Rim Width")
+        )
+        far = side > 0.5 + reach
+        np.testing.assert_allclose(height[far], 0.0, atol=1e-6)
+        self.assertFalse(cracked[far].any())
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        effect.modifier_input(modifier, "Cracks").value = False
+        effect.modifier_input(modifier, "Rim").value = 0.0
+        self.ground.update_tag()
+        co, height, _ = self.heights()
+        side = np.abs(co[:, :2]).max(axis=1)
+        np.testing.assert_allclose(height[side > 0.52], 0.0, atol=1e-6)
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        for name in ("imprint_crack", "imprint_slab"):
+            values = np.empty(len(data.vertices) * 4)
+            data.attributes[name].data.foreach_get("color", values)
+            np.testing.assert_allclose(values.reshape(-1, 4)[:, 3], 1.0)
+
+    # With Chunks the slabs are separate thick pieces, the surface sunk under them
+    def test_chunks(self):
+        set_active(self.ground)
+        modifier = self.add(kind="ASPHALT")
+        effect.modifier_input(modifier, "Debris").value = False
+        self.ground.update_tag()
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        # Out of the ground, the largest part
+        self.assertGreater(small_islands(data, len(data.vertices) // 2).sum(), 100)
+        sharp = np.zeros(len(data.polygons), dtype=bool)
+        data.attributes["sharp_face"].data.foreach_get("value", sharp)
+        self.assertTrue(sharp.any())
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        thickness = effect.modifier_input(modifier, "Thickness").value
+        # The sunk surface under them, out of the imprints
+        self.assertLess(co[2::3].min(), -0.03 - thickness * 0.9)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        effect.modifier_input(modifier, "Chunks").value = False
+        self.ground.update_tag()
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        self.assertFalse(small_islands(data, len(data.vertices) - 1).any())
+
+    # The imprints tinted with the uneven color, none without Tint
+    def test_tint(self):
+        set_active(self.ground)
+        modifier = self.add(kind="MUD")
+        co, height, amount = self.heights()
+        self.assertGreater(amount.max(), 0.99)
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        detail = np.empty(len(data.vertices) * 3)
+        data.attributes["imprint_detail"].data.foreach_get("vector", detail)
+        np.testing.assert_allclose(detail.reshape(-1, 3)[:, 0], 0.5, atol=1e-6)
+        np.testing.assert_allclose(detail.reshape(-1, 3)[:, 1], 80.0, atol=1e-4)
+
+        effect.modifier_input(modifier, "Tint").value = False
+        self.ground.update_tag()
+        np.testing.assert_allclose(self.heights()[2], 0.0, atol=1e-6)
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        data.attributes["imprint_detail"].data.foreach_get("vector", detail)
+        np.testing.assert_allclose(detail.reshape(-1, 3)[:, 0], 0.0)
+
+    # Chunks stick to the body leaving the imprints, then fall back into them, tinted as them
+    def test_debris(self):
+        set_active(self.ground)
+        modifier = self.add(kind="ASPHALT")
+        effect.modifier_input(modifier, "Debris Amount").value = 1000.0
+        effect.modifier_input(modifier, "Chunks").value = False
+        self.ground.update_tag()
+        scene = bpy.context.scene
+        start = scene.frame_current
+        self.body.keyframe_insert("location", frame=start + 2)
+        self.body.location.z += 0.5
+        self.body.keyframe_insert("location", frame=start + 6)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        lifted = 0.0
+        for frame in range(start, start + 40):
+            scene.frame_set(frame)
+            if frame not in (start + 5, start + 39):
+                continue
+            data = self.ground.evaluated_get(depsgraph).data
+            co = np.empty(len(data.vertices) * 3)
+            data.vertices.foreach_get("co", co)
+            chunks = small_islands(data, 12)
+            # Local to the ground, moved but not turned or scaled
+            height = co.reshape(-1, 3)[chunks, 2]
+            lifted = max(lifted, height.max(initial=0.0))
+        self.assertGreater(chunks.sum(), 100)
+        self.assertGreater(lifted, 0.1)
+        # Resting in the imprints and their grooves, not falling through
+        self.assertGreater(height.min(), -0.08)
+        self.assertLess(height.max(), 0.0)
+        material = np.empty(len(data.polygons), dtype=np.int32)
+        data.polygons.foreach_get("material_index", material)
+        self.assertFalse(material.any())
+        imprint = np.empty(len(data.vertices) * 4)
+        data.attributes["imprint"].data.foreach_get("color", imprint)
+        np.testing.assert_allclose(imprint.reshape(-1, 4)[chunks, 3], 0.0)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # As many chunks however far apart the points of the ground
+        effect.modifier_input(modifier, "Subdivisions").value = 6
+        self.ground.update_tag()
+        for frame in range(start, start + 8):
+            scene.frame_set(frame)
+        coarse = small_islands(self.ground.evaluated_get(depsgraph).data, 12).sum()
+        self.assertGreater(coarse, chunks.sum() * 0.6)
+        self.assertLess(coarse, chunks.sum() * 1.6)
 
     # The Colliders collection goes with the effect, keeping the objects only in it in the scene
     def test_remove(self):
@@ -2423,7 +2591,9 @@ class TestDustPuff(BlenderTestCase):
         effect.modifier_input(self.ground.modifiers["Imprints"], "Subdivisions").value = 4
         self.ground.update_tag()
         geometry = self.evaluate(20)
-        self.assertEqual(len(geometry.mesh.polygons), 256)
+        # Subdivided near the body, the grains not part of the mesh
+        self.assertGreater(len(geometry.mesh.polygons), 16)
+        self.assertLessEqual(len(geometry.mesh.polygons), 256)
         grains = self.grains(geometry)
         self.assertNotIn("imprint", grains.mesh.attributes)
         self.assertIsNotNone(geometry.volume)

@@ -113,13 +113,13 @@ class Tree:
         )
         return socket(node.outputs, "Attribute")
 
-    def store(self, geometry, name, data_type, value, x, y, domain="POINT"):
+    def store(self, geometry, name, data_type, value, x, y, domain="POINT", selection=None):
         """Geometry with the value stored in the named attribute"""
         node = self.node(
             "GeometryNodeStoreNamedAttribute",
             x,
             y,
-            {"Geometry": geometry, "Name": name, "Value": value},
+            {"Geometry": geometry, "Name": name, "Value": value, "Selection": selection},
             data_type=data_type,
             domain=domain,
         )

@@ -2,10 +2,12 @@ import math
 import os
 
 import bpy
+from mathutils import Vector
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
 from .effect import (
     add_effect_modifier,
+    colliders_scale,
     effects_available,
     is_effect,
     materials,
@@ -31,6 +33,8 @@ PRESETS = {
         "Rim Width": 0.03,
         "Noise": 0.3,
         "Color": (0.82, 0.88, 1.0, 1.0),
+        "Detail": 0.3,
+        "Detail Scale": 60.0,
         "Recovery": 0.0,
     },
     "SAND": {
@@ -40,6 +44,8 @@ PRESETS = {
         "Noise": 0.4,
         "Noise Scale": 50.0,
         "Color": (0.85, 0.8, 0.74, 1.0),
+        "Detail": 0.4,
+        "Detail Scale": 300.0,
         "Recovery": 0.0,
     },
     "MUD": {
@@ -48,7 +54,24 @@ PRESETS = {
         "Rim Width": 0.04,
         "Noise": 0.2,
         "Color": (0.7, 0.65, 0.6, 1.0),
+        "Detail": 0.5,
+        "Detail Scale": 80.0,
         "Recovery": 0.0,
+    },
+    "ASPHALT": {
+        "Depth": 0.03,
+        "Rim": 1.5,
+        "Rim Width": 0.06,
+        "Noise": 0.15,
+        "Noise Scale": 25.0,
+        "Color": (0.6, 0.6, 0.6, 1.0),
+        "Detail": 0.5,
+        "Detail Scale": 200.0,
+        "Recovery": 0.0,
+        "Cracks": True,
+        "Crack Width": 0.012,
+        "Chunks": True,
+        "Debris": True,
     },
     "CUSHION": {
         "Depth": 0.1,
@@ -57,13 +80,31 @@ PRESETS = {
         "Rim": 0.0,
         "Noise": 0.0,
         "Color": (1.0, 1.0, 1.0, 1.0),
+        "Detail": 0.0,
         "Recovery": 2.0,
     },
 }
 
+# Powers of the scale of Colliders larger than a person the inputs are multiplied by: the distances
+# by it, as many bumps, cracks and chunks for imprints that large
+SCALING = {
+    "Depth": 1,
+    "Rim Width": 1,
+    "Softness": 1,
+    "Crack Length": 1,
+    "Crack Width": 1,
+    "Slab Size": 1,
+    "Thickness": 1,
+    "Debris Size": 1,
+    "Noise Scale": -1,
+    "Detail Scale": -1,
+    "Crack Amount": -1,
+    "Debris Amount": -2,
+}
+
 
 class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
-    """Imprint the other selected meshes, or the model body, in the active mesh, as in snow, sand, mud or a cushion, keeping the imprints where they pass.\nMore objects can be added to the Colliders collection of the effect\nBlender 5.2 or above is required"""  # noqa: E501
+    """Imprint the other selected meshes, or the model body, in the active mesh, as in snow, sand, mud, asphalt or a cushion, keeping the imprints where they pass.\nMore objects can be added to the Colliders collection of the effect\nBlender 5.2 or above is required"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_imprints"
     bl_label = "Add Imprints"
@@ -75,6 +116,7 @@ class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
             ("SNOW", "Snow", "Deep imprints with a small rim, lasting"),
             ("SAND", "Sand", "Shallow grainy imprints with a rim, lasting"),
             ("MUD", "Mud", "Dark imprints with a high rim, lasting"),
+            ("ASPHALT", "Asphalt", "Shallow imprints breaking the surface into chunks, lasting"),
             ("CUSHION", "Cushion", "Soft surface wrapping around the Colliders, filling back"),
         ),
     )
@@ -105,16 +147,30 @@ class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
         modifier_input(modifier, "Colliders").value = collection
         for name, value in PRESETS[self.kind].items():
             modifier_input(modifier, name).value = value
+        scale = colliders_scale(colliders)
+        for name, power in SCALING.items():
+            modifier_input(modifier, name).value *= scale**power
         modifier_input(modifier, "Start Frame").value = context.scene.frame_current
-        # Subdivided for the longest edges to reach the edge length, without too many faces
+        # Subdivided for the longest edges to reach the edge length, without too many faces near the
+        # Colliders, as only there it is subdivided
         co = [ground.matrix_world @ x.co for x in ground.data.vertices]
         length = max(
             ((co[a] - co[b]).length for a, b in (x.vertices for x in ground.data.edges)),
             default=0.0,
         )
-        faces = max(len(ground.data.polygons), 1)
+        corners = [obj.matrix_world @ Vector(c) for obj in colliders for c in obj.bound_box]
+        margin = Vector((3.0, 3.0, 3.0)) * modifier_input(modifier, "Depth").value
+        low = Vector(map(min, *corners)) - margin if corners else None
+        high = Vector(map(max, *corners)) + margin if corners else None
+        faces = max(
+            sum(
+                low is None or all(low[i] <= c[i] <= high[i] for i in range(3))
+                for c in (ground.matrix_world @ x.center for x in ground.data.polygons)
+            ),
+            1,
+        )
         levels = min(
-            math.ceil(math.log2(max(length / EDGE_LENGTH, 1.0))),
+            math.ceil(math.log2(max(length / (EDGE_LENGTH * scale), 1.0))),
             int(math.log(max(MAX_FACES / faces, 1.0), 4)),
             8,
         )
