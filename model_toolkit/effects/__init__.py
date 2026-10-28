@@ -18,6 +18,8 @@ from . import (
     ops_sticky_strands,
     ops_wet,
     ops_wrap,
+    settings,
+    ui_list,
 )
 
 
@@ -41,9 +43,13 @@ def register():
     ops_dust_motes.register()
     ops_aura.register()
     ops_select_object.register()
+    settings.register()
+    ui_list.register()
 
 
 def unregister():
+    ui_list.unregister()
+    settings.unregister()
     ops_select_object.unregister()
     ops_aura.unregister()
     ops_dust_motes.unregister()

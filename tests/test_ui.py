@@ -166,7 +166,25 @@ class TestUI(BlenderTestCase):
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_aura()
         bpy.ops.mustardui.model_toolkit_dust_motes()
-        self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_SceneEffects")
+        bpy.context.view_layer.update()
+
+        # A row for each modifier, and for each object with the shader only effects
+        scene = bpy.context.scene
+        rows = [(x.effect, x.object, x.modifier) for x in scene.MustardUI_SceneEffects]
+        self.assertIn(("Hex Dissolve", cube, ""), rows)
+        self.assertEqual([x for x in rows if x[0] == "Marks"][1][1:], (cube, "Marks.001"))
+        # The settings of each effect, the Wet and Aura with their shaders
+        for index in range(len(rows)):
+            scene.mustardui_scene_effects_uilist_index = index
+            self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_SceneEffects")
+
+        # The active effect is kept when the list changes
+        scene.mustardui_scene_effects_uilist_index = rows.index(("Hex Dissolve", cube, ""))
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_ripple()
+        bpy.context.view_layer.update()
+        active = scene.MustardUI_SceneEffects[scene.mustardui_scene_effects_uilist_index]
+        self.assertEqual((active.effect, active.object), ("Hex Dissolve", cube))
 
         # The effect objects and their Controls are selected from the panel
         bpy.ops.mustardui.model_toolkit_select_object(name=cube.name)

@@ -6,58 +6,17 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ..model_toolkit.effects import (
-    ops_aura,
-    ops_cloth_tear,
-    ops_crush,
-    ops_disintegration,
-    ops_dust_motes,
-    ops_dust_puff,
-    ops_fireball,
-    ops_foam,
-    ops_hex_dissolve,
-    ops_imprints,
-    ops_marks,
-    ops_ripple,
-    ops_shatter,
-    ops_sticky_liquid,
-    ops_sticky_strands,
-    ops_wet,
-    ops_wrap,
-)
 from ..model_toolkit.effects.effect import (
     SETTINGS,
     effects_available,
-    is_effect,
     materials,
     shader_nodes,
 )
 from ..model_toolkit.effects.ops_squish import squish_draw_settings
+from ..model_toolkit.effects.settings import EFFECTS
 from ..model_toolkit.mesh.ops_smooth_shape_key import smooth_shape_key_draw_settings
 from ..model_toolkit.outfits.ops_fit_to_body import fit_to_body_draw_settings
 from . import MainPanel
-
-# Name, icon, modifier node group and material node group of the effects
-EFFECTS = (
-    ("Ripple", "MOD_WAVE", ops_ripple.NODE_GROUP, None),
-    ("Sticky Strands", "STRANDS", ops_sticky_strands.NODE_GROUP, None),
-    ("Sticky Liquid", "MOD_FLUIDSIM", ops_sticky_liquid.NODE_GROUP, None),
-    ("Wet", "MATFLUID", ops_wet.NODE_GROUP, ops_wet.FILM),
-    ("Foam", "OUTLINER_DATA_POINTCLOUD", ops_foam.NODE_GROUP, None),
-    ("Marks", "TPAINT_HLT", ops_marks.NODE_GROUP, None),
-    ("Imprints", "MOD_DISPLACE", ops_imprints.NODE_GROUP, None),
-    ("Dust Puff", "FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None),
-    ("Dust Motes", "PARTICLE_POINT", ops_dust_motes.NODE_GROUP, None),
-    ("Aura", "LIGHT_POINT", ops_aura.NODE_GROUP, ops_aura.GLOW),
-    ("Disintegration", "PARTICLES", ops_disintegration.NODE_GROUP, None),
-    ("Hex Dissolve", "MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP),
-    ("Cloth Tear", "MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
-    ("Shatter", "MOD_EXPLODE", ops_shatter.NODE_GROUP, None),
-    ("Crush", "MOD_MESHDEFORM", ops_crush.NODE_GROUP, None),
-    ("Rope", "CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None),
-    ("Tape", "MOD_THICKNESS", ops_wrap.Tape.node_group, None),
-    ("Fireball", "LIGHT_SUN", ops_fireball.NODE_GROUP, None),
-)
 
 
 class PANEL_PT_MustardUI_ModelToolkit(MainPanel, bpy.types.Panel):
@@ -492,25 +451,6 @@ def effect_draw_inputs(layout, modifier):
                 ).name = socket.value.name
 
 
-def scene_effects(context):
-    """Name, icon, modifiers and material nodes of the effects in the scene"""
-    objects = context.scene.objects
-    scene_materials = materials(objects)
-    for name, icon, node_group, material_group in EFFECTS:
-        modifiers = (
-            [(x, m) for x in objects for m in x.modifiers if is_effect(m, node_group)]
-            if node_group
-            else []
-        )
-        nodes = (
-            [(m, n) for m in scene_materials for n in shader_nodes(m, material_group)]
-            if material_group
-            else []
-        )
-        if modifiers or nodes:
-            yield name, icon, modifiers, nodes
-
-
 class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.types.Panel):
     header = ("Scene Effects", "SCENE_DATA")
     guide = "Effects"
@@ -520,50 +460,49 @@ class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.type
         return (
             effects_available()
             and super().poll(context)
-            and next(scene_effects(context), None) is not None
+            and len(context.scene.MustardUI_SceneEffects) > 0
         )
 
     def draw(self, context):
         layout = self.layout
+        scene = context.scene
+        effects = scene.MustardUI_SceneEffects
 
-        for name, icon, modifiers, nodes in scene_effects(context):
-            for obj, modifier in modifiers:
-                header, sub = layout.panel(
-                    f"MustardUI_SceneEffects_{obj.name}_{modifier.persistent_uid}",
-                    default_closed=True,
-                )
-                row = header.row(align=True)
-                # Numbered for the objects with more of them
-                same = [m for x, m in modifiers if x == obj]
-                label = f"{obj.name} {same.index(modifier) + 1}" if len(same) > 1 else obj.name
-                row.label(text=f"{name}: {label}", icon=icon)
-                row.prop(modifier, "show_viewport", text="", emboss=False)
-                row.prop(modifier, "show_render", text="", emboss=False)
-                row.operator(
-                    "mustardui.model_toolkit_select_object",
-                    text="",
-                    icon="RESTRICT_SELECT_OFF",
-                    emboss=False,
-                ).name = obj.name
-                if sub:
-                    effect_draw_inputs(sub, modifier)
+        layout.template_list(
+            "MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects",
+            "",
+            scene,
+            "MustardUI_SceneEffects",
+            scene,
+            "mustardui_scene_effects_uilist_index",
+        )
 
-            # The materials sharing the settings once, the effects added before alone
-            shared = {}
-            for material, node in nodes:
-                settings = node.node_tree.nodes.get(SETTINGS) or node
-                shared.setdefault(settings, set()).add(material)
-            for settings, users in shared.items():
-                first = min(users, key=lambda x: x.name)
-                header, sub = layout.panel(
-                    f"MustardUI_SceneEffects_{name}_{first.name}_{settings.name}",
-                    default_closed=True,
-                )
-                label = "Material" if settings.name == SETTINGS else first.name
-                header.label(text=f"{name}: {label}", icon=icon)
-                for socket in settings.inputs if sub else ():
-                    if not (socket.is_linked or socket.hide_value):
-                        sub.row().prop(socket, "default_value", text=socket.name)
+        index = scene.mustardui_scene_effects_uilist_index
+        item = effects[index] if index < len(effects) else None
+        if item is None or item.object is None:
+            return
+        modifier = item.object.modifiers.get(item.modifier)
+        if modifier is not None and modifier.node_group is not None:
+            header, body = layout.panel("MustardUI_SceneEffects_GeometryNodes")
+            header.label(text="Geometry Nodes", icon="GEOMETRY_NODES")
+            if body:
+                effect_draw_inputs(body, modifier)
+
+        material_group = EFFECTS[item.effect][2]
+        if material_group is None:
+            return
+        # The materials sharing the settings once, the effects added before alone
+        shared = {}
+        for material in sorted(materials([item.object]), key=lambda x: x.name):
+            for node in shader_nodes(material, material_group):
+                shared.setdefault(node.node_tree.nodes.get(SETTINGS) or node, material)
+        for settings, material in shared.items():
+            header, body = layout.panel(f"MustardUI_SceneEffects_Shader_{material.name}")
+            label = "Shader" if settings.name == SETTINGS else f"Shader: {material.name}"
+            header.label(text=label, icon="NODE_MATERIAL")
+            for socket in settings.inputs if body else ():
+                if not (socket.is_linked or socket.hide_value):
+                    body.row().prop(socket, "default_value", text=socket.name)
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.types.Panel):
