@@ -1888,7 +1888,7 @@ def build_film(mist):
         "Mist",
         "NodeSocketFloat",
         subtype="FACTOR",
-        default_value=1.0,
+        default_value=0.6,
         min_value=0.0,
         max_value=1.0,
         description="Amount of tiny drops in the film",
@@ -1999,6 +1999,27 @@ def build_film(mist):
         description="Number of glossy and damp patches per meter",
     )
     add_output(ng, "Shader", "NodeSocketShader")
+    # After the output, to keep the socket identifiers of the films in existing scenes, Strength
+    # moved to the top
+    add_input(
+        ng,
+        "Simplify",
+        "NodeSocketBool",
+        default_value=False,
+        description="Film without tiny drops, trails and relief, several times faster in the "
+        "viewport, to turn off for final renders",
+    )
+    strength = add_input(
+        ng,
+        "Strength",
+        "NodeSocketFloat",
+        subtype="FACTOR",
+        default_value=1.0,
+        min_value=0.0,
+        max_value=1.0,
+        description="Strength of the whole film, fading it into the dry surface",
+    )
+    ng.interface.move(strength, ng.interface.items_tree["Roughness"].position)
 
     t = Tree(ng, spacing=(200, 180))
     inputs = t.node("NodeGroupInput", 0, 0).outputs
@@ -2123,7 +2144,7 @@ def build_film(mist):
         "ShaderNodeTexNoise", 1, -19, {"Vector": rest, "Scale": TRAIL[0], "Detail": 3.0}
     ).outputs["Color"]
     meander = t.vmath("MULTIPLY_ADD", meander, (MEANDER / TRAIL[0],) * 3, rest, x=2, y=-19)
-    trails = t.node(
+    distance = t.node(
         "ShaderNodeTexVoronoi",
         3,
         -19,
@@ -2135,7 +2156,7 @@ def build_film(mist):
         4,
         -19,
         {
-            "Value": trails,
+            "Value": distance,
             "From Min": TRAIL_WIDTH * TRAIL[0],
             "From Max": 0.5 * TRAIL_WIDTH * TRAIL[0],
         },
@@ -2184,9 +2205,36 @@ def build_film(mist):
     trails = t.math(
         "MULTIPLY", trails, t.math("MULTIPLY", wetness, TRAIL_HEIGHT, x=4.5, y=-20), x=5.5, y=-19
     )
+    # Trails as drops only their width on the surface, not where it runs along the cell walls
+    slope = t.math("MULTIPLY", distance, 0.25 / TRAIL[0], x=4, y=-25)
+    tilt = t.vmath(
+        "DOT_PRODUCT",
+        t.node("ShaderNodeBump", 4.5, -25, {"Distance": 1.0, "Height": slope}).outputs[0],
+        t.node("ShaderNodeNewGeometry", 4.5, -26).outputs["Normal"],
+        x=5,
+        y=-25,
+    )
+    sine = t.math(
+        "SQRT",
+        t.math("MULTIPLY_ADD", tilt, t.math("MULTIPLY", tilt, -1.0, x=5, y=-26), 1.0, x=5.5, y=-26),
+        x=6,
+        y=-26,
+    )
+    narrow = t.math(
+        "LESS_THAN",
+        t.math("MULTIPLY", slope, tilt, x=6, y=-25),
+        t.math("MULTIPLY", sine, TRAIL_WIDTH, x=6.5, y=-26),
+        x=6.5,
+        y=-25,
+    )
+    drops = t.math("MAXIMUM", height, t.math("MULTIPLY", trails, narrow, x=7, y=-25), x=7, y=-24)
     height = t.math("MAXIMUM", height, trails, x=5, y=-4)
+    # Simplified with a constant Mix, which shaders compile without the drops and relief at all
+    drops = t.node(
+        "ShaderNodeMix", 7.5, -24, {"Factor": inputs["Simplify"], "A": drops, "B": 0.0}
+    ).outputs[0]
     # The tiny drops smooth, their small glints not to blur away
-    in_drop = t.math("GREATER_THAN", height, 0.0, x=5, y=-6)
+    in_drop = t.math("GREATER_THAN", drops, 0.0, x=5, y=-6)
     # On a film of uneven thickness
     ripples = t.node(
         "ShaderNodeTexNoise",
@@ -2263,6 +2311,9 @@ def build_film(mist):
         },
         data_type="VECTOR",
     ).outputs[1]
+    height = t.node(
+        "ShaderNodeMix", 6.5, -4, {"Factor": inputs["Simplify"], "A": height, "B": 0.0}
+    ).outputs[0]
     # The height in meters, not scaled down by the default Distance
     normal = t.node(
         "ShaderNodeBump", 5, -4, {"Distance": 1.0, "Height": height, "Normal": surface}
@@ -2420,6 +2471,9 @@ def build_film(mist):
         },
     ).outputs[0]
     shader = t.node("ShaderNodeAddShader", 10, 0, {0: shader, 1: glossy}).outputs[0]
+    shader = t.node(
+        "ShaderNodeMixShader", 10.5, 0, {0: inputs["Strength"], 1: inputs["Shader"], 2: shader}
+    ).outputs[0]
     t.node("NodeGroupOutput", 11, 0, {"Shader": shader})
     return ng
 
