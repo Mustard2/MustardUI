@@ -801,6 +801,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         get=hair_list_get,
         set=hair_list_set,
         update=hair_list_update,
+        options=set(),
     )
 
     hair_custom_properties_icons: bpy.props.BoolProperty(

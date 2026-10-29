@@ -54,6 +54,10 @@ class TestHair(BlenderTestCase):
         self.assertTrue(self.visible("Hair Short"))
         self.assertFalse(self.visible("Hair Long"))
 
+    # Animation would call the hair setter while drawing, where it can not write
+    def test_hair_not_animatable(self):
+        self.assertFalse(self.rig_settings.bl_rna.properties["hair_list"].is_animatable)
+
     # Hair global switch toggles the Subdivision modifiers
     def test_global_modifier_switch(self):
         subsurf = bpy.data.objects["Hair Long"].modifiers.new("Subdivision", "SUBSURF")
