@@ -915,9 +915,11 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
         for coll in colls:
             coll.hide_viewport = coll.hide_render = coll.hide_select = False
         meshes = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
-        # Hidden again after being added, as their modifiers might have been disabled with them
-        hidden = [o for o in meshes if o.hide_viewport]
+        # Shown with the switch before being fitted and bound, as hiding them might have muted
+        # their Shape Keys and disabled their modifiers
         for obj in meshes:
+            if obj.hide_viewport:
+                switch_outfit_piece(arm, obj)
             obj.hide_viewport = obj.hide_render = obj.hide_select = False
 
         context.view_layer.update()
@@ -979,8 +981,6 @@ class MustardUI_ModelToolkit_AddOutfitFromFile(AddOutfitSettings, bpy.types.Oper
             outfits_update_armature_collections(rig_settings, arm)
 
         # Shown as in the UI, with only the last Extras piece as many can slow down the viewport
-        for obj in hidden:
-            obj.hide_viewport = obj.hide_render = True
         extras_added = pieces if self.destination == "EXTRAS" else groups[1][0]
         shown = set(pieces) - set(extras_added[:-1])
         switch = [p for p in pieces if p.hide_viewport == (p in shown)]

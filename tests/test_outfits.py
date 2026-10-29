@@ -1283,6 +1283,36 @@ class TestExportOutfits(BlenderTestCase):
         self.assertLess(max(abs(v) for row in glasses.matrix_world - matrix for v in row), 1e-5)
         self.assertFalse(any(m.type == "ARMATURE" for m in glasses.modifiers))
 
+    # Pieces exported hidden are bound with the Shape Keys they have when shown
+    def test_round_trip_hidden(self):
+        shirt = bpy.data.objects["Casual - Shirt"]
+        shirt.data.shape_keys.key_blocks["Tight"].data[0].co.z += 0.2
+        shirt.modifiers.new("CorrectiveSmooth", "CORRECTIVE_SMOOTH").rest_source = "BIND"
+        rig_settings = self.model["armature"].data.MustardUI_RigSettings
+        rig_settings.outfit_switch_shape_keys_disable = True
+        rig_settings.outfits_list = "Tester Formal"
+        self.assertTrue(shirt.data.shape_keys.key_blocks["Tight"].mute)
+        self.export("Tester Casual")
+        reset_scene()
+        model = build_model("Other")
+        configure_model(model, "Other").outfit_switch_shape_keys_disable = True
+        select_model(model)
+        bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
+            directory=os.path.dirname(self.path),
+            files=[{"name": os.path.basename(self.path)}],
+            fit="NONE",
+            transfer_shape_keys=False,
+        )
+
+        shirt = bpy.data.objects["Other Casual.001 - Shirt"]
+        self.assertFalse(shirt.hide_viewport or shirt.data.shape_keys.key_blocks["Tight"].mute)
+        coords = []
+        for show in (False, True):
+            shirt.modifiers["CorrectiveSmooth"].show_viewport = show
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            coords.append([v.co.copy() for v in shirt.evaluated_get(depsgraph).data.vertices])
+        self.assertLess(max((a - b).length for a, b in zip(*coords, strict=True)), 1e-5)
+
     # The armature of an Outfit is kept, the one of the model replaced
     def test_round_trip_own_armature(self):
         formal = self.model["outfits"][1]
