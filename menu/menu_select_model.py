@@ -108,10 +108,9 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                 row2.operator("mustardui.cleanmodel", text="", icon="BRUSH_DATA")
                 row2.operator("mustardui.remove", text="", icon="TRASH")
 
-        if addon_prefs.experimental and addon_prefs.settings_storage_in_menu:
-            layout.separator()
-            layout.label(text="Optimization (Experimental)", icon="FORCE_WIND")
-            layout.prop(addon_prefs, "settings_storage", expand=True)
+        layout.separator()
+        layout.label(text="Optimization", icon="FORCE_WIND")
+        layout.prop(addon_prefs, "settings_storage", expand=True)
 
 
 def register():

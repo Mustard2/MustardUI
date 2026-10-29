@@ -2785,7 +2785,7 @@ class TestShatter(BlenderTestCase):
         modifier = self.add(glass, kind="GLASS")
         colliders = effect.modifier_input(modifier, "Colliders").value
         self.assertEqual(list(colliders.objects), [bpy.data.objects["Tester Body"]])
-        self.assertTrue(effect.modifier_input(modifier, "Piece Collisions").value)
+        self.assertFalse(effect.modifier_input(modifier, "Piece Collisions").value)
 
         whole = self.evaluate(glass)[3]
         overlaps = []

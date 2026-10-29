@@ -79,14 +79,13 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     )
 
     # Experimental features
-    experimental: BoolProperty(
-        default=False,
-        name="Experimental Features",
-        description="Unlock experimental features throughout the add-on.\nNote that "
-        "experimental features might not work properly yet, or be changed/removed "
-        "from future versions",
-        update=lambda self, context: text_storage.apply(),
-    )
+    # experimental: BoolProperty(
+    #     default=False,
+    #     name="Experimental Features",
+    #     description="Unlock experimental features throughout the add-on.\nNote that "
+    #     "experimental features might not work properly yet, or be changed/removed "
+    #     "from future versions",
+    # )
 
     settings_storage: EnumProperty(
         name="Optimization",
@@ -110,15 +109,9 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     )
 
     settings_storage_startup: BoolProperty(
-        default=True,
+        default=False,
         name="Use Standard at Startup",
         description="Switch the Optimization setting to Standard at Startup",
-    )
-
-    settings_storage_in_menu: BoolProperty(
-        default=False,
-        name="Show Optimization in UI Panel",
-        description="Show Optimization Status and Settings in the UI Panel",
     )
 
     url_MustardUI = "https://github.com/Mustard2/MustardUI"
@@ -138,9 +131,9 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         row.enabled = self.developer
         row.prop(self, "debug")
 
-        col.separator()
-
-        col.prop(self, "experimental")
+        # col.separator()
+        #
+        # col.prop(self, "experimental")
 
         row = layout.row(align=True)
         row.operator("wm.url_open", text="GitHub", icon="URL").url = self.url_MustardUI
@@ -154,38 +147,36 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             box.label(text="Developer Settings", icon="PREFERENCES")
             box.prop(self, "new_property_limits")
 
-        if self.experimental:
-            box = layout.box()
-            box.label(text="Optimization (Experimental)", icon="FORCE_WIND")
-            row = box.row(align=True)
-            row.prop(self, "settings_storage", expand=True)
+        box = layout.box()
+        box.label(text="Optimization", icon="FORCE_WIND")
+        row = box.row(align=True)
+        row.prop(self, "settings_storage", expand=True)
 
-            col = box.column(align=True)
-            col.label(text="Limitations:", icon="ERROR")
-            if self.settings_storage == "ARMATURE":
-                col.label(
-                    text="• Cycles also loads the textures of hidden outfits, which might increase "
-                    "memory (VRAM) usage.",
-                    icon="BLANK1",
-                )
-                col.label(
-                    text="• Hidden outfits also slow down the viewport, e.g. when switching "
-                    "outfits or posing.",
-                    icon="BLANK1",
-                )
-            else:
-                for text in (
-                    "Older MustardUI versions can not read the models saved with this option",
-                    "Linked or overridden models are not supported",
-                    "Keyframes and drivers on MustardUI settings stop working (while Morphs and "
-                    "Custom properties work as intended)",
-                    "Every Armature in the file gets a hidden Text datablock",
-                ):
-                    col.label(text=f"• {text}", icon="BLANK1")
+        col = box.column(align=True)
+        col.label(text="Limitations:", icon="ERROR")
+        if self.settings_storage == "ARMATURE":
+            col.label(
+                text="• Cycles also loads the textures of hidden outfits, which might increase "
+                "memory (VRAM) usage.",
+                icon="BLANK1",
+            )
+            col.label(
+                text="• Hidden outfits also slow down the viewport, e.g. when switching "
+                "outfits or posing.",
+                icon="BLANK1",
+            )
+        else:
+            for text in (
+                "Older MustardUI versions can not read the models saved with this option",
+                "Linked or overridden models are not supported",
+                "Keyframes and drivers on MustardUI settings stop working (while Morphs and "
+                "Custom properties work as intended)",
+                "Every Armature in the file gets a hidden Text datablock",
+            ):
+                col.label(text=f"• {text}", icon="BLANK1")
 
-            col = box.column(align=True)
-            col.prop(self, "settings_storage_startup")
-            col.prop(self, "settings_storage_in_menu")
+        col = box.column(align=True)
+        col.prop(self, "settings_storage_startup")
 
         if self.debug:
             box = layout.box()

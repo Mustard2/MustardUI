@@ -72,7 +72,6 @@ class TestTextStorage(BlenderTestCase):
 
     def set_enabled(self, value):
         prefs = bpy.context.preferences.addons[ADDON].preferences
-        prefs.experimental = value
         prefs.settings_storage = "TEXT" if value else "ARMATURE"
 
     def snapshot(self, id_data):
@@ -143,10 +142,11 @@ class TestTextStorage(BlenderTestCase):
             self.save_reopen(directory)
         self.assertEqual(file_state(), state)
 
-    # Blender starts with Armature storage, unless disabled in the preferences
+    # Blender starts with Armature storage only if enabled in the preferences
     def test_startup(self):
         prefs = bpy.context.preferences.addons[ADDON].preferences
         self.set_enabled(True)
+        prefs.settings_storage_startup = True
         calls = self.count_conversions()
         storage._startup()
         self.assertEqual(prefs.settings_storage, "ARMATURE")
@@ -168,13 +168,6 @@ class TestTextStorage(BlenderTestCase):
         self.assertIsNone(self.arm.MustardUI_RigSettings.model_armature_object)
         storage._convert(False)
         self.assertEqual(self.snapshot(self.arm), settings)
-
-    # Text storage is active only with Experimental Features enabled
-    def test_experimental(self):
-        self.set_enabled(True)
-        bpy.context.preferences.addons[ADDON].preferences.experimental = False
-        self.assertIsNone(storage.text_of(self.arm))
-        self.assertEqual(self.arm.MustardUI_RigSettings.id_data, self.arm)
 
     # The materials of hidden outfits leave the depsgraph
     def test_hidden_outfit_materials(self):

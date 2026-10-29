@@ -1,4 +1,4 @@
-# Experimental: model settings on a Text, where the depsgraph does not follow their pointers
+# Model settings on a Text, where the depsgraph does not follow their pointers
 import bpy
 from bpy.app.handlers import persistent
 
@@ -155,7 +155,7 @@ def apply(*args):
     """Move the settings of all the models to the storage chosen in the preferences."""
     addon = bpy.context.preferences.addons.get(base_package)
     prefs = addon.preferences if addon is not None else None
-    enable = prefs is not None and prefs.experimental and prefs.settings_storage == "TEXT"
+    enable = prefs is not None and prefs.settings_storage == "TEXT"
     if enable != bool(_moved):
         _relocate(enable)
     _convert(enable)
@@ -173,7 +173,7 @@ def _depsgraph_update(scene, depsgraph):
         _convert(False)
 
 
-# Each Blender session starts with Armature storage, unless disabled in the preferences
+# Each Blender session starts with Armature storage only if enabled in the preferences
 def _startup():
     addon = bpy.context.preferences.addons.get(base_package)
     prefs = addon.preferences if addon is not None else None

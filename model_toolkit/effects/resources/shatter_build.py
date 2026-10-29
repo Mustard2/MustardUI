@@ -212,7 +212,7 @@ def build_inputs(ng):
         "Piece Collisions",
         "NodeSocketBool",
         panel,
-        default_value=True,
+        default_value=False,
         description="Pieces colliding with each other, slower with many pieces",
     )
     add_input(
