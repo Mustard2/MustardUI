@@ -2903,6 +2903,8 @@ class TestShatter(BlenderTestCase):
                 for name in ("Breakup", "Debris", "Smoke"):
                     effect.modifier_input(modifier, name).value = False
                 effect.modifier_input(modifier, "Floor Support").value = True
+                # For the floors over the broken one to land on its rubble
+                effect.modifier_input(modifier, "Piece Collisions").value = True
                 effect.modifier_input(modifier, "Floor Height").value = floor_height
                 effect.modifier_input(modifier, "Floors from Faces").value = faces
                 tower.update_tag()
