@@ -93,15 +93,15 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         items=(
             (
                 "ARMATURE",
-                "Standard",
-                "Standard set of optimizations.\nTested to work in all models without breaking "
-                "functionalities",
+                "Basic",
+                "Basic set of optimizations, storing the settings on the Armature.\nTested to "
+                "work in all models without breaking functionalities",
             ),
             (
                 "TEXT",
-                "Aggressive",
-                "More aggressive optimization, keeping the hidden outfits out of memory.\nPlease "
-                "check the Limitations notice in the Addon settings",
+                "Full",
+                "Full set of optimizations, also keeping the hidden outfits out of memory.\n"
+                "Please check the Limitations notice in the Addon settings",
             ),
         ),
         description="Optimization level",
