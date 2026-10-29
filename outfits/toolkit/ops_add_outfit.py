@@ -24,6 +24,7 @@ from ...model_toolkit.outfits.ops_fit_to_body import (
     fit_to_body_apply_to_children,
     fit_to_body_apply_to_mesh,
 )
+from ...text_storage.storage import evaluated
 from ..helper_functions import outfits_get_collections
 
 
@@ -291,18 +292,19 @@ def rebind_modifiers(context, objects, armature):
     shown = {mod: mod.show_viewport for _, mod in mods}
     armature.data.pose_position = "REST"
     try:
-        for obj, mod in mods:
-            # The binding is done when the modifier is evaluated
-            mod.show_viewport = True
-            if mod.type == "SURFACE_DEFORM":
-                surface_deform_bind(obj, mod)
-                continue
-            with context.temp_override(object=obj, active_object=obj):
-                # The operator unbinds the bound modifiers
-                if mod.is_bind:
+        with evaluated(objects):
+            for obj, mod in mods:
+                # The binding is done when the modifier is evaluated
+                mod.show_viewport = True
+                if mod.type == "SURFACE_DEFORM":
+                    surface_deform_bind(obj, mod)
+                    continue
+                with context.temp_override(object=obj, active_object=obj):
+                    # The operator unbinds the bound modifiers
+                    if mod.is_bind:
+                        bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
                     bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
-                bpy.ops.object.correctivesmooth_bind(modifier=mod.name)
-        context.view_layer.update()
+            context.view_layer.update()
     finally:
         armature.data.pose_position = pose_position
         for mod, show in shown.items():

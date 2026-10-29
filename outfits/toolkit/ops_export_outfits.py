@@ -515,10 +515,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             for image in self.packed:
                 image.unpack(method="REMOVE")
             # Text storage of the stand-in armature, also when the export stopped
-            for arm in [i for i in created if isinstance(i, bpy.types.Armature)]:
+            armatures = [i for i in created if isinstance(i, bpy.types.Armature)]
+            # Removed by remove_holder, and compared before as removed IDs are not equal
+            texts = {text_storage.text_of(x) for x in armatures}
+            removed = [i for i in created if not isinstance(i, bpy.types.Key) and i not in texts]
+            for arm in armatures:
                 text_storage.remove_holder(arm)
             # Remove the copies before giving back the names to the originals
-            bpy.data.batch_remove([i for i in created if not isinstance(i, bpy.types.Key)])
+            bpy.data.batch_remove(removed)
             for id_data, name in names:
                 id_data.name = name
             # The written armatures of the file back to the chosen storage

@@ -30,9 +30,10 @@ def driven_values(drivers, seeds, all_inputs):
 
 
 def morphs_enable_update(self, context):
-    arm = self.id_data
-    rig_settings = arm.MustardUI_RigSettings
+    # The settings can be on the Text storing them, instead of the armature
+    rig_settings = self.id_data.MustardUI_RigSettings
     rig = rig_settings.model_armature_object
+    arm = rig.data
     body = rig_settings.model_body
     enable = self.diffeomorphic_enable
     mute_used_sk = self.mute_shape_keys == "ALL"

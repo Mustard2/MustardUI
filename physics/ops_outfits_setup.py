@@ -12,6 +12,7 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from ..outfits.helper_functions import find_layer_collection, outfits_get_collection_items
+from ..text_storage.storage import evaluated
 from .update_enable import enable_physics_update
 
 
@@ -156,7 +157,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
             intersection_checker = MeshIntersectionChecker()
 
             for coll in colls:
-                with included_collection(coll):
+                with included_collection(coll), evaluated([coll]):
                     objs = outfits_get_collection_items(rig_settings, coll)
                     for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                         # Check if the Armature modifier is available on the Object
@@ -387,7 +388,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         intersection_checker = MeshIntersectionChecker()
 
         for coll in colls:
-            with included_collection(coll):
+            with included_collection(coll), evaluated([coll]):
                 objs = outfits_get_collection_items(rig_settings, coll)
                 for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                     # Check if the Armature modifier is available on the Object

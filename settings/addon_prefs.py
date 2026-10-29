@@ -89,7 +89,7 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
 
     settings_storage: EnumProperty(
         name="Optimization",
-        default="ARMATURE",
+        default="TEXT",
         items=(
             (
                 "ARMATURE",
@@ -100,18 +100,12 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             (
                 "TEXT",
                 "Aggressive",
-                "More aggressive optimization.\nIt might break some functionalities. Please check "
-                "the Limitations notice in the Addon settings",
+                "More aggressive optimization, keeping the hidden outfits out of memory.\nPlease "
+                "check the Limitations notice in the Addon settings",
             ),
         ),
         description="Optimization level",
         update=lambda self, context: text_storage.apply(),
-    )
-
-    settings_storage_startup: BoolProperty(
-        default=False,
-        name="Use Standard at Startup",
-        description="Switch the Optimization setting to Standard at Startup",
     )
 
     url_MustardUI = "https://github.com/Mustard2/MustardUI"
@@ -167,16 +161,12 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
             )
         else:
             for text in (
-                "Older MustardUI versions can not read the models saved with this option",
-                "Linked or overridden models are not supported",
-                "Keyframes and drivers on MustardUI settings stop working (while Morphs and "
-                "Custom properties work as intended)",
-                "Every Armature in the file gets a hidden Text datablock",
+                "Keyframes on MustardUI settings stop working (while Morphs and Custom "
+                "properties work as intended)",
+                "Drivers in linked files reading MustardUI settings stop updating",
+                "Every Armature gets a hidden Text datablock while the file is open",
             ):
                 col.label(text=f"• {text}", icon="BLANK1")
-
-        col = box.column(align=True)
-        col.prop(self, "settings_storage_startup")
 
         if self.debug:
             box = layout.box()

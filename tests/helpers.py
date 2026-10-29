@@ -171,8 +171,12 @@ def configure_model(model, name="Tester"):
 class BlenderTestCase(unittest.TestCase):
     """Fresh empty scene per test; fails on tracebacks printed by swallowed exceptions."""
 
+    # Storage of the model settings, set after resetting the preferences, which keeps the last one
+    settings_storage = "ARMATURE"
+
     def setUp(self):
         reset_scene()
+        bpy.context.preferences.addons[ADDON].preferences.settings_storage = self.settings_storage
         self._stderr = StderrTracebacks().__enter__()
 
     def tearDown(self):

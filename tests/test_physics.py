@@ -136,6 +136,34 @@ class TestPhysics(BlenderTestCase):
             spine.rotation_euler.x = 0.0
             np.testing.assert_allclose(evaluated_co(body), rest, atol=1e-5)
 
+    # Rebinding with Physics disabled keeps the deforms bound, with cages out of the view layer
+    def test_rebind_physics_disabled(self):
+        physics = new_collection("Tester Physics")
+        bpy.context.scene.collection.objects.unlink(self.cage)
+        physics.objects.link(self.cage)
+        collision = new_mesh_object("Body Collision", physics)
+        deform = collision.modifiers.new("Chest Cage", "SURFACE_DEFORM")
+        deform.target = self.cage
+        bpy.ops.mustardui.configuration()
+        set_active(collision)
+        bpy.ops.mustardui.physics_add_item()
+        self.physics_settings.items[1].type = "COLLISION"
+        set_active(self.model["armature"])
+        bpy.ops.mustardui.configuration()
+        for obj, mod in ((self.model["body"], self.deform), (collision, deform)):
+            with bpy.context.temp_override(object=obj):
+                bpy.ops.object.surfacedeform_bind(modifier=mod.name)
+
+        # Deforms disabled and the Physics collection excluded, as on models with Physics disabled
+        self.physics_settings.enable_physics = False
+        layer = bpy.context.view_layer.layer_collection.children["Tester Physics"]
+        layer.exclude = True
+        bpy.ops.mustardui.physics_rebind()
+        self.assertTrue(self.deform.is_bound)
+        self.assertTrue(deform.is_bound)
+        self.assertFalse(self.deform.show_viewport)
+        self.assertTrue(layer.exclude)
+
     # Rebinding a single Extras piece rebinds it to both the cages and the body
     def test_rebind_single(self):
         glasses = bpy.data.objects["Extras - Glasses"]

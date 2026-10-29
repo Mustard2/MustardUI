@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 
 import bpy
 
@@ -10,6 +10,8 @@ from ..model_selection.active_object import (
     mustardui_active_object,
 )
 from ..outfits.helper_functions import outfits_get_collection_items
+from ..text_storage.storage import evaluated
+from .ops_outfits_setup import included_collection
 
 
 def bind_object(
@@ -31,6 +33,9 @@ def bind_object(
             if target in cages:
                 hv = target.hide_viewport
                 target.hide_viewport = False
+                # The binding is done when the modifier is evaluated, also if disabled
+                shown = m.show_viewport
+                m.show_viewport = True
                 rebound |= m.is_bound or force
                 if m.is_bound or force:
                     try:
@@ -39,6 +44,7 @@ def bind_object(
                         pass
                     if not m.is_bound and addon_prefs.debug:
                         print(obj.name + " modifier: " + m.name + " could not be bound")
+                m.show_viewport = shown
                 target.hide_viewport = hv
 
         elif mesh_deform and m.type == "MESH_DEFORM":
@@ -48,6 +54,8 @@ def bind_object(
             if target in cages:
                 hv = target.hide_viewport
                 target.hide_viewport = False
+                shown = m.show_viewport
+                m.show_viewport = True
                 rebound |= m.is_bound or force
                 if m.is_bound:
                     with bpy.context.temp_override(object=obj):
@@ -68,6 +76,7 @@ def bind_object(
                         except Exception:
                             if addon_prefs.debug:
                                 print(obj.name + " modifier: " + m.name + " could not be bound")
+                m.show_viewport = shown
                 target.hide_viewport = hv
 
         elif corrective_smooth and m.type == "CORRECTIVE_SMOOTH":
@@ -98,8 +107,8 @@ def bind_object(
 
 
 @contextmanager
-def rest_pose(objects):
-    """Armatures deforming the objects in rest position while in the context"""
+def bindable(objects):
+    """Objects in the view layer and depsgraph, with their armatures in rest position"""
     armatures = {
         m.object.data
         for obj in objects
@@ -107,14 +116,19 @@ def rest_pose(objects):
         if m.type == "ARMATURE" and m.object is not None and m.object.type == "ARMATURE"
     }
     posed = [arm for arm in armatures if arm.pose_position == "POSE"]
-    for arm in posed:
-        arm.pose_position = "REST"
-    bpy.context.view_layer.update()
-    try:
-        yield
-    finally:
+    with ExitStack() as stack:
+        # Excluded collections too, e.g. the Physics one while Physics is disabled
+        for coll in {c for obj in objects for c in obj.users_collection}:
+            stack.enter_context(included_collection(coll))
+        stack.enter_context(evaluated(objects))
         for arm in posed:
-            arm.pose_position = "POSE"
+            arm.pose_position = "REST"
+        bpy.context.view_layer.update()
+        try:
+            yield
+        finally:
+            for arm in posed:
+                arm.pose_position = "POSE"
 
 
 class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
@@ -177,7 +191,7 @@ class MustardUI_PhysicsItem_Rebind(bpy.types.Operator):
             cages.append(item.object)
 
         # Bindings store the current shape, so they are made out of the pose
-        with rest_pose(objects + cages):
+        with bindable(objects + cages):
             for obj in objects:
                 bind_object(
                     obj,
@@ -244,7 +258,7 @@ class MustardUI_PhysicsItem_Rebind_Outfit(bpy.types.Operator):
             cages.append(item.object)
 
         # Bindings store the current shape, so they are made out of the pose
-        with rest_pose(objects + cages):
+        with bindable(objects + cages):
             for obj in objects:
                 bind_object(
                     obj,
@@ -307,7 +321,7 @@ class MustardUI_PhysicsItem_Rebind_Single(bpy.types.Operator):
             cages.append(item.object)
 
         # Bindings store the current shape, so they are made out of the pose
-        with rest_pose([obj, *cages]):
+        with bindable([obj, *cages]):
             bind_object(
                 obj,
                 cages,
@@ -391,7 +405,7 @@ class MustardUI_PhysicsItem_Rebind_SingleCage(bpy.types.Operator):
             break
 
         # Bindings store the current shape, so they are made out of the pose
-        with rest_pose(objects + cages):
+        with bindable(objects + cages):
             for obj in objects:
                 bind_object(
                     obj,
