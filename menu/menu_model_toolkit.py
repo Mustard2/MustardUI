@@ -537,6 +537,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.typ
             icon="IMAGE_DATA",
         )
 
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.model_toolkit_memory_report",
+            icon="MEMORY",
+        )
+
 
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit)

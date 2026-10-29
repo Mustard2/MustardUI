@@ -1,9 +1,13 @@
 import importlib
+import os
+import shutil
+import tempfile
+from types import SimpleNamespace
 
 import bmesh
 import bpy
 import numpy as np
-from fake_ui import Drawer, FakeLayout
+from fake_ui import Drawer, FakeLayout, FakeSelf
 from helpers import (
     ADDON,
     BlenderTestCase,
@@ -25,6 +29,7 @@ intersection = importlib.import_module(ADDON + ".misc.mesh_intersection")
 squish = importlib.import_module(ADDON + ".model_toolkit.effects.ops_squish")
 smooth_sk = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_smooth_shape_key")
 cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
+memory = importlib.import_module(ADDON + ".model_toolkit.optimization.ops_memory_report")
 
 
 def grid_object(name, size=1.0, subdivisions=10, location=(0.0, 0.0, 0.0)):
@@ -308,6 +313,163 @@ class TestOptimizeModifiers(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_optimize_modifiers(smooth_corrective=False)
         self.assertEqual([m.type for m in obj.modifiers].count("MASK"), 1)
         self.assertEqual(visible(), original)
+
+
+class TestMemoryReport(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        self.rig_settings = configure_model(self.model)
+        self.rig_settings.outfits_list = "Tester Casual"
+        settings = bpy.context.scene.MustardUI_Settings
+        settings.viewport_model_selection = False
+        settings.panel_model_selection_armature = self.model["armature"].data
+        self.folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.folder)
+
+    def rows(self):
+        return {x["name"]: x for x in memory.memory_report(bpy.context, self.rig_settings)}
+
+    def report(self, names=()):
+        """Rows of the report as operator items, with names chosen"""
+        return [
+            {
+                "name": x["name"],
+                "kind": x["kind"],
+                "use": x["name"] in names,
+                "pieces": len(x["objects"]),
+                "ram": x["ram"] / memory.MB,
+                "keys": x["keys"] / memory.MB,
+                "textures": x["textures"] / memory.MB,
+                "hidden": x["hidden"],
+            }
+            for x in self.rows().values()
+        ]
+
+    def run_action(self, action, names, **kwargs):
+        report = self.report(names)
+        bpy.ops.mustardui.model_toolkit_memory_report(action=action, memory=report, **kwargs)
+
+    # Every Outfit, Extras piece and hair is listed, with its Shape Keys and textures
+    def test_report(self):
+        image = bpy.data.images.new("Shirt", 64, 32)
+        image.filepath_raw = os.path.join(self.folder, "shirt.png")
+        image.file_format = "PNG"
+        image.save()
+        material = bpy.data.materials.new("Shirt")
+        material.use_nodes = True
+        material.node_tree.nodes.new("ShaderNodeTexImage").image = image
+        bpy.data.objects["Casual - Shirt"].data.materials.append(material)
+
+        rows = self.rows()
+        kinds = {
+            "Tester Body": "BODY",
+            "Tester Casual": "OUTFIT",
+            "Tester Formal": "OUTFIT",
+            "Extras - Glasses": "EXTRAS",
+            "Hair Short": "HAIR",
+            "Hair Long": "HAIR",
+        }
+        self.assertEqual({name: x["kind"] for name, x in rows.items()}, kinds)
+        vertices = len(self.model["body"].data.vertices)
+        self.assertEqual(rows["Tester Body"]["keys"], 5 * vertices * 12)
+        self.assertEqual(rows["Tester Casual"]["textures"], 64 * 32 * 4)
+        self.assertEqual(len(rows["Tester Casual"]["objects"]), 2)
+        # Hidden data counted twice, for the copy kept by the undo
+        formal = rows["Tester Formal"]
+        self.assertTrue(formal["hidden"])
+        dress = bpy.data.objects["Formal - Dress"].data
+        self.assertGreaterEqual(formal["ram"], 2 * memory.geometry_bytes(dress))
+
+    # The list is sorted by size and filtered by name, size and visibility
+    def test_filter(self):
+        props = bpy.context.window_manager.operator_properties_last(
+            "mustardui.model_toolkit_memory_report"
+        )
+        for row in self.report():
+            item = props.memory.add()
+            for key, value in row.items():
+                setattr(item, key, value)
+        cls = bpy.types.MUSTARDUI_UL_MemoryReport
+        ui_list = SimpleNamespace(
+            filter_name="",
+            use_filter_invert=False,
+            bitflag_filter_item=1 << 30,
+            sort_by="ram",
+            reverse_order=False,
+            min_ram=0.0,
+            hidden_only=False,
+        )
+
+        def listed(**settings):
+            vars(ui_list).update(settings)
+            flags, order = cls.filter_items(ui_list, bpy.context, props, "memory")
+            shown = [i for i, flag in enumerate(flags) if flag]
+            return [props.memory[i].name for i in sorted(shown, key=lambda i: order[i])]
+
+        names = listed()
+        self.assertEqual(names[0], "Tester Body")
+        rams = [props.memory[x].ram for x in names]
+        self.assertEqual(rams, sorted(rams, reverse=True))
+        self.assertEqual(listed(reverse_order=True), names[::-1])
+        hair = listed(reverse_order=False, filter_name="*Hair*")
+        self.assertEqual(sorted(hair), ["Hair Long", "Hair Short"])
+        body = props.memory["Tester Body"].ram
+        self.assertEqual(listed(filter_name="", min_ram=body), ["Tester Body"])
+        hidden = listed(min_ram=0.0, hidden_only=True)
+        self.assertNotIn("Tester Body", hidden)
+        self.assertNotIn("Tester Casual", hidden)
+
+    # Chosen Outfits and Extras pieces are deleted, freeing their data
+    def test_delete(self):
+        self.run_action("DELETE", {"Tester Formal", "Extras - Glasses"})
+        self.assertNotIn("Tester Formal", bpy.data.collections)
+        for name in ("Formal - Dress", "Extras - Glasses"):
+            self.assertNotIn(name, bpy.data.objects)
+            self.assertNotIn(name, bpy.data.meshes)
+        self.assertIn("Casual - Shirt", bpy.data.objects)
+
+    # Chosen Outfits and Extras pieces are exported in a file each, then deleted
+    def test_export(self):
+        self.run_action("EXPORT", {"Tester Formal", "Extras - Glasses"}, directory=self.folder)
+        files = sorted(os.listdir(self.folder))
+        self.assertEqual(len(files), 2)
+        exported = set()
+        for name in files:
+            with bpy.data.libraries.load(os.path.join(self.folder, name)) as (data_from, _):
+                exported.update(data_from.objects)
+        self.assertTrue({"Formal - Dress", "Extras - Glasses"} <= exported)
+        self.assertNotIn("Formal - Dress", bpy.data.objects)
+        self.assertNotIn("Extras - Glasses", bpy.data.objects)
+
+    # Without chosen items the model is not changed
+    def test_nothing_chosen(self):
+        self.run_action("DELETE", set())
+        self.assertIn("Tester Formal", bpy.data.collections)
+
+    # The dialog draws the list and the export folder
+    def test_draw(self):
+        props = bpy.context.window_manager.operator_properties_last(
+            "mustardui.model_toolkit_memory_report"
+        )
+        for row in self.report():
+            item = props.memory.add()
+            for key, value in row.items():
+                setattr(item, key, value)
+        cls = bpy.types.MUSTARDUI_OT_model_toolkit_memory_report
+        drawer = Drawer()
+        op = FakeSelf(
+            cls,
+            FakeLayout(drawer),
+            bl_rna=bpy.ops.mustardui.model_toolkit_memory_report.get_rna_type(),
+            memory=props.memory,
+            action="EXPORT",
+            directory=self.folder,
+        )
+        drawer.run("draw", cls.draw, op, bpy.context)
+        props.memory["Tester Formal"].use = True
+        drawer.run("draw", cls.draw, op, bpy.context)
+        self.assertEqual(drawer.errors, [], "\n" + "\n".join(drawer.errors))
 
 
 class TestTransferVertexGroups(BlenderTestCase):
