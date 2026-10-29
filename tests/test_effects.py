@@ -199,6 +199,84 @@ class TestRipple(BlenderTestCase):
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestJiggle(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        mesh = bpy.data.meshes.new("Grid")
+        bm = bmesh.new()
+        bmesh.ops.create_grid(bm, x_segments=20, y_segments=20, size=0.5)
+        bm.to_mesh(mesh)
+        bm.free()
+        self.grid = new_object("Grid", mesh)
+        self.rest = np.array([v.co for v in mesh.vertices])
+        set_active(self.grid)
+
+    def offsets(self):
+        """Distance of each vertex from its rest position, at every frame of a hop"""
+        scene = bpy.context.scene
+        scene.frame_start, scene.frame_end = 1, 20
+        for frame, z in ((1, 0.0), (5, 0.3), (9, 0.0), (20, 0.0)):
+            self.grid.location.z = z
+            self.grid.keyframe_insert("location", frame=frame)
+        offsets = []
+        for frame in range(1, 21):
+            scene.frame_set(frame)
+            mesh = self.grid.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            co = np.empty(len(mesh.vertices) * 3)
+            mesh.vertices.foreach_get("co", co)
+            offsets.append(np.linalg.norm(co.reshape(-1, 3) - self.rest, axis=1))
+        return np.array(offsets).max(axis=0)
+
+    # The vertices selected in Edit Mode jiggle, fading into the rest that follows the motion
+    def test_selection(self):
+        selected = self.rest[:, 0] < 0.0
+        for vertex, select in zip(self.grid.data.vertices, selected, strict=True):
+            vertex.select = bool(select)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mustardui.model_toolkit_jiggle_effect()
+        self.assertEqual(self.grid.mode, "EDIT")
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+        modifier = self.grid.modifiers["Jiggle"]
+        zone = effect.modifier_input(modifier, "Zone")
+        self.assertEqual((zone.type, zone.attribute_name), ("ATTRIBUTE", "Jiggle"))
+        group = self.grid.vertex_groups["Jiggle"]
+        grouped = {
+            v.index for v in self.grid.data.vertices for g in v.groups if g.group == group.index
+        }
+        self.assertEqual(grouped, set(np.flatnonzero(selected)))
+        self.assertEqual(effect.modifier_input(modifier, "Edge Fade").value, 4)
+
+        offsets = self.offsets()
+        self.assertLess(offsets[~selected].max(), 1e-5)
+        self.assertGreater(offsets[selected].max(), 0.01)
+
+    # In Object Mode the whole mesh jiggles
+    def test_whole_mesh(self):
+        bpy.ops.mustardui.model_toolkit_jiggle_effect()
+        modifier = self.grid.modifiers["Jiggle"]
+        self.assertEqual(effect.modifier_input(modifier, "Zone").value, 1.0)
+        self.assertGreater(self.offsets().min(), 0.001)
+
+    # The Jiggle is listed with the effects, but not the one of the Physics Items
+    def test_scene_effects(self):
+        settings = importlib.import_module(ADDON + ".model_toolkit.effects.settings")
+        bpy.ops.mustardui.model_toolkit_jiggle_effect()
+        scene = bpy.context.scene
+        self.assertIn(("Jiggle", self.grid, "Jiggle"), settings.scene_effects(scene))
+
+        arm = next(x for x in bpy.data.objects if x.type == "ARMATURE")
+        arm.data.MustardUI_PhysicsSettings.items.add().object = self.grid
+        self.assertNotIn(("Jiggle", self.grid, "Jiggle"), settings.scene_effects(scene))
+
+    def test_remove(self):
+        bpy.ops.mustardui.model_toolkit_jiggle_effect()
+        bpy.ops.mustardui.model_toolkit_remove_jiggle_effect()
+        self.assertNotIn("Jiggle", self.grid.modifiers)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestFireball(BlenderTestCase):
     def setUp(self):
         super().setUp()

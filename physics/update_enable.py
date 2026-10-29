@@ -1,6 +1,9 @@
+import bpy
+
 from ..misc.set_bool import set_bool
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..outfits.helper_functions import find_layer_collections
+from .definitions_nodes import add_collider, collection_inputs, modifier_input
 
 
 def model_objects(rig_settings):
@@ -284,6 +287,46 @@ def collisions_physics_update_single(self, context):
     status = self.collisions and self.enable
     for modifier in [x for x in self.object.modifiers if x.type == "CLOTH"]:
         modifier.collision_settings.use_collision = status
+
+    # The Geometry Nodes physics collide with their Collection inputs: switched on and off by
+    # their Collisions input if they have one, otherwise filled and cleared
+    for modifier in [m for m in self.object.modifiers if m.type == "NODES"]:
+        sockets = collection_inputs(modifier)
+        toggle = modifier_input(modifier, "Collisions") if sockets else None
+        if toggle is not None and isinstance(toggle.value, bool):
+            toggle.value = status
+            sockets = [x for x in sockets if x.value is None] if status else []
+        if sockets:
+            colliders = nodes_colliders(self) if status else None
+            for socket in sockets:
+                socket.value = colliders
+        self.object.update_tag()
+
+
+def nodes_colliders(physics_item):
+    """Collection of the collision cages for the Geometry Nodes physics of an item"""
+    obj = physics_item.object
+    # The cages deformed by the item would make a dependency cycle
+    cages = [
+        x.object
+        for x in physics_item.id_data.MustardUI_PhysicsSettings.items
+        if x.type == "COLLISION"
+        and x.object
+        and not any(
+            obj in (getattr(m, "target", None), getattr(m, "object", None))
+            for m in x.object.modifiers
+        )
+    ]
+    # Not linked to the scene, the cages are there already
+    name = f"{obj.name} Colliders"
+    colliders = bpy.data.collections.get(name) or bpy.data.collections.new(name)
+    for other in [x for x in colliders.objects if x not in cages]:
+        colliders.objects.unlink(other)
+    for cage in cages:
+        add_collider(cage)
+        if cage.name not in colliders.objects:
+            colliders.objects.link(cage)
+    return colliders
 
 
 def cage_influence_update(self, context):

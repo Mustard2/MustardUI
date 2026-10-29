@@ -9,6 +9,7 @@ from . import (
     ops_foam,
     ops_hex_dissolve,
     ops_imprints,
+    ops_jiggle,
     ops_marks,
     ops_ripple,
     ops_select_object,
@@ -27,6 +28,7 @@ def register():
     ops_squish.register()
     ops_disintegration.register()
     ops_ripple.register()
+    ops_jiggle.register()
     ops_fireball.register()
     ops_hex_dissolve.register()
     ops_cloth_tear.register()
@@ -66,6 +68,7 @@ def unregister():
     ops_cloth_tear.unregister()
     ops_hex_dissolve.unregister()
     ops_fireball.unregister()
+    ops_jiggle.unregister()
     ops_ripple.unregister()
     ops_disintegration.unregister()
     ops_squish.unregister()

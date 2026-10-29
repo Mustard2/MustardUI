@@ -23,11 +23,12 @@ license = [
 files = "Import/export templates/presets or Blender files from/to disk"
 
 [build]
-# Blender defaults, plus the test suite and the effect resources build scripts
+# Blender defaults, plus the test suite and the resources build scripts
 paths_exclude_pattern = [
   "__pycache__/",
   ".*",
   "/*.zip",
   "/tests/",
   "/model_toolkit/effects/resources/*.py",
+  "/physics/resources/*.py",
 ]

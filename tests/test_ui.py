@@ -1,4 +1,5 @@
 import importlib
+import types
 import unittest
 
 import bpy
@@ -13,6 +14,22 @@ from helpers import (
 )
 
 effect = importlib.import_module(ADDON + ".model_toolkit.effects.effect")
+physics_presets = importlib.import_module(ADDON + ".model_toolkit.physics.physics_presets")
+menu_physics = importlib.import_module(ADDON + ".menu.menu_physics")
+
+
+class RecordingLayout:
+    """UILayout stand-in that records the calls"""
+
+    def __init__(self):
+        self.calls = []
+
+    def __getattr__(self, name):
+        def call(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+            return (self, self) if name.startswith("panel") else self
+
+        return call
 
 
 class TestUI(BlenderTestCase):
@@ -84,6 +101,39 @@ class TestUI(BlenderTestCase):
         bpy.context.scene.MustardUI_Settings.advanced = True
         drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_Morphs")
         self.assertIn("PANEL_PT_MustardUI_Outfits_Extras", drawer.drawn)
+
+    # The settings of a Geometry Nodes physics draw all its inputs, for each node group
+    @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+    def test_draw_physics_dynamics(self):
+        model = build_model()
+        arm = model["armature"]
+        configure_model(model)
+        physics_settings = arm.data.MustardUI_PhysicsSettings
+        cage = new_mesh_object("Cage", armature=arm, size=0.4)
+        bpy.ops.mustardui.configuration()
+        physics_settings.enable_ui = True
+        set_active(cage)
+        bpy.ops.mustardui.physics_add_item()
+        physics_settings.items[0].type = "CAGE"
+        set_active(arm)
+        bpy.ops.mustardui.configuration()
+        physics_settings.enable_physics = True
+        for preset in ("CAGE", "HAIR"):
+            with self.subTest(preset):
+                physics_presets.apply_physics(cage, "NODES", preset)
+                self.assertDrawsCleanly("PANEL_PT_MustardUI_Physics_ClothDynamicsSettings")
+
+                # The Presets button in the header, the Collisions toggle on the colliders panel
+                panel = menu_physics.PANEL_PT_MustardUI_Physics_ClothDynamicsSettings
+                header = RecordingLayout()
+                panel.draw_header(types.SimpleNamespace(layout=header), bpy.context)
+                self.assertIn(
+                    "mustardui.presets_ui", [x[1][0] for x in header.calls if x[0] == "operator"]
+                )
+                body = RecordingLayout()
+                panel.draw(types.SimpleNamespace(layout=body), bpy.context)
+                item = physics_settings.items[0]
+                self.assertIn((item, "collisions"), [x[1] for x in body.calls if x[0] == "prop"])
 
     # Morphs panels draw with the settings open and the morphs disabled, for each type
     def test_draw_morphs_settings(self):
@@ -165,6 +215,8 @@ class TestUI(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_crush()
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_aura()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_jiggle_effect()
         bpy.ops.mustardui.model_toolkit_dust_motes()
         bpy.context.view_layer.update()
 

@@ -1,6 +1,7 @@
 import bpy
 
 from .. import __package__ as base_package
+from ..misc.geometry_nodes import draw_modifier_inputs
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -277,6 +278,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_ripple", text="Ripple", icon="MOD_WAVE")
         row.operator("mustardui.model_toolkit_remove_ripple", text="", icon="X")
 
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_jiggle_effect", text="Jiggle", icon="MOD_SOFT")
+        row.operator("mustardui.model_toolkit_remove_jiggle_effect", text="", icon="X")
+
         layout.separator()
 
         row = layout.row(align=True)
@@ -407,50 +414,6 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_remove_dust_motes", text="", icon="X")
 
 
-def effect_draw_inputs(layout, modifier):
-    """Inputs of the modifier, in the panels of its node group"""
-    inputs, panels = modifier.properties.inputs, modifier.properties.panels
-    # Layout of the open panels, the root one being 0
-    bodies = {0: layout}
-    for item in modifier.node_group.interface.items_tree:
-        body = bodies.get(item.parent.persistent_uid)
-        if body is None:
-            continue
-        if item.item_type == "PANEL":
-            header, bodies[item.persistent_uid] = body.panel_prop(
-                panels, f"open_{item.persistent_uid}"
-            )
-            toggle = next(
-                (x for x in item.interface_items if getattr(x, "is_panel_toggle", False)), None
-            )
-            if toggle is None:
-                header.label(text=item.name)
-                continue
-            toggle = getattr(inputs, toggle.identifier)
-            header.prop(toggle, "value", text=item.name)
-            if bodies[item.persistent_uid]:
-                bodies[item.persistent_uid].active = toggle.value
-        elif not (
-            item.in_out == "OUTPUT"
-            or item.socket_type == "NodeSocketGeometry"
-            or item.hide_value
-            or item.hide_in_modifier
-            or item.is_panel_toggle
-        ):
-            socket = getattr(inputs, item.identifier)
-            # Vectors in a column, not to squeeze their values
-            vector = item.socket_type == "NodeSocketVector"
-            row = body.column(align=True) if vector else body.row(align=True)
-            if getattr(socket, "type", "") == "ATTRIBUTE":
-                row.prop(socket, "attribute_name", text=item.name)
-            else:
-                row.prop(socket, "value", text=item.name)
-            if item.socket_type == "NodeSocketObject" and socket.value:
-                row.operator(
-                    "mustardui.model_toolkit_select_object", text="", icon="RESTRICT_SELECT_OFF"
-                ).name = socket.value.name
-
-
 class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.types.Panel):
     header = ("Scene Effects", "SCENE_DATA")
     guide = "Effects"
@@ -486,7 +449,7 @@ class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.type
             header, body = layout.panel("MustardUI_SceneEffects_GeometryNodes")
             header.label(text="Geometry Nodes", icon="GEOMETRY_NODES")
             if body:
-                effect_draw_inputs(body, modifier)
+                draw_modifier_inputs(body, modifier, select_objects=True)
 
         material_group = EFFECTS[item.effect][2]
         if material_group is None:

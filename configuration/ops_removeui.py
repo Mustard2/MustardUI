@@ -9,7 +9,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
-from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
+from ..physics.definitions_nodes import collection_inputs
 from ..text_storage.storage import remove_holder, system_properties
 
 
@@ -175,18 +175,10 @@ class MustardUI_RemoveUI(bpy.types.Operator):
                         col = mod.collision_settings.collection
                     elif mod.type == "SOFT_BODY":
                         col = mod.settings.collision_collection
-                    elif (
-                        mod.type == "NODES"
-                        and mod.node_group
-                        and mod.node_group.name.startswith(CLOTH_DYNAMICS_NODE_GROUP)
-                        and hasattr(mod, "properties")
-                    ):
-                        entry = getattr(
-                            mod.properties.inputs,
-                            CLOTH_DYNAMICS_SOCKETS["effectors_collection"],
-                            None,
-                        )
-                        col = entry.value if entry is not None else None
+                    elif mod.type == "NODES":
+                        collision_collections |= {
+                            x.value.name for x in collection_inputs(mod) if x.value is not None
+                        }
                     if isinstance(col, bpy.types.Collection):
                         collision_collections.add(col.name)
 

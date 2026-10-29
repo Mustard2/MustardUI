@@ -266,6 +266,7 @@ class RemoveEffect:
     node_group = ""
     creators_type = ""
     done = "removed"
+    controls = True
 
     @classmethod
     def poll(cls, context):
@@ -277,7 +278,8 @@ class RemoveEffect:
         controls = set()
         for obj in context.selected_objects:
             for modifier in [m for m in obj.modifiers if is_effect(m, self.node_group)]:
-                controls.add(modifier_input(modifier, "Control").value)
+                if self.controls:
+                    controls.add(modifier_input(modifier, "Control").value)
                 obj.modifiers.remove(modifier)
 
         used = {

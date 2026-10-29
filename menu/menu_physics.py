@@ -1,13 +1,9 @@
 import bpy
 
-from ..misc.geometry_nodes import (
-    draw_geometry_nodes_modifier_inputs,
-    geometry_nodes_modifier_inputs,
-)
+from ..misc.geometry_nodes import draw_modifier_inputs, node_group_has_simulation
 from ..misc.mirror import check_mirror
 from ..misc.ui_collapse import ui_collapse_panel
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..physics.definitions_nodes import CLOTH_DYNAMICS_NODE_GROUP, CLOTH_DYNAMICS_SOCKETS
 from . import MainPanel
 
 
@@ -95,58 +91,6 @@ def cloth_panel(layout, pi, mod):
         col.prop(collisions, "self_impulse_clamp", slider=True, text="Impulse Clamping")
 
     # Add all settings inserted here also in the mirror operator
-
-
-def cloth_dynamics_panel(layout, pi, mod):
-    # Generic Nodes
-    if not (mod.node_group and mod.node_group.name.startswith(CLOTH_DYNAMICS_NODE_GROUP)):
-        col = layout.column(align=True)
-        draw_geometry_nodes_modifier_inputs(col, geometry_nodes_modifier_inputs(mod))
-        return
-
-    CLOTH_DYNAMICS_UI_FIELDS = [
-        ("mass", "Vertex Mass"),
-        ("separator", ""),
-        ("stretchiness", "Stretchiness"),
-        ("bendiness", "Bendiness"),
-        ("friction", "Friction"),
-        ("separator", ""),
-        ("collision_radius", "Collision Radius"),
-        ("effectors_collection", "Collider Collection"),
-        ("separator", ""),
-        ("linear_damping", "Linear Damping"),
-    ]
-    CLOTH_DYNAMICS_UI_ADVANCED_FIELDS = [
-        ("substeps", "Substeps"),
-        ("constraint_steps", "Constraint Steps"),
-    ]
-
-    # Default Blender CLoth Physics nodes
-    inputs = mod.properties.inputs
-
-    col = layout.column(align=True)
-    for key, label in CLOTH_DYNAMICS_UI_FIELDS:
-        if key == "separator":
-            col.separator()
-            continue
-        socket = CLOTH_DYNAMICS_SOCKETS.get(key)
-        entry = getattr(inputs, socket, None) if socket else None
-        if entry is None:
-            continue
-        col.prop(entry, "value", text=label)
-
-    body = ui_collapse_panel(layout, f"MustardUI_Physics_{pi.object.name}_Advanced", "Advanced")
-    if body:
-        col = body.column(align=True)
-        for key, label in CLOTH_DYNAMICS_UI_ADVANCED_FIELDS:
-            socket = CLOTH_DYNAMICS_SOCKETS.get(key)
-            entry = getattr(inputs, socket, None) if socket else None
-            if entry is None:
-                continue
-            col.prop(entry, "value", text=label)
-
-    # Pin Group is not exposed here: it is creator-side, set when the physics is
-    # added by a Creator Tool
 
 
 def soft_body_panel(layout, pi, mod):
@@ -239,6 +183,24 @@ class PANEL_PT_MustardUI_Physics(MainPanel, bpy.types.Panel):
         layout.operator("mustardui.physics_rebind", text="Re-bind All Cages", icon="FILE_REFRESH")
 
 
+def draw_header_buttons(layout, physics_settings, pi):
+    """Mirror and Presets buttons of the settings panels of a Physics Item"""
+    # Check if Mirror should be drawn
+    if pi.type in ["CAGE", "SINGLE_ITEM"]:
+        items = [x for x in physics_settings.items if x.object]
+        for on in [x.object.name for x in items if x.object != pi.object]:
+            if check_mirror(pi.object.name, on, left=True) or check_mirror(
+                pi.object.name, on, left=False
+            ):
+                layout.active = layout.active and pi.enable
+        layout.operator(
+            "mustardui.physics_mirror", text="", icon="MOD_MIRROR"
+        ).obj_name = pi.object.name
+
+    op = layout.operator("mustardui.presets_ui", text="", icon="PRESET")
+    op.preset_type = "PHYSICS"
+
+
 class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
     bl_label = ""
     bl_parent_id = "PANEL_PT_MustardUI_Physics"
@@ -275,20 +237,7 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
         layout.label(text="Cloth Settings")
         layout.active = physics_settings.enable_physics
 
-        # Check if Mirror should be drawn
-        if pi.type in ["CAGE", "SINGLE_ITEM"]:
-            items = [x for x in physics_settings.items if x.object]
-            for on in [x.object.name for x in items if x.object != pi.object]:
-                if check_mirror(pi.object.name, on, left=True) or check_mirror(
-                    pi.object.name, on, left=False
-                ):
-                    layout.active = layout.active and pi.enable
-            layout.operator(
-                "mustardui.physics_mirror", text="", icon="MOD_MIRROR"
-            ).obj_name = pi.object.name
-
-        op = layout.operator("mustardui.presets_ui", text="", icon="PRESET")
-        op.preset_type = "PHYSICS"
+        draw_header_buttons(layout, physics_settings, pi)
 
     def draw(self, context):
 
@@ -311,7 +260,12 @@ class PANEL_PT_MustardUI_Physics_ClothSettings(MainPanel, bpy.types.Panel):
 
 
 def find_geometry_nodes_physics_modifier(obj):
-    return next((m for m in obj.modifiers if m.type == "NODES" and m.node_group), None)
+    """The Geometry Nodes modifier with a simulation, or else the first one"""
+    modifiers = [m for m in obj.modifiers if m.type == "NODES" and m.node_group]
+    return next(
+        (m for m in modifiers if node_group_has_simulation(m.node_group)),
+        modifiers[0] if modifiers else None,
+    )
 
 
 class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Panel):
@@ -345,17 +299,13 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         pi = selected_physics_item(physics_settings, obj)
         if pi is None:
             return
-        cloth_dynamics = find_geometry_nodes_physics_modifier(pi.object)
-
-        if (
-            cloth_dynamics is not None
-            and cloth_dynamics.node_group
-            and not cloth_dynamics.node_group.name.startswith(CLOTH_DYNAMICS_NODE_GROUP)
-        ):
-            layout.label(text=f"{cloth_dynamics.node_group.name} Settings")
-        else:
-            layout.label(text="Cloth Dynamics Settings")
+        dynamics = find_geometry_nodes_physics_modifier(pi.object)
+        if dynamics is not None:
+            name = dynamics.node_group.name.removeprefix("MustardUI ")
+            layout.label(text=f"{name} Settings")
         layout.active = physics_settings.enable_physics
+
+        draw_header_buttons(layout, physics_settings, pi)
 
     def draw(self, context):
 
@@ -367,14 +317,12 @@ class PANEL_PT_MustardUI_Physics_ClothDynamicsSettings(MainPanel, bpy.types.Pane
         pi = selected_physics_item(physics_settings, obj)
         if pi is None:
             return
-        cloth_dynamics = find_geometry_nodes_physics_modifier(pi.object)
+        dynamics = find_geometry_nodes_physics_modifier(pi.object)
 
         layout.active = physics_settings.enable_physics and pi.enable
 
-        if cloth_dynamics is None:
-            return
-
-        cloth_dynamics_panel(layout, pi, cloth_dynamics)
+        if dynamics is not None:
+            draw_modifier_inputs(layout, dynamics, collisions=(pi, "collisions"))
 
 
 class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
@@ -413,20 +361,7 @@ class PANEL_PT_MustardUI_Physics_SoftBodySettings(MainPanel, bpy.types.Panel):
         layout.label(text="Soft Body Settings")
         layout.active = physics_settings.enable_physics
 
-        # Check if Mirror should be drawn
-        if pi.type in ["CAGE", "SINGLE_ITEM"]:
-            items = [x for x in physics_settings.items if x.object]
-            for on in [x.object.name for x in items if x.object != pi.object]:
-                if check_mirror(pi.object.name, on, left=True) or check_mirror(
-                    pi.object.name, on, left=False
-                ):
-                    layout.active = layout.active and pi.enable
-            layout.operator(
-                "mustardui.physics_mirror", text="", icon="MOD_MIRROR"
-            ).obj_name = pi.object.name
-
-        op = layout.operator("mustardui.presets_ui", text="", icon="PRESET")
-        op.preset_type = "PHYSICS"
+        draw_header_buttons(layout, physics_settings, pi)
 
     def draw(self, context):
 
@@ -531,7 +466,7 @@ class PANEL_PT_MustardUI_Physics_Cache(MainPanel, bpy.types.Panel):
         row.operator("mustardui.physics_bake_syncframes", text="", icon="UV_SYNC_SELECT")
         row = layout.row(align=True)
         row.operator("mustardui.physics_bake_all", text="Bake All").bake = True
-        row.operator("ptcache.free_bake_all", text="Delete All Bake")
+        row.operator("mustardui.physics_bake_delete_all", text="Delete All Bake")
 
 
 def register():

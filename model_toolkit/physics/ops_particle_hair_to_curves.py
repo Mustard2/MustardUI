@@ -16,6 +16,7 @@ from ...physics.definitions_nodes import (
     HAIR_CHILDREN_SWITCH,
     HAIR_DYNAMICS_MUSTARDUI_SOCKETS,
     HAIR_DYNAMICS_NODE_GROUP,
+    add_collider,
     hair_dynamics_available,
     hair_dynamics_input,
 )
@@ -413,21 +414,6 @@ def hair_children_node_group(name, emitter, systems):
     return ng
 
 
-def add_collider(obj):
-    """Deforming collider for the Hair Dynamics"""
-    if "Hair Collider" in obj.modifiers:
-        return
-    group = blender_node_group(DYNAMICS_ASSET, "Collider")
-    mod = obj.modifiers.new("Hair Collider", "NODES")
-    mod.node_group = group
-    deforming = next(x for x in group.interface.items_tree if x.name == "Deforming")
-    getattr(mod.properties.inputs, deforming.identifier).value = True
-    # Enabled with the collision cage physics
-    mod.show_viewport = mod.show_render = any(
-        m.type == "COLLISION" and m.show_viewport for m in obj.modifiers
-    )
-
-
 class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
     bl_idname = "mustardui.model_toolkit_particle_hair_to_curves"
     bl_label = "Convert Particle Hair to Curves"
@@ -500,7 +486,7 @@ class MustardUI_ModelToolkit_ParticleHairToCurves(bpy.types.Operator):
                 )
                 parent.children.link(colliders)
             for cage in cages:
-                add_collider(cage)
+                add_collider(cage, "Hair Collider")
                 if cage.name not in colliders.objects:
                     colliders.objects.link(cage)
 

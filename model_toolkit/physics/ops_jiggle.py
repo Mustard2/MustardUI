@@ -99,7 +99,7 @@ def _apply_jiggle_physics(operator):
         ):
             operator.report(
                 {"WARNING"},
-                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "MustardUI - The Dynamics physics could not be added: the "
                 "Cloth modifier was used instead.",
             )
             physics_presets.apply_physics(

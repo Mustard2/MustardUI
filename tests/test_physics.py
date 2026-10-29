@@ -1,5 +1,6 @@
 import importlib
 import math
+import unittest
 
 import bmesh
 import bpy
@@ -18,6 +19,8 @@ from mathutils import Vector
 
 ops_outfits_setup = importlib.import_module(ADDON + ".physics.ops_outfits_setup")
 settings_presets = importlib.import_module(ADDON + ".physics.settings_presets")
+physics_presets = importlib.import_module(ADDON + ".model_toolkit.physics.physics_presets")
+definitions_nodes = importlib.import_module(ADDON + ".physics.definitions_nodes")
 
 
 def evaluated_co(obj):
@@ -423,3 +426,212 @@ class TestCollisionCage(BlenderTestCase):
             v.co.z += 1.0
         self.target.data.update()
         self.assertAlmostEqual(lowest_z() - before, 1.0, places=2)
+
+
+class TestJiggleDynamics(BlenderTestCase):
+    # The jiggle presets run Jiggle Dynamics: the Pin group follows the animation, the rest
+    # swings with the motion and settles back to the animated shape
+    @unittest.skipIf(bpy.app.version < (5, 2, 0), "Jiggle Dynamics needs Blender 5.2")
+    def test_jiggle_preset(self):
+        obj = new_mesh_object("Jiggle")
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=0.2)
+        bm.to_mesh(obj.data)
+        bm.free()
+        rest = np.array([v.co for v in obj.data.vertices])
+        pinned = rest[:, 2] < 0.0
+        pin = obj.vertex_groups.new(name="Pin")
+        pin.add([int(i) for i in np.flatnonzero(pinned)], 1.0, "REPLACE")
+
+        modifier = physics_presets.apply_physics(obj, "NODES", "JIGGLE", pin_group_name="Pin")
+        self.assertEqual(modifier.node_group.name, definitions_nodes.JIGGLE_DYNAMICS_NODE_GROUP)
+        zone = definitions_nodes.modifier_input(modifier, "Zone")
+        self.assertEqual((zone.type, zone.attribute_name), ("ATTRIBUTE", "Pin"))
+        self.assertTrue(definitions_nodes.modifier_input(modifier, "Invert Zone").value)
+        self.assertAlmostEqual(definitions_nodes.modifier_input(modifier, "Softness").value, 0.274)
+
+        scene = bpy.context.scene
+        scene.frame_start, scene.frame_end = 1, 120
+        for frame, z in ((1, 0.0), (5, 0.3), (9, 0.0), (120, 0.0)):
+            obj.location.z = z
+            obj.keyframe_insert("location", frame=frame)
+        offsets = []
+        for frame in range(1, 121):
+            scene.frame_set(frame)
+            offsets.append(np.linalg.norm(evaluated_co(obj) - rest, axis=1))
+        offsets = np.array(offsets)
+
+        swing = offsets[:, ~pinned].max(axis=1)
+        self.assertLess(offsets[:, pinned].max(), 1e-5)
+        self.assertGreater(swing.max(), 0.01)
+        self.assertLess(swing[-1], 0.1 * swing.max())
+
+        # Switching to the Cloth modifier removes the Jiggle Dynamics one
+        physics_presets.apply_physics(obj, "CLOTH", "JIGGLE", pin_group_name="Pin")
+        self.assertEqual([m.type for m in obj.modifiers], ["CLOTH"])
+
+    # Assign Physics keeps the Pin group of the physics it replaces, not the active vertex group
+    @unittest.skipIf(bpy.app.version < (5, 2, 0), "Jiggle Dynamics needs Blender 5.2")
+    def test_assign_keeps_pin_group(self):
+        obj = new_mesh_object("Cage")
+        obj.vertex_groups.new(name="Pin")
+        obj.vertex_groups.new(name="Structural")
+        cloth = obj.modifiers.new("Cloth", "CLOTH")
+        cloth.settings.vertex_group_mass = "Pin"
+        set_active(obj)
+
+        bpy.ops.mustardui.model_toolkit_assign_physics(physics_engine="NODES", nodes_preset="CAGE")
+        modifier = obj.modifiers[0]
+        self.assertEqual(modifier.node_group.name, definitions_nodes.JIGGLE_DYNAMICS_NODE_GROUP)
+        self.assertEqual(definitions_nodes.modifier_input(modifier, "Zone").attribute_name, "Pin")
+
+        bpy.ops.mustardui.model_toolkit_assign_physics(physics_engine="CLOTH")
+        self.assertEqual(obj.modifiers[0].settings.vertex_group_mass, "Pin")
+
+
+@unittest.skipIf(bpy.app.version < (5, 2, 0), "Jiggle Dynamics needs Blender 5.2")
+class TestDynamicsBake(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        arm = self.model["armature"]
+        configure_model(self.model)
+        self.physics_settings = arm.data.MustardUI_PhysicsSettings
+        self.cage = new_mesh_object("Jiggle Cage", armature=arm, size=0.4)
+        self.modifier = physics_presets.apply_physics(self.cage, "NODES", "CAGE")
+
+        bpy.ops.mustardui.configuration()
+        self.physics_settings.enable_ui = True
+        set_active(self.cage)
+        bpy.ops.mustardui.physics_add_item()
+        self.physics_settings.items[0].type = "CAGE"
+        set_active(arm)
+        bpy.ops.mustardui.configuration()
+        self.physics_settings.items[0].enable = True
+        self.physics_settings.enable_physics = True
+
+        bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 12
+        for frame, z in ((1, 0.0), (4, 0.3), (8, 0.0)):
+            arm.location.z = z
+            arm.keyframe_insert("location", frame=frame)
+
+    def motion(self):
+        self.cage.update_tag()
+        co = []
+        for frame in range(1, 13):
+            bpy.context.scene.frame_set(frame)
+            co.append(evaluated_co(self.cage))
+        return np.array(co)
+
+    # The frame range of the physics is the one of the Geometry Nodes simulations too
+    def test_frame_range(self):
+        self.physics_settings.frame_start, self.physics_settings.frame_end = 2, 9
+        bakes = [
+            b for b in self.modifier.bakes if b.node.bl_idname == "GeometryNodeSimulationOutput"
+        ]
+        self.assertTrue(bakes)
+        for bake in bakes:
+            self.assertTrue(bake.use_custom_simulation_frame_range)
+            self.assertEqual((bake.frame_start, bake.frame_end), (2, 9))
+
+        # Unless the item has its own
+        self.physics_settings.items[0].unique_cache_frames = True
+        self.physics_settings.frame_end = 11
+        self.assertEqual(bakes[0].frame_end, 9)
+
+    # Bake All bakes the Geometry Nodes simulations, and Delete All Bake frees them
+    def test_bake_all(self):
+        self.physics_settings.frame_start, self.physics_settings.frame_end = 1, 12
+        bpy.ops.mustardui.physics_bake_all(bake=True)
+        baked = self.motion()
+        softness = definitions_nodes.modifier_input(self.modifier, "Softness")
+        softness.value = 0.95
+        self.assertLess(np.abs(self.motion() - baked).max(), 1e-6)
+
+        bpy.ops.mustardui.physics_bake_delete_all()
+        self.assertGreater(np.abs(self.motion() - baked).max(), 1e-3)
+
+    # Physics presets keep the Geometry Nodes inputs by name, menus included
+    def test_preset(self):
+        get = definitions_nodes.modifier_input
+        bpy.ops.mustardui.preset_create(preset_type="PHYSICS", new_preset_name="Soft")
+        preset = self.physics_settings.presets[0]
+        self.assertTrue(preset.has_nodes)
+
+        get(self.modifier, "Softness").value = 0.9
+        get(self.modifier, "Collide With").value = "Group"
+        get(self.modifier, "Self Friction").value = 0.9
+        bpy.ops.mustardui.preset_apply(preset_type="PHYSICS")
+
+        self.assertAlmostEqual(get(self.modifier, "Softness").value, 0.16, places=5)
+        self.assertEqual(get(self.modifier, "Collide With").value, "Whole Mesh")
+        self.assertAlmostEqual(get(self.modifier, "Self Friction").value, 0.1, places=5)
+
+    # Mirror copies the Geometry Nodes values and frame range, each side keeping its Pin group
+    def test_mirror(self):
+        get = definitions_nodes.modifier_input
+        self.cage.name = "Jiggle Cage.L"
+        right = new_mesh_object("Jiggle Cage.R", armature=self.model["armature"], size=0.4)
+        right.vertex_groups.new(name="Pin R")
+        right_modifier = physics_presets.apply_physics(right, "NODES", "CAGE", "Pin R")
+        item = self.physics_settings.items.add()
+        item.object, item.type = right, "CAGE"
+
+        get(self.modifier, "Softness").value = 0.77
+        bake = next(b for b in self.modifier.bakes if b.node.name == "Result Cache Out")
+        bake.use_custom_simulation_frame_range = True
+        bake.frame_start, bake.frame_end = 3, 9
+        bpy.ops.mustardui.physics_mirror(obj_name=self.cage.name)
+
+        self.assertAlmostEqual(get(right_modifier, "Softness").value, 0.77, places=5)
+        self.assertEqual(get(right_modifier, "Zone").attribute_name, "Pin R")
+        bake = next(b for b in right_modifier.bakes if b.node.name == "Result Cache Out")
+        self.assertEqual((bake.frame_start, bake.frame_end), (3, 9))
+
+    # Collisions fill the Collection inputs with the collision cages not deformed by the item
+    def test_collisions(self):
+        hand = new_mesh_object("Hand Collider", armature=self.model["armature"], size=0.3)
+        hand.modifiers.new("Collision", "COLLISION")
+        body = new_mesh_object("Body Collision", armature=self.model["armature"], size=0.6)
+        body.modifiers.new("Deform", "SURFACE_DEFORM").target = self.cage
+        body.modifiers.new("Collision", "COLLISION")
+        for obj in (hand, body):
+            item = self.physics_settings.items.add()
+            item.object, item.type = obj, "COLLISION"
+        free = self.motion()
+
+        colliders = definitions_nodes.modifier_input(self.modifier, "Colliders")
+        self.assertFalse(definitions_nodes.modifier_input(self.modifier, "Collisions").value)
+        item = self.physics_settings.items[0]
+        item.collisions = True
+        self.assertTrue(definitions_nodes.modifier_input(self.modifier, "Collisions").value)
+        self.assertEqual(set(colliders.value.objects), {hand})
+        self.assertTrue(
+            any(
+                m.node_group.name.startswith("Collider")
+                for m in hand.modifiers
+                if m.type == "NODES"
+            )
+        )
+        self.assertGreater(np.abs(self.motion() - free).max(), 1e-3)
+
+        # Off with the Collisions input of the node group, the colliders kept for the next time
+        item.collisions = False
+        self.assertFalse(definitions_nodes.modifier_input(self.modifier, "Collisions").value)
+        self.assertEqual(set(colliders.value.objects), {hand})
+        self.assertLess(np.abs(self.motion() - free).max(), 1e-6)
+
+    # An older Jiggle Dynamics in the file is replaced by the bundled one, keeping the values
+    def test_node_group_update(self):
+        old = self.modifier.node_group
+        old["MustardUI Version"] = 1
+        definitions_nodes.modifier_input(self.modifier, "Softness").value = 0.66
+
+        group = definitions_nodes.jiggle_dynamics_node_group()
+        self.assertNotEqual(group, old)
+        self.assertEqual(group.name, definitions_nodes.JIGGLE_DYNAMICS_NODE_GROUP)
+        self.assertEqual(self.modifier.node_group, group)
+        self.assertAlmostEqual(
+            definitions_nodes.modifier_input(self.modifier, "Softness").value, 0.66, places=5
+        )
+        self.assertEqual(definitions_nodes.jiggle_dynamics_node_group(), group)

@@ -13,6 +13,7 @@ from . import (
     ops_foam,
     ops_hex_dissolve,
     ops_imprints,
+    ops_jiggle,
     ops_marks,
     ops_ripple,
     ops_shatter,
@@ -26,6 +27,7 @@ from .effect import effects_available, is_effect, materials, shader_nodes
 # Icon, modifier node group and material node group of the effects
 EFFECTS = {
     "Ripple": ("MOD_WAVE", ops_ripple.NODE_GROUP, None),
+    "Jiggle": ("MOD_SOFT", ops_jiggle.NODE_GROUP, None),
     "Sticky Strands": ("STRANDS", ops_sticky_strands.NODE_GROUP, None),
     "Sticky Liquid": ("MOD_FLUIDSIM", ops_sticky_liquid.NODE_GROUP, None),
     "Wet": ("MATFLUID", ops_wet.NODE_GROUP, ops_wet.FILM),
@@ -55,8 +57,12 @@ class MustardUI_SceneEffect(bpy.types.PropertyGroup):
 
 def scene_effects(scene):
     """Effect, object and modifier name of the effects in the scene"""
+    # The Jiggle of the Physics Items is their physics, and it is set in the Physics panel
+    physics = {x.object for arm in bpy.data.armatures for x in arm.MustardUI_PhysicsSettings.items}
     for name, (_, node_group, material_group) in EFFECTS.items():
         for obj in scene.objects:
+            if name == "Jiggle" and obj in physics:
+                continue
             if node_group:
                 yield from ((name, obj, m.name) for m in obj.modifiers if is_effect(m, node_group))
             elif any(shader_nodes(m, material_group) for m in materials([obj])):

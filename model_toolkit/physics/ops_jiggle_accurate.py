@@ -791,8 +791,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # tip of a breast, the lips) are exactly the ones which look wrong when
             # the cage stretches: those are stiffened, the flat areas are left free
             structural_group_name = ""
-            # Only the Cloth modifier uses it: Cloth Dynamics has no stiffness to
-            # scale, its faces do not stretch to begin with
+            # Only the Cloth modifier uses it: the Dynamics presets hold the shape
+            # with their own Stretching
             if (
                 self.physics_engine == "CLOTH"
                 and self.structural_enable
@@ -1129,7 +1129,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
         if fallback:
             self.report(
                 {"WARNING"},
-                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "MustardUI - The Dynamics physics could not be added: the "
                 "Cloth modifier was used instead.",
             )
 
