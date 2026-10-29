@@ -124,8 +124,8 @@ def build_node_group():
         "NodeSocketInt",
         default_value=0,
         min_value=0,
-        max_value=8,
-        description="Subdivisions of the mesh before the imprints, for detailed ones",
+        max_value=16,
+        description="Subdivisions of the mesh near the Colliders and the imprints",
     )
     add_input(
         ng,
@@ -350,12 +350,6 @@ def build_node_group():
     t = Tree(ng)
     t.section("Colliders")
     inputs = t.node("NodeGroupInput", -2, 0).outputs
-    geometry = t.node(
-        "GeometryNodeSubdivideMesh",
-        -1,
-        0,
-        {"Mesh": inputs["Geometry"], "Level": inputs["Subdivisions"]},
-    ).outputs[0]
     self_object = t.node("GeometryNodeSelfObject", -2, -2).outputs[0]
     to_world = t.node(
         "GeometryNodeObjectInfo", -1, -2, {"Object": self_object}, transform_space="ORIGINAL"

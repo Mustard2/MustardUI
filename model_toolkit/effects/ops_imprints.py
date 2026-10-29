@@ -162,19 +162,21 @@ class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
         margin = Vector((3.0, 3.0, 3.0)) * modifier_input(modifier, "Depth").value
         low = Vector(map(min, *corners)) - margin if corners else None
         high = Vector(map(max, *corners)) + margin if corners else None
-        faces = max(
-            sum(
-                low is None or all(low[i] <= c[i] <= high[i] for i in range(3))
-                for c in (ground.matrix_world @ x.center for x in ground.data.polygons)
-            ),
-            1,
-        )
-        levels = min(
-            math.ceil(math.log2(max(length / (EDGE_LENGTH * scale), 1.0))),
-            int(math.log(max(MAX_FACES / faces, 1.0), 4)),
-            8,
-        )
-        modifier_input(modifier, "Subdivisions").value = levels
+        # Of the faces larger than the Colliders only the part near them, e.g. a road under a giant
+        area = math.prod(sorted(high - low)[1:]) if corners else 0.0
+        faces = 0.0
+        for polygon in ground.data.polygons:
+            points = [co[x] for x in polygon.vertices]
+            bottom, top = Vector(map(min, *points)), Vector(map(max, *points))
+            if low is None:
+                faces += 1.0
+            elif all(bottom[i] <= high[i] and top[i] >= low[i] for i in range(3)):
+                size = sorted(top - bottom)
+                faces += min(area / max(size[1] * size[2], 1e-12), 1.0)
+        levels = math.ceil(math.log2(max(length / (EDGE_LENGTH * scale), 1.0)))
+        while levels and 4**levels * faces > MAX_FACES:
+            levels -= 1
+        modifier_input(modifier, "Subdivisions").value = min(levels, 16)
         # Changing the modifier inputs from Python does not tag the object
         ground.update_tag()
         for material in materials([ground]):

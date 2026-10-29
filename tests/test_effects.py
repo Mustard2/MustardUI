@@ -2208,6 +2208,19 @@ class TestImprints(BlenderTestCase):
         self.assertEqual(tint.node_tree.name, "MustardUI Imprints Tint")
         self.assertEqual([x.message for x in modifier.node_warnings], [])
 
+    # A ground much larger than the body is subdivided as finely, only near it
+    def test_large_ground(self):
+        self.ground.scale = (100.0, 100.0, 1.0)
+        set_active(self.ground)
+        modifier = self.add(kind="SNOW")
+        self.assertEqual(effect.modifier_input(modifier, "Subdivisions").value, 14)
+
+        co, height, _ = self.heights()
+        self.assertLess(len(co), 100000)
+        side = np.abs(co[:, :2]).max(axis=1)
+        self.assertGreater(np.count_nonzero(side < 0.45), 1000)
+        np.testing.assert_allclose(height[side < 0.45], -0.03, atol=1e-4)
+
     # The other selected meshes are imprinted instead of the body, in world space
     def test_colliders(self):
         stone = new_mesh_object("Stone", size=0.1, z=0.6)
