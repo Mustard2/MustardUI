@@ -54,6 +54,66 @@ class TestPhysics(BlenderTestCase):
         bpy.ops.mustardui.configuration()
         self.physics_settings.items[0].enable = True
 
+    # Scale Character rescales the cloth, hair dynamics and collision settings
+    def test_scale_character(self):
+        body = self.model["body"]
+        collision = body.modifiers.new("Collision", "COLLISION")
+        hair = body.modifiers.new("Hair", "PARTICLE_SYSTEM").particle_system
+        hair.settings.type = "HAIR"
+        hair.use_hair_dynamics = True
+        cloth = self.cloth.settings
+
+        def values():
+            return (
+                cloth.mass,
+                cloth.tension_damping,
+                cloth.pressure_factor,
+                cloth.effector_weights.gravity,
+                self.cloth.collision_settings.distance_min,
+                collision.settings.thickness_outer,
+                hair.cloth.settings.mass,
+                hair.cloth.settings.bending_damping,
+                hair.settings.effector_weights.gravity,
+            )
+
+        before = values()
+        bpy.ops.mustardui.model_toolkit_scale_character(scale=0.5)
+        factors = (2.0, 2.0, 4.0, 0.5, 0.5, 0.5, 2.0, 1.0, 0.5)
+        for old, new, factor in zip(before, values(), factors, strict=True):
+            self.assertAlmostEqual(new, old * factor, places=5)
+
+        # Without the physics options only the armature is scaled
+        scaled = values()
+        bpy.ops.mustardui.model_toolkit_scale_character(
+            scale=0.5, hair_physics=False, physics=False
+        )
+        self.assertEqual(values(), scaled)
+
+    # Animate drives the physics settings by the armature scale, exact on the way
+    def test_scale_character_animate(self):
+        # Hidden, the cage and its drivers are not evaluated
+        self.physics_settings.enable_physics = True
+        cloth = self.cloth.settings
+        mass, gravity = cloth.mass, cloth.effector_weights.gravity
+        bpy.context.scene.frame_set(1)
+        bpy.ops.mustardui.model_toolkit_scale_character(scale=0.5, animate=True, duration=10)
+        arm = self.model["armature"]
+        self.assertTrue(
+            all(x.driver.is_simple_expression for x in self.cage.animation_data.drivers)
+        )
+        for frame in (1, 6, 11):
+            bpy.context.scene.frame_set(frame)
+            scale = arm.scale[0]
+            self.assertAlmostEqual(cloth.mass, mass / scale, places=5)
+            self.assertAlmostEqual(cloth.effector_weights.gravity, gravity * scale, places=5)
+        self.assertEqual(scale, 0.5)
+
+        # Another growth, keyed on the armature scale only
+        arm.scale = (2.0, 2.0, 2.0)
+        arm.keyframe_insert("scale", frame=6)
+        bpy.context.scene.frame_set(6)
+        self.assertAlmostEqual(cloth.mass, mass / 2.0, places=5)
+
     # Outfit pieces cannot be added as physics items
     def test_add_outfit_piece_is_rejected(self):
         bpy.ops.mustardui.configuration()

@@ -121,6 +121,11 @@ class PANEL_PT_MustardUI_ModelToolkit_Model(ModelToolkitSection, bpy.types.Panel
         row = layout.row(align=True)
         row.operator("mustardui.rename_image_nodes", icon="IMAGE_DATA")
 
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_scale_character", icon="CON_SIZELIKE")
+
 
 class PANEL_PT_MustardUI_ModelToolkit_Outfits(ModelToolkitSection, bpy.types.Panel):
     header = ("Outfits", "MOD_CLOTH")

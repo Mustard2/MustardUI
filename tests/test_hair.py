@@ -99,6 +99,85 @@ class TestHair(BlenderTestCase):
         self.assertEqual([o.name for o in self.model["hair"].objects], ["Hair Long"])
 
 
+class TestScaleCharacter(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        configure_model(self.model).hair_list = "Hair Long"
+        self.hair = bpy.data.objects["Hair Long"]
+        self.hair.scale = (0.8, 0.8, 0.8)
+        self.hair.modifiers.new("Hair", "PARTICLE_SYSTEM")
+        self.settings = self.hair.particle_systems[0].settings
+        self.settings.type = "HAIR"
+        self.settings.count = 20
+        self.settings.hair_length = 0.3
+        self.settings.child_type = "SIMPLE"
+        self.settings.child_radius = 0.1
+        self.settings.kink = "CURL"
+        self.settings.kink_amplitude = 0.05
+        set_active(self.model["armature"])
+
+    def strands(self):
+        dg = bpy.context.evaluated_depsgraph_get()
+        obj = self.hair.evaluated_get(dg)
+        psys = obj.particle_systems[0]
+        steps = 2**psys.settings.display_step + 1
+        count = len(psys.particles) + len(psys.child_particles)
+        return [
+            psys.co_hair(obj, particle_no=i, step=j) for i in range(count) for j in range(steps)
+        ]
+
+    def assert_scaled(self, rest, factor):
+        for a, b in zip(rest, self.strands(), strict=True):
+            self.assertLess((a * factor - b).length, 1e-4)
+
+    def check_follows_scale(self):
+        rest = self.strands()
+        bpy.ops.mustardui.model_toolkit_scale_character(scale=0.5)
+        bpy.context.view_layer.update()
+        self.assertEqual(tuple(self.model["armature"].scale), (0.5, 0.5, 0.5))
+        self.assert_scaled(rest, 0.5)
+
+    # The particle hair children keep their shape: Simple Radius and Kink Amplitude are scaled
+    def test_simple_children(self):
+        self.check_follows_scale()
+        self.assertAlmostEqual(self.settings.child_radius, 0.05, places=5)
+        self.assertAlmostEqual(self.settings.kink_amplitude, 0.025, places=5)
+
+    # Interpolated children Radius already follows the scale
+    def test_interpolated_children(self):
+        self.settings.child_type = "INTERPOLATED"
+        self.check_follows_scale()
+        self.assertAlmostEqual(self.settings.child_radius, 0.1, places=5)
+        self.assertAlmostEqual(self.settings.kink_amplitude, 0.025, places=5)
+
+    # Animate keys the armature scale and the hair settings from the current frame
+    def test_animate(self):
+        scene = bpy.context.scene
+        scene.frame_set(10)
+        rest = self.strands()
+        bpy.ops.mustardui.model_toolkit_scale_character(scale=0.5, animate=True, duration=20)
+        arm = self.model["armature"]
+        self.assertEqual(tuple(arm.scale), (1.0, 1.0, 1.0))
+        self.assertAlmostEqual(self.settings.child_radius, 0.1, places=5)
+        self.assertEqual(len(self.settings.animation_data.drivers), 0)
+
+        scene.frame_set(20)
+        self.assertTrue(0.5 < arm.scale[0] < 1.0)
+        self.assert_scaled(rest, arm.scale[0])
+
+        scene.frame_set(30)
+        self.assertEqual(tuple(arm.scale), (0.5, 0.5, 0.5))
+        self.assertAlmostEqual(self.settings.child_radius, 0.05, places=5)
+        self.assert_scaled(rest, 0.5)
+
+    # Disabled options leave their part as it is
+    def test_options(self):
+        bpy.ops.mustardui.model_toolkit_scale_character(scale=0.5, armature=False, hair=False)
+        self.assertEqual(tuple(self.model["armature"].scale), (1.0, 1.0, 1.0))
+        self.assertAlmostEqual(self.settings.child_radius, 0.1, places=5)
+
+
 class TestParticleHairToCurves(BlenderTestCase):
     def setUp(self):
         super().setUp()
