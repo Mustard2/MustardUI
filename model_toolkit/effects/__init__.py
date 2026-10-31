@@ -7,6 +7,7 @@ from . import (
     ops_dust_puff,
     ops_fireball,
     ops_foam,
+    ops_footprints,
     ops_hex_dissolve,
     ops_imprints,
     ops_jiggle,
@@ -42,6 +43,7 @@ def register():
     ops_marks.register()
     ops_imprints.register()
     ops_dust_puff.register()
+    ops_footprints.register()
     ops_dust_motes.register()
     ops_aura.register()
     ops_select_object.register()
@@ -55,6 +57,7 @@ def unregister():
     ops_select_object.unregister()
     ops_aura.unregister()
     ops_dust_motes.unregister()
+    ops_footprints.unregister()
     ops_dust_puff.unregister()
     ops_imprints.unregister()
     ops_marks.unregister()

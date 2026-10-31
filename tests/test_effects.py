@@ -2553,6 +2553,154 @@ class TestImprints(BlenderTestCase):
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestFootprints(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        # A 2 m floor away from the model, a 10 cm block stepping on it
+        mesh = bpy.data.meshes.new("Floor")
+        mesh.from_pydata([(x, y, 0.0) for y in (2, 4) for x in (-1, 1)], [], [(0, 1, 3, 2)])
+        self.tiles = bpy.data.materials.new("Tiles")
+        mesh.materials.append(self.tiles)
+        self.floor = new_object("Floor", mesh)
+        self.block = new_mesh_object("Block", size=0.05, z=0.05)
+        self.block.location = (-0.6, 3.0, 0.0)
+
+    def step(self, steps):
+        """Block stepping 30 cm along X every 12 frames, down for the first 6"""
+        for frame in range(1, 12 * steps + 1):
+            i, phase = divmod(frame - 1, 12)
+            self.block.location = (-0.6 + 0.3 * i, 3.0, 0.1 if phase >= 6 else 0.0)
+            self.block.keyframe_insert("location", frame=frame)
+        self.scene.frame_set(1)
+
+    def add(self, **settings):
+        set_active(self.block)
+        self.floor.select_set(True)
+        bpy.context.view_layer.objects.active = self.floor
+        bpy.ops.mustardui.model_toolkit_footprints(**settings)
+        return self.floor.modifiers["Wet Footprints"]
+
+    def wetness(self, end):
+        """Positions and wetness of the floor points at the end frame, simulated from the first"""
+        for frame in range(1, end + 1):
+            self.scene.frame_set(frame)
+        data = self.floor.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        footprint = np.empty(len(data.vertices) * 4)
+        data.attributes["footprint"].data.foreach_get("color", footprint)
+        footprint = footprint.reshape(-1, 4)
+        return co.reshape(-1, 3), footprint[:, :3], 1.0 - footprint[:, 3]
+
+    def prints(self, co, wet, count):
+        """Wet share of the floor points under each step of the block, 0 if not subdivided there"""
+        under = [
+            wet[(np.abs(co[:, 0] + 0.6 - 0.3 * i) < 0.04) & (np.abs(co[:, 1] - 3.0) < 0.04)]
+            for i in range(count)
+        ]
+        return [x.mean() if len(x) else 0.0 for x in under]
+
+    # The block standing on the floor wets it under it, in the film of the floor material
+    def test_footprints(self):
+        modifier = self.add()
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.block])
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, 1)
+        # Subdivided to about 4 mm
+        self.assertEqual(effect.modifier_input(modifier, "Subdivisions").value, 9)
+        co, rest, wet = self.wetness(1)
+        np.testing.assert_allclose(rest, co, atol=1e-6)
+        distance = np.abs(co[:, :2] - (-0.6, 3.0)).max(axis=1)
+        self.assertGreater(np.count_nonzero(distance < 0.04), 300)
+        np.testing.assert_allclose(wet[distance < 0.04], 1.0)
+        np.testing.assert_allclose(wet[distance > 0.07], 0.0)
+        self.assertEqual(len(effect.shader_nodes(self.tiles, "MustardUI Footprints Film")), 1)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # The model body without other selected meshes
+        set_active(self.floor)
+        bpy.ops.mustardui.model_toolkit_footprints()
+        colliders = effect.modifier_input(self.floor.modifiers[-1], "Colliders").value
+        self.assertEqual(list(colliders.objects), [bpy.data.objects["Tester Body"]])
+
+    # Each step leaves fainter prints, broken in more patches, none past the Steps
+    def test_steps(self):
+        self.step(6)
+        modifier = self.add()
+        for name, value in (("Steps", 4.0), ("Patches", 1.0), ("Patch Scale", 300.0)):
+            effect.modifier_input(modifier, name).value = value
+        self.floor.update_tag()
+        co, _, wet = self.wetness(72)
+        shares = self.prints(co, wet, 6)
+        self.assertGreater(shares[0], 0.9)
+        self.assertTrue(all(a > b + 0.05 for a, b in zip(shares[:3], shares[1:4], strict=True)))
+        self.assertGreater(shares[3], 0.05)
+        np.testing.assert_allclose(shares[4:], 0.0)
+
+        # As wet at every step without Steps
+        effect.modifier_input(modifier, "Steps").value = 0.0
+        self.floor.update_tag()
+        co, _, wet = self.wetness(72)
+        self.assertGreater(min(self.prints(co, wet, 6)), 0.9)
+
+    # The prints dry in the Drying after the block lifts, kept without it
+    def test_drying(self):
+        self.step(1)
+        modifier = self.add()
+        effect.modifier_input(modifier, "Drying").value = 0.2
+        self.floor.update_tag()
+        co, _, wet = self.wetness(12)
+        np.testing.assert_allclose(self.prints(co, wet, 1), 0.0)
+
+        effect.modifier_input(modifier, "Drying").value = 0.0
+        self.floor.update_tag()
+        co, _, wet = self.wetness(12)
+        self.assertGreater(self.prints(co, wet, 1)[0], 0.9)
+
+    # The puddle at the 3D cursor is wet, wetting again the block stepping in it
+    def test_puddle(self):
+        self.step(5)
+        self.scene.cursor.location = (0.0, 3.0, 0.0)
+        modifier = self.add(puddle=True)
+        control = effect.modifier_input(modifier, "Control").value
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_FOOTPRINTS")
+        self.assertEqual(tuple(control.location), (0.0, 3.0, 0.0))
+        control.scale = (0.1, 0.1, 0.1)
+        effect.modifier_input(modifier, "Steps").value = 1.0
+        self.floor.update_tag()
+        co, _, wet = self.wetness(60)
+        # Dry after the first step, wet again after the puddle at the third
+        shares = self.prints(co, wet, 5)
+        self.assertGreater(shares[0], 0.9)
+        self.assertEqual(shares[1], 0.0)
+        self.assertGreater(shares[3], 0.9)
+        self.assertEqual(shares[4], 0.0)
+        puddle = np.linalg.norm(co[:, :2] - (0.0, 3.0), axis=1)
+        # Within its ragged border
+        np.testing.assert_allclose(wet[puddle < 0.06], 1.0)
+        np.testing.assert_allclose(wet[(puddle > 0.13) & (puddle < 0.2)], 0.0, atol=1e-6)
+        # Subdivided across its border, at about 4 mm
+        self.assertGreater(np.count_nonzero((puddle > 0.07) & (puddle < 0.12)), 1500)
+
+    # The Colliders and the Control go with the effect, and the film with the last of them
+    def test_remove(self):
+        modifier = self.add(puddle=True)
+        name = effect.modifier_input(modifier, "Colliders").value.name
+        control = effect.modifier_input(modifier, "Control").value.name
+        bpy.ops.mustardui.model_toolkit_remove_footprints()
+        self.assertNotIn("Wet Footprints", self.floor.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertNotIn(control, bpy.data.objects)
+        self.assertEqual(self.block.users_collection, (bpy.context.scene.collection,))
+        self.assertEqual(effect.shader_nodes(self.tiles, "MustardUI Footprints Film"), [])
+        output = self.tiles.node_tree.nodes["Material Output"]
+        self.assertEqual(output.inputs["Surface"].links[0].from_node.type, "BSDF_PRINCIPLED")
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_footprints.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestDustPuff(BlenderTestCase):
     def setUp(self):
         super().setUp()

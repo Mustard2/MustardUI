@@ -355,6 +355,14 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_dust_puff", text="Dust Puff", icon="FORCE_TURBULENCE")
         row.operator("mustardui.model_toolkit_remove_dust_puff", text="", icon="X")
 
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator(
+            "mustardui.model_toolkit_footprints", text="Wet Footprints", icon="MOD_DYNAMICPAINT"
+        )
+        row.operator("mustardui.model_toolkit_remove_footprints", text="", icon="X")
+
         layout.separator()
 
         row = layout.row(align=True)

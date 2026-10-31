@@ -1,8 +1,6 @@
-import math
 import os
 
 import bpy
-from mathutils import Vector
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
 from .effect import (
@@ -14,6 +12,7 @@ from .effect import (
     modifier_input,
     remove_with_colliders,
     shader_nodes,
+    subdivision_levels,
     tint,
     untint,
 )
@@ -21,9 +20,8 @@ from .effect import (
 NODE_GROUP = "MustardUI Imprints"
 TINT = "MustardUI Imprints Tint"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "imprints.blend")
-# Edge length the Subdivisions aim at, and faces they do not go past
+# Edge length the Subdivisions aim at
 EDGE_LENGTH = 0.015
-MAX_FACES = 250000
 
 # Modifier inputs of each kind of ground
 PRESETS = {
@@ -151,32 +149,9 @@ class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
         for name, power in SCALING.items():
             modifier_input(modifier, name).value *= scale**power
         modifier_input(modifier, "Start Frame").value = context.scene.frame_current
-        # Subdivided for the longest edges to reach the edge length, without too many faces near the
-        # Colliders, as only there it is subdivided
-        co = [ground.matrix_world @ x.co for x in ground.data.vertices]
-        length = max(
-            ((co[a] - co[b]).length for a, b in (x.vertices for x in ground.data.edges)),
-            default=0.0,
+        modifier_input(modifier, "Subdivisions").value = subdivision_levels(
+            ground, colliders, 3.0 * modifier_input(modifier, "Depth").value, EDGE_LENGTH * scale
         )
-        corners = [obj.matrix_world @ Vector(c) for obj in colliders for c in obj.bound_box]
-        margin = Vector((3.0, 3.0, 3.0)) * modifier_input(modifier, "Depth").value
-        low = Vector(map(min, *corners)) - margin if corners else None
-        high = Vector(map(max, *corners)) + margin if corners else None
-        # Of the faces larger than the Colliders only the part near them, e.g. a road under a giant
-        area = math.prod(sorted(high - low)[1:]) if corners else 0.0
-        faces = 0.0
-        for polygon in ground.data.polygons:
-            points = [co[x] for x in polygon.vertices]
-            bottom, top = Vector(map(min, *points)), Vector(map(max, *points))
-            if low is None:
-                faces += 1.0
-            elif all(bottom[i] <= high[i] and top[i] >= low[i] for i in range(3)):
-                size = sorted(top - bottom)
-                faces += min(area / max(size[1] * size[2], 1e-12), 1.0)
-        levels = math.ceil(math.log2(max(length / (EDGE_LENGTH * scale), 1.0)))
-        while levels and 4**levels * faces > MAX_FACES:
-            levels -= 1
-        modifier_input(modifier, "Subdivisions").value = min(levels, 16)
         # Changing the modifier inputs from Python does not tag the object
         ground.update_tag()
         for material in materials([ground]):

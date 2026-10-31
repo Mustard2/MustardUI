@@ -1818,9 +1818,9 @@ def build_lines(t, inputs, captured, at_rest, runners, trail):
     return t.node("GeometryNodeGeometryToInstance", 11, 0, {0: lines}).outputs[0]
 
 
-def build_mist():
+def build_mist(name=MIST):
     """Height of tiny drops in the cells of a Voronoi texture, some of them empty"""
-    ng = bpy.data.node_groups.new(MIST, "ShaderNodeTree")
+    ng = bpy.data.node_groups.new(name, "ShaderNodeTree")
     add_input(ng, "Vector", "NodeSocketVector", hide_value=True)
     add_input(ng, "Scale", "NodeSocketFloat", default_value=500.0)
     add_input(ng, "Size", "NodeSocketFloat", default_value=0.45)
@@ -1852,9 +1852,9 @@ def build_mist():
     return ng
 
 
-def build_film(mist):
+def build_film(mist, name=FILM, attribute="wet", outline=None):
     """The shader under a glossy wet film with tiny drops, darker, by the wetness attribute"""
-    ng = bpy.data.node_groups.new(FILM, "ShaderNodeTree")
+    ng = bpy.data.node_groups.new(name, "ShaderNodeTree")
     add_input(ng, "Shader", "NodeSocketShader")
     add_input(
         ng,
@@ -2025,9 +2025,19 @@ def build_film(mist):
     inputs = t.node("NodeGroupInput", 0, 0).outputs
     # Rest position and wetness, stored by the Wet modifier
     wet = t.node(
-        "ShaderNodeAttribute", 1, 2, attribute_type="GEOMETRY", attribute_name="wet"
+        "ShaderNodeAttribute", 1, 2, attribute_type="GEOMETRY", attribute_name=attribute
     ).outputs
     wetness, rest = wet["Alpha"], wet["Vector"]
+    # Or the dryness, for the meshes without the attribute to be dry, sharpened to the outline at
+    # half of it within the outline width
+    if outline is not None:
+        wetness = t.node(
+            "ShaderNodeMapRange",
+            1.5,
+            1,
+            {"Value": wetness, "From Min": 0.5 + outline, "From Max": 0.5 - outline},
+            interpolation_type="SMOOTHSTEP",
+        ).outputs[0]
 
     # Glossy patches of film, thicker in pools, and damp skin around them
     cover = t.node(
