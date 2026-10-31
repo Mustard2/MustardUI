@@ -20,41 +20,8 @@ from ..model_toolkit.outfits.ops_fit_to_body import fit_to_body_draw_settings
 from . import MainPanel
 
 
-class PANEL_PT_MustardUI_ModelToolkit(MainPanel, bpy.types.Panel):
-    bl_category = "MustardUI Toolkit"
-    bl_label = "Model Toolkit"
-    bl_options = {"HIDE_HEADER"}
-
-    @classmethod
-    def poll(cls, context):
-        return (
-            context.preferences.addons[base_package].preferences.model_toolkit
-            and any(x.MustardUI_created for x in bpy.data.armatures)
-            and not active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT)
-        )
-
-    def draw(self, context):
-        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
-        settings = context.scene.MustardUI_Settings
-
-        box = self.layout.box()
-        col = box.column(align=True)
-        if settings.viewport_model_selection and arm is not None and arm.MustardUI_created:
-            col.label(text="Disable Viewport Model Selection", icon="INFO")
-            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
-            box.operator(
-                "mustardui.viewportmodelselection",
-                text="Viewport Model Selection",
-                icon="VIEW3D",
-                depress=settings.viewport_model_selection,
-            ).config = 1
-        else:
-            col.label(text="Select a MustardUI model", icon="INFO")
-            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
-
-
 class ModelToolkitSection(MainPanel):
-    bl_category = PANEL_PT_MustardUI_ModelToolkit.bl_category
+    bl_category = "MustardUI Toolkit"
     bl_label = ""
     bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
@@ -513,7 +480,6 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.typ
 
 
 def register():
-    bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Model)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Rig)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
@@ -533,4 +499,3 @@ def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Rig)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Model)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit)

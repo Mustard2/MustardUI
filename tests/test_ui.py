@@ -185,8 +185,8 @@ class TestUI(BlenderTestCase):
         drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_Rig")
         for section in ("Outfits", "Mesh", "Physics", "Effects"):
             self.assertIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
-        for section in ("", "_Model", "_Optimizations", "_SceneEffects"):
-            self.assertNotIn(f"PANEL_PT_MustardUI_ModelToolkit{section}", drawer.drawn)
+        for section in ("Model", "Optimizations", "SceneEffects"):
+            self.assertNotIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
 
     # Scene Effects draws the effects in the scene, with their settings and materials
     @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
