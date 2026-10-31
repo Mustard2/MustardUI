@@ -496,8 +496,13 @@ class TestJiggleDynamics(BlenderTestCase):
         obj = new_mesh_object("Jiggle")
         bm = bmesh.new()
         bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=0.2)
-        bm.to_mesh(obj.data)
+        verts = [v.co.copy() for v in bm.verts]
+        faces = [[v.index for v in face.verts] for face in bm.faces]
         bm.free()
+        # Faces in a fixed order: bmesh orders the edges differently at each run, changing the solve
+        faces = sorted(min(f[i:] + f[:i] for i in range(len(f))) for f in faces)
+        obj.data.clear_geometry()
+        obj.data.from_pydata(verts, [], faces)
         rest = np.array([v.co for v in obj.data.vertices])
         pinned = rest[:, 2] < 0.0
         pin = obj.vertex_groups.new(name="Pin")
