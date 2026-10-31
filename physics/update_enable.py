@@ -130,24 +130,29 @@ def set_cage_object_modifiers(physics_item, obj, status, body, mtype=""):
     if cage is None:
         return
 
+    cages = [
+        x
+        for x in physics_item.id_data.MustardUI_PhysicsSettings.items
+        if x.type == "CAGE" and x.object
+    ]
+
     if mtype == "":
-        intersecting_objects = [x.object for x in physics_item.intersecting_objects]
+        # The body Surface Deform is shared: disabled Cages leave it to the enabled ones
+        drives_body = obj in [x.object for x in physics_item.intersecting_objects] and (
+            physics_item.enable
+            or not any(
+                x.enable and obj in [y.object for y in x.intersecting_objects] for x in cages
+            )
+        )
         for modifier in obj.modifiers:
             if (modifier.type == "MESH_DEFORM" and modifier.object == cage) or (
                 modifier.type == "SURFACE_DEFORM"
-                and (
-                    modifier.target == cage
-                    or (modifier.target == body and obj in intersecting_objects)
-                )
+                and (modifier.target == cage or (modifier.target == body and drives_body))
             ):
                 set_bool(modifier, "show_viewport", status)
                 set_bool(modifier, "show_render", status)
 
-    cage_names = [
-        x.object.name
-        for x in physics_item.id_data.MustardUI_PhysicsSettings.items
-        if x.type == "CAGE" and x.object
-    ]
+    cage_names = [x.object.name for x in cages]
     smooth_mods = {}  # vertex_group -> CORRECTIVE_SMOOTH modifier
     weight_mix_active = {}  # vertex_group_a -> whether any feeding weight mix is active
 

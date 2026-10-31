@@ -370,6 +370,31 @@ class TestOutfitsPhysicsSetup(BlenderTestCase):
             for mod in self.surface_deforms(obj):
                 self.assertTrue(mod.show_viewport and mod.show_render, obj.name)
 
+    # A disabled Cage intersecting a piece leaves its body Surface Deform to the enabled Cages
+    def test_disabled_cage_keeps_body_deform(self):
+        arm = self.model["armature"]
+        set_active(new_mesh_object("Belly Cage", armature=arm, size=0.4, z=0.6))
+        bpy.ops.mustardui.physics_add_item()
+        chest, belly = self.physics_settings.items
+        belly.type = "CAGE"
+        set_active(arm)
+        bpy.ops.mustardui.physics_outfits_setup()
+        bpy.ops.mustardui.configuration()
+        shirt = bpy.data.objects["Casual - Shirt"]
+        self.assertIn(shirt, [x.object for x in belly.intersecting_objects])
+        deform = self.surface_deforms(shirt)[0]
+
+        chest.enable = True
+        self.physics_settings.enable_physics = True
+        self.assertTrue(deform.show_viewport and deform.show_render)
+        belly.enable = True
+        belly.enable = False
+        self.assertTrue(deform.show_viewport and deform.show_render)
+        chest.enable = False
+        self.assertFalse(deform.show_viewport or deform.show_render)
+        chest.enable = True
+        self.assertTrue(deform.show_viewport and deform.show_render)
+
     # A failure halfway restores the scene state
     def test_state_restored_on_failure(self):
         def fail(*args):
