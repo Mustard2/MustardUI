@@ -4,6 +4,7 @@ from bpy.app.handlers import persistent
 from ... import __package__ as base_package
 from . import (
     ops_aura,
+    ops_billow_dust,
     ops_cloth_tear,
     ops_crush,
     ops_disintegration,
@@ -44,6 +45,7 @@ EFFECTS = {
     "Cloth Tear": ("MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
     "Shatter": ("MOD_EXPLODE", ops_shatter.NODE_GROUP, None),
     "Crush": ("MOD_MESHDEFORM", ops_crush.NODE_GROUP, None),
+    "Billow Dust": ("OUTLINER_OB_VOLUME", ops_billow_dust.NODE_GROUP, None),
     "Rope": ("CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None),
     "Tape": ("MOD_THICKNESS", ops_wrap.Tape.node_group, None),
     "Fireball": ("LIGHT_SUN", ops_fireball.NODE_GROUP, None),

@@ -346,6 +346,14 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
         row.separator()
+        row.operator(
+            "mustardui.model_toolkit_billow_dust", text="Billow Dust", icon="OUTLINER_OB_VOLUME"
+        )
+        row.operator("mustardui.model_toolkit_remove_billow_dust", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
         row.operator("mustardui.model_toolkit_imprints", text="Imprints", icon="MOD_DISPLACE")
         row.operator("mustardui.model_toolkit_remove_imprints", text="", icon="X")
 

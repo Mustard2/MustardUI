@@ -216,6 +216,8 @@ class TestUI(BlenderTestCase):
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_crush()
         set_active(cube)
+        bpy.ops.mustardui.model_toolkit_billow_dust()
+        set_active(cube)
         bpy.ops.mustardui.model_toolkit_aura()
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_jiggle_effect()

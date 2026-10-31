@@ -48,6 +48,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_motes.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_crush.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_billow_dust.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_aura.poll())
 
     # The meshes are cut by the growing Control, and emit particles from the cut
@@ -3703,6 +3704,191 @@ class TestCrush(BlenderTestCase):
         self.assertNotIn(name, bpy.data.collections)
         self.assertIn(self.block, list(self.scene.collection.objects))
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_crush.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestBillowDust(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        # A 2 x 0.4 x 3 m wall standing on the ground, away from the model, facing -y
+        self.wall = new_mesh_object("Wall", size=1.0, z=0.0)
+        self.wall.data.transform(
+            Matrix.Translation((0.0, 4.2, 1.5)) @ Matrix.Diagonal((1.0, 0.2, 1.5, 1.0))
+        )
+        self.plaster = bpy.data.materials.new("Plaster")
+        self.wall.data.materials.append(self.plaster)
+        self.wall.data.color_attributes.new("tint", "FLOAT_COLOR", "POINT")
+        # A 20 cm block thrown into it at 2 m/s, hitting at frame 10, pressing 5 cm in
+        self.block = new_mesh_object("Block", size=0.1, z=0.0)
+        # Facing out, as the helper cubes face in
+        self.wall.data.flip_normals()
+        self.block.data.flip_normals()
+        for frame in range(1, 61):
+            y = 3.9 - max(10 - frame, 0) * 2.0 / 24 + 0.05 * min(max(frame - 10, 0), 1)
+            self.block.location = (0.0, y, 1.5)
+            self.block.keyframe_insert("location", frame=frame)
+        self.scene.frame_set(1)
+
+    def add(self, **settings):
+        set_active(self.block)
+        self.wall.select_set(True)
+        bpy.context.view_layer.objects.active = self.wall
+        bpy.ops.mustardui.model_toolkit_billow_dust(**settings)
+        return self.wall.modifiers["Billow Dust"]
+
+    def evaluate(self, end):
+        """Evaluated geometry at the end frame, simulated from the first"""
+        for frame in range(1, end + 1):
+            self.scene.frame_set(frame)
+        return self.wall.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
+
+    def debris(self, geometry):
+        """Geometry of the debris instance, None without debris"""
+        references = geometry.instance_references()
+        return references[0] if references else None
+
+    def grids(self, geometry):
+        """Density and color of the dust as arrays over its voxels, with their positions"""
+        import openvdb
+
+        path = os.path.join(tempfile.mkdtemp(), "dust.vdb")
+        geometry.volume.grids.save(path)
+        density, color = (openvdb.read(path, x) for x in ("density", "color"))
+        low, high = density.evalActiveVoxelBoundingBox()
+        shape = tuple(np.array(high) - low + 1)
+        values = np.zeros(shape, np.float32)
+        density.copyToArray(values, ijk=low)
+        colors = np.zeros((*shape, 3), np.float32)
+        color.copyToArray(colors, ijk=low)
+        origin = np.array(density.transform.indexToWorld((0, 0, 0)))
+        step = np.array(density.transform.indexToWorld((1, 1, 1))) - origin
+        return values, colors, origin + (np.stack(np.indices(shape), axis=-1) + low) * step
+
+    # Dust billows and debris bursts out of the wall where the block hits it, the debris resting
+    # on the floor
+    def test_billow_dust(self):
+        modifier = self.add(kind="CONCRETE")
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.block])
+        self.assertEqual(self.wall.modifiers[-1], modifier)
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, 1)
+        self.assertEqual(effect.modifier_input(modifier, "Floor").value, 0.0)
+        self.assertIsNone(effect.modifier_input(modifier, "Sun").value)
+        dust = effect.modifier_input(modifier, "Dust Material").value
+        self.assertEqual(dust.name, "MustardUI Billow Dust Dust")
+        glass = effect.modifier_input(modifier, "Glass Material").value
+        self.assertEqual(glass.name, "MustardUI Billow Dust Glass")
+
+        geometry = self.evaluate(9)
+        self.assertIsNone(self.debris(geometry))
+        self.assertIsNone(geometry.volume)
+
+        geometry = self.evaluate(24)
+        self.assertEqual(len(geometry.mesh.polygons), 6)
+        self.assertEqual(sorted(x.name for x in geometry.volume.grids), ["color", "density"])
+        density, _, position = self.grids(geometry)
+        dusty = position[density > 0.1]
+        # In front of the wall around the hit, not growing every frame
+        self.assertGreater(len(dusty), 1000)
+        self.assertLess(dusty[:, 1].mean(), 4.0)
+        self.assertLess((dusty.max(0) - dusty.min(0)).max(), 3.0)
+        self.assertLess(np.linalg.norm(dusty.mean(0) - [0.0, 4.0, 1.5]), 0.6)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Shards and chips with the material of the wall, without its attributes, resting on the
+        # floor in front of it
+        geometry = self.evaluate(48)
+        debris = self.debris(geometry)
+        mesh = debris.mesh
+        self.assertGreater(len(mesh.polygons), 100)
+        index = np.empty(len(mesh.polygons), dtype=np.int32)
+        mesh.polygons.foreach_get("material_index", index)
+        used = {mesh.materials[i].original for i in np.unique(index)}
+        self.assertEqual(used, {self.plaster, glass})
+        self.assertNotIn("tint", mesh.attributes)
+        co = np.array([v.co[:] for v in mesh.vertices])
+        self.assertGreater(co[:, 2].min(), -0.002)
+        self.assertLess(np.percentile(co[:, 2], 10), 0.05)
+        self.assertLess(co[:, 1].mean(), 4.0)
+        self.assertGreater(np.linalg.norm(co[:, :2] - [0.0, 4.0], axis=1).max(), 0.3)
+
+        # Debris only when enabled
+        effect.modifier_input(modifier, "Debris").value = False
+        self.wall.update_tag()
+        self.assertIsNone(self.debris(self.evaluate(24)))
+
+    # The dust is lit on the side of the Sun, and of its color only without Shade
+    def test_shade(self):
+        sun = new_object("Sun", bpy.data.lights.new("Sun", "SUN"))
+        # Shining from +x, then from -x
+        sun.rotation_euler = (0.0, np.pi / 2, 0.0)
+        modifier = self.add(kind="BRICK")
+        self.assertEqual(effect.modifier_input(modifier, "Sun").value, sun)
+        self.assertEqual(effect.modifier_input(modifier, "Shade").value, 1.0)
+        density, east, _ = self.grids(self.evaluate(24))
+        sun.rotation_euler = (0.0, -np.pi / 2, 0.0)
+        _, west, _ = self.grids(self.evaluate(24))
+        # Brighter on the edges of the billows facing the Sun
+        density /= density.max()
+        slope = np.zeros_like(density)
+        slope[1:-1] = density[2:] - density[:-2]
+        brighter = (east - west).mean(-1)
+        self.assertGreater(brighter[slope < -0.3].mean(), 0.05)
+        self.assertLess(brighter[slope > 0.3].mean(), -0.05)
+
+        effect.modifier_input(modifier, "Shade").value = 0.0
+        self.wall.update_tag()
+        density, colors, _ = self.grids(self.evaluate(24))
+        color = np.array(effect.modifier_input(modifier, "Color").value[:3])
+        self.assertLess(np.abs(colors[density > 0.1] - color).max(), 1e-3)
+
+    # Cycles shades the dust itself
+    def test_cycles(self):
+        self.scene.render.engine = "CYCLES"
+        self.assertEqual(effect.modifier_input(self.add(), "Shade").value, 0.0)
+
+    # A giant Collider gets dust as large as it, lasting longer, with as many puffs per hit
+    def test_giant(self):
+        self.block.scale = (170.0,) * 3
+        bpy.context.view_layer.update()
+        modifier = self.add(kind="EARTH")
+        inputs = {
+            k: effect.modifier_input(modifier, k).value
+            for k in ("Size", "Debris Size", "Rise", "Growth", "Amount")
+        }
+        expected = {
+            "Size": 0.1 * 20,
+            "Debris Size": 0.008 * 20,
+            "Rise": -0.03 * 20**0.5,
+            "Growth": 0.16 * 20**0.5,
+            "Amount": 300.0 * 20**-2.5,
+        }
+        for name, value in expected.items():
+            self.assertAlmostEqual(inputs[name], value, places=4, msg=name)
+
+    # Effects added after it go before it, not to change the dust and the debris
+    def test_with_crush(self):
+        self.add()
+        bpy.ops.mustardui.model_toolkit_crush()
+        self.assertEqual([m.name for m in self.wall.modifiers], ["Crush", "Billow Dust"])
+
+    # Without other selected meshes the model body is the Collider
+    def test_body(self):
+        set_active(self.wall)
+        bpy.ops.mustardui.model_toolkit_billow_dust()
+        colliders = effect.modifier_input(self.wall.modifiers["Billow Dust"], "Colliders").value
+        self.assertEqual(list(colliders.objects), [bpy.data.objects["Tester Body"]])
+
+    # The Colliders collection goes with the effect, keeping its objects in the scene
+    def test_remove(self):
+        name = effect.modifier_input(self.add(), "Colliders").value.name
+        bpy.ops.mustardui.model_toolkit_remove_billow_dust()
+        self.assertNotIn("Billow Dust", self.wall.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertEqual(self.block.users_collection, (self.scene.collection,))
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_billow_dust.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
