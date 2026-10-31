@@ -2208,6 +2208,17 @@ class TestImprints(BlenderTestCase):
         self.assertEqual(tint.node_tree.name, "MustardUI Imprints Tint")
         self.assertEqual([x.message for x in modifier.node_warnings], [])
 
+    # The Strength multiplies how deep the imprints are, also past the Depth
+    def test_strength(self):
+        set_active(self.ground)
+        modifier = self.add(kind="SNOW")
+        effect.modifier_input(modifier, "Strength").value = 4.0
+        self.ground.update_tag()
+        co, height, _ = self.heights()
+        side = np.abs(co[:, :2]).max(axis=1)
+        np.testing.assert_allclose(height[side < 0.45], -0.12, atol=1e-4)
+        np.testing.assert_allclose(height[side > 0.7], 0.0, atol=1e-6)
+
     # A ground much larger than the body is subdivided as finely, only near it
     def test_large_ground(self):
         self.ground.scale = (100.0, 100.0, 1.0)
@@ -2256,6 +2267,26 @@ class TestImprints(BlenderTestCase):
         top = (normal[2::3] > 0.9) & (side < 0.45)
         bottom = (normal[2::3] < -0.9) & (side < 0.95)
         np.testing.assert_allclose(co[top, 2], 0.5, atol=1e-4)
+        np.testing.assert_allclose(co[bottom, 2], 0.43, atol=1e-6)
+
+    # A body through a slab thinner than the reach presses the side it enters, as deep as it goes
+    def test_through_slab(self):
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Diagonal((2.0, 2.0, 0.1, 1.0)))
+        bm.to_mesh(self.ground.data)
+        bm.free()
+        self.ground.location.z = 0.48
+        self.body.location.z = -0.1
+        set_active(self.ground)
+        self.add(kind="SNOW")
+        co, _, _ = self.heights()
+        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        normal = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("normal", normal)
+        side = np.abs(co[:, :2]).max(axis=1)
+        top = (normal[2::3] > 0.9) & (side < 0.45)
+        bottom = (normal[2::3] < -0.9) & (side < 0.95)
+        np.testing.assert_allclose(co[top, 2], 0.45, atol=1e-4)
         np.testing.assert_allclose(co[bottom, 2], 0.43, atol=1e-6)
 
     # Soft imprints keep the pressed points on the body, and sink the surface around them

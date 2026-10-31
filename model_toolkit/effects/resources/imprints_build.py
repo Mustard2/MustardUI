@@ -327,10 +327,22 @@ def build_node_group():
         min_value=0.0,
         description="Thickness of the Chunks, the surface under them sunk as much",
     )
-    # After Smooth, added last to keep the identifiers of the inputs before it
-    ng.interface.move(
-        softness, list(ng.interface.items_tree).index(ng.interface.items_tree["Smooth"]) + 1
+    strength = add_input(
+        ng,
+        "Strength",
+        "NodeSocketFloat",
+        subtype="FACTOR",
+        default_value=1.0,
+        min_value=0.0,
+        max_value=10.0,
+        description="Overall strength of the imprints, multiplying how deep they are pressed, also "
+        "past the Depth, and so their rim, cracks and chunks",
     )
+    # After Smooth and Depth, added last to keep the identifiers of the inputs before them
+    for item, after in ((softness, "Smooth"), (strength, "Depth")):
+        ng.interface.move(
+            item, list(ng.interface.items_tree).index(ng.interface.items_tree[after]) + 1
+        )
     arrange_interface(
         ng,
         [
@@ -437,8 +449,9 @@ def build_node_group():
     limited = t.attribute(".imprint_reach", "FLOAT", 6, -10)
     # Only the points near the Colliders cast a ray
     near = in_box(t, box, world, limited, 4, -9)
-    depth = pressed_depth(t, colliders, world, normal, limited, inputs["Depth"], 4, -5)
+    depth = pressed_depth(t, colliders, world, normal, limited, inputs["Depth"], 4, -5, reach)
     depth = t.math("MULTIPLY", depth, inputs["Mask"], x=9, y=-5)
+    depth = t.math("MULTIPLY", depth, inputs["Strength"], x=9.5, y=-5)
     store = t.node(
         "GeometryNodeStoreNamedAttribute",
         10,
@@ -914,9 +927,10 @@ def build_node_group():
     return ng
 
 
-def pressed_depth(t, colliders, position, normal, reach, limit, x, y):
+def pressed_depth(t, colliders, position, normal, reach, limit, x, y, full=None):
     """Depth the Colliders press the surface at the position, up from under it to their lowest
-    surface, only where they cover it"""
+    surface, only where they cover it; with the full reach, past a reach limited by the mesh
+    thickness for a Collider going through the mesh from this side"""
     ray = t.node(
         "GeometryNodeRaycast",
         x + 1,
@@ -938,6 +952,119 @@ def pressed_depth(t, colliders, position, normal, reach, limit, x, y):
         y=y,
     )
     depth = t.math("MULTIPLY", depth, ray["Is Hit"], x=x + 4, y=y)
+    if full is not None:
+        # Through a mesh thinner than the full reach, e.g. a giant's foot through a road slab, from
+        # its lowest surface with no Collider between it and the point, if it goes less deep from
+        # this side than from the other side, which is twice the limited reach away
+        lowest = t.node(
+            "GeometryNodeRaycast",
+            x + 1,
+            y - 4,
+            {
+                "Target Geometry": colliders,
+                "Source Position": t.vmath(
+                    "SUBTRACT",
+                    position,
+                    t.vmath("SCALE", normal, full, x=x, y=y - 4),
+                    x=x + 0.5,
+                    y=y - 4,
+                ),
+                "Ray Direction": normal,
+                "Ray Length": full,
+            },
+        ).outputs
+        through = t.math("SUBTRACT", full, lowest["Hit Distance"], x=x + 2, y=y - 4)
+        between = t.node(
+            "GeometryNodeRaycast",
+            x + 3,
+            y - 6,
+            {
+                "Target Geometry": colliders,
+                "Source Position": t.vmath(
+                    "ADD",
+                    lowest["Hit Position"],
+                    t.vmath("SCALE", normal, SELF_OFFSET, x=x + 2, y=y - 7),
+                    x=x + 2.5,
+                    y=y - 6,
+                ),
+                "Ray Direction": normal,
+                "Ray Length": t.math("SUBTRACT", through, SELF_OFFSET, x=x + 2.5, y=y - 8),
+            },
+        ).outputs["Is Hit"]
+        other = t.node(
+            "GeometryNodeRaycast",
+            x + 1,
+            y - 9,
+            {
+                "Target Geometry": colliders,
+                "Source Position": t.vmath(
+                    "ADD",
+                    position,
+                    t.vmath(
+                        "SCALE",
+                        normal,
+                        t.math(
+                            "SUBTRACT",
+                            full,
+                            t.math("MULTIPLY", reach, 2.0, x=x - 1, y=y - 10),
+                            x=x - 0.5,
+                            y=y - 10,
+                        ),
+                        x=x,
+                        y=y - 9,
+                    ),
+                    x=x + 0.5,
+                    y=y - 9,
+                ),
+                "Ray Direction": t.vmath("SCALE", normal, -1.0, x=x, y=y - 11),
+                "Ray Length": full,
+            },
+        ).outputs
+        deeper = t.math(
+            "MULTIPLY",
+            t.math(
+                "MULTIPLY",
+                other["Is Hit"],
+                t.math("LESS_THAN", reach, full, x=x + 2, y=y - 11),
+                x=x + 2.5,
+                y=y - 10,
+            ),
+            t.math(
+                "GREATER_THAN",
+                t.math("ADD", through, 1e-6, x=x + 2.5, y=y - 9),
+                t.math("SUBTRACT", full, other["Hit Distance"], x=x + 2, y=y - 9),
+                x=x + 3,
+                y=y - 9,
+            ),
+            x=x + 3.5,
+            y=y - 10,
+        )
+        entered = t.math(
+            "MULTIPLY",
+            lowest["Is Hit"],
+            t.math(
+                "SUBTRACT",
+                1.0,
+                t.math("MAXIMUM", between, deeper, x=x + 4, y=y - 8),
+                x=x + 4.5,
+                y=y - 8,
+            ),
+            x=x + 5,
+            y=y - 6,
+        )
+        depth = t.math(
+            "MAXIMUM",
+            depth,
+            t.math(
+                "MULTIPLY",
+                entered,
+                t.math("MINIMUM", through, limit, x=x + 4, y=y - 4),
+                x=x + 5.5,
+                y=y - 4,
+            ),
+            x=x + 6,
+            y=y,
+        )
     # Not seen through a mesh thinner than the reach
     covered = t.node(
         "GeometryNodeRaycast",
