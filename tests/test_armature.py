@@ -1,6 +1,8 @@
 import math
+import types
 
 import bpy
+from fake_ui import draw_all
 from helpers import BlenderTestCase, build_model, configure_model, new_object, set_active
 from mathutils import Matrix
 
@@ -147,3 +149,73 @@ class TestSplineIK(BlenderTestCase):
         bpy.context.view_layer.update()
         for name, head in zip(self.chain, rest_heads, strict=True):
             self.assertVectorsEqual(self.arm.pose.bones[name].head, head)
+
+
+class TestMhxPanels(BlenderTestCase):
+    # MHX panels poll with no active object or no armature object
+    def test_poll_without_objects(self):
+        model = build_model()
+        rig_settings = configure_model(model)
+        arm = model["armature"]
+        arm["MhxRig"] = "MHX"
+        rig_settings.model_rig_type = "mhx"
+        arm.data.MustardUI_ArmatureSettings.rig_specific_panel = True
+        settings = bpy.context.scene.MustardUI_Settings
+        settings.viewport_model_selection = False
+        settings.panel_model_selection_armature = arm.data
+
+        panel = bpy.types.MHX_PT_MustardUI_Animation
+        self.assertTrue(panel.poll(bpy.context))
+        bpy.context.view_layer.objects.active = None
+        self.assertFalse(panel.poll(bpy.context))
+        rig_settings.model_armature_object = None
+        self.assertFalse(panel.poll(bpy.context))
+
+
+class LineRecorder:
+    """Layout stand-in that groups the prop texts by the line they are drawn on."""
+
+    def __init__(self, lines, line=None):
+        self.lines = lines
+        self.line = line
+
+    def row(self, *args, **kwargs):
+        if self.line is None:
+            self.lines.append([])
+            return LineRecorder(self.lines, self.lines[-1])
+        return LineRecorder(self.lines, self.line)
+
+    def column(self, *args, **kwargs):
+        return LineRecorder(self.lines)
+
+    def prop(self, data, prop, text="", **kwargs):
+        if text:
+            (self.line if self.line is not None else self.row().line).append(text)
+
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
+
+class TestArmaturePanel(BlenderTestCase):
+    # Mirrored bone collections are drawn side by side also inside a parent collection
+    def test_mirror_in_subcollections(self):
+        model = build_model()
+        configure_model(model)
+        arm = model["armature"].data
+        arm.MustardUI_ArmatureSettings.mirror = True
+        arms = arm.collections.new("Arms")
+        arms.MustardUI_ArmatureBoneCollection.is_in_UI = True
+        arms.MustardUI_ArmatureBoneCollection.show_children = True
+        hand = arm.collections.new("Hand", parent=arms)
+        hand.MustardUI_ArmatureBoneCollection.show_children = True
+        for name in ("Arm FK_R", "Arm FK_L"):
+            arm.collections.new(name, parent=arms)
+        for name in ("Finger.R", "Finger.L"):
+            arm.collections.new(name, parent=hand)
+
+        lines = []
+        panel = types.SimpleNamespace(layout=LineRecorder(lines))
+        bpy.types.PANEL_PT_MustardUI_Armature.draw(panel, bpy.context)
+        self.assertIn(["Arm FK_L", "Arm FK_R"], lines)
+        self.assertIn(["Finger.L", "Finger.R"], lines)
+        self.assertEqual(draw_all(bpy.context).errors, [])

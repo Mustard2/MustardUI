@@ -1,11 +1,13 @@
 import bpy
 
+from ..misc.geometry_nodes import modifier_values, set_modifier_values, simulation_bakes
 from ..misc.mirror import check_mirror
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from .settings_presets import node_group_base_name, nodes_modifiers
 
 
 def mirror_cloth(obj, obj_mirror) -> bool:
@@ -125,6 +127,29 @@ def mirror_soft_body(obj, obj_mirror) -> bool:
     return True
 
 
+def mirror_nodes(obj, obj_mirror) -> bool:
+    """Geometry Nodes inputs set by value, onto the modifiers with the same node group"""
+    # The attributes are left alone: the vertex groups of the two sides have their own names
+    targets = nodes_modifiers(obj_mirror)
+    done = False
+    for modifier in nodes_modifiers(obj):
+        name = node_group_base_name(modifier)
+        target = next((m for m in targets if node_group_base_name(m) == name), None)
+        if target is None:
+            continue
+        targets.remove(target)
+        set_modifier_values(target, modifier_values(modifier))
+
+        bakes = [b for m, b in simulation_bakes(obj) if m == modifier]
+        bakes_mirror = [b for m, b in simulation_bakes(obj_mirror) if m == target]
+        for bake, bake_mirror in zip(bakes, bakes_mirror, strict=False):
+            bake_mirror.use_custom_simulation_frame_range = bake.use_custom_simulation_frame_range
+            bake_mirror.frame_start = bake.frame_start
+            bake_mirror.frame_end = bake.frame_end
+        done = True
+    return done
+
+
 class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
     """Mirror the settings of this Physics Item"""
 
@@ -165,9 +190,12 @@ class MustardUI_PhysicsItem_Mirror(bpy.types.Operator):
         # Soft Body Settings
         soft_body = mirror_soft_body(obj, obj_mirror)
 
+        # Geometry Nodes Settings
+        nodes = mirror_nodes(obj, obj_mirror)
+
         arm.update_tag()
 
-        if cloth or soft_body:
+        if cloth or soft_body or nodes:
             self.report({"INFO"}, "MustardUI - Physics Item settings mirrored.")
         else:
             self.report({"WARNING"}, "MustardUI - An error occurred while mirroring settings.")

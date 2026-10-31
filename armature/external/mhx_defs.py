@@ -40,18 +40,13 @@ def panel_poll(cls, context):
 
     rig = arm.MustardUI_RigSettings.model_armature_object
 
-    if rig_settings.model_rig_type == "mhx":
-        return rig.get("MhxRig", False)
-
-    return False
+    return rig_settings.model_rig_type == "mhx" and rig is not None and rig.get("MhxRig", False)
 
 
 def panel_poll_mhx(cls, context):
-    poll = panel_poll(cls, context)
-
-    res, arm = mustardui_active_object(context, config=ModelMode.USER)
-    if not res or arm is None:
+    ob = context.object
+    if ob is None or not panel_poll(cls, context):
         return False
 
-    ob = context.object
-    return poll and ob.data == arm
+    _, arm = mustardui_active_object(context, config=ModelMode.USER)
+    return ob.data == arm

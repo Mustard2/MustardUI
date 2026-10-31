@@ -35,6 +35,7 @@ from rna_prop_ui import rna_idprop_ui_create
 from ... import __package__ as base_package
 from ...misc.move_modifier import move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
+from ...misc.surface_deform import surface_deform_bind
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -451,7 +452,7 @@ class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
         move_modifier_after_armature(original_obj, surface_deform_modifier)
 
         # Bind the last added Surface Deform modifier
-        bpy.ops.object.surfacedeform_bind(modifier=surface_deform_modifier.name)
+        surface_deform_bind(original_obj, surface_deform_modifier)
 
         # After binding, deselect the original object and select the duplicate
         original_obj.select_set(False)
@@ -637,7 +638,7 @@ class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
         ):
             self.report(
                 {"WARNING"},
-                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "MustardUI - The Dynamics physics could not be added: the "
                 "Cloth modifier was used instead.",
             )
             physics_presets.apply_physics(

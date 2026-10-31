@@ -3,9 +3,15 @@ import os
 import bpy
 from mathutils import Matrix
 from mathutils.bvhtree import BVHTree
-from mathutils.kdtree import KDTree
 
-from .effect import RemoveEffect, effects_available, modifier_input, new_control
+from .effect import (
+    RemoveEffect,
+    effects_available,
+    is_effect,
+    modifier_input,
+    new_control,
+    parent_control,
+)
 
 NODE_GROUP = "MustardUI Sticky Strands"
 MATERIAL = "MustardUI Sticky Strands"
@@ -77,41 +83,9 @@ class MustardUI_ModelToolkit_StickyStrands(bpy.types.Operator):
             _, source, vertex = closest
         location = source.matrix_world @ vertex.co
 
-        # Parented to the bone deforming the vertex the most, found from its rest position, or
-        # to the mesh, for the Control to follow it. Not to the vertex, which would make a
-        # dependency cycle with the strands
-        rest = source.evaluated_get(depsgraph).data.attributes["rest_position"]
-        rest = rest.data[vertex.index].vector
-        kd = KDTree(len(source.data.vertices))
-        for x in source.data.vertices:
-            kd.insert(x.co, x.index)
-        kd.balance()
-        armature = next(
-            (m.object for m in source.modifiers if m.type == "ARMATURE" and m.object), None
-        )
-        bones = armature.pose.bones if armature else {}
-        group = max(
-            (
-                x
-                for x in source.data.vertices[kd.find(rest)[1]].groups
-                if source.vertex_groups[x.group].name in bones
-            ),
-            key=lambda x: x.weight,
-            default=None,
-        )
+        # Not parented to the vertex, which would make a dependency cycle with the strands
         control, _, _ = new_control(objects, "Sticky Strands", CONTROL_TYPE)
-        if group:
-            bone = bones[source.vertex_groups[group.group].name]
-            control.parent = armature
-            control.parent_type = "BONE"
-            control.parent_bone = bone.name
-            # The bone parent matrix is at its tail
-            parent = armature.matrix_world @ bone.matrix
-            parent.translation = armature.matrix_world @ bone.tail
-        else:
-            control.parent = source
-            parent = source.matrix_world
-        control.matrix_parent_inverse = parent.inverted()
+        parent_control(control, source, vertex, depsgraph)
         control.matrix_basis = Matrix.LocRotScale(location, None, (self.radius,) * 3)
 
         for obj in objects:
@@ -120,6 +94,7 @@ class MustardUI_ModelToolkit_StickyStrands(bpy.types.Operator):
             modifier.node_group = bpy.data.node_groups[NODE_GROUP]
             modifier_input(modifier, "Control").value = control
             modifier_input(modifier, "Material").value = bpy.data.materials[MATERIAL]
+            modifier_input(modifier, "Start Frame").value = context.scene.frame_start
             if obj != target:
                 modifier_input(modifier, "Target").value = target
 
@@ -138,11 +113,41 @@ class MustardUI_ModelToolkit_RemoveStickyStrands(RemoveEffect, bpy.types.Operato
     creators_type = CONTROL_TYPE
 
 
+class MustardUI_ModelToolkit_ConvertStickyStrands(RemoveEffect, bpy.types.Operator):
+    """Convert the Sticky Strands of the selected meshes at the current frame to new meshes parented to them, removing the modifiers and the Controls not used anymore"""  # noqa: E501
+
+    bl_idname = "mustardui.model_toolkit_convert_sticky_strands"
+    bl_label = "Convert Sticky Strands to Mesh"
+
+    effect = "Sticky Strands"
+    node_group = NODE_GROUP
+    creators_type = CONTROL_TYPE
+    done = "converted to meshes"
+
+    def execute(self, context):
+        # The strands are an instance, which applying the modifier would discard
+        depsgraph = context.evaluated_depsgraph_get()
+        for obj in context.selected_objects:
+            if not any(is_effect(m, NODE_GROUP) for m in obj.modifiers):
+                continue
+            geometry = obj.evaluated_get(depsgraph).evaluated_geometry()
+            for reference in geometry.instance_references():
+                if reference.mesh and "sticky_factor" in reference.mesh.attributes:
+                    mesh = reference.mesh.copy()
+                    mesh.name = f"{obj.name} Sticky Strands"
+                    strands = bpy.data.objects.new(mesh.name, mesh)
+                    obj.users_collection[0].objects.link(strands)
+                    strands.parent = obj
+        return super().execute(context)
+
+
 def register():
     bpy.utils.register_class(MustardUI_ModelToolkit_StickyStrands)
     bpy.utils.register_class(MustardUI_ModelToolkit_RemoveStickyStrands)
+    bpy.utils.register_class(MustardUI_ModelToolkit_ConvertStickyStrands)
 
 
 def unregister():
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_ConvertStickyStrands)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_RemoveStickyStrands)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_StickyStrands)

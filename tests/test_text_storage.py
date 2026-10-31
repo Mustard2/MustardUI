@@ -4,6 +4,8 @@ import os
 import tempfile
 
 import bpy
+import test_morphs
+import test_outfits
 from fake_ui import Drawer, FakeLayout, FakeSelf, draw_all
 from helpers import (
     ADDON,
@@ -72,7 +74,6 @@ class TestTextStorage(BlenderTestCase):
 
     def set_enabled(self, value):
         prefs = bpy.context.preferences.addons[ADDON].preferences
-        prefs.experimental = value
         prefs.settings_storage = "TEXT" if value else "ARMATURE"
 
     def snapshot(self, id_data):
@@ -143,28 +144,15 @@ class TestTextStorage(BlenderTestCase):
             self.save_reopen(directory)
         self.assertEqual(file_state(), state)
 
-    # Blender starts with Armature storage, unless disabled in the preferences
-    def test_startup(self):
-        prefs = bpy.context.preferences.addons[ADDON].preferences
+    # Settings read on the armature before they are moved back from the Text, as by a panel
+    # drawn while a file saved with Text storage loads, are replaced by the ones on the Text
+    def test_armature_read_before_conversion(self):
+        settings = self.snapshot(self.arm)
         self.set_enabled(True)
-        calls = self.count_conversions()
-        storage._startup()
-        self.assertEqual(prefs.settings_storage, "ARMATURE")
-        self.assertNotIn("MustardUI_data", storage.system_properties(self.arm))
-        self.assertEqual(calls, [False])
-
-        self.set_enabled(True)
-        prefs.settings_storage_startup = False
-        storage._startup()
-        self.assertEqual(prefs.settings_storage, "TEXT")
-        self.assertIn("MustardUI_data", storage.system_properties(self.arm))
-
-    # Text storage is active only with Experimental Features enabled
-    def test_experimental(self):
-        self.set_enabled(True)
-        bpy.context.preferences.addons[ADDON].preferences.experimental = False
-        self.assertIsNone(storage.text_of(self.arm))
-        self.assertEqual(self.arm.MustardUI_RigSettings.id_data, self.arm)
+        storage._relocate(False)
+        self.assertIsNone(self.arm.MustardUI_RigSettings.model_armature_object)
+        storage._convert(False)
+        self.assertEqual(self.snapshot(self.arm), settings)
 
     # The materials of hidden outfits leave the depsgraph
     def test_hidden_outfit_materials(self):
@@ -389,8 +377,8 @@ class TestTextStorage(BlenderTestCase):
 
             self.set_enabled(not source_text)
             bpy.ops.mustardui.model_toolkit_add_outfit_from_file(
-                directory=os.path.join(path, "Collection", ""),
-                files=[{"name": "Sporty"}],
+                directory=directory,
+                files=[{"name": "source.blend"}],
                 fit="NONE",
                 transfer_shape_keys=False,
             )
@@ -417,6 +405,88 @@ class TestTextStorage(BlenderTestCase):
             "Tester Body",
         )
 
+    # Drivers reading the settings follow them to the Text and back, and update with them
+    def test_drivers(self):
+        body = self.model["body"]
+        body["Driven"] = 0.0
+        fcurve = body.driver_add('["Driven"]')
+        fcurve.driver.expression = "x"
+        var = fcurve.driver.variables.new()
+        var.name = "x"
+        target = var.targets[0]
+        target.id_type, target.id = "ARMATURE", self.arm
+        target.data_path = "MustardUI_RigSettings.outfits_list"
+
+        values = []
+        for enable in (False, True, False):
+            self.set_enabled(enable)
+            self.assertEqual(target.id, self.arm)
+            self.assertEqual(target.data_path.startswith("MustardUI_data."), enable)
+            values.append([])
+            for outfit in ("Tester Formal", "Tester Casual"):
+                self.arm.MustardUI_RigSettings.outfits_list = outfit
+                # With Text storage, they update with the depsgraph update after the change
+                for _ in range(2):
+                    bpy.context.view_layer.update()
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                values[-1].append(body.evaluated_get(depsgraph)["Driven"])
+        self.assertNotEqual(*values[0])
+        self.assertEqual(values, [values[0]] * 3)
+        self.assertEqual(target.data_path, "MustardUI_RigSettings.outfits_list")
+
+    # Files are saved with Armature storage, while the session keeps the Text storage
+    def test_save(self):
+        settings = self.snapshot(self.arm)
+        self.set_enabled(True)
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "model.blend")
+            bpy.ops.wm.save_as_mainfile(filepath=path, copy=True)
+            with bpy.data.libraries.load(path) as (data_from, data_to):
+                self.assertEqual(list(data_from.texts), [])
+        self.assertIsNotNone(storage.text_of(self.arm))
+        self.assertNotIn("MustardUI_RigSettings", self.snapshot(self.arm))
+        self.set_enabled(False)
+        self.assertEqual(self.snapshot(self.arm), settings)
+
+    # Overrides made with Text storage point to the overridden IDs, as with Armature storage
+    def test_override_hierarchy(self):
+        # The armature is overridden with the hierarchy if it uses IDs of it, e.g. in drivers
+        self.arm["Follow"] = 0.0
+        var = self.arm.driver_add('["Follow"]').driver.variables.new()
+        var.targets[0].id = self.model["body"]
+        var.targets[0].data_path = "location.x"
+        scene = bpy.context.scene
+        root = new_collection("Tester Model")
+        for coll in [*self.model["outfits"], self.model["extras"], self.model["hair"]]:
+            scene.collection.children.unlink(coll)
+            root.children.link(coll)
+        for obj in list(scene.collection.objects):
+            scene.collection.objects.unlink(obj)
+            root.objects.link(obj)
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "model.blend")
+            bpy.ops.wm.save_as_mainfile(filepath=path, copy=True)
+            for enabled in (False, True):
+                with self.subTest(enabled=enabled):
+                    bpy.ops.wm.read_homefile(use_empty=True)
+                    self.set_enabled(enabled)
+                    with bpy.data.libraries.load(path, link=True) as (data_from, data_to):
+                        data_to.collections = ["Tester Model"]
+                    scene = bpy.context.scene
+                    scene.collection.children.link(data_to.collections[0])
+                    bpy.context.view_layer.update()
+                    scene.collection.children.unlink(data_to.collections[0])
+                    data_to.collections[0].override_hierarchy_create(
+                        scene, bpy.context.view_layer, do_fully_editable=True
+                    )
+                    bpy.context.view_layer.update()
+
+                    arm = next(x for x in bpy.data.armatures if x.override_library)
+                    rig_settings = arm.MustardUI_RigSettings
+                    self.assertIsNotNone(rig_settings.model_body.override_library)
+                    for item in rig_settings.outfits_collections:
+                        self.assertIsNotNone(item.collection.override_library)
+
     # Files are converted to the active storage when loaded
     def test_load(self):
         state = file_state()
@@ -428,3 +498,22 @@ class TestTextStorage(BlenderTestCase):
             bpy.ops.wm.open_mainfile(filepath=path)
 
         self.assertEqual(file_state(), state)
+
+
+# Tests of features working on the settings, run also with Text storage
+
+
+class TestDisableMorphsText(test_morphs.TestDisableMorphs):
+    settings_storage = "TEXT"
+
+
+class TestDisableDiffeomorphicMorphsText(test_morphs.TestDisableDiffeomorphicMorphs):
+    settings_storage = "TEXT"
+
+
+class TestAddOutfitText(test_outfits.TestAddOutfit):
+    settings_storage = "TEXT"
+
+
+class TestExportOutfitsText(test_outfits.TestExportOutfits):
+    settings_storage = "TEXT"

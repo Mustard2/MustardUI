@@ -141,7 +141,9 @@ class PANEL_PT_MustardUI_Tools_LipSync(MainPanel, bpy.types.Panel):
         if can_create_action(tools_settings):
             layout.prop(tools_settings, "lipsync_new_action")
 
-        layout.operator("mustardui.tools_lipsync", icon="SPEAKER")
+        row = layout.row(align=True)
+        row.operator("mustardui.tools_lipsync", icon="SPEAKER")
+        row.operator("mustardui.tools_lipsync_reset", text="", icon="LOOP_BACK")
 
 
 class PANEL_PT_MustardUI_Tools_BonesShrinkwrap(MainPanel, bpy.types.Panel):

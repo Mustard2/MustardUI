@@ -50,15 +50,18 @@ def draw_armature_button(
 
     def draw_children(layout, bcoll):
         if bcoll.children and bcoll.MustardUI_ArmatureBoneCollection.show_children:
+            row = layout.row()
+            row.label(icon="BLANK1")
+            col = row.column()
+            partners = mirror_partners(bcoll.children) if armature_settings.mirror else {}
             for c in bcoll.children:
-                row = layout.row(align=True)
-                row.label(icon="BLANK1")
-                draw_with_icon(
-                    row,
+                draw_armature_button(
                     c,
-                    "is_visible",
-                    c.name,
-                    c.MustardUI_ArmatureBoneCollection.icon,
+                    c.MustardUI_ArmatureBoneCollection,
+                    partners.get(c.name),
+                    armature_settings,
+                    col,
+                    is_solo_enabled,
                 )
 
     if not armature_settings.mirror:
@@ -90,6 +93,9 @@ def draw_armature_button(
         r_icon = b.MustardUI_ArmatureBoneCollection.icon
         draw_with_icon(row, b, "is_visible", b.name, r_icon, is_solo_enabled)
         draw_with_icon(row, b, "is_solo", "", "SOLO_ON" if b.is_solo else "SOLO_OFF")
+
+        draw_children(col, bcoll)
+        draw_children(col, b)
         return
 
     row = layout.row(align=True)
@@ -153,7 +159,7 @@ class PANEL_PT_MustardUI_Armature(MainPanel, bpy.types.Panel):
         bcolls_all = obj.collections_all
 
         enabled_colls = [x for x in bcolls if x.MustardUI_ArmatureBoneCollection.is_in_UI]
-        is_solo_enabled = not any([x.is_solo for x in bcolls])
+        is_solo_enabled = not any(x.is_solo for x in bcolls_all)
 
         layout = self.layout
 

@@ -1,54 +1,27 @@
 import bpy
 
 from .. import __package__ as base_package
+from ..misc.geometry_nodes import draw_modifier_inputs
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ..model_toolkit.effects.effect import (
+    SETTINGS,
+    effects_available,
+    materials,
+    shader_nodes,
+)
 from ..model_toolkit.effects.ops_squish import squish_draw_settings
+from ..model_toolkit.effects.settings import EFFECTS
 from ..model_toolkit.mesh.ops_smooth_shape_key import smooth_shape_key_draw_settings
 from ..model_toolkit.outfits.ops_fit_to_body import fit_to_body_draw_settings
 from . import MainPanel
 
 
-class PANEL_PT_MustardUI_ModelToolkit(MainPanel, bpy.types.Panel):
-    bl_idname = "PANEL_PT_MustardUI_ModelToolkit"
-    bl_label = "Model Toolkit"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    @classmethod
-    def poll(cls, context):
-        return context.preferences.addons[base_package].preferences.model_toolkit
-
-    def draw(self, context):
-        if active_object_operator_poll(context, config=ModelMode.MODEL_TOOLKIT):
-            return
-
-        res, arm = mustardui_active_object(context, config=ModelMode.ANY)
-        settings = context.scene.MustardUI_Settings
-
-        box = self.layout.box()
-        col = box.column(align=True)
-        if settings.viewport_model_selection and arm is not None and arm.MustardUI_created:
-            col.label(text="Disable Viewport Model Selection", icon="INFO")
-            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
-            box.operator(
-                "mustardui.viewportmodelselection",
-                text="Viewport Model Selection",
-                icon="VIEW3D",
-                depress=settings.viewport_model_selection,
-            ).config = 1
-        elif any(x.MustardUI_created for x in bpy.data.armatures):
-            col.label(text="Select a MustardUI model", icon="INFO")
-            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
-        else:
-            col.label(text="Configure a model with MustardUI", icon="INFO")
-            col.label(text="to use all the Model Toolkit tools", icon="BLANK1")
-
-
 class ModelToolkitSection(MainPanel):
-    bl_parent_id = "PANEL_PT_MustardUI_ModelToolkit"
+    bl_category = "MustardUI Toolkit"
     bl_label = ""
     bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
@@ -60,6 +33,8 @@ class ModelToolkitSection(MainPanel):
 
     @classmethod
     def poll(cls, context):
+        if not context.preferences.addons[base_package].preferences.model_toolkit:
+            return False
         if not cls.creator_only:
             return True
         res, arm = mustardui_active_object(context, config=ModelMode.MODEL_TOOLKIT)
@@ -113,6 +88,11 @@ class PANEL_PT_MustardUI_ModelToolkit_Model(ModelToolkitSection, bpy.types.Panel
         row = layout.row(align=True)
         row.operator("mustardui.rename_image_nodes", icon="IMAGE_DATA")
 
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_scale_character", icon="CON_SIZELIKE")
+
 
 class PANEL_PT_MustardUI_ModelToolkit_Outfits(ModelToolkitSection, bpy.types.Panel):
     header = ("Outfits", "MOD_CLOTH")
@@ -123,6 +103,9 @@ class PANEL_PT_MustardUI_ModelToolkit_Outfits(ModelToolkitSection, bpy.types.Pan
 
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_add_outfit", icon="ADD")
+
+        row = layout.row(align=True)
+        row.operator("mustardui.model_toolkit_add_outfit_from_file", icon="IMPORT")
 
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_export_outfits", icon="EXPORT")
@@ -238,6 +221,15 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Pan
             icon="PHYSICS",
         )
 
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.model_toolkit_particle_hair_to_curves",
+            text="Convert Particle Hair to Curves",
+            icon="CURVES",
+        )
+
 
 class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Panel):
     header = ("Effects", "SHADERFX")
@@ -258,6 +250,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_ripple", text="Ripple", icon="MOD_WAVE")
         row.operator("mustardui.model_toolkit_remove_ripple", text="", icon="X")
 
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_jiggle_effect", text="Jiggle", icon="MOD_SOFT")
+        row.operator("mustardui.model_toolkit_remove_jiggle_effect", text="", icon="X")
+
         layout.separator()
 
         row = layout.row(align=True)
@@ -266,9 +264,48 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator(
             "mustardui.model_toolkit_sticky_strands", text="Sticky Strands", icon="STRANDS"
         )
+        row.operator("mustardui.model_toolkit_convert_sticky_strands", text="", icon="MESH_DATA")
         row.operator("mustardui.model_toolkit_remove_sticky_strands", text="", icon="X")
 
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator(
+            "mustardui.model_toolkit_sticky_liquid", text="Sticky Liquid", icon="MOD_FLUIDSIM"
+        )
+        row.operator("mustardui.model_toolkit_convert_sticky_liquid", text="", icon="MESH_DATA")
+        row.operator("mustardui.model_toolkit_remove_sticky_liquid", text="", icon="X")
+
         layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_wet", text="Wet", icon="MATFLUID")
+        row.operator("mustardui.model_toolkit_remove_wet", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_foam", text="Foam", icon="OUTLINER_DATA_POINTCLOUD")
+        row.operator("mustardui.model_toolkit_remove_foam", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_marks", text="Marks", icon="TPAINT_HLT")
+        row.operator("mustardui.model_toolkit_remove_marks", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_cloth_tear", text="Cloth Tear", icon="MOD_CLOTH")
+        row.operator(
+            "mustardui.model_toolkit_cloth_rip", text="Cloth Rip", icon="EMPTY_SINGLE_ARROW"
+        )
+        row.operator("mustardui.model_toolkit_remove_cloth_tear", text="", icon="X")
 
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
@@ -285,6 +322,38 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
             "mustardui.model_toolkit_hex_dissolve", text="Hex Dissolve", icon="MESH_ICOSPHERE"
         )
         row.operator("mustardui.model_toolkit_remove_hex_dissolve", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_aura", text="Aura", icon="LIGHT_POINT")
+        row.operator("mustardui.model_toolkit_remove_aura", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_shatter", text="Shatter", icon="MOD_EXPLODE")
+        row.operator("mustardui.model_toolkit_remove_shatter", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_crush", text="Crush", icon="MOD_MESHDEFORM")
+        row.operator("mustardui.model_toolkit_remove_crush", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_imprints", text="Imprints", icon="MOD_DISPLACE")
+        row.operator("mustardui.model_toolkit_remove_imprints", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_dust_puff", text="Dust Puff", icon="FORCE_TURBULENCE")
+        row.operator("mustardui.model_toolkit_remove_dust_puff", text="", icon="X")
 
         layout.separator()
 
@@ -307,6 +376,68 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.separator()
         row.operator("mustardui.model_toolkit_fireball", text="Fireball", icon="LIGHT_SUN")
         row.operator("mustardui.model_toolkit_remove_fireball", text="", icon="X")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_dust_motes", text="Dust Motes", icon="PARTICLE_POINT")
+        row.operator("mustardui.model_toolkit_remove_dust_motes", text="", icon="X")
+
+
+class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.types.Panel):
+    header = ("Scene Effects", "SCENE_DATA")
+    guide = "Effects"
+
+    @classmethod
+    def poll(cls, context):
+        return (
+            effects_available()
+            and super().poll(context)
+            and len(context.scene.MustardUI_SceneEffects) > 0
+        )
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        effects = scene.MustardUI_SceneEffects
+
+        layout.template_list(
+            "MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects",
+            "",
+            scene,
+            "MustardUI_SceneEffects",
+            scene,
+            "mustardui_scene_effects_uilist_index",
+        )
+
+        index = scene.mustardui_scene_effects_uilist_index
+        item = effects[index] if index < len(effects) else None
+        if item is None or item.object is None:
+            return
+        modifier = item.object.modifiers.get(item.modifier)
+        if modifier is not None and modifier.node_group is not None:
+            header, body = layout.panel("MustardUI_SceneEffects_GeometryNodes")
+            header.label(text="Geometry Nodes", icon="GEOMETRY_NODES")
+            if body:
+                draw_modifier_inputs(body, modifier, select_objects=True)
+
+        material_group = EFFECTS[item.effect][2]
+        if material_group is None:
+            return
+        # The materials sharing the settings once, the effects added before alone
+        shared = {}
+        for material in sorted(materials([item.object]), key=lambda x: x.name):
+            for node in shader_nodes(material, material_group):
+                shared.setdefault(node.node_tree.nodes.get(SETTINGS) or node, material)
+        for settings, material in shared.items():
+            header, body = layout.panel(f"MustardUI_SceneEffects_Shader_{material.name}")
+            label = "Shader" if settings.name == SETTINGS else f"Shader: {material.name}"
+            header.label(text=label, icon="NODE_MATERIAL")
+            for socket in settings.inputs if body else ():
+                if not (socket.is_linked or socket.hide_value):
+                    body.row().prop(socket, "default_value", text=socket.name)
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.types.Panel):
@@ -341,24 +472,30 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.typ
             icon="IMAGE_DATA",
         )
 
+        row = layout.row(align=True)
+        row.operator(
+            "mustardui.model_toolkit_memory_report",
+            icon="MEMORY",
+        )
+
 
 def register():
-    bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Model)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Rig)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Mesh)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Physics)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Effects)
+    bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_SceneEffects)
     bpy.utils.register_class(PANEL_PT_MustardUI_ModelToolkit_Optimizations)
 
 
 def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Optimizations)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_SceneEffects)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Effects)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Physics)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Mesh)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Outfits)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Rig)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit_Model)
-    bpy.utils.unregister_class(PANEL_PT_MustardUI_ModelToolkit)

@@ -1,3 +1,7 @@
+import importlib
+import types
+import unittest
+
 import bpy
 from fake_ui import draw_all
 from helpers import (
@@ -8,6 +12,24 @@ from helpers import (
     new_mesh_object,
     set_active,
 )
+
+effect = importlib.import_module(ADDON + ".model_toolkit.effects.effect")
+physics_presets = importlib.import_module(ADDON + ".model_toolkit.physics.physics_presets")
+menu_physics = importlib.import_module(ADDON + ".menu.menu_physics")
+
+
+class RecordingLayout:
+    """UILayout stand-in that records the calls"""
+
+    def __init__(self):
+        self.calls = []
+
+    def __getattr__(self, name):
+        def call(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+            return (self, self) if name.startswith("panel") else self
+
+        return call
 
 
 class TestUI(BlenderTestCase):
@@ -80,6 +102,39 @@ class TestUI(BlenderTestCase):
         drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_Morphs")
         self.assertIn("PANEL_PT_MustardUI_Outfits_Extras", drawer.drawn)
 
+    # The settings of a Geometry Nodes physics draw all its inputs, for each node group
+    @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+    def test_draw_physics_dynamics(self):
+        model = build_model()
+        arm = model["armature"]
+        configure_model(model)
+        physics_settings = arm.data.MustardUI_PhysicsSettings
+        cage = new_mesh_object("Cage", armature=arm, size=0.4)
+        bpy.ops.mustardui.configuration()
+        physics_settings.enable_ui = True
+        set_active(cage)
+        bpy.ops.mustardui.physics_add_item()
+        physics_settings.items[0].type = "CAGE"
+        set_active(arm)
+        bpy.ops.mustardui.configuration()
+        physics_settings.enable_physics = True
+        for preset in ("CAGE", "HAIR"):
+            with self.subTest(preset):
+                physics_presets.apply_physics(cage, "NODES", preset)
+                self.assertDrawsCleanly("PANEL_PT_MustardUI_Physics_ClothDynamicsSettings")
+
+                # The Presets button in the header, the Collisions toggle on the colliders panel
+                panel = menu_physics.PANEL_PT_MustardUI_Physics_ClothDynamicsSettings
+                header = RecordingLayout()
+                panel.draw_header(types.SimpleNamespace(layout=header), bpy.context)
+                self.assertIn(
+                    "mustardui.presets_ui", [x[1][0] for x in header.calls if x[0] == "operator"]
+                )
+                body = RecordingLayout()
+                panel.draw(types.SimpleNamespace(layout=body), bpy.context)
+                item = physics_settings.items[0]
+                self.assertIn((item, "collisions"), [x[1] for x in body.calls if x[0] == "prop"])
+
     # Morphs panels draw with the settings open and the morphs disabled, for each type
     def test_draw_morphs_settings(self):
         model = build_model()
@@ -123,15 +178,70 @@ class TestUI(BlenderTestCase):
         settings.panel_model_selection_armature = model["armature"].data
         self.assertDrawsCleanly("PANEL_PT_MustardUI_Outfits")
 
-    # Model Toolkit hides only the creator sections, needing a model, without one
+    # Without a model and effects, Model Toolkit shows only the sections for any mesh
     def test_draw_model_toolkit_without_model(self):
         set_active(new_mesh_object("Cube"))
         bpy.context.preferences.addons[ADDON].preferences.model_toolkit = True
-        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit")
-        for section in ("Rig", "Outfits", "Mesh", "Physics", "Effects"):
+        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_Rig")
+        for section in ("Outfits", "Mesh", "Physics", "Effects"):
             self.assertIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
-        for section in ("Model", "Optimizations"):
+        for section in ("Model", "Optimizations", "SceneEffects"):
             self.assertNotIn(f"PANEL_PT_MustardUI_ModelToolkit_{section}", drawer.drawn)
+
+    # Scene Effects draws the effects in the scene, with their settings and materials
+    @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+    def test_draw_scene_effects(self):
+        cube = new_mesh_object("Cube")
+        cube.data.materials.append(bpy.data.materials.new("Cloth"))
+        set_active(cube)
+        bpy.context.preferences.addons[ADDON].preferences.model_toolkit = True
+        # Hidden without effects
+        drawer = self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_Effects")
+        self.assertNotIn("PANEL_PT_MustardUI_ModelToolkit_SceneEffects", drawer.drawn)
+
+        bpy.ops.mustardui.model_toolkit_wet()
+        bpy.ops.mustardui.model_toolkit_hex_dissolve()
+        for _ in range(2):
+            set_active(cube)
+            bpy.ops.mustardui.model_toolkit_marks()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_cloth_tear(physics=True)
+        bpy.ops.mustardui.model_toolkit_fireball()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_imprints()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_dust_puff()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_crush()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_aura()
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_jiggle_effect()
+        bpy.ops.mustardui.model_toolkit_dust_motes()
+        bpy.context.view_layer.update()
+
+        # A row for each modifier, and for each object with the shader only effects
+        scene = bpy.context.scene
+        rows = [(x.effect, x.object, x.modifier) for x in scene.MustardUI_SceneEffects]
+        self.assertIn(("Hex Dissolve", cube, ""), rows)
+        self.assertEqual([x for x in rows if x[0] == "Marks"][1][1:], (cube, "Marks.001"))
+        # The settings of each effect, the Wet and Aura with their shaders
+        for index in range(len(rows)):
+            scene.mustardui_scene_effects_uilist_index = index
+            self.assertDrawsCleanly("PANEL_PT_MustardUI_ModelToolkit_SceneEffects")
+
+        # The active effect is kept when the list changes
+        scene.mustardui_scene_effects_uilist_index = rows.index(("Hex Dissolve", cube, ""))
+        set_active(cube)
+        bpy.ops.mustardui.model_toolkit_ripple()
+        bpy.context.view_layer.update()
+        active = scene.MustardUI_SceneEffects[scene.mustardui_scene_effects_uilist_index]
+        self.assertEqual((active.effect, active.object), ("Hex Dissolve", cube))
+
+        # The effect objects and their Controls are selected from the panel
+        bpy.ops.mustardui.model_toolkit_select_object(name=cube.name)
+        self.assertEqual(bpy.context.selected_objects, [cube])
+        self.assertEqual(bpy.context.view_layer.objects.active, cube)
 
     # Configuration panels draw with list indices past the end, as left by another model
     def test_draw_configuration_stale_indices(self):

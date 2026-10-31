@@ -41,10 +41,8 @@ class MustardUI_SectionItem(bpy.types.PropertyGroup):
     collapsable: BoolProperty(
         default=True,
         name="Collapsable",
-        description="Add a collapse icon to the section.\nNote that this might give "
-        "bad UI results if combined with an icon",
+        description="Draw the section as a panel that can be collapsed",
     )
-    collapsed: BoolProperty(name="", default=False)
 
     # Description
     description: StringProperty(name="Description")

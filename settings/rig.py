@@ -679,8 +679,6 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         "modifiers is added to enable/disable physics",
     )
 
-    collapse_hair_dynamics_advanced: bpy.props.BoolProperty(default=True, name="")
-
     # Hair collection
     def poll_collection_hair(self, object):
         collections = [x.collection for x in self.outfits_collections]
@@ -803,6 +801,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         get=hair_list_get,
         set=hair_list_set,
         update=hair_list_update,
+        options=set(),
     )
 
     hair_custom_properties_icons: bpy.props.BoolProperty(

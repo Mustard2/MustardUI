@@ -11,15 +11,15 @@ class MustardUI_ModelToolkit_AssignPhysics(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     physics_engine: physics_presets.physics_engine_property()
-    cloth_preset: physics_presets.cloth_preset_property(default="JIGGLE")
-    nodes_preset: physics_presets.nodes_preset_property(default="JIGGLE")
+    cloth_preset: physics_presets.cloth_preset_property(default="CAGE")
+    nodes_preset: physics_presets.nodes_preset_property(default="CAGE")
 
     use_active_group: bpy.props.BoolProperty(
-        name="Use Active Vertex Group as Pin",
-        description="Use the active vertex group of each mesh as the Pin group of "
-        "the simulation.\nIn Edit Mode a new group is created from the selected "
-        "vertices instead.\nWithout it the meshes are simulated with nothing "
-        "holding them in place, and they fall",
+        name="Use Pin Group",
+        description="Keep the Pin group of the physics each mesh already has, or use its "
+        "active vertex group if it has none.\nIn Edit Mode a new group is created from the "
+        "selected vertices instead.\nWithout it the meshes are simulated with nothing "
+        "holding them in place",
         default=True,
     )
 
@@ -38,7 +38,7 @@ class MustardUI_ModelToolkit_AssignPhysics(bpy.types.Operator):
 
         # Reported once, and not for every mesh, if this Blender cannot provide the
         # Geometry Nodes physics
-        fallback = engine == "NODES" and not physics_presets.cloth_dynamics_available()
+        fallback = engine == "NODES" and not physics_presets.nodes_available(preset)
         if fallback:
             engine = "CLOTH"
             preset = self.cloth_preset
@@ -67,8 +67,10 @@ class MustardUI_ModelToolkit_AssignPhysics(bpy.types.Operator):
             if self.use_active_group:
                 if obj.mode == "EDIT":
                     pin_group = pin_group_from_selection(obj)
-                elif obj.vertex_groups.active:
-                    pin_group = obj.vertex_groups.active.name
+                else:
+                    pin_group = physics_presets.physics_pin_group(obj) or (
+                        obj.vertex_groups.active.name if obj.vertex_groups.active else ""
+                    )
 
             if (
                 physics_presets.apply_physics(
@@ -83,7 +85,7 @@ class MustardUI_ModelToolkit_AssignPhysics(bpy.types.Operator):
         if fallback:
             self.report(
                 {"WARNING"},
-                "MustardUI - Cloth Dynamics needs Blender 5.2 or later: the Cloth "
+                "MustardUI - The Dynamics physics needs Blender 5.2 or later: the Cloth "
                 "modifier was used instead.",
             )
 

@@ -452,9 +452,58 @@ class _Target(NamedTuple):
 
     anim_id: bpy.types.ID
     exists: Callable
+    set_value: Callable
     set_key: Callable
     data_path: Callable
     label: str
+
+
+def _target(rig_settings, tools_settings):
+    if tools_settings.lipsync_driver_type == "SHAPE_KEY":
+        obj = rig_settings.model_body
+        if obj is None or obj.type != "MESH" or not obj.data.shape_keys:
+            raise RuntimeError("the model body has no shape keys")
+        kbs = obj.data.shape_keys.key_blocks
+
+        def set_value(name, value):
+            kbs[name].value = max(0.0, value)
+
+        def set_key(name, frame, value):
+            set_value(name, value)
+            kbs[name].keyframe_insert("value", frame=frame)
+
+        return _Target(
+            obj.data.shape_keys,
+            lambda name: name in kbs,
+            set_value,
+            set_key,
+            lambda name: f'key_blocks["{name}"].value',
+            obj.name,
+        )
+
+    # Body is optional, so the source may be missing
+    try:
+        owner = get_cp_source(tools_settings.lipsync_source, rig_settings)
+    except AttributeError:
+        owner = None
+    if owner is None:
+        raise RuntimeError("the custom properties source is not set")
+
+    def set_value(name, value):
+        owner[name] = float(max(0.0, value))
+
+    def set_key(name, frame, value):
+        set_value(name, value)
+        owner.keyframe_insert(data_path=f'["{name}"]', frame=frame)
+
+    return _Target(
+        owner,
+        lambda name: name in owner.keys(),
+        set_value,
+        set_key,
+        lambda name: f'["{name}"]',
+        owner.name,
+    )
 
 
 class MustardUI_Tools_LipSync(bpy.types.Operator):
@@ -468,45 +517,6 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return active_object_operator_poll(context, config=ModelMode.USER)
-
-    def _target(self, rig_settings, tools_settings):
-        if tools_settings.lipsync_driver_type == "SHAPE_KEY":
-            obj = rig_settings.model_body
-            if obj is None or obj.type != "MESH" or not obj.data.shape_keys:
-                raise RuntimeError("the model body has no shape keys")
-            kbs = obj.data.shape_keys.key_blocks
-
-            def set_key(name, frame, value):
-                kbs[name].value = max(0.0, value)
-                kbs[name].keyframe_insert("value", frame=frame)
-
-            return _Target(
-                obj.data.shape_keys,
-                lambda name: name in kbs,
-                set_key,
-                lambda name: f'key_blocks["{name}"].value',
-                obj.name,
-            )
-
-        # Body is optional, so the source may be missing
-        try:
-            owner = get_cp_source(tools_settings.lipsync_source, rig_settings)
-        except AttributeError:
-            owner = None
-        if owner is None:
-            raise RuntimeError("the custom properties source is not set")
-
-        def set_key(name, frame, value):
-            owner[name] = float(max(0.0, value))
-            owner.keyframe_insert(data_path=f'["{name}"]', frame=frame)
-
-        return _Target(
-            owner,
-            lambda name: name in owner.keys(),
-            set_key,
-            lambda name: f'["{name}"]',
-            owner.name,
-        )
 
     def _segments(self, tools_settings):
         mode = tools_settings.lipsync_input
@@ -528,7 +538,7 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
         scene = context.scene
 
         try:
-            tgt = self._target(rig_settings, tools_settings)
+            tgt = _target(rig_settings, tools_settings)
             subs = parse_substitutions(tools_settings.lipsync_substitutions)
             segs, unknown = self._segments(tools_settings)
         except (RuntimeError, ValueError) as e:
@@ -629,9 +639,43 @@ class MustardUI_Tools_LipSync(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class MustardUI_Tools_LipSyncReset(bpy.types.Operator):
+    """Set the lip sync visemes to 0, keeping their animation"""
+
+    bl_idname = "mustardui.tools_lipsync_reset"
+    bl_label = "Reset Lip Sync"
+    bl_options = {"UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return active_object_operator_poll(context, config=ModelMode.USER)
+
+    def execute(self, context):
+        poll, arm = mustardui_active_object(context, config=ModelMode.USER)
+        tools_settings = arm.MustardUI_ToolsSettings
+
+        try:
+            tgt = _target(arm.MustardUI_RigSettings, tools_settings)
+            subs = parse_substitutions(tools_settings.lipsync_substitutions)
+        except (RuntimeError, ValueError) as e:
+            self.report({"ERROR"}, f"MustardUI - Lip Sync: {e}")
+            return {"CANCELLED"}
+
+        names = [tools_settings.lipsync_prefix + subs.get(v, v) for v in VISEMES]
+        for name in filter(tgt.exists, names):
+            tgt.set_value(name, 0.0)
+        # Custom properties do not tag the drivers reading them
+        tgt.anim_id.update_tag()
+
+        self.report({"INFO"}, "MustardUI - Lip Sync visemes reset")
+        return {"FINISHED"}
+
+
 def register():
     bpy.utils.register_class(MustardUI_Tools_LipSync)
+    bpy.utils.register_class(MustardUI_Tools_LipSyncReset)
 
 
 def unregister():
+    bpy.utils.unregister_class(MustardUI_Tools_LipSyncReset)
     bpy.utils.unregister_class(MustardUI_Tools_LipSync)

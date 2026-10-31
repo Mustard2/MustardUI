@@ -7,10 +7,15 @@ from ..misc.geometry_nodes import (
     draw_geometry_nodes_modifier_inputs,
     geometry_nodes_modifier_inputs,
 )
-from ..misc.ui_collapse import ui_collapse_prop
+from ..misc.ui_collapse import ui_collapse_panel
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..model_toolkit.physics.physics_presets import find_physics_modifier
-from ..physics.definitions_nodes import HAIR_DYNAMICS_NODE_GROUP, HAIR_DYNAMICS_SOCKETS
+from ..physics.definitions_nodes import (
+    HAIR_CHILDREN_MODIFIER,
+    HAIR_CHILDREN_SWITCH,
+    HAIR_DYNAMICS_NODE_GROUP,
+    hair_dynamics_input,
+)
 from . import MainPanel
 from .misc import PieceDrawCache, mustardui_custom_properties_print
 
@@ -238,7 +243,8 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                         )
                 elif rig_settings.hair_physics_support:
                     m = find_physics_modifier(obj)
-                    if m is not None:
+                    # Hair curves have the switch in the Hair Dynamics panel
+                    if m is not None and not (obj.type == "CURVES" and m.type == "NODES"):
                         row.prop(
                             obj.MustardUI_OutfitSettings,
                             "physics",
@@ -284,7 +290,7 @@ class PANEL_PT_MustardUI_Hair(MainPanel, bpy.types.Panel):
                     )
 
 
-def hair_dynamics_panel(layout, rig_settings, mod):
+def hair_dynamics_panel(layout, mod):
     # Generic nodes
     if not (mod.node_group and mod.node_group.name.startswith(HAIR_DYNAMICS_NODE_GROUP)):
         col = layout.column(align=True)
@@ -299,6 +305,7 @@ def hair_dynamics_panel(layout, rig_settings, mod):
         ("stretchiness", "Stretchiness"),
         ("bendiness", "Bendiness"),
         ("root_bendiness", "Root Bendiness"),
+        ("pin_stiffness", "Pin Stiffness"),
         ("friction", "Friction"),
         ("separator", ""),
         ("linear_damping", "Linear Damping"),
@@ -309,26 +316,26 @@ def hair_dynamics_panel(layout, rig_settings, mod):
     HAIR_DYNAMICS_UI_ADVANCED_FIELDS = [
         ("substeps", "Substeps"),
         ("constraint_steps", "Constraint Steps"),
+        ("simulation_space", "Simulation Space"),
     ]
-
-    inputs = mod.properties.inputs
 
     col = layout.column(align=True)
     for key, label in HAIR_DYNAMICS_UI_FIELDS:
         if key == "separator":
             col.separator()
             continue
-        socket = HAIR_DYNAMICS_SOCKETS.get(key)
-        entry = getattr(inputs, socket, None) if socket else None
+        entry = hair_dynamics_input(mod, key)
         if entry is None:
             continue
         col.prop(entry, "value", text=label)
 
-    if ui_collapse_prop(layout, rig_settings, "collapse_hair_dynamics_advanced", "Advanced"):
-        col = layout.column(align=True)
+    body = ui_collapse_panel(
+        layout, f"MustardUI_HairDynamics_{mod.id_data.name}_Advanced", "Advanced"
+    )
+    if body:
+        col = body.column(align=True)
         for key, label in HAIR_DYNAMICS_UI_ADVANCED_FIELDS:
-            socket = HAIR_DYNAMICS_SOCKETS.get(key)
-            entry = getattr(inputs, socket, None) if socket else None
+            entry = hair_dynamics_input(mod, key)
             if entry is None:
                 continue
             col.prop(entry, "value", text=label)
@@ -365,11 +372,15 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
         layout = self.layout
 
         if modifier.node_group and modifier.node_group.name.startswith(HAIR_DYNAMICS_NODE_GROUP):
-            layout.label(text="Hair Dynamics Settings")
+            text = "Hair Dynamics"
         elif modifier.node_group:
-            layout.label(text=f"{modifier.node_group.name} Settings")
+            text = modifier.node_group.name
         else:
-            layout.label(text="Physics Settings")
+            text = "Physics"
+
+        row = layout.row(align=True)
+        row.enabled = rig_settings.hair_show
+        row.prop(obj.MustardUI_OutfitSettings, "physics", text=text)
 
     def draw(self, context):
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
@@ -378,11 +389,67 @@ class PANEL_PT_MustardUI_Hair_Dynamics(MainPanel, bpy.types.Panel):
         modifier = find_physics_modifier(obj)
 
         layout = self.layout
+        # Settings can be changed also with the physics off
+        layout.active = obj.MustardUI_OutfitSettings.physics
 
         if modifier is None:
             return
 
-        hair_dynamics_panel(layout, rig_settings, modifier)
+        hair_dynamics_panel(layout, modifier)
+
+
+def hair_children_inputs(context, rig_settings):
+    """Inputs of the Hair Children modifier of the active hair, without the on/off switch"""
+    obj = context.scene.objects.get(rig_settings.hair_list)
+    modifier = obj.modifiers.get(HAIR_CHILDREN_MODIFIER) if obj is not None else None
+    if modifier is None or modifier.type != "NODES":
+        return None, []
+    drawable = geometry_nodes_modifier_inputs(modifier)
+    switch = next((x for x in drawable if x[0].name == HAIR_CHILDREN_SWITCH), None)
+    return switch, [x for x in drawable if x is not switch]
+
+
+class PANEL_PT_MustardUI_Hair_Children(MainPanel, bpy.types.Panel):
+    bl_label = ""
+    bl_parent_id = "PANEL_PT_MustardUI_Hair"
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
+
+    @classmethod
+    def poll(cls, context):
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
+        if not res or arm is None or arm.MustardUI_RigSettings.hair_collection is None:
+            return False
+
+        return hair_children_inputs(context, arm.MustardUI_RigSettings)[0] is not None
+
+    def draw_header(self, context):
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
+        rig_settings = arm.MustardUI_RigSettings
+        (item, target, prop_path), drawable = hair_children_inputs(context, rig_settings)
+
+        row = self.layout.row(align=True)
+        row.enabled = rig_settings.hair_show
+        row.prop(target, prop_path, text="Children")
+
+    def draw(self, context):
+        res, arm = mustardui_active_object(context, config=ModelMode.USER)
+        rig_settings = arm.MustardUI_RigSettings
+        (item, target, prop_path), drawable = hair_children_inputs(context, rig_settings)
+
+        layout = self.layout
+        layout.enabled = rig_settings.hair_show
+        # Settings can be changed also with the children off
+        layout.active = target.path_resolve(prop_path)
+
+        # A panel for each particle system, if more than one
+        col = layout.column(align=True)
+        panel = ""
+        for item, target, prop_path in drawable:
+            if item.parent.name != panel:
+                panel = item.parent.name
+                col.separator()
+                col.label(text=panel, icon="PARTICLES")
+            col.prop(target, prop_path, text=item.name)
 
 
 class PANEL_PT_MustardUI_Hair_ParticleSettings(MainPanel, bpy.types.Panel):
@@ -673,6 +740,7 @@ class PANEL_PT_MustardUI_Hair_Optimize(MainPanel, bpy.types.Panel):
 def register():
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair)
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair_Dynamics)
+    bpy.utils.register_class(PANEL_PT_MustardUI_Hair_Children)
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair_ParticleSettings)
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair_GlobalProperties)
     bpy.utils.register_class(PANEL_PT_MustardUI_Hair_Extras)
@@ -684,5 +752,6 @@ def unregister():
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_Extras)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_GlobalProperties)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_ParticleSettings)
+    bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_Children)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair_Dynamics)
     bpy.utils.unregister_class(PANEL_PT_MustardUI_Hair)

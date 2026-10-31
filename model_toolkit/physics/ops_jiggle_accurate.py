@@ -9,6 +9,7 @@ from ... import __package__ as base_package
 from ...misc import mesh_cleanup
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
+from ...misc.surface_deform import surface_deform_bind
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
@@ -790,8 +791,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # tip of a breast, the lips) are exactly the ones which look wrong when
             # the cage stretches: those are stiffened, the flat areas are left free
             structural_group_name = ""
-            # Only the Cloth modifier uses it: Cloth Dynamics has no stiffness to
-            # scale, its faces do not stretch to begin with
+            # Only the Cloth modifier uses it: the Dynamics presets hold the shape
+            # with their own Stretching
             if (
                 self.physics_engine == "CLOTH"
                 and self.structural_enable
@@ -949,8 +950,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # which removes the offending triangles, and the binding is attempted
             # once more
             for attempt in range(3):
-                bpy.ops.object.surfacedeform_bind(modifier=surface_deform.name)
-                if surface_deform.is_bound:
+                if surface_deform_bind(source, surface_deform):
                     break
 
                 bm = bmesh.new()
@@ -1129,7 +1129,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
         if fallback:
             self.report(
                 {"WARNING"},
-                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "MustardUI - The Dynamics physics could not be added: the "
                 "Cloth modifier was used instead.",
             )
 

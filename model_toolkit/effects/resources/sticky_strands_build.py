@@ -7,7 +7,7 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(__file__))
-from build_utils import Tree, add_input, add_output, socket, write
+from build_utils import Tree, add_input, add_output, arrange_interface, socket, write
 
 RESOURCE = "sticky_strands.blend"
 NODE_GROUP = "MustardUI Sticky Strands"
@@ -82,6 +82,21 @@ def build_node_group(text):
         "sticky_factor and sticky_length_normalized attributes",
     )
     add_input(ng, "Seed", "NodeSocketInt", description="Seed of the random placement")
+    add_input(
+        ng,
+        "Start Frame",
+        "NodeSocketInt",
+        default_value=1,
+        description="Frame where the strands appear, placed on the meshes and simulated from it",
+    )
+    add_input(
+        ng,
+        "End Frame",
+        "NodeSocketInt",
+        default_value=0,
+        min_value=0,
+        description="Last frame showing the strands, 0 to never end",
+    )
 
     panel = ng.interface.new_panel("Strands")
     add_input(
@@ -340,6 +355,34 @@ def build_node_group(text):
         "NodeSocketCollection",
         panel,
         description="Other meshes the strands collide with",
+    )
+    # The common inputs first, the advanced ones in closed sub panels
+    arrange_interface(
+        ng,
+        (
+            (None, "Strands", False, None, ("Sag", "Break Length", "Seed")),
+            ("Strands", "Vertex Groups", False, None, ("Start Vertex Group", "End Vertex Group")),
+            ("Strands", "Frame Range", True, None, ("Start Frame", "End Frame")),
+            (None, "Shape", False, None, ("Profile Resolution",)),
+            (
+                "Shape",
+                "Flared Ends",
+                True,
+                None,
+                ("Flare Width", "Flare Length", "End Insert", "Sticky Ends"),
+            ),
+            (None, "Physics", False, "Physics", ()),
+            ("Physics", "Motion", False, None, ("Gravity", "Drag", "Elasticity")),
+            ("Physics", "Collision", False, "Collision", ("Colliders",)),
+            (
+                "Physics",
+                "New Strands on Contact",
+                True,
+                "New Strands on Contact",
+                ("Contact Distance",),
+            ),
+            ("Physics", "Solver", True, None, ("Substeps", "Iterations")),
+        ),
     )
 
     t = Tree(ng, spacing=(200, 160))
@@ -750,7 +793,6 @@ def build_node_group(text):
             "Position": hanging(a, b, strand_slack, factor, 5, -4),
         },
     ).outputs[0]
-    chain = t.store(chain, "strand_prev", "FLOAT_VECTOR", position, 11, 0)
     curves = t.node(
         "GeometryNodePointsToCurves",
         12,
@@ -762,20 +804,43 @@ def build_node_group(text):
         },
     ).outputs[0]
 
+    t.section("Frame Range")
+    # Hidden before the Start Frame and after the End Frame
+    frame = t.node("GeometryNodeInputSceneTime", 12, -3).outputs["Frame"]
+    started = t.math("GREATER_THAN", frame, inputs["Start Frame"], x=13, y=-3)
+    ended = t.math("GREATER_THAN", frame, inputs["End Frame"], x=13, y=-4)
+    ended = t.math(
+        "MULTIPLY",
+        ended,
+        t.math("GREATER_THAN", inputs["End Frame"], 0.0, x=13, y=-5),
+        x=14,
+        y=-4,
+    )
+    hidden = t.math(
+        "MAXIMUM", t.math("LESS_THAN", frame, inputs["Start Frame"], x=13, y=-2), ended, x=15, y=-3
+    )
+
     t.section("New Strands on Contact", row=True)
     # Simulation: follow the ends, stretch, break, swing and collide
     sim_in = t.node("GeometryNodeSimulationInput", 14, 0)
     sim_out = t.node("GeometryNodeSimulationOutput", 44, 0)
     sim_in.pair_with_output(sim_out)
     t.connect(curves, sim_in.inputs["Geometry"])
-    dt = sim_in.outputs["Delta Time"]
+    # Placed again until the Start Frame, without moving on it as on the first simulated frame
+    dt = t.math("MULTIPLY", sim_in.outputs["Delta Time"], started, x=15, y=-1)
     spline = t.node("GeometryNodeSplineParameter", 26, -10).outputs
     in_curve = spline["Index"]
     spline_length = t.node("GeometryNodeSplineLength", 26, -11).outputs
     last = t.math("SUBTRACT", spline_length["Point Count"], 1.0, x=27, y=-11)
+    state = t.node(
+        "GeometryNodeSwitch",
+        15,
+        0,
+        {"Switch": started, "False": curves, "True": sim_in.outputs["Geometry"]},
+        input_type="GEOMETRY",
+    ).outputs[0]
 
     # New strands on contact: the broken strands placed again where the meshes touch
-    state = sim_in.outputs["Geometry"]
     contacts = t.node(
         "GeometryNodeDeleteGeometry",
         14,
@@ -848,7 +913,8 @@ def build_node_group(text):
     ).outputs[0]
     for i, (name, data_type, value) in enumerate(
         (
-            ("prev", "FLOAT_VECTOR", position),
+            ("velocity", "FLOAT_VECTOR", (0.0, 0.0, 0.0)),
+            ("pin", "FLOAT_VECTOR", position),
             ("length", "FLOAT", strand_slack),
             ("broken", "BOOLEAN", False),
         )
@@ -955,212 +1021,278 @@ def build_node_group(text):
     free = t.math("SUBTRACT", 1.0, pinned, x=30, y=-10)
     cut = attribute("cut", "FLOAT", 26, -12)
 
-    t.section("Substeps")
-    # Substeps: Verlet integration, with the ends pinned
-    steps_in = t.node("GeometryNodeRepeatInput", 27, 0, {"Iterations": inputs["Substeps"]})
-    steps_out = t.node("GeometryNodeRepeatOutput", 43, 0)
-    steps_in.pair_with_output(steps_out)
-    t.connect(state, steps_in.inputs["Geometry"])
-    step = t.math("DIVIDE", dt, inputs["Substeps"], x=27, y=-3)
-    old = t.node("GeometryNodeCaptureAttribute", 28, 0, {"Geometry": steps_in.outputs["Geometry"]})
-    old.capture_items.new("VECTOR", "Position")
-    t.connect(position, old.inputs["Position"])
-    velocity = t.vmath("SUBTRACT", position, attribute("prev", "FLOAT_VECTOR", 28, -3), x=29, y=-3)
-    drag = t.math(
-        "MULTIPLY_ADD", inputs["Drag"], t.math("MULTIPLY", step, -1.0, x=28, y=-5), 1.0, x=29, y=-5
+    t.section("Constraints")
+    # Ends pinned on the meshes, the points next to them along the surface normals, and the
+    # segment lengths, denser at the ends, but at the break
+    length = attribute("length", "FLOAT", 27, -12)
+    here = spacing(in_curve, last, 27, -13)
+    after = spacing(t.math("ADD", in_curve, 1.0, x=27, y=-15), last, 28, -15)
+    segment = t.math("MULTIPLY", t.math("SUBTRACT", after, here, x=31, y=-14), length, x=32, y=-14)
+    reach = t.math("MULTIPLY", spacing(1.0, last, 28, -17), length, x=32, y=-17)
+    near_a = t.math("COMPARE", in_curve, 1.0, 0.5, x=29, y=-18)
+    near_b = t.math(
+        "COMPARE", in_curve, t.math("SUBTRACT", last, 1.0, x=28, y=-19), 0.5, x=29, y=-19
     )
-    velocity = t.vmath("SCALE", velocity, t.math("MAXIMUM", drag, 0.0, x=30, y=-5), x=30, y=-3)
-    fall = t.vmath(
-        "SCALE", inputs["Gravity"], t.math("MULTIPLY", step, step, x=30, y=-6), x=31, y=-6
+    pin = anchor_b
+    for i, (select, value) in enumerate(
+        (
+            (
+                near_b,
+                t.vmath(
+                    "ADD", anchor_b, t.vmath("SCALE", normal_b, reach, x=30, y=-21), x=31, y=-21
+                ),
+            ),
+            (
+                near_a,
+                t.vmath(
+                    "ADD", anchor_a, t.vmath("SCALE", normal_a, reach, x=30, y=-22), x=31, y=-22
+                ),
+            ),
+            (first, anchor_a),
+        )
+    ):
+        pin = t.node(
+            "GeometryNodeSwitch",
+            32 + i * 0.5,
+            -20,
+            {"Switch": select, "False": pin, "True": value},
+            input_type="VECTOR",
+        ).outputs[0]
+    hold = t.math("ADD", near_a, near_b, x=30, y=-18)
+    hold = t.math("MULTIPLY_ADD", pinned, 2.0, hold, x=31, y=-18)
+    cut_here = t.math(
+        "MULTIPLY", t.math("COMPARE", in_curve, cut, 0.5, x=30, y=-16), broken, x=31, y=-16
     )
-    moved = t.vmath("ADD", position, t.vmath("ADD", velocity, fall, x=31, y=-3), x=32, y=-3)
-    chain = t.node(
-        "GeometryNodeSetPosition",
-        30,
-        0,
-        {"Geometry": old.outputs["Geometry"], "Selection": free, "Position": moved},
-    ).outputs[0]
-    chain = t.node(
-        "GeometryNodeSetPosition",
-        31,
-        0,
-        {
-            "Geometry": chain,
-            "Selection": pinned,
-            "Position": t.node(
-                "GeometryNodeSwitch",
-                31,
-                -1,
-                {"Switch": first, "False": anchor_b, "True": anchor_a},
-                input_type="VECTOR",
-            ).outputs[0],
-        },
-    ).outputs[0]
-    chain = t.store(chain, "strand_prev", "FLOAT_VECTOR", old.outputs["Position"], 32, 0)
+    captured = t.node("GeometryNodeCaptureAttribute", 33, 0, {"Geometry": state})
+    for data_type, name, value in (
+        ("VECTOR", "Pin", pin),
+        ("FLOAT", "Hold", hold),
+        ("FLOAT", "Segment", segment),
+        ("FLOAT", "Cut", cut_here),
+        ("FLOAT", "Here", here),
+        ("FLOAT", "Index", in_curve),
+    ):
+        captured.capture_items.new(data_type, name)
+        t.connect(value, captured.inputs[name])
+    state = captured.outputs["Geometry"]
+    pin, hold = captured.outputs["Pin"], captured.outputs["Hold"]
 
-    t.section("Length Constraints")
-    # Jacobi iterations of the length constraints, except at the break point
-    iterations_in = t.node("GeometryNodeRepeatInput", 33, 0, {"Iterations": inputs["Iterations"]})
-    iterations_out = t.node("GeometryNodeRepeatOutput", 38, 0)
-    iterations_in.pair_with_output(iterations_out)
-    t.connect(chain, iterations_in.inputs["Geometry"])
-    chain = iterations_in.outputs["Geometry"]
-    length = attribute("length", "FLOAT", 33, -12)
-    here = spacing(in_curve, last, 33, -13)
-    delta = None
-    for i, direction in enumerate((-1, 1)):
-        y = -3 - 4 * i
-        neighbor = t.node("GeometryNodeOffsetPointInCurve", 33, y, {"Offset": direction}).outputs
-        other = t.node(
+    t.section("Solver")
+    # XPBD solver on the strands as edges: the ends heavy for their pins to hold, broken
+    # strands without the edge at the break
+    mesh = t.node("GeometryNodeCurveToMesh", 34, 0, {"Curve": state}).outputs[0]
+    first_vertex = t.node("GeometryNodeInputMeshEdgeVertices", 34, -2).outputs["Vertex Index 1"]
+
+    def on_edges(value, x, y):
+        return t.node(
             "GeometryNodeSampleIndex",
-            34,
+            x,
             y,
-            {"Geometry": chain, "Value": position, "Index": neighbor["Point Index"]},
-            data_type="FLOAT_VECTOR",
+            {"Geometry": mesh, "Value": value, "Index": first_vertex},
+            data_type="FLOAT",
             domain="POINT",
         ).outputs[0]
-        neighbor_index = t.math("ADD", in_curve, float(direction), x=33, y=y - 2)
-        segment = t.math("SUBTRACT", spacing(neighbor_index, last, 30, y - 2), here, x=34, y=y - 1)
-        segment = t.math(
-            "MULTIPLY", t.math("ABSOLUTE", segment, x=35, y=y - 1), length, x=36, y=y - 1
-        )
-        towards = t.vmath("SUBTRACT", other, position, x=35, y=y)
-        correction = t.vmath(
-            "SUBTRACT",
-            towards,
-            t.vmath("SCALE", t.vmath("NORMALIZE", towards, x=35, y=y - 1), segment, x=36, y=y - 1),
-            x=36,
-            y=y,
-        )
-        neighbor_first = t.math("COMPARE", neighbor_index, 0.0, 0.5, x=34, y=y - 2)
-        neighbor_pinned = t.math(
-            "MAXIMUM",
-            neighbor_first,
-            t.math("COMPARE", neighbor_index, last, 0.5, x=34, y=y - 3),
-            x=35,
-            y=y - 2,
-        )
-        # Next to the ends, the strands leave the surface along its normal
-        outward = t.node(
-            "GeometryNodeSwitch",
-            35,
-            y - 4,
-            {"Switch": neighbor_first, "False": normal_b, "True": normal_a},
-            input_type="VECTOR",
-        ).outputs[0]
-        goal = t.vmath(
-            "ADD", other, t.vmath("SCALE", outward, segment, x=36, y=y - 4), x=37, y=y - 4
-        )
-        correction = t.node(
-            "GeometryNodeSwitch",
-            37,
-            y + 1,
-            {
-                "Switch": neighbor_pinned,
-                "False": correction,
-                "True": t.vmath("SUBTRACT", goal, position, x=38, y=y - 4),
-            },
-            input_type="VECTOR",
-        ).outputs[0]
-        # A pinned neighbor does not move, the point corrects the whole length
-        weight = t.math("MULTIPLY_ADD", neighbor_pinned, 0.5, 0.5, x=36, y=y - 2)
-        weight = t.math("MULTIPLY", weight, neighbor["Is Valid Offset"], x=37, y=y - 2)
-        cut_here = t.math(
-            "COMPARE",
-            t.math("ADD", in_curve, min(direction, 0), x=36, y=y - 3),
-            cut,
-            0.5,
-            x=37,
-            y=y - 3,
-        )
-        cut_here = t.math("MULTIPLY", cut_here, broken, x=38, y=y - 3)
-        weight = t.math(
-            "MULTIPLY", weight, t.math("SUBTRACT", 1.0, cut_here, x=38, y=y - 4), x=38, y=y - 2
-        )
-        term = t.vmath("SCALE", correction, weight, x=37, y=y)
-        delta = term if delta is None else t.vmath("ADD", delta, term, x=38, y=-5)
-    chain = t.node(
-        "GeometryNodeSetPosition",
-        37,
-        0,
-        {"Geometry": chain, "Selection": free, "Offset": delta},
-    ).outputs[0]
-    t.connect(chain, iterations_out.inputs["Geometry"])
-    chain = iterations_out.outputs["Geometry"]
 
-    t.section("Long Range Attachments")
+    mesh = t.node(
+        "GeometryNodeDeleteGeometry",
+        35,
+        0,
+        {"Geometry": mesh, "Selection": on_edges(captured.outputs["Cut"], 35, -2)},
+        domain="EDGE",
+        mode="EDGE_FACE",
+    ).outputs[0]
+    mass = t.math(
+        "MULTIPLY_ADD", t.math("GREATER_THAN", hold, 1.5, x=35, y=-4), 1e6, 1.0, x=36, y=-4
+    )
+    gravity = t.vmath("SCALE", inputs["Gravity"], mass, x=37, y=-4)
+    previous = t.node(
+        "GeometryNodeInputNamedAttribute", 35, -6, {"Name": "strand_pin"}, data_type="FLOAT_VECTOR"
+    ).outputs
+    previous = t.node(
+        "GeometryNodeSwitch",
+        36,
+        -6,
+        {"Switch": previous["Exists"], "False": pin, "True": socket(previous, "Attribute")},
+        input_type="VECTOR",
+    ).outputs[0]
+    held = t.math("GREATER_THAN", hold, 0.5, x=36, y=-7)
+    for i, (name, data_type, value, domain) in enumerate(
+        (
+            ("strand_hold", "FLOAT", hold, "POINT"),
+            ("strand_here", "FLOAT", captured.outputs["Here"], "POINT"),
+            ("strand_index", "FLOAT", captured.outputs["Index"], "POINT"),
+            ("mass", "FLOAT", mass, "POINT"),
+            ("external_force", "FLOAT_VECTOR", gravity, "POINT"),
+            ("velocity", "FLOAT_VECTOR", attribute("velocity", "FLOAT_VECTOR", 36, -8), "POINT"),
+            ("sim:prop:Strands/Pin:selection", "BOOLEAN", held, "POINT"),
+            ("sim:prop:Strands/Pin:position", "FLOAT_VECTOR", pin, "POINT"),
+            ("sim:prop:Strands/Pin:compliance", "FLOAT", 0.0, "POINT"),
+            ("sim:prop_prev:Strands/Pin:selection", "BOOLEAN", held, "POINT"),
+            ("sim:prop_prev:Strands/Pin:position", "FLOAT_VECTOR", previous, "POINT"),
+            ("sim:prop:Strands/Damping:linear", "FLOAT", inputs["Drag"], "POINT"),
+            ("sim:prop:Strands/Damping:angular", "FLOAT", 0.0, "POINT"),
+            (
+                "sim:prop:Strands/Length:rest_length",
+                "FLOAT",
+                on_edges(captured.outputs["Segment"], 36, -10),
+                "EDGE",
+            ),
+            ("sim:prop:Strands/Length:compliance", "FLOAT", 0.0, "EDGE"),
+        )
+    ):
+        mesh = t.store(mesh, name, data_type, value, 36 + i * 0.25, 0, domain=domain)
+
+    def bundle(x, y, items):
+        node = t.node("NodeCombineBundle", x, y)
+        for name, socket_type, value in items:
+            node.bundle_items.new(socket_type, name)
+            t.connect(value, node.inputs[name])
+        return node.outputs[0]
+
+    def effector(kind, x, y, *items):
+        return bundle(x, y, (("Type", "STRING", kind), ("filter", "STRING", ""), *items))
+
+    threshold = ("error_threshold", "FLOAT", 0.001)
+    strands = bundle(
+        39,
+        -6,
+        (
+            ("Strands", "GEOMETRY", mesh),
+            (
+                "Pin",
+                "BUNDLE",
+                effector(
+                    "Blender.Constraint.PinPosition",
+                    38,
+                    -6,
+                    threshold,
+                    ("lambda_attribute", "STRING", ""),
+                ),
+            ),
+            ("Length", "BUNDLE", effector("Blender.Constraint.EdgeLength", 38, -8, threshold)),
+            ("Damping", "BUNDLE", effector("Blender.Damping", 38, -9)),
+        ),
+    )
+    world = bundle(40, 0, (("Strands", "BUNDLE", strands),))
+
+    t.section("Substeps")
+    # Substeps of the solver, the pins moving along them
+    steps_in = t.node("GeometryNodeRepeatInput", 41, 0, {"Iterations": inputs["Substeps"]})
+    steps_out = t.node("GeometryNodeRepeatOutput", 48, 0)
+    steps_in.pair_with_output(steps_out)
+    steps_out.repeat_items.new("BUNDLE", "World")
+    steps_out.repeat_items.remove(steps_out.repeat_items[0])
+    t.connect(world, steps_in.inputs["World"])
+    # Until the Start Frame, a negligible step only satisfying the constraints
+    step = t.math("DIVIDE", t.math("MAXIMUM", dt, 1e-5, x=40, y=-3), inputs["Substeps"], x=41, y=-3)
+    begin = t.math("DIVIDE", steps_in.outputs["Iteration"], inputs["Substeps"], x=41, y=-4)
+    end = t.math(
+        "DIVIDE",
+        t.math("ADD", steps_in.outputs["Iteration"], 1.0, x=41, y=-5),
+        inputs["Substeps"],
+        x=42,
+        y=-5,
+    )
+    world = t.node(
+        "GeometryNodeXPBDSolver",
+        42,
+        0,
+        {
+            "World": steps_in.outputs["World"],
+            "Delta Time": step,
+            "Substeps": 1,
+            "Constraint Iterations": inputs["Iterations"],
+            "Begin": begin,
+            "End": end,
+        },
+    ).outputs[0]
+    solved = t.node(
+        "NodeGetBundleItem",
+        43,
+        0,
+        {"Bundle": world, "Path": "Strands/Strands"},
+        socket_type="GEOMETRY",
+    ).outputs["Item"]
+
     # Long range attachments: no point farther from the attached ends than along the strand,
-    # for the strands not to stretch under gravity
-    after_cut = t.math("GREATER_THAN", in_curve, t.math("ADD", cut, 0.5, x=38, y=-21), x=39, y=-21)
+    # for the strands not to stretch under gravity, the velocities following
+    before = t.node("GeometryNodeCaptureAttribute", 44, 0, {"Geometry": solved})
+    before.capture_items.new("VECTOR", "Position")
+    t.connect(position, before.inputs["Position"])
+    chain = before.outputs["Geometry"]
+    here = attribute("here", "FLOAT", 43, -8)
+    in_strand = attribute("index", "FLOAT", 43, -9)
+    after_cut = t.math("GREATER_THAN", in_strand, t.math("ADD", cut, 0.5, x=43, y=-10), x=44, y=-10)
+    loose = t.math("LESS_THAN", attribute("hold", "FLOAT", 43, -11), 1.5, x=44, y=-11)
     for i, (end, along, attached) in enumerate(
         (
-            (anchor_a, here, t.math("MULTIPLY", broken, after_cut, x=40, y=-21)),
+            (anchor_a, here, t.math("MULTIPLY", broken, after_cut, x=45, y=-10)),
             (
                 anchor_b,
-                t.math("SUBTRACT", 1.0, here, x=40, y=-23),
+                t.math("SUBTRACT", 1.0, here, x=45, y=-12),
                 t.math(
-                    "MULTIPLY", broken, t.math("SUBTRACT", 1.0, after_cut, x=40, y=-24), x=41, y=-24
+                    "MULTIPLY", broken, t.math("SUBTRACT", 1.0, after_cut, x=45, y=-13), x=46, y=-13
                 ),
             ),
         )
     ):
-        y = -20 - 4 * i
-        reach = t.math("MULTIPLY", along, length, x=41, y=y - 1)
-        offset = t.vmath("SUBTRACT", position, end, x=41, y=y)
+        y = -14 - 4 * i
+        reach = t.math("MULTIPLY", along, length, x=46, y=y - 1)
+        offset = t.vmath("SUBTRACT", position, end, x=46, y=y)
         scale = t.math(
             "DIVIDE",
-            t.math("MINIMUM", t.vmath("LENGTH", offset, x=42, y=y - 1), reach, x=43, y=y - 1),
-            t.vmath("LENGTH", offset, x=42, y=y - 2),
-            x=44,
+            t.math("MINIMUM", t.vmath("LENGTH", offset, x=47, y=y - 1), reach, x=48, y=y - 1),
+            t.vmath("LENGTH", offset, x=47, y=y - 2),
+            x=49,
             y=y - 1,
         )
         chain = t.node(
             "GeometryNodeSetPosition",
-            38.5 + 0.5 * i,
+            45 + 0.5 * i,
             0,
             {
                 "Geometry": chain,
                 "Selection": t.math(
                     "MULTIPLY",
-                    free,
-                    t.math("SUBTRACT", 1.0, attached, x=42, y=y - 3),
-                    x=43,
+                    loose,
+                    t.math("SUBTRACT", 1.0, attached, x=47, y=y - 3),
+                    x=48,
                     y=y - 3,
                 ),
                 "Position": t.vmath(
-                    "ADD", end, t.vmath("SCALE", offset, scale, x=44, y=y), x=45, y=y
+                    "ADD", end, t.vmath("SCALE", offset, scale, x=49, y=y), x=50, y=y
                 ),
             },
         ).outputs[0]
 
-    t.section("Collision")
-    # Collision: points under the surfaces, not deeper than the Control radius, pushed out
+    # Collision: points under the surfaces, not deeper than the Control radius, pushed out, not
+    # through open meshes as the solver colliders do
     nearest = [
         t.node(
             "GeometryNodeSampleNearestSurface",
-            40,
-            -14 - i,
+            46,
+            -26 - i,
             {"Mesh": collider, "Value": value, "Sample Position": position},
             data_type="FLOAT_VECTOR",
         ).outputs["Value"]
         for i, value in enumerate((position, normal))
     ]
-    outward = t.vmath("NORMALIZE", nearest[1], x=41, y=-15)
+    outward = t.vmath("NORMALIZE", nearest[1], x=47, y=-27)
     side = t.vmath(
-        "DOT_PRODUCT", t.vmath("SUBTRACT", position, nearest[0], x=41, y=-13), outward, x=42, y=-13
+        "DOT_PRODUCT", t.vmath("SUBTRACT", position, nearest[0], x=47, y=-25), outward, x=48, y=-25
     )
-    hit = t.math("LESS_THAN", side, strand_thickness, x=42, y=-12)
+    hit = t.math("LESS_THAN", side, strand_thickness, x=48, y=-24)
     hit = t.math(
         "MULTIPLY",
         hit,
-        t.math("GREATER_THAN", side, t.math("MULTIPLY", radius, -1.0, x=41, y=-17), x=42, y=-17),
-        x=43,
-        y=-12,
+        t.math("GREATER_THAN", side, t.math("MULTIPLY", radius, -1.0, x=47, y=-29), x=48, y=-29),
+        x=49,
+        y=-24,
     )
-    hit = t.math("MULTIPLY", hit, free, x=43, y=-11)
+    hit = t.math("MULTIPLY", hit, loose, x=49, y=-23)
     collided = t.node(
         "GeometryNodeSetPosition",
-        42,
+        46.25,
         0,
         {
             "Geometry": chain,
@@ -1168,23 +1300,76 @@ def build_node_group(text):
             "Position": t.vmath(
                 "ADD",
                 nearest[0],
-                t.vmath("SCALE", outward, strand_thickness, x=42, y=-16),
-                x=43,
-                y=-16,
+                t.vmath("SCALE", outward, strand_thickness, x=48, y=-28),
+                x=49,
+                y=-28,
             ),
         },
     ).outputs[0]
     chain = t.node(
         "GeometryNodeSwitch",
-        43,
+        46.5,
         0,
         {"Switch": inputs["Collision"], "False": chain, "True": collided},
         input_type="GEOMETRY",
     ).outputs[0]
-    t.connect(chain, steps_out.inputs["Geometry"])
-    t.connect(steps_out.outputs["Geometry"], sim_out.inputs["Geometry"])
-    # The zone outputs after their last nodes
-    steps_out.parent = sim_out.parent = t.frame
+    moved = t.vmath("SUBTRACT", position, before.outputs["Position"], x=46, y=-22)
+    velocity = t.vmath(
+        "ADD",
+        t.attribute("velocity", "FLOAT_VECTOR", 46, -23),
+        t.vmath("SCALE", moved, t.math("DIVIDE", 1.0, step, x=46, y=-24), x=47, y=-23),
+        x=48,
+        y=-23,
+    )
+    chain = t.store(chain, "velocity", "FLOAT_VECTOR", velocity, 46.75, 0)
+    world = t.node(
+        "NodeStoreBundleItem",
+        47,
+        0,
+        {"Bundle": world, "Path": "Strands/Strands", "Item": chain},
+        socket_type="GEOMETRY",
+    ).outputs[0]
+    t.connect(world, steps_out.inputs["World"])
+    solved = t.node(
+        "NodeGetBundleItem",
+        49,
+        0,
+        {"Bundle": steps_out.outputs["World"], "Path": "Strands/Strands"},
+        socket_type="GEOMETRY",
+    ).outputs["Item"]
+
+    t.section("Back on the Strands")
+    # Positions and velocities back on the curves, the pins kept to move them smoothly next
+    chain = state
+    for name, target in (("position", "position"), ("velocity", "strand_velocity")):
+        value = t.node(
+            "GeometryNodeSampleIndex",
+            43,
+            -3,
+            {
+                "Geometry": solved,
+                "Value": t.attribute(name, "FLOAT_VECTOR", 42, -3),
+                "Index": index,
+            },
+            data_type="FLOAT_VECTOR",
+            domain="POINT",
+        ).outputs[0]
+        if name == "velocity":
+            # At rest until the Start Frame
+            value = t.vmath("SCALE", value, started, x=44, y=-3)
+        chain = t.store(chain, target, "FLOAT_VECTOR", value, 44, 0)
+    chain = t.store(chain, "strand_pin", "FLOAT_VECTOR", pin, 45, 0)
+    # Not simulated while hidden
+    simulated = t.node(
+        "GeometryNodeSwitch",
+        46,
+        0,
+        {"Switch": hidden, "False": chain, "True": sim_in.outputs["Geometry"]},
+        input_type="GEOMETRY",
+    ).outputs[0]
+    t.connect(simulated, sim_out.inputs["Geometry"])
+    # The zone output after its last nodes
+    sim_out.parent = t.frame
 
     t.section("Without Physics", row=True)
     # Without physics: the hanging chains, without the simulation zone not to need its cache,
@@ -1210,6 +1395,9 @@ def build_node_group(text):
         2,
         {"Switch": inputs["Physics"], "False": static, "True": sim_out.outputs["Geometry"]},
         input_type="GEOMETRY",
+    ).outputs[0]
+    strands = t.node(
+        "GeometryNodeSwitch", 49.5, 2, {"Switch": hidden, "False": strands}, input_type="GEOMETRY"
     ).outputs[0]
     factor = spacing(in_curve, last, 43, -4)
     pinch = t.math("SINE", t.math("MULTIPLY", factor, math.pi, x=46, y=-4), x=47, y=-4)
