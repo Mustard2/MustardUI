@@ -2350,6 +2350,24 @@ class TestImprints(BlenderTestCase):
         self.assertGreater((side < 0.6).sum(), 15000)
         self.assertLess((side > 0.9).sum(), 500)
 
+    # The drops of a Wet before are joined back as they are, only the mesh imprinted
+    def test_after_wet(self):
+        def drops():
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            geometry = self.ground.evaluated_get(depsgraph).evaluated_geometry()
+            meshes = [len(x.mesh.vertices) for x in geometry.instance_references() if x.mesh]
+            return len(geometry.instances_pointcloud().points), meshes
+
+        set_active(self.ground)
+        bpy.ops.mustardui.model_toolkit_wet()
+        wet = drops()
+        self.assertGreater(wet[0], 0)
+        set_active(self.ground)
+        self.add(kind="SNOW")
+        self.assertEqual(drops(), wet)
+        _, height, _ = self.heights()
+        self.assertAlmostEqual(height.min(), -0.03, delta=1e-4)
+
     # Cracks spread from the imprints up to their length, grooved and drawn by the shader attribute,
     # and the surface around them breaks into slabs tilted by the rim, sharp apart
     def test_cracks(self):

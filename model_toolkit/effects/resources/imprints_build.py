@@ -350,6 +350,8 @@ def build_node_group():
     t = Tree(ng)
     t.section("Colliders")
     inputs = t.node("NodeGroupInput", -2, 0).outputs
+    # Only the mesh, not the drops of a Wet before, the other components joined back as they are
+    components = t.node("GeometryNodeSeparateComponents", -1, 1, {0: inputs["Geometry"]}).outputs
     self_object = t.node("GeometryNodeSelfObject", -2, -2).outputs[0]
     to_world = t.node(
         "GeometryNodeObjectInfo", -1, -2, {"Object": self_object}, transform_space="ORIGINAL"
@@ -390,14 +392,14 @@ def build_node_group():
         "GeometryNodeTransform",
         2,
         -11,
-        {"Geometry": inputs["Geometry"], "Mode": "Matrix", "Transform": to_world},
+        {"Geometry": components["Mesh"], "Mode": "Matrix", "Transform": to_world},
     ).outputs[0]
 
     t.section("Imprint", row=True)
     reach = t.math("MULTIPLY", inputs["Depth"], REACH, x=3, y=-6)
     # Subdivided where the Colliders may press it, the same at each frame
     geometry = refine(
-        t, inputs["Geometry"], inputs["Subdivisions"], to_world, box, reach, None, None, 0, 0
+        t, components["Mesh"], inputs["Subdivisions"], to_world, box, reach, None, None, 0, 0
     )
     # Within half the thickness of the mesh, pressed at most to its middle from either side
     through = t.node(
@@ -482,7 +484,7 @@ def build_node_group():
     # Around the Colliders as far as the soft imprints spread too
     geometry = refine(
         t,
-        inputs["Geometry"],
+        components["Mesh"],
         inputs["Subdivisions"],
         to_world,
         box,
@@ -903,7 +905,11 @@ def build_node_group():
         0,
         {"Geometry": geometry, "Pattern Mode": "Wildcard", "Name": ".imprint_*"},
     ).outputs[0]
-    t.node("NodeGroupOutput", 5, 0, {"Geometry": geometry})
+    output = t.node("GeometryNodeJoinGeometry", 4.5, 0)
+    for name in ("Instances", "Volume", "Point Cloud", "Grease Pencil", "Curve"):
+        t.connect(components[name], output.inputs[0])
+    t.connect(geometry, output.inputs[0])
+    t.node("NodeGroupOutput", 5, 0, {"Geometry": output.outputs[0]})
     t.arrange()
     return ng
 
