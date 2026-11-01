@@ -27,11 +27,16 @@ YIELD = 0.002
 VOLUME = 0.5
 # Longest motion stretching the falling particles, a frame
 SWEEP = 1 / 24
+# Sways per second of the emission with the Wobble, waving the stream
+WOBBLE_RATE = 60.0
 # Radius of the spheres of the stuck particles, their height over the surface, and its growth per
 # stuck particle around, per particle radius
 FILM_RADIUS = 2.5
 FILM_HEIGHT = 0.3
 BULGE = 0.06
+# The same at full Thickness, narrower and higher
+ROPE_RADIUS = 1.2
+ROPE_HEIGHT = 0.6
 
 
 def build_node_group():
@@ -116,6 +121,17 @@ def build_node_group():
         min_value=0.0,
         max_value=10.0,
         description="Radius of the emitting disc, scaled with the Control",
+    )
+    add_input(
+        ng,
+        "Wobble",
+        "NodeSocketFloat",
+        panel,
+        subtype="FACTOR",
+        default_value=0.0,
+        min_value=0.0,
+        max_value=1.0,
+        description="Smooth swaying of the emission direction, waving the stream",
     )
 
     panel = ng.interface.new_panel("Liquid")
@@ -258,6 +274,17 @@ def build_node_group():
         min_value=0,
         max_value=100,
         description="Iterations smoothing the mesh, rounder and glossier, thinning small drops",
+    )
+    add_input(
+        ng,
+        "Thickness",
+        "NodeSocketFloat",
+        panel,
+        subtype="FACTOR",
+        default_value=0.0,
+        min_value=0.0,
+        max_value=1.0,
+        description="Shape of the stuck liquid, from a thin wide film to narrow thick ropes",
     )
 
     t = Tree(ng, spacing=(200, 160))
@@ -553,9 +580,33 @@ def build_node_group():
     disc = t.node(
         "FunctionNodeTransformPoint", -7, 10, {"Vector": disc, "Transform": control["Transform"]}
     ).outputs[0]
+    # When emitted, as far ahead as they are
+    birth = t.math(
+        "MULTIPLY_ADD", t.math("MULTIPLY", dt, random["Z"], x=-11, y=14), -1.0, time, x=-10, y=14
+    )
+    sway = t.node(
+        "ShaderNodeTexNoise",
+        -11,
+        13,
+        {"W": birth, "Scale": WOBBLE_RATE, "Detail": 0.0},
+        noise_dimensions="1D",
+    ).outputs["Color"]
+    sway = t.vmath(
+        "MULTIPLY",
+        t.vmath("SUBTRACT", sway, (0.5, 0.5, 0.5), x=-10, y=13),
+        t.math("MULTIPLY", inputs["Wobble"], 2.0, x=-10, y=12),
+        x=-9,
+        y=13,
+    )
     direction = t.vmath(
         "NORMALIZE",
-        t.vmath("ADD", axis, t.vmath("SCALE", jitter, inputs["Spread"], x=-10, y=7), x=-9, y=7),
+        t.vmath(
+            "ADD",
+            t.vmath("ADD", axis, t.vmath("SCALE", jitter, inputs["Spread"], x=-10, y=7), x=-9, y=7),
+            sway,
+            x=-9,
+            y=8,
+        ),
         x=-8,
         y=7,
     )
@@ -587,6 +638,19 @@ def build_node_group():
         },
     ).outputs[0]
     points = t.store(points, "velocity", "FLOAT_VECTOR", velocity, -4, 9)
+    # Seconds to the next particles, to stretch up to them in the stream, kept if the Rate changes,
+    # and when emitted, to join them in order
+    points = t.store(
+        points, "liquid_gap", "FLOAT", t.math("DIVIDE", 2.0, inputs["Rate"], x=-5, y=8), -3.5, 9
+    )
+    points = t.store(
+        points,
+        "liquid_birth",
+        "FLOAT",
+        birth,
+        -3,
+        9,
+    )
     join = t.node("GeometryNodeJoinGeometry", -3, 0)
     for geometry in (points, state):
         t.connect(geometry, join.inputs[0])
@@ -1192,7 +1256,7 @@ def build_node_group():
     stuck = attribute("stuck", "BOOLEAN", 45, -7)
     voxel = t.math("DIVIDE", size, inputs["Resolution"], x=45, y=-8)
 
-    def resample(selection, count, place, sample_radius, x, y):
+    def resample(geometry, selection, count, place, sample_radius, x, y):
         """Particles selected, duplicated by the count, placed and sized by the duplicate index,
         sampling the surface"""
         points = t.node(
@@ -1200,7 +1264,7 @@ def build_node_group():
             x,
             y,
             {
-                "Geometry": particles,
+                "Geometry": geometry,
                 "Selection": t.node(
                     "FunctionNodeBooleanMath", x - 1, y - 2, {0: selection}, operation="NOT"
                 ).outputs[0],
@@ -1225,14 +1289,47 @@ def build_node_group():
             "GeometryNodeSetPointRadius", x + 3, y, {"Points": points, "Radius": sample_radius(i)}
         ).outputs[0]
 
-    # Falling liquid stretched along its motion up to the next particles emitted, for a stream to
-    # be continuous and drops round
-    sweep = t.vmath(
+    # Falling liquid as smooth ropes through the particles in the order emitted, broken where they
+    # are apart, and the lone drops stretched along their motion, round
+    stream = t.node(
+        "GeometryNodeSortElements",
+        44,
+        6,
+        {
+            "Geometry": t.node(
+                "GeometryNodeDeleteGeometry",
+                43,
+                6,
+                {"Geometry": particles, "Selection": stuck},
+                domain="POINT",
+            ).outputs[0],
+            "Sort Weight": attribute("birth", "FLOAT", 43, 5),
+        },
+        domain="POINT",
+    ).outputs[0]
+
+    def emitted(value, data_type, offset, y):
+        """Value of the particle emitted next, or before"""
+        return t.node(
+            "GeometryNodeSampleIndex",
+            45,
+            y,
+            {
+                "Geometry": stream,
+                "Value": value,
+                "Index": t.math("ADD", index, offset, x=44, y=y),
+            },
+            data_type=data_type,
+            domain="POINT",
+            clamp=True,
+        ).outputs[0]
+
+    motion = t.vmath(
         "SCALE",
         t.attribute("velocity", "FLOAT_VECTOR", 45, 2),
         t.math(
             "MINIMUM",
-            t.math("DIVIDE", 2.0, inputs["Rate"], x=44, y=3),
+            attribute("gap", "FLOAT", 44, 3),
             t.math("MULTIPLY", inputs["Time Scale"], SWEEP, x=44, y=4),
             x=45,
             y=3,
@@ -1240,11 +1337,101 @@ def build_node_group():
         x=46,
         y=2,
     )
+    distance = t.vmath("DISTANCE", position, emitted(position, "FLOAT_VECTOR", 1.0, 8), x=46, y=8)
+    # Not the last particle, sampling itself, nor far ones
+    joined = t.node(
+        "FunctionNodeBooleanMath",
+        48,
+        8,
+        {
+            0: t.math("GREATER_THAN", distance, 0.0, x=47, y=9),
+            1: t.math(
+                "LESS_THAN",
+                distance,
+                t.math("MULTIPLY", t.vmath("LENGTH", motion, x=46, y=5), 2.0, x=47, y=5),
+                x=47,
+                y=7,
+            ),
+        },
+        operation="AND",
+    ).outputs[0]
+    joined_before = t.node(
+        "FunctionNodeBooleanMath",
+        48,
+        10,
+        {
+            0: emitted(joined, "BOOLEAN", -1.0, 10),
+            1: t.math("GREATER_THAN", index, 0.0, x=47, y=11),
+        },
+        operation="AND",
+    ).outputs[0]
+    stream = t.store(
+        stream,
+        "liquid_lone",
+        "BOOLEAN",
+        t.node(
+            "FunctionNodeBooleanMath", 49, 9, {0: joined, 1: joined_before}, operation="NOR"
+        ).outputs[0],
+        50,
+        6,
+    )
+    # One rope until a particle is not joined to the next
+    stream = t.store(
+        stream,
+        "liquid_rope",
+        "INT",
+        t.node(
+            "GeometryNodeAccumulateField",
+            50,
+            8,
+            {
+                "Value": t.node(
+                    "FunctionNodeBooleanMath", 49, 8, {0: joined}, operation="NOT"
+                ).outputs[0]
+            },
+            data_type="INT",
+        ).outputs["Trailing"],
+        51,
+        6,
+    )
+    lone = attribute("lone", "BOOLEAN", 51, 4)
+    ropes = t.node(
+        "GeometryNodePointsToCurves",
+        53,
+        6,
+        {
+            "Points": t.node(
+                "GeometryNodeDeleteGeometry",
+                52,
+                6,
+                {"Geometry": stream, "Selection": lone},
+                domain="POINT",
+            ).outputs[0],
+            "Curve Group ID": attribute("rope", "INT", 52, 4),
+            "Weight": attribute("birth", "FLOAT", 52, 3),
+        },
+    ).outputs[0]
+    ropes = t.node(
+        "GeometryNodeCurveSplineType", 54, 6, {"Curve": ropes}, spline_type="CATMULL_ROM"
+    )
+    ropes = t.node(
+        "GeometryNodeResampleCurve",
+        55,
+        6,
+        {
+            "Curve": ropes.outputs[0],
+            "Mode": "Length",
+            "Length": t.math("MULTIPLY", size, 0.5, x=54, y=4),
+        },
+    ).outputs[0]
+    ropes = t.node("GeometryNodeCurveToPoints", 56, 6, {"Curve": ropes}, mode="EVALUATED").outputs[
+        "Points"
+    ]
     sweeps = t.math(
         "CEIL",
         t.math(
             "DIVIDE",
-            t.vmath("LENGTH", sweep, x=47, y=2),
+            t.vmath("LENGTH", motion, x=47, y=2),
             t.math("MULTIPLY", radius, 0.5, x=47, y=3),
             x=48,
             y=2,
@@ -1260,7 +1447,7 @@ def build_node_group():
             position,
             t.vmath(
                 "SCALE",
-                sweep,
+                motion,
                 t.math(
                     "DIVIDE",
                     i,
@@ -1275,14 +1462,10 @@ def build_node_group():
             y=3,
         )
 
-    falling = resample(
-        t.node("FunctionNodeBooleanMath", 45, 0, {0: stuck}, operation="NOT").outputs[0],
-        sweeps,
-        along_sweep,
-        lambda i: radius,
-        46,
-        0,
-    )
+    falling = t.node("GeometryNodeJoinGeometry", 57, 0)
+    for geometry in (resample(stream, lone, sweeps, along_sweep, lambda i: radius, 46, 0), ropes):
+        t.connect(geometry, falling.inputs[0])
+    falling = falling.outputs[0]
 
     # Stuck liquid as large spheres sunk in the surface, their flat caps making a thin film tapering
     # at its edges, higher with more liquid around
@@ -1294,14 +1477,34 @@ def build_node_group():
             "MULTIPLY_ADD",
             t.math("MINIMUM", attribute("amount", "FLOAT", 45, -14), 10.0, x=46, y=-14),
             BULGE,
-            FILM_HEIGHT,
+            t.math(
+                "MULTIPLY_ADD",
+                inputs["Thickness"],
+                ROPE_HEIGHT - FILM_HEIGHT,
+                FILM_HEIGHT,
+                x=46,
+                y=-13,
+            ),
             x=47,
             y=-14,
         ),
         x=48,
         y=-14,
     )
-    sphere = t.math("MULTIPLY", radius, FILM_RADIUS, x=48, y=-15)
+    sphere = t.math(
+        "MULTIPLY",
+        radius,
+        t.math(
+            "MULTIPLY_ADD",
+            inputs["Thickness"],
+            ROPE_RADIUS - FILM_RADIUS,
+            FILM_RADIUS,
+            x=47,
+            y=-15,
+        ),
+        x=48,
+        y=-15,
+    )
     sunk = t.math("ADD", t.math("SUBTRACT", sphere, cap, x=49, y=-15), film, x=50, y=-15)
     # Round drops when landing, spreading over a time longer the more viscous
     spread = t.math(
@@ -1317,6 +1520,7 @@ def build_node_group():
     sphere = t.node("ShaderNodeMix", 49, -16, {"Factor": spread, "A": bead, "B": sphere}).outputs[0]
     sunk = t.math("MULTIPLY", sunk, spread, x=51, y=-16)
     film_points = resample(
+        particles,
         stuck,
         1,
         lambda i: t.vmath(

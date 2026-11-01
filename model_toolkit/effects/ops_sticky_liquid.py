@@ -14,22 +14,27 @@ RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "sticky_liquid.b
 PRESETS = {
     "POUR": {},
     "SPURTS": {
-        "Rate": 1100.0,
+        "Rate": 300.0,
         "Duration": 0.0,
-        "Spread": 0.025,
-        "Nozzle": 0.0015,
-        "Size": 0.0015,
-        "Viscosity": 0.85,
-        "Stickiness": 0.5,
-        "Color": (0.93, 0.94, 0.95, 0.5),
+        "Spread": 0.005,
+        "Nozzle": 0.0005,
+        "Wobble": 0.07,
+        "Viscosity": 1.0,
+        "Color": (0.93, 0.94, 0.95, 0.8),
         "String Length": 0.03,
         "Resolution": 3.0,
         "Smooth": 10,
+        "Thickness": 1.0,
     },
 }
-# Start and end in seconds, and speeds at the start and at the end of the spurts, landing lower as
-# they weaken
-SPURTS = ((0.0, 0.22, 4.0, 2.0), (0.6, 0.8, 3.6, 1.6), (1.2, 1.38, 3.2, 1.5), (1.9, 2.05, 2.8, 1.5))
+# Start and end in seconds, speeds at the start and at the end, landing lower as they weaken, and
+# turns of the Control around its X and Y axes in degrees, landing apart
+SPURTS = (
+    (0.0, 0.22, 4.0, 2.0, 0.0, 0.0),
+    (0.9, 1.1, 3.6, 1.6, 3.5, 2.0),
+    (2.0, 2.18, 3.2, 1.5, -3.0, 3.0),
+    (3.2, 3.35, 2.8, 1.5, 1.0, -4.0),
+)
 
 
 class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
@@ -46,8 +51,8 @@ class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
             (
                 "SPURTS",
                 "Spurts",
-                "Thick ropes in a few spurts from the current frame, landing lower as each "
-                "weakens, slowly running down in a translucent film. Best aimed from about 30 cm",
+                "Ropes in a few spurts from the current frame, landing lower as each weakens and "
+                "apart, barely moving in a translucent film. Best aimed from about 30 cm",
             ),
         ),
     )
@@ -97,8 +102,12 @@ class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
             rate = PRESETS["SPURTS"]["Rate"]
             fps = context.scene.render.fps / context.scene.render.fps_base
             frame = context.scene.frame_current
-            for start, end, fast, slow in SPURTS:
+            for start, end, fast, slow, *turn in SPURTS:
                 first, last = frame + start * fps, frame + end * fps
+                # Delta, not to override the aim of the Control
+                control.delta_rotation_euler = (*map(math.radians, turn), 0.0)
+                control.keyframe_insert("delta_rotation_euler", frame=first)
+                control.keyframe_insert("delta_rotation_euler", frame=last)
                 for name, f, value in (
                     ("Rate", first - 1, 0.0),
                     ("Rate", first, rate),
