@@ -41,6 +41,7 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from . import physics_presets
 
 
@@ -650,6 +651,8 @@ class MustardUI_ModelToolkit_HairCage(bpy.types.Operator):
             add_item = arm.MustardUI_PhysicsSettings.items.add()
             add_item.object = bpy.context.object
             add_item.type = "CAGE"
+            # Enabled without its update, which hides the item while Physics is off
+            system_properties(add_item, create=True)["enable"] = True
 
         # Disable shadows for viewport/render
         bpy.context.object.visible_camera = False

@@ -15,6 +15,7 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from . import physics_presets
 
 
@@ -1066,6 +1067,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
                 add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = cage
                 add_item.type = "CAGE"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(add_item, create=True)["enable"] = True
 
             if addon_prefs.debug:
                 print(

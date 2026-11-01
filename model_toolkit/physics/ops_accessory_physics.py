@@ -15,6 +15,7 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from . import physics_presets
 
 PIN_GROUP = "Accessory Pin"
@@ -927,6 +928,8 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             item = physics_settings.items.add()
             item.object = proxy
             item.type = "CAGE"
+            # Enabled without its update, which hides the item while Physics is off
+            system_properties(item, create=True)["enable"] = True
             outfits = [x.collection for x in rig_settings.outfits_collections if x.collection]
             if rig_settings.extras_collection is not None:
                 outfits.append(rig_settings.extras_collection)
@@ -939,6 +942,8 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
                 item = physics_settings.items.add()
                 item.object = collider
                 item.type = "COLLISION"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(item, create=True)["enable"] = True
 
         proxy.MustardUI_tools_creators_is_created = True
         for obj in [proxy, *followers] + (

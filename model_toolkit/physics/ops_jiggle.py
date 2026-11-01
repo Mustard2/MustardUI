@@ -40,6 +40,7 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from . import physics_presets
 
 
@@ -735,6 +736,8 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
                 add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = obj
                 add_item.type = "CAGE"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(add_item, create=True)["enable"] = True
 
             # Parent the object to the Model Armature
             if self.parent_to_model and parent is not None:
