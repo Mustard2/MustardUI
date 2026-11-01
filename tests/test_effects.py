@@ -452,6 +452,19 @@ class TestClothTear(BlenderTestCase):
         roots = co.reshape(-1, 5, 3, 3)[:, 0].mean(axis=1)
         return roots, {mesh.materials[p.material_index].name for p in mesh.polygons}
 
+    # With its Control selected once added, the operator still polls for the Adjust Last Operation
+    # panel, and adds nothing without meshes
+    def test_redo_panel(self):
+        ops = bpy.ops.mustardui
+        for op in (ops.model_toolkit_cloth_tear, ops.model_toolkit_cloth_rip):
+            set_active(self.shirt)
+            op()
+            self.assertEqual(bpy.context.selected_objects, [bpy.context.active_object])
+            self.assertTrue(op.poll())
+            count = len(bpy.data.objects)
+            self.assertEqual(op(), {"CANCELLED"})
+            self.assertEqual(len(bpy.data.objects), count)
+
     # The Control on the vertex closest to the 3D cursor, following its bone, grows to tear the
     # meshes, leaving threads with the materials of the meshes on the edge
     def test_cloth_tear(self):
@@ -2214,6 +2227,15 @@ class TestMarks(BlenderTestCase):
         mark, color = mark.reshape(-1, 4), color.reshape(-1, 4)
         co = np.array([obj.matrix_world @ v.co for v in data.vertices])
         return co, mark[:, 2], 1.0 - mark[:, 3], color[:, 3]
+
+    # With its Control selected once added, the operator still polls for the Adjust Last Operation
+    # panel, and adds nothing without meshes
+    def test_redo_panel(self):
+        self.add(self.body)
+        self.assertTrue(bpy.ops.mustardui.model_toolkit_marks.poll())
+        count = len(bpy.data.objects)
+        self.assertEqual(bpy.ops.mustardui.model_toolkit_marks(), {"CANCELLED"})
+        self.assertEqual(len(bpy.data.objects), count)
 
     # The Control on the vertex closest to the 3D cursor, facing out of the mesh and following its
     # bone, marks the points inside its sphere, tinting the base color of the materials

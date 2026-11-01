@@ -9,6 +9,7 @@ from .effect import (
     effects_available,
     is_effect,
     materials,
+    meshes_or_control,
     modifier_input,
     new_control,
     parent_control,
@@ -82,7 +83,7 @@ class MustardUI_ModelToolkit_Marks(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return effects_available() and any(x.type == "MESH" for x in context.selected_objects)
+        return effects_available() and meshes_or_control(context, CONTROL_TYPE)
 
     def draw(self, context):
         self.layout.prop(self, "kind")
@@ -92,6 +93,9 @@ class MustardUI_ModelToolkit_Marks(bpy.types.Operator):
 
     def execute(self, context):
         objects = [x for x in context.selected_objects if x.type == "MESH"]
+        if not objects:
+            self.report({"WARNING"}, "MustardUI - Select the meshes first.")
+            return {"CANCELLED"}
 
         with bpy.data.libraries.load(RESOURCE) as (_, data):
             data.node_groups = [x for x in (NODE_GROUP, TINT) if x not in bpy.data.node_groups]

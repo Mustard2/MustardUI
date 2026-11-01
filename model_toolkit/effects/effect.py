@@ -19,6 +19,14 @@ def effects_available():
     return bpy.app.version >= (5, 2, 0)
 
 
+def meshes_or_control(context, creators_type):
+    """Meshes selected, or the Control selected by adding the effect, for its redo panel"""
+    active = context.active_object
+    return any(x.type == "MESH" for x in context.selected_objects) or (
+        active is not None and active.MustardUI_tools_creators_type == creators_type
+    )
+
+
 def is_effect(modifier, node_group):
     return (
         modifier.type == "NODES"
