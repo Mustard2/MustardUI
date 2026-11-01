@@ -168,12 +168,22 @@ class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
-    pull_clipping: bpy.props.BoolProperty(
+    pull_clipping: bpy.props.EnumProperty(
         name="Pull Clipping Parts",
-        default=False,
+        items=(
+            ("OFF", "Off", "The clipping parts follow the deeper parts around them"),
+            (
+                "AUTO",
+                "Auto",
+                "Pull them when much of the outfit is deep inside the body (e.g. outfits made "
+                "for a smaller body)",
+            ),
+            ("ON", "On", "Always pull them"),
+        ),
+        default="AUTO",
         description="Also pull back to the skin the parts pushed out of the body, which "
-        "otherwise follow the deeper parts around them (e.g. outfits made for a smaller "
-        "body).\nThe layers over each other are not pulled",
+        "otherwise follow the deeper parts around them.\nThe layers over each other are not "
+        "pulled",
         update=preview_settings_update,
     )
 

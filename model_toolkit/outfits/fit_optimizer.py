@@ -57,6 +57,10 @@ SNAP_MAX_MOVE = 0.5
 SNAP_PASSES = 3
 SNAP_BISECTIONS = 4
 SNAP_SAMPLES = 3
+# Pull Clipping Parts in Auto pulls when this fraction of the free vertices clips, with the deepest
+# tenth deeper than this
+AUTO_SHARE = 0.25
+AUTO_DEPTH = 0.005
 
 
 class FitMetrics(NamedTuple):
@@ -423,9 +427,12 @@ class FitOptimizer:
             move = moves[:, 1] / np.maximum(moves[:, 0], 0.5)
             pulled = (move > 0.0) & (height > 0.0)
             pull[pulled] = np.maximum(height - move, 0.0)[pulled]
-            if settings.pull_clipping:
+            clipping = i[height[i] < 0.0]
+            # Auto for the outfits made for a smaller body, with much of them deep inside it
+            auto = np.count_nonzero(free[clipping]) > AUTO_SHARE * len(points)
+            auto = auto and -np.percentile(height[clipping], 10) > AUTO_DEPTH
+            if settings.pull_clipping == "ON" or (settings.pull_clipping == "AUTO" and auto):
                 # Clipping vertices back to the skin, except the layers over each other
-                clipping = i[height[i] < 0.0]
                 layered = self.layer_rays(rest, clipping, gap + SELF_SEARCH * self.edge)[0]
                 clipping = np.setdiff1d(clipping, layered)
                 pull[clipping] = 0.0

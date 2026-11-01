@@ -847,11 +847,25 @@ class TestFitToBody(BlenderTestCase):
         bm.free()
 
         radius = {}
-        for pull_clipping in (False, True):
+        for pull_clipping in ("OFF", "ON", "AUTO"):
             self.settings.pull_clipping = pull_clipping
             radius[pull_clipping] = self.solve()
-        self.assertGreater(radius[True].min(), 0.5)
-        self.assertLess(radius[True].max(), radius[False].max() - 0.01)
+        self.assertGreater(radius["ON"].min(), 0.5)
+        self.assertLess(radius["ON"].max(), radius["OFF"].max() - 0.01)
+        # Auto pulls the outfit deep inside the body
+        np.testing.assert_array_equal(radius["AUTO"], radius["ON"])
+
+    # Pull Clipping Parts in Auto does not pull the outfits only slightly inside the body
+    def test_pull_clipping_auto_shallow(self):
+        self.addCleanup(setattr, self.settings, "pull_clipping", self.settings.pull_clipping)
+        for v in self.outfit.data.vertices:
+            v.co *= 0.497 / 0.49
+
+        radius = {}
+        for pull_clipping in ("OFF", "AUTO"):
+            self.settings.pull_clipping = pull_clipping
+            radius[pull_clipping] = self.solve()
+        np.testing.assert_array_equal(radius["AUTO"], radius["OFF"])
 
     # The triangles of a coarse outfit do not cross the body, even with the vertices outside it
     def test_triangles(self):
