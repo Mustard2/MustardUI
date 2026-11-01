@@ -1,3 +1,5 @@
+import math
+
 import bmesh
 import bpy
 from mathutils import Vector
@@ -633,7 +635,34 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # model it leaves large tangled polygons in the middle of the cage.
             # The ratio is derived from the face count of the selection, so that the
             # result does not depend on how dense the model is
+            #
+            # Short edges collapsed before the decimation, which keeps the vertices where
+            # the surface bends: small dense bumps like a nipple would get a much denser
+            # cage, whose small triangles crumple them. Relax and Shrinkwrap put the cage
+            # back on the mesh
+            bm = bmesh.new()
+            bm.from_mesh(cage.data)
+            area = sum(f.calc_area() for f in bm.faces)
+            # Half the side of the cage triangles, equilateral, at the target face count
+            short = math.sqrt(4 * area / (math.sqrt(3) * self.cage_faces)) / 2
+            for _ in range(30):
+                # Edges not sharing vertices, shortest first: a collapse merges each
+                # connected group of edges into a single vertex
+                edges, used = [], set()
+                for e in sorted(bm.edges, key=lambda e: e.calc_length()):
+                    if e.calc_length() >= short:
+                        break
+                    if any(v.is_boundary or v in used for v in e.verts):
+                        continue
+                    edges.append(e)
+                    used.update(e.verts)
+                if not edges:
+                    break
+                bmesh.ops.collapse(bm, edges=edges, uvs=False)
+            bm.to_mesh(cage.data)
+            bm.free()
             face_count = len(cage.data.polygons)
+
             if face_count > self.cage_faces:
                 decimate = cage.modifiers.new(name="Decimate", type="DECIMATE")
                 decimate.decimate_type = "COLLAPSE"

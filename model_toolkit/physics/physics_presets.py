@@ -30,7 +30,8 @@ CLOTH_PRESETS = [
         {
             "quality": 7,
             "time_scale": 0.340,
-            "mass": 0.3,
+            # Per vertex: matched on the motion with the even, coarser Accurate cages
+            "mass": 0.52,
             "air_damping": 1,
             "bending_model": "ANGULAR",
             "tension_stiffness": 1,
