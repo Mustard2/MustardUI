@@ -564,8 +564,8 @@ def contact(t, surface, margin, dt, x, y):
 
 def detect(t, mesh, colliders, inputs, dt, x, y):
     """Whether points of the mesh and of the Colliders hit each other fast enough, or the mesh hit
-    the floor, the mean of these points, the mean velocity of the Colliders there and a point of
-    the largest piece hit"""
+    the floor, the mean of these points, the mean velocity of the Colliders there, a point of
+    the largest piece hit and the share of the hits by Shockwave fronts"""
     position = t.node("GeometryNodeInputPosition", x + 12, y - 3).outputs[0]
     hits = t.node("GeometryNodeJoinGeometry", x + 13, y)
     for i, (points, surface) in enumerate(((mesh, colliders), (colliders, mesh))):
@@ -579,6 +579,13 @@ def detect(t, mesh, colliders, inputs, dt, x, y):
         push = t.vmath("SCALE", relative, 1.0 - 2.0 * (i == 0), x=x + 11, y=yy - 6)
         stored = t.store(stored, ".shatter_push", "FLOAT_VECTOR", push, x + 12, yy)
         stored = t.store(stored, ".shatter_pass", "INT", i, x + 12.5, yy)
+        # Hit by a Shockwave front, on its points or where they touch the mesh
+        wave = t.attribute("shockwave", "FLOAT", x + 11, yy - 7)
+        if i == 0:
+            at = t.node("GeometryNodeInputPosition", x + 11, yy - 8).outputs[0]
+            wave = nearest(t, surface, wave, "FLOAT", at, x + 11.5, yy - 7)[0]
+        wave = t.math("GREATER_THAN", wave, 0.0, x=x + 12, y=yy - 7)
+        stored = t.store(stored, ".shatter_blast", "FLOAT", wave, x + 12.75, yy)
         t.connect(stored, hits.inputs[0])
 
     moving = t.attribute(".shatter_velocity", "FLOAT_VECTOR", x, y - 17)
@@ -660,7 +667,16 @@ def detect(t, mesh, colliders, inputs, dt, x, y):
         "GeometryNodeSampleNearest", x + 16, y - 9, {"Geometry": touched, "Sample Position": impact}
     ).outputs[0]
     point = sample(t, touched, position, closest, "FLOAT_VECTOR", x + 17, y - 9)
-    return t.math("GREATER_THAN", count, 0.5, x=x + 16, y=y - 6), impact, push, point, hits
+    blast = statistic(
+        t,
+        hits,
+        t.attribute(".shatter_blast", "FLOAT", x + 14, y - 14),
+        selection,
+        "FLOAT",
+        x + 15,
+        y - 14,
+    )["Mean"]
+    return t.math("GREATER_THAN", count, 0.5, x=x + 16, y=y - 6), impact, push, point, hits, blast
 
 
 def is_closed(t, mesh, x, y):
@@ -1555,7 +1571,7 @@ def hulls(t, pieces, bodies, x, y):
     return t.store(bodies, ".shatter_inertia", "FLOAT", inertia, x + 8, y), hull, planes
 
 
-def bodies_of(t, each, mesh, impact, push, inputs, x, y):
+def bodies_of(t, each, mesh, impact, push, blast, inputs, x, y):
     """Pieces and their hull points, and the points of the pieces, with their state"""
     position = t.node("GeometryNodeInputPosition", x, y - 4).outputs[0]
     pieces, bodies = cells(t, each, x, y)
@@ -1563,8 +1579,9 @@ def bodies_of(t, each, mesh, impact, push, inputs, x, y):
     x += 3
     radius = t.attribute(".shatter_radius", "FLOAT", x + 11, y - 13)
 
-    # Loose around the impact, with the velocity of the mesh, the push of the Colliders and a
-    # scatter away from the impact, fading with the distance
+    # Loose around the impact, with the velocity of the mesh, the push of the Colliders, all of it
+    # by Shockwave fronts blowing the pieces along, and a scatter away from the impact, fading
+    # with the distance
     falloff = t.math(
         "DIVIDE",
         t.vmath("DISTANCE", position, impact, x=x + 7, y=y - 5),
@@ -1601,7 +1618,20 @@ def bodies_of(t, each, mesh, impact, push, inputs, x, y):
     away = t.vmath("NORMALIZE", t.vmath("ADD", away, random, x=x + 10, y=y - 9), x=x + 11, y=y - 9)
     added = t.vmath(
         "ADD",
-        t.vmath("SCALE", push, inputs["Push"], x=x + 11, y=y - 7),
+        t.vmath(
+            "SCALE",
+            push,
+            t.math(
+                "MULTIPLY_ADD",
+                blast,
+                t.math("SUBTRACT", 1.0, inputs["Push"], x=x + 10, y=y - 6),
+                inputs["Push"],
+                x=x + 10.5,
+                y=y - 6,
+            ),
+            x=x + 11,
+            y=y - 7,
+        ),
         t.vmath("SCALE", away, speed, x=x + 12, y=y - 9),
         x=x + 12,
         y=y - 8,
@@ -1892,7 +1922,7 @@ def rehit(t, bodies, pieces, hull, planes, colliders, inputs, dt, x, y):
             ),
         },
     ).outputs[0]
-    hit, impact, push, point, hits = detect(t, placed, colliders, inputs, dt, x + 8, y)
+    hit, impact, push, point, hits, blast = detect(t, placed, colliders, inputs, dt, x + 8, y)
     # The still piece hit, closest to the hit: not the one closest to the mean of the hits, which
     # can be one nothing touched, as a floor over the hit ones
     struck = t.node(
@@ -2030,7 +2060,9 @@ def rehit(t, bodies, pieces, hull, planes, colliders, inputs, dt, x, y):
         y=y - 11,
     )
     each = fracture(t, mesh, point, inputs, x + 29, y, count=count, floors=False)
-    new_pieces, new_bodies, new_hull, _ = bodies_of(t, each, mesh, point, push, inputs, x + 56, y)
+    new_pieces, new_bodies, new_hull, _ = bodies_of(
+        t, each, mesh, point, push, blast, inputs, x + 56, y
+    )
     new_bodies = anchored(t, new_bodies, new_hull, mesh, inputs, x + 74, y)
 
     # The other pieces with the new ones, linked in the same order
@@ -5519,14 +5551,14 @@ def build_node_group():
     speed = t.vmath("LENGTH", t.attribute(".shatter_velocity", "FLOAT_VECTOR", -3, -5), x=-2, y=-5)
     speed = statistic(t, mesh, speed, True, "FLOAT", -1, -5)["Max"]
     near = crop(t, colliders, bounds["Min"], bounds["Max"], speed, dt, inputs["Margin"], -1, -2)
-    hit, impact, push, _, _ = detect(t, mesh, near, inputs, dt, 0, 0)
+    hit, impact, push, _, _, blast = detect(t, mesh, near, inputs, dt, 0, 0)
     hit = t.math("MULTIPLY", hit, started, x=17, y=-1)
     # Only checked until the mesh breaks
     breaking = switch(t, was_broken, hit, False, "BOOLEAN", 17, 0)
 
     t.section("Fracture", row=True)
     each = fracture(t, mesh, impact, inputs, 0, 0)
-    pieces, bodies, hull, planes = bodies_of(t, each, mesh, impact, push, inputs, 27, 0)
+    pieces, bodies, hull, planes = bodies_of(t, each, mesh, impact, push, blast, inputs, 27, 0)
     bodies = anchored(t, bodies, hull, mesh, inputs, 45, 0)
     bodies_new = bodies
 
@@ -5558,6 +5590,19 @@ def build_node_group():
     speed = t.vmath("LENGTH", t.attribute(".shatter_velocity", "FLOAT_VECTOR", -4, -7), x=-3, y=-7)
     speed = statistic(t, bodies, speed, True, "FLOAT", -2, -7)["Max"]
     near = crop(t, colliders, low, high, speed, dt, inputs["Margin"], -1, -2)
+    # Shockwave fronts break the still pieces, without pushing the loose ones as a solid
+    solid = t.node(
+        "GeometryNodeDeleteGeometry",
+        0,
+        -8,
+        {
+            "Geometry": near,
+            "Selection": t.math(
+                "GREATER_THAN", t.attribute("shockwave", "FLOAT", -1, -9), 0.0, x=-0.5, y=-9
+            ),
+        },
+        domain="POINT",
+    ).outputs[0]
     # Broken again where a Collider hits the still pieces
     *hit_again, again = rehit(
         t, bodies, state["Pieces"], state["Hull"], state["Planes"], near, inputs, dt, 2, -40
@@ -5596,7 +5641,7 @@ def build_node_group():
         support = switch(t, now, support, graph, "GEOMETRY", 114, -44 - i * 4)
     support = switch(t, inputs["Floor Support"], None, support, "GEOMETRY", 115, -44)
     t.connect(support, sim_out.inputs["Support"])
-    bodies = step(t, state["Bodies"], state["Hull"], state["Planes"], near, inputs, dt, 0, 0)
+    bodies = step(t, state["Bodies"], state["Hull"], state["Planes"], solid, inputs, dt, 0, 0)
     *broken_up, any_breaking = breakup(t, bodies, state["Pieces"], inputs, 42, -12)
     final = {}
     splitting = t.node(
@@ -5653,7 +5698,7 @@ def build_node_group():
         t.connect(sim_in.outputs[name], joined.inputs[0])
         t.connect(switch(t, any_shedding, None, emitted, "GEOMETRY", 17, -i * 24), joined.inputs[0])
         final[name] = switch(t, inputs[name], None, joined.outputs[0], "GEOMETRY", 19, -i * 24)
-    debris = debris_step(t, final["Debris"], near, inputs, dt, 20, 0)
+    debris = debris_step(t, final["Debris"], solid, inputs, dt, 20, 0)
     t.connect(debris, sim_out.inputs["Debris"])
     smoke = smoke_step(t, final["Smoke"], inputs, dt, 20, -24)
     t.connect(smoke, sim_out.inputs["Smoke"])

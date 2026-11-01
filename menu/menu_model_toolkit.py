@@ -340,6 +340,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
         row.separator()
+        row.operator("mustardui.model_toolkit_shockwave", text="Shockwave", icon="FORCE_FORCE")
+        row.operator("mustardui.model_toolkit_remove_shockwave", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
         row.operator("mustardui.model_toolkit_crush", text="Crush", icon="MOD_MESHDEFORM")
         row.operator("mustardui.model_toolkit_remove_crush", text="", icon="X")
 

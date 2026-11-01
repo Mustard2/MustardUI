@@ -2900,6 +2900,124 @@ class TestDustPuff(BlenderTestCase):
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestShockwave(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.scene = bpy.context.scene
+        self.scene.frame_set(1)
+        # A 40 cm ceramic cube 1.5 m from the wave, another past its radius, on a floor with dust
+        mesh = bpy.data.meshes.new("Floor")
+        mesh.from_pydata([(x, y, 0.0) for y in (-10, 10) for x in (-10, 10)], [], [(0, 1, 3, 2)])
+        self.floor = new_object("Floor", mesh)
+        self.cubes = [new_mesh_object(f"Cube {x}", size=0.2, z=0.2) for x in (0, 1)]
+        for cube, x in zip(self.cubes, (1.5, 7.0), strict=True):
+            cube.location.x = x
+            set_active(cube)
+            bpy.ops.mustardui.model_toolkit_shatter(kind="CERAMIC")
+        set_active(self.floor)
+        bpy.ops.mustardui.model_toolkit_dust_puff(kind="DUST")
+
+    def add(self):
+        self.scene.cursor.location = (0.0, 0.0, 0.0)
+        bpy.ops.mustardui.model_toolkit_shockwave(radius=5.0)
+        wave = bpy.context.view_layer.objects.active
+        effect.modifier_input(wave.modifiers["Shockwave"], "Start Frame").value = 5
+        wave.update_tag()
+        return wave
+
+    def points(self, obj, frame):
+        self.scene.frame_set(frame)
+        data = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        return co.reshape(-1, 3) + np.array(obj.location)
+
+    # A front growing fast then slowing, only while it grows, among the Colliders of the effects
+    def test_shockwave(self):
+        wave = self.add()
+        for obj in (*self.cubes, self.floor):
+            modifier = next(m for m in obj.modifiers if m.type == "NODES")
+            self.assertIn(wave, list(effect.modifier_input(modifier, "Colliders").value.objects))
+        self.assertEqual(len(self.points(wave, 5)), 0)
+        radii = [np.linalg.norm(self.points(wave, f), axis=1).max() for f in (8, 11, 14, 17)]
+        self.assertTrue(all(a < b for a, b in zip(radii, radii[1:], strict=False)))
+        steps = np.diff(radii)
+        self.assertTrue(all(a > b for a, b in zip(steps, steps[1:], strict=False)))
+        self.assertLess(radii[-1], 5.0 + 1e-4)
+        # Gone once at the Radius, after the Duration
+        self.assertEqual(len(self.points(wave, 5 + int(0.6 * self.scene.render.fps) + 2)), 0)
+        self.assertEqual([x.message for x in wave.modifiers["Shockwave"].node_warnings], [])
+
+    # Dust from the start, lasting after the front stops for its Lifetime, none without Dust
+    def test_dust(self):
+        wave = self.add()
+        modifier = wave.modifiers["Shockwave"]
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        fps = self.scene.render.fps
+
+        def dusty(frame):
+            self.scene.frame_set(frame)
+            return wave.evaluated_get(depsgraph).evaluated_geometry().volume is not None
+
+        self.assertEqual(
+            [dusty(5 + int(x * fps)) for x in (0.0, 0.3, 1.0, 3.8)], [False, True, True, False]
+        )
+        effect.modifier_input(modifier, "Dust").value = False
+        wave.update_tag()
+        self.assertFalse(dusty(5 + int(0.3 * fps)))
+
+    # Smoke rises from the center with Center, only a faint haze there without
+    def test_center(self):
+        import openvdb
+
+        wave = self.add()
+        modifier = wave.modifiers["Shockwave"]
+
+        def middle(center):
+            """Densest dust within 30 cm of the center up to 1.5 m, 1 s after the start"""
+            effect.modifier_input(modifier, "Center").value = center
+            wave.update_tag()
+            self.scene.frame_set(5 + self.scene.render.fps)
+            obj = wave.evaluated_get(bpy.context.evaluated_depsgraph_get())
+            # Kept, its volume is freed with it
+            geometry = obj.evaluated_geometry()
+            path = os.path.join(tempfile.mkdtemp(), "dust.vdb")
+            geometry.volume.grids.save(path)
+            density = openvdb.read(path, "density")
+            values = density.getConstAccessor()
+            return max(
+                values.getValue(density.transform.worldToIndexCellCentered((x, y, z)))
+                for x in (-0.3, 0.0, 0.3)
+                for y in (-0.3, 0.0, 0.3)
+                for z in np.linspace(0.1, 1.5, 15)
+            )
+
+        self.assertLess(middle(False), 0.02)
+        self.assertGreater(middle(True), 0.1)
+
+    # The near cube breaks as the front hits it, blown away from the wave, the far one stays
+    def test_shatter(self):
+        self.add()
+        near = self.points(self.cubes[0], 1).mean(axis=0)
+        for frame in range(2, 40):
+            self.scene.frame_set(frame)
+        moved = self.points(self.cubes[0], 40)
+        self.assertGreater(len(moved), 8)
+        self.assertGreater(moved.mean(axis=0)[0] - near[0], 0.5)
+        np.testing.assert_allclose(self.points(self.cubes[1], 40)[:, 0].mean(), 7.0, atol=1e-6)
+
+    # The wave goes, also from the Colliders of the effects
+    def test_remove(self):
+        wave = self.add()
+        name = wave.name
+        bpy.ops.mustardui.model_toolkit_remove_shockwave()
+        self.assertNotIn(name, bpy.data.objects)
+        modifier = self.cubes[0].modifiers["Shatter"]
+        self.assertEqual(list(effect.modifier_input(modifier, "Colliders").value.objects), [])
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_shockwave.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestShatter(BlenderTestCase):
     def setUp(self):
         super().setUp()
