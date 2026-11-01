@@ -7,6 +7,7 @@ from .effect import (
     add_effect_modifier,
     effects_available,
     is_effect,
+    meshes_or_control,
     modifier_input,
     new_control,
     parent_control,
@@ -79,10 +80,13 @@ class MustardUI_ModelToolkit_Foam(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return effects_available() and any(x.type == "MESH" for x in context.selected_objects)
+        return effects_available() and meshes_or_control(context, CONTROL_TYPE)
 
     def execute(self, context):
         objects = [x for x in context.selected_objects if x.type == "MESH"]
+        if not objects:
+            self.report({"WARNING"}, "MustardUI - Select the meshes first.")
+            return {"CANCELLED"}
 
         with bpy.data.libraries.load(RESOURCE) as (_, data):
             if NODE_GROUP not in bpy.data.node_groups:
