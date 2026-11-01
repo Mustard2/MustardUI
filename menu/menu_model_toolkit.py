@@ -413,6 +413,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_dust_motes", text="Dust Motes", icon="PARTICLE_POINT")
         row.operator("mustardui.model_toolkit_remove_dust_motes", text="", icon="X")
 
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
+        row.operator("mustardui.model_toolkit_rain", text="Rain", icon="FORCE_FLUIDFLOW")
+        row.operator("mustardui.model_toolkit_remove_rain", text="", icon="X")
+
 
 class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.types.Panel):
     header = ("Scene Effects", "SCENE_DATA")

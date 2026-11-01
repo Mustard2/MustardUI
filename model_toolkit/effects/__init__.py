@@ -14,6 +14,7 @@ from . import (
     ops_imprints,
     ops_jiggle,
     ops_marks,
+    ops_rain,
     ops_ripple,
     ops_select_object,
     ops_shatter,
@@ -51,6 +52,7 @@ def register():
     ops_shockwave.register()
     ops_footprints.register()
     ops_dust_motes.register()
+    ops_rain.register()
     ops_aura.register()
     ops_select_object.register()
     settings.register()
@@ -61,6 +63,7 @@ def unregister():
     ui_list.unregister()
     settings.unregister()
     ops_select_object.unregister()
+    ops_rain.unregister()
     ops_aura.unregister()
     ops_dust_motes.unregister()
     ops_shockwave.unregister()

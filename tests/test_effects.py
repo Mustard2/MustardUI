@@ -38,6 +38,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_ripple.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_fireball.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_sticky_liquid.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_rain.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_hex_dissolve.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_tear.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
@@ -325,6 +326,202 @@ class TestFireball(BlenderTestCase):
         self.assertFalse(names & set(bpy.data.objects.keys()))
         self.assertNotIn(collection, bpy.data.collections)
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_fireball.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestRain(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        # Cube from 0.5 to 1.5 in height, 1 wide
+        self.cube = new_mesh_object("Cube")
+        set_active(self.cube)
+        self.cube.select_set(True)
+
+    def add(self, name="Rain", **kwargs):
+        bpy.ops.mustardui.model_toolkit_rain(**kwargs)
+        rain = bpy.data.objects[name]
+        modifier = rain.modifiers["Rain"]
+        return rain, modifier, effect.modifier_input(modifier, "Control").value
+
+    @staticmethod
+    def simulate(rain, frames=20, surface=False):
+        """Drop positions, from the instance transforms, and droplet positions, and the positions
+        of the drops on the surface if asked"""
+        scene = bpy.context.scene
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        for frame in range(scene.frame_start, scene.frame_start + frames):
+            scene.frame_set(frame)
+        geometry = rain.evaluated_get(depsgraph).evaluated_geometry()
+        instances = geometry.instances_pointcloud()
+        transforms = np.empty(len(instances.points) * 16)
+        instances.attributes["instance_transform"].data.foreach_get("value", transforms)
+        drops = transforms.reshape(-1, 4, 4)[:, 3, :3]
+        stuck = np.zeros(len(drops), dtype=bool)
+        if "stuck" in instances.attributes:
+            instances.attributes["stuck"].data.foreach_get("value", stuck)
+        droplets = np.empty((0, 3))
+        if geometry.pointcloud is not None:
+            droplets = np.empty(len(geometry.pointcloud.points) * 3)
+            geometry.pointcloud.points.foreach_get("co", droplets)
+            droplets = droplets.reshape(-1, 3)
+        if surface:
+            return drops[~stuck], droplets, drops[stuck]
+        return drops[~stuck], droplets
+
+    @staticmethod
+    def over_cube(points):
+        return (np.abs(points[:, 0]) < 0.45) & (np.abs(points[:, 1]) < 0.45)
+
+    # The rain falls around the selected meshes, splashing on them and on the floor
+    def test_rain(self):
+        rain, modifier, control = self.add()
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_RAIN")
+        self.assertEqual(control.empty_display_type, "CUBE")
+        self.assertEqual(bpy.context.active_object, control)
+        collection = rain.users_collection[0]
+        self.assertIn(collection, bpy.context.scene.collection.children[:])
+        self.assertEqual(set(collection.objects), {rain, control})
+        for lock in ("lock_location", "lock_rotation", "lock_scale"):
+            self.assertTrue(all(getattr(rain, lock)))
+        self.assertFalse(rain.visible_shadow)
+
+        # The Colliders are in the scene, with the cube still in its collection
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.cube])
+        self.assertIn(colliders, bpy.context.scene.collection.children[:])
+        self.assertIn(self.cube, bpy.context.scene.collection.objects[:])
+        settings = importlib.import_module(ADDON + ".model_toolkit.effects.settings")
+        self.assertIn(("Rain", rain, "Rain"), settings.scene_effects(bpy.context.scene))
+
+        # From the bottom of the cube, to above it
+        np.testing.assert_allclose(control.location, (0.0, 0.0, 1.25), atol=1e-6)
+        np.testing.assert_allclose(control.scale, (1.0, 1.0, 0.75), atol=1e-6)
+
+        drops, droplets = self.simulate(rain)
+        self.assertGreater(len(drops), 100)
+        self.assertFalse(np.any(self.over_cube(drops) & (drops[:, 2] < 1.45)))
+        self.assertGreaterEqual(drops[:, 2].min(), 0.49)
+        self.assertGreater(np.sum(self.over_cube(droplets) & (droplets[:, 2] > 1.45)), 10)
+        self.assertGreater(np.sum(~self.over_cube(droplets) & (droplets[:, 2] < 0.7)), 10)
+
+    # Without the floor, the drops fall through the bottom and are removed
+    def test_no_floor(self):
+        rain, modifier, _ = self.add()
+        effect.modifier_input(modifier, "Floor").value = False
+        # Changing the modifier inputs from Python does not tag the object
+        rain.update_tag()
+
+        drops, droplets = self.simulate(rain)
+        self.assertGreater(len(drops), 100)
+        self.assertFalse(np.any(self.over_cube(drops) & (drops[:, 2] < 1.45)))
+        self.assertGreaterEqual(drops[:, 2].min(), 0.49)
+        self.assertGreater(len(droplets), 10)
+        self.assertFalse(np.any(~self.over_cube(droplets) & (droplets[:, 2] < 0.7)))
+
+    # Without meshes selected, the rain falls on the 3D cursor
+    def test_cursor(self):
+        self.cube.select_set(False)
+        bpy.context.scene.cursor.location = (1.0, 2.0, 0.0)
+        rain, modifier, control = self.add(size=0.5)
+        np.testing.assert_allclose(control.location, (1.0, 2.0, 0.75), atol=1e-6)
+        np.testing.assert_allclose(control.scale, (0.5, 0.5, 0.75), atol=1e-6)
+        self.assertFalse(effect.modifier_input(modifier, "Colliders").value.objects)
+
+        drops, droplets = self.simulate(rain)
+        self.assertGreater(len(drops), 10)
+        self.assertGreater(len(droplets), 10)
+        self.assertGreaterEqual(drops[:, 0].min(), 0.5 - 1e-3)
+
+    @staticmethod
+    def local(control, points):
+        """Points in the unit space of the Control, and their distance from its Z axis"""
+        matrix = np.array(control.matrix_world.inverted())
+        points = points @ matrix[:3, :3].T + matrix[:3, 3]
+        return points, np.hypot(points[:, 0], points[:, 1])
+
+    # The Cylinder rains in the circle of the Control, and its outline is only edges
+    def test_cylinder(self):
+        rain, modifier, control = self.add(shape="CYLINDER")
+        self.assertEqual(effect.modifier_input(modifier, "Shape").value, "Cylinder")
+        self.assertEqual(control.empty_display_type, "PLAIN_AXES")
+
+        drops, droplets = self.simulate(rain)
+        _, radius = self.local(control, drops)
+        self.assertGreater(len(drops), 100)
+        self.assertLess(radius.max(), 1.001)
+        self.assertGreater(radius.max(), 0.9)
+        self.assertGreater(np.sum(self.over_cube(droplets) & (droplets[:, 2] > 1.45)), 10)
+
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = rain.evaluated_get(depsgraph).evaluated_geometry()
+        self.assertGreater(len(geometry.mesh.edges), 96)
+        self.assertEqual(len(geometry.mesh.polygons), 0)
+
+    # The Shower sprays from a small top, spreading in its cone down to the floor
+    def test_shower(self):
+        self.cube.select_set(False)
+        bpy.context.scene.cursor.location = (0.0, 0.0, 0.0)
+        rain, modifier, control = self.add("Shower", kind="SHOWER")
+        self.assertEqual(effect.modifier_input(modifier, "Shape").value, "Cone")
+        self.assertEqual(effect.modifier_input(modifier, "Speed").value, 4.5)
+        top = effect.modifier_input(modifier, "Top Radius").value
+        np.testing.assert_allclose(control.location, (0.0, 0.0, 1.1), atol=1e-6)
+        np.testing.assert_allclose(control.scale, (0.5, 0.5, 1.1), atol=1e-6)
+        self.assertEqual(rain.users_collection[0].name, "Shower")
+
+        drops, droplets = self.simulate(rain, 30)
+        points, radius = self.local(control, drops)
+        self.assertGreater(len(drops), 100)
+        # Inside the cone, the drops falling from the top face to the same spot of the bottom
+        cone = top + (1.0 - top) * (1.0 - points[:, 2]) / 2
+        self.assertTrue(np.all(radius < cone + 0.01))
+        self.assertLess(radius[points[:, 2] > 0.5].max(), top + (1.0 - top) * 0.25 + 0.01)
+        self.assertGreater(radius[points[:, 2] < -0.5].max(), 0.7)
+        self.assertGreater(np.sum(droplets[:, 2] < 0.2), 10)
+
+    # With the Surface Drops, drops stay on the cube as it moves, sliding down its sides
+    def test_surface_drops(self):
+        rain, modifier, _ = self.add()
+        self.assertFalse(effect.modifier_input(modifier, "Surface Drops").value)
+        effect.modifier_input(modifier, "Surface Drops").value = True
+        effect.modifier_input(modifier, "Slide Speed").value = 0.5
+        rain.update_tag()
+        scene = bpy.context.scene
+        self.cube.location.x = 0.0
+        self.cube.keyframe_insert("location", frame=scene.frame_start + 10)
+        self.cube.location.x = 0.2
+        self.cube.keyframe_insert("location", frame=scene.frame_start + 20)
+
+        drops, _, surface = self.simulate(rain, 30, surface=True)
+        self.assertGreater(len(drops), 100)
+        self.assertGreater(len(surface), 20)
+        # On the faces of the moved cube, from 0.5 to 1.5 in height, 1 wide
+        local = surface - np.array((0.2, 0.0, 1.0))
+        outside = np.maximum(np.abs(local) - 0.5, 0.0)
+        self.assertLess(np.linalg.norm(outside, axis=1).max(), 0.01)
+        self.assertGreater(np.abs(local).max(axis=1).min(), 0.49)
+        # Some on the top, some slid down the sides
+        self.assertTrue(np.any(local[:, 2] > 0.49))
+        self.assertTrue(np.any((np.abs(local[:, :2]).max(axis=1) > 0.49) & (local[:, 2] < 0.3)))
+
+    # Removing from the Control removes the Rain and its collections, keeping the colliders in
+    # the scene, even the ones only in the Colliders
+    def test_remove(self):
+        rain, modifier, control = self.add()
+        sphere = new_mesh_object("Sphere")
+        effect.modifier_input(modifier, "Colliders").value.objects.link(sphere)
+        bpy.context.scene.collection.objects.unlink(sphere)
+        names = {rain.name, control.name}
+        collection = rain.users_collection[0].name
+        colliders = effect.modifier_input(modifier, "Colliders").value.name
+
+        bpy.ops.mustardui.model_toolkit_remove_rain()
+        self.assertFalse(names & set(bpy.data.objects.keys()))
+        self.assertNotIn(collection, bpy.data.collections)
+        self.assertNotIn(colliders, bpy.data.collections)
+        self.assertIn(self.cube, bpy.context.scene.collection.objects[:])
+        self.assertIn(sphere, bpy.context.scene.collection.objects[:])
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_rain.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

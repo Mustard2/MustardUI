@@ -18,6 +18,7 @@ from . import (
     ops_imprints,
     ops_jiggle,
     ops_marks,
+    ops_rain,
     ops_ripple,
     ops_shatter,
     ops_shockwave,
@@ -53,6 +54,7 @@ EFFECTS = {
     "Rope": ("CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None),
     "Tape": ("MOD_THICKNESS", ops_wrap.Tape.node_group, None),
     "Fireball": ("LIGHT_SUN", ops_fireball.NODE_GROUP, None),
+    "Rain": ("FORCE_FLUIDFLOW", ops_rain.NODE_GROUP, None),
 }
 
 
