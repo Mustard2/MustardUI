@@ -47,6 +47,16 @@ REQUERY_DISTANCE = 0.2
 # Checkpoints kept for less intersections only up to this energy relative to the current one, as
 # the earlier ones are not settled yet (e.g. bulging where the outfit is squeezed)
 KEEP_ENERGY = 1.5
+# Pulled clipping parts are snapped towards the skin after the optimization, down to this height
+# over the skin distance relative to it, only where the outfit curves less than this radius
+# (keeping details as wrinkles), by up to this fraction of the median edge length
+SNAP_TOLERANCE = 0.5
+SNAP_RADIUS = 0.05
+SNAP_MAX_MOVE = 0.5
+# Passes of the snap, bisections of each move and samples per triangle side checking the clearance
+SNAP_PASSES = 3
+SNAP_BISECTIONS = 4
+SNAP_SAMPLES = 3
 
 
 class FitMetrics(NamedTuple):
@@ -397,6 +407,7 @@ class FitOptimizer:
         # Height over the body the outfit vertices are pulled to
         distance = settings.fit_distance
         pull = np.full(target.n_verts, np.inf)
+        snapped = np.zeros(0, dtype=np.int64)
         if distance > 0.0:
             i, origins, normals = self.body_planes(rest, range(target.n_verts), reach)
             height = np.zeros(target.n_verts)
@@ -416,7 +427,14 @@ class FitOptimizer:
                 # Clipping vertices back to the skin, except the layers over each other
                 clipping = i[height[i] < 0.0]
                 layered = self.layer_rays(rest, clipping, gap + SELF_SEARCH * self.edge)[0]
-                pull[np.setdiff1d(clipping, layered)] = 0.0
+                clipping = np.setdiff1d(clipping, layered)
+                pull[clipping] = 0.0
+                # Only the smooth parts are snapped, with their neighbours, keeping the details
+                bump = rest - self.average(rest)
+                bump = np.abs(np.einsum("ij,ij->i", bump, mesh_vertex_normals(rest, target.tris)))
+                detail = bump > self.edge**2 / (2.0 * SNAP_RADIUS)
+                detail |= self.average(detail[:, None].astype(np.float64))[:, 0] > 0.0
+                snapped = clipping[free[clipping] & ~detail[clipping]]
 
         def evaluate(x):
             energy, grad = self.energy(x, terms, pull, gap, settings.stiffness)
@@ -521,7 +539,84 @@ class FitOptimizer:
         # Checkpoint with less intersections, the earliest kept as the scores increase
         score = self.check(x, terms["planes"], gap)
         kept = [k for k in kept if k[0] < score and k[1] <= KEEP_ENERGY * energy]
-        return (kept[0][2] if kept else x), done
+        x = kept[0][2] if kept else x
+        if len(snapped):
+            x = self.snap(x, snapped, gap)
+        return x, done
+
+    def snap(self, co, points, gap):
+        """Move the points towards the skin as far as their triangles stay over the skin
+        distance, reverting the moves that add intersections"""
+
+        tris = self.target.tris
+        faces = [[] for _ in range(len(co))]
+        for f, tri in enumerate(tris):
+            for v in tri:
+                faces[v].append(f)
+        n = SNAP_SAMPLES
+        samples = np.array([(a, b, n - a - b) for a in range(n + 1) for b in range(n + 1 - a)]) / n
+
+        def clearance(x, f):
+            where = np.einsum("sk,tkj->tsj", samples, x[tris[f]]).reshape(-1, 3)
+            heights = np.full(len(where), np.inf)
+            for k, p in enumerate(where):
+                loc, _, face, _ = self.body_bvh.find_nearest(Vector(p), 3.0 * gap)
+                if loc is not None:
+                    heights[k] = np.dot(p - np.array(loc), self.face_normals[face])
+            return heights.reshape(len(f), -1).min(axis=1)
+
+        def safe(x, f, limit):
+            if np.any(clearance(x, f) < limit):
+                return False
+            corners = x[tris[f]].reshape(-1, 3)
+            local = BVHTree.FromPolygons(
+                corners.tolist(), np.arange(len(corners)).reshape(-1, 3).tolist()
+            )
+            return not local.overlap(self.body_bvh)
+
+        def intersections(x):
+            bvh = BVHTree.FromPolygons(x.tolist(), tris.tolist())
+            crossing = set(map(tuple, intersecting_triangles(bvh).tolist()))
+            return crossing, set(intersecting_triangles(bvh, self.body_bvh)[:, 0].tolist())
+
+        x = co.copy()
+        crossing, through = intersections(x)
+        max_move = SNAP_MAX_MOVE * self.edge
+        for _ in range(SNAP_PASSES):
+            before = x.copy()
+            for v in points:
+                loc, _, face, _ = self.body_bvh.find_nearest(Vector(x[v]), max_move + 3.0 * gap)
+                if loc is None:
+                    continue
+                normal = self.face_normals[face]
+                drop = np.dot(x[v] - np.array(loc), normal) - (1.0 + SNAP_TOLERANCE) * gap
+                drop = min(drop, max_move - np.linalg.norm(x[v] - co[v]))
+                if drop <= 0.0:
+                    continue
+                # Largest safe fraction of the drop, no triangle getting closer than now
+                start = x[v].copy()
+                limit = np.minimum(clearance(x, faces[v]), 0.95 * gap)
+                x[v] = start - drop * normal
+                if safe(x, faces[v], limit):
+                    continue
+                low, high = 0.0, 1.0
+                for _ in range(SNAP_BISECTIONS):
+                    x[v] = start - 0.5 * (low + high) * drop * normal
+                    if safe(x, faces[v], limit):
+                        low = 0.5 * (low + high)
+                    else:
+                        high = 0.5 * (low + high)
+                x[v] = start - low * drop * normal
+            # Moves back the vertices of the new intersections
+            while True:
+                new_crossing, new_through = intersections(x)
+                new = [f for pair in new_crossing - crossing for f in pair]
+                new += list(new_through - through)
+                if not new:
+                    break
+                reverted = np.unique(tris[new])
+                x[reverted] = before[reverted]
+        return x
 
     def precondition(self, q, free):
         """Spread the vector to the neighbour vertices, so that whole areas move together"""

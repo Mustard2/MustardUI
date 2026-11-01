@@ -867,6 +867,34 @@ class TestFitToBody(BlenderTestCase):
         self.assertGreater(before.through, 0)
         self.assertEqual(after.through, 0)
 
+    # The snap of Pull Clipping Parts lowers the outfit towards the skin, keeping the skin distance
+    def test_snap(self):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=0.51)
+        outfit = bpy.context.active_object
+        solver = fit_to_body.FitToBodySolver(outfit, [self.body], "Fit")
+        body_bvh, body_co, body_normals = solver.body(bpy.context, (False, False))
+        optimizer = fit_optimizer.FitOptimizer(
+            solver.target,
+            body_co,
+            solver._body_tris[(False, False)],
+            body_normals,
+            body_bvh,
+            lambda: None,
+        )
+        co = solver.target.co
+        gap = self.settings.offset
+        snapped = optimizer.snap(co, np.arange(len(co)), gap)
+
+        # The large triangles stay higher over the edges of the coarse body
+        radius = np.linalg.norm(snapped, axis=1)
+        self.assertLess(np.median(radius), 0.503)
+        self.assertLess(radius.max(), 0.51)
+        tris = solver.target.tris
+        bvh = BVHTree.FromPolygons(snapped.tolist(), tris.tolist())
+        self.assertEqual(len(intersection.intersecting_triangles(bvh, body_bvh)), 0)
+        for center in snapped[tris].mean(axis=1):
+            self.assertGreater(body_bvh.find_nearest(center)[3], 0.9 * gap)
+
     # The check of the best result counts the vertices inside the body
     def test_check_buried(self):
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.52)
