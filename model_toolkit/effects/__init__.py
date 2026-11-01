@@ -21,6 +21,7 @@ from . import (
     ops_shockwave,
     ops_squish,
     ops_sticky_liquid,
+    ops_sticky_spurts,
     ops_sticky_strands,
     ops_wet,
     ops_wrap,
@@ -43,6 +44,7 @@ def register():
     ops_wrap.register()
     ops_sticky_strands.register()
     ops_sticky_liquid.register()
+    ops_sticky_spurts.register()
     ops_wet.register()
     ops_dirt.register()
     ops_foam.register()
@@ -74,6 +76,7 @@ def unregister():
     ops_foam.unregister()
     ops_dirt.unregister()
     ops_wet.unregister()
+    ops_sticky_spurts.unregister()
     ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()
     ops_wrap.unregister()

@@ -38,6 +38,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_ripple.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_fireball.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_sticky_liquid.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_sticky_spurts.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rain.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_hex_dissolve.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_tear.poll())
@@ -1647,6 +1648,122 @@ class TestStickyLiquid(BlenderTestCase):
         self.assertEqual({p.material_index for p in liquid.data.polygons}, {0})
         converted = np.array([liquid.matrix_world @ v.co for v in liquid.data.vertices])
         np.testing.assert_allclose(converted, co, atol=1e-5)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestStickySpurts(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.armature = bpy.data.objects["Tester Armature"]
+        self.body = bpy.data.objects["Tester Body"]
+        # Facing out, as the landed ropes lie on the side the normals face
+        self.body.data.flip_normals()
+        self.scene = bpy.context.scene
+
+    def add(self, cursor, **inputs):
+        self.scene.cursor.location = cursor
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_sticky_spurts()
+        self.liquid = bpy.data.objects["Sticky Spurts"]
+        self.modifier = self.liquid.modifiers["Sticky Spurts"]
+        self.control = effect.modifier_input(self.modifier, "Control").value
+        inputs.setdefault("Mesh", False)
+        inputs.setdefault("Aim", 0.0)
+        for name, value in inputs.items():
+            effect.modifier_input(self.modifier, name).value = value
+        self.liquid.update_tag()
+
+    def play(self, frames):
+        start = self.scene.frame_current
+        for frame in range(start, start + frames):
+            self.scene.frame_set(frame)
+        self.scene.frame_set(start + frames)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = self.liquid.evaluated_get(depsgraph).evaluated_geometry()
+        points = geometry.pointcloud.points
+        co = np.empty(len(points) * 3)
+        points.foreach_get("co", co)
+        radius = np.empty(len(points))
+        geometry.pointcloud.attributes["radius"].data.foreach_get("value", radius)
+        # The top of the samples of the ropes, sunk in the surfaces where landed
+        return co.reshape(-1, 3) + np.outer(radius, (0.0, 0.0, 1.0))
+
+    # Shot down at the body, the spurts land on its top as ropes, staying there as it moves
+    def test_sticky_spurts(self):
+        self.add((0.0, 0.0, 2.0), Spurts=2, Runs=0.0)
+        self.assertEqual(self.control.MustardUI_tools_creators_type, "EFFECT_STICKY_SPURTS")
+        self.assertEqual(bpy.context.active_object, self.control)
+        np.testing.assert_allclose(
+            self.control.matrix_world.to_3x3() @ Vector((0, 0, 1)), (0, 0, -1), atol=1e-6
+        )
+        targets = effect.modifier_input(self.modifier, "Targets").value
+        self.assertEqual(set(targets.objects), {self.body})
+        self.assertTrue(self.body.add_rest_position_attribute)
+        self.assertTrue(all(self.liquid.lock_location))
+        self.assertEqual(
+            effect.modifier_input(self.modifier, "Start Frame").value, self.scene.frame_current
+        )
+
+        co = self.play(48)
+        self.assertGreater(len(co), 100)
+        self.assertLess(np.abs(co[:, :2]).max(), 0.5)
+        np.testing.assert_allclose(co[:, 2], 1.504, atol=0.004)
+        # Following the body moved by the armature
+        bone = self.armature.pose.bones["spine"]
+        frame = self.scene.frame_current
+        bone.keyframe_insert("location", frame=frame)
+        bone.location.y = 0.2
+        bone.keyframe_insert("location", frame=frame + 5)
+        moved = self.play(10)
+        np.testing.assert_allclose(moved[:, 2], co[:, 2] + 0.2, atol=0.002)
+
+        effect.modifier_input(self.modifier, "Mesh").value = True
+        self.liquid.update_tag()
+        mesh = self.liquid.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        self.assertGreater(len(mesh.vertices), 100)
+        for name in ("liquid_height", "liquid_color", "liquid_coordinate"):
+            self.assertIn(name, mesh.attributes)
+        self.assertFalse(list(self.modifier.node_warnings))
+
+    # Landed on a side, drops run down from the ropes leaving trails, none without Runs
+    def test_runs(self):
+        def lowest(runs):
+            self.add(
+                (1.0, 0.0, 1.6),
+                Spurts=1,
+                Runs=runs,
+                **{"Run Speed": 0.05, "Run Size": 0.003, "End Speed": 1.0},
+            )
+            low = self.play(72)[:, 2].min()
+            bpy.ops.mustardui.model_toolkit_remove_sticky_spurts()
+            self.scene.frame_set(self.scene.frame_start)
+            return low
+
+        self.assertLess(lowest(20.0), lowest(0.0) - 0.02)
+
+    # Removed with its Control and collections, keeping the body
+    def test_remove(self):
+        self.add((0.0, 0.0, 2.0))
+        names = {self.liquid.name, self.control.name}
+        bpy.ops.mustardui.model_toolkit_remove_sticky_spurts()
+        self.assertFalse(names & set(bpy.data.objects.keys()))
+        self.assertNotIn("Sticky Spurts", bpy.data.collections)
+        self.assertNotIn("Sticky Spurts Targets", bpy.data.collections)
+        self.assertIn(self.body.name, bpy.context.scene.objects)
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_sticky_spurts.poll())
+
+    # Converted to a mesh following the body, with the shader attributes
+    def test_convert(self):
+        self.add((0.0, 0.0, 2.0), Mesh=True, Spurts=1, Runs=0.0)
+        for frame in range(self.scene.frame_current, self.scene.frame_current + 30):
+            self.scene.frame_set(frame)
+        bpy.ops.mustardui.model_toolkit_convert_sticky_spurts()
+        self.assertNotIn("Sticky Spurts", bpy.data.objects)
+        converted = bpy.data.objects["Sticky Spurts Mesh"]
+        self.assertEqual(converted.parent, self.body)
+        self.assertGreater(len(converted.data.vertices), 100)
+        self.assertIn("liquid_height", converted.data.attributes)
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
