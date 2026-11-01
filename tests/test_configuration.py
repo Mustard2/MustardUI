@@ -1,5 +1,6 @@
 import importlib
 from datetime import datetime
+from types import SimpleNamespace
 
 import bpy
 from helpers import (
@@ -12,6 +13,7 @@ from helpers import (
 )
 
 storage = importlib.import_module(ADDON + ".text_storage.storage")
+smartcheck = importlib.import_module(ADDON + ".configuration.ops_smartcheck")
 
 
 class TestConfiguration(BlenderTestCase):
@@ -121,6 +123,46 @@ class TestConfiguration(BlenderTestCase):
         self.assertEqual(
             {o.name for o in rig_settings.hair_collection.objects}, {"Hair Short", "Hair Long"}
         )
+
+    # Smart Check finds the collections named after the model, without warnings when no
+    # body vertex group is named after an outfit piece
+    def test_smartcheck(self):
+        model = build_model()
+        rig_settings = model["armature"].data.MustardUI_RigSettings
+        rig_settings.model_name = "Tester"
+        rig_settings.model_body = model["body"]
+        set_active(model["armature"])
+
+        bpy.ops.mustardui.configuration_smartcheck()
+        self.assertEqual(
+            {x.collection for x in rig_settings.outfits_collections}, set(model["outfits"])
+        )
+        self.assertEqual(rig_settings.extras_collection, model["extras"])
+        self.assertEqual(rig_settings.hair_collection, model["hair"])
+        self.assertNotIn("MustardUI - Mask", model["body"].vertex_groups)
+        options = SimpleNamespace(smartcheck_body_mask_optimize=True)
+        self.assertEqual(
+            smartcheck.smartcheck_body_mask_from_vg(options, bpy.context, rig_settings), 0
+        )
+
+    # Smart Check turns the Mask of a vertex group named after an outfit piece into a
+    # Vertex Weight Mix on the shared mask
+    def test_smartcheck_body_mask(self):
+        model = build_model()
+        body = model["body"]
+        body.vertex_groups.new(name="Formal - Dress")
+        body.modifiers["Formal - Dress"].vertex_group = "Formal - Dress"
+        rig_settings = model["armature"].data.MustardUI_RigSettings
+        rig_settings.model_name = "Tester"
+        rig_settings.model_body = body
+        set_active(model["armature"])
+
+        bpy.ops.mustardui.configuration_smartcheck()
+        mix = body.modifiers["Formal - Dress"]
+        self.assertEqual(mix.type, "VERTEX_WEIGHT_MIX")
+        self.assertEqual(mix.vertex_group_a, "MustardUI - Mask")
+        self.assertIn("MustardUI - Mask", body.vertex_groups)
+        self.assertEqual(body.modifiers["MustardUI - Mask"].type, "MASK")
 
     # Remove UI with Delete Settings keeps the objects
     def test_remove_ui_settings(self):
