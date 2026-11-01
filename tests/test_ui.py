@@ -65,6 +65,22 @@ class TestUI(BlenderTestCase):
         prefs.debug = True
         self.assertDrawsCleanly("PANEL_PT_MustardUI_InitPanel_Outfit")
 
+    # A model in its first configuration is not outdated, a configured one without version is
+    def test_draw_configuration_not_outdated(self):
+        model = build_model()
+        rig_settings = model["armature"].data.MustardUI_RigSettings
+        set_active(model["armature"])
+        bpy.context.preferences.addons[ADDON].preferences.developer = True
+        rig_settings.model_name = "Tester"
+        rig_settings.model_body = model["body"]
+        bpy.ops.mustardui.configuration_smartcheck()
+        self.assertIsNotNone(rig_settings.hair_collection)
+        self.assertNotIn("PANEL_PT_MustardUI_Warnings", draw_all(bpy.context).drawn)
+
+        bpy.ops.mustardui.configuration()
+        rig_settings.model_mustardui_version = (0, 0, 0)
+        self.assertDrawsCleanly("PANEL_PT_MustardUI_Warnings")
+
     # User panels draw for a configured model
     def test_draw_user(self):
         model = build_model()
