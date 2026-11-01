@@ -1382,6 +1382,31 @@ class TestStickyLiquid(BlenderTestCase):
         np.testing.assert_allclose(half, points(1.0, 48), atol=1e-5)
         self.assertLess(points(1.0, 24)[:, 2].mean(), half[:, 2].mean() - 0.3)
 
+    # The Spurts emit only while their Rate is keyed on, translucent
+    def test_spurts(self):
+        start = self.scene.frame_start
+        self.scene.frame_set(start)
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_sticky_liquid(kind="SPURTS")
+        liquid = bpy.data.objects["Sticky Liquid.001"]
+        modifier = liquid.modifiers["Sticky Liquid"]
+        effect.modifier_input(modifier, "Control").value.location = (5.0, 0.0, 1.8)
+        effect.modifier_input(modifier, "Mesh").value = False
+        self.assertEqual(effect.modifier_input(modifier, "Color").value[3], 0.5)
+        liquid.update_tag()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        counts = []
+        for frame in range(start, start + 60):
+            self.scene.frame_set(frame)
+            geometry = liquid.evaluated_get(depsgraph).evaluated_geometry()
+            counts.append(len(geometry.pointcloud.points) if geometry.pointcloud else 0)
+        # Nothing between the first two spurts and after the last one, 0.75 s at 1100 per second
+        # and the frames easing the Rate in and out
+        self.assertGreater(counts[6], 100)
+        self.assertEqual(counts[7], counts[13])
+        self.assertEqual(counts[51], counts[59])
+        self.assertTrue(825 <= counts[-1] <= 1025, counts[-1])
+
     # Poured on a ball, the liquid drips from under it on strings, none without String Length
     def test_strings(self):
         mesh = bpy.data.meshes.new("Ball")

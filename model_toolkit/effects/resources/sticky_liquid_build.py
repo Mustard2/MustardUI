@@ -57,7 +57,8 @@ def build_node_group():
         "Color",
         "NodeSocketColor",
         default_value=(0.9, 0.88, 0.82, 1.0),
-        description="Color of the liquid, stored in the liquid_color attribute",
+        description="Color of the liquid, its alpha the opacity of the thick liquid, stored in the "
+        "liquid_color attribute",
     )
     add_input(ng, "Material", "NodeSocketMaterial", description="Material of the liquid")
     add_input(ng, "Seed", "NodeSocketInt", description="Seed of the random emission")
@@ -1716,7 +1717,7 @@ def build_material():
     material.use_backface_culling = True
     material.use_transparency_overlap = False
     t = Tree(material.node_tree)
-    color = t.node("ShaderNodeAttribute", -4, 2, attribute_name="liquid_color").outputs["Color"]
+    color = t.node("ShaderNodeAttribute", -4, 2, attribute_name="liquid_color").outputs
     thin = t.node(
         "ShaderNodeAttribute", -4, -2, attribute_type="GEOMETRY", attribute_name="liquid_thin"
     ).outputs["Fac"]
@@ -1726,7 +1727,7 @@ def build_material():
         0,
         1,
         {
-            "Base Color": color,
+            "Base Color": color["Color"],
             "Roughness": 0.3,
             "IOR": 1.4,
             "Subsurface Weight": 1.0,
@@ -1736,13 +1737,21 @@ def build_material():
             "Coat Roughness": 0.03,
         },
     ).outputs[0]
-    # Transparent where thin, for the skin and its light to show through, keeping the wet coat
+    # Transparent where thin, for the skin and its light to show through, keeping the wet coat, and
+    # by the alpha of the color
+    opacity = t.math(
+        "MULTIPLY",
+        t.math("MULTIPLY_ADD", thin, -0.9, 1.0, x=-2, y=-2),
+        color["Alpha"],
+        x=-1,
+        y=-2,
+    )
     surface = t.node(
         "ShaderNodeMixShader",
         2,
         0,
         {
-            0: t.math("MULTIPLY", thin, 0.9, x=-2, y=-2),
+            0: t.math("SUBTRACT", 1.0, opacity, x=0, y=-3),
             1: milky,
             2: t.node("ShaderNodeBsdfTransparent", 0, -2).outputs[0],
         },

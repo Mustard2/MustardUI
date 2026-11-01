@@ -10,6 +10,27 @@ MATERIAL = "MustardUI Sticky Liquid"
 CONTROL_TYPE = "EFFECT_STICKY_LIQUID"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "sticky_liquid.blend")
 
+# Modifier inputs of each kind of liquid
+PRESETS = {
+    "POUR": {},
+    "SPURTS": {
+        "Rate": 1100.0,
+        "Duration": 0.0,
+        "Spread": 0.025,
+        "Nozzle": 0.0015,
+        "Size": 0.0015,
+        "Viscosity": 0.85,
+        "Stickiness": 0.5,
+        "Color": (0.93, 0.94, 0.95, 0.5),
+        "String Length": 0.03,
+        "Resolution": 3.0,
+        "Smooth": 10,
+    },
+}
+# Start and end in seconds, and speeds at the start and at the end of the spurts, landing lower as
+# they weaken
+SPURTS = ((0.0, 0.22, 4.0, 2.0), (0.6, 0.8, 3.6, 1.6), (1.2, 1.38, 3.2, 1.5), (1.9, 2.05, 2.8, 1.5))
+
 
 class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
     """Add a viscous liquid emitted from a Control Empty at the 3D cursor, pointing down, sticking to the selected meshes where it slides and drips.\nThe meshes it sticks to are in the Targets collection\nBlender 5.2 or above is required"""  # noqa: E501
@@ -17,6 +38,19 @@ class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
     bl_idname = "mustardui.model_toolkit_sticky_liquid"
     bl_label = "Add Sticky Liquid"
     bl_options = {"REGISTER", "UNDO"}
+
+    kind: bpy.props.EnumProperty(
+        name="Liquid",
+        items=(
+            ("POUR", "Pour", "A slow stream for a second, sliding and dripping"),
+            (
+                "SPURTS",
+                "Spurts",
+                "Thick ropes in a few spurts from the current frame, landing lower as each "
+                "weakens, slowly running down in a translucent film. Best aimed from about 30 cm",
+            ),
+        ),
+    )
 
     @classmethod
     def poll(cls, context):
@@ -57,6 +91,25 @@ class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
         modifier_input(modifier, "Control").value = control
         modifier_input(modifier, "Targets").value = targets
         modifier_input(modifier, "Material").value = bpy.data.materials[MATERIAL]
+        for name, value in PRESETS[self.kind].items():
+            modifier_input(modifier, name).value = value
+        if self.kind == "SPURTS":
+            rate = PRESETS["SPURTS"]["Rate"]
+            fps = context.scene.render.fps / context.scene.render.fps_base
+            frame = context.scene.frame_current
+            for start, end, fast, slow in SPURTS:
+                first, last = frame + start * fps, frame + end * fps
+                for name, f, value in (
+                    ("Rate", first - 1, 0.0),
+                    ("Rate", first, rate),
+                    ("Rate", last, rate),
+                    ("Rate", last + 1, 0.0),
+                    ("Speed", first, fast),
+                    ("Speed", last, slow),
+                ):
+                    socket = modifier_input(modifier, name)
+                    socket.value = value
+                    socket.keyframe_insert("value", frame=f)
         # The mesh baked frame by frame, for the playback not to mesh every frame again
         for bake in modifier.bakes:
             if bake.node.bl_idname == "GeometryNodeBake":
