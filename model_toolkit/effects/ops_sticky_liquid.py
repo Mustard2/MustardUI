@@ -10,32 +10,6 @@ MATERIAL = "MustardUI Sticky Liquid"
 CONTROL_TYPE = "EFFECT_STICKY_LIQUID"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "sticky_liquid.blend")
 
-# Modifier inputs of each kind of liquid
-PRESETS = {
-    "POUR": {},
-    "SPURTS": {
-        "Rate": 300.0,
-        "Duration": 0.0,
-        "Spread": 0.005,
-        "Nozzle": 0.0005,
-        "Wobble": 0.07,
-        "Viscosity": 1.0,
-        "Color": (0.93, 0.94, 0.95, 0.8),
-        "String Length": 0.03,
-        "Resolution": 3.0,
-        "Smooth": 10,
-        "Thickness": 1.0,
-    },
-}
-# Start and end in seconds, speeds at the start and at the end, landing lower as they weaken, and
-# turns of the Control around its X and Y axes in degrees, landing apart
-SPURTS = (
-    (0.0, 0.22, 4.0, 2.0, 0.0, 0.0),
-    (0.9, 1.1, 3.6, 1.6, 3.5, 2.0),
-    (2.0, 2.18, 3.2, 1.5, -3.0, 3.0),
-    (3.2, 3.35, 2.8, 1.5, 1.0, -4.0),
-)
-
 
 class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
     """Add a viscous liquid emitted from a Control Empty at the 3D cursor, pointing down, sticking to the selected meshes where it slides and drips.\nThe meshes it sticks to are in the Targets collection\nBlender 5.2 or above is required"""  # noqa: E501
@@ -43,19 +17,6 @@ class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
     bl_idname = "mustardui.model_toolkit_sticky_liquid"
     bl_label = "Add Sticky Liquid"
     bl_options = {"REGISTER", "UNDO"}
-
-    kind: bpy.props.EnumProperty(
-        name="Liquid",
-        items=(
-            ("POUR", "Pour", "A slow stream for a second, sliding and dripping"),
-            (
-                "SPURTS",
-                "Spurts",
-                "Ropes in a few spurts from the current frame, landing lower as each weakens and "
-                "apart, barely moving in a translucent film. Best aimed from about 30 cm",
-            ),
-        ),
-    )
 
     @classmethod
     def poll(cls, context):
@@ -96,29 +57,6 @@ class MustardUI_ModelToolkit_StickyLiquid(bpy.types.Operator):
         modifier_input(modifier, "Control").value = control
         modifier_input(modifier, "Targets").value = targets
         modifier_input(modifier, "Material").value = bpy.data.materials[MATERIAL]
-        for name, value in PRESETS[self.kind].items():
-            modifier_input(modifier, name).value = value
-        if self.kind == "SPURTS":
-            rate = PRESETS["SPURTS"]["Rate"]
-            fps = context.scene.render.fps / context.scene.render.fps_base
-            frame = context.scene.frame_current
-            for start, end, fast, slow, *turn in SPURTS:
-                first, last = frame + start * fps, frame + end * fps
-                # Delta, not to override the aim of the Control
-                control.delta_rotation_euler = (*map(math.radians, turn), 0.0)
-                control.keyframe_insert("delta_rotation_euler", frame=first)
-                control.keyframe_insert("delta_rotation_euler", frame=last)
-                for name, f, value in (
-                    ("Rate", first - 1, 0.0),
-                    ("Rate", first, rate),
-                    ("Rate", last, rate),
-                    ("Rate", last + 1, 0.0),
-                    ("Speed", first, fast),
-                    ("Speed", last, slow),
-                ):
-                    socket = modifier_input(modifier, name)
-                    socket.value = value
-                    socket.keyframe_insert("value", frame=f)
         # The mesh baked frame by frame, for the playback not to mesh every frame again
         for bake in modifier.bakes:
             if bake.node.bl_idname == "GeometryNodeBake":
