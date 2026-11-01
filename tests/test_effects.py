@@ -44,6 +44,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_shatter.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_dirt.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_motes.poll())
@@ -1707,6 +1708,250 @@ class TestWet(BlenderTestCase):
         self.assertFalse([n for n in self.skin.node_tree.nodes if n.type == "GROUP"])
         self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_wet.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestDirt(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.body = bpy.data.objects["Tester Body"]
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+        bm = bmesh.new()
+        bm.from_mesh(self.body.data)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=8, use_grid_fill=True)
+        bm.to_mesh(self.body.data)
+        bm.free()
+        self.body.modifiers.new("Subdivision", "SUBSURF")
+        self.skin = bpy.data.materials.new("Skin")
+        for obj in (self.body, self.shirt):
+            obj.data.materials.append(self.skin)
+        set_active(self.body)
+
+    def add(self, obj, kind="MUD", **inputs):
+        set_active(obj)
+        bpy.ops.mustardui.model_toolkit_dirt(kind=kind)
+        modifier = obj.modifiers[-2 if obj == self.body else -1]
+        settings = {"Ground": 0.0, "Cavities": 0.0, "Patches": 0.0, "Density": 200.0}
+        for name, value in (settings | inputs).items():
+            effect.modifier_input(modifier, name).value = value
+        obj.update_tag()
+        return modifier
+
+    def dirtiness(self, obj):
+        """Positions and dirtiness of the evaluated points"""
+        data = obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        values = np.empty(len(data.vertices))
+        data.attributes["dirtiness"].data.foreach_get("value", values)
+        return co.reshape(-1, 3), values
+
+    def grains(self, obj):
+        """World positions of the grains, in their order"""
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        return np.array(
+            [
+                x.matrix_world.to_translation()
+                for x in depsgraph.object_instances
+                if x.is_instance and x.parent and x.parent.original == obj
+            ]
+        ).reshape(-1, 3)
+
+    # The Control covers the meshes following their bone, dirtying them with grains on the
+    # surface and the film on their materials and on the grains
+    def test_dirt(self):
+        modifier = self.add(self.body)
+        self.assertEqual([m.type for m in self.body.modifiers][-2:], ["NODES", "SUBSURF"])
+        control = effect.modifier_input(modifier, "Control").value
+        self.assertEqual(control.MustardUI_tools_creators_type, "EFFECT_DIRT")
+        self.assertEqual((control.parent_type, control.parent_bone), ("BONE", "spine"))
+        self.assertEqual(control.users_collection, (bpy.context.scene.collection,))
+        _, dirt = self.dirtiness(self.body)
+        self.assertGreater(dirt.min(), 0.99)
+        # Read by the film, with the rest position, the cleanness in the alpha
+        data = self.body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        packed = np.empty(len(data.vertices) * 4)
+        data.attributes["dirt"].data.foreach_get("color", packed)
+        np.testing.assert_allclose(packed.reshape(-1, 4)[:, 3], 1.0 - dirt, atol=1e-6)
+
+        grains_material = bpy.data.materials["MustardUI Dirt Grains"]
+        for material in (self.skin, grains_material):
+            output = material.node_tree.nodes["Material Output"]
+            film = output.inputs["Surface"].links[0].from_node
+            self.assertEqual(film.node_tree.name, "MustardUI Dirt Film Settings")
+            self.assertEqual(film.inputs["Shader"].links[0].from_node.type, "BSDF_PRINCIPLED")
+
+        grains = self.grains(self.body)
+        # Area of the cube times the density
+        self.assertGreater(len(grains), 6 * 200 * 0.7)
+        self.assertLess(len(grains), 6 * 200 * 1.3)
+        np.testing.assert_allclose(np.abs(grains - (0, 0, 1)).max(axis=1), 0.5, atol=1e-5)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        geometry = self.body.evaluated_get(depsgraph).evaluated_geometry()
+        references = geometry.instance_references()
+        meshes = [x.mesh for x in references if x.mesh]
+        materials = {m.materials[p.material_index].name for m in meshes for p in m.polygons}
+        self.assertEqual(materials, {"MustardUI Dirt Grains"})
+        # Fully dirty in the film
+        for mesh in meshes:
+            alpha = np.empty(len(mesh.vertices) * 4)
+            mesh.attributes["dirt"].data.foreach_get("color", alpha)
+            self.assertLess(alpha.reshape(-1, 4)[:, 3].max(), 0.0)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # With Ground the bottom of the Control is the dirtiest, its top clean
+    def test_ground(self):
+        self.add(self.body, Ground=1.0)
+        co, dirt = self.dirtiness(self.body)
+        self.assertGreater(dirt[co[:, 2] < 0.51].mean(), 0.5)
+        self.assertLess(dirt[co[:, 2] > 1.49].mean(), 0.15)
+        bands = [
+            dirt[(co[:, 2] > z) & (co[:, 2] < z + 0.25)].mean() for z in (0.5, 0.75, 1.0, 1.25)
+        ]
+        self.assertEqual(bands, sorted(bands, reverse=True))
+
+    # With Cavities the creases are dirtier and the bulges cleaner than the flat parts
+    def test_cavities(self):
+        mesh = bpy.data.meshes.new("Grooves")
+        bm = bmesh.new()
+        bmesh.ops.create_grid(bm, x_segments=60, y_segments=20, size=0.2)
+        for v in bm.verts:
+            x = v.co.x
+            v.co.z = 0.02 * (
+                np.exp(-(((x + 0.1) / 0.015) ** 2)) - np.exp(-(((x - 0.1) / 0.015) ** 2))
+            )
+        bm.to_mesh(mesh)
+        bm.free()
+        grooves = new_object("Grooves", mesh)
+        self.add(grooves, Cavities=1.0, Amount=0.5, Grains=False)
+        co, dirt = self.dirtiness(grooves)
+        middle = np.abs(co[:, 1]) < 0.03
+        flat = dirt[middle & (np.abs(co[:, 0]) < 0.02)]
+        np.testing.assert_allclose(flat, 0.5, atol=0.05)
+        self.assertGreater(dirt[middle & (np.abs(co[:, 0] - 0.1) < 0.004)].min(), 0.6)
+        self.assertLess(dirt[middle & (np.abs(co[:, 0] + 0.1) < 0.004)].max(), 0.4)
+
+    # The grains follow the deformed mesh
+    def test_follow(self):
+        self.add(self.body)
+        before = self.grains(self.body)
+        armature = self.body.parent
+        bone = armature.pose.bones["spine"]
+        bone.rotation_mode = "XYZ"
+        bone.rotation_euler = (0.3, 0.2, 0.0)
+        bpy.context.view_layer.update()
+        matrix = armature.matrix_world @ bone.matrix @ bone.bone.matrix_local.inverted()
+        moved = np.array([matrix @ Vector(x) for x in before])
+        np.testing.assert_allclose(self.grains(self.body), moved, atol=1e-5)
+
+    # Less Amount or a smaller Control removes grains, the others staying in place
+    def test_clean(self):
+        modifier = self.add(self.body)
+        grains = {tuple(x) for x in self.grains(self.body).round(6)}
+        effect.modifier_input(modifier, "Amount").value = 0.7
+        self.body.update_tag()
+        less = {tuple(x) for x in self.grains(self.body).round(6)}
+        self.assertLess(len(less), len(grains) * 0.7)
+        self.assertLessEqual(less, grains)
+
+        control = effect.modifier_input(modifier, "Control").value
+        control.scale *= 0.4
+        bpy.context.view_layer.update()
+        self.assertLess(self.dirtiness(self.body)[1].min(), 0.01)
+        self.assertLessEqual({tuple(x) for x in self.grains(self.body).round(6)}, less)
+
+        effect.modifier_input(modifier, "Amount").value = 0.0
+        self.body.update_tag()
+        self.assertEqual(len(self.grains(self.body)), 0)
+        self.assertEqual(self.dirtiness(self.body)[1].max(), 0.0)
+
+    # With Lasting the dirt stays where the Control passed
+    def test_lasting(self):
+        modifier = self.add(self.body, Grains=False)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        effect.modifier_input(modifier, "Lasting").value = True
+        effect.modifier_input(modifier, "Start Frame").value = start
+        self.body.update_tag()
+        scene.frame_set(start)
+        self.assertGreater(self.dirtiness(self.body)[1].min(), 0.99)
+        control = effect.modifier_input(modifier, "Control").value
+        control.scale *= 0.01
+        scene.frame_set(start + 1)
+        self.assertGreater(self.dirtiness(self.body)[1].min(), 0.99)
+        # Without it only where the Control is
+        effect.modifier_input(modifier, "Lasting").value = False
+        self.body.update_tag()
+        self.assertEqual(self.dirtiness(self.body)[1].max(), 0.0)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # A second Dirt keeps the dirt of the first, adding grains only where it is dirtier
+    def test_stack(self):
+        # On the points of the mesh, not interpolated by the subdivision
+        self.body.modifiers["Subdivision"].show_viewport = False
+        first = self.add(self.body)
+        effect.modifier_input(first, "Control").value.scale *= 0.4
+        bpy.context.view_layer.update()
+        _, before = self.dirtiness(self.body)
+        grains = {tuple(x) for x in self.grains(self.body).round(6)}
+        self.add(self.body, Amount=0.5)
+        _, stacked = self.dirtiness(self.body)
+        np.testing.assert_array_less(before - 1e-6, stacked)
+        np.testing.assert_allclose(np.maximum(before, 0.5), stacked, atol=1e-6)
+        positions = self.grains(self.body).round(6)
+        self.assertEqual(len({tuple(x) for x in positions}), len(positions))
+        self.assertLess(grains, {tuple(x) for x in positions})
+
+    # The kind sets the modifier and the shared film settings
+    def test_kind(self):
+        modifier = self.add(self.body, kind="GRIME")
+        self.assertFalse(effect.modifier_input(modifier, "Grains").value)
+        self.assertEqual(len(self.grains(self.body)), 0)
+        settings = bpy.data.node_groups["MustardUI Dirt Film Settings"].nodes[effect.SETTINGS]
+        np.testing.assert_allclose(settings.inputs["Color"].default_value, (0.04, 0.035, 0.03, 1))
+        self.add(self.shirt, kind="SAND")
+        self.assertAlmostEqual(settings.inputs["Coverage"].default_value, 0.3)
+
+    # The Normal Map added for the films stays while a Wet film uses it
+    def test_normal(self):
+        nodes, links = self.skin.node_tree.nodes, self.skin.node_tree.links
+        image = nodes.new("ShaderNodeTexImage")
+        image.image = bpy.data.images.new("Normal", 4, 4)
+        links.new(image.outputs["Color"], nodes["Principled BSDF"].inputs["Normal"])
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_wet()
+        self.add(self.body)
+        groups = [n for n in nodes if n.type == "GROUP"]
+        (normal_map,) = [n for n in nodes if n.type == "NORMAL_MAP"]
+        for group in groups:
+            self.assertEqual(group.inputs["Normal"].links[0].from_node, normal_map)
+        bpy.ops.mustardui.model_toolkit_remove_dirt()
+        self.assertIn(normal_map, list(nodes))
+        bpy.ops.mustardui.model_toolkit_remove_wet()
+        self.assertFalse([n for n in nodes if n.type == "NORMAL_MAP"])
+
+    # The film stays on the materials of the other dirty meshes, and the Controls are removed
+    def test_remove(self):
+        self.add(self.body)
+        self.add(self.shirt)
+        films = [n for n in self.skin.node_tree.nodes if n.type == "GROUP"]
+        self.assertEqual(len(films), 1)
+
+        set_active(self.body)
+        bpy.ops.mustardui.model_toolkit_remove_dirt()
+        self.assertNotIn("Dirt", self.body.modifiers)
+        self.assertEqual([n for n in self.skin.node_tree.nodes if n.type == "GROUP"], films)
+        controls = [x for x in bpy.data.objects if x.MustardUI_tools_creators_type]
+        self.assertEqual(len(controls), 1)
+
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_dirt()
+        surface = self.skin.node_tree.nodes["Material Output"].inputs["Surface"]
+        self.assertEqual(surface.links[0].from_node.type, "BSDF_PRINCIPLED")
+        self.assertFalse([n for n in self.skin.node_tree.nodes if n.type == "GROUP"])
+        self.assertFalse([x for x in bpy.data.objects if x.MustardUI_tools_creators_type])
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_dirt.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

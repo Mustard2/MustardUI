@@ -200,6 +200,7 @@ class TestUI(BlenderTestCase):
         self.assertNotIn("PANEL_PT_MustardUI_ModelToolkit_SceneEffects", drawer.drawn)
 
         bpy.ops.mustardui.model_toolkit_wet()
+        bpy.ops.mustardui.model_toolkit_dirt()
         bpy.ops.mustardui.model_toolkit_hex_dissolve()
         for _ in range(2):
             set_active(cube)

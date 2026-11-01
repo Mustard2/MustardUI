@@ -3,6 +3,7 @@ from . import (
     ops_billow_dust,
     ops_cloth_tear,
     ops_crush,
+    ops_dirt,
     ops_disintegration,
     ops_dust_motes,
     ops_dust_puff,
@@ -42,6 +43,7 @@ def register():
     ops_sticky_strands.register()
     ops_sticky_liquid.register()
     ops_wet.register()
+    ops_dirt.register()
     ops_foam.register()
     ops_marks.register()
     ops_imprints.register()
@@ -67,6 +69,7 @@ def unregister():
     ops_imprints.unregister()
     ops_marks.unregister()
     ops_foam.unregister()
+    ops_dirt.unregister()
     ops_wet.unregister()
     ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()

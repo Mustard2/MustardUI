@@ -287,6 +287,12 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
         row.separator()
+        row.operator("mustardui.model_toolkit_dirt", text="Dirt", icon="MOD_NOISE")
+        row.operator("mustardui.model_toolkit_remove_dirt", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
         row.operator("mustardui.model_toolkit_foam", text="Foam", icon="OUTLINER_DATA_POINTCLOUD")
         row.operator("mustardui.model_toolkit_remove_foam", text="", icon="X")
 

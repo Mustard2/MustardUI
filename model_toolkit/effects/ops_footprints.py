@@ -133,9 +133,9 @@ class MustardUI_ModelToolkit_RemoveFootprints(bpy.types.Operator):
         for material in materials(context.selected_objects) - materials(printed):
             for group in shader_nodes(material, FILM):
                 unwrap_shader(material, group)
-            # The Normal Map added for the film, if not used by a Wet film
-            if not shader_nodes(material, ops_wet.FILM):
-                for node in [n for n in material.node_tree.nodes if n.get(ops_wet.NORMAL_TAG)]:
+            # The Normal Map added for the film, if not used by another one
+            for node in [n for n in material.node_tree.nodes if n.get(ops_wet.NORMAL_TAG)]:
+                if not node.outputs["Normal"].is_linked:
                     material.node_tree.nodes.remove(node)
 
         self.report({"INFO"}, "MustardUI - Wet Footprints removed.")

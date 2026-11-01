@@ -140,8 +140,10 @@ class MustardUI_ModelToolkit_RemoveWet(RemoveEffect, bpy.types.Operator):
         for material in materials(context.selected_objects) - wet:
             for group in shader_nodes(material, FILM):
                 unwrap_shader(material, group)
+            # The Normal Map added for the film, if not used by another one
             for node in [n for n in material.node_tree.nodes if n.get(NORMAL_TAG)]:
-                material.node_tree.nodes.remove(node)
+                if not node.outputs["Normal"].is_linked:
+                    material.node_tree.nodes.remove(node)
         return result
 
 
