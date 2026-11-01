@@ -412,6 +412,11 @@ class FitOptimizer:
             move = moves[:, 1] / np.maximum(moves[:, 0], 0.5)
             pulled = (move > 0.0) & (height > 0.0)
             pull[pulled] = np.maximum(height - move, 0.0)[pulled]
+            if settings.pull_clipping:
+                # Clipping vertices back to the skin, except the layers over each other
+                clipping = i[height[i] < 0.0]
+                layered = self.layer_rays(rest, clipping, gap + SELF_SEARCH * self.edge)[0]
+                pull[np.setdiff1d(clipping, layered)] = 0.0
 
         def evaluate(x):
             energy, grad = self.energy(x, terms, pull, gap, settings.stiffness)

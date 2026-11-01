@@ -832,6 +832,27 @@ class TestFitToBody(BlenderTestCase):
             else:
                 self.assertGreater(after.through + after.crossing, 0)
 
+    # Pull Clipping Parts keeps the parts pushed out at the skin, instead of following the deeper
+    # parts around them (e.g. a waistband over the small of the back)
+    def test_pull_clipping(self):
+        self.addCleanup(setattr, self.settings, "pull_clipping", self.settings.pull_clipping)
+        # An open cap sunk deeper towards its top
+        bm = bmesh.new()
+        bm.from_mesh(self.outfit.data)
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < -0.01], context="VERTS")
+        for v in bm.verts:
+            v.co *= (0.495 - 0.025 * max(v.co.z, 0.0) / 0.49) / v.co.length
+        bmesh.ops.triangulate(bm, faces=bm.faces, quad_method="FIXED")
+        bm.to_mesh(self.outfit.data)
+        bm.free()
+
+        radius = {}
+        for pull_clipping in (False, True):
+            self.settings.pull_clipping = pull_clipping
+            radius[pull_clipping] = self.solve()
+        self.assertGreater(radius[True].min(), 0.5)
+        self.assertLess(radius[True].max(), radius[False].max() - 0.01)
+
     # The triangles of a coarse outfit do not cross the body, even with the vertices outside it
     def test_triangles(self):
         bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=0.5)
