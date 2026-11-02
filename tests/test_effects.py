@@ -1742,6 +1742,30 @@ class TestStickySpurts(BlenderTestCase):
 
         self.assertLess(lowest(20.0), lowest(0.0) - 0.02)
 
+    # Keyframed, the spurts start only at the frames Shoot is keyed on, at any times
+    def test_keyframed(self):
+        self.add((0.0, 0.0, 2.0), Keyframed=True, Runs=0.0, Aim=0.0)
+        shoot = effect.modifier_input(self.modifier, "Shoot")
+        start = self.scene.frame_current
+        for frame, value in ((start, False), (start + 10, True), (start + 11, False)):
+            shoot.value = value
+            shoot.keyframe_insert("value", frame=frame)
+        shoot.value = True
+        shoot.keyframe_insert("value", frame=start + 41)
+        shoot.value = False
+        shoot.keyframe_insert("value", frame=start + 42)
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        counts = []
+        for frame in range(start, start + 60):
+            self.scene.frame_set(frame)
+            geometry = self.liquid.evaluated_get(depsgraph).evaluated_geometry()
+            counts.append(len(geometry.pointcloud.points) if geometry.pointcloud else 0)
+        self.assertEqual(counts[9], 0)
+        self.assertGreater(counts[14], 0)
+        # Nothing shot between the two keys, landed and still, then the second spurt
+        self.assertEqual(counts[34], counts[40])
+        self.assertGreater(counts[50], counts[40])
+
     # Removed with its Control and collections, keeping the body
     def test_remove(self):
         self.add((0.0, 0.0, 2.0))

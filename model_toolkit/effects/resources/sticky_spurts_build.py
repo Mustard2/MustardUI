@@ -81,13 +81,29 @@ def build_node_group():
     )
     add_input(
         ng,
+        "Keyframed",
+        "NodeSocketBool",
+        panel,
+        default_value=False,
+        description="Spurts started by keying Shoot on, at any frames, instead of every Interval",
+    )
+    add_input(
+        ng,
+        "Shoot",
+        "NodeSocketBool",
+        panel,
+        default_value=False,
+        description="With Keyframed, a spurt starts each time it turns on: key it on and off",
+    )
+    add_input(
+        ng,
         "Spurts",
         "NodeSocketInt",
         panel,
         default_value=5,
         min_value=0,
         max_value=100,
-        description="Number of spurts",
+        description="Number of spurts, without Keyframed",
     )
     add_input(
         ng,
@@ -98,7 +114,7 @@ def build_node_group():
         default_value=0.9,
         min_value=0.01,
         max_value=100.0,
-        description="Seconds from a spurt to the next",
+        description="Seconds from a spurt to the next, without Keyframed",
     )
     add_input(
         ng,
@@ -428,6 +444,10 @@ def build_node_group():
     sim_in.pair_with_output(sim_out)
     sim_out.state_items.new("FLOAT", "Time")
     sim_out.state_items.new("FLOAT", "Start")
+    # Keyed spurts started, when the last one started, and if Shoot was on
+    sim_out.state_items.new("FLOAT", "Shots")
+    sim_out.state_items.new("FLOAT", "Shot Start")
+    sim_out.state_items.new("BOOLEAN", "Shooting")
     sim_in.inputs["Start"].default_value = -1.0
     dt = m("MULTIPLY", sim_in.outputs["Delta Time"], inputs["Time Scale"])
     time = sim_in.outputs["Time"]
@@ -638,16 +658,35 @@ def build_node_group():
         points, "birth", "FLOAT", m("DIVIDE", m("ADD", before, m("ADD", index, 1.0)), rate)
     )
     emitted = attribute("birth", "FLOAT")
-    spurt = m("FLOOR", m("DIVIDE", emitted, inputs["Interval"]))
-    along = m(
-        "DIVIDE",
-        m("SUBTRACT", emitted, m("MULTIPLY", spurt, inputs["Interval"])),
-        inputs["Duration"],
+    # Every Interval, or from the frames Shoot turns on
+    keyed = inputs["Keyframed"]
+    rise = logic(
+        "AND",
+        logic("AND", keyed, started),
+        logic("AND", inputs["Shoot"], logic("NOT", sim_in.outputs["Shooting"])),
     )
+    shots = m("ADD", sim_in.outputs["Shots"], rise)
+    shot_start = switch(rise, sim_in.outputs["Shot Start"], m("SUBTRACT", time, start), "FLOAT")
+    spurt = switch(
+        keyed,
+        m("FLOOR", m("DIVIDE", emitted, inputs["Interval"])),
+        m("SUBTRACT", shots, 1.0),
+        "FLOAT",
+    )
+    spurt_start = switch(keyed, m("MULTIPLY", spurt, inputs["Interval"]), shot_start, "FLOAT")
+    along = m("DIVIDE", m("SUBTRACT", emitted, spurt_start), inputs["Duration"])
     outside = logic(
         "OR",
-        m("GREATER_THAN", spurt, m("SUBTRACT", inputs["Spurts"], 0.5)),
-        m("GREATER_THAN", along, 1.0),
+        logic(
+            "OR",
+            logic(
+                "AND",
+                logic("NOT", keyed),
+                m("GREATER_THAN", spurt, m("SUBTRACT", inputs["Spurts"], 0.5)),
+            ),
+            m("LESS_THAN", spurt, -0.5),
+        ),
+        logic("OR", m("GREATER_THAN", along, 1.0), m("LESS_THAN", along, 0.0)),
     )
     points = node(
         "GeometryNodeDeleteGeometry", {"Geometry": points, "Selection": outside}, domain="POINT"
@@ -823,6 +862,9 @@ def build_node_group():
     t.connect(state, sim_out.inputs["Geometry"])
     t.connect(m("ADD", time, dt), sim_out.inputs["Time"])
     t.connect(start, sim_out.inputs["Start"])
+    t.connect(shots, sim_out.inputs["Shots"])
+    t.connect(shot_start, sim_out.inputs["Shot Start"])
+    t.connect(logic("AND", keyed, inputs["Shoot"]), sim_out.inputs["Shooting"])
 
     section("Ropes", row=True)
     # The nodes of each spurt in order, broken where apart
