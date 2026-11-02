@@ -1730,7 +1730,7 @@ class TestStickySpurts(BlenderTestCase):
     def test_runs(self):
         def lowest(runs):
             self.add(
-                (1.0, 0.0, 1.6),
+                (1.0, 0.0, 1.2),
                 Spurts=1,
                 Runs=runs,
                 **{"Run Speed": 0.05, "Run Size": 0.003, "End Speed": 1.0},

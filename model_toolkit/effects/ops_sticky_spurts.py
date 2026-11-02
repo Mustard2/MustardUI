@@ -1,7 +1,6 @@
 import os
 
 import bpy
-from mathutils import Vector
 
 from .effect import effects_available, is_effect, modifier_input
 
@@ -12,7 +11,7 @@ RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "sticky_spurts.b
 
 
 class MustardUI_ModelToolkit_StickySpurts(bpy.types.Operator):
-    """Shoot ropes of thick liquid in spurts from a Control Empty at the 3D cursor, aimed at the selected meshes, sticking where they land with a few slow drips.\nThe meshes it sticks to are in the Targets collection\nBlender 5.2 or above is required"""  # noqa: E501
+    """Shoot ropes of thick liquid in spurts from a Control Empty at the 3D cursor, aimed at the nearest point of the selected meshes, sticking where they land with a few slow drips.\nThe meshes it sticks to are in the Targets collection\nBlender 5.2 or above is required"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_sticky_spurts"
     bl_label = "Add Sticky Spurts"
@@ -39,10 +38,17 @@ class MustardUI_ModelToolkit_StickySpurts(bpy.types.Operator):
             # The liquid stays where it landed on the deformed meshes by their rest position
             obj.add_rest_position_attribute = True
 
-        # Aimed at the center of the meshes, or down if the cursor is there
-        corners = [obj.matrix_world @ Vector(c) for obj in meshes for c in obj.bound_box]
-        center = sum(corners, Vector()) / len(corners)
-        aim = center - context.scene.cursor.location
+        # Aimed at the nearest point of the meshes, or down if the cursor is on them
+        cursor = context.scene.cursor.location
+        depsgraph = context.evaluated_depsgraph_get()
+        nearest = []
+        for obj in meshes:
+            found, co, *_ = obj.evaluated_get(depsgraph).closest_point_on_mesh(
+                obj.matrix_world.inverted() @ cursor
+            )
+            if found:
+                nearest.append(obj.matrix_world @ co)
+        aim = min(nearest, key=lambda x: (x - cursor).length, default=cursor) - cursor
         control = bpy.data.objects.new("Sticky Spurts Control", None)
         collection.objects.link(control)
         control.empty_display_type = "SINGLE_ARROW"
