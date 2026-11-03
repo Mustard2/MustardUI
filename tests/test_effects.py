@@ -42,6 +42,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rain.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_hex_dissolve.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_tear.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_rip.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_shatter.poll())
@@ -653,15 +654,13 @@ class TestClothTear(BlenderTestCase):
     # With its Control selected once added, the operator still polls for the Adjust Last Operation
     # panel, and adds nothing without meshes
     def test_redo_panel(self):
-        ops = bpy.ops.mustardui
-        for op in (ops.model_toolkit_cloth_tear, ops.model_toolkit_cloth_rip):
-            set_active(self.shirt)
-            op()
-            self.assertEqual(bpy.context.selected_objects, [bpy.context.active_object])
-            self.assertTrue(op.poll())
-            count = len(bpy.data.objects)
-            self.assertEqual(op(), {"CANCELLED"})
-            self.assertEqual(len(bpy.data.objects), count)
+        op = bpy.ops.mustardui.model_toolkit_cloth_tear
+        op()
+        self.assertEqual(bpy.context.selected_objects, [bpy.context.active_object])
+        self.assertTrue(op.poll())
+        count = len(bpy.data.objects)
+        self.assertEqual(op(), {"CANCELLED"})
+        self.assertEqual(len(bpy.data.objects), count)
 
     # The Control on the vertex closest to the 3D cursor, following its bone, grows to tear the
     # meshes, leaving threads with the materials of the meshes on the edge
@@ -872,52 +871,6 @@ class TestClothTear(BlenderTestCase):
         self.assertLess(heights[1], heights[0] - 0.02)
         self.assertGreater(heights[2], heights[1] + 0.01)
 
-    # A Pull grabs the cloth and moves away along its normal, ripping it and holding the ripped
-    # part, or letting it fall, removed with the Cloth Tear
-    def test_cloth_rip(self):
-        held = []
-        for in_hand in (True, False):
-            curtain = self.curtain()
-            set_active(curtain)
-            scene = bpy.context.scene
-            start = scene.frame_current
-            scene.cursor.location = (0.0, 0.0, 1.0)
-            bpy.ops.mustardui.model_toolkit_cloth_rip(radius=0.04, distance=0.2, duration=10)
-            pull = bpy.context.view_layer.objects.active
-            modifier = curtain.modifiers["Cloth Tear"]
-            pulls = effect.modifier_input(modifier, "Pulls").value
-            self.assertEqual(list(pulls.objects), [pull])
-            self.assertTrue(effect.modifier_input(modifier, "Physics").value)
-            effect.modifier_input(modifier, "Colliders").value = None
-            effect.modifier_input(modifier, "In Hand").value = in_hand
-            # Changing the modifier inputs from Python does not tag the object
-            curtain.update_tag()
-
-            depsgraph = bpy.context.evaluated_depsgraph_get()
-            for frame in range(start, start + 30):
-                scene.frame_set(frame)
-            end = np.array(pull.matrix_world.translation)
-            np.testing.assert_allclose(np.abs(end), (0.0, 0.2, 1.0), atol=1e-3)
-            data = curtain.evaluated_get(depsgraph).data
-            co = np.empty(len(data.vertices) * 3)
-            data.vertices.foreach_get("co", co)
-            co = co.reshape(-1, 3)
-            # Ripped, no cloth stretched between the curtain, rumpled around the hole, and the Pull
-            # anymore, above the floor
-            gap = np.abs(co[co[:, 2] > 0.5, 1])
-            self.assertEqual(((gap > 0.03) & (gap < 0.12)).sum(), 0)
-            self.assertLess(len(data.polygons), len(curtain.data.polygons))
-            held.append((np.linalg.norm(co - end, axis=1) < 0.06).sum())
-
-            names = (pull.name, pulls.name)
-            set_active(curtain)
-            bpy.ops.mustardui.model_toolkit_remove_cloth_tear()
-            self.assertNotIn(names[0], bpy.data.objects)
-            self.assertNotIn(names[1], bpy.data.collections)
-            bpy.data.objects.remove(curtain)
-        self.assertGreater(held[0], 20)
-        self.assertEqual(held[1], 0)
-
     # The Control is removed with the last Cloth Tear using it, with the Controls collections
     def test_remove(self):
         bpy.ops.mustardui.model_toolkit_cloth_tear()
@@ -973,6 +926,283 @@ class TestClothTear(BlenderTestCase):
         set_active(self.shirt)
         bpy.ops.mustardui.model_toolkit_remove_cloth_tear()
         self.assertFalse(set(names) & set(bpy.data.objects.keys()))
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestClothRip(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+        self.pants = bpy.data.objects["Casual - Pants"]
+        set_active(self.shirt)
+        self.pants.select_set(True)
+        # On the shirt corner
+        bpy.context.scene.cursor.location = (0.6, 0.6, 1.6)
+
+    def pulls(self, obj):
+        modifier = obj.modifiers["Cloth Rip"]
+        return list(effect.modifier_input(modifier, "Pulls").value.objects)
+
+    # With its Pull selected once added, the operator still polls for the Adjust Last Operation
+    # panel, and adds nothing without meshes
+    def test_redo_panel(self):
+        op = bpy.ops.mustardui.model_toolkit_cloth_rip
+        op()
+        self.assertEqual(bpy.context.selected_objects, [bpy.context.active_object])
+        self.assertTrue(op.poll())
+        count = len(bpy.data.objects)
+        self.assertEqual(op(), {"CANCELLED"})
+        self.assertEqual(len(bpy.data.objects), count)
+
+    # The Pull on the vertex closest to the 3D cursor, following its bone, moves away from the
+    # meshes along their normal, the body their collider, in collections in the scene
+    def test_cloth_rip(self):
+        scene = bpy.context.scene
+        start = scene.frame_current
+        bpy.ops.mustardui.model_toolkit_cloth_rip(radius=0.05, distance=0.3, duration=10)
+        self.assertEqual([m.type for m in self.shirt.modifiers], ["ARMATURE", "NODES"])
+        modifier = self.shirt.modifiers["Cloth Rip"]
+        (pull,) = self.pulls(self.shirt)
+        self.assertEqual(self.pulls(self.pants), [pull])
+        self.assertEqual(pull.MustardUI_tools_creators_type, "EFFECT_CLOTH_RIP")
+        self.assertEqual((pull.parent_type, pull.parent_bone), ("BONE", "spine"))
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, start)
+        body = bpy.data.objects["Tester Body"]
+        for obj in (self.shirt, self.pants):
+            colliders = effect.modifier_input(obj.modifiers["Cloth Rip"], "Colliders").value
+            self.assertEqual(list(colliders.objects), [body])
+            self.assertIn(colliders, scene.collection.children[:])
+        # Only in the Pulls collections, in the scene out of the outfit collections
+        collections = {
+            effect.modifier_input(x.modifiers["Cloth Rip"], "Pulls").value
+            for x in (self.shirt, self.pants)
+        }
+        self.assertEqual(set(pull.users_collection), collections)
+        self.assertLessEqual(collections, set(scene.collection.children))
+        # Selected, to be moved right away
+        self.assertEqual(bpy.context.selected_objects, [pull])
+        self.assertEqual(bpy.context.view_layer.objects.active, pull)
+        bpy.context.view_layer.update()
+        np.testing.assert_allclose(pull.matrix_world.translation, (0.55, 0.55, 1.55), atol=1e-5)
+        self.assertAlmostEqual(pull.scale.x, 0.05)
+        scene.frame_set(start + 10)
+        moved = pull.matrix_world.translation - Vector((0.55, 0.55, 1.55))
+        self.assertAlmostEqual(moved.length, 0.3, places=4)
+        self.assertAlmostEqual(pull.scale.x, 0.05)
+
+        # Another Pull on a mesh goes in the same modifier, the simulation needing a fixed mesh,
+        # this one moving down the mesh
+        scene.frame_set(start)
+        scene.cursor.location = (-0.6, -0.6, 0.4)
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_cloth_rip(direction="DOWN", distance=0.3, duration=10)
+        self.assertEqual([m.name for m in self.shirt.modifiers], ["Armature", "Cloth Rip"])
+        pulls = self.pulls(self.shirt)
+        self.assertEqual(len(pulls), 2)
+        down = next(x for x in pulls if x != pull)
+        bpy.context.view_layer.update()
+        top = down.matrix_world.translation.z
+        scene.frame_set(start + 10)
+        self.assertLess(down.matrix_world.translation.z, top - 0.2)
+        self.assertEqual(effect.modifier_input(modifier, "Anchor").type, "VALUE")
+        # Held on the shape of the mesh, nothing pinning it
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Shape").value, 0.4)
+
+        # With an Anchor, the cloth is held by the Vertex Group
+        set_active(self.shirt)
+        self.pants.select_set(True)
+        bpy.ops.mustardui.model_toolkit_remove_cloth_rip()
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_cloth_rip(anchor="spine")
+        modifier = self.shirt.modifiers["Cloth Rip"]
+        anchor = effect.modifier_input(modifier, "Anchor")
+        self.assertEqual((anchor.type, anchor.attribute_name), ("ATTRIBUTE", "spine"))
+        self.assertEqual(effect.modifier_input(modifier, "Shape").value, 0.0)
+
+    def curtain(self):
+        """Hanging sheet, from 0.75 to 1.25 high, with a Vertex Group of its edges"""
+        mesh = bpy.data.meshes.new("Curtain")
+        bm = bmesh.new()
+        bmesh.ops.create_grid(
+            bm, x_segments=40, y_segments=40, size=0.25, matrix=Matrix.Rotation(1.5708, 4, "X")
+        )
+        bmesh.ops.translate(bm, verts=bm.verts, vec=(0.0, 0.0, 1.0))
+        bm.to_mesh(mesh)
+        bm.free()
+        curtain = new_object("Curtain", mesh)
+        edges = [v.index for v in mesh.vertices if max(abs(v.co.x), abs(v.co.z - 1.0)) > 0.2]
+        curtain.vertex_groups.new(name="Edges").add(edges, 1.0, "REPLACE")
+        return curtain
+
+    def rip(self, curtain, hold):
+        """Curtain points after 30 frames, with the end of the Pull, grabbing its middle"""
+        set_active(curtain)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        scene.cursor.location = (0.0, 0.0, 1.0)
+        bpy.ops.mustardui.model_toolkit_cloth_rip(
+            radius=0.04, distance=0.3, duration=10, hold=hold, anchor="Edges"
+        )
+        pull = bpy.context.view_layer.objects.active
+        modifier = curtain.modifiers["Cloth Rip"]
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, start)
+        # Not colliding with the model body around it, nor the floor, held by its edges
+        effect.modifier_input(modifier, "Colliders").value = None
+        effect.modifier_input(modifier, "Floor").value = False
+        # Changing the modifier inputs from Python does not tag the object
+        curtain.update_tag()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        for frame in range(start, start + 30):
+            scene.frame_set(frame)
+            self.assertEqual([x.message for x in modifier.node_warnings], [])
+        end = np.array(pull.matrix_world.translation)
+        np.testing.assert_allclose(np.abs(end), (0.0, 0.3, 1.0), atol=1e-3)
+        data = curtain.evaluated_get(depsgraph).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        self.assertTrue(np.isfinite(co).all())
+        # Torn: the edges split along the tears
+        self.assertGreater(len(data.vertices), len(curtain.data.vertices))
+        return co, end
+
+    # The Pull grabs the curtain and moves away, tearing it along ragged lines and holding the
+    # torn cloth, or letting go of it at the end, the Pull scaled to 0, removed with the effect
+    def test_rip(self):
+        held = []
+        for hold in (True, False):
+            curtain = self.curtain()
+            co, end = self.rip(curtain, hold)
+            held.append((np.linalg.norm(co - end, axis=1) < 0.06).sum())
+            pull = bpy.context.view_layer.objects.active
+            self.assertAlmostEqual(pull.scale.x, 0.04 if hold else 0.0)
+            names = (pull.name, pull.users_collection[0].name)
+            set_active(curtain)
+            bpy.ops.mustardui.model_toolkit_remove_cloth_rip()
+            self.assertNotIn("Cloth Rip", curtain.modifiers)
+            self.assertNotIn(names[0], bpy.data.objects)
+            self.assertNotIn(names[1], bpy.data.collections)
+            bpy.data.objects.remove(curtain)
+        self.assertGreater(held[0], 20)
+        self.assertEqual(held[1], 0)
+
+    # Two Pulls rip the curtain each, holding their pieces, and a Pull scaled to 0 lets go of its
+    # piece and grabs the cloth again where it is scaled back
+    def test_pulls(self):
+        curtain = self.curtain()
+        scene = bpy.context.scene
+        start = scene.frame_current
+        pulls = []
+        for x in (-0.12, 0.12):
+            set_active(curtain)
+            scene.cursor.location = (x, 0.0, 1.0)
+            bpy.ops.mustardui.model_toolkit_cloth_rip(
+                radius=0.04, distance=0.3, duration=12, anchor="Edges"
+            )
+            pulls.append(bpy.context.view_layer.objects.active)
+        modifier = curtain.modifiers["Cloth Rip"]
+        self.assertEqual(set(effect.modifier_input(modifier, "Pulls").value.objects), set(pulls))
+        effect.modifier_input(modifier, "Colliders").value = None
+        effect.modifier_input(modifier, "Floor").value = False
+        curtain.update_tag()
+        # The first Pull letting go at the end, scaled to 0, and grabbing lower
+        first = pulls[0]
+        for frame, scale, location in (
+            (start + 17, 0.04, (-0.12, -0.3, 1.0)),
+            (start + 18, 0.0, (-0.12, -0.3, 1.0)),
+            (start + 21, 0.0, (0.0, 0.0, 0.85)),
+            (start + 22, 0.04, (0.0, 0.0, 0.85)),
+            (start + 34, 0.04, (0.0, -0.3, 0.85)),
+        ):
+            first.scale = (scale, scale, scale)
+            first.location = location
+            first.keyframe_insert("scale", frame=frame)
+            first.keyframe_insert("location", frame=frame)
+
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+
+        def held(pull):
+            data = curtain.evaluated_get(depsgraph).data
+            co = np.empty(len(data.vertices) * 3)
+            data.vertices.foreach_get("co", co)
+            distance = np.linalg.norm(co.reshape(-1, 3) - pull.matrix_world.translation, axis=1)
+            return (distance < 0.06).sum()
+
+        for frame in range(start, start + 17):
+            scene.frame_set(frame)
+        for pull in pulls:
+            self.assertGreater(held(pull), 20)
+        for frame in range(start + 17, start + 36):
+            scene.frame_set(frame)
+            self.assertEqual([x.message for x in modifier.node_warnings], [])
+        self.assertGreater(held(first), 10)
+        self.assertGreater(held(pulls[1]), 20)
+
+    # The Pull dragged down the curtain gathers the cloth it runs into in hand, moving with it, more
+    # and more
+    def test_gather(self):
+        curtain = self.curtain()
+        set_active(curtain)
+        scene = bpy.context.scene
+        start = scene.frame_current
+        scene.cursor.location = (0.0, 0.0, 1.0)
+        bpy.ops.mustardui.model_toolkit_cloth_rip(radius=0.04, duration=20, anchor="Edges")
+        pull = bpy.context.view_layer.objects.active
+        # Straight down the curtain, through the cloth
+        for frame, z in ((start + 20, 0.7), (start, 1.0)):
+            pull.location = (0.0, 0.0, z)
+            pull.keyframe_insert("location", frame=frame)
+        modifier = curtain.modifiers["Cloth Rip"]
+        effect.modifier_input(modifier, "Colliders").value = None
+        effect.modifier_input(modifier, "Floor").value = False
+        # Not tearing nor snapping, the points keeping their indices
+        effect.modifier_input(modifier, "Strength").value = 10.0
+        effect.modifier_input(modifier, "Snap").value = 100.0
+        curtain.update_tag()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+
+        # The points moving with the Pull over a frame, held in it, while it moves
+        held = []
+        relative = {}
+        centres = {}
+        for frame in range(start, start + 21):
+            scene.frame_set(frame)
+            if frame in (start + 5, start + 6, start + 14, start + 15):
+                data = curtain.evaluated_get(depsgraph).data
+                co = np.empty(len(data.vertices) * 3)
+                data.vertices.foreach_get("co", co)
+                centres[frame] = np.array(pull.matrix_world.translation)
+                relative[frame] = co.reshape(-1, 3) - centres[frame]
+            if frame in (start + 6, start + 15):
+                self.assertGreater(np.linalg.norm(centres[frame] - centres[frame - 1]), 0.01)
+                step = relative[frame] - relative[frame - 1]
+                held.append((np.linalg.norm(step, axis=1) < 0.005).sum())
+        self.assertGreater(held[0], 20)
+        self.assertGreater(held[1], held[0] * 1.5)
+
+    # The Pull is removed with the last Cloth Rip using it, with the Pulls collections
+    def test_remove(self):
+        bpy.ops.mustardui.model_toolkit_cloth_rip()
+        (pull,) = self.pulls(self.shirt)
+        name = pull.name
+        collections = {
+            effect.modifier_input(x.modifiers["Cloth Rip"], "Pulls").value.name
+            for x in (self.shirt, self.pants)
+        }
+        set_active(self.shirt)
+        bpy.ops.mustardui.model_toolkit_remove_cloth_rip()
+        self.assertNotIn("Cloth Rip", self.shirt.modifiers)
+        self.assertIn(name, bpy.data.objects)
+
+        set_active(self.pants)
+        bpy.ops.mustardui.model_toolkit_remove_cloth_rip()
+        self.assertNotIn("Cloth Rip", self.pants.modifiers)
+        self.assertNotIn(name, bpy.data.objects)
+        self.assertFalse(collections & set(bpy.data.collections.keys()))
+        # The body back in the scene, its Colliders collections removed
+        self.assertFalse({c.name for c in bpy.data.collections if "Colliders" in c.name})
+        self.assertIn(bpy.data.objects["Tester Body"], bpy.context.scene.collection.all_objects[:])
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

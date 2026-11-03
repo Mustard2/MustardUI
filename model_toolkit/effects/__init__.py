@@ -1,6 +1,7 @@
 from . import (
     ops_aura,
     ops_billow_dust,
+    ops_cloth_rip,
     ops_cloth_tear,
     ops_crush,
     ops_dirt,
@@ -38,6 +39,7 @@ def register():
     ops_fireball.register()
     ops_hex_dissolve.register()
     ops_cloth_tear.register()
+    ops_cloth_rip.register()
     ops_shatter.register()
     ops_crush.register()
     ops_billow_dust.register()
@@ -83,6 +85,7 @@ def unregister():
     ops_billow_dust.unregister()
     ops_crush.unregister()
     ops_shatter.unregister()
+    ops_cloth_rip.unregister()
     ops_cloth_tear.unregister()
     ops_hex_dissolve.unregister()
     ops_fireball.unregister()

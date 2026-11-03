@@ -153,64 +153,8 @@ class MustardUI_ModelToolkit_ClothTear(ClothTearControl, bpy.types.Operator):
             control.keyframe_insert("scale", frame=f)
 
 
-class MustardUI_ModelToolkit_ClothRip(ClothTearControl, bpy.types.Operator):
-    """Rip the selected meshes by pulling them with a Pull Empty, grabbing the cloth in its sphere on their vertex closest to the 3D cursor and moving away from them, with Physics.\nThe meshes with a Cloth Tear get the new Pull in its Pulls collection\nBlender 5.2 or above is required"""  # noqa: E501
-
-    bl_idname = "mustardui.model_toolkit_cloth_rip"
-    bl_label = "Add Cloth Rip"
-    bl_options = {"REGISTER", "UNDO"}
-
-    effect = "Cloth Rip"
-    collection_input = "Pulls"
-    collection_name = "Cloth Pulls"
-    physics = True
-
-    radius: bpy.props.FloatProperty(
-        name="Radius",
-        default=0.04,
-        min=0.001,
-        subtype="DISTANCE",
-        description="Radius of the Pull sphere, grabbing the cloth inside it",
-    )
-    distance: bpy.props.FloatProperty(
-        name="Distance",
-        default=0.2,
-        subtype="DISTANCE",
-        description="Distance of the Pull away from the mesh at the end of the Duration",
-    )
-    duration: bpy.props.IntProperty(
-        name="Duration",
-        default=24,
-        min=1,
-        description="Frames for the Pull to move the Distance away, from the current frame",
-    )
-    anchor: bpy.props.StringProperty(
-        name="Anchor",
-        description="Vertex Group holding the cloth: the parts cut off from it fall. Empty for "
-        "the parts cut off from the top of the cloth to fall",
-    )
-
-    def draw(self, context):
-        self.layout.prop(self, "radius")
-        self.layout.prop(self, "distance")
-        self.layout.prop(self, "duration")
-        if context.active_object and context.active_object.type == "MESH":
-            self.layout.prop_search(self, "anchor", context.active_object, "vertex_groups")
-
-    def animate(self, control, frame, normal):
-        control.scale = (self.radius, self.radius, self.radius)
-        # Out of the mesh along its normal, the current frame last to leave the Pull there
-        start = control.location.copy()
-        for f, location in (
-            (frame + self.duration, start + normal * self.distance),
-            (frame, start),
-        ):
-            control.location = location
-            control.keyframe_insert("location", frame=f)
-
-
 class MustardUI_ModelToolkit_RemoveClothTear(bpy.types.Operator):
-    """Remove the Cloth Tear and Cloth Rip from the selected meshes, with the Controls, the Pulls and the collections not used anymore"""  # noqa: E501
+    """Remove the Cloth Tear from the selected meshes, with the Controls and the collections not used anymore"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_remove_cloth_tear"
     bl_label = "Remove Cloth Tear"
@@ -221,6 +165,7 @@ class MustardUI_ModelToolkit_RemoveClothTear(bpy.types.Operator):
         return any(is_effect(m, NODE_GROUP) for x in context.selected_objects for m in x.modifiers)
 
     def execute(self, context):
+        # The Pulls of the Cloth Rip once in the Cloth Tear, in older files
         inputs = ("Controls", "Pulls", "Colliders")
         collections = set()
         for obj in context.selected_objects:
@@ -248,11 +193,9 @@ class MustardUI_ModelToolkit_RemoveClothTear(bpy.types.Operator):
 
 def register():
     bpy.utils.register_class(MustardUI_ModelToolkit_ClothTear)
-    bpy.utils.register_class(MustardUI_ModelToolkit_ClothRip)
     bpy.utils.register_class(MustardUI_ModelToolkit_RemoveClothTear)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_ModelToolkit_RemoveClothTear)
-    bpy.utils.unregister_class(MustardUI_ModelToolkit_ClothRip)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_ClothTear)

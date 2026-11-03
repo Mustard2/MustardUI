@@ -5,6 +5,7 @@ from ... import __package__ as base_package
 from . import (
     ops_aura,
     ops_billow_dust,
+    ops_cloth_rip,
     ops_cloth_tear,
     ops_crush,
     ops_dirt,
@@ -49,6 +50,7 @@ EFFECTS = {
     "Disintegration": ("PARTICLES", ops_disintegration.NODE_GROUP, None),
     "Hex Dissolve": ("MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP),
     "Cloth Tear": ("MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
+    "Cloth Rip": ("EMPTY_SINGLE_ARROW", ops_cloth_rip.NODE_GROUP, None),
     "Shatter": ("MOD_EXPLODE", ops_shatter.NODE_GROUP, None),
     "Shockwave": ("FORCE_FORCE", ops_shockwave.NODE_GROUP, None),
     "Crush": ("MOD_MESHDEFORM", ops_crush.NODE_GROUP, None),
