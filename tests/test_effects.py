@@ -49,6 +49,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dirt.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_bulge.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_motes.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_crush.poll())
@@ -3386,6 +3387,200 @@ class TestImprints(BlenderTestCase):
         self.assertEqual(stone.users_collection, (bpy.context.scene.collection,))
         self.assertFalse(self.snow.node_tree.nodes["Principled BSDF"].inputs[0].is_linked)
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_imprints.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestBulge(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        # A 2 m box, 10 cm apart vertices, and a 20 cm rod inside it, 10 cm under its top
+        self.box = new_mesh_object("Box", size=1.0, z=0.0)
+        self.rod = new_mesh_object("Rod", size=0.1, z=0.8)
+        for obj, cuts in ((self.box, 19), (self.rod, 3)):
+            bm = bmesh.new()
+            bm.from_mesh(obj.data)
+            bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=cuts, use_grid_fill=True)
+            # Facing out
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+            bm.to_mesh(obj.data)
+            bm.free()
+        self.co = np.array([v.co[:] for v in self.box.data.vertices])
+        set_active(self.box)
+        self.rod.select_set(True)
+
+    def offsets(self):
+        """Offsets of the evaluated vertices from the original ones"""
+        bpy.context.view_layer.update()
+        data = self.box.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        return co.reshape(-1, 3) - self.co
+
+    def add(self):
+        bpy.ops.mustardui.model_toolkit_bulge()
+        return self.box.modifiers["Bulge"]
+
+    # The top of the box bulges up over the rod, as wide as the rod is thick
+    def test_bulge(self):
+        modifier = self.add()
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.rod])
+        self.assertIn(colliders, list(bpy.context.scene.collection.children))
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Width").value, 0.2)
+
+        offset = self.offsets()
+        top = np.isclose(self.co[:, 2], 1.0)
+        center = top & (np.abs(self.co[:, :2]).max(axis=1) < 0.05)
+        far = np.abs(self.co[:, :2]).max(axis=1) > 0.5
+        self.assertGreater(offset[center, 2].min(), 0.02)
+        np.testing.assert_allclose(offset[center, :2], 0.0, atol=1e-5)
+        np.testing.assert_allclose(offset[far], 0.0, atol=1e-6)
+        np.testing.assert_allclose(offset[np.isclose(self.co[:, 2], -1.0)], 0.0, atol=1e-6)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Higher with the Strength, sunk in Reverse
+        effect.modifier_input(modifier, "Strength").value = 1.0
+        self.box.update_tag()
+        stronger = self.offsets()
+        np.testing.assert_allclose(stronger[center, 2], offset[center, 2] * 2, rtol=1e-4)
+        effect.modifier_input(modifier, "Reverse").value = True
+        self.box.update_tag()
+        np.testing.assert_allclose(self.offsets()[center, 2], -stronger[center, 2], rtol=1e-4)
+
+    # Out of the box the rod does not bulge it, then only over its part inside, as it enters
+    def test_entering(self):
+        # 1 m long along X, entering the side of the box
+        self.rod.scale.x = 5.0
+        self.rod.location.x = 1.6
+        modifier = self.add()
+        np.testing.assert_allclose(self.offsets(), 0.0, atol=1e-6)
+
+        effect.modifier_input(modifier, "Smooth").value = 0
+        self.box.update_tag()
+        heights = []
+        for x in (1.47, 1.4):
+            self.rod.location.x = x
+            offset = self.offsets()
+            heights.append(offset[:, 2].max())
+        self.assertGreater(heights[0], 0.0)
+        self.assertGreater(heights[1], heights[0])
+        # The tip 10 cm inside, bulging up to the Width from it
+        np.testing.assert_allclose(offset[self.co[:, 0] < 0.65], 0.0, atol=1e-6)
+
+    # Poking out of the top, the rod is covered, the bulge spreading around it without a dent
+    def test_poking(self):
+        self.rod.location.z = 0.15
+        modifier = self.add()
+        effect.modifier_input(modifier, "Smooth").value = 0
+        self.box.update_tag()
+        offset = self.offsets()
+        top = np.isclose(self.co[:, 2], 1.0)
+        side = np.abs(self.co[:, :2]).max(axis=1)
+        self.assertGreaterEqual(offset[top & (side < 0.05), 2].min(), 0.05 - 1e-5)
+        # Falling off from the rod, also at the corners of the ring around it
+        around = offset[top & (side > 0.15) & (side < 0.25), 2]
+        self.assertGreater(around.min(), 0.01)
+        self.assertLess(around.max(), offset[top & (side < 0.05), 2].min())
+        np.testing.assert_allclose(offset[side > 0.5], 0.0, atol=1e-6)
+
+    # A pit in the top over the rod, e.g. the navel, bulges without its walls crossing
+    def test_hollow(self):
+        bm = bmesh.new()
+        bm.from_mesh(self.box.data)
+        top = Vector((0.0, 0.0, 1.0))
+        pit = [f for f in bm.faces if (f.calc_center_median() - top).length < 0.1]
+        # 10 cm wide and 5 cm deep
+        bmesh.ops.inset_region(bm, faces=pit, thickness=0.05)
+        walls = bmesh.ops.extrude_face_region(bm, geom=pit)["geom"]
+        bmesh.ops.delete(bm, geom=pit, context="FACES")
+        floor = [v for v in walls if isinstance(v, bmesh.types.BMVert)]
+        bmesh.ops.translate(bm, vec=(0.0, 0.0, -0.05), verts=floor)
+        bm.to_mesh(self.box.data)
+        bm.free()
+        self.co = np.array([v.co[:] for v in self.box.data.vertices])
+        self.add()
+        offset = self.offsets()
+        self.assertGreater(offset[:, 2].max(), 0.04)
+        mesh = self.box.data.copy()
+        before = np.array([p.normal[:] for p in mesh.polygons])
+        mesh.vertices.foreach_set("co", (self.co + offset).ravel())
+        mesh.update()
+        after = np.array([p.normal[:] for p in mesh.polygons])
+        self.assertGreater((before * after).sum(axis=1).min(), 0.0)
+
+    def center_heights(self, frames):
+        center = np.isclose(self.co[:, 2], 1.0) & (np.abs(self.co[:, :2]).max(axis=1) < 0.05)
+        heights = []
+        for frame in frames:
+            bpy.context.scene.frame_set(frame)
+            heights.append(self.offsets()[center, 2].mean())
+        return np.array(heights)
+
+    # Pushed up quickly, the bulge springs past its height and back, settling on it
+    def test_jiggle(self):
+        self.rod.location.z = -0.3
+        self.rod.keyframe_insert("location", index=2, frame=1)
+        self.rod.location.z = 0.0
+        self.rod.keyframe_insert("location", index=2, frame=4)
+        bpy.context.scene.frame_set(1)
+        modifier = self.add()
+        self.assertTrue(effect.modifier_input(modifier, "Jiggle").value)
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, 1)
+        jiggling = self.center_heights(range(1, 41))
+
+        effect.modifier_input(modifier, "Jiggle").value = False
+        self.box.update_tag()
+        still = self.center_heights(range(1, 41))
+        self.assertGreater(still[-1], 0.02)
+        np.testing.assert_allclose(still[4:], still[-1], atol=1e-6)
+        # Lagging, then past the height and back under it
+        self.assertLess(jiggling[2], still[2])
+        self.assertGreater(jiggling.max(), still[-1] * 1.05)
+        self.assertLess(jiggling[jiggling.argmax() :].min(), still[-1] * 0.995)
+        self.assertAlmostEqual(jiggling[-1], still[-1], delta=still[-1] * 0.01)
+
+    # Added without Jiggle, the bulge follows the Colliders at once
+    def test_without_jiggle(self):
+        bpy.ops.mustardui.model_toolkit_bulge(jiggle=False)
+        modifier = self.box.modifiers["Bulge"]
+        self.assertFalse(effect.modifier_input(modifier, "Jiggle").value)
+        self.rod.location.z = -0.3
+        self.rod.keyframe_insert("location", index=2, frame=1)
+        self.rod.location.z = 0.0
+        self.rod.keyframe_insert("location", index=2, frame=4)
+        heights = self.center_heights(range(1, 8))
+        np.testing.assert_allclose(heights[3:], heights[-1], atol=1e-6)
+
+    # Only the vertices in the Vertex Group bulge
+    def test_mask(self):
+        group = self.box.vertex_groups.new(name="Soft")
+        group.add([i for i, x in enumerate(self.co) if x[0] < 0.0], 1.0, "REPLACE")
+        modifier = self.add()
+        effect.modifier_input(modifier, "Smooth").value = 0
+        mask = effect.modifier_input(modifier, "Mask")
+        mask.type = "ATTRIBUTE"
+        mask.attribute_name = "Soft"
+        self.box.update_tag()
+        offset = self.offsets()
+        np.testing.assert_allclose(offset[self.co[:, 0] > 0.0], 0.0, atol=1e-6)
+        self.assertGreater(offset[self.co[:, 0] < 0.0, 2].max(), 0.02)
+
+    # The Colliders collection goes with the effect, keeping the objects only in it in the scene
+    def test_remove(self):
+        modifier = self.add()
+        name = effect.modifier_input(modifier, "Colliders").value.name
+        bpy.ops.mustardui.model_toolkit_remove_bulge()
+        self.assertNotIn("Bulge", self.box.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertIn(self.rod, list(bpy.context.scene.objects))
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_bulge.poll())
+
+    # Without other selected meshes the Colliders are empty, to be filled
+    def test_no_colliders(self):
+        self.rod.select_set(False)
+        modifier = self.add()
+        self.assertEqual(list(effect.modifier_input(modifier, "Colliders").value.objects), [])
+        np.testing.assert_allclose(self.offsets(), 0.0, atol=1e-6)
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

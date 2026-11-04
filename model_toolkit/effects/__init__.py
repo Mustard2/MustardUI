@@ -1,6 +1,7 @@
 from . import (
     ops_aura,
     ops_billow_dust,
+    ops_bulge,
     ops_cloth_rip,
     ops_cloth_tear,
     ops_crush,
@@ -52,6 +53,7 @@ def register():
     ops_foam.register()
     ops_marks.register()
     ops_imprints.register()
+    ops_bulge.register()
     ops_dust_puff.register()
     ops_shockwave.register()
     ops_footprints.register()
@@ -73,6 +75,7 @@ def unregister():
     ops_shockwave.unregister()
     ops_footprints.unregister()
     ops_dust_puff.unregister()
+    ops_bulge.unregister()
     ops_imprints.unregister()
     ops_marks.unregister()
     ops_foam.unregister()

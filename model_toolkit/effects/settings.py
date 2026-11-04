@@ -5,6 +5,7 @@ from ... import __package__ as base_package
 from . import (
     ops_aura,
     ops_billow_dust,
+    ops_bulge,
     ops_cloth_rip,
     ops_cloth_tear,
     ops_crush,
@@ -43,6 +44,7 @@ EFFECTS = {
     "Foam": ("OUTLINER_DATA_POINTCLOUD", ops_foam.NODE_GROUP, None),
     "Marks": ("TPAINT_HLT", ops_marks.NODE_GROUP, None),
     "Imprints": ("MOD_DISPLACE", ops_imprints.NODE_GROUP, None),
+    "Bulge": ("SPHERECURVE", ops_bulge.NODE_GROUP, None),
     "Dust Puff": ("FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None),
     "Wet Footprints": ("MOD_DYNAMICPAINT", ops_footprints.NODE_GROUP, ops_footprints.FILM),
     "Dust Motes": ("PARTICLE_POINT", ops_dust_motes.NODE_GROUP, None),
