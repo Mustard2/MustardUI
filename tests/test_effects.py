@@ -3236,77 +3236,6 @@ class TestImprints(BlenderTestCase):
         _, height, _ = self.heights()
         self.assertAlmostEqual(height.min(), -0.03, delta=1e-4)
 
-    # Cracks spread from the imprints up to their length, grooved and drawn by the shader attribute,
-    # and the surface around them breaks into slabs tilted by the rim, sharp apart
-    def test_cracks(self):
-        set_active(self.ground)
-        modifier = self.add(kind="ASPHALT")
-        effect.modifier_input(modifier, "Debris").value = False
-        self.ground.update_tag()
-        co, height, _ = self.heights()
-        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
-        crack = np.empty(len(data.vertices) * 4)
-        data.attributes["imprint_crack"].data.foreach_get("color", crack)
-        crack = crack.reshape(-1, 4)
-        # On the cracks, within the unit vector to them
-        cracked = (crack[:, 3] < 0.5) & (np.linalg.norm(crack[:, :3], axis=1) < 1.0)
-        side = np.abs(co[:, :2]).max(axis=1)
-        outside = side > 0.52
-        self.assertGreater((cracked & outside).sum(), 100)
-        self.assertLess(height[outside].min(), -0.002)
-        slab = np.empty(len(data.vertices) * 4)
-        data.attributes["imprint_slab"].data.foreach_get("color", slab)
-        self.assertGreater((slab.reshape(-1, 4)[:, 3] < 1.0)[outside].sum(), 100)
-        self.assertGreater(height[outside].max(), 0.01)
-        sharp = np.zeros(len(data.edges), dtype=bool)
-        data.attributes["sharp_edge"].data.foreach_get("value", sharp)
-        self.assertGreater(sharp.sum(), 100)
-        # Not past the Crack Length and the slabs
-        reach = sum(
-            effect.modifier_input(modifier, x).value
-            for x in ("Crack Length", "Slab Size", "Rim Width", "Rim Width")
-        )
-        far = side > 0.5 + reach
-        np.testing.assert_allclose(height[far], 0.0, atol=1e-6)
-        self.assertFalse(cracked[far].any())
-        self.assertEqual([x.message for x in modifier.node_warnings], [])
-
-        effect.modifier_input(modifier, "Cracks").value = False
-        effect.modifier_input(modifier, "Rim").value = 0.0
-        self.ground.update_tag()
-        co, height, _ = self.heights()
-        side = np.abs(co[:, :2]).max(axis=1)
-        np.testing.assert_allclose(height[side > 0.52], 0.0, atol=1e-6)
-        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
-        for name in ("imprint_crack", "imprint_slab"):
-            values = np.empty(len(data.vertices) * 4)
-            data.attributes[name].data.foreach_get("color", values)
-            np.testing.assert_allclose(values.reshape(-1, 4)[:, 3], 1.0)
-
-    # With Chunks the slabs are separate thick pieces, the surface sunk under them
-    def test_chunks(self):
-        set_active(self.ground)
-        modifier = self.add(kind="ASPHALT")
-        effect.modifier_input(modifier, "Debris").value = False
-        self.ground.update_tag()
-        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
-        # Out of the ground, the largest part
-        self.assertGreater(small_islands(data, len(data.vertices) // 2).sum(), 100)
-        sharp = np.zeros(len(data.polygons), dtype=bool)
-        data.attributes["sharp_face"].data.foreach_get("value", sharp)
-        self.assertTrue(sharp.any())
-        co = np.empty(len(data.vertices) * 3)
-        data.vertices.foreach_get("co", co)
-        thickness = effect.modifier_input(modifier, "Thickness").value
-        # The sunk surface under them, out of the imprints
-        self.assertLess(co[2::3].min(), -0.03 - thickness * 0.9)
-        self.assertEqual([x.message for x in modifier.node_warnings], [])
-
-        effect.modifier_input(modifier, "Chunks").value = False
-        self.ground.update_tag()
-        data = self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
-        self.assertFalse(small_islands(data, len(data.vertices) - 1).any())
-
     # The imprints tinted with the uneven color, none without Tint
     def test_tint(self):
         set_active(self.ground)
@@ -3331,7 +3260,6 @@ class TestImprints(BlenderTestCase):
         set_active(self.ground)
         modifier = self.add(kind="ASPHALT")
         effect.modifier_input(modifier, "Debris Amount").value = 1000.0
-        effect.modifier_input(modifier, "Chunks").value = False
         self.ground.update_tag()
         scene = bpy.context.scene
         start = scene.frame_current
@@ -3353,7 +3281,7 @@ class TestImprints(BlenderTestCase):
             lifted = max(lifted, height.max(initial=0.0))
         self.assertGreater(chunks.sum(), 100)
         self.assertGreater(lifted, 0.1)
-        # Resting in the imprints and their grooves, not falling through
+        # Resting in the imprints, not falling through
         self.assertGreater(height.min(), -0.08)
         self.assertLess(height.max(), 0.0)
         material = np.empty(len(data.polygons), dtype=np.int32)

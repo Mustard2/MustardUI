@@ -66,9 +66,6 @@ PRESETS = {
         "Detail": 0.5,
         "Detail Scale": 200.0,
         "Recovery": 0.0,
-        "Cracks": True,
-        "Crack Width": 0.012,
-        "Chunks": True,
         "Debris": True,
     },
     "CUSHION": {
@@ -84,19 +81,14 @@ PRESETS = {
 }
 
 # Powers of the scale of Colliders larger than a person the inputs are multiplied by: the distances
-# by it, as many bumps, cracks and chunks for imprints that large
+# by it, as many bumps and debris for imprints that large
 SCALING = {
     "Depth": 1,
     "Rim Width": 1,
     "Softness": 1,
-    "Crack Length": 1,
-    "Crack Width": 1,
-    "Slab Size": 1,
-    "Thickness": 1,
     "Debris Size": 1,
     "Noise Scale": -1,
     "Detail Scale": -1,
-    "Crack Amount": -1,
     "Debris Amount": -2,
 }
 
@@ -114,7 +106,7 @@ class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
             ("SNOW", "Snow", "Deep imprints with a small rim, lasting"),
             ("SAND", "Sand", "Shallow grainy imprints with a rim, lasting"),
             ("MUD", "Mud", "Dark imprints with a high rim, lasting"),
-            ("ASPHALT", "Asphalt", "Shallow imprints breaking the surface into chunks, lasting"),
+            ("ASPHALT", "Asphalt", "Shallow imprints with a high rim and debris, lasting"),
             ("CUSHION", "Cushion", "Soft surface wrapping around the Colliders, filling back"),
         ),
     )
