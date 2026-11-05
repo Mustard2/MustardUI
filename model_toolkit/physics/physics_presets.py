@@ -382,9 +382,6 @@ def remove_physics(obj):
 def _apply_cloth(obj, preset, pin_group_name, structural_group_name):
     identifier, name, description, settings, collisions, fps_time_scale = preset
 
-    # Play every frame: the simulation is not evaluated correctly on skipped frames
-    bpy.context.scene.sync_mode = "NONE"
-
     remove_physics(obj)
 
     cloth = obj.modifiers.new(name="Cloth", type="CLOTH")
@@ -419,8 +416,6 @@ def _apply_cloth(obj, preset, pin_group_name, structural_group_name):
 def _apply_nodes(obj, preset, pin_group_name):
     identifier, name, description, group_name, inputs = preset
     jiggle = group_name == JIGGLE_DYNAMICS_NODE_GROUP
-
-    bpy.context.scene.sync_mode = "NONE"
 
     remove_physics(obj)
 
