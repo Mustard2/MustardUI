@@ -31,10 +31,6 @@ class MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects(bpy.types.UIList):
             icon="RESTRICT_SELECT_OFF",
             emboss=False,
         ).name = obj.name
-        op = row.operator(
-            "mustardui.model_toolkit_remove_scene_effect", text="", icon="X", emboss=False
-        )
-        op.effect, op.name = item.effect, obj.name
 
 
 def register():

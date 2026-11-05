@@ -270,7 +270,7 @@ class TestUI(BlenderTestCase):
         self.assertEqual(bpy.context.selected_objects, [cube])
         self.assertEqual(bpy.context.view_layer.objects.active, cube)
 
-        # The X removes the effect from its object, whatever is selected
+        # Remove Effect removes the effect from its object, whatever is selected
         cube.select_set(False)
         for name in ("Marks", "Hex Dissolve"):
             bpy.ops.mustardui.model_toolkit_remove_scene_effect(effect=name, name=cube.name)

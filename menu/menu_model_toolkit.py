@@ -479,6 +479,9 @@ class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.type
         item = effects[index] if index < len(effects) else None
         if item is None or item.object is None:
             return
+        op = layout.operator("mustardui.model_toolkit_remove_scene_effect", icon="X")
+        op.effect, op.name = item.effect, item.object.name
+
         modifier = item.object.modifiers.get(item.modifier)
         if modifier is not None and modifier.node_group is not None:
             header, body = layout.panel("MustardUI_SceneEffects_GeometryNodes")
