@@ -1,6 +1,8 @@
+import functools
 import importlib
 import os
 import tempfile
+import types
 import unittest
 
 import bmesh
@@ -20,6 +22,7 @@ from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
 effect = importlib.import_module(ADDON + ".model_toolkit.effects.effect")
+ops_aura = importlib.import_module(ADDON + ".model_toolkit.effects.ops_aura")
 ops_shrinkwrap = importlib.import_module(ADDON + ".model_toolkit.effects.ops_shrinkwrap")
 geometry_nodes = importlib.import_module(ADDON + ".misc.geometry_nodes")
 
@@ -5488,6 +5491,18 @@ class TestAura(BlenderTestCase):
     def evaluated(self, obj, frame):
         self.scene.frame_set(frame)
         return obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
+
+    # In Scene Effects right after its button, which unlike bpy.ops runs no update of its own
+    def test_scene_effects_after_button(self):
+        prefs = bpy.context.preferences.addons[ADDON].preferences
+        self.addCleanup(setattr, prefs, "model_toolkit", prefs.model_toolkit)
+        prefs.model_toolkit = True
+        operator = ops_aura.MustardUI_ModelToolkit_Aura
+        op = types.SimpleNamespace(pulses=1, duration=4, pause=2, report=lambda *_: None)
+        op.add_control = functools.partial(operator.add_control, op)
+        operator.execute(op, bpy.context)
+        items = self.scene.MustardUI_SceneEffects
+        self.assertIn(("Aura", self.body), [(x.effect, x.object) for x in items])
 
     def stepped(self, obj, frame):
         """Geometry at the frame after all the frames from the start, for the sparks to simulate"""

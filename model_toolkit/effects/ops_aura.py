@@ -249,6 +249,9 @@ class MustardUI_ModelToolkit_Aura(bpy.types.Operator):
             if not shader_nodes(material, GLOW):
                 wrap_glow(material)
 
+        # After adding a driver a button runs no depsgraph handlers: Scene Effects would miss it
+        context.view_layer.update()
+
         self.report({"INFO"}, f"MustardUI - Aura added to {len(objects)} objects.")
         return {"FINISHED"}
 
