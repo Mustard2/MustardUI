@@ -7,7 +7,7 @@ from mathutils.kdtree import KDTree
 # Node with the settings of a shader effect, in the group shared by its materials
 SETTINGS = "MustardUI Settings"
 # Inputs of the shaders and their node groups taking the base color
-COLOR_INPUTS = ("Base Color", "Diffuse Color", "Albedo", "Color")
+COLOR_INPUTS = ("Base Color", "Diffuse Color", "Diffuse", "Albedo", "Color")
 COLOR_NODES = {"BSDF_PRINCIPLED", "BSDF_DIFFUSE", "SUBSURFACE_SCATTERING", "GROUP"}
 # Size of the Colliders the effects are made for, a person
 PERSON_SIZE = 1.7
