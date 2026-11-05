@@ -466,7 +466,8 @@ class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.type
         scene = context.scene
         effects = scene.MustardUI_SceneEffects
 
-        layout.template_list(
+        row = layout.row()
+        row.template_list(
             "MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects",
             "",
             scene,
@@ -479,7 +480,12 @@ class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.type
         item = effects[index] if index < len(effects) else None
         if item is None or item.object is None:
             return
-        op = layout.operator("mustardui.model_toolkit_remove_scene_effect", icon="X")
+
+        col = row.column(align=True)
+        col.operator(
+            "mustardui.model_toolkit_select_object", text="", icon="RESTRICT_SELECT_OFF"
+        ).name = item.object.name
+        op = col.operator("mustardui.model_toolkit_remove_scene_effect", text="", icon="X")
         op.effect, op.name = item.effect, item.object.name
 
         modifier = item.object.modifiers.get(item.modifier)

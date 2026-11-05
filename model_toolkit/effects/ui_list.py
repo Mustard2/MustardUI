@@ -25,12 +25,6 @@ class MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects(bpy.types.UIList):
         if modifier is not None:
             row.prop(modifier, "show_viewport", text="", emboss=False)
             row.prop(modifier, "show_render", text="", emboss=False)
-        row.operator(
-            "mustardui.model_toolkit_select_object",
-            text="",
-            icon="RESTRICT_SELECT_OFF",
-            emboss=False,
-        ).name = obj.name
 
 
 def register():
