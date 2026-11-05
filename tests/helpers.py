@@ -94,6 +94,13 @@ def set_active_collection(coll):
     bpy.context.view_layer.active_layer_collection = find(bpy.context.view_layer.layer_collection)
 
 
+def checked_items(*names):
+    """Clean Model selection list entries, as operator arguments"""
+    return [
+        {"name": x, "remove": True, "locked": False, "in_use": False, "icon": ""} for x in names
+    ]
+
+
 def build_model(name="Tester"):
     """Armature, body with shape keys, two outfits, extras and a hair collection."""
     arm_data = bpy.data.armatures.new(name + " Armature")

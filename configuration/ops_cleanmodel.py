@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import BoolProperty, CollectionProperty, IntProperty
+from bpy.props import BoolProperty, CollectionProperty, IntProperty, StringProperty
 
 from .. import __package__ as base_package
 from ..custom_properties.misc import (
@@ -7,6 +7,7 @@ from ..custom_properties.misc import (
     mustardui_delete_all_custom_properties,
     mustardui_reassign_default,
 )
+from ..misc.icons import get_hair_icon
 from ..misc.remove_objects import remove_objects
 from ..model_selection.active_object import (
     ModelMode,
@@ -26,23 +27,23 @@ def remove_diffeomorphic_data_result(obj, attr):
         return 0
 
 
-class MustardUI_CleanModel_OutfitItem(bpy.types.PropertyGroup):
-    """Outfit entry of the Clean Model Outfits selection list"""
+class MustardUI_CleanModel_Item(bpy.types.PropertyGroup):
+    """Outfit, Extras piece or Hair entry of the Clean Model selection lists"""
 
-    remove: BoolProperty(
-        default=False, name="Remove", description="Remove this Outfit from the model"
-    )
+    remove: BoolProperty(default=False, name="Remove", description="Remove this from the model")
     locked: BoolProperty(default=False)
+    in_use: BoolProperty(default=False)
+    icon: StringProperty()
 
 
-class MUSTARDUI_UL_CleanModel_Outfits_UIList(bpy.types.UIList):
-    """UIList to choose the Outfits to remove with the Clean Model tool"""
+class MUSTARDUI_UL_CleanModel_UIList(bpy.types.UIList):
+    """UIList to choose the Outfits, Extras pieces or Hair to remove with the Clean Model tool"""
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         row.enabled = not item.locked
         row.prop(item, "remove", text="")
-        row.label(text=item.name, icon="LOCKED" if item.locked else "MOD_CLOTH")
+        row.label(text=item.name, icon="LOCKED" if item.locked else item.icon)
 
 
 class MustardUI_CleanModel(bpy.types.Operator):
@@ -61,9 +62,7 @@ class MustardUI_CleanModel(bpy.types.Operator):
         name="Delete Outfits",
         description="Remove the Outfits checked in the list below",
     )
-    outfits_to_remove: CollectionProperty(
-        type=MustardUI_CleanModel_OutfitItem, options={"SKIP_SAVE"}
-    )
+    outfits_to_remove: CollectionProperty(type=MustardUI_CleanModel_Item, options={"SKIP_SAVE"})
     outfits_to_remove_index: IntProperty(default=0, options={"SKIP_SAVE"})
     check_outfits_not_in_use: BoolProperty(
         default=False,
@@ -72,15 +71,33 @@ class MustardUI_CleanModel(bpy.types.Operator):
         "shown on the model (Outfits list)",
         options={"SKIP_SAVE"},
     )
-    remove_unselected_extras: BoolProperty(
+    remove_extras: BoolProperty(
         default=False,
-        name="Delete Extras Not in Use",
-        description="Remove all the Extras objects that are not selected in the UI",
+        name="Delete Extras",
+        description="Remove the Extras pieces checked in the list below",
     )
-    remove_unselected_hair: BoolProperty(
+    extras_to_remove: CollectionProperty(type=MustardUI_CleanModel_Item, options={"SKIP_SAVE"})
+    extras_to_remove_index: IntProperty(default=0, options={"SKIP_SAVE"})
+    check_extras_not_in_use: BoolProperty(
         default=False,
-        name="Delete Hair Not in Use",
-        description="Remove all the Hair that are not currently in use",
+        name="Check Extras Not In Use",
+        description="Check all the Extras pieces in the list, except the ones currently "
+        "shown on the model",
+        options={"SKIP_SAVE"},
+    )
+    remove_hair: BoolProperty(
+        default=False,
+        name="Delete Hair",
+        description="Remove the Hair checked in the list below",
+    )
+    hair_to_remove: CollectionProperty(type=MustardUI_CleanModel_Item, options={"SKIP_SAVE"})
+    hair_to_remove_index: IntProperty(default=0, options={"SKIP_SAVE"})
+    check_hair_not_in_use: BoolProperty(
+        default=False,
+        name="Check Hair Not In Use",
+        description="Check all the Hair in the list, except the one currently "
+        "shown on the model (Hair list)",
+        options={"SKIP_SAVE"},
     )
     remove_dangling_cp: BoolProperty(
         default=True,
@@ -186,18 +203,50 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     locked_objects.add(coll)
         return list(locked_objects)
 
-    def update_outfits_to_remove(self, rig_settings):
-        """Rebuild the Outfits selection list from the outfits of the model"""
+    def update_lists(self, rig_settings):
+        """Rebuild the selection lists from the Outfits, Extras pieces and Hair of the model"""
+        from ..outfits.toolkit.ops_export_outfits import extras_pieces
 
         locked = self.locked_outfits_collections(rig_settings)
+        hair = rig_settings.hair_collection.objects if rig_settings.hair_collection else []
 
-        self.outfits_to_remove.clear()
-        for coll in rig_settings.outfits_collections:
-            if coll.collection is None:
-                continue
-            item = self.outfits_to_remove.add()
-            item.name = coll.collection.name
-            item.locked = coll in locked
+        for items, entries in (
+            (
+                self.outfits_to_remove,
+                (
+                    (
+                        x.collection.name,
+                        "MOD_CLOTH",
+                        x.collection.name == rig_settings.outfits_list,
+                        x in locked,
+                    )
+                    for x in rig_settings.outfits_collections
+                    if x.collection is not None
+                ),
+            ),
+            (
+                self.extras_to_remove,
+                (
+                    (x.name, f"OUTLINER_OB_{x.type}", not x.hide_viewport, False)
+                    for x in sorted(extras_pieces(rig_settings), key=lambda o: o.name)
+                ),
+            ),
+            (
+                self.hair_to_remove,
+                (
+                    (x.name, get_hair_icon(x), x.name == rig_settings.hair_list, False)
+                    for x in hair
+                    if x.type in {"MESH", "CURVES"}
+                ),
+            ),
+        ):
+            items.clear()
+            for name, icon, in_use, is_locked in entries:
+                item = items.add()
+                item.name = name
+                item.icon = icon
+                item.in_use = in_use
+                item.locked = is_locked
 
     def outfits_to_delete(self, rig_settings):
         """Return the Outfit collections checked for deletion in the list"""
@@ -229,8 +278,8 @@ class MustardUI_CleanModel(bpy.types.Operator):
             or self.remove_morphs
             or self.remove_diffeomorphic_data
             or self.remove_outfits
-            or self.remove_unselected_extras
-            or self.remove_unselected_hair
+            or self.remove_extras
+            or self.remove_hair
             or self.remove_body_cp
             or self.remove_outfit_cp
             or self.remove_hair_cp
@@ -573,23 +622,27 @@ class MustardUI_CleanModel(bpy.types.Operator):
             if addon_prefs.debug:
                 print("  Outfits deleted: " + str(outfits_deleted))
 
-        # Remove unselected extras
-        if rig_settings.extras_collection is not None and self.remove_unselected_extras:
-            items = (
-                rig_settings.extras_collection.all_objects
-                if rig_settings.extras_config_subcollections
-                else rig_settings.extras_collection.objects
-            )
-            objs = [x for x in items if x.hide_viewport]
-            extras_deleted += 1 + delete_extras_pieces(
-                context, arm, objs, self.remove_dangling_pi, self.remove_dangling_cp
+        # Remove the Extras pieces checked in the list, with the objects parented to them
+        if rig_settings.extras_collection is not None and self.remove_extras:
+            from ..outfits.toolkit.ops_export_outfits import extras_keep, extras_pieces
+
+            selected = {x.name for x in self.extras_to_remove if x.remove}
+            pieces = [x for x in extras_pieces(rig_settings) if x.name in selected]
+            extras_deleted += delete_extras_pieces(
+                context,
+                arm,
+                extras_keep(rig_settings.extras_collection, pieces),
+                self.remove_dangling_pi,
+                self.remove_dangling_cp,
             )
 
             if addon_prefs.debug:
                 print("  Extras deleted: " + str(extras_deleted))
 
-        # Remove unselected hair
-        if rig_settings.hair_collection is not None and self.remove_unselected_hair:
+        # Remove the Hair checked in the list
+        if rig_settings.hair_collection is not None and self.remove_hair:
+            from ..hair.helper_functions import set_selected_hair
+
             current_hair = rig_settings.hair_list
             hair_objs = rig_settings.hair_collection.objects
 
@@ -600,10 +653,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
                     rigs.add(obj.parent)
                 return {x for x in rigs if x is not None and x.name in hair_objs}
 
-            # The other hair and their armatures, keeping the ones of the selected hair
-            objs = [x for x in hair_objs if x.type in {"MESH", "CURVES"} and x.name != current_hair]
-            selected = hair_objs.get(current_hair)
-            kept = armatures(selected) if selected is not None else set()
+            # The checked hair and their armatures, keeping the ones of the other hair
+            selected = {x.name for x in self.hair_to_remove if x.remove}
+            hair = [x for x in hair_objs if x.type in {"MESH", "CURVES"}]
+            objs = [x for x in hair if x.name in selected]
+            kept = set().union(*(armatures(x) for x in hair if x.name not in selected))
             objs += list(set().union(*(armatures(x) for x in objs)) - kept)
 
             # Remove dangling Physics Items first
@@ -650,7 +704,11 @@ class MustardUI_CleanModel(bpy.types.Operator):
             remove_objects(objs)
             hair_deleted = hair_deleted + len(objs)
 
-            rig_settings.hair_list = current_hair
+            if not hair_objs:
+                bpy.data.collections.remove(rig_settings.hair_collection)
+
+            # The selected hair can be deleted: in that case, fall back to the first one
+            set_selected_hair(context, rig_settings, current_hair)
 
             if addon_prefs.debug:
                 print("  Hair deleted: " + str(hair_deleted))
@@ -707,27 +765,23 @@ class MustardUI_CleanModel(bpy.types.Operator):
         return {"FINISHED"}
 
     def check(self, context):
-        """Apply the Outfits list helper buttons, which are drawn as toggles"""
+        """Apply the lists helper buttons, which are drawn as toggles"""
 
-        if not self.check_outfits_not_in_use:
-            return False
+        changed = False
+        for kind in ("outfits", "extras", "hair"):
+            if getattr(self, f"check_{kind}_not_in_use"):
+                setattr(self, f"check_{kind}_not_in_use", False)
+                for item in getattr(self, f"{kind}_to_remove"):
+                    item.remove = not (item.locked or item.in_use)
+                changed = True
 
-        self.check_outfits_not_in_use = False
-
-        res, arm = mustardui_active_object(context, config=ModelMode.USER)
-        if arm is not None:
-            current_outfit = arm.MustardUI_RigSettings.outfits_list
-            for item in self.outfits_to_remove:
-                if not item.locked:
-                    item.remove = item.name != current_outfit
-
-        return True
+        return changed
 
     def invoke(self, context, event):
 
         res, arm = mustardui_active_object(context, config=ModelMode.USER)
         if arm is not None:
-            self.update_outfits_to_remove(arm.MustardUI_RigSettings)
+            self.update_lists(arm.MustardUI_RigSettings)
 
         return context.window_manager.invoke_props_dialog(self, width=500)
 
@@ -757,45 +811,33 @@ class MustardUI_CleanModel(bpy.types.Operator):
             icon="ERROR",
         )
 
-        # Body/Outfits/Extras
+        # Outfits/Extras/Hair
         box = layout.box()
-        box.label(text="Outfits and Hair", icon="MOD_CLOTH")
+        box.label(text="Outfits, Extras and Hair", icon="MOD_CLOTH")
+
+        for kind in ("outfits", "extras", "hair"):
+            available = len(getattr(self, f"{kind}_to_remove")) > 0
+
+            col = box.column(align=True)
+            row = col.row(align=True)
+            row.enabled = available
+            row.prop(self, f"remove_{kind}")
+
+            if available and getattr(self, f"remove_{kind}"):
+                col.template_list(
+                    "MUSTARDUI_UL_CleanModel_UIList",
+                    kind,
+                    self,
+                    f"{kind}_to_remove",
+                    self,
+                    f"{kind}_to_remove_index",
+                    rows=5,
+                )
+                col.prop(self, f"check_{kind}_not_in_use", toggle=True, icon="CHECKBOX_HLT")
 
         col = box.column(align=True)
 
-        row = col.row(align=True)
-        row.enabled = len(rig_settings.outfits_collections) > 0
-        row.prop(self, "remove_outfits")
-
-        col_outfits = col.column(align=True)
-        col_outfits.enabled = self.remove_outfits and len(rig_settings.outfits_collections) > 0
-        col_outfits.template_list(
-            "MUSTARDUI_UL_CleanModel_Outfits_UIList",
-            "",
-            self,
-            "outfits_to_remove",
-            self,
-            "outfits_to_remove_index",
-            rows=5,
-        )
-        col_outfits.prop(self, "check_outfits_not_in_use", toggle=True, icon="CHECKBOX_HLT")
-
-        col = box.column(align=True)
-
-        row = col.row()
-        row.enabled = rig_settings.extras_collection is not None
-        row.prop(self, "remove_unselected_extras")
-        row = col.row()
-        row.enabled = rig_settings.hair_collection is not None
-        row.prop(self, "remove_unselected_hair")
-
-        col.separator()
-
-        additional_options_check = (
-            len(rig_settings.outfits_collections) > 0
-            or rig_settings.extras_collection is not None
-            or rig_settings.hair_collection is not None
-        ) and (self.remove_outfits or self.remove_unselected_extras or self.remove_unselected_hair)
+        additional_options_check = self.remove_outfits or self.remove_extras or self.remove_hair
         row = col.row()
         row.enabled = additional_options_check
         row.prop(self, "remove_dangling_cp")
@@ -864,12 +906,12 @@ class MustardUI_CleanModel(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(MustardUI_CleanModel_OutfitItem)
-    bpy.utils.register_class(MUSTARDUI_UL_CleanModel_Outfits_UIList)
+    bpy.utils.register_class(MustardUI_CleanModel_Item)
+    bpy.utils.register_class(MUSTARDUI_UL_CleanModel_UIList)
     bpy.utils.register_class(MustardUI_CleanModel)
 
 
 def unregister():
     bpy.utils.unregister_class(MustardUI_CleanModel)
-    bpy.utils.unregister_class(MUSTARDUI_UL_CleanModel_Outfits_UIList)
-    bpy.utils.unregister_class(MustardUI_CleanModel_OutfitItem)
+    bpy.utils.unregister_class(MUSTARDUI_UL_CleanModel_UIList)
+    bpy.utils.unregister_class(MustardUI_CleanModel_Item)

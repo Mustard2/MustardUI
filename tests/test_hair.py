@@ -7,6 +7,7 @@ from helpers import (
     ADDON,
     BlenderTestCase,
     build_model,
+    checked_items,
     configure_model,
     new_mesh_object,
     new_object,
@@ -67,8 +68,8 @@ class TestHair(BlenderTestCase):
         bpy.ops.mustardui.hair_switchglobal(enable=1)
         self.assertTrue(subsurf.show_viewport)
 
-    # Clean Model deletes the hair not in use and their rigs, keeping the rigs of the selected hair
-    def test_clean_model_unselected_hair(self):
+    # Clean Model deletes the checked hair and their rigs, keeping the rigs of the other hair
+    def test_clean_model_checked_hair(self):
         hair = self.model["hair"]
         rigs = {}
         for name, users in (
@@ -83,20 +84,35 @@ class TestHair(BlenderTestCase):
         new_mesh_object("Hair Short Bangs", hair)
         self.rig_settings.hair_list = "Hair Short"
 
-        bpy.ops.mustardui.cleanmodel(remove_unselected_hair=True)
+        bpy.ops.mustardui.cleanmodel(
+            remove_hair=True,
+            hair_to_remove=checked_items("Hair Long", "Hair Short Bangs"),
+        )
         self.assertEqual(
             sorted(o.name for o in hair.objects), ["Hair Short", "Shared Rig", "Short Rig"]
         )
 
-    # Deleting a hair before the selected one keeps the selection, and Clean Model the worn hair
+    # Deleting a hair before the selected one keeps the selection
     def test_selection_after_deleting_hair(self):
         new_mesh_object("Hair Bob", self.model["hair"])
         self.rig_settings.hair_list = "Hair Long"
         bpy.data.objects.remove(bpy.data.objects["Hair Short"])
         self.assertEqual(self.rig_settings.hair_list, "Hair Long")
 
-        bpy.ops.mustardui.cleanmodel(remove_unselected_hair=True)
-        self.assertEqual([o.name for o in self.model["hair"].objects], ["Hair Long"])
+    # Clean Model can delete the selected hair, falling back to the first left, or all of them
+    def test_clean_model_selected_hair(self):
+        new_mesh_object("Hair Bob", self.model["hair"])
+        self.rig_settings.hair_list = "Hair Long"
+        bpy.ops.mustardui.cleanmodel(remove_hair=True, hair_to_remove=checked_items("Hair Long"))
+        self.assertNotIn("Hair Long", bpy.data.objects)
+        self.assertEqual(self.rig_settings.hair_list, "Hair Bob")
+        self.assertFalse(bpy.data.objects["Hair Bob"].hide_viewport)
+
+        bpy.ops.mustardui.cleanmodel(
+            remove_hair=True,
+            hair_to_remove=checked_items("Hair Bob", "Hair Short"),
+        )
+        self.assertIsNone(self.rig_settings.hair_collection)
 
 
 class TestScaleCharacter(BlenderTestCase):

@@ -3,17 +3,21 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import bpy
+from fake_ui import Drawer, FakeLayout
 from helpers import (
     ADDON,
     BlenderTestCase,
     build_model,
+    checked_items,
     configure_model,
+    new_mesh_object,
     set_active,
     set_active_collection,
 )
 
 storage = importlib.import_module(ADDON + ".text_storage.storage")
 smartcheck = importlib.import_module(ADDON + ".configuration.ops_smartcheck")
+cleanmodel = importlib.import_module(ADDON + ".configuration.ops_cleanmodel")
 
 
 class TestConfiguration(BlenderTestCase):
@@ -189,3 +193,89 @@ class TestConfiguration(BlenderTestCase):
         bpy.ops.mustardui.remove(delete_objects=True)
         for name in ("Casual - Shirt", "Hair Long", "Extras - Glasses", "Tester Body"):
             self.assertNotIn(name, bpy.data.objects)
+
+
+class CleanModelDialog:
+    """Clean Model instance stand-in, on the last properties of the operator"""
+
+    def __init__(self):
+        self.drawer = Drawer()
+        self.layout = FakeLayout(self.drawer)
+        self.properties = bpy.context.window_manager.operator_properties_last(
+            "mustardui.cleanmodel"
+        )
+
+    def __getattr__(self, name):
+        if hasattr(self.properties, name):
+            return getattr(self.properties, name)
+        return getattr(cleanmodel.MustardUI_CleanModel, name).__get__(self)
+
+
+class TestCleanModel(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        self.rig_settings = configure_model(self.model)
+        lens = new_mesh_object("Extras - Lens", self.model["extras"], size=0.1)
+        lens.parent = bpy.data.objects["Extras - Glasses"]
+        new_mesh_object("Extras - Hat", self.model["extras"]).hide_viewport = True
+
+    # The lists show the pieces and hair, and Check Not In Use checks all but the ones shown
+    def test_lists(self):
+        self.rig_settings.outfits_list = "Tester Casual"
+        self.rig_settings.hair_list = "Hair Short"
+        bpy.data.objects["Formal - Dress"].MustardUI_outfit_lock = True
+        dialog = CleanModelDialog()
+        dialog.update_lists(self.rig_settings)
+
+        names = {
+            kind: [x.name for x in getattr(dialog, f"{kind}_to_remove")]
+            for kind in ("outfits", "extras", "hair")
+        }
+        self.assertEqual(names["outfits"], ["Tester Casual", "Tester Formal"])
+        self.assertEqual(names["extras"], ["Extras - Glasses", "Extras - Hat"])
+        self.assertEqual(sorted(names["hair"]), ["Hair Long", "Hair Short"])
+
+        self.assertFalse(dialog.check(bpy.context))
+        for kind in names:
+            setattr(dialog.properties, f"check_{kind}_not_in_use", True)
+            setattr(dialog.properties, f"remove_{kind}", True)
+        self.assertTrue(dialog.check(bpy.context))
+        checked = {
+            kind: [x.name for x in getattr(dialog, f"{kind}_to_remove") if x.remove]
+            for kind in names
+        }
+        self.assertEqual(
+            checked, {"outfits": [], "extras": ["Extras - Hat"], "hair": ["Hair Long"]}
+        )
+
+        cleanmodel.MustardUI_CleanModel.draw(dialog, bpy.context)
+        self.assertEqual(dialog.drawer.errors, [])
+
+    # Only the checked pieces are deleted, with their children and Physics Items
+    def test_checked_extras(self):
+        items = self.model["armature"].data.MustardUI_PhysicsSettings.items
+        item = items.add()
+        item.object = new_mesh_object("Glasses Cage")
+        item.outfit_enable = True
+        item.outfit_collection = self.model["extras"]
+        item.outfit_object = bpy.data.objects["Extras - Glasses"]
+
+        bpy.ops.mustardui.cleanmodel(remove_extras=True)
+        self.assertIn("Extras - Glasses", bpy.data.objects)
+
+        bpy.ops.mustardui.cleanmodel(
+            remove_extras=True, extras_to_remove=checked_items("Extras - Glasses")
+        )
+        self.assertEqual([o.name for o in self.model["extras"].objects], ["Extras - Hat"])
+        self.assertNotIn("Extras - Lens", bpy.data.objects)
+        self.assertNotIn("Glasses Cage", bpy.data.objects)
+        self.assertEqual(len(items), 0)
+
+    # Deleting all the pieces deletes the Extras collection
+    def test_all_extras(self):
+        bpy.ops.mustardui.cleanmodel(
+            remove_extras=True,
+            extras_to_remove=checked_items("Extras - Glasses", "Extras - Hat"),
+        )
+        self.assertIsNone(self.rig_settings.extras_collection)
