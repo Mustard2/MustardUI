@@ -75,14 +75,19 @@ def scene_effects(scene):
     """Effect, object and modifier name of the effects in the scene"""
     # The Jiggle of the Physics Items is their physics, and it is set in the Physics panel
     physics = {x.object for arm in bpy.data.armatures for x in arm.MustardUI_PhysicsSettings.items}
+    objects = list(scene.objects)
+    # Run on each depsgraph update: the modifiers and the materials are read once
+    nodes = [(x, mods) for x in objects if (mods := [m for m in x.modifiers if m.type == "NODES"])]
     for name, (_, node_group, material_group) in EFFECTS.items():
-        for obj in scene.objects:
-            if name == "Jiggle" and obj in physics:
-                continue
-            if node_group:
-                yield from ((name, obj, m.name) for m in obj.modifiers if is_effect(m, node_group))
-            elif any(shader_nodes(m, material_group) for m in materials([obj])):
-                yield name, obj, ""
+        if node_group:
+            for obj, mods in nodes:
+                if not (name == "Jiggle" and obj in physics):
+                    yield from ((name, obj, m.name) for m in mods if is_effect(m, node_group))
+        else:
+            tagged = {m for m in materials(objects) if shader_nodes(m, material_group)}
+            for obj in objects:
+                if any(s.material in tagged for s in obj.material_slots):
+                    yield name, obj, ""
 
 
 @persistent
