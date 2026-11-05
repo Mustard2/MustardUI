@@ -59,10 +59,10 @@ class MustardUI_ModelToolkit_HexDissolve(bpy.types.Operator):
             control.scale = (scale, scale, scale)
             control.keyframe_insert("scale", frame=f)
 
-        # Wrap the surface shader of every output
+        # Wrap the surface shader of every output, the empty ones draw black and must dissolve too
         for material in materials(objects):
             nodes, links = material.node_tree.nodes, material.node_tree.links
-            for group in wrap_shader(material, NODE_GROUP):
+            for group in wrap_shader(material, NODE_GROUP, empty=True):
                 coordinates = nodes.new("ShaderNodeTexCoord")
                 coordinates.object = control
                 coordinates.location = (group.location.x - 200, group.location.y)

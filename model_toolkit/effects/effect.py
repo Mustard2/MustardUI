@@ -204,19 +204,21 @@ def settings_group(node_group):
     return tree
 
 
-def wrap_shader(material, node_group):
-    """Group nodes of the shared settings added between the surface shaders and the outputs"""
+def wrap_shader(material, node_group, empty=False):
+    """Group nodes of the shared settings added between the surface shaders and the outputs,
+    also on the outputs without a shader if empty"""
     nodes, links = material.node_tree.nodes, material.node_tree.links
     groups = []
     for output in [n for n in nodes if n.type == "OUTPUT_MATERIAL"]:
         surface = output.inputs["Surface"]
-        if not surface.is_linked:
+        if not (surface.is_linked or empty):
             continue
         group = nodes.new("ShaderNodeGroup")
         group.node_tree = settings_group(node_group)
         group.location = output.location
         output.location.x += 250
-        links.new(surface.links[0].from_socket, group.inputs["Shader"])
+        if surface.is_linked:
+            links.new(surface.links[0].from_socket, group.inputs["Shader"])
         links.new(group.outputs["Shader"], surface)
         groups.append(group)
     return groups

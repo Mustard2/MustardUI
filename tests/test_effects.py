@@ -581,6 +581,16 @@ class TestHexDissolve(BlenderTestCase):
         scene.frame_set(start + 10)
         self.assertGreater(control.scale.x, 0.5)
 
+    # An output without a shader dissolves too, and has none again after the removal
+    def test_output_without_shader(self):
+        output = self.cloth.node_tree.nodes.new("ShaderNodeOutputMaterial")
+        bpy.ops.mustardui.model_toolkit_hex_dissolve(duration=10)
+        group = output.inputs["Surface"].links[0].from_node
+        self.assertFalse(group.inputs["Shader"].is_linked)
+        self.assertTrue(group.inputs["Control"].is_linked)
+        bpy.ops.mustardui.model_toolkit_remove_hex_dissolve()
+        self.assertFalse(output.inputs["Surface"].is_linked)
+
     # Showing shrinks the Control instead
     def test_show(self):
         bpy.ops.mustardui.model_toolkit_hex_dissolve(duration=10, show=True)
@@ -5482,16 +5492,6 @@ class TestAura(BlenderTestCase):
         set_active(self.body)
         self.shirt.select_set(True)
 
-    def add(self, **settings):
-        bpy.ops.mustardui.model_toolkit_aura(
-            **{"pulses": 2, "duration": 10, "pause": 4, **settings}
-        )
-        return effect.modifier_input(self.body.modifiers["Aura"], "Control").value
-
-    def evaluated(self, obj, frame):
-        self.scene.frame_set(frame)
-        return obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
-
     # In Scene Effects right after its button, which unlike bpy.ops runs no update of its own
     def test_scene_effects_after_button(self):
         prefs = bpy.context.preferences.addons[ADDON].preferences
@@ -5503,6 +5503,16 @@ class TestAura(BlenderTestCase):
         operator.execute(op, bpy.context)
         items = self.scene.MustardUI_SceneEffects
         self.assertIn(("Aura", self.body), [(x.effect, x.object) for x in items])
+
+    def add(self, **settings):
+        bpy.ops.mustardui.model_toolkit_aura(
+            **{"pulses": 2, "duration": 10, "pause": 4, **settings}
+        )
+        return effect.modifier_input(self.body.modifiers["Aura"], "Control").value
+
+    def evaluated(self, obj, frame):
+        self.scene.frame_set(frame)
+        return obj.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
 
     def stepped(self, obj, frame):
         """Geometry at the frame after all the frames from the start, for the sparks to simulate"""
