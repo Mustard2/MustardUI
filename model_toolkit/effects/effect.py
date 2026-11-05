@@ -277,29 +277,8 @@ def untint(material, group):
     nodes.remove(group)
 
 
-def remove_with_colliders(context, node_group):
-    """Remove the effect from the selected objects, and its Colliders not used anymore"""
-    collections = set()
-    for obj in context.selected_objects:
-        for modifier in [m for m in obj.modifiers if is_effect(m, node_group)]:
-            collections.add(modifier_input(modifier, "Colliders").value)
-            obj.modifiers.remove(modifier)
-
-    used = {
-        modifier_input(m, "Colliders").value
-        for x in bpy.data.objects
-        for m in x.modifiers
-        if is_effect(m, node_group)
-    }
-    for collection in collections - used - {None}:
-        # The objects only in the collection kept in the scene
-        for obj in [x for x in collection.objects if len(x.users_collection) == 1]:
-            context.scene.collection.objects.link(obj)
-        bpy.data.collections.remove(collection)
-
-
 class RemoveEffect:
-    """Base of the operators removing an effect, and its Controls not used anymore"""
+    """Base of the operators removing an effect, and its Controls and Colliders not used anymore"""
 
     bl_options = {"UNDO"}
 
@@ -308,6 +287,7 @@ class RemoveEffect:
     creators_type = ""
     done = "removed"
     controls = True
+    colliders = False
 
     @classmethod
     def poll(cls, context):
@@ -316,22 +296,28 @@ class RemoveEffect:
         )
 
     def execute(self, context):
-        controls = set()
+        controls, colliders = set(), set()
         for obj in context.selected_objects:
             for modifier in [m for m in obj.modifiers if is_effect(m, self.node_group)]:
                 if self.controls:
                     controls.add(modifier_input(modifier, "Control").value)
+                if self.colliders:
+                    colliders.add(modifier_input(modifier, "Colliders").value)
                 obj.modifiers.remove(modifier)
 
-        used = {
-            modifier_input(m, "Control").value
-            for x in bpy.data.objects
-            for m in x.modifiers
-            if is_effect(m, self.node_group)
-        }
-        for control in controls - used - {None}:
+        remaining = [
+            m for x in bpy.data.objects for m in x.modifiers if is_effect(m, self.node_group)
+        ]
+        used_controls = {modifier_input(m, "Control").value for m in remaining if controls}
+        used_colliders = {modifier_input(m, "Colliders").value for m in remaining if colliders}
+        for control in controls - used_controls - {None}:
             if control.MustardUI_tools_creators_type == self.creators_type:
                 bpy.data.objects.remove(control)
+        for collection in colliders - used_colliders - {None}:
+            # The objects only in the collection kept in the scene
+            for obj in [x for x in collection.objects if len(x.users_collection) == 1]:
+                context.scene.collection.objects.link(obj)
+            bpy.data.collections.remove(collection)
 
         self.report({"INFO"}, f"MustardUI - {self.effect} {self.done}.")
         return {"FINISHED"}

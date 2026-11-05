@@ -4,11 +4,10 @@ import bpy
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
 from .effect import (
+    RemoveEffect,
     colliders_scale,
     effects_available,
-    is_effect,
     modifier_input,
-    remove_with_colliders,
 )
 
 NODE_GROUP = "MustardUI Dust Puff"
@@ -136,21 +135,16 @@ class MustardUI_ModelToolkit_DustPuff(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_ModelToolkit_RemoveDustPuff(bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveDustPuff(RemoveEffect, bpy.types.Operator):
     """Remove the Dust Puff from the selected meshes, and the Colliders collections not used anymore"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_remove_dust_puff"
     bl_label = "Remove Dust Puff"
-    bl_options = {"UNDO"}
 
-    @classmethod
-    def poll(cls, context):
-        return any(is_effect(m, NODE_GROUP) for x in context.selected_objects for m in x.modifiers)
-
-    def execute(self, context):
-        remove_with_colliders(context, NODE_GROUP)
-        self.report({"INFO"}, "MustardUI - Dust Puff removed.")
-        return {"FINISHED"}
+    effect = "Dust Puff"
+    node_group = NODE_GROUP
+    controls = False
+    colliders = True
 
 
 def register():

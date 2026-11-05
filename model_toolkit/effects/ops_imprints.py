@@ -4,13 +4,13 @@ import bpy
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
 from .effect import (
+    RemoveEffect,
     add_effect_modifier,
     colliders_scale,
     effects_available,
     is_effect,
     materials,
     modifier_input,
-    remove_with_colliders,
     shader_nodes,
     subdivision_levels,
     tint,
@@ -160,28 +160,26 @@ class MustardUI_ModelToolkit_Imprints(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_ModelToolkit_RemoveImprints(bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveImprints(RemoveEffect, bpy.types.Operator):
     """Remove the Imprints from the selected meshes, the tint from their materials not used by other meshes with Imprints, and the Colliders collections not used anymore"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_remove_imprints"
     bl_label = "Remove Imprints"
-    bl_options = {"UNDO"}
 
-    @classmethod
-    def poll(cls, context):
-        return any(is_effect(m, NODE_GROUP) for x in context.selected_objects for m in x.modifiers)
+    effect = "Imprints"
+    node_group = NODE_GROUP
+    controls = False
+    colliders = True
 
     def execute(self, context):
-        remove_with_colliders(context, NODE_GROUP)
+        result = super().execute(context)
         imprinted = [
             x for x in bpy.data.objects if any(is_effect(m, NODE_GROUP) for m in x.modifiers)
         ]
         for material in materials(context.selected_objects) - materials(imprinted):
             for group in shader_nodes(material, TINT):
                 untint(material, group)
-
-        self.report({"INFO"}, "MustardUI - Imprints removed.")
-        return {"FINISHED"}
+        return result
 
 
 def register():

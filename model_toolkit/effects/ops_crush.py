@@ -7,11 +7,10 @@ from mathutils import Vector
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
 from .effect import (
+    RemoveEffect,
     add_effect_modifier,
     effects_available,
-    is_effect,
     modifier_input,
-    remove_with_colliders,
 )
 
 NODE_GROUP = "MustardUI Crush"
@@ -164,21 +163,16 @@ class MustardUI_ModelToolkit_Crush(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_ModelToolkit_RemoveCrush(bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveCrush(RemoveEffect, bpy.types.Operator):
     """Remove the Crush from the selected meshes, and the Colliders collections not used anymore"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_remove_crush"
     bl_label = "Remove Crush"
-    bl_options = {"UNDO"}
 
-    @classmethod
-    def poll(cls, context):
-        return any(is_effect(m, NODE_GROUP) for x in context.selected_objects for m in x.modifiers)
-
-    def execute(self, context):
-        remove_with_colliders(context, NODE_GROUP)
-        self.report({"INFO"}, "MustardUI - Crush removed.")
-        return {"FINISHED"}
+    effect = "Crush"
+    node_group = NODE_GROUP
+    controls = False
+    colliders = True
 
 
 def register():

@@ -5,6 +5,7 @@ import bpy
 from ...model_selection.active_object import ModelMode, mustardui_active_object
 from . import ops_wet
 from .effect import (
+    RemoveEffect,
     add_effect_modifier,
     colliders_scale,
     effects_available,
@@ -12,7 +13,6 @@ from .effect import (
     materials,
     modifier_input,
     new_control,
-    remove_with_colliders,
     shader_nodes,
     subdivision_levels,
     unwrap_shader,
@@ -99,37 +99,22 @@ class MustardUI_ModelToolkit_Footprints(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class MustardUI_ModelToolkit_RemoveFootprints(bpy.types.Operator):
+class MustardUI_ModelToolkit_RemoveFootprints(RemoveEffect, bpy.types.Operator):
     """Remove the Wet Footprints from the selected meshes, the film from their materials not used by other meshes with them, and the Colliders and Controls not used anymore"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_remove_footprints"
     bl_label = "Remove Wet Footprints"
-    bl_options = {"UNDO"}
 
-    @classmethod
-    def poll(cls, context):
-        return any(is_effect(m, NODE_GROUP) for x in context.selected_objects for m in x.modifiers)
+    effect = "Wet Footprints"
+    node_group = NODE_GROUP
+    creators_type = CONTROL_TYPE
+    colliders = True
 
     def execute(self, context):
-        controls = {
-            modifier_input(m, "Control").value
-            for x in context.selected_objects
-            for m in x.modifiers
-            if is_effect(m, NODE_GROUP)
-        }
-        remove_with_colliders(context, NODE_GROUP)
+        result = super().execute(context)
         printed = [
             x for x in bpy.data.objects if any(is_effect(m, NODE_GROUP) for m in x.modifiers)
         ]
-        used = {
-            modifier_input(m, "Control").value
-            for x in printed
-            for m in x.modifiers
-            if is_effect(m, NODE_GROUP)
-        }
-        for control in controls - used - {None}:
-            if control.MustardUI_tools_creators_type == CONTROL_TYPE:
-                bpy.data.objects.remove(control)
         for material in materials(context.selected_objects) - materials(printed):
             for group in shader_nodes(material, FILM):
                 unwrap_shader(material, group)
@@ -137,9 +122,7 @@ class MustardUI_ModelToolkit_RemoveFootprints(bpy.types.Operator):
             for node in [n for n in material.node_tree.nodes if n.get(ops_wet.NORMAL_TAG)]:
                 if not node.outputs["Normal"].is_linked:
                     material.node_tree.nodes.remove(node)
-
-        self.report({"INFO"}, "MustardUI - Wet Footprints removed.")
-        return {"FINISHED"}
+        return result
 
 
 def register():
