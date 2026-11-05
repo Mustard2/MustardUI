@@ -229,6 +229,8 @@ class TestUI(BlenderTestCase):
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_bulge()
         set_active(cube)
+        bpy.ops.mustardui.model_toolkit_shrinkwrap()
+        set_active(cube)
         bpy.ops.mustardui.model_toolkit_dust_puff()
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_footprints(puddle=True)

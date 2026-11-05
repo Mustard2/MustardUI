@@ -20,6 +20,8 @@ from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
 effect = importlib.import_module(ADDON + ".model_toolkit.effects.effect")
+ops_shrinkwrap = importlib.import_module(ADDON + ".model_toolkit.effects.ops_shrinkwrap")
+geometry_nodes = importlib.import_module(ADDON + ".misc.geometry_nodes")
 
 
 class TestDisintegration(BlenderTestCase):
@@ -50,6 +52,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dirt.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_bulge.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_shrinkwrap.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_motes.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_crush.poll())
@@ -3502,6 +3505,385 @@ class TestBulge(BlenderTestCase):
         self.assertNotIn(name, bpy.data.collections)
         self.assertIn(self.rod, list(bpy.context.scene.objects))
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_bulge.poll())
+
+    # Without other selected meshes the Colliders are empty, to be filled
+    def test_no_colliders(self):
+        self.rod.select_set(False)
+        modifier = self.add()
+        self.assertEqual(list(effect.modifier_input(modifier, "Colliders").value.objects), [])
+        np.testing.assert_allclose(self.offsets(), 0.0, atol=1e-6)
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestShrinkwrap(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        # A 10 cm sheet facing up, 2 mm apart vertices, and a 1 cm radius rod along X over it
+        bm = bmesh.new()
+        bmesh.ops.create_grid(bm, x_segments=50, y_segments=50, size=0.05)
+        self.sheet = new_object("Sheet", bpy.data.meshes.new("Sheet"))
+        bm.to_mesh(self.sheet.data)
+        bm.free()
+        bm = bmesh.new()
+        bmesh.ops.create_cone(bm, cap_ends=True, segments=32, radius1=0.01, radius2=0.01, depth=0.2)
+        bmesh.ops.rotate(bm, verts=bm.verts, matrix=Matrix.Rotation(np.pi / 2, 3, "Y"))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        self.rod = new_object("Rod", bpy.data.meshes.new("Rod"))
+        bm.to_mesh(self.rod.data)
+        bm.free()
+        self.co = np.array([v.co[:] for v in self.sheet.data.vertices])
+        set_active(self.sheet)
+        self.rod.select_set(True)
+
+    def offsets(self):
+        """Offsets of the evaluated vertices from the original ones"""
+        bpy.context.view_layer.update()
+        data = self.sheet.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(data.vertices) * 3)
+        data.vertices.foreach_get("co", co)
+        return co.reshape(-1, 3) - self.co
+
+    def add(self, **settings):
+        bpy.ops.mustardui.model_toolkit_shrinkwrap(**settings)
+        return self.sheet.modifiers["Shrinkwrap"]
+
+    def set_inputs(self, modifier, **values):
+        for name, value in values.items():
+            effect.modifier_input(modifier, name.replace("_", " ")).value = value
+        self.sheet.update_tag()
+
+    def depth(self, offset):
+        """How deep the moved vertices are inside the rod"""
+        co = self.co + offset - np.array(self.rod.location)
+        return 0.01 - np.hypot(co[:, 1], co[:, 2])
+
+    # 2 mm over the sheet, inside the Thickness, the rod pushes it softly away, never pulling it
+    def test_outside(self):
+        self.rod.location.z = 0.012
+        modifier = self.add()
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.rod])
+        self.assertIn(colliders, list(bpy.context.scene.collection.children))
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, 1)
+
+        offset = self.offsets()
+        under = np.abs(self.co[:, 1]) < 1e-4
+        # 3 e^(-1/3) - 2 mm
+        np.testing.assert_allclose(offset[under, 2], -0.00015, atol=5e-5)
+        self.assertLess(offset[:, 2].max(), 1e-6)
+        np.testing.assert_allclose(offset[np.abs(self.co[:, 1]) > 0.04], 0.0, atol=1e-6)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Not touched without the Thickness
+        self.set_inputs(modifier, Thickness=0.0)
+        np.testing.assert_allclose(self.offsets(), 0.0, atol=1e-6)
+
+    # Sunk into the sheet, the rod pushes it out softly, the mesh around following it and the
+    # pushed volume rolling up beside it
+    def test_push_out(self):
+        self.rod.location.z = 0.007
+        modifier = self.add()
+        self.assertGreater((self.depth(np.zeros_like(self.co)) > 1e-3).sum(), 0)
+        offset = self.offsets()
+        self.assertLess(self.depth(offset).max(), 1e-4)
+        under = np.abs(self.co[:, 1]) < 1e-4
+        # Out of the rod by 3 e^(-2) mm
+        np.testing.assert_allclose(offset[under, 2], -0.0034, atol=2e-4)
+        np.testing.assert_allclose(offset[np.abs(self.co[:, 1]) > 0.04], 0.0, atol=1e-6)
+
+        self.set_inputs(modifier, Roll=0.0)
+        flat = self.offsets()
+        self.assertLess(self.depth(flat).max(), 1e-4)
+        line = np.flatnonzero((np.abs(self.co[:, 0]) < 1e-4) & (self.co[:, 1] > 0.0))
+        line = line[np.argsort(self.co[line, 1])]
+        # Rolling up beside the part moved as a whole, out to 11 mm from the middle
+        beside = (self.co[line, 1] > 0.011) & (self.co[line, 1] < 0.015)
+        rolled = (offset - flat)[line[beside], 2]
+        self.assertGreater(rolled.min(), 1e-4)
+        self.assertGreater(rolled.max(), 1.5e-4)
+        # Without it pushed less away from the rod
+        pushes = -flat[line, 2]
+        self.assertTrue((np.diff(pushes) <= 1e-5).all())
+        self.assertGreater(pushes[5], 1e-4)
+
+    # Firm, the sheet under the rod is pushed as a whole by its deepest point, keeping its shape,
+    # else it flattens on the rod
+    def test_firmness(self):
+        self.rod.location.z = 0.007
+        modifier = self.add()
+        self.assertEqual(effect.modifier_input(modifier, "Firmness").value, 1.0)
+        beside = (np.abs(self.co[:, 0]) < 0.03) & np.isclose(np.abs(self.co[:, 1]), 0.006)
+        firm = self.offsets()
+        self.assertLess(firm[beside, 2].max(), -0.0023)
+        self.set_inputs(modifier, Firmness=0.0)
+        soft = self.offsets()
+        self.assertLess(self.depth(soft).max(), 1e-4)
+        self.assertGreater(soft[beside, 2].min(), firm[beside, 2].max() + 5e-4)
+
+    # Firm, the sheet moves together only near where it is pushed: tilted, the rod sunk about
+    # 4 mm at one end and 0.5 mm at the other pushes the shallow end much less
+    def test_firmness_local(self):
+        self.rod.rotation_euler.y = 0.035
+        self.rod.location.z = 0.0078
+        self.add()
+        offset = self.offsets()
+        under = np.abs(self.co[:, 1]) < 1e-4
+        deep = -offset[under & (self.co[:, 0] > 0.035), 2].mean()
+        shallow = -offset[under & (self.co[:, 0] < -0.035), 2].mean()
+        self.assertGreater(deep, 0.003)
+        self.assertLess(shallow, deep * 0.5)
+        # Out of the tilted rod, in its space
+        local = np.array(self.rod.matrix_world.inverted())
+        co = (self.co + offset) @ local[:3, :3].T + local[:3, 3]
+        self.assertGreater(np.hypot(co[:, 1], co[:, 2]).min(), 0.01 - 1e-4)
+
+    def tube(self, radius=0.006):
+        """A 2 cm tall tube around the upright rod, 6 mm wide, inside it, e.g. a hole"""
+        bm = bmesh.new()
+        bmesh.ops.create_cone(
+            bm, cap_ends=False, segments=32, radius1=radius, radius2=radius, depth=0.02
+        )
+        bmesh.ops.subdivide_edges(
+            bm, edges=[e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 1e-6], cuts=9
+        )
+        bm.to_mesh(self.sheet.data)
+        bm.free()
+        self.co = np.array([v.co[:] for v in self.sheet.data.vertices])
+        self.rod.rotation_euler.y = np.pi / 2
+
+    # With an Opening, the mesh in the Zone is moved out from its axis, out of the rod
+    def test_opening(self):
+        self.tube()
+        modifier = self.add(opening=True)
+        zone = effect.modifier_input(modifier, "Zone").value
+        self.assertTrue(effect.modifier_input(modifier, "Opening").value)
+        np.testing.assert_allclose(zone.matrix_world.translation, (0.0, 0.0, 0.0), atol=1e-6)
+        offset = self.offsets()
+        co = self.co + offset
+        middle = np.abs(self.co[:, 2]) < 0.003
+        self.assertGreater(np.hypot(co[middle, 0], co[middle, 1]).min(), 0.01 - 1e-4)
+        # Straight out from the axis
+        np.testing.assert_allclose(offset[:, 2], 0.0, atol=1e-6)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Smooth as the rod moves, never jumping more than it does
+        prev = co
+        for step in range(1, 9):
+            self.rod.location.x = step * 0.0005
+            co = self.co + self.offsets()
+            self.assertLess(np.linalg.norm(co - prev, axis=1).max(), 0.0005 * 2)
+            prev = co
+
+        # Removed with the effect
+        name = zone.name
+        bpy.ops.mustardui.model_toolkit_remove_shrinkwrap()
+        self.assertNotIn(name, bpy.data.objects)
+
+        # Each button adding it with or without, not remembering the last one
+        properties = bpy.ops.mustardui.model_toolkit_shrinkwrap.get_rna_type().properties
+        self.assertTrue(properties["opening"].is_skip_save)
+        self.assertTrue(properties["friction"].is_skip_save)
+
+    # With an Opening, the mesh in the Zone already clear of the rod is not moved
+    def test_opening_clear(self):
+        self.tube(radius=0.014)
+        self.add(opening=True)
+        np.testing.assert_allclose(self.offsets(), 0.0, atol=1e-6)
+
+    # With an Opening, the Zone is placed at the opening, not at the back of the cavity behind it
+    def test_opening_cavity(self):
+        self.tube()
+        bm = bmesh.new()
+        bm.from_mesh(self.sheet.data)
+        bmesh.ops.create_circle(
+            bm, cap_ends=True, segments=32, radius=0.02, matrix=Matrix.Translation((0, 0, -0.03))
+        )
+        bm.to_mesh(self.sheet.data)
+        bm.free()
+        self.co = np.array([v.co[:] for v in self.sheet.data.vertices])
+        zone = effect.modifier_input(self.add(opening=True), "Zone").value
+        np.testing.assert_allclose(zone.matrix_world.translation, (0.0, 0.0, 0.0), atol=1e-6)
+
+    # With an Opening, sliding along its axis the rod drags the mesh along up to the Stretch
+    def test_opening_friction(self):
+        self.tube()
+        for frame, z in ((1, 0.0), (11, 0.02)):
+            self.rod.location.z = z
+            self.rod.keyframe_insert("location", index=2, frame=frame)
+        bpy.context.scene.frame_set(1)
+        modifier = self.add(opening=True)
+        self.assertEqual(effect.modifier_input(modifier, "Damping").value, 1.0)
+        stretch = effect.modifier_input(modifier, "Stretch").value
+        middle = np.abs(self.co[:, 2]) < 0.003
+        drags = []
+        for frame in range(1, 12):
+            bpy.context.scene.frame_set(frame)
+            drags.append(self.offsets()[middle, 2].mean())
+        self.assertGreater(drags[-1], stretch * 0.5)
+        self.assertLess(max(drags), stretch + 1e-4)
+        self.set_inputs(modifier, Friction=False)
+        np.testing.assert_allclose(self.offsets()[:, 2], 0.0, atol=1e-6)
+
+    # The inputs the Opening switches off are greyed out in the add-on panels, like Blender does
+    def test_used_inputs(self):
+        modifier = self.add()
+        names = {
+            x.identifier: x.name
+            for x in modifier.node_group.interface.items_tree
+            if x.item_type == "SOCKET" and x.in_out == "INPUT"
+        }
+
+        def unused():
+            used = geometry_nodes.used_inputs(modifier)
+            return {names[x] for x in names if x not in used}
+
+        self.assertEqual(unused(), {"Zone"})
+        effect.modifier_input(modifier, "Opening").value = True
+        self.assertEqual(unused(), {"Smooth Normals"})
+
+    # Only the mesh near the rod moves: nothing away from it, nothing past twice the Spread
+    def test_untouched(self):
+        self.rod.location.z = 0.02
+        modifier = self.add()
+        np.testing.assert_allclose(self.offsets(), 0.0, atol=1e-7)
+        self.rod.location.z = 0.007
+        offset = self.offsets()
+        side = np.abs(self.co[:, 1])
+        self.assertGreater(np.abs(offset[side < 0.005]).max(), 0.003)
+        np.testing.assert_allclose(offset[side > 0.04], 0.0, atol=1e-7)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # Beside the end of an upright rod, in the plane of its cap, the sheet is not inside it
+    def test_beside_end(self):
+        self.rod.rotation_euler.y = np.pi / 2
+        # Its rim 1 cm from the edge of the sheet, which is 1 mm past the plane of its cap
+        self.rod.location = (0.07, 0.0, 0.099)
+        self.add()
+        np.testing.assert_allclose(self.offsets(), 0.0, atol=1e-7)
+
+    # Mirrored by a negative scale, its normals facing in, the rod still pushes the sheet out
+    def test_mirrored(self):
+        self.rod.scale = (-1.0, 1.0, 1.0)
+        self.rod.location.z = 0.012
+        modifier = self.add()
+        self.assertLess(self.offsets()[:, 2].max(), 1e-6)
+        self.rod.location.z = 0.007
+        offset = self.offsets()
+        self.assertLess(self.depth(offset).max(), 1e-4)
+        np.testing.assert_allclose(offset[np.abs(self.co[:, 1]) < 1e-4, 2], -0.0034, atol=2e-4)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # Pushing the upper of two sheets, e.g. the lips, does not move the lower one across the gap
+    def test_gap(self):
+        bm = bmesh.new()
+        for z, flip in ((0.006, True), (-0.008, False)):
+            sheet = bmesh.ops.create_grid(bm, x_segments=50, y_segments=50, size=0.05)["verts"]
+            bmesh.ops.translate(bm, vec=(0.0, 0.0, z), verts=sheet)
+            if flip:
+                bmesh.ops.reverse_faces(bm, faces=list({f for v in sheet for f in v.link_faces}))
+        bm.to_mesh(self.sheet.data)
+        bm.free()
+        self.co = np.array([v.co[:] for v in self.sheet.data.vertices])
+        # 1 mm into the upper sheet, 5 mm from the lower one
+        self.rod.scale = (1.0, 0.5, 0.5)
+        self.rod.location.z = 0.002
+        modifier = self.add()
+        self.set_inputs(modifier, Spread=0.03)
+        offset = self.offsets()
+        upper = self.co[:, 2] > 0.0
+        self.assertGreater(offset[upper, 2].max(), 0.0008)
+        np.testing.assert_allclose(offset[~upper], 0.0, atol=1e-6)
+
+    # Only the Vertex Group is pushed, the rest following it
+    def test_mask(self):
+        self.rod.location.z = 0.007
+        group = self.sheet.vertex_groups.new(name="Lips")
+        group.add([i for i, x in enumerate(self.co) if x[0] < 0.0], 1.0, "REPLACE")
+        modifier = self.add()
+        mask = effect.modifier_input(modifier, "Mask")
+        mask.type = "ATTRIBUTE"
+        mask.attribute_name = "Lips"
+        self.sheet.update_tag()
+        offset = self.offsets()
+        under = np.abs(self.co[:, 1]) < 1e-4
+        np.testing.assert_allclose(offset[under & (self.co[:, 0] < -0.02), 2], -0.0034, atol=2e-4)
+        self.assertGreater(self.depth(offset)[under & (self.co[:, 0] > 0.04)].min(), 0.002)
+
+    def drag(self, frames):
+        """Mean offset along X of the vertices under the rod at the frames, kept out of it"""
+        under = np.abs(self.co[:, 1]) < 0.003
+        offsets = []
+        for frame in frames:
+            bpy.context.scene.frame_set(frame)
+            offset = self.offsets()
+            self.assertLess(self.depth(offset).max(), 1e-4)
+            offsets.append(offset[under, 0].mean())
+        return np.array(offsets)
+
+    def slide(self):
+        """Rod pressed into the sheet sliding 2 cm along X in frames 1-11, lifted away by 14"""
+        # Smooth, its normals bending over its long faces
+        self.rod.data.shade_smooth()
+        self.rod.location = (0.0, 0.0, 0.008)
+        for frame, location in ((1, (0, 0, 0.008)), (11, (0.02, 0, 0.008)), (14, (0.02, 0, 0.05))):
+            self.rod.location = location
+            self.rod.keyframe_insert("location", frame=frame)
+        bpy.context.scene.frame_set(1)
+
+    # Sliding along, the rod drags the contact up to the Stretch, released it springs back
+    def test_friction(self):
+        self.slide()
+        modifier = self.add()
+        self.assertTrue(effect.modifier_input(modifier, "Friction").value)
+        dragged = self.drag(range(1, 41))
+        stretch = effect.modifier_input(modifier, "Stretch").value
+        self.assertGreater(dragged[10], stretch * 0.5)
+        self.assertLess(dragged.max(), stretch + 1e-4)
+        # Released past the rest and back
+        self.assertLess(dragged[12:].min(), -1e-4)
+        self.assertLess(np.abs(dragged[-1]), 1e-4)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        self.set_inputs(modifier, Friction=False)
+        np.testing.assert_allclose(self.drag(range(1, 12)), 0.0, atol=5e-5)
+
+    # Added without Friction, the rod slides without dragging the sheet
+    def test_without_friction(self):
+        self.slide()
+        modifier = self.add(friction=False)
+        self.assertFalse(effect.modifier_input(modifier, "Friction").value)
+        np.testing.assert_allclose(self.drag(range(1, 12)), 0.0, atol=5e-5)
+
+    # An older node group in the file is replaced by the bundled one, with its modifiers
+    def test_old_version(self):
+        group = bpy.data.node_groups.new("MustardUI Shrinkwrap", "GeometryNodeTree")
+        group.is_modifier = True
+        other = new_mesh_object("Other")
+        other.modifiers.new("Shrinkwrap", "NODES").node_group = group
+        modifier = self.add()
+        new = bpy.data.node_groups["MustardUI Shrinkwrap"]
+        self.assertEqual(new["MustardUI Version"], ops_shrinkwrap.VERSION)
+        self.assertIs(modifier.node_group, new)
+        self.assertIs(other.modifiers["Shrinkwrap"].node_group, new)
+        self.assertEqual(
+            len([x for x in bpy.data.node_groups if x.name.startswith("MustardUI Shrinkwrap")]), 1
+        )
+
+    # The distances are in the space of the mesh
+    def test_scale(self):
+        self.sheet.scale = (2.0, 2.0, 2.0)
+        modifier = self.add()
+        self.assertAlmostEqual(effect.modifier_input(modifier, "Thickness").value, 0.0015)
+
+    # The Colliders collection goes with the effect, keeping the objects only in it in the scene
+    def test_remove(self):
+        modifier = self.add()
+        name = effect.modifier_input(modifier, "Colliders").value.name
+        bpy.ops.mustardui.model_toolkit_remove_shrinkwrap()
+        self.assertNotIn("Shrinkwrap", self.sheet.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertIn(self.rod, list(bpy.context.scene.objects))
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_shrinkwrap.poll())
 
     # Without other selected meshes the Colliders are empty, to be filled
     def test_no_colliders(self):

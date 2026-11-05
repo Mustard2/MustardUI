@@ -141,6 +141,62 @@ def draw_geometry_nodes_modifier_inputs(layout, drawable):
         layout.prop(target, prop_path, text=item.name)
 
 
+# Inputs used by the node groups, by their state and the values switching them
+_used_inputs = {}
+
+
+def used_inputs(modifier):
+    """Identifiers of the inputs reaching the output of the modifier node group, through the
+    branches the Switch nodes pick by its inputs, the others greyed out like Blender does"""
+    tree, inputs = modifier.node_group, modifier.properties.inputs
+    values = {
+        x.identifier: getattr(inputs, x.identifier).value
+        for x in tree.interface.items_tree
+        if x.item_type == "SOCKET"
+        and x.in_out == "INPUT"
+        and x.socket_type in {"NodeSocketBool", "NodeSocketInt"}
+        and hasattr(getattr(inputs, x.identifier, None), "value")
+    }
+    key = (tree.name, len(tree.nodes), len(tree.links), tuple(sorted(values.items())))
+    if key in _used_inputs:
+        return _used_inputs[key]
+
+    links = {}
+    for link in tree.links:
+        if not link.is_muted:
+            links.setdefault(link.to_socket.as_pointer(), []).append(link)
+
+    def constant(socket):
+        """Value of an input socket set or taken from the modifier, else None"""
+        if not socket.is_linked:
+            return getattr(socket, "default_value", None)
+        sources = links.get(socket.as_pointer(), [])
+        if len(sources) == 1 and sources[0].from_node.type == "GROUP_INPUT":
+            return values.get(sources[0].from_socket.identifier)
+        return None
+
+    used, seen = set(), set()
+    stack = [n for n in tree.nodes if n.type == "GROUP_OUTPUT" and n.is_active_output]
+    while stack:
+        node = stack.pop()
+        if node.as_pointer() in seen:
+            continue
+        seen.add(node.as_pointer())
+        sockets = [x for x in node.inputs if x.enabled]
+        if node.bl_idname == "GeometryNodeSwitch" and not node.mute:
+            picked = constant(node.inputs[0])
+            if picked is not None:
+                sockets = [node.inputs[0], node.inputs[2 if picked else 1]]
+        for socket in sockets:
+            for link in links.get(socket.as_pointer(), []):
+                if link.from_node.type == "GROUP_INPUT":
+                    used.add(link.from_socket.identifier)
+                else:
+                    stack.append(link.from_node)
+    _used_inputs[key] = used
+    return used
+
+
 def draw_modifier_inputs(layout, modifier, select_objects=False, collisions=None):
     """Inputs of a Geometry Nodes modifier, in the panels of its node group"""
     if not hasattr(modifier, "properties"):
@@ -149,6 +205,7 @@ def draw_modifier_inputs(layout, modifier, select_objects=False, collisions=None
         return
 
     inputs, panels = modifier.properties.inputs, modifier.properties.panels
+    used = used_inputs(modifier)
     # Layout of the open panels, the root one being 0
     bodies = {0: layout}
     for item in modifier.node_group.interface.items_tree:
@@ -175,10 +232,11 @@ def draw_modifier_inputs(layout, modifier, select_objects=False, collisions=None
             if toggle is None:
                 header.label(text=item.name)
                 continue
+            header.active = toggle.identifier in used
             toggle = getattr(inputs, toggle.identifier)
             header.prop(toggle, "value", text=item.name)
             if bodies[item.persistent_uid]:
-                bodies[item.persistent_uid].active = toggle.value
+                bodies[item.persistent_uid].active = toggle.value and header.active
             continue
         if item.in_out == "OUTPUT" or item.hide_value or item.hide_in_modifier:
             continue
@@ -189,6 +247,7 @@ def draw_modifier_inputs(layout, modifier, select_objects=False, collisions=None
         # Vectors in a column, not to squeeze their values
         vector = item.socket_type == "NodeSocketVector"
         row = body.column(align=True) if vector else body.row(align=True)
+        row.active = item.identifier in used
         if getattr(socket, "type", "") == "ATTRIBUTE":
             row.prop(socket, "attribute_name", text=item.name)
         else:

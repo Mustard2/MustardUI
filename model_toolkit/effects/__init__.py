@@ -22,6 +22,7 @@ from . import (
     ops_select_object,
     ops_shatter,
     ops_shockwave,
+    ops_shrinkwrap,
     ops_squish,
     ops_sticky_liquid,
     ops_sticky_spurts,
@@ -55,6 +56,7 @@ def register():
     ops_marks.register()
     ops_imprints.register()
     ops_bulge.register()
+    ops_shrinkwrap.register()
     ops_dust_puff.register()
     ops_shockwave.register()
     ops_footprints.register()
@@ -78,6 +80,7 @@ def unregister():
     ops_shockwave.unregister()
     ops_footprints.unregister()
     ops_dust_puff.unregister()
+    ops_shrinkwrap.unregister()
     ops_bulge.unregister()
     ops_imprints.unregister()
     ops_marks.unregister()

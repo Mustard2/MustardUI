@@ -392,6 +392,15 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row = layout.row(align=True)
         row.label(text="", icon="GEOMETRY_NODES")
         row.separator()
+        row.operator("mustardui.model_toolkit_shrinkwrap", text="Shrinkwrap", icon="MOD_SHRINKWRAP")
+        row.operator(
+            "mustardui.model_toolkit_shrinkwrap", text="", icon="MESH_TORUS"
+        ).opening = True
+        row.operator("mustardui.model_toolkit_remove_shrinkwrap", text="", icon="X")
+
+        row = layout.row(align=True)
+        row.label(text="", icon="GEOMETRY_NODES")
+        row.separator()
         row.operator("mustardui.model_toolkit_dust_puff", text="Dust Puff", icon="FORCE_TURBULENCE")
         row.operator("mustardui.model_toolkit_remove_dust_puff", text="", icon="X")
 

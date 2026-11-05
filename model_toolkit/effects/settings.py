@@ -24,6 +24,7 @@ from . import (
     ops_ripple,
     ops_shatter,
     ops_shockwave,
+    ops_shrinkwrap,
     ops_sticky_liquid,
     ops_sticky_spurts,
     ops_sticky_strands,
@@ -45,6 +46,7 @@ EFFECTS = {
     "Marks": ("TPAINT_HLT", ops_marks.NODE_GROUP, None, "remove_marks"),
     "Imprints": ("MOD_DISPLACE", ops_imprints.NODE_GROUP, None, "remove_imprints"),
     "Bulge": ("SPHERECURVE", ops_bulge.NODE_GROUP, None, "remove_bulge"),
+    "Shrinkwrap": ("MOD_SHRINKWRAP", ops_shrinkwrap.NODE_GROUP, None, "remove_shrinkwrap"),
     "Dust Puff": ("FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None, "remove_dust_puff"),
     "Wet Footprints": (
         "MOD_DYNAMICPAINT",
