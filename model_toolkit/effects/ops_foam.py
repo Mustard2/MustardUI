@@ -11,6 +11,7 @@ from .effect import (
     modifier_input,
     new_control,
     parent_control,
+    with_vertices,
 )
 
 NODE_GROUP = "MustardUI Foam"
@@ -83,9 +84,9 @@ class MustardUI_ModelToolkit_Foam(bpy.types.Operator):
         return effects_available() and meshes_or_control(context, CONTROL_TYPE)
 
     def execute(self, context):
-        objects = [x for x in context.selected_objects if x.type == "MESH"]
+        objects = with_vertices(context, [x for x in context.selected_objects if x.type == "MESH"])
         if not objects:
-            self.report({"WARNING"}, "MustardUI - Select the meshes first.")
+            self.report({"WARNING"}, "MustardUI - Select meshes with vertices first.")
             return {"CANCELLED"}
 
         with bpy.data.libraries.load(RESOURCE) as (_, data):

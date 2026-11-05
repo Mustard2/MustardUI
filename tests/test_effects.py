@@ -2780,6 +2780,58 @@ class TestFoam(BlenderTestCase):
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestClosestVertex(BlenderTestCase):
+    OPERATORS = ("marks", "foam", "wet", "dirt", "cloth_rip", "cloth_tear", "sticky_strands")
+
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.body = bpy.data.objects["Tester Body"]
+        self.shirt = bpy.data.objects["Casual - Shirt"]
+
+    def operator(self, name):
+        return getattr(bpy.ops.mustardui, f"model_toolkit_{name}")
+
+    # Added from Edit Mode, whose evaluated meshes do not have their vertices or attributes
+    def test_edit_mode(self):
+        for name in self.OPERATORS:
+            with self.subTest(name):
+                set_active(self.body)
+                bpy.ops.object.mode_set(mode="EDIT")
+                self.assertEqual(self.operator(name)(), {"FINISHED"})
+                self.assertEqual(bpy.context.mode, "OBJECT")
+
+    # Nothing added on a mesh with no evaluated vertices, e.g. hidden by a modifier
+    def test_no_vertices(self):
+        self.body.vertex_groups.new(name="Empty")
+        self.body.modifiers.new("Mask", "MASK").vertex_group = "Empty"
+        count = len(bpy.data.objects)
+        modifiers = len(self.body.modifiers)
+        for name in self.OPERATORS:
+            with self.subTest(name):
+                set_active(self.body)
+                self.assertEqual(self.operator(name)(), {"CANCELLED"})
+                self.assertEqual(len(bpy.data.objects), count)
+                self.assertEqual(len(self.body.modifiers), modifiers)
+
+    # Added only on the selected meshes with evaluated vertices
+    def test_some_without_vertices(self):
+        self.body.vertex_groups.new(name="Empty")
+        self.body.modifiers.new("Mask", "MASK").vertex_group = "Empty"
+        set_active(self.shirt)
+        self.body.select_set(True)
+        self.assertEqual(bpy.ops.mustardui.model_toolkit_marks(), {"FINISHED"})
+        self.assertTrue(any(effect.is_effect(m, "MustardUI Marks") for m in self.shirt.modifiers))
+        self.assertFalse(any(effect.is_effect(m, "MustardUI Marks") for m in self.body.modifiers))
+
+    # The liquid aimed down on meshes without faces
+    def test_sticky_spurts_no_faces(self):
+        self.body.vertex_groups.new(name="Empty")
+        self.body.modifiers.new("Mask", "MASK").vertex_group = "Empty"
+        set_active(self.body)
+        self.assertEqual(bpy.ops.mustardui.model_toolkit_sticky_spurts(), {"FINISHED"})
+
+
 class TestMarks(BlenderTestCase):
     def setUp(self):
         super().setUp()

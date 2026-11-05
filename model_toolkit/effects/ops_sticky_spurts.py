@@ -43,11 +43,14 @@ class MustardUI_ModelToolkit_StickySpurts(bpy.types.Operator):
         depsgraph = context.evaluated_depsgraph_get()
         nearest = []
         for obj in meshes:
-            found, co, *_ = obj.evaluated_get(depsgraph).closest_point_on_mesh(
-                obj.matrix_world.inverted() @ cursor
-            )
-            if found:
-                nearest.append(obj.matrix_world @ co)
+            # Blender raises an error on meshes without faces
+            evaluated = obj.evaluated_get(depsgraph)
+            if evaluated.data.polygons:
+                found, co, *_ = evaluated.closest_point_on_mesh(
+                    obj.matrix_world.inverted() @ cursor
+                )
+                if found:
+                    nearest.append(obj.matrix_world @ co)
         aim = min(nearest, key=lambda x: (x - cursor).length, default=cursor) - cursor
         control = bpy.data.objects.new("Sticky Spurts Control", None)
         collection.objects.link(control)

@@ -12,6 +12,7 @@ from .effect import (
     modifier_input,
     new_control,
     parent_control,
+    with_vertices,
 )
 
 NODE_GROUP = "MustardUI Cloth Rip"
@@ -82,9 +83,9 @@ class MustardUI_ModelToolkit_ClothRip(bpy.types.Operator):
             self.layout.prop_search(self, "anchor", context.active_object, "vertex_groups")
 
     def execute(self, context):
-        objects = [x for x in context.selected_objects if x.type == "MESH"]
+        objects = with_vertices(context, [x for x in context.selected_objects if x.type == "MESH"])
         if not objects:
-            self.report({"WARNING"}, "MustardUI - Select the meshes first.")
+            self.report({"WARNING"}, "MustardUI - Select meshes with vertices first.")
             return {"CANCELLED"}
 
         if NODE_GROUP not in bpy.data.node_groups:

@@ -16,6 +16,7 @@ from .effect import (
     shader_nodes,
     tint,
     untint,
+    with_vertices,
 )
 
 NODE_GROUP = "MustardUI Marks"
@@ -92,9 +93,9 @@ class MustardUI_ModelToolkit_Marks(bpy.types.Operator):
             self.layout.prop(self, "left")
 
     def execute(self, context):
-        objects = [x for x in context.selected_objects if x.type == "MESH"]
+        objects = with_vertices(context, [x for x in context.selected_objects if x.type == "MESH"])
         if not objects:
-            self.report({"WARNING"}, "MustardUI - Select the meshes first.")
+            self.report({"WARNING"}, "MustardUI - Select meshes with vertices first.")
             return {"CANCELLED"}
 
         with bpy.data.libraries.load(RESOURCE) as (_, data):

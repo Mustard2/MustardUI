@@ -16,6 +16,7 @@ from .effect import (
     settings_group,
     shader_nodes,
     unwrap_shader,
+    with_vertices,
     wrap_shader,
 )
 
@@ -113,7 +114,10 @@ class MustardUI_ModelToolkit_Dirt(bpy.types.Operator):
         return effects_available() and any(x.type == "MESH" for x in context.selected_objects)
 
     def execute(self, context):
-        objects = [x for x in context.selected_objects if x.type == "MESH"]
+        objects = with_vertices(context, [x for x in context.selected_objects if x.type == "MESH"])
+        if not objects:
+            self.report({"WARNING"}, "MustardUI - Select meshes with vertices first.")
+            return {"CANCELLED"}
 
         with bpy.data.libraries.load(RESOURCE) as (_, data):
             data.node_groups = [x for x in (NODE_GROUP, FILM) if x not in bpy.data.node_groups]

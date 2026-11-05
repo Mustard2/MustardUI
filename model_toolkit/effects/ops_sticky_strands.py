@@ -11,6 +11,7 @@ from .effect import (
     modifier_input,
     new_control,
     parent_control,
+    with_vertices,
 )
 
 NODE_GROUP = "MustardUI Sticky Strands"
@@ -52,6 +53,11 @@ class MustardUI_ModelToolkit_StickyStrands(bpy.types.Operator):
         colliders = [any(m.type == "COLLISION" for m in x.modifiers) for x in (*objects, target)]
         if colliders == [True, False]:
             objects, target = [target], objects[0]
+
+        objects = with_vertices(context, objects)
+        if not objects or not with_vertices(context, [target]):
+            self.report({"WARNING"}, "MustardUI - Select meshes with vertices first.")
+            return {"CANCELLED"}
 
         with bpy.data.libraries.load(RESOURCE) as (_, data):
             if NODE_GROUP not in bpy.data.node_groups:

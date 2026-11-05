@@ -27,6 +27,14 @@ def meshes_or_control(context, creators_type):
     )
 
 
+def with_vertices(context, objects):
+    """Objects with evaluated vertices, to place an effect on, out of Edit Mode to read them"""
+    if context.mode == "EDIT_MESH":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    depsgraph = context.evaluated_depsgraph_get()
+    return [x for x in objects if x.evaluated_get(depsgraph).data.vertices]
+
+
 def is_effect(modifier, node_group):
     return (
         modifier.type == "NODES"
