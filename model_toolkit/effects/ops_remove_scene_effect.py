@@ -20,7 +20,7 @@ class MustardUI_ModelToolkit_RemoveSceneEffect(bpy.types.Operator):
             return {"CANCELLED"}
         # The remove operators act on the selected objects
         with context.temp_override(selected_objects=[obj], active_object=obj, object=obj):
-            return getattr(bpy.ops.mustardui, f"model_toolkit_{EFFECTS[self.effect][3]}")()
+            return getattr(bpy.ops.mustardui, f"model_toolkit_{EFFECTS[self.effect].remove}")()
 
 
 def register():

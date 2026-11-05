@@ -231,6 +231,29 @@ class PANEL_PT_MustardUI_ModelToolkit_Physics(ModelToolkitSection, bpy.types.Pan
         )
 
 
+# Effects in the panel, by group
+EFFECT_GROUPS = (
+    ("Ripple", "Jiggle"),
+    ("Sticky Strands", "Sticky Liquid", "Sticky Spurts"),
+    ("Wet", "Dirt", "Foam", "Marks"),
+    ("Cloth Tear", "Cloth Rip", "Disintegration", "Hex Dissolve", "Aura"),
+    (
+        "Shatter",
+        "Shockwave",
+        "Crush",
+        "Billow Dust",
+        "Imprints",
+        "Bulge",
+        "Shrinkwrap",
+        "Dust Puff",
+        "Wet Footprints",
+    ),
+    ("Rope", "Tape"),
+    ("Fireball",),
+    ("Dust Motes", "Rain"),
+)
+
+
 class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Panel):
     header = ("Effects", "SHADERFX")
     guide = "Effects"
@@ -244,209 +267,28 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
         row.operator("mustardui.model_toolkit_squish", icon="MOD_SHRINKWRAP")
         squish_draw_settings(layout, context)
 
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_ripple", text="Ripple", icon="MOD_WAVE")
-        row.operator("mustardui.model_toolkit_remove_ripple", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_jiggle_effect", text="Jiggle", icon="MOD_SOFT")
-        row.operator("mustardui.model_toolkit_remove_jiggle_effect", text="", icon="X")
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_sticky_strands", text="Sticky Strands", icon="STRANDS"
-        )
-        row.operator("mustardui.model_toolkit_convert_sticky_strands", text="", icon="MESH_DATA")
-        row.operator("mustardui.model_toolkit_remove_sticky_strands", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_sticky_liquid", text="Sticky Liquid", icon="MOD_FLUIDSIM"
-        )
-        row.operator("mustardui.model_toolkit_convert_sticky_liquid", text="", icon="MESH_DATA")
-        row.operator("mustardui.model_toolkit_remove_sticky_liquid", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_sticky_spurts", text="Sticky Spurts", icon="MOD_FLUIDSIM"
-        )
-        row.operator("mustardui.model_toolkit_convert_sticky_spurts", text="", icon="MESH_DATA")
-        row.operator("mustardui.model_toolkit_remove_sticky_spurts", text="", icon="X")
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_wet", text="Wet", icon="MATFLUID")
-        row.operator("mustardui.model_toolkit_remove_wet", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_dirt", text="Dirt", icon="MOD_NOISE")
-        row.operator("mustardui.model_toolkit_remove_dirt", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_foam", text="Foam", icon="OUTLINER_DATA_POINTCLOUD")
-        row.operator("mustardui.model_toolkit_remove_foam", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_marks", text="Marks", icon="TPAINT_HLT")
-        row.operator("mustardui.model_toolkit_remove_marks", text="", icon="X")
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_cloth_tear", text="Cloth Tear", icon="MOD_CLOTH")
-        row.operator("mustardui.model_toolkit_remove_cloth_tear", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_cloth_rip", text="Cloth Rip", icon="EMPTY_SINGLE_ARROW"
-        )
-        row.operator("mustardui.model_toolkit_remove_cloth_rip", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_disintegration", text="Disintegration", icon="PARTICLES"
-        )
-        row.operator("mustardui.model_toolkit_remove_disintegration", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="NODE_MATERIAL")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_hex_dissolve", text="Hex Dissolve", icon="MESH_ICOSPHERE"
-        )
-        row.operator("mustardui.model_toolkit_remove_hex_dissolve", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_aura", text="Aura", icon="LIGHT_POINT")
-        row.operator("mustardui.model_toolkit_remove_aura", text="", icon="X")
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_shatter", text="Shatter", icon="MOD_EXPLODE")
-        row.operator("mustardui.model_toolkit_remove_shatter", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_shockwave", text="Shockwave", icon="FORCE_FORCE")
-        row.operator("mustardui.model_toolkit_remove_shockwave", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_crush", text="Crush", icon="MOD_MESHDEFORM")
-        row.operator("mustardui.model_toolkit_remove_crush", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_billow_dust", text="Billow Dust", icon="OUTLINER_OB_VOLUME"
-        )
-        row.operator("mustardui.model_toolkit_remove_billow_dust", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_imprints", text="Imprints", icon="MOD_DISPLACE")
-        row.operator("mustardui.model_toolkit_remove_imprints", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_bulge", text="Bulge", icon="SPHERECURVE")
-        row.operator("mustardui.model_toolkit_remove_bulge", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_shrinkwrap", text="Shrinkwrap", icon="MOD_SHRINKWRAP")
-        row.operator(
-            "mustardui.model_toolkit_shrinkwrap", text="", icon="MESH_TORUS"
-        ).opening = True
-        row.operator("mustardui.model_toolkit_remove_shrinkwrap", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_dust_puff", text="Dust Puff", icon="FORCE_TURBULENCE")
-        row.operator("mustardui.model_toolkit_remove_dust_puff", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator(
-            "mustardui.model_toolkit_footprints", text="Wet Footprints", icon="MOD_DYNAMICPAINT"
-        )
-        row.operator("mustardui.model_toolkit_remove_footprints", text="", icon="X")
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_rope", text="Rope", icon="CURVE_BEZCIRCLE")
-        row.operator("mustardui.model_toolkit_remove_rope", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_tape", text="Tape", icon="MOD_THICKNESS")
-        row.operator("mustardui.model_toolkit_remove_tape", text="", icon="X")
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_fireball", text="Fireball", icon="LIGHT_SUN")
-        row.operator("mustardui.model_toolkit_remove_fireball", text="", icon="X")
-
-        layout.separator()
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_dust_motes", text="Dust Motes", icon="PARTICLE_POINT")
-        row.operator("mustardui.model_toolkit_remove_dust_motes", text="", icon="X")
-
-        row = layout.row(align=True)
-        row.label(text="", icon="GEOMETRY_NODES")
-        row.separator()
-        row.operator("mustardui.model_toolkit_rain", text="Rain", icon="FORCE_FLUIDFLOW")
-        row.operator("mustardui.model_toolkit_remove_rain", text="", icon="X")
+        experimental = context.preferences.addons[base_package].preferences.experimental
+        for group in EFFECT_GROUPS:
+            names = [x for x in group if experimental or not EFFECTS[x].experimental]
+            # The first group goes right below Squish
+            if names and group is not EFFECT_GROUPS[0]:
+                layout.separator()
+            for name in names:
+                effect = EFFECTS[name]
+                add = effect.remove.removeprefix("remove_")
+                row = layout.row(align=True)
+                row.label(text="", icon="GEOMETRY_NODES" if effect.node_group else "NODE_MATERIAL")
+                row.separator()
+                row.operator(f"mustardui.model_toolkit_{add}", text=name, icon=effect.icon)
+                if name.startswith("Sticky"):
+                    row.operator(
+                        f"mustardui.model_toolkit_convert_{add}", text="", icon="MESH_DATA"
+                    )
+                elif name == "Shrinkwrap":
+                    row.operator(
+                        f"mustardui.model_toolkit_{add}", text="", icon="MESH_TORUS"
+                    ).opening = True
+                row.operator(f"mustardui.model_toolkit_{effect.remove}", text="", icon="X")
 
 
 class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.types.Panel):
@@ -496,7 +338,7 @@ class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.type
             if body:
                 draw_modifier_inputs(body, modifier, select_objects=True)
 
-        material_group = EFFECTS[item.effect][2]
+        material_group = EFFECTS[item.effect].material_group
         if material_group is None:
             return
         # The materials sharing the settings once, the effects added before alone

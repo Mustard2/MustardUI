@@ -79,13 +79,13 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
     )
 
     # Experimental features
-    # experimental: BoolProperty(
-    #     default=False,
-    #     name="Experimental Features",
-    #     description="Unlock experimental features throughout the add-on.\nNote that "
-    #     "experimental features might not work properly yet, or be changed/removed "
-    #     "from future versions",
-    # )
+    experimental: BoolProperty(
+        default=False,
+        name="Experimental Features",
+        description="Unlock experimental features throughout the add-on.\nNote that "
+        "experimental features might not work properly yet, or be changed/removed "
+        "from future versions",
+    )
 
     settings_storage: EnumProperty(
         name="Optimization",
@@ -125,9 +125,9 @@ class MustardUI_AddonPrefs(bpy.types.AddonPreferences):
         row.enabled = self.developer
         row.prop(self, "debug")
 
-        # col.separator()
-        #
-        # col.prop(self, "experimental")
+        col.separator()
+
+        col.prop(self, "experimental")
 
         row = layout.row(align=True)
         row.operator("wm.url_open", text="GitHub", icon="URL").url = self.url_MustardUI

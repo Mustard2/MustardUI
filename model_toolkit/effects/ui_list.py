@@ -11,16 +11,16 @@ class MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects(bpy.types.UIList):
         obj = item.object
         if obj is None:
             return
-        effect_icon, node_group, _, _ = EFFECTS[item.effect]
+        effect = EFFECTS[item.effect]
         modifier = obj.modifiers.get(item.modifier)
         label = obj.name
         # Numbered for the objects with more of them
         if modifier is not None:
-            same = [m for m in obj.modifiers if is_effect(m, node_group)]
+            same = [m for m in obj.modifiers if is_effect(m, effect.node_group)]
             if len(same) > 1:
                 label += f" {same.index(modifier) + 1}"
         row = layout.row(align=True)
-        row.label(text=item.effect, icon=effect_icon)
+        row.label(text=item.effect, icon=effect.icon)
         row.label(text=label, icon="OBJECT_DATA")
         if modifier is not None:
             row.prop(modifier, "show_viewport", text="", emboss=False)
