@@ -485,6 +485,7 @@ class PANEL_PT_MustardUI_ModelToolkit_SceneEffects(ModelToolkitSection, bpy.type
         col.operator(
             "mustardui.model_toolkit_select_object", text="", icon="RESTRICT_SELECT_OFF"
         ).name = item.object.name
+        col.separator()
         op = col.operator("mustardui.model_toolkit_remove_scene_effect", text="", icon="X")
         op.effect, op.name = item.effect, item.object.name
 
