@@ -268,6 +268,16 @@ class TestUI(BlenderTestCase):
         self.assertEqual(bpy.context.selected_objects, [cube])
         self.assertEqual(bpy.context.view_layer.objects.active, cube)
 
+        # The X removes the effect from its object, whatever is selected
+        cube.select_set(False)
+        for name in ("Marks", "Hex Dissolve"):
+            bpy.ops.mustardui.model_toolkit_remove_scene_effect(effect=name, name=cube.name)
+        bpy.context.view_layer.update()
+        effects = [x.effect for x in scene.MustardUI_SceneEffects]
+        self.assertNotIn("Marks", effects)
+        self.assertNotIn("Hex Dissolve", effects)
+        self.assertIn("Wet", effects)
+
     # Configuration panels draw with list indices past the end, as left by another model
     def test_draw_configuration_stale_indices(self):
         model = build_model()

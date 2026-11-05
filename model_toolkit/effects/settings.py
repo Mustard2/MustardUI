@@ -32,35 +32,40 @@ from . import (
 )
 from .effect import effects_available, is_effect, materials, shader_nodes
 
-# Icon, modifier node group and material node group of the effects
+# Icon, modifier node group, material node group and remove operator of the effects
 EFFECTS = {
-    "Ripple": ("MOD_WAVE", ops_ripple.NODE_GROUP, None),
-    "Jiggle": ("MOD_SOFT", ops_jiggle.NODE_GROUP, None),
-    "Sticky Strands": ("STRANDS", ops_sticky_strands.NODE_GROUP, None),
-    "Sticky Liquid": ("MOD_FLUIDSIM", ops_sticky_liquid.NODE_GROUP, None),
-    "Sticky Spurts": ("MOD_FLUIDSIM", ops_sticky_spurts.NODE_GROUP, None),
-    "Wet": ("MATFLUID", ops_wet.NODE_GROUP, ops_wet.FILM),
-    "Dirt": ("MOD_NOISE", ops_dirt.NODE_GROUP, ops_dirt.FILM),
-    "Foam": ("OUTLINER_DATA_POINTCLOUD", ops_foam.NODE_GROUP, None),
-    "Marks": ("TPAINT_HLT", ops_marks.NODE_GROUP, None),
-    "Imprints": ("MOD_DISPLACE", ops_imprints.NODE_GROUP, None),
-    "Bulge": ("SPHERECURVE", ops_bulge.NODE_GROUP, None),
-    "Dust Puff": ("FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None),
-    "Wet Footprints": ("MOD_DYNAMICPAINT", ops_footprints.NODE_GROUP, ops_footprints.FILM),
-    "Dust Motes": ("PARTICLE_POINT", ops_dust_motes.NODE_GROUP, None),
-    "Aura": ("LIGHT_POINT", ops_aura.NODE_GROUP, ops_aura.GLOW),
-    "Disintegration": ("PARTICLES", ops_disintegration.NODE_GROUP, None),
-    "Hex Dissolve": ("MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP),
-    "Cloth Tear": ("MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None),
-    "Cloth Rip": ("EMPTY_SINGLE_ARROW", ops_cloth_rip.NODE_GROUP, None),
-    "Shatter": ("MOD_EXPLODE", ops_shatter.NODE_GROUP, None),
-    "Shockwave": ("FORCE_FORCE", ops_shockwave.NODE_GROUP, None),
-    "Crush": ("MOD_MESHDEFORM", ops_crush.NODE_GROUP, None),
-    "Billow Dust": ("OUTLINER_OB_VOLUME", ops_billow_dust.NODE_GROUP, None),
-    "Rope": ("CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None),
-    "Tape": ("MOD_THICKNESS", ops_wrap.Tape.node_group, None),
-    "Fireball": ("LIGHT_SUN", ops_fireball.NODE_GROUP, None),
-    "Rain": ("FORCE_FLUIDFLOW", ops_rain.NODE_GROUP, None),
+    "Ripple": ("MOD_WAVE", ops_ripple.NODE_GROUP, None, "remove_ripple"),
+    "Jiggle": ("MOD_SOFT", ops_jiggle.NODE_GROUP, None, "remove_jiggle_effect"),
+    "Sticky Strands": ("STRANDS", ops_sticky_strands.NODE_GROUP, None, "remove_sticky_strands"),
+    "Sticky Liquid": ("MOD_FLUIDSIM", ops_sticky_liquid.NODE_GROUP, None, "remove_sticky_liquid"),
+    "Sticky Spurts": ("MOD_FLUIDSIM", ops_sticky_spurts.NODE_GROUP, None, "remove_sticky_spurts"),
+    "Wet": ("MATFLUID", ops_wet.NODE_GROUP, ops_wet.FILM, "remove_wet"),
+    "Dirt": ("MOD_NOISE", ops_dirt.NODE_GROUP, ops_dirt.FILM, "remove_dirt"),
+    "Foam": ("OUTLINER_DATA_POINTCLOUD", ops_foam.NODE_GROUP, None, "remove_foam"),
+    "Marks": ("TPAINT_HLT", ops_marks.NODE_GROUP, None, "remove_marks"),
+    "Imprints": ("MOD_DISPLACE", ops_imprints.NODE_GROUP, None, "remove_imprints"),
+    "Bulge": ("SPHERECURVE", ops_bulge.NODE_GROUP, None, "remove_bulge"),
+    "Dust Puff": ("FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None, "remove_dust_puff"),
+    "Wet Footprints": (
+        "MOD_DYNAMICPAINT",
+        ops_footprints.NODE_GROUP,
+        ops_footprints.FILM,
+        "remove_footprints",
+    ),
+    "Dust Motes": ("PARTICLE_POINT", ops_dust_motes.NODE_GROUP, None, "remove_dust_motes"),
+    "Aura": ("LIGHT_POINT", ops_aura.NODE_GROUP, ops_aura.GLOW, "remove_aura"),
+    "Disintegration": ("PARTICLES", ops_disintegration.NODE_GROUP, None, "remove_disintegration"),
+    "Hex Dissolve": ("MESH_ICOSPHERE", None, ops_hex_dissolve.NODE_GROUP, "remove_hex_dissolve"),
+    "Cloth Tear": ("MOD_CLOTH", ops_cloth_tear.NODE_GROUP, None, "remove_cloth_tear"),
+    "Cloth Rip": ("EMPTY_SINGLE_ARROW", ops_cloth_rip.NODE_GROUP, None, "remove_cloth_rip"),
+    "Shatter": ("MOD_EXPLODE", ops_shatter.NODE_GROUP, None, "remove_shatter"),
+    "Shockwave": ("FORCE_FORCE", ops_shockwave.NODE_GROUP, None, "remove_shockwave"),
+    "Crush": ("MOD_MESHDEFORM", ops_crush.NODE_GROUP, None, "remove_crush"),
+    "Billow Dust": ("OUTLINER_OB_VOLUME", ops_billow_dust.NODE_GROUP, None, "remove_billow_dust"),
+    "Rope": ("CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None, "remove_rope"),
+    "Tape": ("MOD_THICKNESS", ops_wrap.Tape.node_group, None, "remove_tape"),
+    "Fireball": ("LIGHT_SUN", ops_fireball.NODE_GROUP, None, "remove_fireball"),
+    "Rain": ("FORCE_FLUIDFLOW", ops_rain.NODE_GROUP, None, "remove_rain"),
 }
 
 
@@ -78,7 +83,7 @@ def scene_effects(scene):
     objects = list(scene.objects)
     # Run on each depsgraph update: the modifiers and the materials are read once
     nodes = [(x, mods) for x in objects if (mods := [m for m in x.modifiers if m.type == "NODES"])]
-    for name, (_, node_group, material_group) in EFFECTS.items():
+    for name, (_, node_group, material_group, _) in EFFECTS.items():
         if node_group:
             for obj, mods in nodes:
                 if not (name == "Jiggle" and obj in physics):

@@ -11,7 +11,7 @@ class MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects(bpy.types.UIList):
         obj = item.object
         if obj is None:
             return
-        effect_icon, node_group, _ = EFFECTS[item.effect]
+        effect_icon, node_group, _, _ = EFFECTS[item.effect]
         modifier = obj.modifiers.get(item.modifier)
         label = obj.name
         # Numbered for the objects with more of them
@@ -31,6 +31,10 @@ class MUSTARDUI_UL_ModelToolkit_UIList_SceneEffects(bpy.types.UIList):
             icon="RESTRICT_SELECT_OFF",
             emboss=False,
         ).name = obj.name
+        op = row.operator(
+            "mustardui.model_toolkit_remove_scene_effect", text="", icon="X", emboss=False
+        )
+        op.effect, op.name = item.effect, obj.name
 
 
 def register():

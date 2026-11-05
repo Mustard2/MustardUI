@@ -17,6 +17,7 @@ from . import (
     ops_jiggle,
     ops_marks,
     ops_rain,
+    ops_remove_scene_effect,
     ops_ripple,
     ops_select_object,
     ops_shatter,
@@ -61,6 +62,7 @@ def register():
     ops_rain.register()
     ops_aura.register()
     ops_select_object.register()
+    ops_remove_scene_effect.register()
     settings.register()
     ui_list.register()
 
@@ -68,6 +70,7 @@ def register():
 def unregister():
     ui_list.unregister()
     settings.unregister()
+    ops_remove_scene_effect.unregister()
     ops_select_object.unregister()
     ops_rain.unregister()
     ops_aura.unregister()
