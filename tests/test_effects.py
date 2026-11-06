@@ -2832,6 +2832,7 @@ class TestClosestVertex(BlenderTestCase):
         self.assertEqual(bpy.ops.mustardui.model_toolkit_sticky_spurts(), {"FINISHED"})
 
 
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
 class TestMarks(BlenderTestCase):
     def setUp(self):
         super().setUp()
