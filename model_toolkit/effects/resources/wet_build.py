@@ -85,8 +85,9 @@ POOL = 0.0012
 SWELL = 45.0
 # Reflection of the tiny drops, relative to the film
 DROP_SHINE = 6.0
-# Light of the surface under the drops lost on their rim, in EEVEE
+# Light of the surface under the drops lost on their rim, in EEVEE and Cycles
 DROP_RING = 0.3
+DROP_SHADOW = 0.5
 # Glints of the film per meter
 SPARKLE = 150.0
 # Streaks per meter, across and along the vertical
@@ -2369,11 +2370,11 @@ def build_film(mist, name=FILM, attribute="wet", outline=None):
 
     # Darker under the film, a black emission scaling the shader
     black = t.node("ShaderNodeEmission", 5, 1, {"Color": (0.0, 0.0, 0.0, 1.0), "Strength": 0.0})
-    # Darker in the glossier patches and streaks, the water thicker there
+    # Darker in the glossier patches, the water thicker there, but not along the sharp streaks
     darken = t.math(
         "MULTIPLY",
         t.math("MULTIPLY", inputs["Darken"], wetness, x=5, y=2),
-        t.math("ADD", gloss, 1.0, x=5, y=3),
+        t.math("ADD", variation, 1.0, x=5, y=3),
         x=5.5,
         y=2,
         clamp=True,
@@ -2536,7 +2537,7 @@ def build_material():
         "ShaderNodeMapRange",
         0,
         3,
-        {"Value": facing, "From Min": 0.6, "From Max": 0.3},
+        {"Value": facing, "From Min": 0.6, "From Max": 0.3, "To Min": 1.0 - DROP_SHADOW},
         interpolation_type="SMOOTHSTEP",
     ).outputs[0]
     lit = t.math("MAXIMUM", lit, t.math("SUBTRACT", 1.0, drop, x=0.5, y=4), x=0.8, y=3)
