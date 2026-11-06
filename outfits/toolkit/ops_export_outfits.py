@@ -1,5 +1,6 @@
 import os
 import re
+from collections import deque
 
 import bpy
 from bpy_extras.io_utils import ExportHelper
@@ -9,7 +10,13 @@ from ...text_storage import storage as text_storage
 from ..helper_functions import outfits_get_collection_items, outfits_get_collections
 from ..ops_delete import delete_extras_pieces
 from .ops_add_outfit import add_outfit_model, outfit_default_name, parents
-from .ops_add_outfit_from_file import copy_id_property, copy_settings
+from .ops_add_outfit_from_file import (
+    FOLLOWED_BONE,
+    copy_bones,
+    copy_id_property,
+    copy_settings,
+    outfit_bone_collections,
+)
 
 # Collections of geometry and other data without datablock pointers
 SKIP = {
@@ -109,17 +116,18 @@ def export_fill_items(context):
 
 
 def closure(graph, roots, stop=()):
-    """Datablocks reached from the roots in the graph, not past the stop ones"""
+    """Datablocks reached from the roots in the graph, not past the stop ones, mapped to the one
+    they are first reached from"""
 
-    found = set(roots)
-    queue = list(roots)
+    found = dict.fromkeys(roots)
+    queue = deque(roots)
     while queue:
-        id_data = queue.pop()
+        id_data = queue.popleft()
         if id_data in stop:
             continue
         for linked in graph.get(id_data, ()):
             if linked not in found:
-                found.add(linked)
+                found[linked] = id_data
                 queue.append(linked)
     return found
 
@@ -127,10 +135,12 @@ def closure(graph, roots, stop=()):
 class OutfitCopier:
     """Copies of the Outfits using the stand-ins of the model armature and body"""
 
-    def __init__(self, mapping, drags, queue):
+    def __init__(self, mapping, drags, queue, removed=()):
         # Original datablocks to their copies or stand-ins
         self.mapping = mapping
         self.drags = drags
+        # Datablocks cut wherever they are used
+        self.removed = removed
         self.copies = list(mapping.items())
         self.created = set(mapping.values())
         self.queue = list(queue)
@@ -141,11 +151,13 @@ class OutfitCopier:
         new = self.mapping.get(value)
         if new is not None:
             return new
-        if value in self.created or value not in self.drags:
+        if value in self.created:
             return value
-        if isinstance(value, NOT_COPIED):
+        if value in self.removed or (value in self.drags and isinstance(value, NOT_COPIED)):
             self.cut.append(f"{owner}: {value.name}")
             return None
+        if value not in self.drags:
+            return value
         new = value.copy()
         self.add(value, new)
         keys = getattr(value, "shape_keys", None)
@@ -200,10 +212,14 @@ class OutfitCopier:
                 elif not prop.is_readonly:
                     new = self.replace(value, owner)
                     if new != value:
+                        # Setting the parent resets the parent inverse matrix
+                        inverse = struct.matrix_parent_inverse.copy() if pid == "parent" else None
                         try:
                             setattr(struct, pid, new)
                         except (AttributeError, TypeError, ValueError):
                             self.cut.append(f"{owner}: {value.name} (not replaced)")
+                        if inverse is not None:
+                            struct.matrix_parent_inverse = inverse
 
             elif prop.type == "COLLECTION" and pid not in SKIP:
                 for i, item in enumerate(value):
@@ -238,6 +254,27 @@ def copy_collection(coll, mapping, objects, keep=None):
         if child_copy is not None:
             new.children.link(child_copy)
     return new
+
+
+def followed_bone(obj, arm_obj):
+    """The only deform bone weighted on the piece deformed by the armature, if any"""
+
+    if obj.type != "MESH" or not any(
+        m.type == "ARMATURE" and m.object == arm_obj for m in obj.modifiers
+    ):
+        return None
+    deform = {b.name for b in arm_obj.data.bones if b.use_deform}
+    groups = {vg.index: vg.name for vg in obj.vertex_groups if vg.name in deform}
+    found = None
+    for v in obj.data.vertices:
+        for g in v.groups:
+            name = groups.get(g.group)
+            if name is None or g.weight <= 0 or name == found:
+                continue
+            if found is not None:
+                return None
+            found = name
+    return found
 
 
 def extras_keep(extras, pieces):
@@ -301,6 +338,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         "file and the item",
     )
 
+    remove_links: bpy.props.BoolProperty(
+        name="Remove Links to Other Models",
+        default=False,
+        description="Remove the links of the Outfits to other models, like drivers or modifiers "
+        "using a leftover copy of the model, instead of stopping the export.\nThe model is not "
+        "changed",
+    )
+
     delete_outfits: bpy.props.BoolProperty(
         name="Delete Exported",
         default=False,
@@ -361,6 +406,7 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             col.prop(self, "separate_files")
             col.prop(self, "compress")
             body.column(heading="Images").prop(self, "pack_images", text="Pack")
+            body.column(heading="Other Models").prop(self, "remove_links", text="Remove Links")
             body.column(heading="Exported").prop(self, "delete_outfits", text="Delete")
 
     def invoke(self, context, event):
@@ -469,10 +515,14 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
             for image in self.packed:
                 image.unpack(method="REMOVE")
             # Text storage of the stand-in armature, also when the export stopped
-            for arm in [i for i in created if isinstance(i, bpy.types.Armature)]:
+            armatures = [i for i in created if isinstance(i, bpy.types.Armature)]
+            # Removed by remove_holder, and compared before as removed IDs are not equal
+            texts = {text_storage.text_of(x) for x in armatures}
+            removed = [i for i in created if not isinstance(i, bpy.types.Key) and i not in texts]
+            for arm in armatures:
                 text_storage.remove_holder(arm)
             # Remove the copies before giving back the names to the originals
-            bpy.data.batch_remove([i for i in created if not isinstance(i, bpy.types.Key)])
+            bpy.data.batch_remove(removed)
             for id_data, name in names:
                 id_data.name = name
             # The written armatures of the file back to the chosen storage
@@ -495,9 +545,27 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
         # Appended with any Outfit, as it has the model name and custom properties
         for copy in copies:
             copy.objects.link(model[arm_obj])
+        # To add the Extras pieces to the Extras of the other model
+        model[arm].MustardUI_RigSettings.extras_collection = mapping.get(
+            rig_settings.extras_collection
+        )
+
+        # Bones switched with the exported Outfits, with their parents to parent them by name
+        collections = {c for c in mapping if isinstance(c, bpy.types.Collection)}
+        bone_collections = outfit_bone_collections(arm, collections, objects)
+        bones = {b for bc in bone_collections for b in bc.bones}
+        bones |= {p for b in bones for p in b.parent_recursive}
+        bone_names = {b.name for b in bones}
+        # Bones of the rigid pieces, to place them on the bone of the other model
+        for obj in objects:
+            name = followed_bone(obj, arm_obj)
+            if name is not None:
+                mapping[obj][FOLLOWED_BONE] = name
+                bone_names.add(name)
+        if bone_names:
+            copy_bones(context, arm_obj, model[arm_obj], bone_names, bone_collections)
 
         # Outfit custom properties of the exported Outfits on the stand-in armature
-        collections = {c for c in mapping if isinstance(c, bpy.types.Collection)}
         cps = model[arm].MustardUI_CustomPropertiesOutfit
         for cp in arm.MustardUI_CustomPropertiesOutfit:
             piece = cp.outfit_piece
@@ -513,11 +581,23 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
 
         # Datablocks that would add the model to the file, through their users
         drags = closure(bpy.data.user_map(), heavy | {context.scene})
-        copier = OutfitCopier(mapping, drags, [mapping[o] for o in objects])
+        # Armatures and bodies of the other models
+        removed = set()
+        if self.remove_links:
+            removed = {a for a in bpy.data.armatures if a.MustardUI_created and a != arm}
+            removed |= {a.MustardUI_RigSettings.model_body for a in removed}
+            removed |= {o for o in bpy.data.objects if o.data in removed}
+            removed.discard(None)
+        copier = OutfitCopier(mapping, drags, [mapping[o] for o in objects], removed)
         copier.run()
         # After the pieces, as their data copies are used by the custom properties
         for cp in cps:
             copier.walk(cp, cp.name)
+        # Constraints of the bones and switched Outfits of their Bone Collections
+        if bones:
+            copier.walk(model[arm_obj].pose, model[arm_obj].name)
+            for bc in model[arm].collections_all:
+                copier.walk(bc, bc.name)
         copier.run()
         created.extend(c for o, c in copier.copies if c not in created)
 
@@ -528,20 +608,47 @@ class MustardUI_ModelToolkit_ExportOutfits(bpy.types.Operator, ExportHelper):
                 uses.setdefault(user, set()).add(id_data)
         forbidden = heavy | set(bpy.data.scenes)
         reached = closure(uses, written, forbidden)
-        leaks = reached & forbidden
+        leaks = reached.keys() & forbidden
         if leaks:
-            # The exported datablocks using the model ones, to find what to fix
-            users = {
-                f"{u.name} ({type(u).__name__}) uses {i.name} ({type(i).__name__})"
-                for i, us in bpy.data.user_map(subset=leaks).items()
-                for u in us & reached - forbidden
-            }
+            # Chains from the exported datablocks to the model ones, with the original names
+            originals = {c: o for o, c in copier.copies}
+            chains = []
+            others = set()
+            for leak in leaks:
+                chain = []
+                id_data = leak
+                while id_data is not None:
+                    original = originals.get(id_data, id_data)
+                    chain.append(f"{original.name} ({type(original).__name__})")
+                    # Another model, like a leftover copy of this one
+                    data = getattr(original, "data", original)
+                    if (
+                        isinstance(data, bpy.types.Armature)
+                        and data.MustardUI_created
+                        and data != arm
+                    ):
+                        others.add(data)
+                    id_data = reached[id_data]
+                chains.append(" > ".join(reversed(chain)))
+            print(
+                "MustardUI - Export stopped, the Outfits use the model through these datablocks, "
+                "each using the next:\n  " + "\n  ".join(sorted(chains))
+            )
 
-            print("MustardUI - Export stopped:\n  " + "\n  ".join(sorted(users)))
+            if others:
+                names = sorted(
+                    next((o.name for o in bpy.data.objects if o.data == d), d.name) for d in others
+                )
+                message = (
+                    f"the Outfits use another model ({', '.join(names)}), e.g. with drivers or "
+                    "modifiers. Point them to this model"
+                )
+                if not self.remove_links:
+                    message += ", or enable Remove Links to Other Models"
+            else:
+                message = "some Outfit data uses the model, which would be written in the file"
             self.report(
-                {"ERROR"},
-                "MustardUI - The Outfits still use the model (details in the console), "
-                "nothing exported",
+                {"ERROR"}, f"MustardUI - Nothing exported: {message} (details in the console)"
             )
             return None, None
 

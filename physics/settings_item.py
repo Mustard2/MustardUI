@@ -145,23 +145,6 @@ class MustardUI_PhysicsItem(bpy.types.PropertyGroup):
         update=enable_physics_update_single_smooth_corrective,
     )
 
-    # UI Collapse
-
-    # Cloth
-    collapse_cloth_stiffness: bpy.props.BoolProperty(default=True, name="")
-    collapse_cloth_damping: bpy.props.BoolProperty(default=True, name="")
-    collapse_cloth_internal_springs: bpy.props.BoolProperty(default=True, name="")
-    collapse_cloth_pressure: bpy.props.BoolProperty(default=True, name="")
-    collapse_cloth_cache: bpy.props.BoolProperty(default=True, name="")
-    collapse_cloth_collisions: bpy.props.BoolProperty(default=True, name="")
-    collapse_cloth_self_collisions: bpy.props.BoolProperty(default=True, name="")
-
-    # Cloth Dynamics (Geometry Nodes)
-    collapse_cloth_dynamics_advanced: bpy.props.BoolProperty(default=True, name="")
-
-    # Soft Body
-    collapse_softbody_cache: bpy.props.BoolProperty(default=True, name="")
-
     # Intersecting Objects for Outfits
     intersecting_objects: bpy.props.CollectionProperty(type=MustardUI_PhysicsItem_Intersecting)
 

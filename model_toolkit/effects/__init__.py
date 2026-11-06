@@ -1,11 +1,36 @@
 from . import (
+    ops_aura,
+    ops_billow_dust,
+    ops_bulge,
+    ops_cloth_rip,
+    ops_cloth_tear,
+    ops_crush,
+    ops_dirt,
     ops_disintegration,
+    ops_dust_motes,
+    ops_dust_puff,
     ops_fireball,
+    ops_foam,
+    ops_footprints,
     ops_hex_dissolve,
+    ops_imprints,
+    ops_jiggle,
+    ops_marks,
+    ops_rain,
+    ops_remove_scene_effect,
     ops_ripple,
+    ops_select_object,
+    ops_shatter,
+    ops_shockwave,
+    ops_shrinkwrap,
     ops_squish,
+    ops_sticky_liquid,
+    ops_sticky_spurts,
     ops_sticky_strands,
+    ops_wet,
     ops_wrap,
+    settings,
+    ui_list,
 )
 
 
@@ -13,17 +38,67 @@ def register():
     ops_squish.register()
     ops_disintegration.register()
     ops_ripple.register()
+    ops_jiggle.register()
     ops_fireball.register()
     ops_hex_dissolve.register()
+    ops_cloth_tear.register()
+    ops_cloth_rip.register()
+    ops_shatter.register()
+    ops_crush.register()
+    ops_billow_dust.register()
     ops_wrap.register()
     ops_sticky_strands.register()
+    ops_sticky_liquid.register()
+    ops_sticky_spurts.register()
+    ops_wet.register()
+    ops_dirt.register()
+    ops_foam.register()
+    ops_marks.register()
+    ops_imprints.register()
+    ops_bulge.register()
+    ops_shrinkwrap.register()
+    ops_dust_puff.register()
+    ops_shockwave.register()
+    ops_footprints.register()
+    ops_dust_motes.register()
+    ops_rain.register()
+    ops_aura.register()
+    ops_select_object.register()
+    ops_remove_scene_effect.register()
+    settings.register()
+    ui_list.register()
 
 
 def unregister():
+    ui_list.unregister()
+    settings.unregister()
+    ops_remove_scene_effect.unregister()
+    ops_select_object.unregister()
+    ops_rain.unregister()
+    ops_aura.unregister()
+    ops_dust_motes.unregister()
+    ops_shockwave.unregister()
+    ops_footprints.unregister()
+    ops_dust_puff.unregister()
+    ops_shrinkwrap.unregister()
+    ops_bulge.unregister()
+    ops_imprints.unregister()
+    ops_marks.unregister()
+    ops_foam.unregister()
+    ops_dirt.unregister()
+    ops_wet.unregister()
+    ops_sticky_spurts.unregister()
+    ops_sticky_liquid.unregister()
     ops_sticky_strands.unregister()
     ops_wrap.unregister()
+    ops_billow_dust.unregister()
+    ops_crush.unregister()
+    ops_shatter.unregister()
+    ops_cloth_rip.unregister()
+    ops_cloth_tear.unregister()
     ops_hex_dissolve.unregister()
     ops_fireball.unregister()
+    ops_jiggle.unregister()
     ops_ripple.unregister()
     ops_disintegration.unregister()
     ops_squish.unregister()

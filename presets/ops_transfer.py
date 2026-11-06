@@ -113,6 +113,7 @@ class MustardUI_PresetTransfer(bpy.types.Operator):
             new_preset.has_cloth = src_preset.has_cloth
             new_preset.has_soft_body = src_preset.has_soft_body
             new_preset.has_collision = src_preset.has_collision
+            new_preset.has_nodes = src_preset.has_nodes
 
         target_name = target_arm.MustardUI_RigSettings.model_name
         renamed = f" as '{new_name}'" if new_name != src_preset.name else ""

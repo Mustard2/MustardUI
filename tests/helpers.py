@@ -94,6 +94,13 @@ def set_active_collection(coll):
     bpy.context.view_layer.active_layer_collection = find(bpy.context.view_layer.layer_collection)
 
 
+def checked_items(*names):
+    """Clean Model selection list entries, as operator arguments"""
+    return [
+        {"name": x, "remove": True, "locked": False, "in_use": False, "icon": ""} for x in names
+    ]
+
+
 def build_model(name="Tester"):
     """Armature, body with shape keys, two outfits, extras and a hair collection."""
     arm_data = bpy.data.armatures.new(name + " Armature")
@@ -171,8 +178,12 @@ def configure_model(model, name="Tester"):
 class BlenderTestCase(unittest.TestCase):
     """Fresh empty scene per test; fails on tracebacks printed by swallowed exceptions."""
 
+    # Storage of the model settings, set after resetting the preferences, which keeps the last one
+    settings_storage = "ARMATURE"
+
     def setUp(self):
         reset_scene()
+        bpy.context.preferences.addons[ADDON].preferences.settings_storage = self.settings_storage
         self._stderr = StderrTracebacks().__enter__()
 
     def tearDown(self):

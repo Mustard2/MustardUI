@@ -1,70 +1,63 @@
 import bpy
 
-from ..model_selection.active_object import ModelMode, mustardui_active_object
+from ..misc.geometry_nodes import simulation_bakes
 from .settings_item import MustardUI_PhysicsItem
 from .settings_presets import MustardUI_Physics_Preset
 from .update_enable import enable_physics_update
+
+
+def physics_objects(physics_settings):
+    """Objects with the physics of the model: the Physics Items, the outfits, extras and hair"""
+    rig_settings = physics_settings.id_data.MustardUI_RigSettings
+    objects = [
+        pi.object
+        for pi in physics_settings.items
+        if pi.object is not None and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]
+    ]
+
+    if rig_settings.outfit_physics_support:
+        for coll in [x.collection for x in rig_settings.outfits_collections if x.collection]:
+            items = coll.all_objects if rig_settings.outfit_config_subcollections else coll.objects
+            objects += [x for x in items if x.type == "MESH"]
+
+        extras = rig_settings.extras_collection
+        if extras is not None:
+            items = (
+                extras.all_objects if rig_settings.extras_config_subcollections else extras.objects
+            )
+            objects += [x for x in items if x.type == "MESH"]
+
+    if rig_settings.hair_collection is not None:
+        objects += [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]
+
+    return list(dict.fromkeys(objects))
 
 
 def update_frame(self, context):
 
     unique_objects = {x.object for x in self.items if x.object and x.unique_cache_frames}
 
-    def update_modifiers(s, o):
-        for md in o.modifiers:
-            if md.type in ["CLOTH", "SOFT_BODY"] and o not in unique_objects:
-                md.point_cache.frame_start = s.frame_start
-                md.point_cache.frame_end = s.frame_end
-            elif md.type == "PARTICLE_SYSTEM":
-                psys = md.particle_system
-                if psys.point_cache:
-                    psys.point_cache.frame_start = s.frame_start
-                    psys.point_cache.frame_end = s.frame_end
-            # elif md.type == "DYNAMIC_PAINT":
-            #    for canvas in md.canvas_settings.canvas_surfaces:
-            #        canvas.frame_start = s.frame_start
-            #        canvas.frame_end = s.frame_end
-
     # Rigid Body
     if context.scene.rigidbody_world:
         context.scene.rigidbody_world.point_cache.frame_start = self.frame_start
         context.scene.rigidbody_world.point_cache.frame_end = self.frame_end
 
-    # Update all objects linked to physics items
-    for pi in self.items:
-        if pi.object is not None and pi.type in ["CAGE", "SINGLE_ITEM", "BONES_DRIVER"]:
-            update_modifiers(self, pi.object)
-
-    # Also update outfits, extras, and hair
-    res, arm = mustardui_active_object(context, config=ModelMode.USER)
-    if arm is None or not res:
-        return
-    rig_settings = arm.MustardUI_RigSettings
-
-    if rig_settings.outfit_physics_support:
-        for coll in [x for x in rig_settings.outfits_collections if x.collection is not None]:
-            items = (
-                coll.collection.all_objects
-                if rig_settings.outfit_config_subcollections
-                else coll.collection.objects
-            )
-            for obj in [x for x in items if x.type == "MESH"]:
-                update_modifiers(self, obj)
-
-        if rig_settings.extras_collection is not None:
-            extras_objects = (
-                rig_settings.extras_collection.all_objects
-                if rig_settings.extras_config_subcollections
-                else rig_settings.extras_collection.objects
-            )
-            for obj in [x for x in extras_objects if x.type == "MESH"]:
-                update_modifiers(self, obj)
-
-    if rig_settings.hair_collection is not None:
-        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "MESH"]:
-            update_modifiers(self, obj)
-
-    return
+    for obj in physics_objects(self):
+        unique = obj in unique_objects
+        for md in obj.modifiers:
+            if md.type in ["CLOTH", "SOFT_BODY"] and not unique:
+                md.point_cache.frame_start = self.frame_start
+                md.point_cache.frame_end = self.frame_end
+            elif md.type == "PARTICLE_SYSTEM":
+                psys = md.particle_system
+                if psys.point_cache:
+                    psys.point_cache.frame_start = self.frame_start
+                    psys.point_cache.frame_end = self.frame_end
+        if not unique:
+            for _, bake in simulation_bakes(obj):
+                bake.use_custom_simulation_frame_range = True
+                bake.frame_start = self.frame_start
+                bake.frame_end = self.frame_end
 
 
 def poll_mesh(self, o):

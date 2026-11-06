@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the MustardUI test suite headless.
-# Usage: tests/run_blender.sh /path/to/blender [-k test_name_pattern]
+# Usage: tests/run_blender.sh /path/to/blender [-R regex] [-E regex] [-j [N]] [-N] [-V]
 set -euo pipefail
 
 BLENDER="${1:?Usage: $0 /path/to/blender [-k pattern]}"

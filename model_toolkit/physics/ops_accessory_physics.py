@@ -9,11 +9,13 @@ from mathutils.bvhtree import BVHTree
 from ...misc.mesh_deform import kdtree, read_weights
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
+from ...misc.surface_deform import surface_deform_bind
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from . import physics_presets
 
 PIN_GROUP = "Accessory Pin"
@@ -553,10 +555,9 @@ def bind_surface_deform(context, obj, modifier):
     hidden = obj.hide_viewport
     obj.hide_viewport = False
     context.view_layer.update()
-    with context.temp_override(object=obj, active_object=obj):
-        bpy.ops.object.surfacedeform_bind(modifier=modifier.name)
+    bound = surface_deform_bind(obj, modifier)
     obj.hide_viewport = hidden
-    return modifier.is_bound
+    return bound
 
 
 class CreatedData:
@@ -927,6 +928,8 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
             item = physics_settings.items.add()
             item.object = proxy
             item.type = "CAGE"
+            # Enabled without its update, which hides the item while Physics is off
+            system_properties(item, create=True)["enable"] = True
             outfits = [x.collection for x in rig_settings.outfits_collections if x.collection]
             if rig_settings.extras_collection is not None:
                 outfits.append(rig_settings.extras_collection)
@@ -939,6 +942,8 @@ class MustardUI_ModelToolkit_AccessoryPhysics(bpy.types.Operator):
                 item = physics_settings.items.add()
                 item.object = collider
                 item.type = "COLLISION"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(item, create=True)["enable"] = True
 
         proxy.MustardUI_tools_creators_is_created = True
         for obj in [proxy, *followers] + (

@@ -78,6 +78,10 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
             else:
                 display_name = model_name
 
+            # Models whose armature object is missing or not in the scene
+            obj = armature.MustardUI_RigSettings.model_armature_object
+            missing = obj is None or obj.name not in bpy.context.scene.objects
+
             # Show the name
             row = layout.row(align=True)
             row.operator(
@@ -86,18 +90,12 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                 depress=armature == settings.panel_model_selection_armature
                 if not settings.viewport_model_selection
                 else armature == arm,
-                icon="ERROR"
-                if armature.MustardUI_RigSettings.model_armature_object.name
-                not in bpy.context.scene.objects
-                else "BLANK1",
+                icon="ERROR" if missing else "BLANK1",
             ).model_to_select = armature_name
 
             row2 = row.row(align=True)
             # Button to remove or clean the model from the scene
-            if (
-                armature.MustardUI_RigSettings.model_armature_object.name
-                not in bpy.context.scene.objects
-            ):
+            if missing:
                 row2.enabled = not settings.viewport_model_selection
                 row2.operator(
                     "mustardui.remove_armature", text="", icon="BRUSH_DATA"
@@ -110,10 +108,9 @@ class PANEL_PT_MustardUI_SelectModel(MainPanel, bpy.types.Panel):
                 row2.operator("mustardui.cleanmodel", text="", icon="BRUSH_DATA")
                 row2.operator("mustardui.remove", text="", icon="TRASH")
 
-        if addon_prefs.experimental and addon_prefs.settings_storage_in_menu:
-            layout.separator()
-            layout.label(text="Optimization (Experimental)", icon="FORCE_WIND")
-            layout.prop(addon_prefs, "settings_storage", expand=True)
+        layout.separator()
+        layout.label(text="Optimization", icon="FORCE_WIND")
+        layout.prop(addon_prefs, "settings_storage", expand=True)
 
 
 def register():

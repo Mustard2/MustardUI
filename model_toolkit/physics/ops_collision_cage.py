@@ -38,6 +38,7 @@ from ...model_selection.active_object import (
     mustardui_active_object,
 )
 from ...physics.ops_rebind import bind_object
+from ...text_storage.storage import system_properties
 
 # Modifiers that do not deform the mesh, useless on a cage
 NON_DEFORMING_MODIFIERS = {"PARTICLE_SYSTEM", "COLLISION", "DYNAMIC_PAINT", "FLUID"}
@@ -352,6 +353,8 @@ class MustardUI_ModelToolkit_CreateCollisionCage(bpy.types.Operator):
                 if model_name != "" and model_name not in cage.name:
                     cage.name = f"{model_name} {cage.name}"
                 add_item.type = "COLLISION"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(add_item, create=True)["enable"] = True
 
             # Disable shadows for viewport/render
             cage.visible_camera = False

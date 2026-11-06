@@ -23,14 +23,14 @@ FORMAT_NAMES = {"OPEN_EXR": "EXR", "TARGA": "TGA", "TARGA_RAW": "TGA", "JPEG": "
 JPEG_SOF = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
 
 
-def header_info(image):
-    """Size, float state and format of PNG and JPEG Images from the file header, or None"""
+def header_info(image, filepath=None):
+    """Size, float state and format of a PNG or JPEG Image, or its tile file, from the header"""
 
-    if image.packed_file is not None:
+    if image.packed_file is not None and filepath is None:
         file = io.BytesIO(image.packed_file.data)
     else:
         try:
-            file = open(bpy.path.abspath(image.filepath, library=image.library), "rb")
+            file = open(filepath or bpy.path.abspath(image.filepath, library=image.library), "rb")
         except OSError:
             return None
 

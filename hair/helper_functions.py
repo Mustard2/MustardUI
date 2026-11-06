@@ -1,3 +1,4 @@
+from ..misc.geometry_nodes import node_group_has_simulation
 from ..misc.set_bool import set_bool
 
 
@@ -8,8 +9,13 @@ def set_object_visibility(obj, visible, rig_settings):
 
     for mod in [x for x in obj.modifiers if x.type in ["PARTICLE_SYSTEM", "ARMATURE", "NODES"]]:
         if mod.type in ["PARTICLE_SYSTEM", "NODES"]:
-            set_bool(mod, "show_viewport", visible)
-            set_bool(mod, "show_render", visible)
+            show = visible and (
+                mod.type != "NODES"
+                or obj.MustardUI_OutfitSettings.physics
+                or not node_group_has_simulation(mod.node_group)
+            )
+            set_bool(mod, "show_viewport", show)
+            set_bool(mod, "show_render", show)
         else:  # ARMATURE
             set_bool(
                 mod,

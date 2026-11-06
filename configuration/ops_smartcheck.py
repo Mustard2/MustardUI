@@ -46,7 +46,10 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
     ):
         rig_settings.outfits_enable_global_mask = True
 
-    if mask_vg_name not in body.vertex_groups:
+    # The shared mask group, only for vertex groups named after outfit pieces
+    if mask_vg_name not in body.vertex_groups and any(
+        obj.name in vg.name.split("|") for vg in body.vertex_groups for obj in obj_to_col
+    ):
         body.vertex_groups.new(name=mask_vg_name)
 
     insert_pos = arm_idx + 1 if arm_idx is not None else 0
@@ -97,8 +100,8 @@ def smartcheck_body_mask_from_vg(self, context, rig_settings):
             rig_settings.outfits_enable_global_mask = True
             break  # first-match wins: one outfit per VG
 
+    # Not a warning: most models have no vertex group named after an outfit piece
     if outfits_with_mask < 1:
-        warnings += 1
         print("MustardUI Smart Check - Body Mask from Vertex Groups - No valid Vertex Group to add")
         return warnings
 
