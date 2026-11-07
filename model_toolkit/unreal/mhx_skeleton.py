@@ -1,9 +1,16 @@
-"""Skeleton with Unreal bone names built from an MHX rig, keeping the orientations of the rig.
+"""Skeleton with the bones of the Unreal mannequin built from an MHX rig.
 
 Imported also by worker.py in a background Blender, so it must not import the add-on.
 """
 
+import json
+import math
+import os
+
 from mathutils import Matrix, Vector
+
+with open(os.path.join(os.path.dirname(__file__), "resources/manny_rest.json")) as file:
+    MANNY = json.load(file)
 
 FINGERS = ("index", "middle", "ring", "pinky")
 
@@ -121,6 +128,35 @@ SPINE_JOINTS = {
     "neck_02": "neck-1",
     "head": "head",
 }
+# Bone: the bone it points to, to align the mannequin axes to the limbs of the character
+AIM = {
+    "pelvis": "spine_01",
+    "spine_01": "spine_02",
+    "spine_02": "spine_03",
+    "spine_03": "spine_04",
+    "spine_04": "spine_05",
+    "spine_05": "neck_01",
+    "neck_01": "neck_02",
+    "neck_02": "head",
+}
+for s in "lr":
+    AIM |= {
+        f"clavicle_{s}": f"upperarm_{s}",
+        f"upperarm_{s}": f"lowerarm_{s}",
+        f"lowerarm_{s}": f"hand_{s}",
+        f"hand_{s}": f"middle_01_{s}",
+        f"thigh_{s}": f"calf_{s}",
+        f"calf_{s}": f"foot_{s}",
+        f"foot_{s}": f"ball_{s}",
+        f"thumb_01_{s}": f"thumb_02_{s}",
+        f"thumb_02_{s}": f"thumb_03_{s}",
+    }
+    for finger in FINGERS:
+        AIM |= {
+            f"{finger}_metacarpal_{s}": f"{finger}_01_{s}",
+            f"{finger}_01_{s}": f"{finger}_02_{s}",
+            f"{finger}_02_{s}": f"{finger}_03_{s}",
+        }
 # Limb bone, its child, and the twist bones at 1/3 and 2/3 of it
 TWISTS = (
     ("upperarm", "lowerarm", "01", "02"),
@@ -128,6 +164,34 @@ TWISTS = (
     ("lowerarm", "hand", "02", "01"),
     ("calf", "foot", "02", "01"),
 )
+
+
+def manny_rotation(name):
+    """Rest rotation of a mannequin bone in Blender space, where Unreal has Y flipped."""
+    rotation = MANNY[name]["rotation"]
+    p, y, r = (math.radians(rotation[k]) for k in ("pitch", "yaw", "roll"))
+    sp, cp, sy, cy, sr, cr = (
+        math.sin(p),
+        math.cos(p),
+        math.sin(y),
+        math.cos(y),
+        math.sin(r),
+        math.cos(r),
+    )
+    matrix = Matrix(
+        (
+            (cp * cy, sr * sp * cy - cr * sy, -(cr * sp * cy + sr * sy)),
+            (cp * sy, sr * sp * sy + cr * cy, cy * sr - cr * sp * sy),
+            (sp, -sr * cp, cr * cp),
+        )
+    )
+    flip = Matrix.Diagonal((1, -1, 1))
+    return flip @ matrix @ flip
+
+
+def manny_location(name):
+    location = MANNY[name]["location"]
+    return Vector((location["x"], -location["y"], location["z"]))
 
 
 def missing_bones(rig):
@@ -167,17 +231,33 @@ def build(rig, weighted):
             pos[f"{part}_twist_{first}_{s}"] = pos[f"{part}_{s}"].lerp(pos[f"{child}_{s}"], 1 / 3)
             pos[f"{part}_twist_{second}_{s}"] = pos[f"{part}_{s}"].lerp(pos[f"{child}_{s}"], 2 / 3)
 
+    # Rotation that aims each mannequin bone along the same limb of the character
+    aim = {}
+    for name, target in AIM.items():
+        manny = manny_location(target) - manny_location(name)
+        character = pos[target] - pos[name]
+        aim[name] = (
+            manny.rotation_difference(character).to_matrix()
+            if manny.length > 1e-3 and character.length > 1e-3
+            else Matrix.Identity(3)
+        )
+    # Bones with nothing to aim at follow the closest aimed bone
+    for s in "lr":
+        aim[f"ball_{s}"] = aim[f"foot_{s}"]
+        aim[f"thumb_03_{s}"] = aim[f"thumb_02_{s}"]
+        for finger in FINGERS:
+            aim[f"{finger}_03_{s}"] = aim[f"{finger}_02_{s}"]
+        for part in ("upperarm", "lowerarm", "thigh", "calf"):
+            for twist in ("01", "02"):
+                aim[f"{part}_twist_{twist}_{s}"] = aim[f"{part}_{s}"]
+
     rest, parent = {}, {}
     for target, position in pos.items():
-        matrix = (
-            bones[source[target]].matrix_local.to_3x3().to_4x4()
-            if target != "root"
-            else Matrix.Identity(4)
-        )
+        matrix = (aim.get(target, Matrix.Identity(3)) @ manny_rotation(target)).to_4x4()
         matrix.translation = position
         rest[target], parent[target] = matrix, PARENT[target]
 
-    # Every other weighted bone keeps its name, with . replaced because Unreal uses _
+    # Other weighted bones are not in the mannequin: keep their axes, with _ in place of .
     for bone in bones:
         if bone.name not in weighted or bone.name in PLAIN or bone.name in SPLIT:
             continue
