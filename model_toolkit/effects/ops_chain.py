@@ -17,7 +17,7 @@ from .effect import (
 
 NODE_GROUP = "MustardUI Chain"
 # Version of the bundled node group, the VERSION of its build script
-VERSION = 2
+VERSION = 4
 ANCHOR_TYPE = "EFFECT_CHAIN_ANCHOR"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "chain.blend")
 # Length of a chain from one Anchor, in m

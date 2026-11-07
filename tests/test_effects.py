@@ -5531,6 +5531,49 @@ class TestChain(BlenderTestCase):
         acceleration = np.linalg.norm(links[2:] - 2 * links[1:-1] + links[:-2], axis=2)[10:]
         self.assertLess(acceleration.max(), 0.02)
 
+    # Piling up, parts of it close together, the links do not flicker: it does not fold in hairpins
+    def test_pile_calm(self):
+        floor = bpy.data.objects.new("Floor", bpy.data.meshes.new("Floor"))
+        self.scene.collection.objects.link(floor)
+        floor.data.from_pydata([(x, y, 0.0) for x in (-4, 4) for y in (-4, 4)], [], [(0, 2, 3, 1)])
+        chain, _ = self.add((0.0, 0.0, 0.5))
+        modifier = chain.modifiers["Chain"]
+        effect.modifier_input(modifier, "Free Length").value = 1.6
+        effect.modifier_input(modifier, "Hold").value = 0.0
+        effect.modifier_input(modifier, "Colliders").value.objects.link(floor)
+        chain.update_tag()
+        directions = []
+        resolution = effect.modifier_input(modifier, "Resolution").value
+        size = resolution * max(resolution // 2, 3)
+        for frame in range(1, 101):
+            self.scene.frame_set(frame)
+            mesh = chain.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+            co = np.empty(len(mesh.vertices) * 3)
+            mesh.vertices.foreach_get("co", co)
+            links = co.reshape(-1, size, 3)
+            way = links[:, 0] - links.mean(1)
+            directions.append(way / np.linalg.norm(way, axis=1, keepdims=True))
+        directions = np.array(directions)
+        turn = np.arccos(np.clip((directions[1:] * directions[:-1]).sum(2), -1, 1))[10:]
+        self.assertLess(np.degrees(np.percentile(turn, 99)), 40)
+
+    # It pivots at the Anchors, with a sharp peak and its sides close together, staying still
+    def test_anchor_peak(self):
+        for x, length, widest in ((0.3, 1.4, 0.03), (0.1, 1.25, 0.02)):
+            chain, _ = self.add((-x, 0.0, 2.0), (0.0, 0.0, 2.6), (x, 0.0, 2.0), Length=length)
+            for frame in range(1, 150):
+                self.scene.frame_set(frame)
+            before = self.links(chain, 150)
+            links = self.links(chain, 151)
+            self.assertLess(np.linalg.norm(links - before, axis=1).max(), 0.001)
+            top = links[:, 2].argmax()
+            below = links[:, 2] < links[top, 2] - 0.01
+            left = links[: top + 1][below[: top + 1]][-1][0]
+            right = links[top:][below[top:]][0][0]
+            self.assertLess(right - left, widest)
+            bpy.data.objects.remove(chain)
+            self.scene.frame_set(1)
+
     # The numbers in the names by their values, as the Collection Info node sorts them
     def test_anchors_order(self):
         chain, empties = self.add((0.2, 0.0, 3.0), (0.3, 0.0, 3.0), (1.0, 0.0, 3.0))

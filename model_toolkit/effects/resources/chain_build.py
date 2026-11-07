@@ -12,7 +12,7 @@ RESOURCE = "chain.blend"
 NODE_GROUP = "MustardUI Chain"
 SOLVER = "MustardUI Chain Solver"
 # Raised at every change, the add-on replacing older copies in the files
-VERSION = 2
+VERSION = 4
 # Over-relaxation of the length passes, which converge slowly along a long chain. Up to 1.8 it
 # gets unstable with the smaller steps of more substeps
 OVER_RELAXATION = 1.5
@@ -34,9 +34,14 @@ TAUT = 1.0005
 CATENARY_STEPS = 4
 # Deepest points pushed out of the Colliders, the others being behind open meshes
 MAX_DEPTH = 0.05
+# Least distance of each point from the second next ones, in segments: the sharpest bend is about
+# 60 degrees for each Segment Length, a shorter one allows tighter folds. Not at the Anchors
+MIN_FOLD = 1.7
 # Distance of the points pushed apart by the Self Collision: of the radius of the chain and, to
 # skip the next points, of the distance along it
 SELF_RADIUS = 3.0
+# Points this close along the chain do not collide, as the ones next to a sharp bend at an Anchor
+SELF_SKIP = 10.0
 SELF_SPACING = 0.9
 # Random offset of the points at rest, for the straight parts to buckle on the Colliders
 BUCKLING = 0.0002
@@ -410,10 +415,89 @@ def build_solver():
         ).outputs[0]
     t.connect(geometry, iterations_out.inputs["Geometry"])
 
+    # Links do not fold on themselves, and link directions flip at hairpins: no point closer to the
+    # second next ones than they can get
+    count_after = t.node(
+        "GeometryNodeAttributeDomainSize",
+        32.1,
+        -30,
+        {"Geometry": iterations_out.outputs["Geometry"]},
+        component="POINTCLOUD",
+    ).outputs["Point Count"]
+    folds = []
+    for i, sign in enumerate((1.0, -1.0)):
+        y = -32 - 8 * i
+        second = t.math("ADD", index, 2.0 * sign, x=32.1, y=y)
+        exists = t.math(
+            "MULTIPLY",
+            t.math("GREATER_THAN", second, -0.5, x=32.1, y=y - 1),
+            t.math(
+                "LESS_THAN",
+                second,
+                t.math("SUBTRACT", count_after, 0.5, x=32.1, y=y - 2),
+                x=32.1,
+                y=y - 3,
+            ),
+            x=32.1,
+            y=y - 4,
+        )
+        away = t.vmath("SUBTRACT", position, at(second, position, 32.1, y - 5), x=32.2, y=y)
+        least = t.math(
+            "MULTIPLY",
+            t.attribute(".chain_rest", "FLOAT", 32.2, y - 1),
+            MIN_FOLD,
+            x=32.2,
+            y=y - 2,
+        )
+        folds.append(
+            t.vmath(
+                "SCALE",
+                t.vmath("NORMALIZE", away, x=32.2, y=y - 3),
+                t.math(
+                    "MULTIPLY",
+                    t.math(
+                        "MAXIMUM",
+                        t.math(
+                            "SUBTRACT",
+                            least,
+                            t.vmath("LENGTH", away, x=32.2, y=y - 4),
+                            x=32.2,
+                            y=y - 5,
+                        ),
+                        0.0,
+                        x=32.2,
+                        y=y - 6,
+                    ),
+                    t.math(
+                        "MULTIPLY",
+                        t.math("MULTIPLY", exists, 0.25, x=32.2, y=y - 7),
+                        # Not around the Anchors, where the chain pivots
+                        at(t.math("ADD", index, sign, x=32.2, y=y - 8), free, 32.3, y - 8, "FLOAT"),
+                        x=32.3,
+                        y=y - 7,
+                    ),
+                    x=32.3,
+                    y=y - 6,
+                ),
+                x=32.3,
+                y=y - 3,
+            )
+        )
+    unfolded = t.node(
+        "GeometryNodeSetPosition",
+        32.4,
+        0,
+        {
+            "Geometry": iterations_out.outputs["Geometry"],
+            "Selection": held,
+            "Offset": t.vmath("ADD", folds[0], folds[1], x=32.4, y=-32),
+        },
+    ).outputs[0]
+
     # No point farther from the Anchors than along the chain, for the chain not to stretch
     # under its weight however long it is
     geometry = along(
-        iterations_out.outputs["Geometry"],
+        unfolded,
         t.attribute(".chain_from", "FLOAT", 32, -2),
         t.attribute(".chain_first", "INT", 32, -3),
         held,
@@ -538,7 +622,30 @@ def build_solver():
                 "FunctionNodeBooleanMath",
                 35.5,
                 -18,
-                {0: held, 1: t.math("LESS_THAN", near_distance, apart, x=35.5, y=-19)},
+                {
+                    0: t.node(
+                        "FunctionNodeBooleanMath",
+                        35.4,
+                        -18,
+                        {
+                            0: held,
+                            1: t.math(
+                                "GREATER_THAN",
+                                t.math(
+                                    "ABSOLUTE",
+                                    t.math("SUBTRACT", nearest_point, index, x=35.3, y=-24),
+                                    x=35.4,
+                                    y=-24,
+                                ),
+                                SELF_SKIP,
+                                x=35.4,
+                                y=-25,
+                            ),
+                        },
+                        operation="AND",
+                    ).outputs[0],
+                    1: t.math("LESS_THAN", near_distance, apart, x=35.5, y=-19),
+                },
                 operation="AND",
             ).outputs[0],
             "Offset": t.vmath(
