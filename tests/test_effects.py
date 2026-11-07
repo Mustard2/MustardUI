@@ -50,6 +50,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_cloth_rip.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_rope.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_tape.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_chain.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_shatter.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dirt.poll())
@@ -5413,6 +5414,248 @@ class TestBillowDust(BlenderTestCase):
         self.assertNotIn(name, bpy.data.collections)
         self.assertEqual(self.block.users_collection, (self.scene.collection,))
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_billow_dust.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestChain(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.scene = bpy.context.scene
+        self.scene.frame_start, self.scene.frame_end = 1, 200
+
+    def add(self, *points, **inputs):
+        """Chain through new Empties at the points, in the order of their names"""
+        for x in list(bpy.context.selected_objects):
+            x.select_set(False)
+        empties = [new_object(f"Anchor {i + 1}") for i in range(len(points))]
+        for obj, point in zip(empties, points, strict=True):
+            obj.location = point
+            obj.select_set(True)
+        bpy.context.view_layer.update()
+        bpy.ops.mustardui.model_toolkit_chain()
+        chain = bpy.context.active_object
+        for name, value in inputs.items():
+            effect.modifier_input(chain.modifiers["Chain"], name.replace("_", " ")).value = value
+        chain.update_tag()
+        return chain, empties
+
+    def links(self, chain, frame):
+        """Centers of the links at the frame"""
+        self.scene.frame_set(frame)
+        mesh = chain.evaluated_get(bpy.context.evaluated_depsgraph_get()).data
+        co = np.empty(len(mesh.vertices) * 3)
+        mesh.vertices.foreach_get("co", co)
+        resolution = effect.modifier_input(chain.modifiers["Chain"], "Resolution").value
+        return co.reshape(-1, resolution * max(resolution // 2, 3), 3).mean(1)
+
+    @staticmethod
+    def length(links):
+        return np.linalg.norm(np.diff(links, axis=0), axis=1).sum()
+
+    # At rest it hangs exactly as a catenary, from the Anchors, keeping its length when playing
+    def test_hanging(self):
+        chain, _ = self.add((-0.5, 0.0, 3.0), (0.5, 0.0, 3.0), Length=1.5)
+        links = self.links(chain, 1)
+        self.assertAlmostEqual(self.length(links), 1.5, delta=0.005)
+        # Sag of a catenary with a span of 1 m and a length of 1.5 m
+        self.assertAlmostEqual(3.0 - links[:, 2].min(), 0.5026, delta=0.002)
+        np.testing.assert_allclose(links[[0, -1]], [(-0.5, 0, 3), (0.5, 0, 3)], atol=1e-4)
+        for frame in range(2, 21):
+            moved = self.links(chain, frame)
+            self.assertLess(np.linalg.norm(moved - links, axis=1).max(), 0.02)
+            links = moved
+        self.assertAlmostEqual(self.length(links), 1.5, delta=0.015)
+        self.assertEqual(chain.modifiers["Chain"].node_warnings[:], [])
+
+    # The tip goes to the Tip Control as far as the chain reaches, and hangs when dropped
+    def test_tip(self):
+        chain, empties = self.add((0.0, 0.0, 3.0))
+        modifier = chain.modifiers["Chain"]
+        self.assertEqual(effect.modifier_input(modifier, "Free Length").value, 0.5)
+        tip = effect.modifier_input(modifier, "Tip Control").value
+        np.testing.assert_allclose(tip.location, (0, 0, 2.5))
+        np.testing.assert_allclose(self.links(chain, 1)[-1], (0, 0, 2.5), atol=1e-3)
+
+        # At rest it hangs up to the Tip Control
+        tip.location = (0.3, 0.0, 2.9)
+        chain.update_tag()
+        links = self.links(chain, 1)
+        np.testing.assert_allclose(links[-1], tip.location, atol=1e-3)
+        self.assertAlmostEqual(self.length(links), 0.5, delta=0.005)
+        self.assertLess(links[:, 2].min(), 2.8)
+
+        hold = effect.modifier_input(modifier, "Hold")
+        for frame, x, value in ((1, 0.3, 1.0), (30, 2.0, 1.0), (60, 2.0, 1.0), (61, 2.0, 0.0)):
+            tip.location.x = x
+            tip.keyframe_insert("location", frame=frame)
+            hold.value = value
+            hold.keyframe_insert("value", frame=frame)
+        for frame in range(1, 60):
+            self.scene.frame_set(frame)
+        links = self.links(chain, 60)
+        reach = (tip.location - empties[0].location).normalized() * 0.5 + empties[0].location
+        np.testing.assert_allclose(links[-1], reach, atol=2e-3)
+        self.assertAlmostEqual(self.length(links), 0.5, delta=0.01)
+
+        for frame in range(61, 200):
+            self.scene.frame_set(frame)
+        links = self.links(chain, 200)
+        self.assertAlmostEqual(links[-1][2], 2.5, delta=0.01)
+        self.assertLess(np.abs(links[-1][0]), 0.05)
+
+        # Loose from the start, and with the Tip Control removed
+        hold.id_data.animation_data_clear()
+        hold.value = 1.0
+        effect.modifier_input(modifier, "Tip Control").value = None
+        chain.update_tag()
+        self.scene.frame_set(1)
+        links = self.links(chain, 1)
+        self.assertLess(np.abs(links[:, :2]).max(), 0.001)
+        self.assertAlmostEqual(links[-1][2], 2.5, delta=0.001)
+
+    # Resting on a moving Collider it follows it calmly, the pushes out not making it bounce
+    def test_contact_calm(self):
+        ball = bpy.data.objects.new("Ball", bpy.data.meshes.new("Ball"))
+        self.scene.collection.objects.link(ball)
+        mesh = bmesh.new()
+        bmesh.ops.create_uvsphere(mesh, u_segments=48, v_segments=24, radius=0.3)
+        mesh.to_mesh(ball.data)
+        mesh.free()
+        for frame in range(1, 70):
+            ball.location = (0.08 * np.sin(2 * np.pi * frame / 60), 0.0, 2.7)
+            ball.keyframe_insert("location", frame=frame)
+        chain, _ = self.add((-0.5, 0.0, 3.2), (0.5, 0.0, 3.2), Length=1.6)
+        effect.modifier_input(chain.modifiers["Chain"], "Colliders").value.objects.link(ball)
+        chain.update_tag()
+        links = np.array([self.links(chain, frame) for frame in range(1, 61)])
+        acceleration = np.linalg.norm(links[2:] - 2 * links[1:-1] + links[:-2], axis=2)[10:]
+        self.assertLess(acceleration.max(), 0.02)
+
+    # The numbers in the names by their values, as the Collection Info node sorts them
+    def test_anchors_order(self):
+        chain, empties = self.add((0.2, 0.0, 3.0), (0.3, 0.0, 3.0), (1.0, 0.0, 3.0))
+        empties[0].name, empties[1].name, empties[2].name = "A 2", "A 10", "A 1"
+        chain.update_tag()
+        links = self.links(chain, 1)
+        np.testing.assert_allclose(links[[0, -1]], [(1, 0, 3), (0.3, 0, 3)], atol=1e-4)
+
+    # Pulled past taut it stretches evenly, without Keep Length it stretches as the Anchors move
+    def test_keep_length(self):
+        for keep, length, sagging in ((True, 1.3, False), (False, 2.6, True)):
+            chain, empties = self.add((-0.5, 0.0, 3.0), (0.5, 0.0, 3.0), Length=1.3)
+            effect.modifier_input(chain.modifiers["Chain"], "Keep Length").value = keep
+            chain.update_tag()
+            for frame, x in ((1, 0.5), (30, 0.5), (60, 1.5), (100, 1.5)):
+                empties[1].location.x = x
+                empties[1].keyframe_insert("location", frame=frame)
+            for frame in range(1, 100):
+                self.scene.frame_set(frame)
+            links = self.links(chain, 100)
+            self.assertAlmostEqual(self.length(links), max(length, 2.0), delta=0.04)
+            self.assertEqual(3.0 - links[:, 2].min() > 0.3, sagging)
+            spacing = np.linalg.norm(np.diff(links, axis=0), axis=1)
+            self.assertLess(spacing.max() / spacing.min(), 1.2)
+            bpy.data.objects.remove(chain)
+            self.scene.frame_set(1)
+
+    # Starting through a Collider it goes around it, on one side, at rest and when playing
+    def test_collision(self):
+        ball = bpy.data.objects.new("Ball", bpy.data.meshes.new("Ball"))
+        self.scene.collection.objects.link(ball)
+        mesh = bmesh.new()
+        bmesh.ops.create_uvsphere(mesh, u_segments=48, v_segments=24, radius=0.3)
+        mesh.to_mesh(ball.data)
+        mesh.free()
+        ball.location = (0.0, 0.0, 2.7)
+        chain, _ = self.add((-0.5, 0.0, 3.2), (0.5, 0.0, 3.2), Length=1.6)
+        effect.modifier_input(chain.modifiers["Chain"], "Colliders").value.objects.link(ball)
+        chain.update_tag()
+        for frame in (1, 30):
+            for x in range(1, frame + 1):
+                self.scene.frame_set(x)
+            links = self.links(chain, frame)
+            self.assertGreater(np.linalg.norm(links - ball.location, axis=1).min(), 0.29)
+            self.assertAlmostEqual(self.length(links), 1.6, delta=0.03)
+
+    # On the selected vertices, the selected bones and the 3D cursor, following what is selected
+    def test_anchors_selection(self):
+        configure_model(build_model())
+        body = bpy.data.objects["Tester Body"]
+        set_active(body)
+        bpy.ops.object.mode_set(mode="EDIT")
+        mesh = bmesh.from_edit_mesh(body.data)
+        for vertex in mesh.verts:
+            vertex.select = vertex.index in (0, 7)
+        bmesh.update_edit_mesh(body.data)
+        bpy.ops.mustardui.model_toolkit_chain()
+        self.assertEqual(bpy.context.mode, "OBJECT")
+        chain = bpy.context.active_object
+        modifier = chain.modifiers["Chain"]
+        anchors = effect.modifier_input(modifier, "Anchors").value.objects
+        self.assertEqual([x.parent_type for x in anchors], ["VERTEX", "VERTEX"])
+        self.assertEqual({x.parent_vertices[0] for x in anchors}, {0, 7})
+        self.assertEqual(list(effect.modifier_input(modifier, "Colliders").value.objects), [body])
+
+        armature = bpy.data.objects["Tester Armature"]
+        set_active(armature)
+        bpy.ops.object.mode_set(mode="POSE")
+        bone = armature.pose.bones["spine"]
+        for x in armature.pose.bones:
+            x.select = x == bone
+        bpy.ops.mustardui.model_toolkit_chain()
+        chain = bpy.context.active_object
+        modifier = chain.modifiers["Chain"]
+        anchor = effect.modifier_input(modifier, "Anchors").value.objects[0]
+        self.assertEqual((anchor.parent, anchor.parent_bone), (armature, bone.name))
+        np.testing.assert_allclose(
+            anchor.matrix_world.translation, armature.matrix_world @ bone.head, atol=1e-5
+        )
+        # The model body as Collider without selected meshes
+        self.assertEqual(list(effect.modifier_input(modifier, "Colliders").value.objects), [body])
+
+        set_active(body)
+        self.scene.cursor.location = (0.1, 0.0, 1.0)
+        bpy.ops.mustardui.model_toolkit_chain()
+        modifier = bpy.context.active_object.modifiers["Chain"]
+        anchor = effect.modifier_input(modifier, "Anchors").value.objects[0]
+        self.assertIsNotNone(anchor.parent)
+        np.testing.assert_allclose(anchor.matrix_world.translation, (0.1, 0, 1), atol=1e-5)
+
+    # Only what it added is removed, the Empties and Colliders it got stay in the scene
+    def test_remove(self):
+        chain, empties = self.add((-0.5, 0.0, 3.0), (0.5, 0.0, 3.0))
+        modifier = chain.modifiers["Chain"]
+        anchors = effect.modifier_input(modifier, "Anchors").value
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        cube = new_mesh_object("Cube")
+        colliders.objects.link(cube)
+        self.scene.collection.objects.unlink(cube)
+        empties[0].MustardUI_tools_creators_type = "EFFECT_CHAIN_ANCHOR"
+        self.scene.collection.objects.unlink(empties[1])
+        set_active(chain)
+        collections = {anchors.name, colliders.name, chain.users_collection[0].name}
+        bpy.ops.mustardui.model_toolkit_remove_chain()
+        self.assertNotIn("Chain", bpy.data.objects)
+        self.assertNotIn("Anchor 1", bpy.data.objects)
+        self.assertFalse(collections & set(bpy.data.collections.keys()))
+        self.assertEqual(empties[1].users_collection, (self.scene.collection,))
+        self.assertEqual(cube.users_collection, (self.scene.collection,))
+
+        # With the Tip Control it added
+        bpy.ops.mustardui.model_toolkit_chain()
+        chain = bpy.context.active_object
+        tip = effect.modifier_input(chain.modifiers["Chain"], "Tip Control").value.name
+        bpy.ops.mustardui.model_toolkit_remove_chain()
+        self.assertNotIn(tip, bpy.data.objects)
+
+    # Without Anchors there is no chain, and no warnings
+    def test_no_anchors(self):
+        chain, _ = self.add((0.0, 0.0, 3.0))
+        modifier = chain.modifiers["Chain"]
+        effect.modifier_input(modifier, "Anchors").value = None
+        chain.update_tag()
+        self.assertEqual(len(self.links(chain, 1)), 0)
+        self.assertEqual(modifier.node_warnings[:], [])
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

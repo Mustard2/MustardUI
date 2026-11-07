@@ -245,6 +245,7 @@ class TestUI(BlenderTestCase):
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_jiggle_effect()
         bpy.ops.mustardui.model_toolkit_dust_motes()
+        bpy.ops.mustardui.model_toolkit_chain()
         bpy.context.view_layer.update()
 
         # A row for each modifier, and for each object with the shader only effects

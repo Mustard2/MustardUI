@@ -128,17 +128,38 @@ def parent_control(control, obj, vertex, depsgraph):
         default=None,
     )
     if group:
-        bone = bones[obj.vertex_groups[group.group].name]
-        control.parent = armature
-        control.parent_type = "BONE"
-        control.parent_bone = bone.name
-        # The bone parent matrix is at its tail
-        parent = armature.matrix_world @ bone.matrix
-        parent.translation = armature.matrix_world @ bone.tail
+        parent_to_bone(control, armature, bones[obj.vertex_groups[group.group].name])
     else:
         control.parent = obj
-        parent = obj.matrix_world
+        control.matrix_parent_inverse = obj.matrix_world.inverted()
+
+
+def parent_to_bone(control, armature, bone):
+    """Parent the Control to the pose bone, keeping its world transform"""
+    control.parent = armature
+    control.parent_type = "BONE"
+    control.parent_bone = bone.name
+    # The bone parent matrix is at its tail
+    parent = armature.matrix_world @ bone.matrix
+    parent.translation = armature.matrix_world @ bone.tail
     control.matrix_parent_inverse = parent.inverted()
+
+
+def load_node_group(resource, node_group, version):
+    """Node group appended if not in the file or older than the bundled one"""
+    old = bpy.data.node_groups.get(node_group)
+    if old is not None and old.get("MustardUI Version", 1) >= version:
+        return
+    with bpy.data.libraries.load(resource) as (_, data):
+        data.node_groups = [node_group]
+    if old is not None:
+        # The modifiers move to the new one, set one by one as user_remap does not set up their
+        # simulations, crashing Blender
+        for modifier in [m for x in bpy.data.objects for m in x.modifiers]:
+            if modifier.type == "NODES" and modifier.node_group == old:
+                modifier.node_group = data.node_groups[0]
+        bpy.data.node_groups.remove(old)
+        data.node_groups[0].name = node_group
 
 
 def add_effect_modifier(obj, name, node_group, control=None):

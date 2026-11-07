@@ -10,6 +10,7 @@ from .effect import (
     add_effect_modifier,
     effects_available,
     is_effect,
+    load_node_group,
     modifier_input,
     parent_control,
 )
@@ -54,19 +55,7 @@ class MustardUI_ModelToolkit_Shrinkwrap(bpy.types.Operator):
         target = context.active_object
         colliders = [x for x in context.selected_objects if x.type == "MESH" and x != target]
 
-        # Appended if not in the file or older than the bundled one
-        old = bpy.data.node_groups.get(NODE_GROUP)
-        if old is None or old.get("MustardUI Version", 1) < VERSION:
-            with bpy.data.libraries.load(RESOURCE) as (_, data):
-                data.node_groups = [NODE_GROUP]
-            if old is not None:
-                # The modifiers move to the new one, set one by one as user_remap does not
-                # set up their simulations, crashing Blender
-                for modifier in [m for x in bpy.data.objects for m in x.modifiers]:
-                    if modifier.type == "NODES" and modifier.node_group == old:
-                        modifier.node_group = data.node_groups[0]
-                bpy.data.node_groups.remove(old)
-                data.node_groups[0].name = NODE_GROUP
+        load_node_group(RESOURCE, NODE_GROUP, VERSION)
 
         zone = place_zone(context, target, colliders[0]) if self.opening and colliders else None
 

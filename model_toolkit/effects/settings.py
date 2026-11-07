@@ -8,6 +8,7 @@ from . import (
     ops_aura,
     ops_billow_dust,
     ops_bulge,
+    ops_chain,
     ops_cloth_rip,
     ops_cloth_tear,
     ops_crush,
@@ -90,6 +91,7 @@ EFFECTS = {
     ),
     "Rope": Effect("CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None, "remove_rope"),
     "Tape": Effect("MOD_THICKNESS", ops_wrap.Tape.node_group, None, "remove_tape"),
+    "Chain": Effect("LINKED", ops_chain.NODE_GROUP, None, "remove_chain"),
     "Fireball": Effect("LIGHT_SUN", ops_fireball.NODE_GROUP, None, "remove_fireball"),
     "Rain": Effect("FORCE_FLUIDFLOW", ops_rain.NODE_GROUP, None, "remove_rain"),
 }

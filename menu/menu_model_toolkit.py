@@ -248,7 +248,7 @@ EFFECT_GROUPS = (
         "Dust Puff",
         "Wet Footprints",
     ),
-    ("Rope", "Tape"),
+    ("Rope", "Tape", "Chain"),
     ("Fireball",),
     ("Dust Motes", "Rain"),
 )
