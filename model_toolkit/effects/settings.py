@@ -63,10 +63,16 @@ EFFECTS = {
     "Dirt": Effect("MOD_NOISE", ops_dirt.NODE_GROUP, ops_dirt.FILM, "remove_dirt"),
     "Foam": Effect("OUTLINER_DATA_POINTCLOUD", ops_foam.NODE_GROUP, None, "remove_foam"),
     "Marks": Effect("TPAINT_HLT", ops_marks.NODE_GROUP, None, "remove_marks"),
-    "Imprints": Effect("MOD_DISPLACE", ops_imprints.NODE_GROUP, None, "remove_imprints"),
+    "Imprints": Effect(
+        "MOD_DISPLACE", ops_imprints.NODE_GROUP, None, "remove_imprints", experimental=True
+    ),
     "Bulge": Effect("SPHERECURVE", ops_bulge.NODE_GROUP, None, "remove_bulge"),
-    "Shrinkwrap": Effect("MOD_SHRINKWRAP", ops_shrinkwrap.NODE_GROUP, None, "remove_shrinkwrap"),
-    "Dust Puff": Effect("FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None, "remove_dust_puff"),
+    "Shrinkwrap": Effect(
+        "MOD_SHRINKWRAP", ops_shrinkwrap.NODE_GROUP, None, "remove_shrinkwrap", experimental=True
+    ),
+    "Dust Puff": Effect(
+        "FORCE_TURBULENCE", ops_dust_puff.NODE_GROUP, None, "remove_dust_puff", experimental=True
+    ),
     "Wet Footprints": Effect(
         "MOD_DYNAMICPAINT",
         ops_footprints.NODE_GROUP,
@@ -87,7 +93,11 @@ EFFECTS = {
     "Shockwave": Effect("FORCE_FORCE", ops_shockwave.NODE_GROUP, None, "remove_shockwave"),
     "Crush": Effect("MOD_MESHDEFORM", ops_crush.NODE_GROUP, None, "remove_crush"),
     "Billow Dust": Effect(
-        "OUTLINER_OB_VOLUME", ops_billow_dust.NODE_GROUP, None, "remove_billow_dust"
+        "OUTLINER_OB_VOLUME",
+        ops_billow_dust.NODE_GROUP,
+        None,
+        "remove_billow_dust",
+        experimental=True,
     ),
     "Rope": Effect("CURVE_BEZCIRCLE", ops_wrap.Rope.node_group, None, "remove_rope"),
     "Tape": Effect("MOD_THICKNESS", ops_wrap.Tape.node_group, None, "remove_tape"),

@@ -332,6 +332,8 @@ class PANEL_PT_MustardUI_ModelToolkit_Effects(ModelToolkitSection, bpy.types.Pan
                 row.label(text="", icon="GEOMETRY_NODES" if effect.node_group else "NODE_MATERIAL")
                 row.separator()
                 row.operator(f"mustardui.model_toolkit_{add}", text=name, icon=effect.icon)
+                if effect.experimental:
+                    row.label(text="", icon="EXPERIMENTAL")
                 if name.startswith("Sticky"):
                     row.operator(
                         f"mustardui.model_toolkit_convert_{add}", text="", icon="MESH_DATA"
