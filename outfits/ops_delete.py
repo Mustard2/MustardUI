@@ -92,7 +92,7 @@ def delete_extras_pieces(
         bpy.data.collections.remove(extras)
 
     # Turn off the masks of the deleted pieces, matched by name as on outfit switch
-    visibility = get_mask_visibility(rig_settings)
+    visibility = get_mask_visibility(context, rig_settings)
     visibility.update(dict.fromkeys(deleted_names, False))
     update_masks(context, rig_settings, visibility)
     return len(deleted_names)
@@ -109,7 +109,7 @@ def delete_outfit_collection(context, arm, col):
     bpy.data.collections.remove(col)
 
     # Turn off the masks of the deleted pieces, matched by name as on outfit switch
-    visibility = get_mask_visibility(rig_settings)
+    visibility = get_mask_visibility(context, rig_settings)
     visibility.update(dict.fromkeys(deleted_names, False))
     update_masks(context, rig_settings, visibility)
 

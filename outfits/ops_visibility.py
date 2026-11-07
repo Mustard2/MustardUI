@@ -122,14 +122,14 @@ def update_model_after_pieces_switch(context, arm, objects, switched):
     armature_settings = arm.MustardUI_ArmatureSettings
     physics_settings = arm.MustardUI_PhysicsSettings
 
-    # Masks
-    visibility = get_mask_visibility(rig_settings)
+    # Extras
+    hidden = update_extras_visibility(context, rig_settings)
+
+    # Masks, after the Extras as they read the visibility of the collections
+    visibility = get_mask_visibility(context, rig_settings)
     for name, visible in switched.items():
         visibility.setdefault(name, visible and rig_settings.outfits_global_mask)
     update_masks(context, rig_settings, visibility)
-
-    # Extras
-    hidden = update_extras_visibility(context, rig_settings)
 
     # Physics update
     if physics_settings.enable_ui:

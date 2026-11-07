@@ -662,6 +662,8 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         if lc is not None:
             lc.exclude = hidden
 
+        update_masks(context, self)
+
     show_viewport_extras: bpy.props.BoolProperty(
         default=True,
         name="Show Armature",

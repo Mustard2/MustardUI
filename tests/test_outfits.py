@@ -81,6 +81,35 @@ class TestOutfits(BlenderTestCase):
         bpy.ops.mustardui.object_visibility(obj="Formal - Dress")
         self.assertTrue(mask.show_viewport)
 
+    # Pieces of hidden or excluded collections don't drive masks, whatever their own flag
+    def test_hidden_collection_mask(self):
+        mask = self.model["body"].modifiers["Formal - Dress"]
+        formal = self.model["outfits"][1]
+        layer_coll = bpy.context.view_layer.layer_collection.children[formal.name]
+        self.rig_settings.outfits_list = "Tester Casual"
+        bpy.data.objects["Formal - Dress"].hide_viewport = False
+
+        for hidden, excluded in ((True, False), (False, True), (False, False)):
+            with self.subTest(hidden=hidden, excluded=excluded):
+                formal.hide_viewport = hidden
+                layer_coll.exclude = excluded
+                mask.show_viewport = False
+                bpy.ops.mustardui.object_visibility(obj="Extras - Glasses")
+                self.assertEqual(mask.show_viewport, not hidden and not excluded)
+
+    # Showing the first Extra of the hidden collection turns on its mask
+    def test_first_extra_mask(self):
+        mask = self.model["body"].modifiers.new("Extras - Glasses", "MASK")
+        glasses = bpy.data.objects["Extras - Glasses"]
+        if not glasses.hide_viewport:
+            bpy.ops.mustardui.object_visibility(obj=glasses.name)
+        self.assertTrue(self.model["extras"].hide_viewport)
+        self.assertFalse(mask.show_viewport)
+
+        bpy.ops.mustardui.object_visibility(obj=glasses.name)
+        self.assertFalse(self.model["extras"].hide_viewport)
+        self.assertTrue(mask.show_viewport)
+
     # Extras visibility can be toggled
     def test_extras_visibility(self):
         bpy.ops.mustardui.object_visibility(obj="Extras - Glasses")
