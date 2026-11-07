@@ -5,7 +5,7 @@ blender -b file.blend --factory-startup --disable-autoexec --python worker.py --
 
 import json
 import os
-import re
+import shutil
 import sys
 import traceback
 
@@ -15,9 +15,12 @@ import numpy as np
 from mathutils import Matrix, Quaternion
 
 sys.path.insert(0, os.path.dirname(__file__))
+import materials  # noqa: E402
 import mhx_skeleton  # noqa: E402
+import morph_targets  # noqa: E402
 
 settings = json.load(open(sys.argv[sys.argv.index("--") + 1]))
+UNREAL_SCRIPT = "MustardUI_Unreal_Materials.py"
 
 
 def report_failure(kind, error, trace):
@@ -45,7 +48,7 @@ rest, parent, source = mhx_skeleton.build(rig, weighted)
 bones = rig.data.bones
 
 
-def export(object_types):
+def export(object_types, path_mode="AUTO", animation=None):
     bpy.context.scene.unit_settings.scale_length = 0.01
     bpy.ops.export_scene.fbx(
         filepath=filepath,
@@ -53,7 +56,7 @@ def export(object_types):
         object_types=object_types,
         add_leaf_bones=False,
         use_armature_deform_only=True,
-        bake_anim="ARMATURE" in object_types and "MESH" not in object_types,
+        bake_anim=animation if animation is not None else "MESH" not in object_types,
         bake_anim_use_all_bones=True,
         bake_anim_use_nla_strips=False,
         bake_anim_use_all_actions=False,
@@ -68,7 +71,7 @@ def export(object_types):
         primary_bone_axis="Y",
         secondary_bone_axis="X",
         use_tspace=True,
-        path_mode="AUTO",
+        path_mode=path_mode,
         embed_textures=False,
     )
 
@@ -105,8 +108,12 @@ def export_animation():
 
     sources = {name: bones[name].matrix_local.inverted() for name in set(source.values())}
     lift = Matrix.Translation((0, 0, settings["height_offset"]))
+    curves = morph_curves(action, animation)
     samples = {}
+    values = {name: [] for name in curves}
     for frame in range(first, last + 1):
+        for name, fcurve in curves.items():
+            values[name].append(fcurve.evaluate(frame))
         scene.frame_set(frame)
         pose = rig.evaluated_get(bpy.context.evaluated_depsgraph_get()).pose.bones
         motion = {name: pose[name].matrix @ inverse for name, inverse in sources.items()}
@@ -143,10 +150,72 @@ def export_animation():
             bone.location, bone.rotation_quaternion = location, rotation
             bone.keyframe_insert("location", frame=frame, group=name)
             bone.keyframe_insert("rotation_quaternion", frame=frame, group=name)
+    carrier = curve_carrier(armature, values, first) if values else None
     for obj in bpy.data.objects:
-        obj.select_set(obj is armature)
-    export({"ARMATURE"})
-    return {"bones": len(rest), "frames": last - first + 1}
+        obj.select_set(obj in (armature, carrier))
+    if carrier is None:
+        export({"ARMATURE"})
+    else:
+        export({"ARMATURE", "MESH"}, animation=True)
+    result = {"bones": len(rest), "frames": last - first + 1}
+    if values:
+        result["morph curves"] = len(values)
+    return result
+
+
+def action_fcurves(action, animation):
+    """(F-curve, ID type it animates) of the action. Slotted actions, from Blender 4.4, can
+    animate the armature and the shape keys of the meshes together."""
+    if not hasattr(action, "layers"):
+        return [(fcurve, "OBJECT") for fcurve in action.fcurves]
+    result = []
+    for layer in action.layers:
+        for strip in layer.strips:
+            for bag in getattr(strip, "channelbags", ()):
+                slot = bag.slot
+                if slot.target_id_type == "OBJECT" and slot != animation.action_slot:
+                    continue
+                result.extend((fcurve, slot.target_id_type) for fcurve in bag.fcurves)
+    return result
+
+
+def morph_curves(action, animation):
+    """F-curves of the action which drive morph targets, by name of the morph target: the
+    properties of the rig which are face controls or MustardUI morphs, and the shape keys."""
+    names = settings.get("curves", {})
+    result = {}
+    if not settings.get("morph_curves", False):
+        return result
+    for fcurve, id_type in action_fcurves(action, animation):
+        path = fcurve.data_path
+        if id_type == "OBJECT" and path.startswith('["') and path.endswith('"]'):
+            for name in names.get(path[2:-2], ()):
+                result[name] = fcurve
+        elif id_type == "KEY" and path.startswith('key_blocks["') and path.endswith('"].value'):
+            result.setdefault(path[12:-8], fcurve)
+    return result
+
+
+def curve_carrier(armature, values, first):
+    """A small mesh with a shape key per curve, animated with the values. FBX keeps the
+    animation of morph targets only on meshes, and Unreal reads it as curves."""
+    mesh = bpy.data.meshes.new("MorphCurves")
+    mesh.from_pydata([(0, 0, 0), (1, 0, 0), (0, 1, 0)], [], [(0, 1, 2)])
+    obj = bpy.data.objects.new("MorphCurves", mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    obj.parent = armature
+    obj.vertex_groups.new(name="root").add([0, 1, 2], 1.0, "REPLACE")
+    obj.modifiers.new("Armature", "ARMATURE").object = armature
+    obj.shape_key_add(name="Basis", from_mix=False)
+    for name, frames in values.items():
+        key = obj.shape_key_add(name=name, from_mix=False)
+        # Shape keys without offsets are not exported
+        key.data[0].co.z += 0.01
+        key.slider_min, key.slider_max = -10.0, 10.0
+        for frame, value in enumerate(frames, start=first):
+            key.value = value
+            key.keyframe_insert("value", frame=frame)
+    return obj
 
 
 def smooth_split(t):
@@ -154,8 +223,26 @@ def smooth_split(t):
     return t * t * (3 - 2 * t)
 
 
-def bone_driven_morphs(meshes):
-    """Shape key offsets of the facial controls which only move bones in the rig."""
+def mustardui_morphs():
+    """MustardUI morphs chosen for the export, as (morph name, owner, property)."""
+    controls = []
+    for morph in settings.get("morphs", []):
+        owner = getattr(bpy.data, morph["collection"]).get(morph["owner"])
+        if owner is None:
+            continue
+        if "shape_key" in morph:
+            block = owner.key_blocks.get(morph["shape_key"])
+            if block is not None:
+                controls.append((morph["name"], block, None))
+        elif morph["property"] in owner.keys():
+            controls.append((morph["name"], owner, morph["property"]))
+    return controls
+
+
+def converted_morphs(meshes, controls):
+    """Shape key offsets of controls which can move bones or several shape keys, measured on
+    the evaluated meshes. A control is (morph name, owner, property), and None as property
+    means the value of a shape key."""
     for bone in rig.pose.bones:
         bone.location, bone.rotation_quaternion, bone.rotation_euler = (
             (0, 0, 0),
@@ -167,23 +254,16 @@ def bone_driven_morphs(meshes):
         for modifier in obj.modifiers:
             if modifier.type != "ARMATURE":
                 modifier.show_viewport = False
-    controls = set()
-    for driver in rig.animation_data.drivers if rig.animation_data else ():
-        if re.match(
-            r'pose\.bones\["[^"]+"\]\.(location|rotation_euler|rotation_quaternion|scale)',
-            driver.data_path,
-        ):
-            for variable in driver.driver.variables:
-                path = variable.targets[0].data_path
-                if variable.type == "SINGLE_PROP" and path.startswith('["'):
-                    controls.add(path[2:-2].replace("(fin)", ""))
-    controls = sorted(
-        n
-        for n in controls
-        if n.startswith("facs_")
-        and n in rig.keys()
-        and not re.search("EyeLook|EyeCrossed|EyeResting", n)
-    )
+
+    def get(owner, prop):
+        return owner.value if prop is None else owner[prop]
+
+    def set_value(owner, prop, value):
+        if prop is None:
+            owner.value = value
+        else:
+            owner[prop] = type(owner[prop])(value)
+        owner.id_data.update_tag()
 
     def positions():
         for data in [rig, rig.data] + [o.data for o in meshes]:
@@ -204,16 +284,24 @@ def bone_driven_morphs(meshes):
         rig["facs_ctrl_EyeLookAuto"] = 0.0
     neutral = positions()
     offsets = {}
-    for control in controls:
-        value = rig[control]
-        rig[control] = 1.0
+    for name, owner, prop in controls:
+        value = get(owner, prop)
+        # Morphs already in use are measured from zero, as they are part of the character
+        if value:
+            set_value(owner, prop, 0.0)
+        start = positions() if value else neutral
+        set_value(owner, prop, 1.0)
         moved = positions()
-        offsets[control] = {
-            k: moved[k] - neutral[k]
+        set_value(owner, prop, value)
+        offsets[name] = {
+            k: moved[k] - start[k]
             for k in moved
-            if np.linalg.norm(moved[k] - neutral[k], axis=1).max() > 1e-4
+            if np.linalg.norm(moved[k] - start[k], axis=1).max() > 1e-4
         }
-        rig[control] = value
+    # Drivers write their values back to the shape keys: evaluate the restored controls again,
+    # or the shape keys driven by the last control would look active and be baked
+    if controls:
+        positions()
     return offsets
 
 
@@ -232,13 +320,40 @@ def final(obj, co):
 
 
 def export_character():
-    meshes = [o for o in bound if o.visible_get()]
+    pieces = set(settings.get("outfit_pieces", ()))
+    chosen = set(settings.get("outfits", ()))
+    # Outfit pieces chosen in the export, and the other visible meshes of the model
+    meshes = [o for o in bound if (o.name in chosen if o.name in pieces else o.visible_get())]
     if not meshes:
         raise RuntimeError("No visible mesh bound to the armature")
+    # Hidden outfit pieces are shown, so they are evaluated like the others
+    for obj in meshes:
+        if obj.name not in bpy.context.view_layer.objects:
+            bpy.context.scene.collection.objects.link(obj)
+        obj.hide_set(False)
+        obj.hide_viewport = False
     for obj in meshes:
         if obj.data.shape_keys is None:
             obj.shape_key_add(name="Basis", from_mix=False)
-    offsets = bone_driven_morphs(meshes)
+    # Kinds of morph targets in the export, without the items not chosen in its lists
+    export_keys = settings.get("shape_keys", True)
+    skip_keys = set(settings.get("skip_shape_keys", ()))
+    export_controls = settings.get("face_controls", True)
+    skip_controls = set(settings.get("skip_face_controls", ()))
+    controls = mustardui_morphs()
+    morph_names = {name for name, _, _ in controls}
+    # A face control which is also a MustardUI morph is exported once, as the morph
+    morph_properties = {prop for _, owner, prop in controls if owner == rig}
+    controls = [
+        (name, rig, name)
+        for name in morph_targets.face_controls(rig)
+        if export_controls
+        and name not in morph_names | morph_properties
+        and name not in skip_controls
+    ] + controls
+    offsets = converted_morphs(meshes, controls)
+    # Morphs which change nothing in the exported meshes are left out
+    unused = [name for name, offset in offsets.items() if not offset]
 
     morphs = set()
     for obj in meshes:
@@ -248,13 +363,7 @@ def export_character():
 
         values = {k.name: k.value for k in keys}
         # Active morphs that are not animation controls are part of the character's shape
-        baked = [
-            k.name
-            for k in keys
-            if k.name != "Basis"
-            and abs(k.value) > 1e-3
-            and not k.name.startswith(("facs_", "body_cbs"))
-        ]
+        baked = [k.name for k in keys if morph_targets.is_baked(k)]
         basis = key_co(keys["Basis"], count).astype(np.float64)
         shape = np.zeros_like(basis)
         for name in baked:
@@ -280,7 +389,12 @@ def export_character():
                     target = mhx_skeleton.PLAIN.get(name, name.replace(".", "_"))
                     weights.setdefault(target, []).append((vertex.index, group.weight))
 
-        result = {k.name: final(obj, key_co(k, count) + shape) for k in keys if k.name not in baked}
+        result = {
+            k.name: final(obj, key_co(k, count) + shape)
+            for k in keys
+            if k.name not in baked
+            and (k.name == "Basis" or (export_keys and k.name not in skip_keys))
+        }
         for control, offset in offsets.items():
             if obj.name in offset:
                 result[control] = final(obj, basis + shape + offset[obj.name])
@@ -334,6 +448,8 @@ def export_character():
             bpy.context.scene.collection.objects.link(obj)
         obj.hide_set(False)
         obj.hide_viewport = False
+        # The FBX export takes the selected objects, and pieces can be unselectable
+        obj.hide_select = False
         obj.select_set(True)
     bpy.context.view_layer.objects.active = rig
     bpy.ops.object.mode_set(mode="EDIT")
@@ -341,8 +457,27 @@ def export_character():
         rig.data.edit_bones.remove(bone)
     bpy.ops.object.mode_set(mode="OBJECT")
     add_bones(rig)
-    export({"ARMATURE", "MESH"})
-    return {"bones": len(rest), "meshes": len(meshes), "morphs": len(morphs)}
+    result = {"bones": len(rest), "meshes": len(meshes), "morphs": len(morphs)}
+    if settings.get("materials"):
+        # Textures go to a folder next to the FBX, which refers to them with relative paths
+        folder = os.path.splitext(filepath)[0] + "_Textures"
+        info, clear = materials.simplify(meshes, folder, settings.get("images", {}))
+        result.update(info)
+        if clear:
+            meshes = materials.remove_faces(meshes, clear)
+            result["meshes"] = len(meshes)
+            result["see-through materials left out"] = len(clear)
+        export({"ARMATURE", "MESH"}, path_mode="RELATIVE")
+        # The script building the materials in Unreal, next to the FBX
+        shutil.copyfile(
+            os.path.join(os.path.dirname(__file__), "resources", UNREAL_SCRIPT),
+            os.path.join(os.path.dirname(filepath), UNREAL_SCRIPT),
+        )
+    else:
+        export({"ARMATURE", "MESH"})
+    if unused:
+        result["morphs without effect"] = len(unused)
+    return result
 
 
 result = export_animation() if settings["mode"] == "ANIMATION" else export_character()
