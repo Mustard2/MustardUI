@@ -15,6 +15,7 @@ import numpy as np
 from mathutils import Matrix, Quaternion
 
 sys.path.insert(0, os.path.dirname(__file__))
+import hair_rigs  # noqa: E402
 import materials  # noqa: E402
 import mhx_skeleton  # noqa: E402
 import morph_targets  # noqa: E402
@@ -42,9 +43,15 @@ bound = [
 missing = mhx_skeleton.missing_bones(rig)
 if missing:
     raise RuntimeError("Not a complete MHX rig, missing bones: " + ", ".join(missing[:8]))
-# All the bound meshes define the skeleton, so characters and animations always match
+# Meshes of the hair lists, which can follow the rig without being deformed by it
+hair_meshes = set(settings.get("hair_meshes", ()))
+hair_objects = [o for o in bpy.data.objects if o.name in hair_meshes and o.type == "MESH"]
+# All the bound meshes and hair armatures define the skeleton, so characters and animations
+# always match
 weighted = mhx_skeleton.weighted_bones(bound)
-rest, parent, source = mhx_skeleton.build(rig, weighted)
+taken = set(mhx_skeleton.PARENT) | {name.replace(".", "_") for name in weighted}
+hair_bones, hair_bone_names = hair_rigs.skeleton_bones(hair_objects, rig, taken)
+rest, parent, source = mhx_skeleton.build(rig, weighted, hair_bones)
 bones = rig.data.bones
 
 
@@ -320,10 +327,18 @@ def final(obj, co):
 
 
 def export_character():
-    pieces = set(settings.get("outfit_pieces", ()))
-    chosen = set(settings.get("outfits", ()))
-    # Outfit pieces chosen in the export, and the other visible meshes of the model
+    pieces = set(settings.get("outfit_pieces", ())) | hair_meshes
+    chosen = set(settings.get("outfits", ())) | set(settings.get("hair", ()))
+    # Outfit pieces and hair chosen in the export, and the other visible meshes of the model
     meshes = [o for o in bound if (o.name in chosen if o.name in pieces else o.visible_get())]
+    # Hair not deformed by the rig follows it rigidly, or with its own hair armature
+    rigid, prepared = {}, set()
+    for obj in hair_objects:
+        if obj.name in chosen and obj not in bound:
+            bone = hair_rigs.prepare(obj, rig, prepared)
+            if bone is not None:
+                rigid[obj.name] = bone
+            meshes.append(obj)
     if not meshes:
         raise RuntimeError("No visible mesh bound to the armature")
     # Hidden outfit pieces are shown, so they are evaluated like the others
@@ -370,10 +385,15 @@ def export_character():
             shape += values[name] * (key_co(keys[name], count) - basis)
         names = {g.index: g.name for g in obj.vertex_groups}
         weights = {}
+        armature = hair_rigs.armature_of(obj, rig)
+        hair_groups = hair_bone_names.get(armature.name, {}) if armature is not None else {}
         for vertex in mesh.vertices:
             position = obj.matrix_world @ vertex.co
             for group in vertex.groups:
                 name = names.get(group.group)
+                if group.weight > 0 and name in hair_groups:
+                    weights.setdefault(hair_groups[name], []).append((vertex.index, group.weight))
+                    continue
                 if group.weight <= 0 or name not in bones:
                     continue
                 if name in mhx_skeleton.SPLIT:
@@ -388,6 +408,8 @@ def export_character():
                 else:
                     target = mhx_skeleton.PLAIN.get(name, name.replace(".", "_"))
                     weights.setdefault(target, []).append((vertex.index, group.weight))
+        if obj.name in rigid:
+            weights = {rigid[obj.name]: [(v.index, 1.0) for v in mesh.vertices]}
 
         result = {
             k.name: final(obj, key_co(k, count) + shape)
@@ -427,6 +449,12 @@ def export_character():
         for modifier in list(obj.modifiers):
             if modifier.type != "ARMATURE":
                 obj.modifiers.remove(modifier)
+        # One Armature modifier with the exported skeleton, also for hair
+        deform = [m for m in obj.modifiers if m.type == "ARMATURE"]
+        for modifier in deform[1:]:
+            obj.modifiers.remove(modifier)
+        modifier = deform[0] if deform else obj.modifiers.new("Armature", "ARMATURE")
+        modifier.object = rig
         obj.vertex_groups.clear()
         for name, entries in weights.items():
             group = obj.vertex_groups.new(name=name)

@@ -217,6 +217,92 @@ class TestExportToUnreal(BlenderTestCase):
         self.assertIn("Body", meshes)
         self.assertNotIn(shirt.name, meshes)
 
+    def add_hair(self):
+        """Hair collection with a mesh following the head, a mesh deformed by a hair armature
+        on the head, and a mesh growing particle hair."""
+        collection = bpy.data.collections.new("Model Hair")
+        bpy.context.scene.collection.children.link(collection)
+        self.rig.data.MustardUI_RigSettings.hair_collection = collection
+
+        def mesh(name):
+            data = bpy.data.meshes.new(name)
+            data.from_pydata([(0, 0, 1.6), (0.1, 0, 1.6), (0, 0.1, 1.7)], [], [(0, 1, 2)])
+            return new_object(name, data, collection)
+
+        rigid = mesh("Model Hair - Bob")
+        constraint = rigid.constraints.new("CHILD_OF")
+        constraint.target, constraint.subtarget = self.rig, "head"
+
+        hair_rig = new_object("Hair Rig", bpy.data.armatures.new("Hair Rig"), collection)
+        set_active(hair_rig)
+        bpy.ops.object.mode_set(mode="EDIT")
+        root = hair_rig.data.edit_bones.new("strand.01")
+        root.head, root.tail = (0, 0, 1.6), (0, 0, 1.5)
+        tip = hair_rig.data.edit_bones.new("strand.02")
+        tip.head, tip.tail, tip.parent = (0, 0, 1.5), (0, 0, 1.4), root
+        bpy.ops.object.mode_set(mode="OBJECT")
+        hair_rig.parent, hair_rig.parent_type, hair_rig.parent_bone = self.rig, "BONE", "head"
+        braid = mesh("Model Hair - Braid")
+        braid.modifiers.new("Armature", "ARMATURE").object = hair_rig
+        braid.vertex_groups.new(name="strand.01").add([0, 1], 1.0, "REPLACE")
+        braid.vertex_groups.new(name="strand.02").add([2], 1.0, "REPLACE")
+        braid.hide_set(True)
+
+        particles = mesh("Model Hair - Scalp")
+        particles.modifiers.new("Hair", "PARTICLE_SYSTEM").particle_system.settings.type = "HAIR"
+        set_active(self.rig)
+        return rigid, braid
+
+    def test_hair_list(self):
+        self.add_hair()
+        hair = self.items("hair")
+        self.assertEqual(set(hair), {"Model Hair - Bob", "Model Hair - Braid"})
+        self.assertEqual(hair["Model Hair - Bob"].name, "Bob")
+        self.assertTrue(hair["Model Hair - Bob"].use)
+        self.assertFalse(hair["Model Hair - Braid"].use)
+
+    # Hair follows its bone, or its hair armature, whose bones join the skeleton
+    def test_export_hair(self):
+        rigid, braid = self.add_hair()
+        self.items("hair")[braid.name].use = True
+        filepath = self.path("character.fbx")
+        self.assertEqual(
+            bpy.ops.mustardui.unreal_tools_export_character(
+                "EXEC_DEFAULT", filepath=filepath, hair=True
+            ),
+            {"FINISHED"},
+        )
+        self.assertTrue(braid.hide_get())
+        known = set(bpy.data.objects)
+        bpy.ops.import_scene.fbx(filepath=filepath)
+        new = [o for o in bpy.data.objects if o not in known]
+        armature = next(o for o in new if o.type == "ARMATURE")
+        bones = armature.data.bones
+        self.assertEqual(bones["strand_01"].parent.name, "head")
+        self.assertEqual(bones["strand_02"].parent.name, "strand_01")
+        meshes = {o.name.rsplit(".", 1)[0]: o for o in new if o.type == "MESH"}
+        self.assertNotIn("Model Hair - Scalp", meshes)
+        self.assertEqual({g.name for g in meshes[rigid.name].vertex_groups}, {"head"})
+        self.assertEqual(
+            {g.name for g in meshes[braid.name].vertex_groups}, {"strand_01", "strand_02"}
+        )
+        # Rigid hair keeps its place on the head
+        position = meshes[rigid.name].matrix_world @ meshes[rigid.name].data.vertices[2].co
+        self.assertAlmostEqual(position.z, 1.7, places=3)
+
+    # Animations have the hair bones too, so they match the character
+    def test_animation_has_hair_bones(self):
+        self.add_hair()
+        animation = self.rig.animation_data_create()
+        animation.action = bpy.data.actions.new("Move")
+        self.rig.pose.bones["head"].keyframe_insert("rotation_quaternion", frame=1)
+        animation.action = None
+        filepath = self.path("animation.fbx")
+        bpy.ops.mustardui.unreal_tools_export_animation(
+            "EXEC_DEFAULT", filepath=filepath, action="Move"
+        )
+        self.assertIn("strand_02", self.imported_bones(filepath).data.bones)
+
     def items(self, kind):
         """A list of Export Character, by key."""
         ops_export.update_export_items(bpy.context)
@@ -281,6 +367,7 @@ class TestExportToUnreal(BlenderTestCase):
             # Blender keeps the properties of operators on their own type
             bl_rna=bpy.ops.mustardui.unreal_tools_export_character.get_rna_type(),
             outfits=True,
+            hair=True,
             shape_keys=True,
             face_controls=True,
             morphs=False,

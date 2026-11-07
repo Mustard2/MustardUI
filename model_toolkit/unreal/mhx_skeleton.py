@@ -211,8 +211,9 @@ def weighted_bones(meshes):
     return names
 
 
-def build(rig, weighted):
-    """Return rest matrices in cm, parents and MHX source bones, ordered with parents first."""
+def build(rig, weighted, extra=()):
+    """Return rest matrices in cm, parents and MHX source bones, ordered with parents first.
+    extra adds bones as (name, rest matrix in cm, parent, MHX bone they follow)."""
     bones = rig.data.bones
     head = lambda name: bones[name].head_local * 100.0  # noqa: E731
     source = {"root": "master"}
@@ -280,6 +281,9 @@ def build(rig, weighted):
         matrix = bone.matrix_local.to_3x3().to_4x4()
         matrix.translation = bone.head_local * 100.0
         rest[target], parent[target], source[target] = matrix, above, bone.name
+
+    for name, matrix, above, follow in extra:
+        rest[name], parent[name], source[name] = matrix, above, follow
 
     order, seen = [], set()
 

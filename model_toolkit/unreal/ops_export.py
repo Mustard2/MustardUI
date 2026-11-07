@@ -34,18 +34,22 @@ def bound_meshes(rig):
     ]
 
 
+def collection_label(rig_settings, collection):
+    """Name of an outfit or hair collection in the UI."""
+    label = collection.name
+    if rig_settings.model_MustardUI_naming_convention:
+        label = label.removeprefix(rig_settings.model_name + " ")
+    return re.sub(r"\.\d{3}$", "", label)
+
+
 def outfit_pieces(rig):
     """Pieces of the Outfits and Extras of the model deformed by the rig, as
     (piece, name in the UI, outfit name in the UI)."""
     rig_settings = rig.data.MustardUI_RigSettings
     bound = set(bound_meshes(rig))
-    convention = rig_settings.model_MustardUI_naming_convention
     pieces, seen = [], set()
     for collection in outfits_get_collections(rig_settings):
-        outfit = collection.name
-        if convention:
-            outfit = outfit.removeprefix(rig_settings.model_name + " ")
-        outfit = re.sub(r"\.\d{3}$", "", outfit)
+        outfit = collection_label(rig_settings, collection)
         for obj in outfits_get_collection_items(rig_settings, collection):
             if obj in bound and obj not in seen:
                 seen.add(obj)
@@ -54,10 +58,37 @@ def outfit_pieces(rig):
     return pieces
 
 
+def grows_hair(obj):
+    """Meshes with particle hair, which FBX can not carry."""
+    return any(
+        m.type == "PARTICLE_SYSTEM" and m.particle_system.settings.type == "HAIR"
+        for m in obj.modifiers
+    )
+
+
+def hair_pieces(rig):
+    """Mesh hair of the model, as (object, name in the UI, collection name in the UI).
+    Meshes growing particle hair are left out."""
+    rig_settings = rig.data.MustardUI_RigSettings
+    pieces, seen = [], set()
+    for collection in (rig_settings.hair_collection, rig_settings.hair_extras_collection):
+        if collection is None:
+            continue
+        label = collection_label(rig_settings, collection)
+        for obj in collection.all_objects:
+            if obj.type == "MESH" and obj not in seen and not grows_hair(obj):
+                seen.add(obj)
+                pieces.append((obj, obj.name.removeprefix(collection.name + " - "), label))
+    return pieces
+
+
 def exportable_meshes(rig):
-    """Meshes Export Character can export: the outfit pieces, and the other visible meshes."""
+    """Meshes Export Character can export: the outfit pieces, the mesh hair, and the other
+    visible meshes."""
     pieces = {obj for obj, _, _ in outfit_pieces(rig)}
-    return [o for o in bound_meshes(rig) if o in pieces or o.visible_get()]
+    hair = [obj for obj, _, _ in hair_pieces(rig)]
+    bound = [o for o in bound_meshes(rig) if o in pieces or o.visible_get()]
+    return bound + [o for o in hair if o not in bound]
 
 
 def model_morphs(arm):
@@ -88,6 +119,7 @@ DATA_COLLECTIONS = {
 # Lists of Export Character: (kind, collection of the window manager, label, icon)
 EXPORT_LISTS = (
     ("outfits", "MustardUI_UnrealTools_Outfits", "Outfits", "MOD_CLOTH"),
+    ("hair", "MustardUI_UnrealTools_Hair", "Hair", "OUTLINER_OB_CURVES"),
     ("shape_keys", "MustardUI_UnrealTools_ShapeKeys", "Shape Keys", "SHAPEKEY_DATA"),
     ("face_controls", "MustardUI_UnrealTools_FaceControls", "Face Controls", "BONE_DATA"),
     ("morphs", "MustardUI_UnrealTools_Morphs", "Morphs", "PROPERTIES"),
@@ -112,6 +144,7 @@ def update_export_items(context):
     # Lists of (key, name, section, exported by default)
     sources = {
         "outfits": [(o.name, n, outfit, o.visible_get()) for o, n, outfit in outfit_pieces(rig)],
+        "hair": [(o.name, n, label, o.visible_get()) for o, n, label in hair_pieces(rig)],
         "shape_keys": [(n, n, "", True) for n in shape_keys],
         "face_controls": [(n, n, "", True) for n in morph_targets.face_controls(rig)],
         "morphs": [
@@ -210,6 +243,8 @@ class ExportToUnreal(ExportHelper):
             json.dump(
                 {
                     "rig": mhx_rig(context).name,
+                    # Hair armatures add bones, so characters and animations need the hair
+                    "hair_meshes": [obj.name for obj, _, _ in hair_pieces(mhx_rig(context))],
                     # Saving the copy can change relative paths, so the files are given here
                     "images": image_paths(),
                     "filepath": bpy.path.abspath(self.filepath),
@@ -303,6 +338,12 @@ class MustardUI_UnrealTools_ExportCharacter(ExportToUnreal, bpy.types.Operator):
         description="Export the outfit pieces chosen in the list, also if hidden.\n"
         "Without outfits, the body and the other visible meshes are exported",
     )
+    hair: bpy.props.BoolProperty(
+        name="Hair",
+        default=True,
+        description="Export the mesh hair chosen in the list, also if hidden, with the bones "
+        "of its hair armature.\nHair made of particles is not exported",
+    )
     shape_keys: bpy.props.BoolProperty(
         name="Shape Keys",
         default=True,
@@ -375,6 +416,7 @@ class MustardUI_UnrealTools_ExportCharacter(ExportToUnreal, bpy.types.Operator):
             "materials": self.materials,
             "outfit_pieces": [i.key for i in context.window_manager.MustardUI_UnrealTools_Outfits],
             "outfits": sorted(self.chosen(context, "outfits")),
+            "hair": sorted(self.chosen(context, "hair")),
             "shape_keys": self.shape_keys,
             "skip_shape_keys": self.skipped(context, "shape_keys"),
             "face_controls": self.face_controls,
