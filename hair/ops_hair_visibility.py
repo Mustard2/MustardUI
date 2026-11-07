@@ -43,7 +43,7 @@ class MustardUI_HairVisibility(bpy.types.Operator):
         # An Outfit piece with a dedicated Hair is enabled: keep every Hair Object
         # hidden to avoid loading a Hair on top of it. The selection is still stored,
         # and it is restored as soon as that Outfit piece is disabled
-        apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
+        apply_hair_visibility(rig_settings, arm, force_hidden=hair_switcher_active(rig_settings))
 
         # Custom Properties/Actions on Switch
         hair_names = {x.name for x in hair_collection.objects}

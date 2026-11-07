@@ -4,7 +4,7 @@ from bpy.props import BoolProperty, EnumProperty
 from ..misc.icons import mustardui_icon_list
 from ..misc.outfits import outfit_poll_collection, outfit_poll_mesh
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from .helper_functions import outfits_update_armature_collections
+from .helper_functions import outfits_update_armature_collections, update_hair_armatures
 
 
 # Class for single bone collection
@@ -95,18 +95,8 @@ class MustardUI_ArmatureSettings(bpy.types.PropertyGroup):
     def armature_visibility_hair_update(self, context):
         poll, arm = mustardui_active_object(context, config=ModelMode.USER)
         rig_settings = arm.MustardUI_RigSettings
-        armature_settings = arm.MustardUI_ArmatureSettings
 
-        if rig_settings.hair_collection is None:
-            return
-
-        # Hair Armatures in the hair collection
-        for obj in [x for x in rig_settings.hair_collection.objects if x.type == "ARMATURE"]:
-            for child in [x for x in obj.children if x.modifiers]:
-                if any(x.type == "ARMATURE" and x.object == obj for x in child.modifiers):
-                    obj.hide_viewport = (
-                        not armature_settings.hair if not child.hide_viewport else True
-                    )
+        update_hair_armatures(rig_settings, arm)
 
         # Bone Collections Hair as Outfits
         outfits_update_armature_collections(rig_settings, arm, hair=True)

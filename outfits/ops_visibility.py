@@ -84,7 +84,9 @@ def switch_outfit_piece(arm, obj, shift=False):
             and hair_switch_collection is not None
             and o.name in hair_switch_collection.all_objects
         ):
-            apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active(rig_settings))
+            apply_hair_visibility(
+                rig_settings, arm, force_hidden=hair_switcher_active(rig_settings)
+            )
 
         # Custom Properties/Actions on Switch
         mustardui_cp_apply_on_switch(

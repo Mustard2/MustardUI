@@ -1,3 +1,4 @@
+from ..armature.helper_functions import update_hair_armatures
 from ..misc.geometry_nodes import node_group_has_simulation
 from ..misc.set_bool import set_bool
 
@@ -24,21 +25,18 @@ def set_object_visibility(obj, visible, rig_settings):
             )
 
 
-def apply_hair_visibility(rig_settings, force_hidden=False):
+def apply_hair_visibility(rig_settings, arm, force_hidden=False):
     """Show the Hair Object selected in the Hair list, hiding all the others."""
     hair_collection = rig_settings.hair_collection
     if hair_collection is None:
         return
 
-    hair_collection_objs = [x for x in hair_collection.objects]
-    for obj in [x for x in hair_collection_objs if x.type in {"MESH", "CURVES"}]:
+    for obj in [x for x in hair_collection.objects if x.type in {"MESH", "CURVES"}]:
         visible = obj.name == rig_settings.hair_list and not force_hidden
 
         set_object_visibility(obj, visible, rig_settings)
 
-        parent_armature = obj.find_armature()
-        if parent_armature is not None and parent_armature in hair_collection_objs:
-            set_object_visibility(parent_armature, visible, rig_settings)
+    update_hair_armatures(rig_settings, arm)
 
 
 def hair_switcher_active(rig_settings):

@@ -3,6 +3,7 @@ import re
 import bpy
 from bpy.props import StringProperty
 
+from ..armature.helper_functions import update_hair_armatures
 from ..hair.helper_functions import store_current_hair
 from ..misc.enum_items import keep_enum_strings
 from ..misc.icons import get_hair_icon
@@ -855,6 +856,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
             mod.show_viewport = self.hair_particle_hide_viewport
         hair_obj.hide_viewport = not self.hair_particle_hide_viewport
+        update_hair_armatures(self, self.model_armature_object.data)
 
     def hair_particle_hide_render_update(self, context):
         hair_obj = context.scene.objects.get(self.hair_list)
@@ -863,6 +865,7 @@ class MustardUI_RigSettings(bpy.types.PropertyGroup):
         for mod in [x for x in hair_obj.modifiers if x.type in ["PARTICLE_SYSTEM", "NODES"]]:
             mod.show_render = self.hair_particle_hide_render
         hair_obj.hide_render = not self.hair_particle_hide_render
+        update_hair_armatures(self, self.model_armature_object.data)
 
     hair_particle_hide_viewport: bpy.props.BoolProperty(
         default=False,

@@ -169,7 +169,7 @@ class MustardUI_CompleteOutfitVisibility(bpy.types.Operator):
         # hair_collection so nested sub-collections aren't cascade-hidden.
         # When no switch piece is active, restore the hair_list selection.
         if hair_switcher_seen:
-            apply_hair_visibility(rig_settings, force_hidden=hair_switcher_active)
+            apply_hair_visibility(rig_settings, arm, force_hidden=hair_switcher_active)
 
         # Masks
         update_masks(context, rig_settings)

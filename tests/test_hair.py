@@ -115,6 +115,74 @@ class TestHair(BlenderTestCase):
         self.assertIsNone(self.rig_settings.hair_collection)
 
 
+class TestHairArmatures(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        self.rig_settings = configure_model(self.model)
+        self.armature_settings = self.model["armature"].data.MustardUI_ArmatureSettings
+        self.rig = new_object("Hair Rig", bpy.data.armatures.new("Hair Rig"), self.model["hair"])
+        self.rig_settings.hair_list = "Hair Long"
+
+    def use_rig(self, *names):
+        for name in names:
+            obj = bpy.data.objects[name]
+            obj.parent = self.rig
+            obj.modifiers.new(self.rig.name, "ARMATURE").object = self.rig
+
+    # Hidden physics meshes using the rig, whatever their order, do not keep it hidden
+    def test_checkbox_with_hidden_physics_meshes(self):
+        self.use_rig("Hair Long")
+        for name in ("A Physics", "Z Physics"):
+            new_mesh_object(name).hide_viewport = True
+            self.use_rig(name)
+        self.armature_settings.hair = False
+        self.assertTrue(self.rig.hide_viewport)
+        self.armature_settings.hair = True
+        self.assertFalse(self.rig.hide_viewport)
+
+    # A rig not used by the hair is left as it is
+    def test_rig_without_hair(self):
+        self.armature_settings.hair = False
+        self.assertFalse(self.rig.hide_viewport)
+        self.rig.hide_viewport = True
+        self.armature_settings.hair = True
+        self.rig_settings.hair_list = "Hair Short"
+        self.assertTrue(self.rig.hide_viewport)
+
+    # A rig shared by two hair is shown with both of them
+    def test_switch_shared_rig(self):
+        self.use_rig("Hair Short", "Hair Long")
+        new_mesh_object("Hair Bob", self.model["hair"])
+        for name, hidden in (("Hair Short", False), ("Hair Long", False), ("Hair Bob", True)):
+            self.rig_settings.hair_list = name
+            self.assertEqual(self.rig.hide_viewport, hidden)
+            self.assertEqual(self.rig.hide_render, hidden)
+
+    # Switching hair does not show the rig while the Hair checkbox is off, only in the viewport
+    def test_switch_with_checkbox_off(self):
+        self.use_rig("Hair Short", "Hair Long")
+        self.rig_settings.hair_list = "Hair Short"
+        self.armature_settings.hair = False
+        self.rig_settings.hair_list = "Hair Long"
+        self.assertTrue(self.rig.hide_viewport)
+        self.assertFalse(self.rig.hide_render)
+        self.armature_settings.hair = True
+        self.assertFalse(self.rig.hide_viewport)
+
+    # Curves follow the rig of the surface they are attached to
+    def test_curves_attached_to_surface(self):
+        surface = new_mesh_object("Surface")
+        self.use_rig(surface.name)
+        name = "Hair Curves"
+        curves = new_object(name, bpy.data.hair_curves.new(name), self.model["hair"])
+        curves.parent = surface
+        self.rig_settings.hair_list = name
+        self.assertFalse(self.rig.hide_viewport)
+        self.rig_settings.hair_list = "Hair Short"
+        self.assertTrue(self.rig.hide_viewport)
+
+
 class TestScaleCharacter(BlenderTestCase):
     def setUp(self):
         super().setUp()
