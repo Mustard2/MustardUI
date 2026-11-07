@@ -30,10 +30,13 @@ class ModelToolkitSection(MainPanel):
     guide = ""
     # Creator-only sections need a model, and are hidden once the model UI is enabled
     creator_only = False
+    # Experimental sections are hidden unless the Experimental Features preference is on
+    experimental = False
 
     @classmethod
     def poll(cls, context):
-        if not context.preferences.addons[base_package].preferences.model_toolkit:
+        prefs = context.preferences.addons[base_package].preferences
+        if not prefs.model_toolkit or (cls.experimental and not prefs.experimental):
             return False
         if not cls.creator_only:
             return True
@@ -271,7 +274,8 @@ class PANEL_PT_MustardUI_ModelToolkit_Optimizations(ModelToolkitSection, bpy.typ
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Unreal(ModelToolkitSection, bpy.types.Panel):
-    header = ("Unreal Tools", "EXPORT")
+    header = ("Unreal Tools (Experimental)", "EXPORT")
+    experimental = True
 
     def draw(self, context):
         col = self.layout.column(align=True)
