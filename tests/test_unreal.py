@@ -250,14 +250,19 @@ class TestExportToUnreal(BlenderTestCase):
 
         particles = mesh("Model Hair - Scalp")
         particles.modifiers.new("Hair", "PARTICLE_SYSTEM").particle_system.settings.type = "HAIR"
+        constraint = particles.constraints.new("CHILD_OF")
+        constraint.target, constraint.subtarget = self.rig, "head"
         set_active(self.rig)
         return rigid, braid
 
     def test_hair_list(self):
         self.add_hair()
         hair = self.items("hair")
-        self.assertEqual(set(hair), {"Model Hair - Bob", "Model Hair - Braid"})
+        self.assertEqual(
+            set(hair), {"Model Hair - Bob", "Model Hair - Braid", "Model Hair - Scalp"}
+        )
         self.assertEqual(hair["Model Hair - Bob"].name, "Bob")
+        self.assertTrue(hair["Model Hair - Scalp"].use)
         self.assertTrue(hair["Model Hair - Bob"].use)
         self.assertFalse(hair["Model Hair - Braid"].use)
 
@@ -289,6 +294,34 @@ class TestExportToUnreal(BlenderTestCase):
         # Rigid hair keeps its place on the head
         position = meshes[rigid.name].matrix_world @ meshes[rigid.name].data.vertices[2].co
         self.assertAlmostEqual(position.z, 1.7, places=3)
+
+    # Particle hair is not in the FBX, but in Alembic files for the grooms of Unreal, with the
+    # strand sizes for the Unreal script copied next to the FBX
+    def test_export_particle_hair(self):
+        self.add_hair()
+        scalp = bpy.data.objects["Model Hair - Scalp"]
+        settings = scalp.particle_systems[0].settings
+        settings.root_radius, settings.tip_radius, settings.radius_scale = 1.0, 0.5, 0.002
+        material = bpy.data.materials.new("Hair")
+        material.diffuse_color = (0.1, 0.05, 0.02, 1.0)
+        scalp.data.materials.append(material)
+        filepath = self.path("character.fbx")
+        self.assertEqual(
+            bpy.ops.mustardui.unreal_tools_export_character(
+                "EXEC_DEFAULT", filepath=filepath, hair=True
+            ),
+            {"FINISHED"},
+        )
+        self.assertNotIn(scalp.name, self.imported_meshes(filepath))
+        folder = self.path("character_Hair")
+        (entry,) = json.load(open(os.path.join(folder, "hair.json")))["hair"]
+        self.assertEqual(entry["name"], scalp.name)
+        self.assertAlmostEqual(entry["groups"][0]["width"], 0.2)
+        self.assertAlmostEqual(entry["groups"][0]["tip_scale"], 0.5)
+        for got, expected in zip(entry["groups"][0]["color"], (0.1, 0.05, 0.02), strict=True):
+            self.assertAlmostEqual(got, expected)
+        self.assertGreater(os.path.getsize(os.path.join(folder, entry["file"])), 1000)
+        self.assertTrue(os.path.exists(self.path("MustardUI_Unreal_Materials.py")))
 
     # Animations have the hair bones too, so they match the character
     def test_animation_has_hair_bones(self):

@@ -1,4 +1,4 @@
-"""MustardUI - Materials for characters exported with Export Character.
+"""MustardUI - Materials and hair for characters exported with Export Character.
 
 Run inside the Unreal Editor, with the Python Editor Script Plugin enabled:
 select the imported skeletal meshes in the Content Browser, then use
@@ -9,6 +9,12 @@ materials.json file next to the textures exported from Blender, and assigns a ma
 instance of a MustardUI parent material: skin with subsurface scattering, opaque, or masked for
 brows and lashes. The parent materials work with skeletal meshes and morph targets, and are
 created once in /Game/MustardUI/Materials, where they can be changed for all the characters.
+
+Particle hair, exported as Alembic files in the _Hair folder next to the FBX, is imported as
+simulated grooms bound to the mesh, with the strand sizes of Blender and a material instance of
+the MustardUI hair material, and added to the Blueprints showing the mesh, colliding with its
+physics asset. Grooms need the Groom and Alembic Groom Importer plugins, and Unreal must be
+restarted before the new grooms are used.
 """
 
 import json
@@ -101,6 +107,14 @@ SKIN_PROFILE = {
 SKIN_AMOUNT = 0.15
 SKIN_TINT = (0.86, 0.97, 1.0)
 EYE_ROUGHNESS = 0.1
+# Hair color when the Blender material has none, and the axes of the Alembic files of Blender
+HAIR_COLOR = (0.05, 0.035, 0.025)
+HAIR_ROTATION = (90, 0, 0)
+HAIR_SCALE = (1, -1, 1)
+# Hair simulation: the strands keep their combed shape at rest, stiff at the roots and free
+# at the tips (the bend scale goes from the root to the tip), damped so they do not overshoot
+HAIR_PHYSICS = {"GravityPreloading": 1.0, "BendStiffness": 0.12, "BendDamping": 0.1}
+HAIR_BEND_SCALE = ((0.0, 1.0), (0.3, 0.6), (0.65, 0.25), (1.0, 0.15))
 
 
 def skin_profile():
@@ -223,6 +237,54 @@ def create_parent(name, kind):
     return material
 
 
+def hair_parent():
+    """Parent material of the grooms: soft hair, scattering the light through the strands,
+    with roots darker than the tips."""
+    path = f"{PARENT_FOLDER}/M_MustardUI_Hair"
+    if library.does_asset_exist(path):
+        return unreal.load_asset(path)
+    material = assets.create_asset(
+        "M_MustardUI_Hair", PARENT_FOLDER, unreal.Material, unreal.MaterialFactoryNew()
+    )
+    material.set_editor_property("used_with_hair_strands", True)
+    material.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_HAIR)
+    color = materials.create_material_expression(
+        material, unreal.MaterialExpressionVectorParameter, -700, -300
+    )
+    color.set_editor_property("parameter_name", "HairColor")
+    color.set_editor_property("default_value", unreal.LinearColor(*HAIR_COLOR, 1))
+    root = materials.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, -450, -200
+    )
+    materials.connect_material_expressions(color, "", root, "A")
+    brightness = scalar_parameter(material, "RootBrightness", 0.5, -700, -100)
+    materials.connect_material_expressions(brightness, "", root, "B")
+    strand = materials.create_material_expression(
+        material, unreal.MaterialExpressionHairAttributes, -700, 150
+    )
+    # Along the strand, from the root to the tip
+    fade = materials.create_material_expression(
+        material, unreal.MaterialExpressionLinearInterpolate, -250, -250
+    )
+    materials.connect_material_expressions(root, "", fade, "A")
+    materials.connect_material_expressions(color, "", fade, "B")
+    materials.connect_material_expressions(strand, "U", fade, "Alpha")
+    materials.connect_material_property(fade, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    # The hair shading model reads Scatter from Metallic and the strand tangent from Normal
+    for name, value, prop, y in (
+        ("Scatter", 0.9, unreal.MaterialProperty.MP_METALLIC, 350),
+        ("Specular", 0.25, unreal.MaterialProperty.MP_SPECULAR, 500),
+        ("Roughness", 0.55, unreal.MaterialProperty.MP_ROUGHNESS, 650),
+    ):
+        materials.connect_material_property(
+            scalar_parameter(material, name, value, -450, y), "", prop
+        )
+    materials.connect_material_property(strand, "Tangent", unreal.MaterialProperty.MP_NORMAL)
+    materials.recompile_material(material)
+    library.save_loaded_asset(material)
+    return material
+
+
 def import_texture(file_path, folder, kind):
     """Texture of the file, imported once in the folder. kind is color, data or normal:
     data and normal textures are not sRGB, and normal maps use their own compression."""
@@ -272,16 +334,8 @@ def source_file(mesh):
     return files[0] if files else ""
 
 
-def setup(mesh):
-    fbx = source_file(mesh)
-    textures_dir = os.path.splitext(fbx)[0] + "_Textures"
+def setup(mesh, textures_dir):
     manifest_path = os.path.join(textures_dir, "materials.json")
-    if not os.path.isfile(manifest_path):
-        unreal.log_error(
-            f"MustardUI - {mesh.get_name()}: no {manifest_path}. Export the character with "
-            "Materials ticked, and keep the textures folder next to the FBX"
-        )
-        return 0
     entries = json.load(open(manifest_path))["materials"]
     by_slot = {unreal_name(name): entry for name, entry in entries.items()}
 
@@ -345,6 +399,196 @@ def setup(mesh):
     return done
 
 
+def import_groom(file_path, folder, name):
+    """Groom of an Alembic file of Blender, or None if Unreal can not import it."""
+    options = unreal.GroomImportOptions()
+    conversion = unreal.GroomConversionSettings()
+    conversion.rotation, conversion.scale = (
+        unreal.Vector(*HAIR_ROTATION),
+        unreal.Vector(*HAIR_SCALE),
+    )
+    options.set_editor_property("conversion_settings", conversion)
+    task = unreal.AssetImportTask()
+    task.filename = file_path
+    task.destination_path = folder
+    task.destination_name = name
+    task.automated = True
+    task.save = True
+    task.options = options
+    assets.import_asset_tasks([task])
+    return unreal.load_asset(f"{folder}/{name}")
+
+
+def setup_groom(groom, entry, instance):
+    """Strand sizes of the particle systems and the material of a new groom. Its groups follow
+    the particle systems, and the last system sizes the groups left."""
+    groups = []
+    for index, group in enumerate(groom.get_editor_property("hair_groups_rendering")):
+        size = entry["groups"][min(index, len(entry["groups"]) - 1)]
+        # The settings of a group are not exposed to Python, so they are changed as text
+        text = re.sub(r'MaterialSlotName="[^"]*"', 'MaterialSlotName="Hair"', group.export_text())
+        text = re.sub(r"HairWidth=[^,)]+", f"HairWidth={size['width']:.6f}", text)
+        text = re.sub(r"HairTipScale=[^,)]+", f"HairTipScale={size['tip_scale']:.6f}", text)
+        group.import_text(text.replace("HairWidth_Override=False", "HairWidth_Override=True"))
+        groups.append(group)
+    groom.set_editor_property("hair_groups_rendering", groups)
+    slot = unreal.HairGroupsMaterial()
+    slot.set_editor_property("slot_name", "Hair")
+    slot.set_editor_property("material", instance)
+    groom.set_editor_property("hair_groups_materials", [slot])
+    library.save_loaded_asset(groom)
+
+
+def enable_simulation(groom):
+    """Turn on the simulation of a new groom. Unreal crashes when Python changes the
+    simulation of a loaded groom, as it rebuilds the groom without the data the simulation
+    needs: the change is saved without rebuilding, and the groom builds that data when Unreal
+    loads it again."""
+    keys = ",".join(f"(InterpMode=RCIM_Cubic,Time={t},Value={v})" for t, v in HAIR_BEND_SCALE)
+    groups = []
+    for group in groom.get_editor_property("hair_groups_physics"):
+        text = group.export_text().replace("EnableSimulation=False", "EnableSimulation=True")
+        for key, value in HAIR_PHYSICS.items():
+            text = re.sub(rf"\b{key}=[^,)]+", f"{key}={value}", text)
+        text = re.sub(
+            r"(BendScale=\(EditorCurveData=\(Keys=\().*?\)(\),Default)", rf"\g<1>{keys}\2", text
+        )
+        group.import_text(text)
+        groups.append(group)
+    groom.modify()
+    groom.set_editor_property(
+        "hair_groups_physics", groups, unreal.PropertyAccessChangeNotifyMode.NEVER
+    )
+    library.save_loaded_asset(groom, False)
+
+
+def setup_hair(mesh, hair_dir):
+    if getattr(unreal, "GroomImportOptions", None) is None:
+        unreal.log_error(
+            "MustardUI - Enable the Groom and Alembic Groom Importer plugins to import the hair"
+        )
+        return 0
+    mesh_folder = mesh.get_path_name().rsplit("/", 1)[0]
+    folder = f"{mesh_folder}/Hair"
+    parent = hair_parent()
+    # (groom, binding, imported now)
+    grooms = []
+    for entry in json.load(open(os.path.join(hair_dir, "hair.json")))["hair"]:
+        name = unreal_name(entry["name"])
+        groom_path = f"{folder}/GR_{name}"
+        # A groom is imported once: changing a simulated groom from Python can crash Unreal
+        existed = library.does_asset_exist(groom_path)
+        if existed:
+            groom = unreal.load_asset(groom_path)
+            log(f"{name}: kept the groom already imported, delete it to import it again")
+        else:
+            groom = import_groom(os.path.join(hair_dir, entry["file"]), folder, f"GR_{name}")
+            if groom is None:
+                unreal.log_error(
+                    f"MustardUI - Could not import {entry['file']}: is the Alembic Groom "
+                    "Importer plugin enabled?"
+                )
+                continue
+            instance = assets.create_asset(
+                f"MI_Hair_{name}",
+                f"{mesh_folder}/Materials",
+                unreal.MaterialInstanceConstant,
+                unreal.MaterialInstanceConstantFactoryNew(),
+            )
+            materials.set_material_instance_parent(instance, parent)
+            color = entry["groups"][0]["color"]
+            if color is not None:
+                materials.set_material_instance_vector_parameter_value(
+                    instance, "HairColor", unreal.LinearColor(*color, 1)
+                )
+            library.save_loaded_asset(instance)
+            setup_groom(groom, entry, instance)
+        binding_path = f"{folder}/GB_{name}"
+        if library.does_asset_exist(binding_path):
+            binding = unreal.load_asset(binding_path)
+        else:
+            binding = unreal.GroomLibrary.create_new_groom_binding_asset_with_path(
+                binding_path, groom, mesh
+            )
+            library.save_loaded_asset(binding)
+        grooms.append((groom, binding, not existed))
+    blueprints = add_to_blueprints(mesh, grooms)
+    log(f"{mesh.get_name()}: {len(grooms)} grooms in {folder}")
+    if blueprints:
+        log(f"Grooms added under the {mesh.get_name()} mesh of {', '.join(blueprints)}")
+    else:
+        log(
+            f"No Blueprint shows {mesh.get_name()}: add a Groom component under the skeletal "
+            "mesh of the character, with the groom, its binding, and the physics asset of the "
+            "mesh, for the hair to collide with the body"
+        )
+    # Last, as the grooms must not be rebuilt before Unreal loads them again
+    simulated = [groom for groom, _, new in grooms if new]
+    for groom in simulated:
+        enable_simulation(groom)
+    if simulated:
+        names = ", ".join(groom.get_name() for groom in simulated)
+        unreal.log_warning(
+            f"MustardUI - Restart Unreal before using {names}: their hair "
+            "simulation is built when they are loaded again, and Unreal can crash before"
+        )
+    return len(grooms)
+
+
+def add_to_blueprints(mesh, grooms):
+    """Add the grooms to the Blueprints with a component showing the mesh, under it, colliding
+    with the physics asset of the mesh. Returns the names of the Blueprints."""
+    registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    subobjects = unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
+    data = unreal.SubobjectDataBlueprintFunctionLibrary
+    physics = mesh.get_editor_property("physics_asset")
+    names = []
+    referencers = registry.get_referencers(
+        mesh.get_outermost().get_name(), unreal.AssetRegistryDependencyOptions()
+    )
+    for package in referencers or []:
+        blueprint = unreal.load_asset(str(package))
+        if not isinstance(blueprint, unreal.Blueprint):
+            continue
+        handles = subobjects.k2_gather_subobject_data_for_blueprint(blueprint)
+        components = [(h, data.get_object(data.get_data(h))) for h in handles]
+        parent = next(
+            (
+                h
+                for h, c in components
+                if isinstance(c, unreal.SkeletalMeshComponent) and c.get_skinned_asset() == mesh
+            ),
+            None,
+        )
+        if parent is None:
+            continue
+        present = {
+            c.get_editor_property("groom_asset")
+            for _, c in components
+            if isinstance(c, unreal.GroomComponent)
+        }
+        for groom, binding, _ in grooms:
+            if groom in present:
+                continue
+            handle, _ = subobjects.add_new_subobject(
+                unreal.AddNewSubobjectParams(
+                    parent_handle=parent,
+                    new_class=unreal.GroomComponent,
+                    blueprint_context=blueprint,
+                )
+            )
+            subobjects.rename_subobject(handle, unreal.Text(groom.get_name().removeprefix("GR_")))
+            component = data.get_object(data.get_data(handle))
+            component.set_editor_property("groom_asset", groom)
+            component.set_editor_property("binding_asset", binding)
+            if physics is not None:
+                component.set_editor_property("physics_asset", physics)
+        unreal.BlueprintEditorLibrary.compile_blueprint(blueprint)
+        library.save_loaded_asset(blueprint)
+        names.append(blueprint.get_name())
+    return names
+
+
 def run():
     meshes = [
         a
@@ -355,7 +599,20 @@ def run():
         unreal.log_error("MustardUI - Select the skeletal meshes in the Content Browser first")
         return
     for mesh in meshes:
-        setup(mesh)
+        base = os.path.splitext(source_file(mesh))[0]
+        textures_dir, hair_dir = base + "_Textures", base + "_Hair"
+        has_materials = os.path.isfile(os.path.join(textures_dir, "materials.json"))
+        has_hair = os.path.isfile(os.path.join(hair_dir, "hair.json"))
+        if not has_materials and not has_hair:
+            unreal.log_error(
+                f"MustardUI - {mesh.get_name()}: nothing to set up next to {base}.fbx. Export "
+                "the character with Materials ticked or with particle hair, and keep the folders "
+                "next to the FBX"
+            )
+        if has_materials:
+            setup(mesh, textures_dir)
+        if has_hair:
+            setup_hair(mesh, hair_dir)
 
 
 run()

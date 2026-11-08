@@ -326,9 +326,93 @@ def final(obj, co):
     return (co * 100.0).astype(np.float32)
 
 
+def hair_color(material):
+    """Color of the strands: the Principled Hair BSDF of the material, its viewport color if
+    changed, or None. Inputs driven by nodes are left out."""
+    tree = material.node_tree if material.use_nodes else None
+    output = tree and (tree.get_output_node("ALL") or tree.get_output_node("CYCLES"))
+    links = output.inputs["Surface"].links if output else ()
+    bsdf = links[0].from_node if links else None
+    if bsdf is not None and bsdf.bl_idname == "ShaderNodeBsdfHairPrincipled":
+        if bsdf.parametrization == "COLOR":
+            return list(bsdf.inputs["Color"].default_value[:3])
+        if bsdf.parametrization == "MELANIN":
+            # Absorption of the melanin as in Cycles, and the color giving it back
+            amount = -np.log(max(1.0 - bsdf.inputs["Melanin"].default_value, 1e-4))
+            redness = bsdf.inputs["Melanin Redness"].default_value
+            sigma = amount * (
+                (1 - redness) * np.array((0.506, 0.841, 1.653))
+                + redness * np.array((0.343, 0.733, 1.924))
+            )
+            roughness = bsdf.inputs.get("Radial Roughness", bsdf.inputs["Roughness"])
+            b = roughness.default_value
+            scale = 5.969 - 0.215 * b + 2.532 * b**2 - 10.73 * b**3 + 5.574 * b**4 + 0.245 * b**5
+            return list(np.exp(-np.sqrt(sigma) * scale))
+    color = list(material.diffuse_color[:3])
+    return None if np.allclose(color, 0.8) else color
+
+
+def export_grooms(names):
+    """Particle hair as Alembic files for the hair strands of Unreal, in a folder next to the
+    FBX, with the rig in rest pose and in cm like the meshes. hair.json gives the Unreal script
+    the width, tip scale and color of the strands of each particle system."""
+    folder = os.path.splitext(filepath)[0] + "_Hair"
+    os.makedirs(folder, exist_ok=True)
+    rig.data.pose_position = "REST"
+    entries = []
+    for name in names:
+        obj = bpy.data.objects[name]
+        hair_rigs.show(obj)
+        obj.hide_render = obj.hide_select = False
+        materials = [slot.material for slot in obj.material_slots]
+        groups = []
+        for modifier in obj.modifiers:
+            system = getattr(modifier, "particle_system", None)
+            if system is None or system.settings.type != "HAIR":
+                continue
+            modifier.show_viewport = modifier.show_render = True
+            # The combed shape, not a simulated one
+            system.use_hair_dynamics = False
+            hair = system.settings
+            # Particle settings number the material slots from 1
+            material = materials[hair.material - 1] if hair.material <= len(materials) else None
+            groups.append(
+                {
+                    "width": hair.root_radius * hair.radius_scale * 100.0,
+                    "tip_scale": hair.tip_radius / hair.root_radius if hair.root_radius else 1.0,
+                    "color": hair_color(material) if material else None,
+                }
+            )
+        for other in bpy.context.view_layer.objects:
+            other.select_set(other is obj)
+        file = bpy.path.clean_name(name) + ".abc"
+        frame = bpy.context.scene.frame_current
+        bpy.ops.wm.alembic_export(
+            filepath=os.path.join(folder, file),
+            selected=True,
+            flatten=True,
+            start=frame,
+            end=frame,
+            export_hair=True,
+            export_particles=False,
+            normals=False,
+            global_scale=100.0,
+            evaluation_mode="RENDER",
+            as_background_job=False,
+        )
+        entries.append({"name": name, "file": file, "groups": groups})
+    rig.data.pose_position = "POSE"
+    with open(os.path.join(folder, "hair.json"), "w") as file:
+        json.dump({"hair": entries}, file, indent=1)
+    return len(entries)
+
+
 def export_character():
-    pieces = set(settings.get("outfit_pieces", ())) | hair_meshes
+    particle_hair = set(settings.get("particle_hair", ()))
+    pieces = set(settings.get("outfit_pieces", ())) | hair_meshes | particle_hair
     chosen = set(settings.get("outfits", ())) | set(settings.get("hair", ()))
+    # Particle hair is not in the FBX: it is exported first, before the scene is changed
+    grooms = export_grooms(sorted(chosen & particle_hair)) if chosen & particle_hair else 0
     # Outfit pieces and hair chosen in the export, and the other visible meshes of the model
     meshes = [o for o in bound if (o.name in chosen if o.name in pieces else o.visible_get())]
     # Hair not deformed by the rig follows it rigidly, or with its own hair armature
@@ -486,6 +570,8 @@ def export_character():
     bpy.ops.object.mode_set(mode="OBJECT")
     add_bones(rig)
     result = {"bones": len(rest), "meshes": len(meshes), "morphs": len(morphs)}
+    if grooms:
+        result["grooms"] = grooms
     if settings.get("materials"):
         # Textures go to a folder next to the FBX, which refers to them with relative paths
         folder = os.path.splitext(filepath)[0] + "_Textures"
@@ -496,13 +582,14 @@ def export_character():
             result["meshes"] = len(meshes)
             result["see-through materials left out"] = len(clear)
         export({"ARMATURE", "MESH"}, path_mode="RELATIVE")
-        # The script building the materials in Unreal, next to the FBX
+    else:
+        export({"ARMATURE", "MESH"})
+    if settings.get("materials") or grooms:
+        # The script building the materials and the grooms in Unreal, next to the FBX
         shutil.copyfile(
             os.path.join(os.path.dirname(__file__), "resources", UNREAL_SCRIPT),
             os.path.join(os.path.dirname(filepath), UNREAL_SCRIPT),
         )
-    else:
-        export({"ARMATURE", "MESH"})
     if unused:
         result["morphs without effect"] = len(unused)
     return result
