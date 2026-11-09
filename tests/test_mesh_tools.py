@@ -95,55 +95,57 @@ class TestTransferShapeKeys(BlenderTestCase):
         fcurve = sks.animation_data.drivers.find('key_blocks["Lift"].value')
         self.assertIsNotNone(fcurve)
 
-    # Keys named as a Body Custom Property driving the source key are linked to it
+    # Keys driven by a Custom Property are linked to it, whatever its name and list
     def test_link_custom_property(self):
         rig = new_object("Rig", bpy.data.armatures.new("Rig"))
         self.source.parent = rig
         bpy.context.scene.MustardUI_Settings.viewport_model_selection = True
         arm = rig.data
-        raise_key = self.source.shape_key_add(name="Raise", from_mix=False)
-        for d in raise_key.data:
+        bend = self.source.shape_key_add(name="Bend", from_mix=False)
+        for d in bend.data:
             d.co.z += 0.1
 
-        # "Raise" drives the source "Lift", so it is not linked
+        # The source "Lift" linked to an Outfit property, "Bend" driven by the rig
         source_rna = f'bpy.data.shape_keys["{self.source.data.shape_keys.name}"].key_blocks'
-        for name, key in (("Lift", "Lift"), ("Raise", "Lift")):
-            arm[name] = 0.0
-            cp = arm.MustardUI_CustomProperties.add()
-            cp.name, cp.prop_name, cp.path = name, name, "value"
-            cp.rna = f'{source_rna}["{key}"]'
-        cp_misc.mustardui_add_driver(arm, f'{source_rna}["Lift"]', "value", "Lift", 0)
+        arm["Pressure"] = 0.0
+        cp = arm.MustardUI_CustomPropertiesOutfit.add()
+        cp.name, cp.prop_name = "Pressure", "Pressure"
+        lp = cp.linked_properties.add()
+        lp.rna, lp.path = f'{source_rna}["Lift"]', "value"
+        cp_misc.mustardui_add_driver(arm, lp.rna, "value", "Pressure", 0)
+        fcurve = bend.driver_add("value")
+        fcurve.driver.type = "AVERAGE"
+        var = fcurve.driver.variables.new()
+        var.targets[0].id = rig
+        var.targets[0].data_path = "location.x"
 
         bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="PROPERTY")
 
         sks = self.target.data.shape_keys
         target_rna = f'bpy.data.shape_keys["{sks.name}"].key_blocks["Lift"]'
-        lift = arm.MustardUI_CustomProperties["Lift"]
-        self.assertEqual(
-            [(lp.rna, lp.path) for lp in lift.linked_properties], [(target_rna, "value")]
-        )
-        self.assertEqual(len(arm.MustardUI_CustomProperties["Raise"].linked_properties), 0)
+        self.assertIn((target_rna, "value"), [(lp.rna, lp.path) for lp in cp.linked_properties])
 
-        def driver_id(name):
-            fcurve = sks.animation_data.drivers.find(f'key_blocks["{name}"].value')
-            return fcurve.driver.variables[0].targets[0].id
+        def driver(name):
+            return sks.animation_data.drivers.find(f'key_blocks["{name}"].value')
 
-        self.assertEqual(driver_id("Lift"), arm)
-        self.assertEqual(driver_id("Raise"), self.source)
+        # The others copy the source driver
+        self.assertEqual(driver("Lift").driver.variables[0].targets[0].id, arm)
+        self.assertEqual(driver("Bend").driver.variables[0].targets[0].id, rig)
 
-        arm["Lift"] = 0.6
+        arm["Pressure"] = 0.6
+        rig.location.x = 0.3
         arm.update_tag()
         bpy.context.view_layer.update()
         self.assertAlmostEqual(sks.key_blocks["Lift"].value, 0.6, places=5)
+        self.assertAlmostEqual(sks.key_blocks["Bend"].value, 0.3, places=5)
 
-        # Without the fallback, the keys without a Custom Property are transferred undriven
-        other = grid_object("Other", size=0.5, subdivisions=7, location=(0, 0, 0.001))
-        self.select(other, self.source)
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="PROPERTY_EXCLUDE")
-        sks = other.data.shape_keys
-        self.assertIn("Raise", sks.key_blocks)
-        self.assertEqual(driver_id("Lift"), arm)
-        self.assertIsNone(sks.animation_data.drivers.find('key_blocks["Raise"].value'))
+        # Without the fallback, the overwritten keys keep only the Custom Property links
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(
+            shape_key_link="PROPERTY_EXCLUDE", overwrite=True
+        )
+        self.assertEqual(len(cp.linked_properties), 2)
+        self.assertIsNotNone(driver("Lift"))
+        self.assertIsNone(driver("Bend"))
 
     # Offsets follow the object transforms
     def test_transformed_target(self):

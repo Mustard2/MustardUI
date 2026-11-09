@@ -229,13 +229,18 @@ def mustardui_add_driver(obj, rna, path, prop_name, array_length=None):
             add_variable(driver[i], f"{data_path}[{i}]")
 
 
-# Link the property at rna.path to parent_prop, removing it from the other custom properties
-def link_property(obj, rna, path, parent_prop, custom_props):
+# Remove the property at rna.path from the linked properties of the custom properties
+def unlink_property(rna, path, custom_props):
     for check_prop in custom_props:
         for i in reversed(range(len(check_prop.linked_properties))):
             lp = check_prop.linked_properties[i]
             if lp.rna == rna and lp.path == path:
                 check_prop.linked_properties.remove(i)
+
+
+# Link the property at rna.path to parent_prop, removing it from the other custom properties
+def link_property(obj, rna, path, parent_prop, custom_props):
+    unlink_property(rna, path, custom_props)
 
     try:
         mustardui_add_driver(obj, rna, path, parent_prop.prop_name)
