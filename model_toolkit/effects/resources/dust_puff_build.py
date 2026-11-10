@@ -1329,11 +1329,15 @@ def build_node_group():
     to_local = t.node("FunctionNodeInvertMatrix", -10, -2, {0: to_world}).outputs[0]
 
     t.section("World Space", row=True)
+    # The mesh only, as the instances of other effects are not part of the ground
+    mesh = t.node(
+        "GeometryNodeSeparateComponents", -10, 0, {"Geometry": inputs["Geometry"]}
+    ).outputs["Mesh"]
     ground = t.node(
         "GeometryNodeTransform",
         -9,
         0,
-        {"Geometry": inputs["Geometry"], "Mode": "Matrix", "Transform": to_world},
+        {"Geometry": mesh, "Mode": "Matrix", "Transform": to_world},
     ).outputs[0]
     colliders = t.node(
         "GeometryNodeCollectionInfo",
@@ -1451,7 +1455,7 @@ def build_node_group():
         "GeometryNodeDeleteGeometry",
         5,
         -6,
-        {"Geometry": inputs["Geometry"], "Selection": True},
+        {"Geometry": mesh, "Selection": True},
         domain="FACE",
         mode="ONLY_FACE",
     ).outputs[0]

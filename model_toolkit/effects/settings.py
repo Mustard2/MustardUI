@@ -11,6 +11,7 @@ from . import (
     ops_chain,
     ops_cloth_rip,
     ops_cloth_tear,
+    ops_cracks,
     ops_crush,
     ops_dirt,
     ops_disintegration,
@@ -65,6 +66,9 @@ EFFECTS = {
     "Marks": Effect("TPAINT_HLT", ops_marks.NODE_GROUP, None, "remove_marks"),
     "Imprints": Effect(
         "MOD_DISPLACE", ops_imprints.NODE_GROUP, None, "remove_imprints", experimental=True
+    ),
+    "Cracks": Effect(
+        "MOD_TRIANGULATE", ops_cracks.NODE_GROUP, None, "remove_cracks", experimental=True
     ),
     "Bulge": Effect("SPHERECURVE", ops_bulge.NODE_GROUP, None, "remove_bulge"),
     "Shrinkwrap": Effect(

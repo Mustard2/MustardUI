@@ -227,6 +227,8 @@ class TestUI(BlenderTestCase):
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_imprints()
         set_active(cube)
+        bpy.ops.mustardui.model_toolkit_cracks()
+        set_active(cube)
         bpy.ops.mustardui.model_toolkit_bulge()
         set_active(cube)
         bpy.ops.mustardui.model_toolkit_shrinkwrap()
