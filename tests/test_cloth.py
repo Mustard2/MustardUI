@@ -81,6 +81,37 @@ class TestCloth(BlenderTestCase):
         self.assertIsNone(sheet.modifiers.get(solver.RESULT_MOD))
         self.assertIsNone(bpy.data.objects.get(solver.helper_name(sheet)))
 
+    # Follow Body pulls toward a collider deformed by its modifiers (here a Hook, physics cages on
+    # models), and toward the cloth's own shape when the collider only moves
+    @unittest.skipUnless(solver.gpu_available(), "Needs a GPU with compute shaders")
+    def test_follow_deformed_collider(self):
+        moved = []
+        for hooked in (False, True):
+            box = new_box()
+            sheet = new_sheet()
+            mover = box
+            if hooked:
+                mover = new_object("Hook")
+                mover.location = box.location
+                hook = box.modifiers.new("Hook", "HOOK")
+                hook.object = mover
+                hook.vertex_indices_set(range(len(box.data.vertices)))
+            mover.keyframe_insert("location", index=0, frame=1)
+            mover.location.x = 0.1
+            mover.keyframe_insert("location", index=0, frame=20)
+            mover.location.x = 0.0
+            cloth = sheet.MustardUI_Cloth
+            cloth.collider, cloth.follow = box, 1.0
+            set_active(sheet)
+            bpy.ops.mustardui.model_toolkit_cloth_enable()
+            bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 20
+            bpy.ops.mustardui.model_toolkit_cloth_bake()
+            world = solver.WORLD["world"]
+            moved.append(world.cache[20][0][:, 0].mean() - world.cache[1][0][:, 0].mean())
+            bpy.ops.mustardui.model_toolkit_cloth_remove(name=sheet.name)
+        self.assertLess(abs(moved[0]), 0.03)
+        self.assertGreater(moved[1], 0.08)
+
     # Without a GPU the operators are disabled
     def test_without_gpu(self):
         sheet = new_sheet()

@@ -1149,6 +1149,9 @@ def place_result_modifier(obj, sim_mesh):
     return mod
 
 
+# Collider modifiers deforming it beyond its Armature, e.g. MustardUI physics cages (Surface Deform)
+BODY_DEFORMERS = {"SURFACE_DEFORM", "MESH_DEFORM", "LATTICE", "HOOK", "CLOTH", "SOFT_BODY"}
+
 SIMS = {}  # cloth object name -> Cloth, all simulated together in WORLD
 WORLD = {"world": None}
 
@@ -1296,6 +1299,7 @@ class World:
         self.pos = pos.copy()
         # Crossing checks spacing, last motion and lists; last frames shown (display filter)
         self.steps, self.motion, self.lists, self.shown = 0, np.inf, None, []
+        self.follow_bind = None  # Follow Body on deformed colliders: (vertices, binding)
         for c in cloths:
             if c.resume is not None:
                 self.pos[c.span] = c.resume
@@ -1342,32 +1346,18 @@ class World:
         verts, tris = collider_arrays(
             [bpy.data.objects[cloth.target]], bpy.context.evaluated_depsgraph_get()
         )
-        bvh = BVHTree.FromPolygons(verts.tolist(), tris.tolist())
-        p = self.solver.pin_pos[idx]
-        tri = np.array([bvh.find_nearest(q)[2] for q in p])
-        a, b, c = (verts[tris[tri, k]] for k in range(3))
-        nrm = np.cross(b - a, c - a)
-        nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
-        bary = barycentric(p, a, b, c)
-        offset = np.einsum(
-            "ij,ij->i", p - (bary[:, :1] * a + bary[:, 1:2] * b + bary[:, 2:] * c), nrm
-        )
-        cloth.pin_bind = (idx, tris[tri], bary, offset)
+        cloth.pin_bind = (idx, *surface_bind(self.solver.pin_pos[idx], verts, tris))
 
     def update_pins(self, cloth):
         """Move the bound pins with the Target Object's current shape."""
         cloth.target_dirty = False
         if cloth.pin_bind is None:
             return
-        idx, corners, bary, offset = cloth.pin_bind
+        idx, *bind = cloth.pin_bind
         verts, _ = collider_arrays(
             [bpy.data.objects[cloth.target]], bpy.context.evaluated_depsgraph_get()
         )
-        a, b, c = (verts[corners[:, k]] for k in range(3))
-        nrm = np.cross(b - a, c - a)
-        nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
-        point = bary[:, :1] * a + bary[:, 1:2] * b + bary[:, 2:] * c
-        self.solver.pin_pos[idx] = point + offset[:, None] * nrm
+        self.solver.pin_pos[idx] = surface_points(bind, verts)
         self.solver.upload_attach()
 
     def step(self, dt=1 / 30, follow=False):
@@ -1465,7 +1455,15 @@ class World:
             sv.follow_target[c.span] = src
             if pinned:
                 sv.pin_pos[idx + c.span.start] = src[idx] + self.pin_ref[idx + c.span.start]
+        if self.follow_bind is not None:
+            # Toward the vertex's spot on the deformed colliders
+            idx, *bind = self.follow_bind
+            sv.follow_target[idx] = surface_points(bind, self.collider_verts(context))
         sv.upload_attach()
+
+    def collider_verts(self, context):
+        objects = [bpy.data.objects[n] for n in self.colliders]
+        return collider_arrays(objects, context.evaluated_depsgraph_get())[0]
 
     def playback_step(self, context, dt):
         """One animation frame: colliders and pin targets re-read, pins follow the cloth"""
@@ -1490,6 +1488,18 @@ class World:
         self.body_dirty = True
         self.solver.stuck[:] = False
         self.solver.follow_target = pos.copy()
+        # Colliders deformed beyond their Armature (physics cages): Follow Body pulls toward their
+        # surface, each vertex bound to its nearest triangle; the outfit's Armature shape ignores it
+        self.follow_bind = None
+        objects = [bpy.data.objects[n] for n in self.colliders]
+        deformed = any(
+            m.type in BODY_DEFORMERS and m.show_viewport for o in objects for m in o.modifiers
+        )
+        idx = [np.arange(c.span.start, c.span.stop) for c in self.cloths if c.fabric["follow"] > 0]
+        if idx and deformed:
+            verts, tris = collider_arrays(objects, context.evaluated_depsgraph_get())
+            idx = np.concatenate(idx)
+            self.follow_bind = (idx, *surface_bind(pos[idx], verts, tris))
         self.solver.upload_attach()
         self.set_state((pos, pos))
         self.cache = {}
@@ -1508,6 +1518,27 @@ class World:
 
     def save_shape_key(self, context, cloth=None):
         return (cloth or self.cloths[0]).save_shape_key(context, self.pos)
+
+
+def surface_bind(points, verts, tris):
+    """Points kept on their nearest triangles: (corners, barycentric, offset along the normal)"""
+    bvh = BVHTree.FromPolygons(verts.tolist(), tris.tolist())
+    corners = tris[np.array([bvh.find_nearest(q)[2] for q in points])]
+    a, b, c = (verts[corners[:, k]] for k in range(3))
+    bary = barycentric(points, a, b, c)
+    point = bary[:, :1] * a + bary[:, 1:2] * b + bary[:, 2:] * c
+    nrm = np.cross(b - a, c - a)
+    nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
+    return corners, bary, np.einsum("ij,ij->i", points - point, nrm)
+
+
+def surface_points(bind, verts):
+    """The bound points on the triangles' current shape"""
+    corners, bary, offset = bind
+    a, b, c = (verts[corners[:, k]] for k in range(3))
+    nrm = np.cross(b - a, c - a)
+    nrm /= np.linalg.norm(nrm, axis=1, keepdims=True)
+    return bary[:, :1] * a + bary[:, 1:2] * b + bary[:, 2:] * c + offset[:, None] * nrm
 
 
 def barycentric(p, a, b, c):
