@@ -117,12 +117,16 @@ class MustardUI_ModelToolkit_ClothRemove(bpy.types.Operator):
     bl_idname = "mustardui.model_toolkit_cloth_remove"
     bl_label = "Remove"
 
+    name: bpy.props.StringProperty(description="Cloth object, the active one if empty")
+
     @classmethod
     def poll(cls, context):
-        return not STATE["running"] and context.active_object
+        return not STATE["running"]
 
     def execute(self, context):
-        obj = context.active_object
+        obj = bpy.data.objects.get(self.name) if self.name else context.active_object
+        if obj is None:
+            return {"CANCELLED"}
         obj.MustardUI_Cloth.enabled = False
         mod = obj.modifiers.get(solver.RESULT_MOD)
         if mod:
@@ -132,6 +136,7 @@ class MustardUI_ModelToolkit_ClothRemove(bpy.types.Operator):
             me = helper.data
             bpy.data.objects.remove(helper)
             bpy.data.meshes.remove(me)
+            context.view_layer.update()  # else its stale entry is still listed
         return {"FINISHED"} if rebuild_report(self, context) else {"CANCELLED"}
 
 

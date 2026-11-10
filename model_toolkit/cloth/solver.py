@@ -122,11 +122,14 @@ void main() {
      all if colliders moved */
   bool moved = distance(x, imageLoad(img_xd, p).xyz) > redetect;
   bool free = imageLoad(img_ct, px(4 * i)).x == 0.0;
-  bool search = detect == 2 || (moved && (detect == 1 || (detect == 3 && free)));
-  vec4 track1 = search ? vec4(0.0) : imageLoad(img_ct, px(4 * i));
-  vec4 track2 = search ? vec4(0.0) : imageLoad(img_ct, px(4 * i + 2));
-  vec4 local1 = search ? vec4(0.0) : imageLoad(img_ct, px(4 * i + 1));
-  vec4 local2 = search ? vec4(0.0) : imageLoad(img_ct, px(4 * i + 3));
+  /* Cloths with Collision off (mat.w 0) keep no contacts */
+  bool collide = texelFetch(s_mat, p, 0).w > 0.5;
+  bool search = collide && (detect == 2 || (moved && (detect == 1 || (detect == 3 && free))));
+  bool none = search || !collide;
+  vec4 track1 = none ? vec4(0.0) : imageLoad(img_ct, px(4 * i));
+  vec4 track2 = none ? vec4(0.0) : imageLoad(img_ct, px(4 * i + 2));
+  vec4 local1 = none ? vec4(0.0) : imageLoad(img_ct, px(4 * i + 1));
+  vec4 local2 = none ? vec4(0.0) : imageLoad(img_ct, px(4 * i + 3));
   if (search) {
     imageStore(img_xd, p, vec4(x, 0.0));
     ivec3 c0 = ivec3(floor((x - grid_origin.xyz) / grid_origin.w));
@@ -681,7 +684,8 @@ class Solver:
         mass = (self.vert_area * self.fabric("density"))[self.order]
         info = np.stack([self.adj_start, self.adj_count, mass, self.thickness[self.order]], axis=1)
         self.tex["info"] = _texture(info)
-        mat = np.stack([self.fabric("friction"), self.fabric("damping"), self.edge_radius], axis=1)
+        fabric = [self.fabric(k) for k in ("friction", "damping")]
+        mat = np.stack([*fabric, self.edge_radius, self.fabric("collision")], axis=1)
         self.tex["mat"] = _texture(mat[self.order])
 
     def boost_bending(self, boost=None):
@@ -998,6 +1002,7 @@ DEFAULTS = {
     "color_shear": 0,  # shear springs in the coloring
     "sewing": 0,  # loose edges pull their vertices together
     "follow": 0.0,  # Follow Body: springs toward the skinned shape, x 1000 N/m
+    "collision": 1,  # with the colliders, 0 off
     "sew_k": 1.0e3,  # N/m once a seam is closed
     "sew_force": 1.0,  # N per sewing edge at most: strong pulls crumple the cloth
 }

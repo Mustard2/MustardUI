@@ -16,6 +16,7 @@ FABRIC = (
     "thickness",
     "auto_fit",
     "follow",
+    "collision",
 )
 WORLD_LIVE = (
     "substeps",
@@ -90,16 +91,11 @@ def quality_update(self, context):
 
 
 def material_update(self, context):
-    if self.material in MATERIALS:
-        self.stretch, self.shear, self.bend, self.density, self.friction = MATERIALS[self.material]
+    self.stretch, self.shear, self.bend, self.density, self.friction = MATERIALS[self.material]
 
 
 def mesh_poll(self, obj):
     return obj.type == "MESH" and obj != self.id_data
-
-
-def preset_items(names):
-    return [(k, k.title(), "") for k in names] + [("CUSTOM", "Custom", "")]
 
 
 class MustardUI_ModelToolkit_ClothSettings(bpy.types.PropertyGroup):
@@ -116,6 +112,12 @@ class MustardUI_ModelToolkit_ClothSettings(bpy.types.PropertyGroup):
         ],
         description="Applied on Rebuild",
     )
+    collision: bpy.props.BoolProperty(
+        name="Collision",
+        default=True,
+        description="Collide with the Collider",
+        update=fabric_update,
+    )
     collider: bpy.props.PointerProperty(name="Collider", type=bpy.types.Object, poll=mesh_poll)
     pin_group: bpy.props.StringProperty(
         name="Pin Group", description="Vertices weighted above 0.5 stay fixed"
@@ -127,7 +129,10 @@ class MustardUI_ModelToolkit_ClothSettings(bpy.types.PropertyGroup):
         description="Pins follow this object's surface",
     )
     material: bpy.props.EnumProperty(
-        name="Material", items=preset_items(MATERIALS), default="COTTON", update=material_update
+        name="Material",
+        items=[(k, k.title(), "") for k in MATERIALS],
+        default="COTTON",
+        update=material_update,
     )
     stretch: bpy.props.FloatProperty(name="Stretch", default=1.0e4, min=1.0, update=fabric_update)
     shear: bpy.props.FloatProperty(name="Shear", default=100.0, min=0.0, update=fabric_update)
@@ -196,12 +201,11 @@ class MustardUI_ModelToolkit_ClothSceneSettings(bpy.types.PropertyGroup):
         ],
         update=mode_update,
     )
-    advanced: bpy.props.EnumProperty(
-        name="Mode",
-        items=[("SIMPLE", "Simple", "Presets only"), ("ADVANCED", "Advanced", "Every setting")],
-    )
     quality: bpy.props.EnumProperty(
-        name="Quality", items=preset_items(QUALITY), default="NORMAL", update=quality_update
+        name="Quality",
+        items=[(k, k.title(), "") for k in QUALITY] + [("CUSTOM", "Custom", "")],
+        default="NORMAL",
+        update=quality_update,
     )
     substeps: bpy.props.IntProperty(
         name="Substeps", default=64, min=1, max=256, update=world_update
@@ -291,13 +295,13 @@ def cloth_objects(context):
 
 def build_world(context):
     """One solver for every enabled cloth; None when there is none"""
-    if not solver.gpu_available():
-        raise RuntimeError("Cloth Physics needs a GPU with compute shaders")
     solver.SIMS.clear()
     solver.WORLD["world"] = None
     objs = cloth_objects(context)
     if not objs:
         return None
+    if not solver.gpu_available():
+        raise RuntimeError("Cloth Physics needs a GPU with compute shaders")
     cloths = []
     for o in objs:
         st = o.MustardUI_Cloth

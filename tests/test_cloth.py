@@ -60,6 +60,27 @@ class TestCloth(BlenderTestCase):
         middle = np.linalg.norm(pos[:, :2], axis=1) < 0.2
         self.assertGreater(pos[middle, 2].min(), 1.3 - 0.003)
 
+    # Collision off: the sheet falls through the box; the X removes the cloth from its mesh
+    @unittest.skipUnless(solver.gpu_available(), "Needs a GPU with compute shaders")
+    def test_collision_off_and_remove(self):
+        box = new_box()
+        sheet = new_sheet()
+        sheet.MustardUI_Cloth.collider = box
+        sheet.MustardUI_Cloth.follow = 0.0
+        sheet.MustardUI_Cloth.collision = False
+        set_active(sheet)
+        bpy.ops.mustardui.model_toolkit_cloth_enable()
+        bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 20
+        bpy.ops.mustardui.model_toolkit_cloth_bake()
+        pos = solver.WORLD["world"].cache[20][0]
+        self.assertLess(pos[np.linalg.norm(pos[:, :2], axis=1) < 0.2, 2].max(), 1.25)
+
+        set_active(box)
+        bpy.ops.mustardui.model_toolkit_cloth_remove(name=sheet.name)
+        self.assertFalse(sheet.MustardUI_Cloth.enabled)
+        self.assertIsNone(sheet.modifiers.get(solver.RESULT_MOD))
+        self.assertIsNone(bpy.data.objects.get(solver.helper_name(sheet)))
+
     # Without a GPU the operators are disabled
     def test_without_gpu(self):
         sheet = new_sheet()
