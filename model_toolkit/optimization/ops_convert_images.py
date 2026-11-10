@@ -107,7 +107,13 @@ class MUSTARDUI_UL_ConvertImages_UIList(bpy.types.UIList):
             column.label(text=text)
 
     def filter_items(self, context, data, propname):
-        return [self.bitflag_filter_item * listed(x, data) for x in getattr(data, propname)], []
+        items = getattr(data, propname)
+        helper = bpy.types.UI_UL_list
+        flags = helper.filter_items_by_name(
+            self.filter_name, self.bitflag_filter_item, items, reverse=self.use_filter_invert
+        ) or [self.bitflag_filter_item] * len(items)
+        order = helper.sort_items_by_name(items) if self.use_filter_sort_alpha else []
+        return [flag * listed(x, data) for flag, x in zip(flags, items, strict=True)], order
 
 
 def select_images(self, value):
@@ -196,6 +202,12 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         default="Converted",
         description="Name of the subfolder for the new Images",
     )
+    overwrite: BoolProperty(
+        name="Overwrite",
+        default=False,
+        description="Replace the files of previous conversions with the same name.\n"
+        "If disabled, the new Images get a numbered name. The original files are never replaced",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -267,14 +279,17 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         )
         ext = {"PNG": ".png", "JPEG": ".jpg", "OPEN_EXR": ".exr"}[file_format]
 
-        # Name with the new resolution and bit depth, next to the original file
-        folder, filename = os.path.split(image.filepath)
+        # Name with the new resolution and bit depth, next to the original file.
+        # Split without the relative prefix, read by Windows as a network share
+        prefix = "//" if image.filepath.startswith("//") else ""
+        folder, filename = os.path.split(image.filepath.removeprefix(prefix))
         if self.use_subfolder and self.subfolder.strip():
             folder = os.path.join(folder, self.subfolder.strip())
         suffix = f"_{max_size // 1024}k" if scale < 1.0 else ""
         suffix += "_8bit" if to_8bit else ""
         stem = os.path.splitext(filename or image.name)[0] + suffix
-        path = unique_path(os.path.join(folder, stem), ext)
+        path = prefix + os.path.join(folder, stem)
+        path = path + ext if self.overwrite else unique_path(path, ext)
 
         # Channel Packed to keep the color of transparent pixels as they are
         work = image.copy()
@@ -398,6 +413,7 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         sub = row.row()
         sub.enabled = self.use_subfolder
         sub.prop(self, "subfolder", text="")
+        row.prop(self, "overwrite")
 
 
 def register():

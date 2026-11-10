@@ -1,7 +1,9 @@
 import hashlib
 import importlib
+import ntpath
 import os
 import tempfile
+import types
 
 import bpy
 import numpy as np
@@ -129,6 +131,34 @@ class TestConvertImages(BlenderTestCase):
         self.assertEqual(new_image.filepath, os.path.join(self.dir.name, "color_8bit_002.png"))
         after = self.files()
         self.assertEqual({x: after[x] for x in before}, before)
+
+    # With Overwrite, the files of previous conversions are replaced
+    def test_overwrite(self):
+        image = self.new_image("color.png", "PNG", "16")
+        open(os.path.join(self.dir.name, "color_8bit.png"), "wb").write(b"old")
+
+        self.convert(image, overwrite=True)
+
+        (new_image,) = self.node_images()
+        self.assertEqual(new_image.filepath, os.path.join(self.dir.name, "color_8bit.png"))
+        self.assertEqual(sorted(self.files()), ["color.png", "color_8bit.png"])
+        self.assertFalse(new_image.is_float)
+
+    # Relative paths are not split as Windows network shares
+    def test_relative_windows(self):
+        image = self.new_image("color.png", "PNG", "16")
+        bpy.ops.wm.save_as_mainfile(filepath=os.path.join(self.dir.name, "model.blend"))
+        image.filepath = "//color.png"
+        windows_os = types.SimpleNamespace(**vars(os))
+        windows_os.path = ntpath
+        self.addCleanup(setattr, convert_images, "os", os)
+        convert_images.os = windows_os
+
+        self.convert(image)
+
+        (new_image,) = self.node_images()
+        self.assertEqual(new_image.filepath, "//color_8bit.png")
+        self.assertTrue(os.path.isfile(os.path.join(self.dir.name, "color_8bit.png")))
 
     # Resized 16-bit Images keep their bit depth and transparent pixels colors
     def test_resize_keep_bits(self):
