@@ -195,7 +195,8 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
     use_subfolder: BoolProperty(
         name="Save in Subfolder",
         default=False,
-        description="Save the new Images in a subfolder of the original Images folder",
+        description="Save the new Images in a subfolder of the original Images folder, with "
+        "the original names.\nThe files of previous conversions in it are replaced",
     )
     subfolder: StringProperty(
         name="Subfolder",
@@ -256,7 +257,7 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
             self.report({"INFO"}, "MustardUI - No Images found")
             return {"CANCELLED"}
 
-        return wm.invoke_props_dialog(self, width=700, confirm_text="Convert")
+        return wm.invoke_props_dialog(self, width=760, confirm_text="Convert")
 
     def convert(self, image, scene, tempdir):
         """Converted copy of the Image, or None if there is nothing to convert"""
@@ -279,17 +280,20 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         )
         ext = {"PNG": ".png", "JPEG": ".jpg", "OPEN_EXR": ".exr"}[file_format]
 
-        # Name with the new resolution and bit depth, next to the original file.
+        # Original name in the subfolder, else with the new resolution and bit depth next to it.
         # Split without the relative prefix, read by Windows as a network share
         prefix = "//" if image.filepath.startswith("//") else ""
         folder, filename = os.path.split(image.filepath.removeprefix(prefix))
-        if self.use_subfolder and self.subfolder.strip():
-            folder = os.path.join(folder, self.subfolder.strip())
-        suffix = f"_{max_size // 1024}k" if scale < 1.0 else ""
-        suffix += "_8bit" if to_8bit else ""
-        stem = os.path.splitext(filename or image.name)[0] + suffix
+        stem = os.path.splitext(filename or image.name)[0]
+        subfolder = self.subfolder.strip() if self.use_subfolder else ""
+        if subfolder:
+            folder = os.path.join(folder, subfolder)
+        else:
+            stem += f"_{max_size // 1024}k" if scale < 1.0 else ""
+            stem += "_8bit" if to_8bit else ""
         path = prefix + os.path.join(folder, stem)
-        path = path + ext if self.overwrite else unique_path(path, ext)
+        # The subfolder only holds converted Images, its files are always replaced
+        path = path + ext if self.overwrite or subfolder else unique_path(path, ext)
 
         # Channel Packed to keep the color of transparent pixels as they are
         work = image.copy()
@@ -376,9 +380,11 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
                 if node.type == "TEX_IMAGE" and node.image in converted:
                     node.image = converted[node.image]
 
-        for image in converted:
+        for image, new_image in converted.items():
             if not image.users:
                 bpy.data.images.remove(image)
+                # Name taken by the original, with the same file name in the subfolder
+                new_image.name = os.path.basename(new_image.filepath)
 
         self.report({"INFO"}, f"MustardUI - {len(converted)} Images converted")
 
@@ -403,17 +409,18 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
         )
         layout.row().prop(self, "select", expand=True)
 
-        row = layout.row()
-        row.prop(self, "max_size")
-        row.prop(self, "output_format")
-        row.prop(self, "to_8bit")
-
-        row = layout.row()
-        row.prop(self, "use_subfolder")
-        sub = row.row()
+        # Columns of the same width, aligned across the rows
+        grid = layout.grid_flow(row_major=True, columns=3, even_columns=True)
+        grid.prop(self, "max_size")
+        grid.prop(self, "output_format")
+        grid.prop(self, "to_8bit")
+        sub = grid.row()
+        sub.enabled = not self.use_subfolder
+        sub.prop(self, "overwrite")
+        grid.prop(self, "use_subfolder")
+        sub = grid.row()
         sub.enabled = self.use_subfolder
         sub.prop(self, "subfolder", text="")
-        row.prop(self, "overwrite")
 
 
 def register():

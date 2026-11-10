@@ -180,23 +180,29 @@ class TestConvertImages(BlenderTestCase):
                 result = raw_pixels(new_image)[1::4, 1::4]
                 self.assertLess(np.abs(result - source[2::8, 2::8]).max(), 1e-3)
 
-    # New Images saved in a subfolder, also in the path of the packed ones
+    # New Images saved in a subfolder with the original names, replacing the old ones
     def test_subfolder(self):
         image = self.new_image("color.png", "PNG", "16")
         packed = self.new_image("packed.png", "PNG", "16")
         packed.pack()
         os.remove(packed.filepath)
         packed.filepath_raw = "//textures/packed.png"
+        # A previous conversion, replaced
+        os.makedirs(os.path.join(self.dir.name, "Converted"))
+        open(os.path.join(self.dir.name, "Converted", "color.png"), "wb").write(b"old")
 
         self.convert(image, packed, use_subfolder=True, subfolder="Converted")
 
         new_image, new_packed = self.node_images()
-        path = os.path.join(self.dir.name, "Converted", "color_8bit.png")
+        path = os.path.join(self.dir.name, "Converted", "color.png")
         self.assertEqual(new_image.filepath, path)
         self.assertTrue(os.path.isfile(path))
-        self.assertEqual(new_packed.filepath, "//textures/Converted/packed_8bit.png")
+        self.assertEqual(new_packed.filepath, "//textures/Converted/packed.png")
         self.assertIsNotNone(new_packed.packed_file)
+        self.assertEqual((new_image.name, new_packed.name), ("color.png", "packed.png"))
         self.assertEqual(sorted(os.listdir(self.dir.name)), ["Converted", "color.png"])
+        self.assertEqual(os.listdir(os.path.join(self.dir.name, "Converted")), ["color.png"])
+        self.assertFalse(new_image.is_float)
 
     # Linear float Image converted to 8-bit is stored in sRGB
     def test_linear_to_8bit(self):
