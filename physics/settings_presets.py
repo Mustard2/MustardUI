@@ -1,6 +1,9 @@
+import re
+
 import bpy
 from mathutils import Vector
 
+from ..misc.geometry_nodes import modifier_values, set_modifier_values
 from ..model_selection.active_object import ModelMode, active_object_operator_poll
 
 
@@ -29,10 +32,20 @@ def get_physics_modifiers(obj):
     return cloth, soft_body, collision
 
 
+def nodes_modifiers(obj):
+    return [m for m in obj.modifiers if m.type == "NODES" and m.node_group]
+
+
+def node_group_base_name(modifier):
+    """Name of the node group without the number Blender adds to the copies"""
+    return re.sub(r"\.\d{3}$", "", modifier.node_group.name)
+
+
 def physics_to_json(obj):
     cloth, soft_body, collision = get_physics_modifiers(obj)
+    nodes = nodes_modifiers(obj)
 
-    if not cloth and not soft_body and not collision:
+    if not cloth and not soft_body and not collision and not nodes:
         return None
 
     def dump_rna_block(rna):
@@ -57,6 +70,16 @@ def physics_to_json(obj):
         "has_cloth": cloth is not None,
         "has_soft_body": soft_body is not None,
         "has_collision": obj.collision is not None and collision is not None,
+        "has_nodes": bool(nodes),
+        # The Geometry Nodes inputs by name, as their identifiers change with the node groups
+        "nodes": [
+            {
+                "node_group": node_group_base_name(m),
+                "modifier": m.name,
+                "inputs": modifier_values(m),
+            }
+            for m in nodes
+        ],
     }
 
     if cloth:
@@ -136,13 +159,26 @@ def apply_physics_preset(context, arm, settings, data):
     if soft_body:
         errors = apply_settings(soft_body.settings, data.get("soft_body"), errors, False)
 
+    # Each entry on the modifier with the same node group, the one with the same name first
+    nodes = nodes_modifiers(obj)
+    for entry in data.get("nodes", []):
+        matching = [m for m in nodes if node_group_base_name(m) == entry["node_group"]]
+        modifier = next((m for m in matching if m.name == entry["modifier"]), None) or next(
+            iter(matching), None
+        )
+        if modifier is None:
+            errors += 1
+            continue
+        nodes.remove(modifier)
+        errors += set_modifier_values(modifier, entry["inputs"])
+
     return errors
 
 
 def warning_physics_preset(obj):
     cloth, soft_body, collision = get_physics_modifiers(obj)
 
-    if cloth is None and soft_body is None and collision is None:
+    if cloth is None and soft_body is None and collision is None and not nodes_modifiers(obj):
         return "WARNING", "No data to save in the preset."
 
     return "", ""
@@ -154,6 +190,7 @@ def set_physics_preset(obj, preset):
     preset.has_cloth = cloth is not None
     preset.has_soft_body = soft_body is not None
     preset.has_collision = obj.collision is not None and collision is not None
+    preset.has_nodes = bool(nodes_modifiers(obj))
 
 
 def physics_post_import(preset, preset_json):
@@ -164,6 +201,8 @@ def physics_post_import(preset, preset_json):
         preset.has_soft_body = bool(preset_json.get("soft_body"))
     if hasattr(preset, "has_collision"):
         preset.has_collision = bool(preset_json.get("object_collision"))
+    if hasattr(preset, "has_nodes"):
+        preset.has_nodes = bool(preset_json.get("nodes"))
 
 
 class MustardUI_Physics_Preset(bpy.types.PropertyGroup):
@@ -175,6 +214,7 @@ class MustardUI_Physics_Preset(bpy.types.PropertyGroup):
     has_cloth: bpy.props.BoolProperty()
     has_soft_body: bpy.props.BoolProperty()
     has_collision: bpy.props.BoolProperty()
+    has_nodes: bpy.props.BoolProperty()
 
 
 class MUSTARDUI_UL_Physics_Presets_UIList(bpy.types.UIList):
@@ -192,6 +232,8 @@ class MUSTARDUI_UL_Physics_Presets_UIList(bpy.types.UIList):
             row2.label(text="", icon="MOD_SOFT")
         if item.has_collision:
             row2.label(text="", icon="MOD_PHYSICS")
+        if item.has_nodes:
+            row2.label(text="", icon="GEOMETRY_NODES")
         row2.prop(
             item,
             "name",

@@ -1,3 +1,5 @@
+import math
+
 import bmesh
 import bpy
 from mathutils import Vector
@@ -9,11 +11,13 @@ from ... import __package__ as base_package
 from ...misc import mesh_cleanup
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
+from ...misc.surface_deform import surface_deform_bind
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from . import physics_presets
 
 
@@ -631,7 +635,34 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # model it leaves large tangled polygons in the middle of the cage.
             # The ratio is derived from the face count of the selection, so that the
             # result does not depend on how dense the model is
+            #
+            # Short edges collapsed before the decimation, which keeps the vertices where
+            # the surface bends: small dense bumps like a nipple would get a much denser
+            # cage, whose small triangles crumple them. Relax and Shrinkwrap put the cage
+            # back on the mesh
+            bm = bmesh.new()
+            bm.from_mesh(cage.data)
+            area = sum(f.calc_area() for f in bm.faces)
+            # Half the side of the cage triangles, equilateral, at the target face count
+            short = math.sqrt(4 * area / (math.sqrt(3) * self.cage_faces)) / 2
+            for _ in range(30):
+                # Edges not sharing vertices, shortest first: a collapse merges each
+                # connected group of edges into a single vertex
+                edges, used = [], set()
+                for e in sorted(bm.edges, key=lambda e: e.calc_length()):
+                    if e.calc_length() >= short:
+                        break
+                    if any(v.is_boundary or v in used for v in e.verts):
+                        continue
+                    edges.append(e)
+                    used.update(e.verts)
+                if not edges:
+                    break
+                bmesh.ops.collapse(bm, edges=edges, uvs=False)
+            bm.to_mesh(cage.data)
+            bm.free()
             face_count = len(cage.data.polygons)
+
             if face_count > self.cage_faces:
                 decimate = cage.modifiers.new(name="Decimate", type="DECIMATE")
                 decimate.decimate_type = "COLLAPSE"
@@ -790,8 +821,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # tip of a breast, the lips) are exactly the ones which look wrong when
             # the cage stretches: those are stiffened, the flat areas are left free
             structural_group_name = ""
-            # Only the Cloth modifier uses it: Cloth Dynamics has no stiffness to
-            # scale, its faces do not stretch to begin with
+            # Only the Cloth modifier uses it: the Dynamics presets hold the shape
+            # with their own Stretching
             if (
                 self.physics_engine == "CLOTH"
                 and self.structural_enable
@@ -949,8 +980,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
             # which removes the offending triangles, and the binding is attempted
             # once more
             for attempt in range(3):
-                bpy.ops.object.surfacedeform_bind(modifier=surface_deform.name)
-                if surface_deform.is_bound:
+                if surface_deform_bind(source, surface_deform):
                     break
 
                 bm = bmesh.new()
@@ -1066,6 +1096,8 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
                 add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = cage
                 add_item.type = "CAGE"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(add_item, create=True)["enable"] = True
 
             if addon_prefs.debug:
                 print(
@@ -1129,7 +1161,7 @@ class MustardUI_ModelToolkit_CreateJiggleAccurate(bpy.types.Operator):
         if fallback:
             self.report(
                 {"WARNING"},
-                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "MustardUI - The Dynamics physics could not be added: the "
                 "Cloth modifier was used instead.",
             )
 

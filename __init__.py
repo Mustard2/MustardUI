@@ -6,7 +6,7 @@ bl_info = {
     "name": "MustardUI",
     "description": "Easy-to-use UI for human characters.",
     "author": "Mustard",
-    "version": (2026, 10, 1),
+    "version": (2026, 11, 0),
     "blender": (4, 2, 0),
     "warning": "",
     "doc_url": "https://github.com/Mustard2/MustardUI/wiki",
@@ -31,7 +31,7 @@ from . import (  # noqa: E402
     settings,
     text_storage,
     tools,
-    warnings,
+    ui_warnings,
 )
 
 
@@ -43,7 +43,7 @@ def register():
     misc.register()
     model_selection.register()
     presets.register()
-    warnings.register()
+    ui_warnings.register()
     armature.register()
     tools.register()
     model_toolkit.register()
@@ -67,7 +67,7 @@ def unregister():
     model_toolkit.unregister()
     tools.unregister()
     armature.unregister()
-    warnings.unregister()
+    ui_warnings.unregister()
     presets.unregister()
     model_selection.unregister()
     misc.unregister()

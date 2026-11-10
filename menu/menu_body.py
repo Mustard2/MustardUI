@@ -99,30 +99,16 @@ class PANEL_PT_MustardUI_Body(MainPanel, bpy.types.Panel):
                     continue
 
                 if len(gndi.keys()):
-                    row = layout.row()
-                    arrow = row.column(align=True)
-                    arrow.prop(
-                        m.node_group,
-                        "MustardUI_collapse",
-                        icon=(
-                            "DOWNARROW_HLT" if not m.node_group.MustardUI_collapse else "RIGHTARROW"
-                        ),
-                        icon_only=True,
-                        emboss=False,
+                    header, body = layout.panel(
+                        f"MustardUI_Body_{m.id_data.name}_{m.name}",
+                        default_closed=True,
                     )
-                    row.label(text=m.node_group.name)
-                    row.label(icon="GEOMETRY_NODES")
-
-                    row2 = row.row(align=True)
-                    row2.prop(m, "show_viewport", text="")
-                    row2.prop(m, "show_render", text="")
-
-                    drawable = geometry_nodes_modifier_inputs(m)
-                    arrow.enabled = bool(drawable)
-                    if not m.node_group.MustardUI_collapse:
-                        if drawable:
-                            box = layout.box()
-                            draw_geometry_nodes_modifier_inputs(box, drawable)
+                    header.label(text=m.node_group.name, icon="GEOMETRY_NODES")
+                    row = header.row(align=True)
+                    row.prop(m, "show_viewport", text="")
+                    row.prop(m, "show_render", text="")
+                    if body:
+                        draw_geometry_nodes_modifier_inputs(body, geometry_nodes_modifier_inputs(m))
 
 
 def register():

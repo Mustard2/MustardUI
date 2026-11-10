@@ -5,6 +5,7 @@ from ...model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from .ops_remove_physics import remove_physics_items
 
 
@@ -275,6 +276,8 @@ class MustardUI_ModelToolkit_BonePhysics(bpy.types.Operator):
                 add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = co
                 add_item.type = "BONES_DRIVER"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(add_item, create=True)["enable"] = True
 
             # Disable shadows for viewport/render
             co.visible_camera = False

@@ -1,3 +1,35 @@
+from ..misc.set_bool import set_bool
+
+
+def uses_armature(obj, armature):
+    """Return True if the object, or what it is attached to, uses the armature"""
+    while obj is not None:
+        if obj.parent == armature or any(
+            x.type == "ARMATURE" and x.object == armature for x in obj.modifiers
+        ):
+            return True
+        obj = obj.parent
+    return False
+
+
+def update_hair_armatures(rig_settings, arm):
+    """Show the Hair Armatures only with a visible Hair Object using them"""
+    if rig_settings.hair_collection is None:
+        return
+
+    objects = rig_settings.hair_collection.objects
+    hair = [x for x in objects if x.type in {"MESH", "CURVES"}]
+    for armature in [x for x in objects if x.type == "ARMATURE"]:
+        users = [x for x in hair if uses_armature(x, armature)]
+        if users:
+            set_bool(
+                armature,
+                "hide_viewport",
+                not arm.MustardUI_ArmatureSettings.hair or all(x.hide_viewport for x in users),
+            )
+            set_bool(armature, "hide_render", all(x.hide_render for x in users))
+
+
 def outfits_update_armature_collections(
     rig_settings, arm, is_extras_hidden=None, outfits=False, hair=False
 ):

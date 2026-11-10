@@ -1,6 +1,6 @@
 import bpy
 
-from ..misc.ui_collapse import ui_collapse_prop
+from ..misc.ui_collapse import ui_collapse_panel
 from ..model_selection.active_object import ModelMode, mustardui_active_object
 from ..morphs.misc import get_section_by_diffeomorphic_id, morph_filter_function
 from . import MainPanel
@@ -130,8 +130,11 @@ class PANEL_PT_MustardUI_Morphs(MainPanel, bpy.types.Panel):
                 label = section.name
                 if morph_filter is not None:
                     label = f"({sum(1 for x in section.morphs if morph_filter(x))}) {label}"
-                if ui_collapse_prop(layout, section, "collapse", label, icon=section.icon):
-                    draw_morphs_list(layout, obj, section, f"Section_{index}")
+                body = ui_collapse_panel(
+                    layout, f"MustardUI_Morphs_{obj.name}_{section.name}", label, section.icon
+                )
+                if body:
+                    draw_morphs_list(body, obj, section, f"Section_{index}")
 
 
 class PANEL_PT_MustardUI_Morphs_EmotionUnits(MainPanel, bpy.types.Panel):
@@ -351,9 +354,11 @@ class PANEL_PT_MustardUI_Morphs_Custom(MainPanel, bpy.types.Panel):
         for index, section in enumerate(morphs_settings.sections):
             if not section.morphs or section.is_internal or section.hidden:
                 continue
-            box = layout.box()
-            if ui_collapse_prop(box, section, "collapse", section.name, icon=section.icon):
-                draw_morphs_list(box, obj, section, f"Section_{index}")
+            body = ui_collapse_panel(
+                layout, f"MustardUI_Morphs_{obj.name}_{section.name}", section.name, section.icon
+            )
+            if body:
+                draw_morphs_list(body, obj, section, f"Section_{index}")
 
 
 def register():

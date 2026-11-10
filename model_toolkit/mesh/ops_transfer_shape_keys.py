@@ -2,7 +2,7 @@ import bpy
 import numpy as np
 from mathutils.bvhtree import BVHTree
 
-from ...custom_properties.misc import link_property
+from ...custom_properties.misc import link_property, unlink_property
 from ...misc.enum_items import keep_enum_strings
 from ...misc.mesh_deform import (
     kdtree,
@@ -22,14 +22,14 @@ LINK_ITEMS = (
     (
         "PROPERTY",
         "Custom Property",
-        "Link the new Shape Keys to the Body Custom Property with their same name, if it "
-        "drives the source Shape Key with that name.\nThe others are driven by the source ones",
+        "Link the new Shape Keys to the Custom Properties driving the source ones.\nThe others "
+        "copy the driver of the source ones, or are driven by them if they have none",
     ),
     (
         "PROPERTY_EXCLUDE",
         "Custom Property (Exclude)",
-        "Link the new Shape Keys to the Body Custom Property with their same name, if it "
-        "drives the source Shape Key with that name.\nThe others are not driven",
+        "Link the new Shape Keys to the Custom Properties driving the source ones.\nThe others "
+        "are not driven",
     ),
 )
 
@@ -184,15 +184,26 @@ def transfer_shape_keys_steps(
     used = np.unique(np.concatenate([indices.ravel() for _, _, _, indices, *_ in mappings]))
     source_delta = np.zeros_like(source_basis)
 
-    # Body Custom Properties driving the source Shape Key with their same name
+    custom_props = []
+    if arm is not None:
+        custom_props = [
+            *arm.MustardUI_CustomProperties,
+            *arm.MustardUI_CustomPropertiesOutfit,
+            *arm.MustardUI_CustomPropertiesHair,
+        ]
+
+    # Custom Properties driving the source Shape Keys, as main or linked property
     properties = {}
-    if link in {"PROPERTY", "PROPERTY_EXCLUDE"} and arm is not None:
-        blocks = source_sks.key_blocks
-        properties = {
-            cp.name: cp
-            for cp in arm.MustardUI_CustomProperties
-            if cp.path == "value" and cp.name in blocks and evaluate_rna(cp.rna) == blocks[cp.name]
-        }
+    if link in {"PROPERTY", "PROPERTY_EXCLUDE"}:
+        for cp in custom_props:
+            refs = [(cp.rna, cp.path)] + [(lp.rna, lp.path) for lp in cp.linked_properties]
+            for rna, path in refs:
+                if path != "value" or "key_blocks" not in rna:
+                    continue
+                block = evaluate_rna(rna)
+                if isinstance(block, bpy.types.ShapeKey) and block.id_data == source_sks:
+                    properties.setdefault(block.name, cp)
+    source_drivers = source_sks.animation_data.drivers if source_sks.animation_data else None
 
     created = 0
     for index, sk in enumerate(keys):
@@ -207,6 +218,7 @@ def transfer_shape_keys_steps(
         if not overwrite and np.abs(delta_used).max() < threshold:
             continue
         source_delta[used] = delta_used
+        driver = source_drivers.find(sk.path_from_id("value")) if source_drivers else None
 
         for target, target_basis, to_local, indices, weights, edges, length, mask in mappings:
             mesh = target.data
@@ -244,15 +256,20 @@ def transfer_shape_keys_steps(
                 new_sk.vertex_group = sk.vertex_group
 
             new_sk.value = sk.value
+            key = bpy.utils.escape_identifier(mesh.shape_keys.name)
+            name = bpy.utils.escape_identifier(sk.name)
+            rna = f'bpy.data.shape_keys["{key}"].key_blocks["{name}"]'
+            # The overwritten key drops its previous driver and links
+            if existing is not None and link != "NONE":
+                unlink_property(rna, "value", custom_props)
+                new_sk.driver_remove("value")
             if sk.name in properties:
-                key = bpy.utils.escape_identifier(mesh.shape_keys.name)
-                name = bpy.utils.escape_identifier(sk.name)
-                rna = f'bpy.data.shape_keys["{key}"].key_blocks["{name}"]'
-                link_property(
-                    arm, rna, "value", properties[sk.name], arm.MustardUI_CustomProperties
-                )
-            elif link in {"SOURCE", "PROPERTY"}:
+                link_property(arm, rna, "value", properties[sk.name], custom_props)
+            elif link == "SOURCE" or (link == "PROPERTY" and driver is None):
                 link_shape_key_driver(target, new_sk.name, source, sk.name)
+            elif link == "PROPERTY":
+                anim = mesh.shape_keys.animation_data or mesh.shape_keys.animation_data_create()
+                anim.drivers.from_existing(src_driver=driver)
 
             created += 1
 

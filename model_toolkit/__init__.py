@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import BoolProperty, StringProperty
 
-from . import armature, effects, images, mesh, model, optimization, outfits, physics
+from . import armature, effects, images, mesh, model, optimization, outfits, physics, unreal
 
 
 def register():
@@ -18,9 +18,11 @@ def register():
     optimization.register()
     images.register()
     effects.register()
+    unreal.register()
 
 
 def unregister():
+    unreal.unregister()
     effects.unregister()
     images.unregister()
     optimization.unregister()

@@ -5,7 +5,7 @@ import tempfile
 
 import bpy
 import numpy as np
-from helpers import ADDON, BlenderTestCase, build_model, configure_model
+from helpers import ADDON, BlenderTestCase, build_model, configure_model, set_active
 
 convert_images = importlib.import_module(ADDON + ".model_toolkit.optimization.ops_convert_images")
 
@@ -285,3 +285,89 @@ class TestConvertImages(BlenderTestCase):
             props.min_size, props.min_bits = min_size, min_bits
             props.format_filter = format_filter
             self.assertEqual(convert_images.listed(item, props), listed)
+
+
+class TestRenameImages(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.dir = tempfile.TemporaryDirectory()
+        self.model = build_model()
+        configure_model(self.model)
+        # Model in configuration mode, for the Model Toolkit
+        bpy.ops.mustardui.configuration()
+        set_active(self.model["body"])
+        self.material = self.model["body"].data.materials[0]
+
+    def tearDown(self):
+        self.dir.cleanup()
+        super().tearDown()
+
+    def new_image(self, filename, material=None):
+        """Image file used by an Image Texture node, tiled if the name has a <UDIM> token"""
+        path = os.path.join(self.dir.name, filename)
+        image = bpy.data.images.new(filename, 4, 4)
+        image.file_format = "PNG"
+        for tile in ("1001", "1002") if "<UDIM>" in filename else ("",):
+            image.filepath_raw = path.replace("<UDIM>", tile)
+            image.save()
+        if "<UDIM>" in filename:
+            image.source = "TILED"
+            image.filepath_raw = path
+        (material or self.material).node_tree.nodes.new("ShaderNodeTexImage").image = image
+        return image
+
+    def smart_rename(self, material=None, **kwargs):
+        """Smart Rename names of the Material Images, with the list filled as in invoke"""
+        material = material or self.material
+        items = bpy.context.scene.mustardui_rename_images
+        items.clear()
+        for node in [x for x in material.node_tree.nodes if x.type == "TEX_IMAGE"]:
+            item = items.add()
+            item.node_name, item.material, item.image = node.name, material, node.image
+            item.name = node.image.name
+        bpy.ops.mustardui.rename_image_nodes_update()
+        names = {x.image.name: x.name for x in items}
+        bpy.ops.mustardui.rename_image_nodes("EXEC_DEFAULT", **kwargs)
+        return names
+
+    # UDIM tile tokens are kept in the names and files
+    def test_udim(self):
+        self.new_image("Skin_Roughness.1001.png")
+        self.new_image("Skin_Roughness.1002.png")
+        self.new_image("Leg_Normal_<UDIM>.png")
+        expected = [
+            "Tester_skin_Roughness_Texture.1001",
+            "Tester_skin_Roughness_Texture.1002",
+            "Tester_Legs_Normal_Texture_<UDIM>",
+        ]
+
+        self.assertEqual(list(self.smart_rename(rename_file=True).values()), expected)
+        # Already renamed Images keep their names
+        self.assertEqual(list(self.smart_rename(rename_file=True)), expected)
+        self.assertEqual(list(self.smart_rename(rename_file=True).values()), expected)
+        # Files of tiled Images are not renamed
+        self.assertEqual(
+            sorted(os.listdir(self.dir.name)),
+            [
+                "Leg_Normal_1001.png",
+                "Leg_Normal_1002.png",
+                "Tester_skin_Roughness_Texture.1001.png",
+                "Tester_skin_Roughness_Texture.1002.png",
+            ],
+        )
+
+    # Images already renamed from another Material keep their names
+    def test_shared_already_renamed(self):
+        image = self.new_image("Body_Diffuse.png")
+        other = bpy.data.materials.new("Other")
+        other.use_nodes = True
+        other.node_tree.nodes.new("ShaderNodeTexImage").image = image
+        self.model["body"].data.materials.append(other)
+
+        self.smart_rename(rename_file=True)
+        self.model["body"].active_material_index = 1
+        names = self.smart_rename(other, rename_file=True)
+
+        self.assertEqual(names, {"Tester_Body_Diffuse_Texture": "Tester_Body_Diffuse_Texture"})
+        self.assertEqual(image.name, "Tester_Body_Diffuse_Texture")
+        self.assertEqual(os.listdir(self.dir.name), ["Tester_Body_Diffuse_Texture.png"])

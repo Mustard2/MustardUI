@@ -34,11 +34,13 @@ from mathutils import Vector
 from ... import __package__ as base_package
 from ...misc.move_modifier import move_modifier, move_modifier_after_armature
 from ...misc.scene_state import execute_restoring_state
+from ...misc.surface_deform import surface_deform_bind
 from ...model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ...text_storage.storage import system_properties
 from . import physics_presets
 
 
@@ -98,7 +100,7 @@ def _apply_jiggle_physics(operator):
         ):
             operator.report(
                 {"WARNING"},
-                "MustardUI - The Cloth Dynamics physics could not be added: the "
+                "MustardUI - The Dynamics physics could not be added: the "
                 "Cloth modifier was used instead.",
             )
             physics_presets.apply_physics(
@@ -283,7 +285,7 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
             mod.vertex_group = group_name
             move_modifier_after_armature(obj, mod)
             bpy.context.view_layer.objects.active = obj
-            bpy.ops.object.surfacedeform_bind(modifier=mod.name)  # Bind the modifier
+            surface_deform_bind(obj, mod)
             return mod
 
         def add_corrective_smooth_modifier(
@@ -734,6 +736,8 @@ class MustardUI_ModelToolkit_CreateJiggle(bpy.types.Operator):
                 add_item = arm.MustardUI_PhysicsSettings.items.add()
                 add_item.object = obj
                 add_item.type = "CAGE"
+                # Enabled without its update, which hides the item while Physics is off
+                system_properties(add_item, create=True)["enable"] = True
 
             # Parent the object to the Model Armature
             if self.parent_to_model and parent is not None:

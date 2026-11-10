@@ -154,6 +154,8 @@ class Drawer:
             use_filter_sort_lock=False,
             bitflag_filter_item=1 << 30,
             bitflag_item_never_show=1 << 31,
+            # Properties declared by the UIList, with their default value
+            **{k: v.keywords.get("default") for k, v in cls.__annotations__.items()},
         )
         name, previous = cls.__name__, self.current
         context = bpy.context

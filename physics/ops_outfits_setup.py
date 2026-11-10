@@ -5,12 +5,14 @@ import bpy
 from ..misc.mesh_intersection import MeshIntersectionChecker
 from ..misc.move_modifier import move_modifier
 from ..misc.scene_state import execute_restoring_state
+from ..misc.surface_deform import surface_deform_bind
 from ..model_selection.active_object import (
     ModelMode,
     active_object_operator_poll,
     mustardui_active_object,
 )
 from ..outfits.helper_functions import find_layer_collection, outfits_get_collection_items
+from ..text_storage.storage import evaluated
 from .update_enable import enable_physics_update
 
 
@@ -42,21 +44,6 @@ def included_collection(coll):
         restore_collection(*state)
 
 
-fixes = [
-    ("NONE", "None", "No fix attempt if the binding fails"),
-    (
-        "SUBDIVISION",
-        "Subdivision",
-        "Increase the Subdivision modifier level and re-attempt a binding",
-    ),
-    (
-        "CONCAVE_SPLIT",
-        "Concave Split",
-        "Use the Concave Split operator before re-attempting a binding",
-    ),
-]
-
-
 class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
     """This button creates Surface Deform modifiers on Outfit pieces affected by Cages physics items.\nThe modifier is added only if the Outfit piece and the Cage intersect.\nBlender might freeze during the process"""  # noqa: E501
 
@@ -64,14 +51,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
     bl_label = "Setup Outfits Physics"
     bl_options = {"UNDO"}
 
-    attempt_fix_bind: bpy.props.EnumProperty(
-        items=fixes,
-        default="NONE",
-        name="Attempt Fix Binding",
-        description="Attempt to fix the rebinding if errors occur (Simplify should "
-        "be off).\nTo use the model with these fixes, read carefully the warnings "
-        "if generated",
-    )
     override_armature_check: bpy.props.BoolProperty(
         default=False,
         name="Override Armature Check",
@@ -92,28 +71,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
     single_outfit: bpy.props.StringProperty(default="")
 
-    def bind(self, obj, mod):
-
-        warnings = 0
-
-        if not mod.is_bound:
-            for m in [x for x in obj.modifiers if x.type == "SUBSURF"]:
-                m.show_viewport = False
-                break
-            bpy.ops.object.surfacedeform_bind(modifier=mod.name)
-
-        bpy.context.view_layer.update()
-
-        if not mod.is_bound and self.attempt_fix_bind:
-            print(
-                f"MustardUI Physics Setup - Surface Deform might be fixed on "
-                f"{repr(obj.name)}, but will require Subdivision Surface on the Body "
-                f"to work properly"
-            )
-            warnings += 1
-
-        return warnings
-
     @classmethod
     def poll(cls, context):
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
@@ -127,22 +84,10 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
             and [x for x in physics_settings.items if x.type == "CAGE"]
         )
 
-    def bind_attempt_fix(self, obj, mod):
-
-        # Attempt to fix "Concave polygons" error on binding subdividing the body mesh
-        if not mod.is_bound:
-            # Re-attempt binding
-            bpy.ops.object.surfacedeform_bind(modifier=mod.name)
-
-        obj.update_tag()
-        bpy.context.view_layer.update()
-
     def execute(self, context):
         return execute_restoring_state(self, context)
 
     def _execute(self, context):
-
-        scene = context.scene
 
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         rig_settings = arm.MustardUI_RigSettings
@@ -150,8 +95,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
         body = rig_settings.model_body
         enable_physics = physics_settings.enable_physics
-        subsurfs = [(m, m.show_viewport, m.levels) for m in body.modifiers if m.type == "SUBSURF"]
-        simplify_subdivision = scene.render.simplify_subdivision
         warnings = 0
 
         # Go to frame 0
@@ -176,11 +119,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
             physics_objs.append(target)
             for pcoll in {c for o in physics_objs for c in o.users_collection}:
                 include_collection(pcoll)
-
-            # Disable subdivision modifiers on the body to attempt binding with
-            # fewer vertices
-            for m, _, _ in subsurfs:
-                m.show_viewport = False
 
             # Update everything
             body.data.update_tag()
@@ -219,7 +157,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
             intersection_checker = MeshIntersectionChecker()
 
             for coll in colls:
-                with included_collection(coll):
+                with included_collection(coll), evaluated([coll]):
                     objs = outfits_get_collection_items(rig_settings, coll)
                     for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                         # Check if the Armature modifier is available on the Object
@@ -276,42 +214,36 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
                                     ]:
                                         # Attempt to rebind if found but not bound
                                         if not mod.is_bound:
-                                            with bpy.context.temp_override(object=obj):
-                                                mod.show_viewport = True
-                                                obj.update_tag()
+                                            mod.show_viewport = True
+                                            obj.update_tag()
 
-                                                warnings += self.bind(obj, mod)
+                                            surface_deform_bind(obj, mod)
 
-                                                mod.show_viewport = False
-                                                obj.update_tag()
+                                            mod.show_viewport = False
+                                            obj.update_tag()
                                         break
                                     continue
 
-                                # Add Surface Deform modifier
+                                # Add Surface Deform modifier after the Armature one, before
+                                # binding it to the piece without its subdivision
                                 nm = obj.modifiers.new(name=target.name, type="SURFACE_DEFORM")
                                 nm.target = target
-                                with bpy.context.temp_override(object=obj):
-                                    # Bind the modifier
-                                    warnings += self.bind(obj, nm)
+                                last_armature_index = max(
+                                    (
+                                        i
+                                        for i, m in enumerate(obj.modifiers)
+                                        if m.type == "ARMATURE"
+                                    ),
+                                    default=-1,
+                                )
+                                if obj.modifiers.find(nm.name) > last_armature_index + 1:
+                                    move_modifier(obj, nm, last_armature_index + 1)
+                                surface_deform_bind(obj, nm)
 
-                                    # Move the modifier after the Armature one
-                                    # Get the Armature modifier index
-                                    last_armature_index = max(
-                                        (
-                                            i
-                                            for i, m in enumerate(obj.modifiers)
-                                            if m.type == "ARMATURE"
-                                        ),
-                                        default=-1,
-                                    )
-                                    # Move the modifier up if needed
-                                    if obj.modifiers.find(nm.name) > last_armature_index + 1:
-                                        move_modifier(obj, nm, last_armature_index + 1)
+                                nm.show_viewport = True
+                                nm.show_render = True
 
-                                    nm.show_viewport = True
-                                    nm.show_render = True
-
-                                    obj.update_tag()
+                                obj.update_tag()
 
                         # If there is no intersection, the modifier is not needed
                         if not pi_found and self.clean_modifiers:
@@ -326,101 +258,7 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
 
                         obj.update_tag()
 
-            # Re-enable subdivision modifiers on the body
-            for m, show, _ in subsurfs:
-                m.show_viewport = show
-            body.data.update_tag()
-            body.update_tag()
-
-            if self.attempt_fix_bind != "NONE" and warnings > 0:
-                warnings_objects = []
-
-                if self.attempt_fix_bind == "SUBDIVISION":
-                    # Disable simplify
-                    if scene.render.use_simplify and scene.render.simplify_subdivision < 2:
-                        scene.render.simplify_subdivision = 2
-
-                    # Activate subdivision modifiers on the body
-                    for m, _, _ in subsurfs:
-                        m.levels = 2
-                        m.show_viewport = True
-                        break
-                else:
-                    body.hide_viewport = False
-
-                    bpy.ops.object.mode_set(mode="OBJECT")
-                    bpy.ops.object.select_all(action="DESELECT")
-                    bpy.context.view_layer.objects.active = body
-
-                    # Use Split Concave operator to attempt a fix
-                    with bpy.context.temp_override(active_object=body):
-                        bpy.ops.object.mode_set(mode="EDIT")
-                        bpy.ops.mesh.select_all(action="SELECT")
-                        bpy.ops.mesh.vert_connect_concave()
-                        bpy.ops.object.mode_set(mode="OBJECT")
-
-                    bpy.context.view_layer.objects.active = rig_settings.model_armature_object
-
-                for coll in colls:
-                    with included_collection(coll):
-                        objs = outfits_get_collection_items(rig_settings, coll)
-
-                        show_coll = coll.hide_viewport
-                        coll.hide_viewport = False
-                        bpy.context.view_layer.update()
-
-                        for obj in [
-                            x for x in objs if x.type == "MESH" and x.modifiers is not None
-                        ]:
-                            show_obj = obj.hide_viewport
-                            obj.hide_viewport = False
-
-                            for mod in [
-                                x
-                                for x in obj.modifiers
-                                if x.type == "SURFACE_DEFORM" and x.target == target
-                            ]:
-                                # Attempt to rebind if found but not bound
-                                if not mod.is_bound:
-                                    with bpy.context.temp_override(object=obj):
-                                        mod.show_viewport = True
-
-                                        self.bind_attempt_fix(obj, mod)
-
-                                        warnings_objects.append((obj.name, mod.is_bound))
-
-                                        if mod.is_bound:
-                                            if self.attempt_fix_bind == "SUBDIVISION":
-                                                print(
-                                                    f"MustardUI Physics Setup - Surface Deform "
-                                                    f"binding fixed on {repr(obj.name)}, but "
-                                                    f"requires Subdivision Surface on the Body "
-                                                    f"to work properly"
-                                                )
-                                            else:
-                                                print(
-                                                    f"MustardUI Physics Setup - Surface Deform "
-                                                    f"binding fixed on {repr(obj.name)}"
-                                                )
-                                            warnings += 1
-
-                                        mod.show_viewport = False
-                                        mod.show_render = False
-
-                            obj.hide_viewport = show_obj
-
-                            obj.update_tag()
-
-                        coll.hide_viewport = show_coll
-                    bpy.context.view_layer.update()
-
         finally:
-            for m, show, levels in subsurfs:
-                m.show_viewport = show
-                m.levels = levels
-            if scene.render.simplify_subdivision != simplify_subdivision:
-                scene.render.simplify_subdivision = simplify_subdivision
-
             # Force Physics recheck
             enable_physics_update(physics_settings, context)
             physics_settings.enable_physics = enable_physics
@@ -451,7 +289,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        self.attempt_fix_bind = "NONE"
         return context.window_manager.invoke_props_dialog(self, width=300)
 
     def draw(self, context):
@@ -461,9 +298,6 @@ class MustardUI_Physics_OutfitsSetup(bpy.types.Operator):
         settings = context.scene.MustardUI_Settings
         res, arm = mustardui_active_object(context, config=ModelMode.CONFIG)
         physics_settings = arm.MustardUI_PhysicsSettings
-
-        col = layout.column(align=True)
-        col.prop(self, "attempt_fix_bind")
 
         col = layout.column(align=True)
         col.prop(self, "override_armature_check")
@@ -554,7 +388,7 @@ class MustardUI_Physics_OutfitsSetup_IntersectingObjects(bpy.types.Operator):
         intersection_checker = MeshIntersectionChecker()
 
         for coll in colls:
-            with included_collection(coll):
+            with included_collection(coll), evaluated([coll]):
                 objs = outfits_get_collection_items(rig_settings, coll)
                 for obj in [x for x in objs if x.type == "MESH" and x.modifiers is not None]:
                     # Check if the Armature modifier is available on the Object

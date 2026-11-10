@@ -5,6 +5,7 @@ from ..model_selection.active_object import (
     active_object_operator_poll,
     mustardui_active_object,
 )
+from ..text_storage.storage import system_properties
 
 
 class MustardUI_PhysicsAddItem(bpy.types.Operator):
@@ -52,6 +53,8 @@ class MustardUI_PhysicsAddItem(bpy.types.Operator):
         # Add the item
         add_item = physics_settings.items.add()
         add_item.object = context.object
+        # Enabled without its update, which hides the item while Physics is off
+        system_properties(add_item, create=True)["enable"] = True
         self.report({"INFO"}, "MustardUI - Physics Items added.")
 
         return {"FINISHED"}

@@ -34,7 +34,7 @@ jobs:
   blender:
     strategy:
       matrix:
-        blender: [ "5.2.0", "4.5.12", "4.2.23" ]
+        blender: [ "5.2.3", "4.5.15", "4.2.23" ]
 
     name: Blender ${{ matrix.blender }}
     needs: lint

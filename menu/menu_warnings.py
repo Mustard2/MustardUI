@@ -1,10 +1,10 @@
 import bpy
 
 from ..model_selection.active_object import ModelMode, mustardui_active_object
-from ..warnings.check_addon_version import check_addon_version
-from ..warnings.ops_fix_eevee_normals import check_eevee_normals
-from ..warnings.ops_remove_old_UI import check_old_ui_scripts
-from ..warnings.ops_update_ui import is_ui_update
+from ..ui_warnings.check_addon_version import check_addon_version
+from ..ui_warnings.ops_fix_eevee_normals import check_eevee_normals
+from ..ui_warnings.ops_remove_old_UI import check_old_ui_scripts
+from ..ui_warnings.ops_update_ui import is_ui_update
 from . import MainPanel
 
 
@@ -33,7 +33,8 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             return poll and (
                 check_old_ui_scripts()
                 or check_eevee_normals(context.scene, settings)
-                or not is_ui_update(rig_settings)
+                # A model gets its version when its first configuration ends
+                or (obj.MustardUI_created and not is_ui_update(rig_settings))
                 or check_blender_version(rig_settings)
                 or check_addon_version(rig_settings)
             )
@@ -75,7 +76,7 @@ class PANEL_PT_MustardUI_Warnings(MainPanel, bpy.types.Panel):
             box.operator("mustardui.warnings_fix_eevee_normals", icon="NORMALS_FACE")
 
         # Check if the model is up-to-date
-        if not is_ui_update(rig_settings):
+        if obj.MustardUI_created and not is_ui_update(rig_settings):
             box = layout.box()
 
             row = box.row(align=True)

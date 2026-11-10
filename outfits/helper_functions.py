@@ -126,9 +126,24 @@ def get_mask_objects(rig_settings):
     return objects
 
 
-def get_mask_visibility(rig_settings):
+def get_mask_visibility(context, rig_settings):
     """{piece name: mask visibility} for every piece which can drive masks."""
-    return {obj.name: not obj.hide_viewport and mask for obj, mask in get_mask_pieces(rig_settings)}
+    # Objects in at least one collection shown by all its parents
+    shown = set()
+
+    def _walk(lc):
+        if lc.exclude or lc.collection.hide_viewport:
+            return
+        shown.update(lc.collection.objects)
+        for child in lc.children:
+            _walk(child)
+
+    _walk(context.view_layer.layer_collection)
+
+    return {
+        obj.name: mask and obj in shown and not obj.hide_viewport
+        for obj, mask in get_mask_pieces(rig_settings)
+    }
 
 
 def update_obj_masks(context, obj, visibility, mask=True):
@@ -183,7 +198,7 @@ def update_masks(context, rig_settings, visibility=None):
         return
 
     if visibility is None:
-        visibility = get_mask_visibility(rig_settings)
+        visibility = get_mask_visibility(context, rig_settings)
 
     for obj, mask in mask_objects:
         update_obj_masks(context, obj, visibility, mask)

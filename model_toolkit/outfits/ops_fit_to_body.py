@@ -168,6 +168,25 @@ class MustardUI_ModelToolkit_FitToBodySettings(bpy.types.PropertyGroup):
         update=preview_settings_update,
     )
 
+    pull_clipping: bpy.props.EnumProperty(
+        name="Pull Clipping Parts",
+        items=(
+            ("OFF", "Off", "The clipping parts follow the deeper parts around them"),
+            (
+                "AUTO",
+                "Auto",
+                "Pull them when much of the outfit is deep inside the body (e.g. outfits made "
+                "for a smaller body)",
+            ),
+            ("ON", "On", "Always pull them"),
+        ),
+        default="AUTO",
+        description="Also pull back to the skin the parts pushed out of the body, which "
+        "otherwise follow the deeper parts around them.\nThe layers over each other are not "
+        "pulled",
+        update=preview_settings_update,
+    )
+
     max_depth: bpy.props.FloatProperty(
         name="Max Depth",
         default=0.05,
@@ -733,6 +752,9 @@ def fit_to_body_draw_settings(layout, context):
         col.prop(settings, "check_body", text="Body Vertices")
         col.separator()
         col.prop(settings, "fit_distance", text="Pull Distance")
+        sub = col.column()
+        sub.enabled = settings.fit_distance > 0.0
+        sub.prop(settings, "pull_clipping")
         col.separator()
         col.prop(settings, "use_modifiers", text="Body Modifiers")
         col.prop(settings, "ignore_body_shape_keys")

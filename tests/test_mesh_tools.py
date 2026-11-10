@@ -1,9 +1,13 @@
 import importlib
+import os
+import shutil
+import tempfile
+from types import SimpleNamespace
 
 import bmesh
 import bpy
 import numpy as np
-from fake_ui import Drawer, FakeLayout
+from fake_ui import Drawer, FakeLayout, FakeSelf
 from helpers import (
     ADDON,
     BlenderTestCase,
@@ -25,6 +29,7 @@ intersection = importlib.import_module(ADDON + ".misc.mesh_intersection")
 squish = importlib.import_module(ADDON + ".model_toolkit.effects.ops_squish")
 smooth_sk = importlib.import_module(ADDON + ".model_toolkit.mesh.ops_smooth_shape_key")
 cp_misc = importlib.import_module(ADDON + ".custom_properties.misc")
+memory = importlib.import_module(ADDON + ".model_toolkit.optimization.ops_memory_report")
 
 
 def grid_object(name, size=1.0, subdivisions=10, location=(0.0, 0.0, 0.0)):
@@ -90,55 +95,57 @@ class TestTransferShapeKeys(BlenderTestCase):
         fcurve = sks.animation_data.drivers.find('key_blocks["Lift"].value')
         self.assertIsNotNone(fcurve)
 
-    # Keys named as a Body Custom Property driving the source key are linked to it
+    # Keys driven by a Custom Property are linked to it, whatever its name and list
     def test_link_custom_property(self):
         rig = new_object("Rig", bpy.data.armatures.new("Rig"))
         self.source.parent = rig
         bpy.context.scene.MustardUI_Settings.viewport_model_selection = True
         arm = rig.data
-        raise_key = self.source.shape_key_add(name="Raise", from_mix=False)
-        for d in raise_key.data:
+        bend = self.source.shape_key_add(name="Bend", from_mix=False)
+        for d in bend.data:
             d.co.z += 0.1
 
-        # "Raise" drives the source "Lift", so it is not linked
+        # The source "Lift" linked to an Outfit property, "Bend" driven by the rig
         source_rna = f'bpy.data.shape_keys["{self.source.data.shape_keys.name}"].key_blocks'
-        for name, key in (("Lift", "Lift"), ("Raise", "Lift")):
-            arm[name] = 0.0
-            cp = arm.MustardUI_CustomProperties.add()
-            cp.name, cp.prop_name, cp.path = name, name, "value"
-            cp.rna = f'{source_rna}["{key}"]'
-        cp_misc.mustardui_add_driver(arm, f'{source_rna}["Lift"]', "value", "Lift", 0)
+        arm["Pressure"] = 0.0
+        cp = arm.MustardUI_CustomPropertiesOutfit.add()
+        cp.name, cp.prop_name = "Pressure", "Pressure"
+        lp = cp.linked_properties.add()
+        lp.rna, lp.path = f'{source_rna}["Lift"]', "value"
+        cp_misc.mustardui_add_driver(arm, lp.rna, "value", "Pressure", 0)
+        fcurve = bend.driver_add("value")
+        fcurve.driver.type = "AVERAGE"
+        var = fcurve.driver.variables.new()
+        var.targets[0].id = rig
+        var.targets[0].data_path = "location.x"
 
         bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="PROPERTY")
 
         sks = self.target.data.shape_keys
         target_rna = f'bpy.data.shape_keys["{sks.name}"].key_blocks["Lift"]'
-        lift = arm.MustardUI_CustomProperties["Lift"]
-        self.assertEqual(
-            [(lp.rna, lp.path) for lp in lift.linked_properties], [(target_rna, "value")]
-        )
-        self.assertEqual(len(arm.MustardUI_CustomProperties["Raise"].linked_properties), 0)
+        self.assertIn((target_rna, "value"), [(lp.rna, lp.path) for lp in cp.linked_properties])
 
-        def driver_id(name):
-            fcurve = sks.animation_data.drivers.find(f'key_blocks["{name}"].value')
-            return fcurve.driver.variables[0].targets[0].id
+        def driver(name):
+            return sks.animation_data.drivers.find(f'key_blocks["{name}"].value')
 
-        self.assertEqual(driver_id("Lift"), arm)
-        self.assertEqual(driver_id("Raise"), self.source)
+        # The others copy the source driver
+        self.assertEqual(driver("Lift").driver.variables[0].targets[0].id, arm)
+        self.assertEqual(driver("Bend").driver.variables[0].targets[0].id, rig)
 
-        arm["Lift"] = 0.6
+        arm["Pressure"] = 0.6
+        rig.location.x = 0.3
         arm.update_tag()
         bpy.context.view_layer.update()
         self.assertAlmostEqual(sks.key_blocks["Lift"].value, 0.6, places=5)
+        self.assertAlmostEqual(sks.key_blocks["Bend"].value, 0.3, places=5)
 
-        # Without the fallback, the keys without a Custom Property are transferred undriven
-        other = grid_object("Other", size=0.5, subdivisions=7, location=(0, 0, 0.001))
-        self.select(other, self.source)
-        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(shape_key_link="PROPERTY_EXCLUDE")
-        sks = other.data.shape_keys
-        self.assertIn("Raise", sks.key_blocks)
-        self.assertEqual(driver_id("Lift"), arm)
-        self.assertIsNone(sks.animation_data.drivers.find('key_blocks["Raise"].value'))
+        # Without the fallback, the overwritten keys keep only the Custom Property links
+        bpy.ops.mustardui.model_toolkit_transfer_shape_keys(
+            shape_key_link="PROPERTY_EXCLUDE", overwrite=True
+        )
+        self.assertEqual(len(cp.linked_properties), 2)
+        self.assertIsNotNone(driver("Lift"))
+        self.assertIsNone(driver("Bend"))
 
     # Offsets follow the object transforms
     def test_transformed_target(self):
@@ -308,6 +315,163 @@ class TestOptimizeModifiers(BlenderTestCase):
         bpy.ops.mustardui.model_toolkit_optimize_modifiers(smooth_corrective=False)
         self.assertEqual([m.type for m in obj.modifiers].count("MASK"), 1)
         self.assertEqual(visible(), original)
+
+
+class TestMemoryReport(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        self.model = build_model()
+        self.rig_settings = configure_model(self.model)
+        self.rig_settings.outfits_list = "Tester Casual"
+        settings = bpy.context.scene.MustardUI_Settings
+        settings.viewport_model_selection = False
+        settings.panel_model_selection_armature = self.model["armature"].data
+        self.folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.folder)
+
+    def rows(self):
+        return {x["name"]: x for x in memory.memory_report(bpy.context, self.rig_settings)}
+
+    def report(self, names=()):
+        """Rows of the report as operator items, with names chosen"""
+        return [
+            {
+                "name": x["name"],
+                "kind": x["kind"],
+                "use": x["name"] in names,
+                "pieces": len(x["objects"]),
+                "ram": x["ram"] / memory.MB,
+                "keys": x["keys"] / memory.MB,
+                "textures": x["textures"] / memory.MB,
+                "hidden": x["hidden"],
+            }
+            for x in self.rows().values()
+        ]
+
+    def run_action(self, action, names, **kwargs):
+        report = self.report(names)
+        bpy.ops.mustardui.model_toolkit_memory_report(action=action, memory=report, **kwargs)
+
+    # Every Outfit, Extras piece and hair is listed, with its Shape Keys and textures
+    def test_report(self):
+        image = bpy.data.images.new("Shirt", 64, 32)
+        image.filepath_raw = os.path.join(self.folder, "shirt.png")
+        image.file_format = "PNG"
+        image.save()
+        material = bpy.data.materials.new("Shirt")
+        material.use_nodes = True
+        material.node_tree.nodes.new("ShaderNodeTexImage").image = image
+        bpy.data.objects["Casual - Shirt"].data.materials.append(material)
+
+        rows = self.rows()
+        kinds = {
+            "Tester Body": "BODY",
+            "Tester Casual": "OUTFIT",
+            "Tester Formal": "OUTFIT",
+            "Extras - Glasses": "EXTRAS",
+            "Hair Short": "HAIR",
+            "Hair Long": "HAIR",
+        }
+        self.assertEqual({name: x["kind"] for name, x in rows.items()}, kinds)
+        vertices = len(self.model["body"].data.vertices)
+        self.assertEqual(rows["Tester Body"]["keys"], 5 * vertices * 12)
+        self.assertEqual(rows["Tester Casual"]["textures"], 64 * 32 * 4)
+        self.assertEqual(len(rows["Tester Casual"]["objects"]), 2)
+        # Hidden data counted twice, for the copy kept by the undo
+        formal = rows["Tester Formal"]
+        self.assertTrue(formal["hidden"])
+        dress = bpy.data.objects["Formal - Dress"].data
+        self.assertGreaterEqual(formal["ram"], 2 * memory.geometry_bytes(dress))
+
+    # The list is sorted by size and filtered by name, size and visibility
+    def test_filter(self):
+        props = bpy.context.window_manager.operator_properties_last(
+            "mustardui.model_toolkit_memory_report"
+        )
+        for row in self.report():
+            item = props.memory.add()
+            for key, value in row.items():
+                setattr(item, key, value)
+        cls = bpy.types.MUSTARDUI_UL_MemoryReport
+        ui_list = SimpleNamespace(
+            filter_name="",
+            use_filter_invert=False,
+            bitflag_filter_item=1 << 30,
+            sort_by="ram",
+            reverse_order=False,
+            min_ram=0.0,
+            hidden_only=False,
+        )
+
+        def listed(**settings):
+            vars(ui_list).update(settings)
+            flags, order = cls.filter_items(ui_list, bpy.context, props, "memory")
+            shown = [i for i, flag in enumerate(flags) if flag]
+            return [props.memory[i].name for i in sorted(shown, key=lambda i: order[i])]
+
+        names = listed()
+        self.assertEqual(names[0], "Tester Body")
+        rams = [props.memory[x].ram for x in names]
+        self.assertEqual(rams, sorted(rams, reverse=True))
+        self.assertEqual(listed(reverse_order=True), names[::-1])
+        hair = listed(reverse_order=False, filter_name="*Hair*")
+        self.assertEqual(sorted(hair), ["Hair Long", "Hair Short"])
+        body = props.memory["Tester Body"].ram
+        self.assertEqual(listed(filter_name="", min_ram=body), ["Tester Body"])
+        hidden = listed(min_ram=0.0, hidden_only=True)
+        self.assertNotIn("Tester Body", hidden)
+        self.assertNotIn("Tester Casual", hidden)
+
+    # Chosen Outfits and Extras pieces are deleted, freeing their data
+    def test_delete(self):
+        self.run_action("DELETE", {"Tester Formal", "Extras - Glasses"})
+        self.assertNotIn("Tester Formal", bpy.data.collections)
+        for name in ("Formal - Dress", "Extras - Glasses"):
+            self.assertNotIn(name, bpy.data.objects)
+            self.assertNotIn(name, bpy.data.meshes)
+        self.assertIn("Casual - Shirt", bpy.data.objects)
+
+    # Chosen Outfits and Extras pieces are exported in a file each, then deleted
+    def test_export(self):
+        self.run_action("EXPORT", {"Tester Formal", "Extras - Glasses"}, directory=self.folder)
+        files = sorted(os.listdir(self.folder))
+        self.assertEqual(len(files), 2)
+        exported = set()
+        for name in files:
+            with bpy.data.libraries.load(os.path.join(self.folder, name)) as (data_from, _):
+                exported.update(data_from.objects)
+        self.assertTrue({"Formal - Dress", "Extras - Glasses"} <= exported)
+        self.assertNotIn("Formal - Dress", bpy.data.objects)
+        self.assertNotIn("Extras - Glasses", bpy.data.objects)
+
+    # Without chosen items the model is not changed
+    def test_nothing_chosen(self):
+        self.run_action("DELETE", set())
+        self.assertIn("Tester Formal", bpy.data.collections)
+
+    # The dialog draws the list and the export folder
+    def test_draw(self):
+        props = bpy.context.window_manager.operator_properties_last(
+            "mustardui.model_toolkit_memory_report"
+        )
+        for row in self.report():
+            item = props.memory.add()
+            for key, value in row.items():
+                setattr(item, key, value)
+        cls = bpy.types.MUSTARDUI_OT_model_toolkit_memory_report
+        drawer = Drawer()
+        op = FakeSelf(
+            cls,
+            FakeLayout(drawer),
+            bl_rna=bpy.ops.mustardui.model_toolkit_memory_report.get_rna_type(),
+            memory=props.memory,
+            action="EXPORT",
+            directory=self.folder,
+        )
+        drawer.run("draw", cls.draw, op, bpy.context)
+        props.memory["Tester Formal"].use = True
+        drawer.run("draw", cls.draw, op, bpy.context)
+        self.assertEqual(drawer.errors, [], "\n" + "\n".join(drawer.errors))
 
 
 class TestTransferVertexGroups(BlenderTestCase):
@@ -670,6 +834,41 @@ class TestFitToBody(BlenderTestCase):
             else:
                 self.assertGreater(after.through + after.crossing, 0)
 
+    # Pull Clipping Parts keeps the parts pushed out at the skin, instead of following the deeper
+    # parts around them (e.g. a waistband over the small of the back)
+    def test_pull_clipping(self):
+        self.addCleanup(setattr, self.settings, "pull_clipping", self.settings.pull_clipping)
+        # An open cap sunk deeper towards its top
+        bm = bmesh.new()
+        bm.from_mesh(self.outfit.data)
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < -0.01], context="VERTS")
+        for v in bm.verts:
+            v.co *= (0.495 - 0.025 * max(v.co.z, 0.0) / 0.49) / v.co.length
+        bmesh.ops.triangulate(bm, faces=bm.faces, quad_method="FIXED")
+        bm.to_mesh(self.outfit.data)
+        bm.free()
+
+        radius = {}
+        for pull_clipping in ("OFF", "ON", "AUTO"):
+            self.settings.pull_clipping = pull_clipping
+            radius[pull_clipping] = self.solve()
+        self.assertGreater(radius["ON"].min(), 0.5)
+        self.assertLess(radius["ON"].max(), radius["OFF"].max() - 0.01)
+        # Auto pulls the outfit deep inside the body
+        np.testing.assert_array_equal(radius["AUTO"], radius["ON"])
+
+    # Pull Clipping Parts in Auto does not pull the outfits only slightly inside the body
+    def test_pull_clipping_auto_shallow(self):
+        self.addCleanup(setattr, self.settings, "pull_clipping", self.settings.pull_clipping)
+        for v in self.outfit.data.vertices:
+            v.co *= 0.497 / 0.49
+
+        radius = {}
+        for pull_clipping in ("OFF", "AUTO"):
+            self.settings.pull_clipping = pull_clipping
+            radius[pull_clipping] = self.solve()
+        np.testing.assert_array_equal(radius["AUTO"], radius["OFF"])
+
     # The triangles of a coarse outfit do not cross the body, even with the vertices outside it
     def test_triangles(self):
         bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=0.5)
@@ -683,6 +882,34 @@ class TestFitToBody(BlenderTestCase):
         self.assertEqual(before.buried, 0)
         self.assertGreater(before.through, 0)
         self.assertEqual(after.through, 0)
+
+    # The snap of Pull Clipping Parts lowers the outfit towards the skin, keeping the skin distance
+    def test_snap(self):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=0.51)
+        outfit = bpy.context.active_object
+        solver = fit_to_body.FitToBodySolver(outfit, [self.body], "Fit")
+        body_bvh, body_co, body_normals = solver.body(bpy.context, (False, False))
+        optimizer = fit_optimizer.FitOptimizer(
+            solver.target,
+            body_co,
+            solver._body_tris[(False, False)],
+            body_normals,
+            body_bvh,
+            lambda: None,
+        )
+        co = solver.target.co
+        gap = self.settings.offset
+        snapped = optimizer.snap(co, np.arange(len(co)), gap)
+
+        # The large triangles stay higher over the edges of the coarse body
+        radius = np.linalg.norm(snapped, axis=1)
+        self.assertLess(np.median(radius), 0.503)
+        self.assertLess(radius.max(), 0.51)
+        tris = solver.target.tris
+        bvh = BVHTree.FromPolygons(snapped.tolist(), tris.tolist())
+        self.assertEqual(len(intersection.intersecting_triangles(bvh, body_bvh)), 0)
+        for center in snapped[tris].mean(axis=1):
+            self.assertGreater(body_bvh.find_nearest(center)[3], 0.9 * gap)
 
     # The check of the best result counts the vertices inside the body
     def test_check_buried(self):

@@ -49,9 +49,6 @@ class MustardUI_Morph_Section(bpy.types.PropertyGroup):
         "the list as just targets for the Disable Morphs feature",
     )
 
-    # Collapse button
-    collapse: bpy.props.BoolProperty(name="", default=True)
-
     # Internal
     # Property for sections generated automatically that can not be modified
     is_internal: bpy.props.BoolProperty(default=False)
