@@ -1,6 +1,7 @@
 """Cloth Physics settings: per cloth object and per scene, presets, and the world."""
 
 import bpy
+import numpy as np
 
 from . import solver
 
@@ -98,6 +99,53 @@ def mesh_poll(self, obj):
     return obj.type == "MESH" and obj != self.id_data
 
 
+def vertices_near(obj, center, radius):
+    """Vertices of the cloth as shown within radius of center: (mesh ones, simulation ones)"""
+    cloth, world = solver.SIMS.get(obj.name), solver.WORLD["world"]
+    n = len(obj.data.vertices)
+    if cloth is not None and world is not None:
+        pos = world.pos[cloth.span]
+    else:
+        co = np.empty(n * 3)
+        obj.data.vertices.foreach_get("co", co)
+        m = np.array(obj.matrix_world)
+        pos = co.reshape(-1, 3) @ m[:3, :3].T + m[:3, 3]
+    near = np.linalg.norm(pos - np.array(center), axis=1) < radius
+    # Subdivided simulations list the mesh vertices first
+    return np.flatnonzero(near[:n]), np.flatnonzero(near)
+
+
+def pin_radius_update(self, context):
+    """The vertices within the radius of the Empty are pinned to it, at once"""
+    obj, empty, group = self.id_data, self.empty, self.id_data.vertex_groups.get(self.group)
+    if empty is None or group is None:
+        return
+    empty.empty_display_size = self.radius
+    mesh_idx, sim_idx = vertices_near(obj, empty.matrix_world.translation, self.radius)
+    group.remove(list(range(len(obj.data.vertices))))
+    group.add(mesh_idx.tolist(), 1.0, "REPLACE")
+    cloth, world = solver.SIMS.get(obj.name), solver.WORLD["world"]
+    if cloth is not None and world is not None:
+        world.set_pin_empty(cloth, empty.name, sim_idx)
+
+
+class MustardUI_ModelToolkit_ClothPinEmpty(bpy.types.PropertyGroup):
+    """Vertices pinned to an Empty: they follow its animation"""
+
+    empty: bpy.props.PointerProperty(
+        name="Empty", type=bpy.types.Object, description="Applied on Rebuild"
+    )
+    group: bpy.props.StringProperty(name="Vertex Group")
+    radius: bpy.props.FloatProperty(
+        name="Radius",
+        description="Cloth within this distance of the Empty is pinned to it",
+        default=0.05,
+        min=0.001,
+        subtype="DISTANCE",
+        update=pin_radius_update,
+    )
+
+
 class MustardUI_ModelToolkit_ClothSettings(bpy.types.PropertyGroup):
     enabled: bpy.props.BoolProperty(name="Enabled")
     sim_mesh: bpy.props.EnumProperty(
@@ -122,6 +170,8 @@ class MustardUI_ModelToolkit_ClothSettings(bpy.types.PropertyGroup):
     pin_group: bpy.props.StringProperty(
         name="Pin Group", description="Vertices weighted above 0.5 stay fixed"
     )
+    pin_empties: bpy.props.CollectionProperty(type=MustardUI_ModelToolkit_ClothPinEmpty)
+    pin_empties_index: bpy.props.IntProperty(name="Active Pin Empty")
     pin_target: bpy.props.PointerProperty(
         name="Target Object",
         type=bpy.types.Object,
@@ -305,8 +355,11 @@ def build_world(context):
     cloths = []
     for o in objs:
         st = o.MustardUI_Cloth
+        empties = [(x.empty.name, x.group) for x in st.pin_empties if x.empty]
         cloths.append(
-            solver.Cloth(context, o, st.pin_group, fabric_params(st), st.pin_target, st.sim_mesh)
+            solver.Cloth(
+                context, o, st.pin_group, fabric_params(st), st.pin_target, st.sim_mesh, empties
+            )
         )
     colliders = {o.MustardUI_Cloth.collider for o in objs if o.MustardUI_Cloth.collider} - set(objs)
     world = solver.World(
@@ -359,6 +412,7 @@ def active_cloth(context):
 
 
 def register():
+    bpy.utils.register_class(MustardUI_ModelToolkit_ClothPinEmpty)
     bpy.utils.register_class(MustardUI_ModelToolkit_ClothSettings)
     bpy.utils.register_class(MustardUI_ModelToolkit_ClothSceneSettings)
     bpy.types.Object.MustardUI_Cloth = bpy.props.PointerProperty(
@@ -374,3 +428,4 @@ def unregister():
     del bpy.types.Object.MustardUI_Cloth
     bpy.utils.unregister_class(MustardUI_ModelToolkit_ClothSceneSettings)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_ClothSettings)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_ClothPinEmpty)

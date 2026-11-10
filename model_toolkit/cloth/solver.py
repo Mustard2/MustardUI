@@ -1159,7 +1159,7 @@ WORLD = {"world": None}
 class Cloth:
     """One cloth object: its simulation mesh, helper mesh for the Result modifier, pins"""
 
-    def __init__(self, context, obj, pin_group, fabric, target=None, sim_mesh="CAGE"):
+    def __init__(self, context, obj, pin_group, fabric, target=None, sim_mesh="CAGE", empties=()):
         self.obj_name = obj.name
         self.fabric = fabric
         self.target = target.name if target else None
@@ -1171,13 +1171,19 @@ class Cloth:
                     m.render_levels = m.levels
         mod.show_viewport = mod.show_render = True
         (self.rest, self.edges, self.polys), ev, me = evaluated_up_to(context, obj, mod)
-        self.pins = np.zeros(len(self.rest), bool)
-        gi = obj.vertex_groups[pin_group].index if pin_group in obj.vertex_groups else None
-        if gi is not None:
-            for v in me.vertices:
-                for g in v.groups:
-                    if g.group == gi and g.weight > 0.5:
-                        self.pins[v.index] = True
+        # Pinned: weighted above 0.5 in the pin group or in the group of a Pin Empty
+        names = [pin_group] + [g for _, g in empties]
+        index = {obj.vertex_groups[g].index: g for g in names if g in obj.vertex_groups}
+        weighted = {g: np.zeros(len(self.rest), bool) for g in index.values()}
+        for v in me.vertices:
+            for g in v.groups:
+                if g.group in index and g.weight > 0.5:
+                    weighted[index[g.group]][v.index] = True
+        self.group_pins = weighted.get(pin_group, np.zeros(len(self.rest), bool))
+        self.pins = self.group_pins.copy()
+        self.empty_pins = [(e, np.flatnonzero(weighted[g])) for e, g in empties if g in weighted]
+        for _, idx in self.empty_pins:
+            self.pins[idx] = True
         ev.to_mesh_clear()
         self.source_verts = len(obj.data.vertices)
         self.inv = np.linalg.inv(np.array(obj.matrix_world))
@@ -1304,6 +1310,7 @@ class World:
             if c.resume is not None:
                 self.pos[c.span] = c.resume
         self.solver.set_positions(self.pos)
+        self.bind_empties(self.pos)
         for c in cloths:
             c.write(self.pos)
             self.bind_pins(c)
@@ -1348,6 +1355,45 @@ class World:
         )
         cloth.pin_bind = (idx, *surface_bind(self.solver.pin_pos[idx], verts, tris))
 
+    def bind_empties(self, pos):
+        """Pin Empties: their vertices kept where they are in each Empty's space"""
+        self.empty_bind = []
+        for c in self.cloths:
+            for name, idx in c.empty_pins:
+                empty = bpy.data.objects.get(name)
+                if empty is not None and len(idx):
+                    inv = np.linalg.inv(np.array(empty.matrix_world))
+                    local = pos[idx + c.span.start] @ inv[:3, :3].T + inv[:3, 3]
+                    self.empty_bind.append([name, idx + c.span.start, local, None])
+
+    def set_pin_empty(self, cloth, name, idx):
+        """New vertices of a Pin Empty (its cloth's), pinned where they are now"""
+        old = next((i for e, i in cloth.empty_pins if e == name), None)
+        if old is None:
+            return
+        sv, start = self.solver, cloth.span.start
+        sv.pins[old + start] = cloth.group_pins[old]
+        cloth.empty_pins = [(e, idx if e == name else i) for e, i in cloth.empty_pins]
+        for _, i in cloth.empty_pins:
+            sv.pins[i + start] = True
+        sv.pin_pos[idx + start] = self.pos[idx + start]
+        self.bind_empties(self.pos)
+        sv.upload_attach()
+
+    def update_empties(self, force=False):
+        """Pins of the Empties that moved (animated, by hand) follow them; force: after the other
+        pins were moved, theirs included: Pin Empties win"""
+        moved = False
+        for bind in self.empty_bind:
+            empty = bpy.data.objects.get(bind[0])
+            m = np.array(empty.matrix_world) if empty is not None else None
+            if m is not None and (force or bind[3] is None or not np.array_equal(m, bind[3])):
+                self.solver.pin_pos[bind[1]] = bind[2] @ m[:3, :3].T + m[:3, 3]
+                bind[3] = m
+                moved = True
+        if moved:
+            self.solver.upload_attach()
+
     def update_pins(self, cloth):
         """Move the bound pins with the Target Object's current shape."""
         cloth.target_dirty = False
@@ -1359,6 +1405,7 @@ class World:
         )
         self.solver.pin_pos[idx] = surface_points(bind, verts)
         self.solver.upload_attach()
+        self.update_empties(force=True)
 
     def step(self, dt=1 / 30, follow=False):
         """One frame; follow turns Follow Body on (timeline playback)"""
@@ -1379,6 +1426,7 @@ class World:
         for c in self.cloths:
             if c.target_dirty:
                 self.update_pins(c)
+        self.update_empties()
         pos_before, sv, p = self.pos, self.solver, self.solver.params
         sv.step(dt, detect=moved or self.redetect_all)
         # While the GPU runs: last frame's crossings, every frame while moving, else every 4th
@@ -1460,6 +1508,7 @@ class World:
             idx, *bind = self.follow_bind
             sv.follow_target[idx] = surface_points(bind, self.collider_verts(context))
         sv.upload_attach()
+        self.update_empties(force=True)
 
     def collider_verts(self, context):
         objects = [bpy.data.objects[n] for n in self.colliders]
@@ -1488,6 +1537,7 @@ class World:
         self.body_dirty = True
         self.solver.stuck[:] = False
         self.solver.follow_target = pos.copy()
+        self.bind_empties(pos)
         # Colliders deformed beyond their Armature (physics cages): Follow Body pulls toward their
         # surface, each vertex bound to its nearest triangle; the outfit's Armature shape ignores it
         self.follow_bind = None

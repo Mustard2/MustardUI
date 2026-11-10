@@ -112,6 +112,39 @@ class TestCloth(BlenderTestCase):
         self.assertLess(abs(moved[0]), 0.03)
         self.assertGreater(moved[1], 0.08)
 
+    # Pin Empties: the cloth around the 3D cursor follows the animated Empty, removed with it
+    @unittest.skipUnless(solver.gpu_available(), "Needs a GPU with compute shaders")
+    def test_pin_empty(self):
+        box = new_box()
+        sheet = new_sheet()
+        sheet.MustardUI_Cloth.collider = box
+        set_active(sheet)
+        bpy.ops.mustardui.model_toolkit_cloth_enable()
+        scene = bpy.context.scene
+        scene.cursor.location = (0.4, 0.4, 1.4)
+        self.assertEqual(bpy.ops.mustardui.model_toolkit_cloth_add_pin_empty(), {"FINISHED"})
+        item = sheet.MustardUI_Cloth.pin_empties[0]
+        empty, group = item.empty, item.group
+        # A larger radius pins more of the cloth, at once
+        pinned = len(solver.WORLD["world"].empty_bind[0][1])
+        item.radius = 0.1
+        self.assertGreater(len(solver.WORLD["world"].empty_bind[0][1]), 2 * pinned)
+        self.assertAlmostEqual(empty.empty_display_size, 0.1, places=6)
+        empty.keyframe_insert("location", index=2, frame=1)
+        empty.location.z += 0.15
+        empty.keyframe_insert("location", index=2, frame=20)
+        scene.frame_start, scene.frame_end = 1, 20
+        bpy.ops.mustardui.model_toolkit_cloth_bake()
+        world = solver.WORLD["world"]
+        pinned = world.empty_bind[0][1]
+        lift = world.cache[20][0][pinned, 2] - world.cache[1][0][pinned, 2]
+        self.assertTrue(np.allclose(lift, 0.15, atol=0.002))
+
+        bpy.ops.mustardui.model_toolkit_cloth_remove_pin_empty()
+        self.assertEqual(len(sheet.MustardUI_Cloth.pin_empties), 0)
+        self.assertIsNone(sheet.vertex_groups.get(group))
+        self.assertNotIn("Sheet Pin", bpy.data.objects)
+
     # Without a GPU the operators are disabled
     def test_without_gpu(self):
         sheet = new_sheet()

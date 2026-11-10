@@ -5,9 +5,12 @@ import bpy
 from . import solver
 from .settings import (
     STATE,
+    active_cloth,
     cloth_objects,
     guess_collider,
+    pin_radius_update,
     rebuild_report,
+    vertices_near,
 )
 
 
@@ -159,6 +162,69 @@ class MustardUI_ModelToolkit_ClothSelect(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class MustardUI_ModelToolkit_ClothAddPinEmpty(bpy.types.Operator):
+    """Pin the cloth around the 3D cursor to a new Empty: animate or move the Empty to move it"""
+
+    bl_idname = "mustardui.model_toolkit_cloth_add_pin_empty"
+    bl_label = "Add Pin Empty"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return not STATE["running"] and active_cloth(context) is not None
+
+    def execute(self, context):
+        obj = active_cloth(context)
+        cursor = context.scene.cursor.location.copy()
+        radius = 0.05
+        if not len(vertices_near(obj, cursor, radius)[1]):
+            self.report({"ERROR"}, "MustardUI - Place the 3D cursor on the cloth")
+            return {"CANCELLED"}
+        empty = bpy.data.objects.new(f"{obj.name} Pin", None)
+        empty.empty_display_type = "SPHERE"
+        empty.location = cursor
+        obj.users_collection[0].objects.link(empty)
+        context.view_layer.update()
+        st = obj.MustardUI_Cloth
+        item = st.pin_empties.add()
+        item.empty, item.group = empty, obj.vertex_groups.new(name=f"Pin {empty.name}").name
+        item.radius = radius
+        pin_radius_update(item, context)  # picks the vertices
+        st.pin_empties_index = len(st.pin_empties) - 1
+        return {"FINISHED"} if rebuild_report(self, context) else {"CANCELLED"}
+
+
+class MustardUI_ModelToolkit_ClothRemovePinEmpty(bpy.types.Operator):
+    """Remove the pin, its vertex group and its Empty"""
+
+    bl_idname = "mustardui.model_toolkit_cloth_remove_pin_empty"
+    bl_label = "Remove Pin Empty"
+    bl_options = {"REGISTER", "UNDO"}
+
+    index: bpy.props.IntProperty(default=-1, description="Pin Empty, the active one if -1")
+
+    @classmethod
+    def poll(cls, context):
+        return not STATE["running"] and active_cloth(context) is not None
+
+    def execute(self, context):
+        obj = active_cloth(context)
+        st = obj.MustardUI_Cloth
+        items, index = st.pin_empties, self.index if self.index >= 0 else st.pin_empties_index
+        if not 0 <= index < len(items):
+            return {"CANCELLED"}
+        item = items[index]
+        group = obj.vertex_groups.get(item.group)
+        if group is not None:
+            obj.vertex_groups.remove(group)
+        if item.empty is not None:
+            bpy.data.objects.remove(item.empty)
+            context.view_layer.update()  # else its stale entry is still listed
+        items.remove(index)
+        st.pin_empties_index = min(index, len(items) - 1)
+        return {"FINISHED"} if rebuild_report(self, context) else {"CANCELLED"}
+
+
 classes = (
     MustardUI_ModelToolkit_ClothEnable,
     MustardUI_ModelToolkit_ClothDisable,
@@ -167,6 +233,8 @@ classes = (
     MustardUI_ModelToolkit_ClothSaveShapeKey,
     MustardUI_ModelToolkit_ClothRemove,
     MustardUI_ModelToolkit_ClothSelect,
+    MustardUI_ModelToolkit_ClothAddPinEmpty,
+    MustardUI_ModelToolkit_ClothRemovePinEmpty,
 )
 
 

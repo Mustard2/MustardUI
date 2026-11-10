@@ -210,6 +210,21 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth_Pinning(SelectedClothSubPanel, bpy.t
         layout.prop_search(obj.MustardUI_Cloth, "pin_group", obj, "vertex_groups", text="Group")
         layout.prop(obj.MustardUI_Cloth, "pin_target", text="Follow")
         layout.prop(obj.MustardUI_Cloth, "follow", slider=True)
+        st = obj.MustardUI_Cloth
+        layout.label(text="Pin Empties")
+        row = layout.row()
+        row.template_list(
+            "MUSTARDUI_UL_ClothPinEmpties_UIList",
+            "",
+            st,
+            "pin_empties",
+            st,
+            "pin_empties_index",
+            rows=3,
+        )
+        col = row.column(align=True)
+        col.operator("mustardui.model_toolkit_cloth_add_pin_empty", text="", icon="ADD")
+        col.operator("mustardui.model_toolkit_cloth_remove_pin_empty", text="", icon="REMOVE")
 
 
 class PANEL_PT_MustardUI_ModelToolkit_Cloth_Sewing(SelectedClothSubPanel, bpy.types.Panel):
