@@ -345,6 +345,16 @@ class TestTextStorage(BlenderTestCase):
         self.assertEqual(calls, [True])
         self.assertIsNotNone(storage.text_of(self.arm))
 
+    # Reloading the add-on keeps the settings: panels read the armature before the timer runs
+    def test_reload(self):
+        self.set_enabled(True)
+        storage.unregister()
+        storage.register()
+        self.assertEqual(self.arm.MustardUI_RigSettings.model_name, "Tester")
+        storage.apply()
+        self.assertEqual(self.arm.MustardUI_RigSettings.model_name, "Tester")
+        self.assertIsNotNone(storage.text_of(self.arm))
+
     # Outfit custom properties of a model saved with source_text storage, added with the other
     def append_outfit(self, source_text):
         settings = bpy.context.scene.MustardUI_Settings

@@ -301,5 +301,7 @@ def unregister():
         if func in handlers:
             handlers.remove(func)
     if _moved:
+        # Back on the armatures: registered again (reload), their reads must not see empty settings
+        _convert(False)
         _relocate(False)
     del bpy.types.Armature.MustardUI_data
