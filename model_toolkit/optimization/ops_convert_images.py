@@ -110,6 +110,12 @@ class MUSTARDUI_UL_ConvertImages_UIList(bpy.types.UIList):
         return [self.bitflag_filter_item * listed(x, data) for x in getattr(data, propname)], []
 
 
+def select_images(self, value):
+    for item in self.images:
+        if listed(item, self):
+            item.convert = value == 1
+
+
 class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
     """List the heaviest Images of the model, and convert them to a lower resolution or bit depth.
     The converted Images are saved with new names, or packed if the original was packed"""
@@ -120,6 +126,16 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
 
     images: CollectionProperty(type=MustardUI_ConvertImages_Item, options={"SKIP_SAVE"})
     images_index: IntProperty(default=0, options={"SKIP_SAVE"})
+    # Buttons writing the listed Images, none of them is shown as pressed
+    select: EnumProperty(
+        items=[
+            ("ALL", "All", "Select all the listed Images", "CHECKBOX_HLT", 1),
+            ("NONE", "None", "Deselect all the listed Images", "CHECKBOX_DEHLT", 2),
+        ],
+        get=lambda self: 0,
+        set=select_images,
+        options={"SKIP_SAVE"},
+    )
 
     min_size: EnumProperty(
         name="Size",
@@ -370,6 +386,7 @@ class MustardUI_ModelToolkit_ConvertImages(bpy.types.Operator):
             self,
             "images_index",
         )
+        layout.row().prop(self, "select", expand=True)
 
         row = layout.row()
         row.prop(self, "max_size")
