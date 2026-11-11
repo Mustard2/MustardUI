@@ -25,6 +25,9 @@ ATTRIBUTES = (
     "rip_held",
     "rip_state",
     "rip_grip",
+    "rip_open",
+    "rip_gap",
+    "rip_core",
     "rip_start",
     "rip_axis",
     "rip_tear",
@@ -35,12 +38,16 @@ ATTRIBUTES = (
 )
 # Distance of the cloth from the Colliders and the floor
 COLLISION = 0.002
+# Least distance of the cloth from the Colliders, for the cloth fitting closer than the Thickness
+MIN_GAP = 0.0005
 # Exponent averaging the stretch of the edges of a face into about their maximum
 MAX_POWER = 64.0
 # Edges shorter than this fraction of the mean edge stretch relative to it, not to their length
 TINY_EDGE = 0.5
 # Softness of the pin to the mesh at Shape 0, the compliance being its fifth power
 SHAPE_SOFTNESS = 0.3
+# Radii of a Pull's sphere holding the cloth of a piece once torn out, the rest hanging from it
+CORE = 1.5
 
 
 def load_cloth_dynamics():
@@ -228,7 +235,7 @@ def build_node_group():
         "NodeSocketFloat",
         panel,
         subtype="DISTANCE",
-        default_value=0.02,
+        default_value=0.15,
         min_value=0.0,
         max_value=10.0,
         description="Distance a Pull moves from where it grabbed before the cloth can tear",
@@ -244,7 +251,8 @@ def build_node_group():
         min_value=1.0,
         max_value=10.0,
         description="How far out of its sphere a Pull grabs the cloth, in radii of the sphere, "
-        "the cloth around it held in hand, and the cloth it runs into gathered as it drags along",
+        "the cloth around it held in hand, and the cloth it runs into gathered as it drags along. "
+        "Once torn out, the piece hangs from the cloth near the sphere",
     )
     add_input(
         ng,
@@ -265,7 +273,7 @@ def build_node_group():
         panel,
         default_value=False,
         description="Let go of the torn out pieces as soon as they detach from the cloth, "
-        "instead of holding them until the Pull is scaled to 0",
+        "instead of holding them by the sphere until the Pull is scaled to 0",
     )
 
     panel = ng.interface.new_panel("Cloth")
@@ -318,11 +326,11 @@ def build_node_group():
         "NodeSocketFloat",
         panel,
         subtype="DISTANCE",
-        default_value=0.003,
+        default_value=0.0015,
         min_value=0.0,
         max_value=1.0,
         description="Distance the cloth is pushed to from the Colliders and itself, inflating the "
-        "outfit if large, letting the body through if small",
+        "outfit if large, letting the body through if small. Less where it starts closer",
     )
     add_input(
         ng,
@@ -463,6 +471,26 @@ def build_node_group():
         0,
     )
     geometry = t.store(geometry, "rip_cut", "FLOAT", 0.0, 3, 0, domain="EDGE")
+    # The distance of the cloth from the Colliders, kept when under the Thickness not to puff
+    gap = t.node(
+        "GeometryNodeProximity", 3, -6, {"Geometry": colliders}, target_element="FACES"
+    ).outputs
+    geometry = t.store(
+        geometry,
+        "rip_gap",
+        "FLOAT",
+        t.node(
+            "GeometryNodeSwitch",
+            4,
+            -6,
+            {"Switch": gap["Is Valid"], "False": 1e6, "True": gap["Distance"]},
+            input_type="FLOAT",
+        ).outputs[0],
+        4,
+        0,
+    )
+    # The points on the edge of the cloth before it tears, e.g. the hem, not hanging free
+    geometry = t.store(geometry, "rip_open", "FLOAT", on_border(t, 2, -4), 3.5, 0)
     # The lines between the patches, and the noise of the Strength along them, from the rest
     # position once, the split edges keeping them
     boundary = t.node(
@@ -621,7 +649,13 @@ def build_node_group():
             "Substeps": steps["Substeps"],
             "Constraint Steps": steps["Constraint Steps"],
             "Friction": inputs["Friction"],
-            "Collision Radius": inputs["Thickness"],
+            "Collision Radius": t.math(
+                "MINIMUM",
+                inputs["Thickness"],
+                t.math("MAXIMUM", t.attribute("rip_gap", "FLOAT", 0, -1), MIN_GAP, x=0.5, y=-1),
+                x=0.7,
+                y=-1,
+            ),
             "Linear Damping": inputs["Damping"],
             "Tearing": True,
             "Tearing Mode": "Custom",
@@ -923,11 +957,18 @@ def build_grab(t, inputs, pulls, pull_count, started, colliders):
         y=-17,
     )
     near = t.math("LESS_THAN", distance, inputs["Tear Radius"], x=17, y=-23)
+    # The pieces torn out kept whole, hanging from the Pull
     tearable = t.math(
-        "MAXIMUM",
-        t.attribute("rip_tear", "FLOAT", 17, -25),
-        t.math("MULTIPLY", pulled, near, x=18, y=-23),
-        x=19,
+        "MULTIPLY",
+        t.math(
+            "MAXIMUM",
+            t.attribute("rip_tear", "FLOAT", 17, -25),
+            t.math("MULTIPLY", pulled, near, x=18, y=-23),
+            x=19,
+            y=-25,
+        ),
+        t.math("SUBTRACT", 1.0, detached, x=19, y=-26),
+        x=20,
         y=-25,
     )
     # Let go of the held points of the detached pieces with Release, or when scaled to 0
@@ -936,7 +977,20 @@ def build_grab(t, inputs, pulls, pull_count, started, colliders):
         t.math("MULTIPLY", held, by_this, x=7, y=-10),
         t.math(
             "MAXIMUM",
-            t.math("MULTIPLY", detached, inputs["Release"], x=7, y=-11),
+            # The detached pieces held by the cloth near the sphere only, without Release
+            t.math(
+                "MULTIPLY",
+                detached,
+                t.math(
+                    "MAXIMUM",
+                    inputs["Release"],
+                    t.math("LESS_THAN", t.attribute("rip_core", "FLOAT", 5, -12), 0.5, x=6, y=-12),
+                    x=6.5,
+                    y=-11,
+                ),
+                x=7,
+                y=-11,
+            ),
             t.math("SUBTRACT", 1.0, scaled, x=8, y=-12),
             x=9,
             y=-11,
@@ -960,6 +1014,17 @@ def build_grab(t, inputs, pulls, pull_count, started, colliders):
             ("rip_held", "FLOAT", index),
             ("rip_start", "FLOAT_VECTOR", start),
             ("rip_axis", "FLOAT_VECTOR", axis),
+            (
+                "rip_core",
+                "FLOAT",
+                t.math(
+                    "LESS_THAN",
+                    distance,
+                    t.math("MULTIPLY", radius, CORE, x=13, y=-15),
+                    x=14,
+                    y=-15,
+                ),
+            ),
         )
     ):
         geometry = t.store(geometry, name, data_type, value, 14 + i, 0, selection=taking)
@@ -1086,11 +1151,28 @@ def build_grab(t, inputs, pulls, pull_count, started, colliders):
         -11,
         {
             "Geometry": geometry,
+            # The cut edges, and the new edges of the cloth where it snapped
             "Selection": t.math(
-                "GREATER_THAN",
-                on_domain(t, t.attribute("rip_cut", "FLOAT", 19, -11), "POINT", "FLOAT", 20, -11),
-                0.001,
-                x=20,
+                "MAXIMUM",
+                t.math(
+                    "GREATER_THAN",
+                    on_domain(
+                        t, t.attribute("rip_cut", "FLOAT", 19, -11), "POINT", "FLOAT", 20, -11
+                    ),
+                    0.001,
+                    x=20,
+                    y=-12,
+                ),
+                t.math(
+                    "MULTIPLY",
+                    on_border(t, 18, -13),
+                    t.math(
+                        "LESS_THAN", t.attribute("rip_open", "FLOAT", 19, -14), 0.5, x=19.5, y=-14
+                    ),
+                    x=20,
+                    y=-13,
+                ),
+                x=20.5,
                 y=-12,
             ),
         },
@@ -1621,6 +1703,15 @@ def on_domain(t, value, domain, data_type, x, y):
     return t.node(
         "GeometryNodeFieldOnDomain", x, y, {"Value": value}, domain=domain, data_type=data_type
     ).outputs[0]
+
+
+def on_border(t, x, y):
+    """Whether each point is on the edge of the cloth, on an edge with a single face"""
+    faces = t.node("GeometryNodeInputMeshEdgeNeighbors", x, y).outputs["Face Count"]
+    edge = t.math("LESS_THAN", faces, 1.5, x=x + 0.5, y=y)
+    return t.math(
+        "GREATER_THAN", on_domain(t, edge, "POINT", "FLOAT", x + 1, y), 0.001, x=x + 1.5, y=y
+    )
 
 
 def closure(t, x, y):
