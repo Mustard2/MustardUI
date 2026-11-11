@@ -33,6 +33,8 @@ PRESETS = {
         "Color": (0.04, 0.04, 0.04, 1.0),
         "Debris Amount": 1500.0,
         "Debris Size": 0.012,
+        "Detail": 0.03,
+        "Rubble": 300.0,
     },
     "CONCRETE": {
         "Size": 0.25,
@@ -46,6 +48,8 @@ PRESETS = {
         "Color": (0.3, 0.29, 0.27, 1.0),
         "Debris Amount": 600.0,
         "Debris Size": 0.02,
+        "Detail": 0.05,
+        "Rubble": 150.0,
     },
     "ICE": {
         "Size": 0.3,
@@ -60,6 +64,8 @@ PRESETS = {
         "Color": (0.7, 0.85, 0.95, 1.0),
         "Debris Amount": 300.0,
         "Debris Size": 0.01,
+        "Detail": 0.06,
+        "Rubble": 60.0,
     },
     "EARTH": {
         "Size": 0.08,
@@ -73,6 +79,8 @@ PRESETS = {
         "Color": (0.1, 0.06, 0.035, 1.0),
         "Debris Amount": 2500.0,
         "Debris Size": 0.007,
+        "Detail": 0.02,
+        "Rubble": 500.0,
     },
 }
 
@@ -88,15 +96,18 @@ SCALING = {
     "Lift": 1.0,
     "Scatter": 1.0,
     "Debris Size": 1.0,
+    "Depth": 1.0,
+    "Detail": 1.0,
     "Min Speed": 0.5,
     "Jolt": 0.25,
     "Debris Speed": 0.25,
     "Debris Amount": -2.0,
+    "Rubble": -2.0,
 }
 
 
 class MustardUI_ModelToolkit_Cracks(bpy.types.Operator):
-    """Break the active mesh into plates where the other selected meshes, or the model body, hit it, as asphalt, concrete, ice or dry earth, throwing up pebbles.\nMore objects can be added to the Colliders collection of the effect\nBlender 5.2 or above is required"""  # noqa: E501
+    """Break the active mesh into plates where the other selected meshes, or the model body, hit it, as asphalt, concrete, ice or dry earth, throwing up pebbles, and press craters with rubble where they go deeper.\nMore objects can be added to the Colliders collection of the effect\nBlender 5.2 or above is required"""  # noqa: E501
 
     bl_idname = "mustardui.model_toolkit_cracks"
     bl_label = "Add Cracks"

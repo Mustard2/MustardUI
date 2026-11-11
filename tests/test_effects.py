@@ -4326,13 +4326,13 @@ class TestCracks(BlenderTestCase):
         self.drop((0.0, 4.0), 1)
         self.scene.frame_set(1)
 
-    def drop(self, at, start):
-        """The 20 cm block falling at 2 m/s on the point of the ground, sinking 1 cm into it
-        10 frames from the start"""
+    def drop(self, at, start, sink=0.01):
+        """The 20 cm block falling at 2 m/s on the point of the ground, sinking into it 10 frames
+        from the start"""
         bpy.context.view_layer.update()
         self.block.rotation_euler = self.ground.rotation_euler
         for frame in range(start, start + 20):
-            height = 0.09 + max(start + 9 - frame, 0) * 2.0 / 24
+            height = 0.1 - sink + max(start + 9 - frame, 0) * 2.0 / 24
             self.block.location = self.ground.matrix_world @ Vector((*at, height))
             self.block.keyframe_insert("location", frame=frame)
 
@@ -4399,7 +4399,9 @@ class TestCracks(BlenderTestCase):
         geometry = self.evaluate(30)
         mesh = geometry.mesh
         inner, center, color = self.check_broken(mesh, [(0.0, 4.0)])
-        np.testing.assert_allclose(color[inner, :3], 0.04, atol=1e-6)
+        # A little darker where pressed
+        self.assertLessEqual(color[inner, :3].max(), 0.04 + 1e-6)
+        self.assertGreater(color[inner, :3].min(), 0.035)
         # Only around the block
         self.assertLess(np.linalg.norm(center[inner, :2] - (0.0, 4.0), axis=1).max(), 0.6)
         # The UV map of the points still on the ground, moved by the cracks at most
@@ -4436,6 +4438,53 @@ class TestCracks(BlenderTestCase):
         self.ground.update_tag()
         geometry = self.evaluate(30)
         self.assertEqual(geometry.instance_references(), [])
+
+    # A block going deep presses a crater of its shape, no deeper than the Depth, with rubble
+    def test_crater(self):
+        self.block.animation_data_clear()
+        self.drop((0.0, 4.0), 1, sink=0.15)
+        self.scene.frame_set(1)
+        modifier = self.add(kind="ASPHALT")
+        effect.modifier_input(modifier, "Debris").value = False
+        self.ground.update_tag()
+
+        def under():
+            geometry = self.evaluate(20)
+            co = np.array([v.co[:] for v in geometry.mesh.vertices])
+            return geometry, co[np.abs(co[:, :2] - (0.0, 4.0)).max(axis=1) < 0.06, 2]
+
+        geometry, height = under()
+        self.assertGreater(len(height), 8)
+        # Under the block, by the pit of the plates and the rough floor at most
+        self.assertLess(height.max(), -0.15 + 1e-3)
+        self.assertGreater(height.min(), -0.21)
+        _, _, color = self.faces(geometry.mesh)
+        self.assertLess(color[:, :3].min(), 0.03)
+        references = geometry.instance_references()
+        self.assertGreater(len(references[0].mesh.polygons), 5 * 80)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        effect.modifier_input(modifier, "Rubble").value = 0.0
+        effect.modifier_input(modifier, "Depth").value = 0.05
+        self.ground.update_tag()
+        geometry, height = under()
+        self.assertGreater(height.min(), -0.11)
+        self.assertEqual(geometry.instance_references(), [])
+
+    # A tall block placed through the ground, not moving, presses all the ground in it
+    def test_placed(self):
+        self.block.animation_data_clear()
+        self.block.location = (0.0, 4.0, 0.0)
+        self.block.scale = (1.0, 1.0, 10.0)
+        modifier = self.add(kind="ASPHALT")
+        effect.modifier_input(modifier, "Depth").value = 0.3
+        self.ground.update_tag()
+        geometry = self.evaluate(6)
+        co = np.array([v.co[:] for v in geometry.mesh.vertices])
+        height = co[np.abs(co[:, :2] - (0.0, 4.0)).max(axis=1) < 0.06, 2]
+        self.assertGreater(len(height), 8)
+        self.assertLess(height.max(), -0.3 + 1e-3)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
 
     # A block touching the ground slower than the Min Speed does not break it
     def test_slow(self):
@@ -4480,6 +4529,8 @@ class TestCracks(BlenderTestCase):
             "Min Speed": 0.05 * 20**0.5,
             "Debris Speed": 3.0 * 20**0.25,
             "Debris Amount": 1500.0 * 20**-2,
+            "Depth": 0.5 * 20,
+            "Rubble": 300.0 * 20**-2,
         }
         for name, value in expected.items():
             self.assertAlmostEqual(
