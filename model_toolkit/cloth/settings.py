@@ -23,6 +23,7 @@ WORLD_LIVE = (
     "substeps",
     "iterations",
     "gravity",
+    "floor_plane",
     "air",
     "smooth_display",
     "self_k",
@@ -61,6 +62,7 @@ def world_params(st):
         gravity=st.gravity,
         air=st.air,
         self_radius=st.self_radius,
+        floor_plane=(0.0, 0.0, 1.0, st.floor_height) if st.floor else (0.0,) * 4,
     )
     p.update(sew_force=st.sew_force, self_k=solver.DEFAULTS["self_k"] if st.self_collision else 0.0)
     p.update(
@@ -264,6 +266,12 @@ class MustardUI_ModelToolkit_ClothSceneSettings(bpy.types.PropertyGroup):
         name="Iterations", default=6, min=1, max=16, update=world_update
     )
     gravity: bpy.props.FloatProperty(name="Gravity", default=1.0, update=world_update)
+    floor: bpy.props.BoolProperty(
+        name="Floor", description="The cloths rest on a floor", update=world_update
+    )
+    floor_height: bpy.props.FloatProperty(
+        name="Height", default=0.0, subtype="DISTANCE", update=world_update
+    )
     debug: bpy.props.BoolProperty(
         name="Debug Info", description="Vertex counts, frame rate and step time", default=False
     )

@@ -201,6 +201,19 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth_SelfCollision(ClothSubPanel, bpy.typ
         layout.prop(sc, "untangle")
 
 
+class PANEL_PT_MustardUI_ModelToolkit_Cloth_Floor(ClothSubPanel, bpy.types.Panel):
+    bl_label = "Floor"
+
+    def draw_header(self, context):
+        self.layout.prop(context.scene.MustardUI_ClothScene, "floor", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        sc = context.scene.MustardUI_ClothScene
+        layout.active = sc.floor
+        layout.prop(sc, "floor_height")
+
+
 class PANEL_PT_MustardUI_ModelToolkit_Cloth_Pinning(SelectedClothSubPanel, bpy.types.Panel):
     bl_label = "Pinning"
 
@@ -283,6 +296,7 @@ classes = (
     PANEL_PT_MustardUI_ModelToolkit_Cloth_Fabric,
     PANEL_PT_MustardUI_ModelToolkit_Cloth_Collision,
     PANEL_PT_MustardUI_ModelToolkit_Cloth_SelfCollision,
+    PANEL_PT_MustardUI_ModelToolkit_Cloth_Floor,
     PANEL_PT_MustardUI_ModelToolkit_Cloth_Pinning,
     PANEL_PT_MustardUI_ModelToolkit_Cloth_Sewing,
     PANEL_PT_MustardUI_ModelToolkit_Cloth_Simulation,

@@ -112,6 +112,22 @@ class TestCloth(BlenderTestCase):
         self.assertLess(abs(moved[0]), 0.03)
         self.assertGreater(moved[1], 0.08)
 
+    # Floor: the sheet, without a collider, falls onto it and rests there
+    @unittest.skipUnless(solver.gpu_available(), "Needs a GPU with compute shaders")
+    def test_floor(self):
+        sheet = new_sheet()
+        sheet.MustardUI_Cloth.follow = 0.0
+        set_active(sheet)
+        bpy.ops.mustardui.model_toolkit_cloth_enable()
+        scene = bpy.context.scene
+        scene.MustardUI_ClothScene.floor = True
+        scene.MustardUI_ClothScene.floor_height = 1.0
+        scene.frame_start, scene.frame_end = 1, 30
+        bpy.ops.mustardui.model_toolkit_cloth_bake()
+        pos = solver.WORLD["world"].cache[30][0]
+        self.assertGreater(pos[:, 2].min(), 1.0)
+        self.assertLess(pos[:, 2].max(), 1.01)
+
     # Pin Empties: the cloth around the 3D cursor follows the animated Empty, removed with it
     @unittest.skipUnless(solver.gpu_available(), "Needs a GPU with compute shaders")
     def test_pin_empty(self):

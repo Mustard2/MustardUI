@@ -87,8 +87,8 @@ void main() {
     /* Velocity of the previous substep (x0 = its start): inelastic contact, friction, damping */
     vec3 v = (x - imageLoad(img_x0, p).xyz) / h;
     vec4 mat = texelFetch(s_mat, p, 0);  /* friction, damping per second */
-    vec4 planes[2] = vec4[2](imageLoad(img_c, p), imageLoad(img_c2, p));
-    for (int k = 0; k < 2; k++) {
+    vec4 planes[3] = vec4[3](imageLoad(img_c, p), imageLoad(img_c2, p), floor_plane);
+    for (int k = 0; k < 3; k++) {
       vec4 c = planes[k];
       if (any(notEqual(c.xyz, vec3(0.0))) && dot(c.xyz, x) - c.w - thickness < 0.001) {
         /* Inelastic: the penalty push-back must not become a rebound */
@@ -178,8 +178,8 @@ void main() {
   /* Start at the inertial target, outside the contact planes (adaptive: VBD initial guess) */
   vec3 x1 = (at.w < 0.0 || adaptive == 0 || gl == 0.0)
     ? y : x + h * v + h * h * vel.w * gravity.xyz / gl;
-  vec4 planes[2] = vec4[2](contact, contact2);
-  for (int k = 0; k < 2 && at.w >= 0.0 && project_init != 0; k++) {
+  vec4 planes[3] = vec4[3](contact, contact2, floor_plane);
+  for (int k = 0; k < 3 && at.w >= 0.0 && project_init != 0; k++) {
     float g = dot(planes[k].xyz, x1) - planes[k].w - thickness;
     if (any(notEqual(planes[k].xyz, vec3(0.0))) && g < 0.0) x1 -= g * planes[k].xyz;
   }
@@ -246,8 +246,8 @@ void main() {
       }
     }
   }
-  vec4 planes[2] = vec4[2](texelFetch(s_c, p, 0), texelFetch(s_c2, p, 0));
-  for (int k = 0; k < 2; k++) {
+  vec4 planes[3] = vec4[3](texelFetch(s_c, p, 0), texelFetch(s_c2, p, 0), floor_plane);
+  for (int k = 0; k < 3; k++) {
     vec4 c = planes[k];
     float gap = dot(c.xyz, x) - c.w - info.w;
     if (any(notEqual(c.xyz, vec3(0.0))) && gap < 0.0) {
@@ -269,7 +269,7 @@ void main() {
   imageStore(img_xp, p, vec4(x, 0.0));
   /* Dragged vertices never end inside a contact plane, however hard the drag pulls */
   x = x_new;
-  for (int k = 0; k < 2 && at.w > 5000.0; k++) {
+  for (int k = 0; k < 3 && at.w > 5000.0; k++) {
     float gap = dot(planes[k].xyz, x) - planes[k].w - info.w;
     if (any(notEqual(planes[k].xyz, vec3(0.0))) && gap < 0.0) x -= gap * planes[k].xyz;
   }
@@ -581,6 +581,7 @@ class Solver:
                 ("INT", "project_init"),
                 ("FLOAT", "air"),
                 ("VEC4", "gravity"),
+                ("VEC4", "floor_plane"),
                 ("VEC4", "grid_origin"),
                 ("IVEC4", "grid_dims"),
             ],
@@ -599,6 +600,7 @@ class Solver:
                 ("FLOAT", "sew_force"),
                 ("FLOAT", "self_k"),
                 ("FLOAT", "omega"),
+                ("VEC4", "floor_plane"),
             ],
         )
         self.hash = _shader(
@@ -733,6 +735,9 @@ class Solver:
         """Collider triangles near bounds (min, max), binned at prev (moving colliders) in cells"""
         p = self.params
         prev = verts if prev is None else prev
+        if not len(tris):  # no colliders (a floor only): one far away triangle
+            verts = prev = np.full((3, 3), 1e9)
+            tris = np.array([[0, 1, 2]])
         r = p["thickness"] + p["detect"]
         tv = prev[tris]
         tmin, tmax = tv.min(1), tv.max(1)
@@ -829,6 +834,7 @@ class Solver:
         sh.uniform_int("adaptive", p["adaptive_init"])
         sh.uniform_int("project_init", p["project_init"])
         sh.uniform_float("air", p["air"])
+        sh.uniform_float("floor_plane", p["floor_plane"])
         sh.uniform_float("grid_origin", (*origin, cs))
         sh.uniform_int("grid_dims", (*dims.tolist(), 0))
         gpu.compute.dispatch(sh, _groups(self.n), 1, 1)
@@ -862,6 +868,7 @@ class Solver:
             sh.uniform_float("regularize", p["regularize"])
             sh.uniform_float("sew_force", p["sew_force"])
             sh.uniform_float("self_k", p["self_k"])
+            sh.uniform_float("floor_plane", p["floor_plane"])
             rho2, omega = p["chebyshev"] ** 2, 1.0
             for it in range(p["iterations"]):
                 # Chebyshev weights: 1, 2 / (2 - rho^2), then 4 / (4 - rho^2 omega)
@@ -983,6 +990,7 @@ DEFAULTS = {
     "smooth_display": 1,  # Interactive Mode shows 1/4, 1/2, 1/4 of 3 frames
     "air": 0.0,  # 1/m, quadratic drag across the surface (slows the whole cloth)
     "gravity": 1.0,
+    "floor_plane": (0.0, 0.0, 0.0, 0.0),  # normal, height of the floor; zero: none
     "max_step": 0.02,  # m per vertex update
     "regularize": 1.0,  # Hessian diagonal added, x the summed spring stiffness
     "self_k": 1.0e4,  # N/m, 0 turns self-collision off
