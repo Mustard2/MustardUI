@@ -56,6 +56,13 @@ STEEP = 1.2
 MAX_SLOPE = 1.0
 ROUGH = 0.2
 DARK = (1.5, 0.65)
+# Share of the pit the floor fills where the ground bulges, under the plates raised with it
+MOUND_FILL = 0.7
+# Share of the plates around the Colliders sliding away, how many times further, and how much
+# less tilted
+SLIDE = (0.25, 4.0, 0.15)
+# Speeds of the hits, in m/s, throwing half and three times the pebbles
+BURST = (0.5, 3.0)
 # Sizes of the rubble in the craters, in pebble sizes
 RUBBLE_SIZES = (1.5, 6.0)
 # Pebbles: share thrown from right under the Colliders, shapes, dents and flattening of the
@@ -272,6 +279,16 @@ def build_inputs(ng):
     )
     add_input(
         ng,
+        "Mound",
+        "NodeSocketFloat",
+        panel,
+        subtype="DISTANCE",
+        default_value=0.02,
+        min_value=0.0,
+        description="Height the broken mesh bulges by around the Colliders touching it",
+    )
+    add_input(
+        ng,
         "Rubble",
         "NodeSocketFloat",
         panel,
@@ -345,6 +362,30 @@ def proximity(t, target, at, x, y, element="POINTS"):
         {"Geometry": target, "Sample Position": at},
         target_element=element,
     ).outputs
+
+
+def within(t, box, margin, at, x, y):
+    """Whether the position is in the box grown by the margin, seen from above"""
+    low = separate(
+        t,
+        t.vmath("SUBTRACT", at, t.vmath("SUBTRACT", box["Min"], margin, x=x, y=y), x=x + 1, y=y),
+        x + 2,
+        y,
+    )
+    high = separate(
+        t,
+        t.vmath("SUBTRACT", t.vmath("ADD", box["Max"], margin, x=x, y=y - 1), at, x=x + 1, y=y - 1),
+        x + 2,
+        y - 1,
+    )
+    least = t.math(
+        "MINIMUM",
+        t.math("MINIMUM", low["X"], low["Y"], x=x + 3, y=y),
+        t.math("MINIMUM", high["X"], high["Y"], x=x + 3, y=y - 1),
+        x=x + 4,
+        y=y,
+    )
+    return t.math("GREATER_THAN", least, 0.0, x=x + 5, y=y)
 
 
 def boolean(t, operation, a, b, x, y):
@@ -1056,7 +1097,7 @@ def recorded(t, plates, hits, inputs, x, y):
             x + 12,
             y - 4 - i * 2,
         )
-        for i in range(2)
+        for i in range(3)
     ]
     center = t.node(
         "GeometryNodeAttributeStatistic",
@@ -1157,6 +1198,54 @@ def recorded(t, plates, hits, inputs, x, y):
         ),
         x=x + 16,
         y=y - 18,
+    )
+    # A few slide away on the mesh, flatter
+    sliding = boolean(
+        t,
+        "AND",
+        t.math("LESS_THAN", randoms[2]["X"], SLIDE[0], x=x + 15, y=y - 28),
+        t.math("GREATER_THAN", away, 0.0, x=x + 15, y=y - 29),
+        x + 16,
+        y - 28,
+    )
+    move = switch(
+        t,
+        sliding,
+        move,
+        t.vmath(
+            "ADD",
+            t.vmath(
+                "SCALE",
+                out,
+                t.math(
+                    "MULTIPLY",
+                    t.math("MULTIPLY", inputs["Scatter"], SLIDE[1], x=x + 15, y=y - 30),
+                    t.math("MULTIPLY_ADD", randoms[2]["Y"], 0.5, 0.5, x=x + 15, y=y - 31),
+                    x=x + 16,
+                    y=y - 30,
+                ),
+                x=x + 17,
+                y=y - 30,
+            ),
+            combine(
+                t,
+                x + 17,
+                y - 32,
+                Z=t.math("MULTIPLY", inputs["Thickness"], 1.1, x=x + 16, y=y - 32),
+            ),
+            x=x + 18,
+            y=y - 30,
+        ),
+        "VECTOR",
+        x + 19,
+        y - 28,
+    )
+    angle = t.math(
+        "MULTIPLY",
+        angle,
+        switch(t, sliding, 1.0, SLIDE[2], "FLOAT", x + 17, y - 34),
+        x=x + 18,
+        y=y - 34,
     )
     # Not jumping right under the Colliders
     jump = t.math(
@@ -2145,21 +2234,7 @@ def over(t, records, plates, near, colliders, inputs, raised, x, y):
         x + 16.8,
         y - 2,
     )
-    plates = t.store(
-        plates,
-        ".cracks_over",
-        "FLOAT",
-        t.node(
-            "GeometryNodeFieldMinAndMax",
-            x + 17,
-            y - 2,
-            {"Value": most, "Group ID": record},
-            data_type="FLOAT",
-            domain="POINT",
-        ).outputs["Max"],
-        x + 18,
-        y,
-    )
+    plates = t.store(plates, ".cracks_over", "FLOAT", most, x + 18, y)
     # The points of the Colliders under the top of the plates
     tops = t.node(
         "GeometryNodeSeparateGeometry",
@@ -2202,103 +2277,128 @@ def over(t, records, plates, near, colliders, inputs, raised, x, y):
         near,
         ".cracks_over",
         "FLOAT",
+        t.math("MULTIPLY", ray["Hit Distance"], ray["Is Hit"], x=x + 21, y=y - 8),
+        x + 23,
+        y - 6,
+    )
+    # The most of each plate, from the points of both grouped by their plate, after a point of
+    # value 0 for each plate, linked last to come first, at the index of its record
+    index = t.node("GeometryNodeInputIndex", x + 24, y - 12).outputs[0]
+    joined = t.node("GeometryNodeJoinGeometry", x + 27, y - 2)
+    for i, (geometry, name) in enumerate(((plates, ".cracks_record"), (near, ".cracks_under"))):
+        yy = y - 2 - i * 3
+        # Bare points, not to copy the attributes of the Colliders
+        points = t.node(
+            "GeometryNodePoints", x + 24, yy, {"Count": count(t, geometry, x + 23, yy)}
+        ).outputs[0]
+        for j, (key, data_type) in enumerate(((name, "INT"), (".cracks_over", "FLOAT"))):
+            points = t.store(
+                points,
+                ".cracks_group" if j == 0 else key,
+                data_type,
+                sample(
+                    t,
+                    geometry,
+                    t.attribute(key, data_type, x + 24, yy - 1 - j),
+                    index,
+                    data_type,
+                    x + 25,
+                    yy - 1 - j,
+                ),
+                x + 26 + j,
+                yy,
+            )
+        t.connect(points, joined.inputs[0])
+    keys = t.node(
+        "GeometryNodePoints",
+        x + 25,
+        y - 8,
+        {"Count": count(t, records, x + 24, y - 8, component="POINTCLOUD")},
+    ).outputs[0]
+    t.connect(t.store(keys, ".cracks_group", "INT", index, x + 26, y - 8), joined.inputs[0])
+    joined = t.store(
+        joined.outputs[0],
+        ".cracks_over",
+        "FLOAT",
         t.node(
             "GeometryNodeFieldMinAndMax",
-            x + 22,
-            y - 8,
+            x + 27,
+            y - 4,
             {
-                "Value": t.math("MULTIPLY", ray["Hit Distance"], ray["Is Hit"], x=x + 21, y=y - 8),
-                "Group ID": t.attribute(".cracks_under", "INT", x + 21, y - 9),
+                "Value": t.attribute(".cracks_over", "FLOAT", x + 26, y - 4),
+                "Group ID": t.attribute(".cracks_group", "INT", x + 26, y - 5),
             },
             data_type="FLOAT",
             domain="POINT",
         ).outputs["Max"],
-        x + 23,
-        y - 6,
+        x + 28,
+        y - 2,
+    )
+    return sample(
+        t,
+        joined,
+        t.attribute(".cracks_over", "FLOAT", x + 28, y - 4),
+        index,
+        "FLOAT",
+        x + 29,
+        y - 2,
     )
 
-    index = t.node("GeometryNodeInputIndex", x + 24, y - 12).outputs[0]
-    most = 0.0
-    for i, (geometry, name) in enumerate(((plates, ".cracks_record"), (near, ".cracks_under"))):
-        yy = y - 2 - i * 6
-        # Any point of the plate, as they all have its most
-        keys = t.node(
-            "GeometryNodePoints",
-            x + 25,
-            yy,
-            {
-                "Count": count(t, geometry, x + 24, yy),
-                "Position": keyed(
-                    t,
-                    sample(
-                        t,
-                        geometry,
-                        t.attribute(name, "INT", x + 23, yy - 2),
-                        t.node("GeometryNodeInputIndex", x + 23, yy - 3).outputs[0],
-                        "INT",
-                        x + 24,
-                        yy - 2,
-                    ),
-                    x + 24.5,
-                    yy - 2,
-                ),
-            },
-        ).outputs[0]
-        found = t.node(
-            "GeometryNodeSampleNearest",
-            x + 26,
-            yy,
-            {"Geometry": keys, "Sample Position": keyed(t, index, x + 25, yy - 3)},
-        ).outputs[0]
-        same = t.node(
-            "FunctionNodeCompare",
-            x + 28,
-            yy,
-            {
-                "A": sample(
-                    t, geometry, t.attribute(name, "INT", x + 26, yy - 2), found, "INT", x + 27, yy
-                ),
-                "B": index,
-            },
-            data_type="INT",
-            operation="EQUAL",
-        ).outputs[0]
-        most = t.math(
-            "MAXIMUM",
-            most,
-            t.math(
-                "MULTIPLY",
-                sample(
-                    t,
-                    geometry,
-                    t.attribute(".cracks_over", "FLOAT", x + 26, yy - 3),
-                    found,
-                    "FLOAT",
-                    x + 27,
-                    yy - 2,
-                ),
-                boolean(
-                    t,
-                    "AND",
-                    same,
-                    t.math(
-                        "GREATER_THAN", count(t, geometry, x + 27, yy - 4), 0, x=x + 28, y=yy - 4
-                    ),
-                    x + 28.5,
-                    yy,
-                ),
-                x=x + 29,
-                y=yy,
-            ),
-            x=x + 30 + i,
-            y=y - 2,
-        )
-    return most
 
-
-def pushed(t, records, plates, near, colliders, inputs, x, y):
+def pushed(t, records, plates, near, colliders, box, inputs, x, y):
     """Records with the plates under the Colliders flattened as much as needed to get under
     them, then pushed down, for good, as deep as the craters at most"""
+    # Only the faces of the plates that may get over the box of the Colliders near them, by
+    # how far their points are from the pivot, kept as the plates turn about it
+    record = t.attribute(".cracks_record", "INT", x - 8, y - 4)
+    pivot, move = (
+        sample(
+            t,
+            records,
+            t.attribute(name, "FLOAT_VECTOR", x - 8, y - 2 - i),
+            record,
+            "FLOAT_VECTOR",
+            x - 7,
+            y - 2 - i,
+        )
+        for i, name in enumerate((".cracks_pivot", ".cracks_move"))
+    )
+    reach = t.math(
+        "MULTIPLY_ADD",
+        inputs["Size"],
+        0.1,
+        t.vmath(
+            "DISTANCE",
+            t.node("GeometryNodeInputPosition", x - 6, y - 5).outputs[0],
+            pivot,
+            x=x - 4,
+            y=y - 5,
+        ),
+        x=x - 3,
+        y=y - 5,
+    )
+    center = t.vmath(
+        "ADD",
+        pivot,
+        t.vmath("MULTIPLY", move, (1.0, 1.0, 0.0), x=x - 6, y=y - 3),
+        x=x - 5,
+        y=y - 2,
+    )
+    reached = t.node(
+        "GeometryNodeFieldOnDomain",
+        x - 2,
+        y - 2,
+        {"Value": within(t, box, reach, center, x - 4, y - 2)},
+        data_type="FLOAT",
+        domain="POINT",
+    ).outputs[0]
+    plates = t.node(
+        "GeometryNodeSeparateGeometry",
+        x - 1,
+        y,
+        {"Geometry": plates, "Selection": t.math("GREATER_THAN", reached, 0.0, x=x - 1.5, y=y - 2)},
+        domain="FACE",
+    ).outputs["Selection"]
     records = t.store(
         records,
         ".cracks_over",
@@ -2402,11 +2502,25 @@ def thrown(t, new, hits, ground, inputs, x, y):
     ground there"""
     frame = t.node("GeometryNodeInputSceneTime", x - 2, y - 4).outputs["Frame"]
     seed = t.math("ADD", inputs["Seed"], frame, x=x - 1, y=y - 4)
+    hit = t.attribute(".cracks_hit", "FLOAT", x - 3, y - 6)
+    # More the harder the hit
+    burst = t.node(
+        "ShaderNodeClamp",
+        x - 1,
+        y - 6,
+        {
+            "Value": t.math(
+                "ADD", t.math("MULTIPLY", hit, hit, x=x - 2.5, y=y - 6), 0.5, x=x - 2, y=y - 6
+            ),
+            "Min": BURST[0],
+            "Max": BURST[1],
+        },
+    ).outputs[0]
     density = t.math(
         "MULTIPLY",
         t.math(
             "MULTIPLY",
-            inputs["Debris Amount"],
+            t.math("MULTIPLY", inputs["Debris Amount"], burst, x=x - 0.5, y=y - 6),
             t.attribute(".cracks_amount", "FLOAT", x - 2, y - 2),
             x=x - 1,
             y=y - 2,
@@ -2447,7 +2561,7 @@ def thrown(t, new, hits, ground, inputs, x, y):
     size = t.math(
         "MULTIPLY",
         t.math("MULTIPLY", inputs["Debris Size"], 0.5, x=x + 3, y=y - 6),
-        t.math("POWER", rand(0.6, 1.3, 1, y - 5), 2.0, x=x + 3, y=y - 5),
+        t.math("POWER", rand(0.55, 1.4, 1, y - 5), 2.5, x=x + 3, y=y - 5),
         x=x + 4,
         y=y - 5,
     )
@@ -2464,7 +2578,14 @@ def thrown(t, new, hits, ground, inputs, x, y):
                 separate(t, t.attribute(".cracks_key", "FLOAT_VECTOR", x + 3, y - 7), x + 4, y - 7)[
                     "Z"
                 ],
-                size,
+                # Over the plates as they rise, not to start under them
+                t.math(
+                    "ADD",
+                    size,
+                    t.math("ADD", inputs["Mound"], inputs["Lift"], x=x + 3.5, y=y - 9),
+                    x=x + 4,
+                    y=y - 9,
+                ),
                 x=x + 4.5,
                 y=y - 8,
             ),
@@ -2583,9 +2704,39 @@ def thrown(t, new, hits, ground, inputs, x, y):
     return points
 
 
-def fallen(t, debris, mesh, bottom, fall, dt, x, y):
-    """Pebbles falling, bouncing and coming to rest on the mesh, gone below the bottom"""
+def fallen(t, debris, mesh, bottom, fall, dt, wake, x, y):
+    """Pebbles falling, bouncing and coming to rest on the mesh, gone below the bottom, those at
+    rest left as they are away from the box of the Colliders, the mesh around the others only"""
     position = t.node("GeometryNodeInputPosition", x, y - 6).outputs[0]
+    parts = t.node(
+        "GeometryNodeSeparateGeometry",
+        x - 2,
+        y,
+        {
+            "Geometry": debris,
+            "Selection": boolean(
+                t,
+                "OR",
+                t.math(
+                    "GREATER_THAN",
+                    t.vmath(
+                        "LENGTH",
+                        t.attribute(".cracks_velocity", "FLOAT_VECTOR", x - 4, y - 2),
+                        x=x - 3,
+                        y=y - 2,
+                    ),
+                    0.0,
+                    x=x - 2.5,
+                    y=y - 2,
+                ),
+                within(t, wake[0], wake[1], position, x - 8, y - 3),
+                x - 2,
+                y - 2,
+            ),
+        },
+        domain="POINT",
+    ).outputs
+    debris = parts["Selection"]
     moving = t.vmath(
         "ADD",
         t.attribute(".cracks_velocity", "FLOAT_VECTOR", x, y - 1),
@@ -2597,7 +2748,47 @@ def fallen(t, debris, mesh, bottom, fall, dt, x, y):
         "Z"
     ]
     way = t.vmath("NORMALIZE", moving, x=x + 2, y=y - 3)
-    # Along their way, from their size back as they rest on the mesh
+    # Along their way, from their size back as they rest on the mesh, around them this step
+    box = t.node("GeometryNodeBoundBox", x + 2, y - 12, {"Geometry": debris}).outputs
+    travel = t.node(
+        "GeometryNodeAttributeStatistic",
+        x + 2,
+        y - 13,
+        {
+            "Geometry": debris,
+            "Attribute": t.math(
+                "MULTIPLY_ADD",
+                t.vmath("LENGTH", moving, x=x + 1, y=y - 13),
+                dt,
+                t.math("MULTIPLY", radius, 2.0, x=x + 1, y=y - 14),
+                x=x + 1.5,
+                y=y - 13,
+            ),
+        },
+    ).outputs["Max"]
+    mesh = t.node(
+        "GeometryNodeSeparateGeometry",
+        x + 4,
+        y - 12,
+        {
+            "Geometry": mesh,
+            "Selection": t.math(
+                "GREATER_THAN",
+                t.node(
+                    "GeometryNodeFieldOnDomain",
+                    x + 3.5,
+                    y - 13,
+                    {"Value": within(t, box, travel, position, x + 2, y - 15)},
+                    data_type="FLOAT",
+                    domain="POINT",
+                ).outputs[0],
+                0.0,
+                x=x + 3.8,
+                y=y - 13,
+            ),
+        },
+        domain="FACE",
+    ).outputs["Selection"]
     ray = t.node(
         "GeometryNodeRaycast",
         x + 5,
@@ -2622,25 +2813,21 @@ def fallen(t, debris, mesh, bottom, fall, dt, x, y):
             ),
         },
     ).outputs
-    landed = ray["Is Hit"]
-    # Towards the pebble, also for the faces hit from behind
-    normal = t.vmath(
-        "SCALE",
-        ray["Hit Normal"],
+    # Not on the faces met from behind, as from under the mesh: through them
+    normal = ray["Hit Normal"]
+    landed = boolean(
+        t,
+        "AND",
+        ray["Is Hit"],
         t.math(
-            "SIGN",
-            t.math(
-                "MULTIPLY",
-                t.vmath("DOT_PRODUCT", way, ray["Hit Normal"], x=x + 6, y=y - 8),
-                -1.0,
-                x=x + 7,
-                y=y - 8,
-            ),
-            x=x + 8,
+            "LESS_THAN",
+            t.vmath("DOT_PRODUCT", way, normal, x=x + 6, y=y - 8),
+            0.0,
+            x=x + 7,
             y=y - 8,
         ),
-        x=x + 9,
-        y=y - 7,
+        x + 8,
+        y - 7,
     )
     point = switch(
         t,
@@ -2718,7 +2905,7 @@ def fallen(t, debris, mesh, bottom, fall, dt, x, y):
     debris = t.node(
         "GeometryNodeSetPosition", x + 21, y, {"Geometry": debris, "Position": point}
     ).outputs[0]
-    return t.node(
+    debris = t.node(
         "GeometryNodeDeleteGeometry",
         x + 23,
         y,
@@ -2736,6 +2923,10 @@ def fallen(t, debris, mesh, bottom, fall, dt, x, y):
         },
         domain="POINT",
     ).outputs[0]
+    joined = t.node("GeometryNodeJoinGeometry", x + 24, y)
+    t.connect(debris, joined.inputs[0])
+    t.connect(parts["Inverted"], joined.inputs[0])
+    return joined.outputs[0]
 
 
 def pebbles(t, debris, materials, color, x, y):
@@ -2868,23 +3059,145 @@ def pebbles(t, debris, materials, color, x, y):
     return t.node("GeometryNodeGeometryToInstance", x + 13, y, {0: chips}).outputs[0]
 
 
-def floored(t, patch, old, inputs, x, y):
+def floored(t, patch, old, before, inputs, x, y):
     """Faces under the broken plates, subdivided to the Detail, with how deep the old ones were
-    pressed and whether their points are at the border, held there"""
+    pressed, touched and bulged, and whether their points are at the border, held there: the old
+    faces kept where the face of the patch they come from is still there, as it was before"""
+    size = inputs["Size"]
+    index = t.node("GeometryNodeInputIndex", x - 2, y - 1).outputs[0]
+    patch = t.store(patch, ".cracks_source", "INT", index, x - 1, y, domain="FACE")
+
+    def is_broken(xx, yy):
+        return t.math(
+            "GREATER_THAN", t.attribute(".cracks_plate", "INT", xx, yy), -0.5, x=xx + 0.5, y=yy
+        )
+
+    def same(mesh, other, xx, yy):
+        """Index of the face of the other mesh at the center of the faces, -1 if none"""
+        centers = t.node("GeometryNodeMeshToPoints", xx, yy - 1, {"Mesh": other}, mode="FACES")
+        center = face_center(t, xx, yy - 2)
+        found = t.node(
+            "GeometryNodeSampleNearest",
+            xx + 1,
+            yy - 1,
+            {"Geometry": centers.outputs[0], "Sample Position": center},
+        ).outputs[0]
+        apart = t.vmath(
+            "DISTANCE",
+            center,
+            sample(
+                t,
+                centers.outputs[0],
+                t.node("GeometryNodeInputPosition", xx + 1, yy - 3).outputs[0],
+                found,
+                "FLOAT_VECTOR",
+                xx + 2,
+                yy - 2,
+            ),
+            x=xx + 3,
+            y=yy - 2,
+        )
+        return t.store(
+            mesh,
+            ".cracks_same",
+            "INT",
+            switch(
+                t,
+                t.math(
+                    "LESS_THAN",
+                    apart,
+                    t.math("MULTIPLY", size, 1e-5, x=xx + 3, y=yy - 3),
+                    x=xx + 4,
+                    y=yy - 3,
+                ),
+                -1,
+                found,
+                "INT",
+                xx + 5,
+                yy - 2,
+            ),
+            xx + 6,
+            yy,
+            domain="FACE",
+        )
+
+    before = same(before, patch, x, y - 30)
+    patch = same(patch, before, x, y - 24)
+    same_face = t.attribute(".cracks_same", "INT", x + 7, y - 20)
+    # New where broken now but not before
+    fresh = boolean(
+        t,
+        "AND",
+        is_broken(x + 7, y - 21),
+        t.node(
+            "FunctionNodeBooleanMath",
+            x + 9,
+            y - 22,
+            {
+                0: boolean(
+                    t,
+                    "AND",
+                    t.math("GREATER_THAN", same_face, -0.5, x=x + 8, y=y - 20),
+                    t.node(
+                        "GeometryNodeSampleIndex",
+                        x + 8,
+                        y - 22,
+                        {"Geometry": before, "Value": is_broken(x + 7, y - 23), "Index": same_face},
+                        data_type="BOOLEAN",
+                        domain="FACE",
+                    ).outputs[0],
+                    x + 8.5,
+                    y - 21,
+                )
+            },
+            operation="NOT",
+        ).outputs[0],
+        x + 10,
+        y - 21,
+    )
+    # The old faces of the faces kept and still broken, pointing to them in the patch now
+    source = t.node(
+        "GeometryNodeSampleIndex",
+        x + 8,
+        y - 26,
+        {
+            "Geometry": before,
+            "Value": t.attribute(".cracks_same", "INT", x + 7, y - 27),
+            "Index": t.attribute(".cracks_source", "INT", x + 7, y - 28),
+        },
+        data_type="INT",
+        domain="FACE",
+    ).outputs[0]
+    remaining = t.node(
+        "GeometryNodeSeparateGeometry",
+        x + 10,
+        y - 26,
+        {
+            "Geometry": old,
+            "Selection": boolean(
+                t,
+                "AND",
+                t.math("GREATER_THAN", source, -0.5, x=x + 9, y=y - 27),
+                t.node(
+                    "GeometryNodeSampleIndex",
+                    x + 9,
+                    y - 29,
+                    {"Geometry": patch, "Value": is_broken(x + 8, y - 30), "Index": source},
+                    data_type="BOOLEAN",
+                    domain="FACE",
+                ).outputs[0],
+                x + 9.5,
+                y - 27,
+            ),
+        },
+        domain="FACE",
+    ).outputs["Selection"]
+    remaining = t.store(remaining, ".cracks_source", "INT", source, x + 11, y - 26, domain="FACE")
     parts = t.node(
         "GeometryNodeSeparateGeometry",
         x,
         y,
-        {
-            "Geometry": patch,
-            "Selection": t.math(
-                "GREATER_THAN",
-                t.attribute(".cracks_plate", "INT", x - 1, y - 2),
-                -0.5,
-                x=x - 0.5,
-                y=y - 2,
-            ),
-        },
+        {"Geometry": patch, "Selection": fresh},
         domain="FACE",
     ).outputs
     faces = parts["Selection"]
@@ -2923,39 +3236,50 @@ def floored(t, patch, old, inputs, x, y):
     ]
     position = t.node("GeometryNodeInputPosition", x + 2, y - 3).outputs[0]
     close = proximity(t, old, position, x + 3, y - 5, "FACES")
-    depth = t.math(
-        "MULTIPLY",
-        t.node(
-            "GeometryNodeSampleNearestSurface",
-            x + 3,
-            y - 2,
-            {
-                "Mesh": old,
-                "Value": t.attribute(".cracks_depth", "FLOAT", x + 2, y - 2),
-                "Sample Position": position,
-            },
-            data_type="FLOAT",
-        ).outputs["Value"],
-        boolean(
-            t,
-            "AND",
-            close["Is Valid"],
-            t.math(
-                "LESS_THAN",
-                close["Distance"],
-                t.math("MULTIPLY", inputs["Size"], 0.01, x=x + 3, y=y - 7),
-                x=x + 4,
-                y=y - 6,
-            ),
-            x + 5,
-            y - 5,
+    kept = boolean(
+        t,
+        "AND",
+        close["Is Valid"],
+        t.math(
+            "LESS_THAN",
+            close["Distance"],
+            t.math("MULTIPLY", inputs["Size"], 0.01, x=x + 3, y=y - 7),
+            x=x + 4,
+            y=y - 6,
         ),
-        x=x + 6,
-        y=y - 2,
+        x + 5,
+        y - 5,
     )
-    faces = t.store(faces, ".cracks_depth", "FLOAT", depth, x + 7, y)
+    # Only where on the old floor, the others not pressed yet
+    for i, name in enumerate((".cracks_depth", ".cracks_mound", ".cracks_touched")):
+        faces = t.store(
+            faces,
+            name,
+            "FLOAT",
+            t.node(
+                "GeometryNodeSampleNearestSurface",
+                x + 3,
+                y - 2 - i * 3,
+                {
+                    "Mesh": old,
+                    "Value": t.attribute(name, "FLOAT", x + 2, y - 2 - i * 3),
+                    "Sample Position": position,
+                },
+                data_type="FLOAT",
+            ).outputs["Value"],
+            x + 7 + i,
+            y,
+            selection=kept,
+        )
     # Next to the mesh not broken, as the seams between the faces are open edges too
-    edge = proximity(t, parts["Inverted"], position, x + 7, y - 3, "FACES")
+    unbroken = t.node(
+        "GeometryNodeSeparateGeometry",
+        x + 6,
+        y - 9,
+        {"Geometry": patch, "Selection": is_broken(x + 5, y - 10)},
+        domain="FACE",
+    ).outputs["Inverted"]
+    edge = proximity(t, unbroken, position, x + 7, y - 3, "FACES")
     border = boolean(
         t,
         "AND",
@@ -2970,14 +3294,103 @@ def floored(t, patch, old, inputs, x, y):
         x + 9,
         y - 3,
     )
-    return t.store(faces, ".cracks_border", "FLOAT", border, x + 10, y)
+    faces = t.store(faces, ".cracks_border", "FLOAT", border, x + 10, y)
+    # Joined to the old ones, the border again near the faces changed or newly broken, welded
+    # to them there
+    changed = t.node(
+        "GeometryNodeBoundBox",
+        x + 10,
+        y - 12,
+        {
+            "Geometry": t.node(
+                "GeometryNodeSeparateGeometry",
+                x + 9,
+                y - 12,
+                {
+                    "Geometry": patch,
+                    "Selection": boolean(
+                        t,
+                        "OR",
+                        t.math("LESS_THAN", same_face, -0.5, x=x + 8, y=y - 13),
+                        fresh,
+                        x + 8.5,
+                        y - 13,
+                    ),
+                },
+                domain="FACE",
+            ).outputs["Selection"]
+        },
+    ).outputs
+    near_change = within(
+        t, changed, t.math("MULTIPLY", size, 0.01, x=x + 10, y=y - 15), position, x + 11, y - 14
+    )
+    remaining = t.store(
+        remaining, ".cracks_border", "FLOAT", border, x + 11, y - 26, selection=near_change
+    )
+    joined = t.node("GeometryNodeJoinGeometry", x + 12, y)
+    t.connect(faces, joined.inputs[0])
+    t.connect(remaining, joined.inputs[0])
+    # At the open edges of both
+    open_edge = t.node(
+        "GeometryNodeFieldOnDomain",
+        x + 12,
+        y - 4,
+        {
+            "Value": t.math(
+                "LESS_THAN",
+                t.node("GeometryNodeInputMeshEdgeNeighbors", x + 11, y - 5).outputs[0],
+                1.5,
+                x=x + 11.5,
+                y=y - 4,
+            )
+        },
+        data_type="FLOAT",
+        domain="EDGE",
+    ).outputs[0]
+    return t.node(
+        "GeometryNodeMergeByDistance",
+        x + 13,
+        y,
+        {
+            "Geometry": joined.outputs[0],
+            "Selection": boolean(
+                t,
+                "AND",
+                near_change,
+                t.math("GREATER_THAN", open_edge, 0.0, x=x + 12.5, y=y - 4),
+                x + 12.8,
+                y - 3,
+            ),
+            "Distance": t.math("MULTIPLY", size, 1e-4, x=x + 12, y=y - 2),
+        },
+    ).outputs[0]
 
 
-def pressed(t, floor, near, colliders, inputs, x, y):
+def pressed(t, floor, near, colliders, box, inputs, x, y):
     """The floor pressed as deep as the lowest side of the Colliders in it, for good, to the Depth
-    where they go deeper"""
+    where they go deeper, flat where they touch it and bulging around, worked out on its part
+    around the box of the Colliders touching it"""
     depth = inputs["Depth"]
     position = t.node("GeometryNodeInputPosition", x, y - 2).outputs[0]
+    size = inputs["Size"]
+    spread = t.math("MULTIPLY_ADD", size, 0.1, inputs["Spread"], x=x - 2, y=y - 1)
+    # Half a size more around, for the points changed to have all their neighbors
+    cropped = within(
+        t,
+        box,
+        t.math("MULTIPLY_ADD", size, 0.5, spread, x=x - 2, y=y - 2),
+        position,
+        x - 8,
+        y - 2,
+    )
+    whole = floor
+    floor = t.node(
+        "GeometryNodeSeparateGeometry",
+        x - 1,
+        y,
+        {"Geometry": floor, "Selection": cropped},
+        domain="POINT",
+    ).outputs["Selection"]
     ray = t.node(
         "GeometryNodeRaycast",
         x + 2,
@@ -2988,7 +3401,7 @@ def pressed(t, floor, near, colliders, inputs, x, y):
                 "SUBTRACT", position, combine(t, x, y - 4, Z=depth), x=x + 1, y=y - 2
             ),
             "Ray Direction": (0.0, 0.0, 1.0),
-            "Ray Length": depth,
+            "Ray Length": t.math("ADD", depth, inputs["Contact"], x=x + 1, y=y - 5),
         },
     ).outputs
     # In the Colliders, to their side under it, where they are both over and under the point
@@ -3016,7 +3429,13 @@ def pressed(t, floor, near, colliders, inputs, x, y):
         "MAXIMUM",
         t.math(
             "MULTIPLY",
-            t.math("SUBTRACT", depth, ray["Hit Distance"], x=x + 3, y=y - 2),
+            t.math(
+                "MAXIMUM",
+                t.math("SUBTRACT", depth, ray["Hit Distance"], x=x + 3, y=y - 2),
+                0.0,
+                x=x + 3.5,
+                y=y - 2,
+            ),
             ray["Is Hit"],
             x=x + 4,
             y=y - 2,
@@ -3037,7 +3456,7 @@ def pressed(t, floor, near, colliders, inputs, x, y):
     )
     # As deep as the points around at least, for those the rays miss
     pressed = t.attribute(".cracks_depth", "FLOAT", x + 7, y - 2)
-    return t.store(
+    floor = t.store(
         floor,
         ".cracks_depth",
         "FLOAT",
@@ -3047,6 +3466,107 @@ def pressed(t, floor, near, colliders, inputs, x, y):
         x + 15,
         y,
     )
+    # Touched, and bulging within the Spread of the points touched
+    touching = boolean(
+        t,
+        "OR",
+        ray["Is Hit"],
+        boolean(t, "AND", over["Is Hit"], under["Is Hit"], x + 16, y - 6),
+        x + 17,
+        y - 4,
+    )
+    floor = t.store(floor, ".cracks_now", "BOOLEAN", touching, x + 18, y)
+    touched = t.node(
+        "GeometryNodeMeshToPoints",
+        x + 19,
+        y - 4,
+        {"Mesh": floor, "Selection": t.attribute(".cracks_now", "BOOLEAN", x + 18, y - 5)},
+        mode="VERTICES",
+    ).outputs[0]
+    around = proximity(t, touched, position, x + 20, y - 4)
+    reach = t.math("DIVIDE", around["Distance"], inputs["Spread"], x=x + 21, y=y - 4, clamp=True)
+    left = t.math("SUBTRACT", 1.0, reach, x=x + 22, y=y - 4)
+    # Rising from the points touched to a third of the way, not to step up beside them
+    bulge = t.math(
+        "MULTIPLY",
+        t.math(
+            "MULTIPLY",
+            t.math("MULTIPLY", reach, 6.75, x=x + 22, y=y - 5),
+            t.math("MULTIPLY", left, left, x=x + 23, y=y - 4),
+            x=x + 24,
+            y=y - 4,
+        ),
+        around["Is Valid"],
+        x=x + 25,
+        y=y - 4,
+    )
+    floor = t.store(
+        floor,
+        ".cracks_mound",
+        "FLOAT",
+        t.math(
+            "MAXIMUM",
+            t.attribute(".cracks_mound", "FLOAT", x + 24, y - 6),
+            bulge,
+            x=x + 25,
+            y=y - 4,
+        ),
+        x + 26,
+        y,
+        # Not where touched, nor past the Spread
+        selection=boolean(
+            t,
+            "AND",
+            within(t, box, spread, position, x + 20, y - 8),
+            t.node(
+                "FunctionNodeBooleanMath",
+                x + 25,
+                y - 8,
+                {0: t.attribute(".cracks_now", "BOOLEAN", x + 24, y - 8)},
+                operation="NOT",
+            ).outputs[0],
+            x + 26,
+            y - 8,
+        ),
+    )
+    floor = t.store(
+        floor,
+        ".cracks_touched",
+        "FLOAT",
+        t.math(
+            "MAXIMUM",
+            t.attribute(".cracks_touched", "FLOAT", x + 26, y - 6),
+            t.attribute(".cracks_now", "BOOLEAN", x + 26, y - 7),
+            x=x + 27,
+            y=y - 6,
+        ),
+        x + 28,
+        y,
+    )
+    # Back on the whole floor, the points of the part in their order
+    rank = t.node(
+        "GeometryNodeAccumulateField", x + 28, y - 4, {"Value": cropped}, data_type="INT"
+    ).outputs["Trailing"]
+    changed = within(t, box, spread, position, x + 22, y - 10)
+    for i, name in enumerate((".cracks_depth", ".cracks_mound", ".cracks_touched")):
+        whole = t.store(
+            whole,
+            name,
+            "FLOAT",
+            sample(
+                t,
+                floor,
+                t.attribute(name, "FLOAT", x + 29, y - 4 - i),
+                rank,
+                "FLOAT",
+                x + 30,
+                y - 4 - i,
+            ),
+            x + 31 + i,
+            y,
+            selection=changed,
+        )
+    return whole
 
 
 def floor_depth(t, x, y):
@@ -3062,13 +3582,84 @@ def floor_depth(t, x, y):
     )
 
 
-def cratered(t, records, floor, inputs, x, y):
+def floor_bulge(t, inputs, x, y):
+    """Share of the Mound the points of the floor bulge by: not where touched, pressed or at its
+    border"""
+    flat = t.math(
+        "MAXIMUM",
+        t.attribute(".cracks_touched", "FLOAT", x, y - 1),
+        t.math(
+            "MAXIMUM",
+            t.attribute(".cracks_border", "FLOAT", x, y - 2),
+            t.math(
+                "DIVIDE",
+                t.attribute(".cracks_depth", "FLOAT", x, y - 3),
+                inputs["Thickness"],
+                x=x + 1,
+                y=y - 3,
+                clamp=True,
+            ),
+            x=x + 2,
+            y=y - 2,
+        ),
+        x=x + 3,
+        y=y - 1,
+        clamp=True,
+    )
+    return t.math(
+        "MULTIPLY",
+        t.attribute(".cracks_mound", "FLOAT", x, y),
+        t.math("SUBTRACT", 1.0, flat, x=x + 4, y=y - 1),
+        x=x + 5,
+        y=y,
+    )
+
+
+def cratered(t, records, floor, box, inputs, x, y):
     """Records with the crater under their plates: how deep and steep it is there, how much higher
-    around for the rim, and whether too deep or steep for the plate, crushed"""
+    around for the rim, and whether too deep or steep for the plate, crushed, for those a size
+    from the floor changed"""
     size = inputs["Size"]
     pivot = t.attribute(".cracks_pivot", "FLOAT_VECTOR", x, y - 2)
     step = size
-    deep = floor_depth(t, x, y - 6)
+    reach = t.math("MULTIPLY_ADD", size, 1.1, inputs["Spread"], x=x - 2, y=y - 12)
+    # Lower in the craters, higher on the mounds, where the plate ends up, stored once where read
+    floor = t.store(
+        floor,
+        ".cracks_level",
+        "FLOAT",
+        t.math(
+            "SUBTRACT",
+            floor_depth(t, x, y - 6),
+            t.math("MULTIPLY", floor_bulge(t, inputs, x - 6, y - 9), inputs["Mound"], x=x, y=y - 9),
+            x=x + 1,
+            y=y - 6,
+        ),
+        x + 2,
+        y - 6,
+        selection=within(
+            t,
+            box,
+            t.math("ADD", reach, size, x=x - 1, y=y - 12),
+            t.node("GeometryNodeInputPosition", x - 2, y - 13).outputs[0],
+            x - 1,
+            y - 13,
+        ),
+    )
+    deep = t.attribute(".cracks_level", "FLOAT", x + 3, y - 6)
+    pivot = t.vmath(
+        "ADD",
+        pivot,
+        t.vmath(
+            "MULTIPLY",
+            t.attribute(".cracks_move", "FLOAT_VECTOR", x, y - 3),
+            (1.0, 1.0, 0.0),
+            x=x + 1,
+            y=y - 3,
+        ),
+        x=x + 2,
+        y=y - 2,
+    )
 
     def at(axes, yy):
         return t.node(
@@ -3147,6 +3738,7 @@ def cratered(t, records, floor, inputs, x, y):
         x=x + 11,
         y=y - 16,
     )
+    changed = within(t, box, reach, pivot, x + 4, y - 24)
     for i, (name, data_type, value) in enumerate(
         (
             (".cracks_sink", "FLOAT", here),
@@ -3155,12 +3747,13 @@ def cratered(t, records, floor, inputs, x, y):
             (".cracks_crushed", "FLOAT", crushed),
         )
     ):
-        records = t.store(records, name, data_type, value, x + 12 + i, y)
+        records = t.store(records, name, data_type, value, x + 12 + i, y, selection=changed)
     return records
 
 
 def crater(t, floor, inputs, x, y):
-    """The floor at the depth of the pits and of the craters, rough and dark by their depth"""
+    """The floor at the depth of the pits and of the craters, rough and dark by their depth,
+    bulging around the Colliders"""
     size = inputs["Size"]
     deep = floor_depth(t, x, y - 2)
     amount = t.math("DIVIDE", deep, size, x=x + 3, y=y - 2, clamp=True)
@@ -3205,11 +3798,32 @@ def crater(t, floor, inputs, x, y):
         y,
     )
     floor = t.store(floor, ".cracks_inner", "FLOAT", 1.0, x + 6, y, domain="FACE")
+    # Up to the plates raised with it where it bulges
+    bulge = floor_bulge(t, inputs, x, y - 12)
     low = t.math(
-        "ADD",
-        t.math("MULTIPLY_ADD", inputs["Thickness"], PIT, deep, x=x + 5, y=y - 2),
-        rough,
-        x=x + 7,
+        "SUBTRACT",
+        t.math(
+            "ADD",
+            t.math("MULTIPLY_ADD", inputs["Thickness"], PIT, deep, x=x + 5, y=y - 2),
+            rough,
+            x=x + 7,
+            y=y - 2,
+        ),
+        t.math(
+            "MULTIPLY",
+            bulge,
+            t.math(
+                "MULTIPLY_ADD",
+                inputs["Thickness"],
+                PIT * MOUND_FILL,
+                inputs["Mound"],
+                x=x + 6,
+                y=y - 12,
+            ),
+            x=x + 7,
+            y=y - 12,
+        ),
+        x=x + 7.2,
         y=y - 2,
     )
     return t.node(
@@ -3530,7 +4144,7 @@ def build_node_group():
     for i, (name, value) in enumerate(
         (
             ("Patch", patch),
-            ("Floor", floored(t, patch, state["Floor"], inputs, 70, -20)),
+            ("Floor", floored(t, patch, state["Floor"], state["Patch"], inputs, 70, -20)),
             *((k, v.outputs[0]) for k, v in joined.items()),
         )
     ):
@@ -3572,7 +4186,25 @@ def build_node_group():
         -2,
     )
     # The craters, then the plates on them
-    deeper = pressed(t, state["Floor"], everything, colliders, inputs, 4, -30)
+    # Around the parts of the Colliders low enough to touch the floor
+    box = t.node(
+        "GeometryNodeAttributeStatistic",
+        1,
+        -34,
+        {
+            "Geometry": everything,
+            "Selection": t.math(
+                "LESS_THAN",
+                t.attribute(".cracks_height", "FLOAT", -1, -35),
+                inputs["Contact"],
+                x=0,
+                y=-35,
+            ),
+            "Attribute": t.node("GeometryNodeInputPosition", 0, -36).outputs[0],
+        },
+        data_type="FLOAT_VECTOR",
+    ).outputs
+    deeper = pressed(t, state["Floor"], everything, colliders, box, inputs, 4, -30)
     state["Floor"] = switch(
         t,
         t.math("GREATER_THAN", count(t, everything, 0, -30), 0, x=1, y=-30),
@@ -3588,10 +4220,11 @@ def build_node_group():
         state["Records"],
         pushed(
             t,
-            cratered(t, state["Records"], deeper, inputs, 14, -30),
+            cratered(t, state["Records"], deeper, box, inputs, 14, -30),
             state["Plates"],
             near,
             colliders,
+            t.node("GeometryNodeBoundBox", 33, -2, {"Geometry": near}).outputs,
             inputs,
             34,
             0,
@@ -3736,15 +4369,48 @@ def build_node_group():
     debris = t.node("GeometryNodeJoinGeometry", 28, -30)
     t.connect(sim_out.outputs["Debris"], debris.inputs[0])
     t.connect(debris_in.outputs["Debris"], debris.inputs[0])
+    ground_box = t.node("GeometryNodeBoundBox", 26, -34, {"Geometry": ground}).outputs
     bottom = t.math(
         "SUBTRACT",
-        separate(
-            t, t.node("GeometryNodeBoundBox", 26, -34, {"Geometry": ground}).outputs["Min"], 27, -34
-        )["Z"],
+        separate(t, ground_box["Min"], 27, -34)["Z"],
         t.math("MULTIPLY", inputs["Size"], 10.0, x=27, y=-36),
         x=28,
         y=-34,
     )
+    # Around the parts of the Colliders the plates may get pushed by, and the plates around
+    size = inputs["Size"]
+    wake = t.node(
+        "GeometryNodeAttributeStatistic",
+        28,
+        -40,
+        {
+            "Geometry": sim_out.outputs["Colliders"],
+            "Selection": t.math(
+                "LESS_THAN",
+                separate(t, t.node("GeometryNodeInputPosition", 26, -41).outputs[0], 26.5, -41)[
+                    "Z"
+                ],
+                t.math(
+                    "ADD",
+                    separate(t, ground_box["Max"], 26, -42)["Z"],
+                    t.math(
+                        "ADD",
+                        t.math("ADD", size, inputs["Lift"], x=26, y=-43),
+                        inputs["Contact"],
+                        x=26.5,
+                        y=-43,
+                    ),
+                    x=27,
+                    y=-42,
+                ),
+                x=27.5,
+                y=-41,
+            ),
+            "Attribute": t.node("GeometryNodeInputPosition", 27, -40).outputs[0],
+        },
+        data_type="FLOAT_VECTOR",
+        domain="POINT",
+    ).outputs
     t.connect(
         fallen(
             t,
@@ -3753,6 +4419,7 @@ def build_node_group():
             bottom,
             fall,
             t.math("MULTIPLY", debris_in.outputs["Delta Time"], started, x=27, y=-32),
+            (wake, t.math("MULTIPLY_ADD", size, 3.0, inputs["Spread"], x=28, y=-44)),
             30,
             -30,
         ),

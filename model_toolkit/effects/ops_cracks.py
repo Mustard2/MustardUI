@@ -3,6 +3,7 @@ import os
 import bpy
 
 from ...model_selection.active_object import ModelMode, mustardui_active_object
+from . import ops_dust_puff
 from .effect import (
     RemoveEffect,
     add_effect_modifier,
@@ -20,6 +21,9 @@ NODE_GROUP = "MustardUI Cracks"
 TINT = "MustardUI Cracks Tint"
 RESOURCE = os.path.join(os.path.dirname(__file__), "resources", "cracks.blend")
 
+# Kind of Dust Puff of each kind of ground
+DUST = {"ASPHALT": "DUST", "CONCRETE": "DUST", "ICE": "SNOW", "EARTH": "DUST"}
+
 # Modifier inputs of each kind of ground
 PRESETS = {
     "ASPHALT": {
@@ -35,6 +39,7 @@ PRESETS = {
         "Debris Size": 0.012,
         "Detail": 0.03,
         "Rubble": 300.0,
+        "Mound": 0.02,
     },
     "CONCRETE": {
         "Size": 0.25,
@@ -50,6 +55,7 @@ PRESETS = {
         "Debris Size": 0.02,
         "Detail": 0.05,
         "Rubble": 150.0,
+        "Mound": 0.03,
     },
     "ICE": {
         "Size": 0.3,
@@ -66,6 +72,7 @@ PRESETS = {
         "Debris Size": 0.01,
         "Detail": 0.06,
         "Rubble": 60.0,
+        "Mound": 0.0,
     },
     "EARTH": {
         "Size": 0.08,
@@ -81,6 +88,7 @@ PRESETS = {
         "Debris Size": 0.007,
         "Detail": 0.02,
         "Rubble": 500.0,
+        "Mound": 0.015,
     },
 }
 
@@ -97,6 +105,7 @@ SCALING = {
     "Scatter": 1.0,
     "Debris Size": 1.0,
     "Depth": 1.0,
+    "Mound": 1.0,
     "Detail": 1.0,
     "Min Speed": 0.5,
     "Jolt": 0.25,
@@ -121,6 +130,10 @@ class MustardUI_ModelToolkit_Cracks(bpy.types.Operator):
             ("ICE", "Ice", "Large thin plates cracking far around, barely moving"),
             ("EARTH", "Earth", "Small thin plates of dry earth, with many pebbles"),
         ),
+    )
+    dust: bpy.props.BoolProperty(
+        name="Dust",
+        description="Add a Dust Puff too, for the dust kicked up where the mesh breaks",
     )
 
     @classmethod
@@ -162,6 +175,13 @@ class MustardUI_ModelToolkit_Cracks(bpy.types.Operator):
         for material in materials([ground]):
             if not shader_nodes(material, TINT):
                 tint(material, TINT)
+        dusty = any(is_effect(m, ops_dust_puff.NODE_GROUP) for m in ground.modifiers)
+        if self.dust and not dusty:
+            bpy.ops.mustardui.model_toolkit_dust_puff(kind=DUST[self.kind])
+            # From as slow hits as the Cracks
+            modifier_input(ground.modifiers[-1], "Min Speed").value = modifier_input(
+                modifier, "Min Speed"
+            ).value
 
         if not colliders:
             self.report(

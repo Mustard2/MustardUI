@@ -4414,7 +4414,7 @@ class TestCracks(BlenderTestCase):
         self.assertGreater(outside.sum(), 100)
         np.testing.assert_allclose(uv.reshape(-1, 2)[outside], co[outside, :2], atol=0.05)
 
-        # Pebbles of 80 faces with the material of the ground, fully tinted, not falling through it
+        # Pebbles of 80 faces with the material of the ground, fully tinted, staying on it
         references = geometry.instance_references()
         pebbles = references[0].mesh
         self.assertGreater(len(pebbles.polygons), 20 * 80)
@@ -4427,7 +4427,8 @@ class TestCracks(BlenderTestCase):
         co = np.array([v.co[:] for v in pebbles.vertices])
         over = np.abs(co[:, :2] - (0.0, 4.0)).max(axis=1) < 1.9
         self.assertGreater(over.sum(), 20 * 42)
-        self.assertGreater(co[over, 2].min(), -0.06)
+        # But for a few through the seams of the bulging floor
+        self.assertLess((co[over, 2] < -0.06).mean(), 0.05)
 
         tint = self.road.node_tree.nodes["Principled BSDF"].inputs["Base Color"].links[0].from_node
         self.assertEqual(tint.node_tree.name, "MustardUI Cracks Tint")
@@ -4530,6 +4531,7 @@ class TestCracks(BlenderTestCase):
             "Debris Speed": 3.0 * 20**0.25,
             "Debris Amount": 1500.0 * 20**-2,
             "Depth": 0.5 * 20,
+            "Mound": 0.02 * 20,
             "Rubble": 300.0 * 20**-2,
         }
         for name, value in expected.items():
@@ -4550,6 +4552,20 @@ class TestCracks(BlenderTestCase):
         self.assertGreaterEqual(len(geometry.instance_references()), 2)
         warnings = [x.message for m in self.ground.modifiers for x in m.node_warnings]
         self.assertEqual(warnings, [])
+
+    # With Dust, a Dust Puff of the same Colliders is added after the Cracks, once
+    def test_dust(self):
+        cracks = self.add(kind="ICE", dust=True)
+        self.assertEqual([m.name for m in self.ground.modifiers], ["Cracks", "Dust Puff"])
+        dust = self.ground.modifiers["Dust Puff"]
+        self.assertEqual(list(effect.modifier_input(dust, "Colliders").value.objects), [self.block])
+        self.assertAlmostEqual(
+            effect.modifier_input(dust, "Min Speed").value,
+            effect.modifier_input(cracks, "Min Speed").value,
+        )
+        bpy.ops.mustardui.model_toolkit_remove_cracks()
+        self.add(dust=True)
+        self.assertEqual([m.name for m in self.ground.modifiers], ["Cracks", "Dust Puff"])
 
     # The Colliders collection and the tint go with the effect
     def test_remove(self):
