@@ -55,6 +55,7 @@ class TestDisintegration(BlenderTestCase):
         self.assertFalse(bpy.ops.mustardui.model_toolkit_wet.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dirt.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_imprints.poll())
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_cracks.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_bulge.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_shrinkwrap.poll())
         self.assertFalse(bpy.ops.mustardui.model_toolkit_dust_puff.poll())
@@ -4304,6 +4305,278 @@ class TestDustPuff(BlenderTestCase):
         self.assertNotIn(name, bpy.data.collections)
         self.assertEqual(self.block.users_collection, (bpy.context.scene.collection,))
         self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_dust_puff.poll())
+
+
+@unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")
+class TestCracks(BlenderTestCase):
+    def setUp(self):
+        super().setUp()
+        configure_model(build_model())
+        self.scene = bpy.context.scene
+        # A 4 m ground away from the model, with its positions as UV map
+        mesh = bpy.data.meshes.new("Ground")
+        mesh.from_pydata([(x, y, 0.0) for y in (2, 6) for x in (-2, 2)], [], [(0, 1, 3, 2)])
+        uv = mesh.uv_layers.new(name="UVMap")
+        for loop in mesh.loops:
+            uv.data[loop.index].uv = mesh.vertices[loop.vertex_index].co.xy
+        self.road = bpy.data.materials.new("Road")
+        mesh.materials.append(self.road)
+        self.ground = new_object("Ground", mesh)
+        self.block = new_mesh_object("Block", size=0.1, z=0.0)
+        self.drop((0.0, 4.0), 1)
+        self.scene.frame_set(1)
+
+    def drop(self, at, start, sink=0.01):
+        """The 20 cm block falling at 2 m/s on the point of the ground, sinking into it 10 frames
+        from the start"""
+        bpy.context.view_layer.update()
+        self.block.rotation_euler = self.ground.rotation_euler
+        for frame in range(start, start + 20):
+            height = 0.1 - sink + max(start + 9 - frame, 0) * 2.0 / 24
+            self.block.location = self.ground.matrix_world @ Vector((*at, height))
+            self.block.keyframe_insert("location", frame=frame)
+
+    def add(self, **settings):
+        set_active(self.block)
+        self.ground.select_set(True)
+        bpy.context.view_layer.objects.active = self.ground
+        bpy.ops.mustardui.model_toolkit_cracks(**settings)
+        return self.ground.modifiers["Cracks"]
+
+    def evaluate(self, end):
+        """Evaluated geometry at the end frame, simulated from the first"""
+        for frame in range(1, end + 1):
+            self.scene.frame_set(frame)
+        return self.ground.evaluated_get(bpy.context.evaluated_depsgraph_get()).evaluated_geometry()
+
+    def faces(self, mesh):
+        """Area and center of the faces, and their color with how much they are outside"""
+        area = np.empty(len(mesh.polygons))
+        mesh.polygons.foreach_get("area", area)
+        center = np.empty(len(mesh.polygons) * 3)
+        mesh.polygons.foreach_get("center", center)
+        start = np.empty(len(mesh.polygons), dtype=np.int32)
+        mesh.polygons.foreach_get("loop_start", start)
+        color = np.empty(len(mesh.loops) * 4)
+        mesh.attributes["cracks"].data.foreach_get("color", color)
+        return area, center.reshape(-1, 3), color.reshape(-1, 4)[start]
+
+    def check_broken(self, mesh, at):
+        """The surface kept but for the cracks, the plates under the block at the points under
+        it, some pushed up around, their sides and the pits under them in the Color"""
+        area, center, color = self.faces(mesh)
+        inner = color[:, 3] < 0.5
+        self.assertGreater(area[~inner].sum(), 15.9)
+        self.assertLess(area[~inner].sum(), 15.999)
+        self.assertGreater(area[inner].sum(), 0.1)
+        co = np.array([v.co[:] for v in mesh.vertices])
+        for point in at:
+            under = np.abs(co[:, :2] - point).max(axis=1) < 0.09
+            self.assertGreater(under.sum(), 8)
+            self.assertLess(co[under, 2].max(), -0.01 + 1e-3)
+            away = np.linalg.norm(center[inner, :2] - point, axis=1)
+            self.assertLess(away.min(), 0.1)
+        self.assertGreater(co[:, 2].max(), 0.005)
+        return inner, center, color
+
+    # The ground breaks into plates where the block lands, with its UV map, throwing up pebbles
+    def test_cracks(self):
+        modifier = self.add(kind="ASPHALT")
+        colliders = effect.modifier_input(modifier, "Colliders").value
+        self.assertEqual(list(colliders.objects), [self.block])
+        self.assertIn(colliders, list(self.scene.collection.children))
+        self.assertEqual(effect.modifier_input(modifier, "Start Frame").value, 1)
+
+        geometry = self.evaluate(9)
+        self.assertEqual(len(geometry.mesh.polygons), 1)
+        self.assertEqual(geometry.instance_references(), [])
+
+        # Thrown up as it breaks
+        geometry = self.evaluate(13)
+        references = geometry.instance_references()
+        self.assertGreater(max(v.co.z for v in references[0].mesh.vertices), 0.1)
+
+        geometry = self.evaluate(30)
+        mesh = geometry.mesh
+        inner, center, color = self.check_broken(mesh, [(0.0, 4.0)])
+        # A little darker where pressed
+        self.assertLessEqual(color[inner, :3].max(), 0.04 + 1e-6)
+        self.assertGreater(color[inner, :3].min(), 0.035)
+        # Only around the block
+        self.assertLess(np.linalg.norm(center[inner, :2] - (0.0, 4.0), axis=1).max(), 0.6)
+        # The UV map of the points still on the ground, moved by the cracks at most
+        uv = np.empty(len(mesh.loops) * 2)
+        mesh.uv_layers["UVMap"].data.foreach_get("uv", uv)
+        vertex = np.empty(len(mesh.loops), dtype=np.int32)
+        mesh.loops.foreach_get("vertex_index", vertex)
+        co = np.array([v.co[:] for v in mesh.vertices])[vertex]
+        outside = np.repeat(~inner, [p.loop_total for p in mesh.polygons]) & (co[:, 2] == 0.0)
+        self.assertGreater(outside.sum(), 100)
+        np.testing.assert_allclose(uv.reshape(-1, 2)[outside], co[outside, :2], atol=0.05)
+
+        # Pebbles of 80 faces with the material of the ground, fully tinted, staying on it
+        references = geometry.instance_references()
+        pebbles = references[0].mesh
+        self.assertGreater(len(pebbles.polygons), 20 * 80)
+        self.assertEqual(pebbles.materials[0].original, self.road)
+        index = np.empty(len(pebbles.polygons), dtype=np.int32)
+        pebbles.polygons.foreach_get("material_index", index)
+        self.assertEqual(index.max(), 0)
+        _, _, color = self.faces(pebbles)
+        np.testing.assert_allclose(color[:, 3], 0.0)
+        co = np.array([v.co[:] for v in pebbles.vertices])
+        over = np.abs(co[:, :2] - (0.0, 4.0)).max(axis=1) < 1.9
+        self.assertGreater(over.sum(), 20 * 42)
+        # But for a few through the seams of the bulging floor
+        self.assertLess((co[over, 2] < -0.06).mean(), 0.05)
+
+        tint = self.road.node_tree.nodes["Principled BSDF"].inputs["Base Color"].links[0].from_node
+        self.assertEqual(tint.node_tree.name, "MustardUI Cracks Tint")
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        # Pebbles only when enabled
+        effect.modifier_input(modifier, "Debris").value = False
+        self.ground.update_tag()
+        geometry = self.evaluate(30)
+        self.assertEqual(geometry.instance_references(), [])
+
+    # A block going deep presses a crater of its shape, no deeper than the Depth, with rubble
+    def test_crater(self):
+        self.block.animation_data_clear()
+        self.drop((0.0, 4.0), 1, sink=0.15)
+        self.scene.frame_set(1)
+        modifier = self.add(kind="ASPHALT")
+        effect.modifier_input(modifier, "Debris").value = False
+        self.ground.update_tag()
+
+        def under():
+            geometry = self.evaluate(20)
+            co = np.array([v.co[:] for v in geometry.mesh.vertices])
+            return geometry, co[np.abs(co[:, :2] - (0.0, 4.0)).max(axis=1) < 0.06, 2]
+
+        geometry, height = under()
+        self.assertGreater(len(height), 8)
+        # Under the block, by the pit of the plates and the rough floor at most
+        self.assertLess(height.max(), -0.15 + 1e-3)
+        self.assertGreater(height.min(), -0.21)
+        _, _, color = self.faces(geometry.mesh)
+        self.assertLess(color[:, :3].min(), 0.03)
+        references = geometry.instance_references()
+        self.assertGreater(len(references[0].mesh.polygons), 5 * 80)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+        effect.modifier_input(modifier, "Rubble").value = 0.0
+        effect.modifier_input(modifier, "Depth").value = 0.05
+        self.ground.update_tag()
+        geometry, height = under()
+        self.assertGreater(height.min(), -0.11)
+        self.assertEqual(geometry.instance_references(), [])
+
+    # A tall block placed through the ground, not moving, presses all the ground in it
+    def test_placed(self):
+        self.block.animation_data_clear()
+        self.block.location = (0.0, 4.0, 0.0)
+        self.block.scale = (1.0, 1.0, 10.0)
+        modifier = self.add(kind="ASPHALT")
+        effect.modifier_input(modifier, "Depth").value = 0.3
+        self.ground.update_tag()
+        geometry = self.evaluate(6)
+        co = np.array([v.co[:] for v in geometry.mesh.vertices])
+        height = co[np.abs(co[:, :2] - (0.0, 4.0)).max(axis=1) < 0.06, 2]
+        self.assertGreater(len(height), 8)
+        self.assertLess(height.max(), -0.3 + 1e-3)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # A block touching the ground slower than the Min Speed does not break it
+    def test_slow(self):
+        modifier = self.add()
+        effect.modifier_input(modifier, "Min Speed").value = 3.0
+        self.ground.update_tag()
+        geometry = self.evaluate(20)
+        self.assertEqual(len(geometry.mesh.polygons), 1)
+
+    # The ground breaks again where the block lands next, without cutting the first plates again
+    def test_second_hit(self):
+        modifier = self.add(kind="CONCRETE")
+        geometry = self.evaluate(20)
+        first = len(geometry.mesh.polygons)
+        self.drop((0.7, 4.3), 21)
+        geometry = self.evaluate(40)
+        self.check_broken(geometry.mesh, [(0.0, 4.0), (0.7, 4.3)])
+        self.assertGreater(len(geometry.mesh.polygons), first * 1.5)
+        self.assertLess(len(geometry.mesh.polygons), first * 3.0)
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # A ground turned, moved and scaled breaks on the side it faces
+    def test_transformed(self):
+        self.ground.rotation_euler = (0.5, -0.3, 0.8)
+        self.ground.location = (1.0, -2.0, 0.5)
+        self.block.animation_data_clear()
+        self.drop((0.0, 4.0), 1)
+        self.scene.frame_set(1)
+        modifier = self.add(kind="ASPHALT")
+        geometry = self.evaluate(20)
+        self.check_broken(geometry.mesh, [(0.0, 4.0)])
+        self.assertEqual([x.message for x in modifier.node_warnings], [])
+
+    # A giant Collider breaks plates as large as it, with as many pebbles per hit
+    def test_giant(self):
+        self.block.scale = (170.0,) * 3
+        modifier = self.add(kind="ASPHALT")
+        expected = {
+            "Size": 0.12 * 20,
+            "Thickness": 0.025 * 20,
+            "Contact": 0.01 * 20,
+            "Min Speed": 0.05 * 20**0.5,
+            "Debris Speed": 3.0 * 20**0.25,
+            "Debris Amount": 1500.0 * 20**-2,
+            "Depth": 0.5 * 20,
+            "Mound": 0.02 * 20,
+            "Rubble": 300.0 * 20**-2,
+        }
+        for name, value in expected.items():
+            self.assertAlmostEqual(
+                effect.modifier_input(modifier, name).value, value, places=4, msg=name
+            )
+
+    # The Dust Puff goes after the Cracks, and takes its pebbles without warnings
+    def test_with_dust_puff(self):
+        set_active(self.block)
+        self.ground.select_set(True)
+        bpy.context.view_layer.objects.active = self.ground
+        bpy.ops.mustardui.model_toolkit_dust_puff(kind="DUST")
+        self.add(kind="ASPHALT")
+        self.assertEqual([m.name for m in self.ground.modifiers], ["Cracks", "Dust Puff"])
+        geometry = self.evaluate(20)
+        self.assertIsNotNone(geometry.volume)
+        self.assertGreaterEqual(len(geometry.instance_references()), 2)
+        warnings = [x.message for m in self.ground.modifiers for x in m.node_warnings]
+        self.assertEqual(warnings, [])
+
+    # With Dust, a Dust Puff of the same Colliders is added after the Cracks, once
+    def test_dust(self):
+        cracks = self.add(kind="ICE", dust=True)
+        self.assertEqual([m.name for m in self.ground.modifiers], ["Cracks", "Dust Puff"])
+        dust = self.ground.modifiers["Dust Puff"]
+        self.assertEqual(list(effect.modifier_input(dust, "Colliders").value.objects), [self.block])
+        self.assertAlmostEqual(
+            effect.modifier_input(dust, "Min Speed").value,
+            effect.modifier_input(cracks, "Min Speed").value,
+        )
+        bpy.ops.mustardui.model_toolkit_remove_cracks()
+        self.add(dust=True)
+        self.assertEqual([m.name for m in self.ground.modifiers], ["Cracks", "Dust Puff"])
+
+    # The Colliders collection and the tint go with the effect
+    def test_remove(self):
+        modifier = self.add()
+        name = effect.modifier_input(modifier, "Colliders").value.name
+        bpy.ops.mustardui.model_toolkit_remove_cracks()
+        self.assertNotIn("Cracks", self.ground.modifiers)
+        self.assertNotIn(name, bpy.data.collections)
+        self.assertEqual(self.block.users_collection, (self.scene.collection,))
+        self.assertFalse(self.road.node_tree.nodes["Principled BSDF"].inputs[0].is_linked)
+        self.assertFalse(bpy.ops.mustardui.model_toolkit_remove_cracks.poll())
 
 
 @unittest.skipUnless(effect.effects_available(), "Needs Blender 5.2")

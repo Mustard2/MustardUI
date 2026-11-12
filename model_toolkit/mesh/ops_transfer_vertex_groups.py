@@ -32,124 +32,40 @@ def transfer_vertex_groups(context, source, names, target, written, settings):
 
 
 class MustardUI_ModelToolkit_TransferVertexGroups_Item(bpy.types.PropertyGroup):
-    group_name: bpy.props.StringProperty(name="Vertex Group")
+    use: bpy.props.BoolProperty(name="Transfer", default=True)
 
 
 class MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        layout.label(text=item.group_name, icon="GROUP_VERTEX")
+        row = layout.row(align=True)
+        row.prop(item, "use", text="")
+        row.label(text=item.name, icon="GROUP_VERTEX")
 
 
-class MustardUI_ModelToolkit_TransferVertexGroups_Add(bpy.types.Operator):
-    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_add"
-    bl_label = "Add Vertex Group"
+class MustardUI_ModelToolkit_TransferVertexGroups_Select(bpy.types.Operator):
+    """Select or deselect all the Vertex Groups in the list"""
 
-    vg_name: bpy.props.StringProperty(name="Vertex Group")
+    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_select"
+    bl_label = "Select Vertex Groups"
+
+    use: bpy.props.BoolProperty(default=True)
 
     def execute(self, context):
-        wm = context.window_manager
-
-        vg_name = self.vg_name.strip()
-        if not vg_name:
-            self.report({"WARNING"}, "MustardUI - Type a vertex group name first")
-            return {"CANCELLED"}
-
-        items = wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
-        if any(item.group_name == vg_name for item in items):
-            self.report({"WARNING"}, "MustardUI - Vertex group already in list")
-            return {"CANCELLED"}
-
-        items.add().group_name = vg_name
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = len(items) - 1
+        for item in context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items:
+            item.use = self.use
         return {"FINISHED"}
 
 
-class MustardUI_ModelToolkit_TransferVertexGroups_Remove(bpy.types.Operator):
-    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_remove"
-    bl_label = "Remove Vertex Group"
-
-    def execute(self, context):
-        wm = context.window_manager
-
-        if wm.MustardUI_ModelToolkit_TransferVertexGroups_Items:
-            wm.MustardUI_ModelToolkit_TransferVertexGroups_Items.remove(
-                wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex
-            )
-            wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = max(
-                0, wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex - 1
-            )
-
-        return {"FINISHED"}
-
-
-class MustardUI_ModelToolkit_TransferVertexGroups_Clear(bpy.types.Operator):
-    """Remove all the Vertex Groups from the list"""
-
-    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_clear"
-    bl_label = "Clear Vertex Groups"
-
-    def execute(self, context):
-        wm = context.window_manager
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_Items.clear()
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = 0
-        return {"FINISHED"}
-
-
-def mustardui_transfer_vertex_groups_add_items(wm, vg_names):
-    """Add the vertex group names to the transfer list, skipping the ones already added"""
-
-    items = wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
-    already_added = {item.group_name for item in items}
-
-    added = 0
-    for vg_name in vg_names:
-        if vg_name in already_added:
-            continue
-        items.add().group_name = vg_name
-        already_added.add(vg_name)
-        added += 1
-
-    wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = max(0, len(items) - 1)
-
-    return added
-
-
-class MustardUI_ModelToolkit_TransferVertexGroups_AddAll(bpy.types.Operator):
-    """Add all the Vertex Groups of the Active Object to the list"""
-
-    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_add_all"
-    bl_label = "All Groups"
-
-    def execute(self, context):
-        obj = context.active_object
-
-        if obj is None or obj.type != "MESH":
-            self.report({"WARNING"}, "MustardUI - Active Object must be a Mesh")
-            return {"CANCELLED"}
-
-        added = mustardui_transfer_vertex_groups_add_items(
-            context.window_manager, [vg.name for vg in obj.vertex_groups]
-        )
-
-        if not added:
-            self.report({"WARNING"}, "MustardUI - No Vertex Group to add")
-            return {"CANCELLED"}
-
-        self.report({"INFO"}, f"MustardUI - {added} Vertex Groups added")
-
-        return {"FINISHED"}
-
-
-class MustardUI_ModelToolkit_TransferVertexGroups_AddBones(bpy.types.Operator):
-    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_add_bones"
-    bl_label = "From Bones"
+class MustardUI_ModelToolkit_TransferVertexGroups_SelectBones(bpy.types.Operator):
+    bl_idname = "mustardui.model_toolkit_transfer_vertex_groups_select_bones"
+    bl_label = "Selected Bones"
 
     deform: bpy.props.BoolProperty(name="Deform", description="Use the deform bones")
 
     @classmethod
     def description(cls, context, properties):
         bones = "deform" if properties.deform else "selected"
-        return f"Add the Vertex Groups of the Active Object corresponding to the {bones} bones"
+        return f"Select only the Vertex Groups of the {bones} bones"
 
     def execute(self, context):
         obj = context.active_object
@@ -168,32 +84,23 @@ class MustardUI_ModelToolkit_TransferVertexGroups_AddBones(bpy.types.Operator):
 
         # Selection is on the pose bones since Blender 5.0
         pose_select = bpy.app.version >= (5, 0, 0)
-        bones = list(
-            dict.fromkeys(
-                bone.name
-                for armature in armatures
-                for bone in armature.pose.bones
-                if (
-                    bone.bone.use_deform
-                    if self.deform
-                    else (bone if pose_select else bone.bone).select
-                )
-                and bone.name in obj.vertex_groups
+        bones = {
+            bone.name
+            for armature in armatures
+            for bone in armature.pose.bones
+            if (
+                bone.bone.use_deform if self.deform else (bone if pose_select else bone.bone).select
             )
-        )
+        }
 
-        if not bones:
+        items = context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        if not any(item.name in bones for item in items):
             kind = "deform" if self.deform else "selected"
             self.report({"WARNING"}, f"MustardUI - No Vertex Group found for the {kind} bones")
             return {"CANCELLED"}
 
-        added = mustardui_transfer_vertex_groups_add_items(context.window_manager, bones)
-
-        if not added:
-            self.report({"WARNING"}, "MustardUI - No Vertex Group to add")
-            return {"CANCELLED"}
-
-        self.report({"INFO"}, f"MustardUI - {added} Vertex Groups added")
+        for item in items:
+            item.use = item.name in bones
 
         return {"FINISHED"}
 
@@ -204,11 +111,6 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
     bl_idname = "mustardui.model_toolkit_transfer_vertex_groups"
     bl_label = "Transfer Vertex Groups"
     bl_options = {"UNDO"}
-
-    search_group: bpy.props.StringProperty(
-        name="Vertex Group",
-        description="Vertex Group to transfer from active to selected Objects",
-    )
 
     max_distance: bpy.props.FloatProperty(
         name="Max Distance",
@@ -281,7 +183,6 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
         wm = context.window_manager
         layout = self.layout
 
-        # UIList showing selected vertex groups
         row = layout.row()
         row.template_list(
             "MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups",
@@ -290,46 +191,27 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             "MustardUI_ModelToolkit_TransferVertexGroups_Items",
             wm,
             "MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex",
-            rows=4,
+            rows=8,
         )
 
-        # Remove buttons
-        col = row.column(align=True)
-        col.operator(
-            "mustardui.model_toolkit_transfer_vertex_groups_remove",
-            icon="REMOVE",
-            text="",
+        row = layout.row()
+        sub = row.row(align=True)
+        sub.operator(
+            "mustardui.model_toolkit_transfer_vertex_groups_select",
+            text="All",
+            icon="CHECKBOX_HLT",
+        ).use = True
+        sub.operator(
+            "mustardui.model_toolkit_transfer_vertex_groups_select",
+            text="None",
+            icon="CHECKBOX_DEHLT",
+        ).use = False
+        sub = row.row(align=True)
+        sub.operator(
+            "mustardui.model_toolkit_transfer_vertex_groups_select_bones", icon="BONE_DATA"
         )
-        col.separator()
-        col.operator("mustardui.model_toolkit_transfer_vertex_groups_clear", icon="X", text="")
-
-        layout.separator()
-
-        # Search field + add button
-        row = layout.row(align=True)
-        row.prop_search(
-            self,
-            "search_group",
-            context.active_object,
-            "vertex_groups",
-            text="",
-            icon="GROUP_VERTEX",
-        )
-        op = row.operator("mustardui.model_toolkit_transfer_vertex_groups_add", text="", icon="ADD")
-        op.vg_name = self.search_group
-
-        # Bulk add buttons
-        row = layout.row(align=True)
-        row.operator(
-            "mustardui.model_toolkit_transfer_vertex_groups_add_all",
-            icon="GROUP_VERTEX",
-        )
-        row.operator(
-            "mustardui.model_toolkit_transfer_vertex_groups_add_bones",
-            icon="BONE_DATA",
-        )
-        row.operator(
-            "mustardui.model_toolkit_transfer_vertex_groups_add_bones",
+        sub.operator(
+            "mustardui.model_toolkit_transfer_vertex_groups_select_bones",
             text="Deform Bones",
             icon="MOD_ARMATURE",
         ).deform = True
@@ -360,14 +242,11 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Active Object must be a Mesh")
             return {"CANCELLED"}
 
-        # The listed Vertex Groups found on the source
-        names = list(
-            dict.fromkeys(
-                item.group_name
-                for item in wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
-                if item.group_name in source.vertex_groups
-            )
-        )
+        items = wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
+        names = [item.name for item in items if item.use and item.name in source.vertex_groups]
+        # Transfer all the Vertex Groups when called from scripts
+        if not len(items):
+            names = [vg.name for vg in source.vertex_groups]
         if not names:
             self.report({"ERROR"}, "MustardUI - No Vertex Groups to transfer")
             return {"CANCELLED"}
@@ -442,32 +321,24 @@ class MustardUI_ModelToolkit_TransferVertexGroups(bpy.types.Operator):
             self.report({"ERROR"}, "MustardUI - Active Object must be a Mesh")
             return {"CANCELLED"}
 
-        # Remove the listed Vertex Groups not found on the source
+        # Keep the previous choices for the Vertex Groups still there
         items = wm.MustardUI_ModelToolkit_TransferVertexGroups_Items
-        for i in reversed(range(len(items))):
-            if items[i].group_name not in source.vertex_groups:
-                items.remove(i)
+        previous = {item.name: item.use for item in items}
+        items.clear()
+        for vg in source.vertex_groups:
+            item = items.add()
+            item.name = vg.name
+            item.use = previous.get(vg.name, True)
+        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = 0
 
-        # Index in the list
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = max(
-            0,
-            min(
-                wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex,
-                len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items) - 1,
-            ),
-        )
-
-        return context.window_manager.invoke_props_dialog(self)
+        return context.window_manager.invoke_props_dialog(self, width=350)
 
 
 def register():
     bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Item)
     bpy.utils.register_class(MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups)
-    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Add)
-    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Remove)
-    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Clear)
-    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_AddAll)
-    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_AddBones)
+    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_Select)
+    bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups_SelectBones)
     bpy.utils.register_class(MustardUI_ModelToolkit_TransferVertexGroups)
 
     bpy.types.WindowManager.MustardUI_ModelToolkit_TransferVertexGroups_Items = (
@@ -483,10 +354,7 @@ def unregister():
     del bpy.types.WindowManager.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex
 
     bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups)
-    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_AddBones)
-    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_AddAll)
-    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Clear)
-    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Remove)
-    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Add)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_SelectBones)
+    bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Select)
     bpy.utils.unregister_class(MUSTARDUI_UL_ModelToolkit_UIList_TransferVertexGroups)
     bpy.utils.unregister_class(MustardUI_ModelToolkit_TransferVertexGroups_Item)
