@@ -549,6 +549,8 @@ class Solver:
 
         self.follow_target = pos.copy()
         self.follow_active = False
+        self.follow_scale = np.ones(n)  # Follow Body let go around pulled Pin Empties
+        self.soft_k, self.soft_target = np.zeros(n), pos.copy()  # Pin Empties' Soft Radius
         self.group_pins = pins.copy()
         self.pins = pins.copy()  # per vertex, fixed at pin_pos
         self.pin_pos = pos.copy()
@@ -703,7 +705,15 @@ class Solver:
         k = self.fabric("follow") * 1000.0
         if self.follow_active and np.any(k > 0):
             at[:, :3] = self.follow_target
-            at[:, 3] = k
+            at[:, 3] = k * self.follow_scale
+        # Soft pins add their springs: two springs on a vertex make one at their weighted target
+        soft = self.soft_k > 0
+        if np.any(soft):
+            ks, kf = self.soft_k[soft], at[soft, 3]
+            at[soft, :3] = (kf[:, None] * at[soft, :3] + ks[:, None] * self.soft_target[soft]) / (
+                kf + ks
+            )[:, None]
+            at[soft, 3] = kf + ks
         at[self.pins, :3] = self.pin_pos[self.pins]
         at[self.pins, 3] = -1.0
         if self.drag is not None:
@@ -1160,6 +1170,7 @@ def place_result_modifier(obj, sim_mesh):
 # Collider modifiers deforming it beyond its Armature, e.g. MustardUI physics cages (Surface Deform)
 BODY_DEFORMERS = {"SURFACE_DEFORM", "MESH_DEFORM", "LATTICE", "HOOK", "CLOTH", "SOFT_BODY"}
 
+SOFT_PIN_K = 1000.0  # N/m of the springs in the Soft Radius of a Pin Empty
 SIMS = {}  # cloth object name -> Cloth, all simulated together in WORLD
 WORLD = {"world": None}
 
@@ -1180,7 +1191,7 @@ class Cloth:
         mod.show_viewport = mod.show_render = True
         (self.rest, self.edges, self.polys), ev, me = evaluated_up_to(context, obj, mod)
         # Pinned: weighted above 0.5 in the pin group or in the group of a Pin Empty
-        names = [pin_group] + [g for _, g in empties]
+        names = [pin_group] + [g for _, g, _ in empties]
         index = {obj.vertex_groups[g].index: g for g in names if g in obj.vertex_groups}
         weighted = {g: np.zeros(len(self.rest), bool) for g in index.values()}
         for v in me.vertices:
@@ -1189,7 +1200,8 @@ class Cloth:
                     weighted[index[g.group]][v.index] = True
         self.group_pins = weighted.get(pin_group, np.zeros(len(self.rest), bool))
         self.pins = self.group_pins.copy()
-        self.empty_pins = [(e, np.flatnonzero(weighted[g])) for e, g in empties if g in weighted]
+        self.empty_pins = [(e, np.flatnonzero(weighted[g])) for e, g, _ in empties if g in weighted]
+        self.soft = {e: r for e, _, r in empties}  # Soft Radius of each Pin Empty
         for _, idx in self.empty_pins:
             self.pins[idx] = True
         ev.to_mesh_clear()
@@ -1364,15 +1376,26 @@ class World:
         cloth.pin_bind = (idx, *surface_bind(self.solver.pin_pos[idx], verts, tris))
 
     def bind_empties(self, pos):
-        """Pin Empties: their vertices kept where they are in each Empty's space"""
+        """Pin Empties: their vertices kept where they are in each Empty's space; the ones in the
+        Soft Radius follow a share of its motion, all of it at the Empty, none at the radius"""
         self.empty_bind = []
+        self.solver.soft_k = np.zeros(self.solver.n)
         for c in self.cloths:
-            for name, idx in c.empty_pins:
+            for name, pinned in c.empty_pins:
                 empty = bpy.data.objects.get(name)
-                if empty is not None and len(idx):
-                    inv = np.linalg.inv(np.array(empty.matrix_world))
-                    local = pos[idx + c.span.start] @ inv[:3, :3].T + inv[:3, 3]
-                    self.empty_bind.append([name, idx + c.span.start, local, None])
+                if empty is not None and len(pinned):
+                    m, r = np.array(empty.matrix_world), c.soft.get(name, 0.0)
+                    d = np.linalg.norm(pos[c.span] - m[:3, 3], axis=1)
+                    soft = np.flatnonzero(d < r)
+                    t = 1 - d[soft] / max(r, 1e-9)
+                    idx = np.concatenate([pinned, soft]) + c.span.start
+                    inv = np.linalg.inv(m)
+                    local = pos[idx] @ inv[:3, :3].T + inv[:3, 3]
+                    # Not pulled, they keep their offset to the skinned shape
+                    soft += c.span.start
+                    offset = pos[soft] - self.solver.follow_target[soft]
+                    share = t * t * (3 - 2 * t)
+                    self.empty_bind.append([name, idx, local, None, len(pinned), share, offset])
 
     def set_pin_empty(self, cloth, name, idx):
         """New vertices of a Pin Empty (its cloth's), pinned where they are now"""
@@ -1396,11 +1419,32 @@ class World:
             empty = bpy.data.objects.get(bind[0])
             m = np.array(empty.matrix_world) if empty is not None else None
             if m is not None and (force or bind[3] is None or not np.array_equal(m, bind[3])):
-                self.solver.pin_pos[bind[1]] = bind[2] @ m[:3, :3].T + m[:3, 3]
+                _, idx, local, _, n, share, offset = bind
                 bind[3] = m
+                world, sv = local @ m[:3, :3].T + m[:3, 3], self.solver
+                sv.pin_pos[idx[:n]] = world[:n]
+                base = sv.follow_target[idx[n:]] + offset
+                sv.soft_target[idx[n:]] = base + share[:, None] * (world[n:] - base)
+                sv.soft_k[idx[n:]] = SOFT_PIN_K
                 moved = True
         if moved:
+            self.release_follow()
             self.solver.upload_attach()
+
+    def release_follow(self):
+        """Follow Body lets go around Pin Empties pulled off the skinned shape, as far as pulled"""
+        sv = self.solver
+        sv.follow_scale = np.ones(sv.n)
+        target = sv.follow_target
+        for _, bound, _, _, n, _, _ in self.empty_bind:
+            idx = bound[:n]
+            pull = np.linalg.norm((sv.pin_pos[idx] - target[idx]).mean(0))
+            if pull < 1e-4:
+                continue
+            center = target[idx].mean(0)
+            reach = np.linalg.norm(target[idx] - center, axis=1).max()
+            t = np.clip((np.linalg.norm(target - center, axis=1) - reach - pull) / pull, 0.0, 1.0)
+            sv.follow_scale = np.minimum(sv.follow_scale, t * t * (3 - 2 * t))
 
     def update_pins(self, cloth):
         """Move the bound pins with the Target Object's current shape."""

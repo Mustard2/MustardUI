@@ -18,6 +18,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth(ModelToolkitSection, bpy.types.Panel
         sc = context.scene.MustardUI_ClothScene
         cloths = cloth_objects(context)
         obj = context.active_object
+        active = active_cloth(context)
         if not cloths:
             row = layout.row()
             row.scale_y = 1.4
@@ -35,13 +36,13 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth(ModelToolkitSection, bpy.types.Panel
 
         col = layout.column(align=True)
         for o in cloths:
-            icon = "RADIOBUT_ON" if o == context.active_object else "RADIOBUT_OFF"
+            icon = "RADIOBUT_ON" if o == active else "RADIOBUT_OFF"
             row = col.row(align=True)
             row.operator(
                 "mustardui.model_toolkit_cloth_select",
                 text=o.name,
                 icon=icon,
-                emboss=o == context.active_object,
+                emboss=o == active,
             ).name = o.name
             row.operator("mustardui.model_toolkit_cloth_remove", text="", icon="X").name = o.name
         if obj and obj.type == "MESH" and not obj.MustardUI_Cloth.enabled:
@@ -140,7 +141,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth_Selected(SelectedClothSubPanel, bpy.
 
     def draw(self, context):
         layout = self.layout
-        obj = context.active_object
+        obj = active_cloth(context)
         st = obj.MustardUI_Cloth
         row = layout.row(align=True)
         row.operator("mustardui.model_toolkit_cloth_reset", icon="FILE_REFRESH").all = False
@@ -165,7 +166,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth_Fabric(SelectedClothSubPanel, bpy.ty
 
     def draw(self, context):
         layout = self.layout
-        st = context.active_object.MustardUI_Cloth
+        st = active_cloth(context).MustardUI_Cloth
         layout.prop(st, "material", text="Preset")
         col = layout.column(align=True)
         for name in ("stretch", "shear", "bend", "density", "friction", "damping"):
@@ -176,11 +177,11 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth_Collision(SelectedClothSubPanel, bpy
     bl_label = "Collision"
 
     def draw_header(self, context):
-        self.layout.prop(context.active_object.MustardUI_Cloth, "collision", text="")
+        self.layout.prop(active_cloth(context).MustardUI_Cloth, "collision", text="")
 
     def draw(self, context):
         layout = self.layout
-        st = context.active_object.MustardUI_Cloth
+        st = active_cloth(context).MustardUI_Cloth
         layout.active = st.collision
         layout.prop(st, "collider")
         layout.prop(st, "thickness")
@@ -219,7 +220,7 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth_Pinning(SelectedClothSubPanel, bpy.t
 
     def draw(self, context):
         layout = self.layout
-        obj = context.active_object
+        obj = active_cloth(context)
         layout.prop_search(obj.MustardUI_Cloth, "pin_group", obj, "vertex_groups", text="Group")
         layout.prop(obj.MustardUI_Cloth, "pin_target", text="Follow")
         layout.prop(obj.MustardUI_Cloth, "follow", slider=True)
@@ -245,11 +246,11 @@ class PANEL_PT_MustardUI_ModelToolkit_Cloth_Sewing(SelectedClothSubPanel, bpy.ty
     bl_options = {"DEFAULT_CLOSED"}
 
     def draw_header(self, context):
-        self.layout.prop(context.active_object.MustardUI_Cloth, "sewing", text="")
+        self.layout.prop(active_cloth(context).MustardUI_Cloth, "sewing", text="")
 
     def draw(self, context):
         layout = self.layout
-        layout.active = context.active_object.MustardUI_Cloth.sewing
+        layout.active = active_cloth(context).MustardUI_Cloth.sewing
         layout.prop(context.scene.MustardUI_ClothScene, "sew_force")
 
 

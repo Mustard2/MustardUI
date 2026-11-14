@@ -131,6 +131,15 @@ def pin_radius_update(self, context):
         world.set_pin_empty(cloth, empty.name, sim_idx)
 
 
+def pin_soft_update(self, context):
+    """The cloth within the Soft Radius is pulled by the Empty, at once"""
+    cloth, world = solver.SIMS.get(self.id_data.name), solver.WORLD["world"]
+    if cloth is not None and world is not None and self.empty is not None:
+        cloth.soft[self.empty.name] = self.soft_radius
+        world.bind_empties(world.pos)
+        world.update_empties(force=True)
+
+
 class MustardUI_ModelToolkit_ClothPinEmpty(bpy.types.PropertyGroup):
     """Vertices pinned to an Empty: they follow its animation"""
 
@@ -145,6 +154,15 @@ class MustardUI_ModelToolkit_ClothPinEmpty(bpy.types.PropertyGroup):
         min=0.001,
         subtype="DISTANCE",
         update=pin_radius_update,
+    )
+    soft_radius: bpy.props.FloatProperty(
+        name="Soft Radius",
+        description="Cloth within this distance of the Empty is pulled along by springs, softer "
+        "farther out (0: off)",
+        default=0.0,
+        min=0.0,
+        subtype="DISTANCE",
+        update=pin_soft_update,
     )
 
 
@@ -363,7 +381,7 @@ def build_world(context):
     cloths = []
     for o in objs:
         st = o.MustardUI_Cloth
-        empties = [(x.empty.name, x.group) for x in st.pin_empties if x.empty]
+        empties = [(x.empty.name, x.group, x.soft_radius) for x in st.pin_empties if x.empty]
         cloths.append(
             solver.Cloth(
                 context, o, st.pin_group, fabric_params(st), st.pin_target, st.sim_mesh, empties
@@ -415,7 +433,18 @@ def rebuild_report(op, context):
 
 
 def active_cloth(context):
+    """The active cloth, or the cloth of the active Pin Empty"""
     obj = context.active_object
+    if obj and obj.type == "EMPTY":
+        empty = obj
+        obj = next(
+            (
+                o
+                for o in cloth_objects(context)
+                if any(x.empty == empty for x in o.MustardUI_Cloth.pin_empties)
+            ),
+            None,
+        )
     return obj if obj and obj.type == "MESH" and obj.MustardUI_Cloth.enabled else None
 
 

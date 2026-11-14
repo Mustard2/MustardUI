@@ -155,6 +155,18 @@ class TestCloth(BlenderTestCase):
         pinned = world.empty_bind[0][1]
         lift = world.cache[20][0][pinned, 2] - world.cache[1][0][pinned, 2]
         self.assertTrue(np.allclose(lift, 0.15, atol=0.002))
+        # Follow Body lets go around the pull: the cloth next to the pin is lifted too
+        rest = world.cache[1][0]
+        near = np.abs(np.linalg.norm(rest - rest[pinned].mean(0), axis=1) - 0.15) < 0.01
+        lift = (world.cache[20][0][near, 2] - rest[near, 2]).mean()
+        self.assertGreater(lift, 0.07)
+        # The Soft Radius pulls a share of the Empty's motion, none past it
+        far = np.abs(np.linalg.norm(rest - rest[pinned].mean(0), axis=1) - 0.25) < 0.01
+        self.assertGreater((world.cache[20][0][far, 2] - rest[far, 2]).mean(), 0.02)
+        item.soft_radius = 0.2
+        bpy.ops.mustardui.model_toolkit_cloth_bake()
+        soft = solver.WORLD["world"].cache[20][0]
+        self.assertLess((soft[far, 2] - rest[far, 2]).mean(), 0.01)
 
         bpy.ops.mustardui.model_toolkit_cloth_remove_pin_empty()
         self.assertEqual(len(sheet.MustardUI_Cloth.pin_empties), 0)

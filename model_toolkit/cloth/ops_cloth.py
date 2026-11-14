@@ -45,10 +45,10 @@ class MustardUI_ModelToolkit_ClothDisable(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return not STATE["running"] and context.active_object
+        return not STATE["running"] and active_cloth(context)
 
     def execute(self, context):
-        obj = context.active_object
+        obj = active_cloth(context)
         obj.MustardUI_Cloth.enabled = False
         mod = obj.modifiers.get(solver.RESULT_MOD)
         if mod:
@@ -66,7 +66,7 @@ class MustardUI_ModelToolkit_ClothReset(bpy.types.Operator):
 
     def execute(self, context):
         world = solver.WORLD["world"]
-        obj = context.active_object
+        obj = active_cloth(context)
         if world and (self.all or (obj and obj.name in solver.SIMS)):
             world.reset(None if self.all else solver.SIMS[obj.name])
             world.cache.clear()
@@ -96,14 +96,11 @@ class MustardUI_ModelToolkit_ClothSaveShapeKey(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (
-            not STATE["running"]
-            and context.active_object
-            and context.active_object.name in solver.SIMS
-        )
+        obj = active_cloth(context)
+        return not STATE["running"] and obj is not None and obj.name in solver.SIMS
 
     def execute(self, context):
-        obj = context.active_object
+        obj = active_cloth(context)
         try:
             key = solver.WORLD["world"].save_shape_key(context, solver.SIMS[obj.name])
         except ValueError as e:
@@ -127,7 +124,7 @@ class MustardUI_ModelToolkit_ClothRemove(bpy.types.Operator):
         return not STATE["running"]
 
     def execute(self, context):
-        obj = bpy.data.objects.get(self.name) if self.name else context.active_object
+        obj = bpy.data.objects.get(self.name) if self.name else active_cloth(context)
         if obj is None:
             return {"CANCELLED"}
         obj.MustardUI_Cloth.enabled = False
