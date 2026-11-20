@@ -25,7 +25,8 @@ def text_of(arm):
     # Reading the pointer with RNA would store an empty one on the armature
     props = system_properties(arm)
     text = props.get("MustardUI_data") if props is not None else None
-    if text is None and arm.library is not None:
+    # Linked armatures can also have an empty one, e.g. saved by Blender 4
+    if not isinstance(text, bpy.types.Text) and arm.library is not None:
         name = arm.name_full
         owned = (x for x in bpy.data.texts if (system_properties(x) or {}).get(_OWNER) == name)
         text = next(owned, None)
