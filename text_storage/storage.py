@@ -14,6 +14,10 @@ _armatures = 0
 _EVALUATED = "MustardUI_evaluated"
 # Drivers keep the armature as target, as the undo can keep them pointing to a removed Text
 _THROUGH_TEXT = "MustardUI_data."
+# Name of the linked armature of a Text: linked data must not point to local data, which undo frees
+_OWNER = "MustardUI_armature"
+# Settings moved from linked armatures by session_uid, as undo and purge can remove their Text
+_linked = {}
 
 
 def text_of(arm):
@@ -21,6 +25,11 @@ def text_of(arm):
     # Reading the pointer with RNA would store an empty one on the armature
     props = system_properties(arm)
     text = props.get("MustardUI_data") if props is not None else None
+    # Linked armatures can also have an empty one, e.g. saved by Blender 4
+    if not isinstance(text, bpy.types.Text) and arm.library is not None:
+        name = arm.name_full
+        owned = (x for x in bpy.data.texts if (system_properties(x) or {}).get(_OWNER) == name)
+        text = next(owned, None)
     return text if isinstance(text, bpy.types.Text) else None
 
 
@@ -29,8 +38,7 @@ def holder(arm):
     text = text_of(arm)
     if text is None:
         text = _new_text(arm)
-        if _move(arm, text, _names(), delete_source=True):
-            _retarget_drivers([arm], True)
+        if _store(arm, text, _names()):
             _tag_relations()
     return text
 
@@ -61,7 +69,7 @@ def remove_holder(arm):
     props = system_properties(arm)
     if props is not None and "MustardUI_data" in props:
         del props["MustardUI_data"]
-    if text is not None and all(text_of(x) != text for x in bpy.data.armatures):
+    if text is not None and all(x == arm or text_of(x) != text for x in bpy.data.armatures):
         bpy.data.texts.remove(text)
 
 
@@ -112,13 +120,35 @@ def _new_text(arm, source=None):
     # Draw callbacks can not store the Text, which is then removed
     try:
         text.name = f".MustardUI {arm.name}"
-        # Without the fake user the Text is removed with the armature
-        text.use_fake_user = False
-        arm.MustardUI_data = text
+        # Removed with the armature, while a fake user keeps the Text of a linked one on purge
+        text.use_fake_user = arm.library is not None
+        props = system_properties(text, create=True)
+        if arm.library is None:
+            props.pop(_OWNER, None)
+            arm.MustardUI_data = text
+        else:
+            props[_OWNER] = arm.name_full
+            for name, value in _linked.get(arm.session_uid, {}).items():
+                props[name] = value
     except (AttributeError, TypeError):
         bpy.data.texts.remove(text)
         raise
     return text
+
+
+def _store(arm, text, names):
+    """Move the settings of arm to text, whether there were any."""
+    if not _move(arm, text, names, delete_source=True):
+        return False
+    _retarget_drivers([arm], True)
+    if arm.library is not None:
+        props = system_properties(text)
+        _linked[arm.session_uid] = {
+            x: [i.to_dict() for i in props[x]] if isinstance(props[x], list) else props[x].to_dict()
+            for x in names
+            if x in props
+        }
+    return True
 
 
 def system_properties(id_data, create=False):
@@ -197,24 +227,28 @@ def _convert(enable):
     texts = set()
     moved = False
     overrides = []
-    # Linked and overridden armatures too, as draw callbacks can not create their Text
-    for arm in bpy.data.armatures:
+    # Linked and overridden armatures too, as draw callbacks can not create their Text.
+    # Linked ones first, whose Text is copied by their overrides
+    for arm in sorted(bpy.data.armatures, key=lambda x: x.library is None):
         text = text_of(arm)
         if enable:
-            if arm.override_library is not None:
+            if arm.override_library is not None and arm.library is None:
                 overrides.append(arm)
+                if text is None:
+                    text = text_of(arm.override_library.reference)
             # Duplicated armatures share the Text of the original one
             if text is None or text in texts:
                 text = _new_text(arm, text)
             # Texts saved before the fake user was removed
-            if text.use_fake_user:
+            if text.use_fake_user and arm.library is None:
                 text.use_fake_user = False
-            if _move(arm, text, names, delete_source=True):
-                _retarget_drivers([arm], True)
-                moved = True
+            moved |= _store(arm, text, names)
             texts.add(text)
         else:
             moved |= store_on_armature(arm)
+    # Texts of removed linked armatures, kept by their fake user
+    if not enable:
+        bpy.data.batch_remove([x for x in bpy.data.texts if _OWNER in (system_properties(x) or {})])
     # Overrides get the settings of the linked armature from its Text, not remapped to them
     if overrides:
         mapping = {
@@ -225,7 +259,7 @@ def _convert(enable):
             if isinstance(x, bpy.types.ID) and x.override_library is not None
         }
         for arm in overrides:
-            moved |= _remap(system_properties(text_of(arm)), mapping)
+            moved |= _remap(system_properties(text_of(arm)) or {}, mapping)
     if moved:
         _tag_relations()
     # Counted after the conversion, to retry it if it fails
