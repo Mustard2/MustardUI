@@ -278,6 +278,27 @@ class TestTextStorage(BlenderTestCase):
                         self.assertEqual(storage.text_of(arm) is not None, enabled)
                         self.assertEqual(arm.MustardUI_RigSettings.model_name, "Tester")
 
+    # Linked armatures do not point to their Text, freed by undo, and keep their settings
+    def test_linked_armature_undo(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "model.blend")
+            bpy.ops.wm.save_as_mainfile(filepath=path, copy=True)
+            bpy.ops.wm.read_homefile(use_empty=True)
+            self.set_enabled(True)
+            with bpy.data.libraries.load(path, link=True) as (data_from, data_to):
+                data_to.objects = ["Tester Armature"]
+            bpy.context.scene.collection.objects.link(data_to.objects[0])
+            arm = data_to.objects[0].data
+            bpy.ops.ed.undo_push(message="Link")
+            # Saving replaces the Text, not in the undo step
+            bpy.ops.wm.save_as_mainfile(filepath=os.path.join(directory, "scene.blend"))
+            bpy.ops.ed.undo_push(message="Save")
+            bpy.ops.ed.undo()
+            bpy.data.orphans_purge(do_recursive=True)
+            bpy.context.view_layer.update()
+            self.assertNotIn("MustardUI_data", storage.system_properties(arm))
+            self.assertEqual(arm.MustardUI_RigSettings.model_name, "Tester")
+
     # Armatures sharing a Text all get the settings back
     def test_shared_text(self):
         self.set_enabled(True)
