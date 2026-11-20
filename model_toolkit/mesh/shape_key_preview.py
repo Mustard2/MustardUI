@@ -217,7 +217,7 @@ class ShapeKeyPreviewOperator:
 
     def preview_status(self, context):
         context.workspace.status_text_set(
-            f"{self.bl_label}: change the settings in Model Toolkit > Mesh, Esc to cancel"
+            f"{self.bl_label}: change the settings in the Model Toolkit, Esc to cancel"
         )
 
     def preview_update(self, context):

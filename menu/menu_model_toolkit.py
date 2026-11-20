@@ -295,6 +295,7 @@ EFFECT_GROUPS = (
         "Crush",
         "Billow Dust",
         "Imprints",
+        "Cracks",
         "Bulge",
         "Shrinkwrap",
         "Dust Puff",

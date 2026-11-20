@@ -1,7 +1,9 @@
 import hashlib
 import importlib
+import ntpath
 import os
 import tempfile
+import types
 
 import bpy
 import numpy as np
@@ -130,6 +132,34 @@ class TestConvertImages(BlenderTestCase):
         after = self.files()
         self.assertEqual({x: after[x] for x in before}, before)
 
+    # With Overwrite, the files of previous conversions are replaced
+    def test_overwrite(self):
+        image = self.new_image("color.png", "PNG", "16")
+        open(os.path.join(self.dir.name, "color_8bit.png"), "wb").write(b"old")
+
+        self.convert(image, overwrite=True)
+
+        (new_image,) = self.node_images()
+        self.assertEqual(new_image.filepath, os.path.join(self.dir.name, "color_8bit.png"))
+        self.assertEqual(sorted(self.files()), ["color.png", "color_8bit.png"])
+        self.assertFalse(new_image.is_float)
+
+    # Relative paths are not split as Windows network shares
+    def test_relative_windows(self):
+        image = self.new_image("color.png", "PNG", "16")
+        bpy.ops.wm.save_as_mainfile(filepath=os.path.join(self.dir.name, "model.blend"))
+        image.filepath = "//color.png"
+        windows_os = types.SimpleNamespace(**vars(os))
+        windows_os.path = ntpath
+        self.addCleanup(setattr, convert_images, "os", os)
+        convert_images.os = windows_os
+
+        self.convert(image)
+
+        (new_image,) = self.node_images()
+        self.assertEqual(new_image.filepath, "//color_8bit.png")
+        self.assertTrue(os.path.isfile(os.path.join(self.dir.name, "color_8bit.png")))
+
     # Resized 16-bit Images keep their bit depth and transparent pixels colors
     def test_resize_keep_bits(self):
         for colorspace in ("sRGB", "Non-Color"):
@@ -150,23 +180,29 @@ class TestConvertImages(BlenderTestCase):
                 result = raw_pixels(new_image)[1::4, 1::4]
                 self.assertLess(np.abs(result - source[2::8, 2::8]).max(), 1e-3)
 
-    # New Images saved in a subfolder, also in the path of the packed ones
+    # New Images saved in a subfolder with the original names, replacing the old ones
     def test_subfolder(self):
         image = self.new_image("color.png", "PNG", "16")
         packed = self.new_image("packed.png", "PNG", "16")
         packed.pack()
         os.remove(packed.filepath)
         packed.filepath_raw = "//textures/packed.png"
+        # A previous conversion, replaced
+        os.makedirs(os.path.join(self.dir.name, "Converted"))
+        open(os.path.join(self.dir.name, "Converted", "color.png"), "wb").write(b"old")
 
         self.convert(image, packed, use_subfolder=True, subfolder="Converted")
 
         new_image, new_packed = self.node_images()
-        path = os.path.join(self.dir.name, "Converted", "color_8bit.png")
+        path = os.path.join(self.dir.name, "Converted", "color.png")
         self.assertEqual(new_image.filepath, path)
         self.assertTrue(os.path.isfile(path))
-        self.assertEqual(new_packed.filepath, "//textures/Converted/packed_8bit.png")
+        self.assertEqual(new_packed.filepath, "//textures/Converted/packed.png")
         self.assertIsNotNone(new_packed.packed_file)
+        self.assertEqual((new_image.name, new_packed.name), ("color.png", "packed.png"))
         self.assertEqual(sorted(os.listdir(self.dir.name)), ["Converted", "color.png"])
+        self.assertEqual(os.listdir(os.path.join(self.dir.name, "Converted")), ["color.png"])
+        self.assertFalse(new_image.is_float)
 
     # Linear float Image converted to 8-bit is stored in sRGB
     def test_linear_to_8bit(self):

@@ -34,6 +34,7 @@ from . import (  # noqa: E402, I001
     menu_settings,
     menu_links,
     menu_model_toolkit,
+    menu_model_toolkit_cloth,
 )
 
 
@@ -67,9 +68,11 @@ def register():
     menu_settings.register()
     menu_links.register()
     menu_model_toolkit.register()
+    menu_model_toolkit_cloth.register()
 
 
 def unregister():
+    menu_model_toolkit_cloth.unregister()
     menu_model_toolkit.unregister()
     menu_links.unregister()
     menu_settings.unregister()

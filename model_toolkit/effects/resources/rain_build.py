@@ -157,7 +157,7 @@ def build_interface(ng):
         "Splash Size",
         "NodeSocketFloat",
         panel,
-        default_value=0.6,
+        default_value=1.5,
         min_value=0.0,
         max_value=10.0,
         subtype="FACTOR",
@@ -790,6 +790,7 @@ def build_node_group():
         {"Points": separate.outputs["Selection"], "Radius": t.attribute("size", "FLOAT", 1, 3)},
     )
     droplets = t.store(droplets.outputs[0], "rain_opacity", "FLOAT", inputs["Opacity"], 2.5, 2)
+    droplets = t.store(droplets, "rain_splash", "FLOAT", 1.0, 2.75, 2)
     droplets = t.node(
         "GeometryNodeSetMaterial",
         3,
@@ -1122,9 +1123,13 @@ def build_material():
 
     fresnel = t.node("ShaderNodeLayerWeight", -6, 2, {"Blend": 0.3}).outputs["Fresnel"]
     reflection = t.math("MULTIPLY_ADD", fresnel, 0.85, 0.15, x=-4, y=2)
+    # The droplets as spray catching the light all over: clear, only their rim would show
+    splash = t.node("ShaderNodeAttribute", -6, 4, attribute_name="rain_splash").outputs["Fac"]
+    reflection = t.math("MAXIMUM", reflection, splash, x=-3, y=2)
     reflection = t.math("MULTIPLY", reflection, visible, x=-2, y=2)
+    roughness = t.math("MULTIPLY_ADD", splash, 0.45, 0.05, x=-2, y=4)
     glossy = t.node(
-        "ShaderNodeBsdfAnisotropic", 0, 2, {"Color": reflection, "Roughness": 0.05}
+        "ShaderNodeBsdfAnisotropic", 0, 2, {"Color": reflection, "Roughness": roughness}
     ).outputs[0]
     # A little darker through the drops, to see them where nothing reflects
     through = t.math("MULTIPLY_ADD", visible, -0.15, 1.0, x=-2, y=-1)

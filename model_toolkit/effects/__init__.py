@@ -5,6 +5,7 @@ from . import (
     ops_chain,
     ops_cloth_rip,
     ops_cloth_tear,
+    ops_cracks,
     ops_crush,
     ops_dirt,
     ops_disintegration,
@@ -57,6 +58,7 @@ def register():
     ops_foam.register()
     ops_marks.register()
     ops_imprints.register()
+    ops_cracks.register()
     ops_bulge.register()
     ops_shrinkwrap.register()
     ops_dust_puff.register()
@@ -84,6 +86,7 @@ def unregister():
     ops_dust_puff.unregister()
     ops_shrinkwrap.unregister()
     ops_bulge.unregister()
+    ops_cracks.unregister()
     ops_imprints.unregister()
     ops_marks.unregister()
     ops_foam.unregister()

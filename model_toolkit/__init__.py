@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import BoolProperty, StringProperty
 
-from . import armature, effects, images, mesh, model, optimization, outfits, physics, unreal
+from . import armature, cloth, effects, images, mesh, model, optimization, outfits, physics, unreal
 
 
 def register():
@@ -10,6 +10,7 @@ def register():
     bpy.types.Object.MustardUI_tools_creators_type = StringProperty(default="")
 
     physics.register()
+    cloth.register()
     armature.register()
     model.register()
     mesh.register()
@@ -30,6 +31,7 @@ def unregister():
     mesh.unregister()
     model.unregister()
     armature.unregister()
+    cloth.unregister()
     physics.unregister()
 
     del bpy.types.Object.MustardUI_tools_creators_type

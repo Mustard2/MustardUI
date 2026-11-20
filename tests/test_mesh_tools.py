@@ -493,7 +493,7 @@ class TestTransferVertexGroups(BlenderTestCase):
 
         items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
         items.clear()
-        items.add().group_name = "Foo"
+        items.add().name = "Foo"
 
     # Only the listed groups are transferred, copying the weights of the close source
     def test_transfer(self):
@@ -508,16 +508,7 @@ class TestTransferVertexGroups(BlenderTestCase):
             weight = next(g.weight for g in v.groups if g.group == index)
             self.assertAlmostEqual(weight, (v.co.x + 1.0) / 2.0, places=4)
 
-    # The list is emptied by Clear
-    def test_clear(self):
-        wm = bpy.context.window_manager
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_Items.add().group_name = "Bar"
-        wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex = 1
-        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups_clear()
-        self.assertEqual(len(wm.MustardUI_ModelToolkit_TransferVertexGroups_Items), 0)
-        self.assertEqual(wm.MustardUI_ModelToolkit_TransferVertexGroups_ItemIndex, 0)
-
-    # Deform Bones adds only the groups of the deform bones
+    # Deform Bones selects only the groups of the deform bones
     def test_add_deform_bones(self):
         arm_data = bpy.data.armatures.new("Armature")
         arm = new_object("Armature", arm_data)
@@ -531,15 +522,15 @@ class TestTransferVertexGroups(BlenderTestCase):
         bpy.context.view_layer.objects.active = self.source
 
         items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
-        items.clear()
-        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups_add_bones(deform=True)
-        self.assertEqual([item.group_name for item in items], ["Foo"])
+        items.add().name = "Bar"
+        bpy.ops.mustardui.model_toolkit_transfer_vertex_groups_select_bones(deform=True)
+        self.assertEqual([(item.name, item.use) for item in items], [("Foo", True), ("Bar", False)])
 
     def transfer(self, **settings):
         items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
         items.clear()
         for name in ("Foo", "Baz"):
-            items.add().group_name = name
+            items.add().name = name
         # A second group completing the first one to 1
         baz = self.source.vertex_groups.new(name="Baz")
         for v in self.source.data.vertices:
@@ -603,7 +594,7 @@ class TestTransferVertexGroups(BlenderTestCase):
         # Bar only weights the source corner, far from the target, which already has a Bar group
         self.target.vertex_groups.new(name="Bar")
         items = bpy.context.window_manager.MustardUI_ModelToolkit_TransferVertexGroups_Items
-        items.add().group_name = "Bar"
+        items.add().name = "Bar"
         bpy.ops.mustardui.model_toolkit_transfer_vertex_groups()
         self.assertIn("Foo", self.target.vertex_groups)
         self.assertNotIn("Bar", self.target.vertex_groups)
